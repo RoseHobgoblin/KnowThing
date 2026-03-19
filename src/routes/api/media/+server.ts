@@ -6,7 +6,9 @@ import { desc } from 'drizzle-orm';
 import { requireAuth } from '$lib/server/auth.js';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
-import { UPLOAD_DIR } from '$env/static/private';
+import { env } from '$env/dynamic/private';
+
+const UPLOAD_DIR = env.UPLOAD_DIR || './uploads';
 
 /** GET /api/media — list all media */
 export const GET: RequestHandler = async () => {
