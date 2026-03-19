@@ -89,7 +89,7 @@ export function setSessionCookie(event: RequestEvent, token: string): void {
 		path: '/',
 		httpOnly: true,
 		sameSite: 'lax',
-		secure: process.env.NODE_ENV === 'production',
+		secure: process.env.ORIGIN?.startsWith('https://') ?? false,
 		maxAge: SESSION_DURATION_MS / 1000
 	});
 }
