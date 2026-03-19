@@ -1,0 +1,27 @@
+services:
+  app:
+    image: knowthing
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: on-failure
+    ports:
+      - '${PORT:-3000}:${PORT:-3000}'
+    environment:
+      DATABASE_URL: postgres://knowthing:${DB_PASSWORD}@host.docker.internal:5438/knowthing
+      UPLOAD_DIR: /app/uploads
+      PORT: ${PORT:-3000}
+      ORIGIN: ${ORIGIN:-http://localhost:3000}
+      NODE_ENV: production
+    volumes:
+      - uploads:/app/uploads
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '5'
+
+volumes:
+  uploads:

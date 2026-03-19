@@ -1,0 +1,35 @@
+# ── Build stage ──────────────────────────────────────────────
+FROM node:20-alpine AS build
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY . .
+RUN npm run build
+RUN npm prune --production
+
+# ── Production stage ─────────────────────────────────────────
+FROM node:20-alpine
+
+WORKDIR /app
+
+# bcrypt needs these at runtime
+RUN apk add --no-cache python3 make g++
+
+COPY --from=build /app/build ./build
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/package.json ./
+COPY --from=build /app/drizzle ./drizzle
+COPY --from=build /app/scripts ./scripts
+
+RUN mkdir -p /app/uploads
+
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV ORIGIN=http://localhost:3000
+
+EXPOSE 3000
+
+CMD ["node", "scripts/start.js"]
