@@ -1,10 +1,8 @@
 <script lang="ts">
 	import type { PageData } from './$types.js';
 	import { page } from '$app/stores';
-	import { invalidateAll } from '$app/navigation';
 	import WordGroup from '$lib/components/wordbook/WordGroup.svelte';
 	import EtymologySection from '$lib/components/wordbook/EtymologySection.svelte';
-	import RelationForm from '$lib/components/wordbook/RelationForm.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -37,17 +35,12 @@
 	<!-- Etymology & Relations -->
 	<div class="bg-white rounded-lg border border-stone-200 p-6">
 		<EtymologySection
+			entryId={data.entries[0]?.id}
 			direct={data.relations.direct}
 			cognates={data.relations.cognates}
 			etymologyChain={data.relations.etymologyChain}
 			narrativeEtymology={data.entries[0]?.etymology || ''}
+			{isAuthenticated}
 		/>
-
-		{#if isAuthenticated}
-			<RelationForm
-				entryId={data.entries[0]?.id}
-				onrelationadded={() => invalidateAll()}
-			/>
-		{/if}
 	</div>
 </div>

@@ -50,8 +50,7 @@
 				usageTranslation: data.entry.usageTranslation || '',
 				notes: data.entry.notes || '',
 				pageSlug: data.entry.pageSlug || '',
-				tags: data.entry.tags || [],
-				related: data.entry.related || []
+				tags: data.entry.tags || []
 			}}
 			onsubmit={handleSubmit}
 			submitLabel="Save Changes"

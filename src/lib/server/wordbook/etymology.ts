@@ -6,6 +6,7 @@ import { eq, sql, and, inArray } from 'drizzle-orm';
 
 export interface RelatedEntry {
 	id: number;
+	relationId: number;
 	word: string;
 	definition: string;
 	pronunciation: string | null;
@@ -59,6 +60,7 @@ export async function getDirectRelations(entryId: number): Promise<DirectRelatio
 	const outgoing = await db
 		.select({
 			id: lexicon.id,
+			relationId: lexiconRelations.id,
 			word: lexicon.word,
 			definition: lexicon.definition,
 			pronunciation: lexicon.pronunciation,
@@ -79,6 +81,7 @@ export async function getDirectRelations(entryId: number): Promise<DirectRelatio
 	const incoming = await db
 		.select({
 			id: lexicon.id,
+			relationId: lexiconRelations.id,
 			word: lexicon.word,
 			definition: lexicon.definition,
 			pronunciation: lexicon.pronunciation,
@@ -97,6 +100,7 @@ export async function getDirectRelations(entryId: number): Promise<DirectRelatio
 
 	const toRelated = (r: typeof outgoing[0]): RelatedEntry => ({
 		id: r.id,
+		relationId: r.relationId,
 		word: r.word,
 		definition: r.definition,
 		pronunciation: r.pronunciation,

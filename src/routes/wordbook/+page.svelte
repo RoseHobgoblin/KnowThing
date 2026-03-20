@@ -26,7 +26,10 @@
 	<!-- Languages -->
 	{#if data.languages.length > 0}
 		<section>
-			<h2 class="text-lg font-semibold text-stone-800 mb-3">Languages</h2>
+			<div class="flex items-center justify-between mb-3">
+				<h2 class="text-lg font-semibold text-stone-800">Languages</h2>
+				<a href="/wordbook/contribute/language" class="text-sm text-amber-700 hover:text-amber-900 hover:underline">+ Add language</a>
+			</div>
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 				{#each data.languages as lang}
 					<LanguageCard

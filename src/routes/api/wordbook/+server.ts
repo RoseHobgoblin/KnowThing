@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.js';
 import { db } from '$lib/server/db/index.js';
-import { lexicon, languages } from '$lib/server/db/schema.js';
+import { lexicon, lexiconRelations, languages } from '$lib/server/db/schema.js';
 import { requireAuth } from '$lib/server/auth.js';
 import { eq, sql, asc, desc, and, ilike } from 'drizzle-orm';
 
@@ -126,7 +126,7 @@ export const POST: RequestHandler = async (event) => {
 		notes,
 		pageSlug,
 		tags,
-		related
+		relations
 	} = body as {
 		word: string;
 		languageId: number;
@@ -139,7 +139,7 @@ export const POST: RequestHandler = async (event) => {
 		notes?: string;
 		pageSlug?: string;
 		tags?: string[];
-		related?: string[];
+		relations?: Array<{ targetId: number; relationType: string }>;
 	};
 
 	if (!word?.trim() || !definition?.trim() || !languageId) {
@@ -160,9 +160,24 @@ export const POST: RequestHandler = async (event) => {
 			notes: notes?.trim() || null,
 			pageSlug: pageSlug?.trim() || null,
 			tags: tags || [],
-			related: related || []
+			related: []
 		})
 		.returning();
+
+	// Insert etymology relations if provided
+	if (relations && relations.length > 0) {
+		const validTypes = ['derived_from', 'loan_from', 'compound_of'];
+		const validRelations = relations.filter((r: { targetId: number; relationType: string }) => r.targetId && validTypes.includes(r.relationType));
+		if (validRelations.length > 0) {
+			await db.insert(lexiconRelations).values(
+				validRelations.map((r: { targetId: number; relationType: string }) => ({
+					sourceId: entry.id,
+					targetId: r.targetId,
+					relationType: r.relationType
+				}))
+			).onConflictDoNothing();
+		}
+	}
 
 	return json(entry, { status: 201 });
 };
