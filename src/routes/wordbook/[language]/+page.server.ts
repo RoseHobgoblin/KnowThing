@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types.js';
 import { db } from '$lib/server/db/index.js';
-import { lexicon, definitions, languages, languageDialects } from '$lib/server/db/schema.js';
+import { lexicon, definitions, languages, languageDialects, inflectionDimensions, paradigmClasses } from '$lib/server/db/schema.js';
 import { eq, sql, asc, and } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getAncestryChain, getChildren } from '$lib/server/wordbook/language-tree.js';
@@ -24,11 +24,13 @@ export const load: PageServerLoad = async ({ params, url }) => {
 
 	if (!lang) error(404, 'Language not found');
 
-	// Load ancestry, children, dialects
-	const [ancestryChain, children, dialects] = await Promise.all([
+	// Load ancestry, children, dialects, inflection setup
+	const [ancestryChain, children, dialects, dimensions, classes] = await Promise.all([
 		getAncestryChain(lang.id),
 		getChildren(lang.id),
-		db.select().from(languageDialects).where(eq(languageDialects.languageId, lang.id)).orderBy(asc(languageDialects.name))
+		db.select().from(languageDialects).where(eq(languageDialects.languageId, lang.id)).orderBy(asc(languageDialects.name)),
+		db.select().from(inflectionDimensions).where(eq(inflectionDimensions.languageId, lang.id)).orderBy(asc(inflectionDimensions.partOfSpeech), asc(inflectionDimensions.sortOrder)),
+		db.select().from(paradigmClasses).where(eq(paradigmClasses.languageId, lang.id)).orderBy(asc(paradigmClasses.partOfSpeech), asc(paradigmClasses.name))
 	]);
 
 	const letter = url.searchParams.get('letter') || '';
@@ -69,6 +71,8 @@ export const load: PageServerLoad = async ({ params, url }) => {
 		ancestryChain,
 		children,
 		dialects,
+		inflectionDimensions: dimensions,
+		paradigmClasses: classes,
 		activeLetters: activeLettersResult.map(r => r.letter),
 		currentLetter: letter
 	};

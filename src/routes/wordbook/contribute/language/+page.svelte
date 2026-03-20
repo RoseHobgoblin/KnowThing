@@ -45,13 +45,13 @@
 				body: JSON.stringify({
 					name: name.trim(),
 					slug: slug.trim(),
-					nativeName: nativeName.trim() || undefined,
+					nativeName: nativeName.trim() || null,
 					script: script.trim() || 'Latin',
-					family: family.trim() || undefined,
+					family: family.trim() || null,
 					color: color || '#d97706',
-					description: description.trim() || undefined,
-					pageSlug: pageSlug.trim() || undefined,
-					parentLanguageId: parentLanguageId || undefined,
+					description: description.trim() || null,
+					pageSlug: pageSlug.trim() || null,
+					parentLanguageId: parentLanguageId || null,
 					languageType
 				})
 			});
@@ -121,8 +121,17 @@
 					</select>
 				</div>
 				<div>
-					<label for="family" class={labelClass}>Family <span class="text-xs text-stone-400">(override)</span></label>
-					<input id="family" type="text" bind:value={family} class={inputClass} placeholder="Auto-derived from parent" />
+					<label for="family" class={labelClass}>
+						Family
+						{#if languageType === 'proto'}
+							<span class="text-red-500">*</span>
+						{:else}
+							<span class="text-xs text-stone-400">(optional — inherits from parent)</span>
+						{/if}
+					</label>
+					<input id="family" type="text" bind:value={family} class={inputClass}
+						required={languageType === 'proto'}
+						placeholder={languageType === 'proto' ? 'e.g. Mirish' : 'Leave blank to inherit from parent'} />
 				</div>
 				<div>
 					<label for="script" class={labelClass}>Script</label>

@@ -1,9 +1,14 @@
 <script lang="ts">
 	import type { PageData } from './$types.js';
+	import { page } from '$app/stores';
 	import AlphabetNav from '$lib/components/wordbook/AlphabetNav.svelte';
 	import WordEntry from '$lib/components/wordbook/WordEntry.svelte';
+	import DimensionEditor from '$lib/components/wordbook/DimensionEditor.svelte';
 
 	let { data }: { data: PageData } = $props();
+
+	const layoutData = $derived($page.data);
+	const isAuthenticated = $derived(!!layoutData.user);
 
 	// Group entries by first letter
 	function groupByLetter(entries: typeof data.entries) {
@@ -109,6 +114,15 @@
 				{/each}
 			</div>
 		</div>
+	{/if}
+
+	<!-- Inflection system (editor+ only) -->
+	{#if data.inflectionDimensions.length > 0 || isAuthenticated}
+		<DimensionEditor
+			languageSlug={data.language.slug}
+			dimensions={data.inflectionDimensions}
+			classes={data.paradigmClasses}
+		/>
 	{/if}
 
 	<!-- Alphabet nav -->

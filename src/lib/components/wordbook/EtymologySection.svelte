@@ -92,12 +92,24 @@
 	const typeLabels: Record<string, string> = {
 		derived_from: 'Derived from',
 		loan_from: 'Borrowed from',
-		compound_of: 'Compound of'
+		compound_of: 'Compound component'
 	};
 	const reverseTypeLabels: Record<string, string> = {
-		derived_from: 'Derives from this',
-		loan_from: 'Borrowed this',
-		compound_of: 'Is compound using this'
+		derived_from: 'Is ancestor of',
+		loan_from: 'Was borrowed by',
+		compound_of: 'Used in compound'
+	};
+	const typeHelp: Record<string, Record<string, string>> = {
+		from: {
+			derived_from: 'This word evolved from the target word',
+			loan_from: 'This word was borrowed from the target word in another language',
+			compound_of: 'The target word is one component of this compound — add each component separately'
+		},
+		to: {
+			derived_from: 'The target word evolved from this word',
+			loan_from: 'The target word borrowed this word',
+			compound_of: 'The target word is a compound that uses this word as a component'
+		}
 	};
 
 	function handleSearch() {
@@ -363,6 +375,8 @@
 							{/if}
 						</div>
 					</div>
+
+					<p class="text-xs text-stone-400 -mt-1">{typeHelp[direction]?.[relationType] || ''}</p>
 
 					<input type="text" bind:value={notes} placeholder="Notes (optional)" class="w-full px-3 py-1.5 border border-stone-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400" />
 
