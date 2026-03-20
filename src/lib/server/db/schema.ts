@@ -139,8 +139,40 @@ export const media = pgTable('media', {
 	width: integer('width'),
 	height: integer('height'),
 	sizeBytes: integer('size_bytes'),
+	hash: text('hash'),
+	description: text('description'),
+	uploadedBy: integer('uploaded_by').references(() => users.id),
+	originalFilename: text('original_filename'),
+	hasThumb150: boolean('has_thumb_150').default(false),
+	hasThumb300: boolean('has_thumb_300').default(false),
+	hasThumb600: boolean('has_thumb_600').default(false),
 	uploadedAt: timestamp('uploaded_at', { withTimezone: true }).defaultNow().notNull()
 });
+
+export const mediaHistory = pgTable(
+	'media_history',
+	{
+		id: serial('id').primaryKey(),
+		filename: text('filename').notNull(),
+		userId: integer('user_id').references(() => users.id),
+		action: text('action').notNull(), // 'upload', 'reupload', 'delete', 'describe'
+		details: text('details'),
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+	},
+	(table) => [index('idx_media_history_filename').on(table.filename)]
+);
+
+export const mediaCategories = pgTable(
+	'media_categories',
+	{
+		filename: text('filename').notNull(),
+		category: text('category').notNull()
+	},
+	(table) => [
+		primaryKey({ columns: [table.filename, table.category] }),
+		index('idx_media_categories_cat').on(table.category)
+	]
+);
 
 export const mediaUsage = pgTable(
 	'media_usage',

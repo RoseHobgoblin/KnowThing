@@ -11,8 +11,9 @@
 	{#each items as item}
 		<figure class="border border-stone-300 bg-stone-50 p-1 text-center">
 			<img
-				src="{ctx.mediaBaseUrl}/{encodeURIComponent(item.filename)}"
+				src="{ctx.mediaBaseUrl}/{encodeURIComponent(item.filename)}?w=150"
 				alt={item.caption || item.filename}
+				loading="lazy"
 				class="block max-w-[180px] max-h-[180px] object-contain"
 			/>
 			{#if item.caption}

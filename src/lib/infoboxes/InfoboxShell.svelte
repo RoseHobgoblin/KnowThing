@@ -48,7 +48,7 @@
 			<tr>
 				<td colspan="2" class="text-center p-3 border-b border-stone-100">
 					<img
-						src="/api/media/{image}"
+						src="/api/media/{image}?w=300"
 						alt={imageCaption || image}
 						class="max-w-full h-auto mx-auto rounded"
 						onerror={(e) => { const el = e.currentTarget as HTMLImageElement; el.style.display = 'none'; if (el.nextElementSibling) (el.nextElementSibling as HTMLElement).style.display = 'block'; }}

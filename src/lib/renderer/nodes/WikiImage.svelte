@@ -5,7 +5,7 @@
 	let { filename, options }: { filename: string; options: ImageOption[] } = $props();
 
 	const ctx = getWikiContext();
-	const src = $derived(`${ctx.mediaBaseUrl}/${encodeURIComponent(filename)}`);
+	const baseUrl = $derived(`${ctx.mediaBaseUrl}/${encodeURIComponent(filename)}`);
 
 	const isThumb = $derived(options.some((o) => o.type === 'thumb'));
 	const isFrame = $derived(options.some((o) => o.type === 'frame'));
@@ -19,6 +19,19 @@
 			caption?.text ||
 			filename
 	);
+
+	// Pick the right thumbnail size based on requested width
+	function pickThumbSize(requestedWidth: number | undefined, isThumb: boolean): number | null {
+		if (!requestedWidth && isThumb) return 300; // Default thumb size
+		if (!requestedWidth) return null; // Inline image, serve original
+		if (requestedWidth <= 150) return 150;
+		if (requestedWidth <= 300) return 300;
+		if (requestedWidth <= 600) return 600;
+		return null; // Larger than our biggest thumb, serve original
+	}
+
+	const thumbSize = $derived(pickThumbSize(width?.value, isThumb || isFrame));
+	const src = $derived(thumbSize ? `${baseUrl}?w=${thumbSize}` : baseUrl);
 
 	const alignClass = $derived(
 		alignment === 'left'
@@ -34,6 +47,7 @@
 		<img
 			{src}
 			{alt}
+			loading="lazy"
 			class="block"
 			style={width ? `max-width: ${width.value}px` : 'max-width: 220px'}
 		/>
@@ -45,6 +59,7 @@
 	<img
 		{src}
 		{alt}
+		loading="lazy"
 		class="know-image inline-block"
 		style={width ? `max-width: ${width.value}px` : undefined}
 	/>
