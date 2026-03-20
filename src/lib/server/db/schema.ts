@@ -7,8 +7,8 @@ import {
 	boolean,
 	jsonb,
 	primaryKey,
-	index
-} from 'drizzle-orm/pg-core';
+	index,
+} from 'drizzle-orm/pg-core'
 
 // ============================================================================
 // Users & Auth
@@ -19,8 +19,8 @@ export const users = pgTable('users', {
 	username: text('username').unique().notNull(),
 	passwordHash: text('password_hash').notNull(),
 	role: text('role').notNull().default('editor'), // 'admin' | 'editor'
-	createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
-});
+	createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+})
 
 export const sessions = pgTable('sessions', {
 	id: serial('id').primaryKey(),
@@ -28,8 +28,8 @@ export const sessions = pgTable('sessions', {
 		.references(() => users.id, { onDelete: 'cascade' })
 		.notNull(),
 	token: text('token').unique().notNull(),
-	expiresAt: timestamp('expires_at', { withTimezone: true }).notNull()
-});
+	expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+})
 
 // ============================================================================
 // Pages & Revisions
@@ -45,13 +45,13 @@ export const pages = pgTable(
 		plainText: text('plain_text').notNull().default(''), // stripped markup for FTS
 		sizeBytes: integer('size_bytes').notNull().default(0),
 		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 	},
-	(table) => [
+	table => [
 		index('idx_pages_slug').on(table.slug),
-		index('idx_pages_updated').on(table.updatedAt)
-	]
-);
+		index('idx_pages_updated').on(table.updatedAt),
+	],
+)
 
 export const revisions = pgTable(
 	'revisions',
@@ -66,13 +66,13 @@ export const revisions = pgTable(
 		sizeBytes: integer('size_bytes').notNull().default(0),
 		editSummary: text('edit_summary').default(''),
 		userId: integer('user_id').references(() => users.id),
-		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 	},
-	(table) => [
+	table => [
 		index('idx_revisions_page').on(table.pageSlug),
-		index('idx_revisions_date').on(table.createdAt)
-	]
-);
+		index('idx_revisions_date').on(table.createdAt),
+	],
+)
 
 // ============================================================================
 // Templates (DB-stored simple templates for the hybrid system)
@@ -83,8 +83,8 @@ export const templates = pgTable('templates', {
 	name: text('name').unique().notNull(),
 	source: text('source').notNull(),
 	description: text('description').default(''),
-	updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
-});
+	updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+})
 
 // ============================================================================
 // Calendars (JSONB for the complex config)
@@ -96,8 +96,8 @@ export const calendars = pgTable('calendars', {
 	description: text('description').default(''),
 	isPrimary: boolean('is_primary').default(false).notNull(),
 	staticData: jsonb('static_data').notNull(), // months, weekdays, leap days, moons, eras, seasons
-	calendarDate: jsonb('calendar_date').notNull() // { year, monthIndex, day }
-});
+	calendarDate: jsonb('calendar_date').notNull(), // { year, monthIndex, day }
+})
 
 // ============================================================================
 // Link & Category tracking
@@ -107,25 +107,25 @@ export const links = pgTable(
 	'links',
 	{
 		sourceSlug: text('source_slug').notNull(),
-		targetSlug: text('target_slug').notNull()
+		targetSlug: text('target_slug').notNull(),
 	},
-	(table) => [
+	table => [
 		primaryKey({ columns: [table.sourceSlug, table.targetSlug] }),
-		index('idx_links_target').on(table.targetSlug)
-	]
-);
+		index('idx_links_target').on(table.targetSlug),
+	],
+)
 
 export const categories = pgTable(
 	'categories',
 	{
 		pageSlug: text('page_slug').notNull(),
-		category: text('category').notNull()
+		category: text('category').notNull(),
 	},
-	(table) => [
+	table => [
 		primaryKey({ columns: [table.pageSlug, table.category] }),
-		index('idx_categories_cat').on(table.category)
-	]
-);
+		index('idx_categories_cat').on(table.category),
+	],
+)
 
 // ============================================================================
 // Media
@@ -146,8 +146,8 @@ export const media = pgTable('media', {
 	hasThumb150: boolean('has_thumb_150').default(false),
 	hasThumb300: boolean('has_thumb_300').default(false),
 	hasThumb600: boolean('has_thumb_600').default(false),
-	uploadedAt: timestamp('uploaded_at', { withTimezone: true }).defaultNow().notNull()
-});
+	uploadedAt: timestamp('uploaded_at', { withTimezone: true }).defaultNow().notNull(),
+})
 
 export const mediaHistory = pgTable(
 	'media_history',
@@ -157,31 +157,31 @@ export const mediaHistory = pgTable(
 		userId: integer('user_id').references(() => users.id),
 		action: text('action').notNull(), // 'upload', 'reupload', 'delete', 'describe'
 		details: text('details'),
-		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 	},
-	(table) => [index('idx_media_history_filename').on(table.filename)]
-);
+	table => [index('idx_media_history_filename').on(table.filename)],
+)
 
 export const mediaCategories = pgTable(
 	'media_categories',
 	{
 		filename: text('filename').notNull(),
-		category: text('category').notNull()
+		category: text('category').notNull(),
 	},
-	(table) => [
+	table => [
 		primaryKey({ columns: [table.filename, table.category] }),
-		index('idx_media_categories_cat').on(table.category)
-	]
-);
+		index('idx_media_categories_cat').on(table.category),
+	],
+)
 
 export const mediaUsage = pgTable(
 	'media_usage',
 	{
 		pageSlug: text('page_slug').notNull(),
-		filename: text('filename').notNull()
+		filename: text('filename').notNull(),
 	},
-	(table) => [primaryKey({ columns: [table.pageSlug, table.filename] })]
-);
+	table => [primaryKey({ columns: [table.pageSlug, table.filename] })],
+)
 
 // ============================================================================
 // Wordbook: Languages & Lexicon
@@ -202,13 +202,13 @@ export const languages = pgTable(
 		parentLanguageId: integer('parent_language_id'),
 		languageType: text('language_type').notNull().default('language'), // 'proto', 'language', 'historical'
 		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 	},
-	(table) => [
+	table => [
 		index('idx_languages_slug').on(table.slug),
-		index('idx_languages_parent').on(table.parentLanguageId)
-	]
-);
+		index('idx_languages_parent').on(table.parentLanguageId),
+	],
+)
 
 export const languageDialects = pgTable(
 	'language_dialects',
@@ -220,12 +220,12 @@ export const languageDialects = pgTable(
 		name: text('name').notNull(),
 		slug: text('slug').notNull(),
 		region: text('region'),
-		description: text('description')
+		description: text('description'),
 	},
-	(table) => [
-		index('idx_dialects_language').on(table.languageId)
-	]
-);
+	table => [
+		index('idx_dialects_language').on(table.languageId),
+	],
+)
 
 export const lexicon = pgTable(
 	'lexicon',
@@ -242,13 +242,13 @@ export const lexicon = pgTable(
 		tags: text('tags').array().default([]),
 		homographNumber: integer('homograph_number').notNull().default(1),
 		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 	},
-	(table) => [
+	table => [
 		index('idx_lexicon_word').on(table.word),
-		index('idx_lexicon_language').on(table.languageId)
-	]
-);
+		index('idx_lexicon_language').on(table.languageId),
+	],
+)
 
 export const lexiconRevisions = pgTable(
 	'lexicon_revisions',
@@ -260,12 +260,12 @@ export const lexiconRevisions = pgTable(
 		snapshot: jsonb('snapshot').notNull(),
 		editSummary: text('edit_summary'),
 		userId: integer('user_id').references(() => users.id),
-		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 	},
-	(table) => [
-		index('idx_lexrev_entry').on(table.entryId)
-	]
-);
+	table => [
+		index('idx_lexrev_entry').on(table.entryId),
+	],
+)
 
 export const definitions = pgTable(
 	'definitions',
@@ -280,12 +280,12 @@ export const definitions = pgTable(
 		usageExample: text('usage_example'),
 		usageTranslation: text('usage_translation'),
 		dialectId: integer('dialect_id').references(() => languageDialects.id, { onDelete: 'set null' }),
-		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 	},
-	(table) => [
-		index('idx_definitions_entry').on(table.entryId)
-	]
-);
+	table => [
+		index('idx_definitions_entry').on(table.entryId),
+	],
+)
 
 export const lexiconVariants = pgTable(
 	'lexicon_variants',
@@ -299,12 +299,12 @@ export const lexiconVariants = pgTable(
 			.notNull(),
 		pronunciation: text('pronunciation'),
 		spelling: text('spelling'),
-		notes: text('notes')
+		notes: text('notes'),
 	},
-	(table) => [
-		index('idx_variants_entry').on(table.entryId)
-	]
-);
+	table => [
+		index('idx_variants_entry').on(table.entryId),
+	],
+)
 
 export const lexiconRelations = pgTable(
 	'lexicon_relations',
@@ -318,13 +318,13 @@ export const lexiconRelations = pgTable(
 			.notNull(),
 		relationType: text('relation_type').notNull(), // 'derived_from', 'loan_from', 'compound_of'
 		notes: text('notes'),
-		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 	},
-	(table) => [
+	table => [
 		index('idx_lexrel_source').on(table.sourceId),
-		index('idx_lexrel_target').on(table.targetId)
-	]
-);
+		index('idx_lexrel_target').on(table.targetId),
+	],
+)
 
 // ============================================================================
 // Inflection / Declension / Conjugation
@@ -340,12 +340,12 @@ export const inflectionDimensions = pgTable(
 		partOfSpeech: text('part_of_speech').notNull(),
 		name: text('name').notNull(),
 		dimValues: text('dim_values').array().notNull(),
-		sortOrder: integer('sort_order').notNull().default(0)
+		sortOrder: integer('sort_order').notNull().default(0),
 	},
-	(table) => [
-		index('idx_infl_dim_lang').on(table.languageId, table.partOfSpeech)
-	]
-);
+	table => [
+		index('idx_infl_dim_lang').on(table.languageId, table.partOfSpeech),
+	],
+)
 
 export const paradigmClasses = pgTable(
 	'paradigm_classes',
@@ -356,9 +356,9 @@ export const paradigmClasses = pgTable(
 			.notNull(),
 		partOfSpeech: text('part_of_speech').notNull(),
 		name: text('name').notNull(),
-		description: text('description')
-	}
-);
+		description: text('description'),
+	},
+)
 
 export const paradigmRules = pgTable(
 	'paradigm_rules',
@@ -368,12 +368,12 @@ export const paradigmRules = pgTable(
 			.references(() => paradigmClasses.id, { onDelete: 'cascade' })
 			.notNull(),
 		cellKey: text('cell_key').notNull(),
-		pattern: text('pattern').notNull()
+		pattern: text('pattern').notNull(),
 	},
-	(table) => [
-		index('idx_paradigm_rules_class').on(table.classId)
-	]
-);
+	table => [
+		index('idx_paradigm_rules_class').on(table.classId),
+	],
+)
 
 export const lexiconInflections = pgTable(
 	'lexicon_inflections',
@@ -385,12 +385,12 @@ export const lexiconInflections = pgTable(
 		classId: integer('class_id')
 			.references(() => paradigmClasses.id, { onDelete: 'set null' }),
 		stem: text('stem'),
-		overrides: jsonb('overrides').default({})
+		overrides: jsonb('overrides').default({}),
 	},
-	(table) => [
-		index('idx_lex_infl_entry').on(table.entryId)
-	]
-);
+	table => [
+		index('idx_lex_infl_entry').on(table.entryId),
+	],
+)
 
 export const inflectedForms = pgTable(
 	'inflected_forms',
@@ -401,10 +401,10 @@ export const inflectedForms = pgTable(
 			.notNull(),
 		form: text('form').notNull(),
 		cellKey: text('cell_key').notNull(),
-		isOverride: boolean('is_override').default(false)
+		isOverride: boolean('is_override').default(false),
 	},
-	(table) => [
+	table => [
 		index('idx_inflected_forms_form').on(table.form),
-		index('idx_inflected_forms_entry').on(table.entryId)
-	]
-);
+		index('idx_inflected_forms_entry').on(table.entryId),
+	],
+)

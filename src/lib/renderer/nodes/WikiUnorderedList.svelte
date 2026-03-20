@@ -1,8 +1,8 @@
 <script lang="ts">
-	import type { ListItem } from '$lib/parser/types.js';
-	import WikiNodeComponent from '../WikiNode.svelte';
+	import type { ListItem } from '$lib/parser/types.js'
+	import WikiNodeComponent from '../WikiNode.svelte'
 
-	let { items }: { items: ListItem[] } = $props();
+	let { items }: { items: ListItem[] } = $props()
 </script>
 
 <ul class="know-ul list-disc pl-8 my-2">

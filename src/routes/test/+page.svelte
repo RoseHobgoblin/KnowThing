@@ -1,14 +1,14 @@
 <script lang="ts">
-	import { parseWikitext } from '$lib/parser/index.js';
-	import WikiNode from '$lib/renderer/WikiNode.svelte';
-	import { createKnowContext } from '$lib/renderer/context.js';
+	import { parseWikitext } from '$lib/parser/index.js'
+	import WikiNode from '$lib/renderer/WikiNode.svelte'
+	import { createKnowContext } from '$lib/renderer/context.js'
 
 	// Set up wiki render context
 	createKnowContext({
 		existingPages: new Set(['onchera', 'amalur', 'oncheran_language', 'batzar_nagusia']),
 		mediaBaseUrl: '/api/media',
-		pageBaseUrl: '/know'
-	});
+		pageBaseUrl: '/know',
+	})
 
 	const sampleWikitext = `== State of Onchera ==
 
@@ -67,13 +67,13 @@ def greet(name):
 </syntaxhighlight>
 
 [[Category:Countries]]
-[[Category:Monarchies]]`;
+[[Category:Monarchies]]`
 
-	const ast = parseWikitext(sampleWikitext);
+	const ast = parseWikitext(sampleWikitext)
 </script>
 
 <div class="max-w-4xl mx-auto p-8">
-	<h1 class="text-3xl font-bold mb-6  border-b-2 border-stone-800 pb-2">
+	<h1 class="text-3xl font-bold mb-6 border-b-2 border-heading pb-2">
 		Parser Test Page
 	</h1>
 
@@ -81,8 +81,8 @@ def greet(name):
 		<WikiNode node={ast} />
 	</div>
 
-	<details class="mt-12 border border-stone-300 rounded">
-		<summary class="bg-stone-100 px-4 py-2 cursor-pointer font-mono text-sm">AST Debug Output</summary>
-		<pre class="p-4 text-xs overflow-auto max-h-96 bg-stone-50">{JSON.stringify(ast, null, 2)}</pre>
+	<details class="mt-12 border border-border-strong rounded-sm">
+		<summary class="bg-raised px-4 py-2 cursor-pointer font-mono text-sm">AST Debug Output</summary>
+		<pre class="p-4 text-xs overflow-auto max-h-96 bg-page">{JSON.stringify(ast, null, 2)}</pre>
 	</details>
 </div>

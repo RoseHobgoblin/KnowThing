@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { Snippet } from 'svelte';
-	import InlineMarkup from '$lib/renderer/InlineMarkup.svelte';
+	import type { Snippet } from 'svelte'
+	import InlineMarkup from '$lib/renderer/InlineMarkup.svelte'
 
 	let {
 		title = '',
@@ -9,16 +9,16 @@
 		imageCaption = '',
 		aboveContent = '',
 		belowContent = '',
-		children
+		children,
 	}: {
-		title?: string;
-		subtitle?: string;
-		image?: string;
-		imageCaption?: string;
-		aboveContent?: string;
-		belowContent?: string;
-		children: Snippet;
-	} = $props();
+		title?: string
+		subtitle?: string
+		image?: string
+		imageCaption?: string
+		aboveContent?: string
+		belowContent?: string
+		children: Snippet
+	} = $props()
 </script>
 
 <table class="know-infobox">
@@ -46,18 +46,21 @@
 		{/if}
 		{#if image}
 			<tr>
-				<td colspan="2" class="text-center p-3 border-b border-stone-100">
+				<td colspan="2" class="text-center p-3 border-b border-border-subtle">
 					<img
 						src="/api/media/{image}?w=300"
 						alt={imageCaption || image}
-						class="max-w-full h-auto mx-auto rounded"
-						onerror={(e) => { const el = e.currentTarget as HTMLImageElement; el.style.display = 'none'; if (el.nextElementSibling) (el.nextElementSibling as HTMLElement).style.display = 'block'; }}
+						class="max-w-full h-auto mx-auto rounded-sm"
+						onerror={(e) => { const element = e.currentTarget as HTMLImageElement; element.style.display = 'none'; if (element.nextElementSibling) (element.nextElementSibling as HTMLElement).style.display = 'block' }}
 					/>
-					<div class="text-stone-400 italic text-xs border border-dashed border-stone-200 rounded-md p-6 bg-stone-50 hidden">
+					<div class="
+						text-faint italic text-xs border border-dashed border-border rounded-md p-6 bg-page
+						hidden
+					">
 						[Image: {image}]
 					</div>
 					{#if imageCaption}
-						<div class="text-xs text-stone-500 mt-1.5"><InlineMarkup text={imageCaption} /></div>
+						<div class="text-xs text-dim mt-1.5"><InlineMarkup text={imageCaption} /></div>
 					{/if}
 				</td>
 			</tr>

@@ -1,37 +1,37 @@
 <script lang="ts">
-	import type { FieldMap } from './types.js';
-	import { getField, getNumberedFields } from './types.js';
-	import InfoboxShell from './InfoboxShell.svelte';
-	import InfoboxRow from './InfoboxRow.svelte';
-	import InfoboxSection from './InfoboxSection.svelte';
+	import type { FieldMap } from './types.js'
+	import { getField, getNumberedFields } from './types.js'
+	import InfoboxShell from './InfoboxShell.svelte'
+	import InfoboxRow from './InfoboxRow.svelte'
+	import InfoboxSection from './InfoboxSection.svelte'
 
-	let { fields }: { fields: FieldMap } = $props();
+	let { fields }: { fields: FieldMap } = $props()
 
-	const title = getField(fields, 'name', 'official_name') ?? '';
-	const nativeName = getField(fields, 'native_name', 'other_name') ?? '';
-	const settlementType = getField(fields, 'settlement_type', 'type') ?? '';
-	const image = getField(fields, 'image_skyline', 'image') ?? '';
-	const imageCaption = getField(fields, 'image_caption', 'caption') ?? '';
-	const nickname = getField(fields, 'nickname') ?? '';
-	const motto = getField(fields, 'motto') ?? '';
-	const etymology = getField(fields, 'etymology') ?? '';
-	const coordinates = getField(fields, 'coordinates') ?? '';
-	const govType = getField(fields, 'government_type', 'government') ?? '';
-	const mayor = getField(fields, 'mayor') ?? '';
-	const areaTotal = getField(fields, 'area_total_km2', 'area_km2') ?? '';
-	const elevation = getField(fields, 'elevation_m') ?? '';
-	const population = getField(fields, 'population_total', 'population') ?? '';
-	const popAsOf = getField(fields, 'population_as_of') ?? '';
-	const popDensity = getField(fields, 'population_density_km2') ?? '';
-	const timezone = getField(fields, 'timezone', 'time_zone') ?? '';
-	const postalCode = getField(fields, 'postal_code') ?? '';
-	const areaCode = getField(fields, 'area_code') ?? '';
-	const founder = getField(fields, 'founder') ?? '';
-	const namedFor = getField(fields, 'named_for') ?? '';
+	const title = getField(fields, 'name', 'official_name') ?? ''
+	const nativeName = getField(fields, 'native_name', 'other_name') ?? ''
+	const settlementType = getField(fields, 'settlement_type', 'type') ?? ''
+	const image = getField(fields, 'image_skyline', 'image') ?? ''
+	const imageCaption = getField(fields, 'image_caption', 'caption') ?? ''
+	const nickname = getField(fields, 'nickname') ?? ''
+	const motto = getField(fields, 'motto') ?? ''
+	const etymology = getField(fields, 'etymology') ?? ''
+	const coordinates = getField(fields, 'coordinates') ?? ''
+	const govType = getField(fields, 'government_type', 'government') ?? ''
+	const mayor = getField(fields, 'mayor') ?? ''
+	const areaTotal = getField(fields, 'area_total_km2', 'area_km2') ?? ''
+	const elevation = getField(fields, 'elevation_m') ?? ''
+	const population = getField(fields, 'population_total', 'population') ?? ''
+	const popAsOf = getField(fields, 'population_as_of') ?? ''
+	const popDensity = getField(fields, 'population_density_km2') ?? ''
+	const timezone = getField(fields, 'timezone', 'time_zone') ?? ''
+	const postalCode = getField(fields, 'postal_code') ?? ''
+	const areaCode = getField(fields, 'area_code') ?? ''
+	const founder = getField(fields, 'founder') ?? ''
+	const namedFor = getField(fields, 'named_for') ?? ''
 
-	const subdivisions = getNumberedFields(fields, 'subdivision_type', 6);
-	const established = getNumberedFields(fields, 'established_title', 7);
-	const leaders = getNumberedFields(fields, 'leader_title', 16);
+	const subdivisions = getNumberedFields(fields, 'subdivision_type', 6)
+	const established = getNumberedFields(fields, 'established_title', 7)
+	const leaders = getNumberedFields(fields, 'leader_title', 16)
 </script>
 
 <InfoboxShell

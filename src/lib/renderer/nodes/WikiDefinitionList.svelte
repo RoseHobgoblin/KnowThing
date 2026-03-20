@@ -1,8 +1,8 @@
 <script lang="ts">
-	import type { DefinitionItem } from '$lib/parser/types.js';
-	import WikiNodeComponent from '../WikiNode.svelte';
+	import type { DefinitionItem } from '$lib/parser/types.js'
+	import WikiNodeComponent from '../WikiNode.svelte'
 
-	let { items }: { items: DefinitionItem[] } = $props();
+	let { items }: { items: DefinitionItem[] } = $props()
 </script>
 
 <dl class="know-dl my-2">

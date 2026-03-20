@@ -1,32 +1,32 @@
 <script lang="ts">
-	import type { FieldMap } from './types.js';
-	import { getField, getNumberedFields } from './types.js';
-	import InfoboxShell from './InfoboxShell.svelte';
-	import InfoboxRow from './InfoboxRow.svelte';
-	import InfoboxSection from './InfoboxSection.svelte';
+	import type { FieldMap } from './types.js'
+	import { getField, getNumberedFields } from './types.js'
+	import InfoboxShell from './InfoboxShell.svelte'
+	import InfoboxRow from './InfoboxRow.svelte'
+	import InfoboxSection from './InfoboxSection.svelte'
 
-	let { fields }: { fields: FieldMap } = $props();
+	let { fields }: { fields: FieldMap } = $props()
 
-	const title = getField(fields, 'conventional_long_name', 'name', 'common_name') ?? '';
-	const nativeName = getField(fields, 'native_name') ?? '';
-	const image = getField(fields, 'image_flag', 'flag', 'image') ?? '';
-	const imageCaption = getField(fields, 'alt_flag', 'flag_caption') ?? '';
-	const motto = getField(fields, 'national_motto', 'motto') ?? '';
-	const anthem = getField(fields, 'national_anthem', 'anthem') ?? '';
-	const capital = getField(fields, 'capital') ?? '';
-	const largestCity = getField(fields, 'largest_city', 'largest_settlement') ?? '';
-	const officialLangs = getField(fields, 'official_languages', 'languages') ?? '';
-	const religion = getField(fields, 'religion') ?? '';
-	const demonym = getField(fields, 'demonym') ?? '';
-	const govType = getField(fields, 'government_type', 'government') ?? '';
-	const legislature = getField(fields, 'legislature') ?? '';
-	const areaKm2 = getField(fields, 'area_km2', 'area') ?? '';
-	const population = getField(fields, 'population_census', 'population', 'population_estimate') ?? '';
-	const popYear = getField(fields, 'population_census_year', 'population_year', 'population_estimate_year') ?? '';
-	const currency = getField(fields, 'currency') ?? '';
-	const timeZone = getField(fields, 'time_zone') ?? '';
-	const leaders = getNumberedFields(fields, 'leader_title', 14);
-	const established = getNumberedFields(fields, 'established_event', 13);
+	const title = getField(fields, 'conventional_long_name', 'name', 'common_name') ?? ''
+	const nativeName = getField(fields, 'native_name') ?? ''
+	const image = getField(fields, 'image_flag', 'flag', 'image') ?? ''
+	const imageCaption = getField(fields, 'alt_flag', 'flag_caption') ?? ''
+	const motto = getField(fields, 'national_motto', 'motto') ?? ''
+	const anthem = getField(fields, 'national_anthem', 'anthem') ?? ''
+	const capital = getField(fields, 'capital') ?? ''
+	const largestCity = getField(fields, 'largest_city', 'largest_settlement') ?? ''
+	const officialLangs = getField(fields, 'official_languages', 'languages') ?? ''
+	const religion = getField(fields, 'religion') ?? ''
+	const demonym = getField(fields, 'demonym') ?? ''
+	const govType = getField(fields, 'government_type', 'government') ?? ''
+	const legislature = getField(fields, 'legislature') ?? ''
+	const areaKm2 = getField(fields, 'area_km2', 'area') ?? ''
+	const population = getField(fields, 'population_census', 'population', 'population_estimate') ?? ''
+	const popYear = getField(fields, 'population_census_year', 'population_year', 'population_estimate_year') ?? ''
+	const currency = getField(fields, 'currency') ?? ''
+	const timeZone = getField(fields, 'time_zone') ?? ''
+	const leaders = getNumberedFields(fields, 'leader_title', 14)
+	const established = getNumberedFields(fields, 'established_event', 13)
 </script>
 
 <InfoboxShell

@@ -1,8 +1,8 @@
 <script lang="ts">
-	import type { WikiNode } from '$lib/parser/types.js';
-	import WikiNodeComponent from '../WikiNode.svelte';
+	import type { WikiNode } from '$lib/parser/types.js'
+	import WikiNodeComponent from '../WikiNode.svelte'
 
-	let { children }: { children: WikiNode[] } = $props();
+	let { children }: { children: WikiNode[] } = $props()
 </script>
 
 <p class="know-paragraph my-2 leading-relaxed">

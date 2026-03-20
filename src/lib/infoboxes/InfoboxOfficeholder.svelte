@@ -1,46 +1,46 @@
 <script lang="ts">
-	import type { FieldMap } from './types.js';
-	import { getField } from './types.js';
-	import InfoboxShell from './InfoboxShell.svelte';
-	import InfoboxRow from './InfoboxRow.svelte';
-	import InfoboxSection from './InfoboxSection.svelte';
+	import type { FieldMap } from './types.js'
+	import { getField } from './types.js'
+	import InfoboxShell from './InfoboxShell.svelte'
+	import InfoboxRow from './InfoboxRow.svelte'
+	import InfoboxSection from './InfoboxSection.svelte'
 
-	let { fields }: { fields: FieldMap } = $props();
+	let { fields }: { fields: FieldMap } = $props()
 
-	const honorificPrefix = getField(fields, 'honorific_prefix') ?? '';
-	const name = getField(fields, 'name') ?? '';
-	const honorificSuffix = getField(fields, 'honorific_suffix') ?? '';
-	const image = getField(fields, 'image', 'smallimage') ?? '';
-	const imageCaption = getField(fields, 'caption') ?? '';
-	const nativeName = getField(fields, 'native_name') ?? '';
-	const birthDate = getField(fields, 'birth_date') ?? '';
-	const birthPlace = getField(fields, 'birth_place') ?? '';
-	const deathDate = getField(fields, 'death_date') ?? '';
-	const deathPlace = getField(fields, 'death_place') ?? '';
+	const honorificPrefix = getField(fields, 'honorific_prefix') ?? ''
+	const name = getField(fields, 'name') ?? ''
+	const honorificSuffix = getField(fields, 'honorific_suffix') ?? ''
+	const image = getField(fields, 'image', 'smallimage') ?? ''
+	const imageCaption = getField(fields, 'caption') ?? ''
+	const nativeName = getField(fields, 'native_name') ?? ''
+	const birthDate = getField(fields, 'birth_date') ?? ''
+	const birthPlace = getField(fields, 'birth_place') ?? ''
+	const deathDate = getField(fields, 'death_date') ?? ''
+	const deathPlace = getField(fields, 'death_place') ?? ''
 
-	const fullTitle = [honorificPrefix, name, honorificSuffix].filter(Boolean).join(' ');
+	const fullTitle = [honorificPrefix, name, honorificSuffix].filter(Boolean).join(' ')
 
 	interface OfficeBlock {
-		index: number;
-		office: string;
-		order: string;
-		termStart: string;
-		termEnd: string;
-		predecessor: string;
-		successor: string;
-		monarch: string;
-		president: string;
-		primeminister: string;
+		index: number
+		office: string
+		order: string
+		termStart: string
+		termEnd: string
+		predecessor: string
+		successor: string
+		monarch: string
+		president: string
+		primeminister: string
 	}
 
 	function getOfficeBlocks(): OfficeBlock[] {
-		const blocks: OfficeBlock[] = [];
-		for (let i = 0; i <= 16; i++) {
-			const suffix = i === 0 ? '' : String(i);
-			const office = getField(fields, `office${suffix}`);
-			if (!office) continue;
+		const blocks: OfficeBlock[] = []
+		for (let index = 0; index <= 16; index++) {
+			const suffix = index === 0 ? '' : String(index)
+			const office = getField(fields, `office${suffix}`)
+			if (!office) continue
 			blocks.push({
-				index: i,
+				index: index,
 				office,
 				order: getField(fields, `order${suffix}`) ?? '',
 				termStart: getField(fields, `term_start${suffix}`) ?? '',
@@ -49,13 +49,13 @@
 				successor: getField(fields, `successor${suffix}`) ?? '',
 				monarch: getField(fields, `monarch${suffix}`) ?? '',
 				president: getField(fields, `president${suffix}`) ?? '',
-				primeminister: getField(fields, `primeminister${suffix}`) ?? ''
-			});
+				primeminister: getField(fields, `primeminister${suffix}`) ?? '',
+			})
 		}
-		return blocks;
+		return blocks
 	}
 
-	const officeBlocks = getOfficeBlocks();
+	const officeBlocks = getOfficeBlocks()
 </script>
 
 <InfoboxShell

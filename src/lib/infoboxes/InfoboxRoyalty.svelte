@@ -1,64 +1,64 @@
 <script lang="ts">
-	import type { FieldMap } from './types.js';
-	import { getField, getNumberedFields } from './types.js';
-	import InfoboxShell from './InfoboxShell.svelte';
-	import InfoboxRow from './InfoboxRow.svelte';
-	import InfoboxSection from './InfoboxSection.svelte';
+	import type { FieldMap } from './types.js'
+	import { getField, getNumberedFields } from './types.js'
+	import InfoboxShell from './InfoboxShell.svelte'
+	import InfoboxRow from './InfoboxRow.svelte'
+	import InfoboxSection from './InfoboxSection.svelte'
 
-	let { fields }: { fields: FieldMap } = $props();
+	let { fields }: { fields: FieldMap } = $props()
 
-	const title = getField(fields, 'name', 'title') ?? '';
-	const image = getField(fields, 'image') ?? '';
-	const imageCaption = getField(fields, 'caption') ?? '';
-	const fullName = getField(fields, 'full_name') ?? '';
-	const nativeName = getField(fields, 'native_name') ?? '';
-	const birthName = getField(fields, 'birth_name') ?? '';
-	const birthDate = getField(fields, 'birth_date') ?? '';
-	const birthPlace = getField(fields, 'birth_place') ?? '';
-	const deathDate = getField(fields, 'death_date') ?? '';
-	const deathPlace = getField(fields, 'death_place') ?? '';
-	const burialPlace = getField(fields, 'burial_place') ?? '';
-	const spouse = getField(fields, 'spouse', 'consort') ?? '';
-	const consortType = getField(fields, 'consort_type') ?? 'Consort';
-	const issue = getField(fields, 'issue') ?? '';
-	const royalHouse = getField(fields, 'royal_house', 'house', 'dynasty') ?? '';
-	const father = getField(fields, 'father') ?? '';
-	const mother = getField(fields, 'mother') ?? '';
-	const religion = getField(fields, 'religion') ?? '';
+	const title = getField(fields, 'name', 'title') ?? ''
+	const image = getField(fields, 'image') ?? ''
+	const imageCaption = getField(fields, 'caption') ?? ''
+	const fullName = getField(fields, 'full_name') ?? ''
+	const nativeName = getField(fields, 'native_name') ?? ''
+	const birthName = getField(fields, 'birth_name') ?? ''
+	const birthDate = getField(fields, 'birth_date') ?? ''
+	const birthPlace = getField(fields, 'birth_place') ?? ''
+	const deathDate = getField(fields, 'death_date') ?? ''
+	const deathPlace = getField(fields, 'death_place') ?? ''
+	const burialPlace = getField(fields, 'burial_place') ?? ''
+	const spouse = getField(fields, 'spouse', 'consort') ?? ''
+	const consortType = getField(fields, 'consort_type') ?? 'Consort'
+	const issue = getField(fields, 'issue') ?? ''
+	const royalHouse = getField(fields, 'royal_house', 'house', 'dynasty') ?? ''
+	const father = getField(fields, 'father') ?? ''
+	const mother = getField(fields, 'mother') ?? ''
+	const religion = getField(fields, 'religion') ?? ''
 
 	// Succession blocks (up to 10)
 	interface SuccessionBlock {
-		index: number;
-		succession: string;
-		reign: string;
-		reignType: string;
-		coronation: string;
-		predecessor: string;
-		successor: string;
-		regent: string;
+		index: number
+		succession: string
+		reign: string
+		reignType: string
+		coronation: string
+		predecessor: string
+		successor: string
+		regent: string
 	}
 
 	function getSuccessionBlocks(): SuccessionBlock[] {
-		const blocks: SuccessionBlock[] = [];
-		for (let i = 0; i <= 10; i++) {
-			const suffix = i === 0 ? '' : String(i);
-			const succession = getField(fields, `succession${suffix}`);
-			if (!succession) continue;
+		const blocks: SuccessionBlock[] = []
+		for (let index = 0; index <= 10; index++) {
+			const suffix = index === 0 ? '' : String(index)
+			const succession = getField(fields, `succession${suffix}`)
+			if (!succession) continue
 			blocks.push({
-				index: i,
+				index: index,
 				succession,
 				reign: getField(fields, `reign${suffix}`) ?? '',
 				reignType: getField(fields, `reign_type${suffix}`) ?? 'Reign',
 				coronation: getField(fields, `coronation${suffix}`) ?? '',
 				predecessor: getField(fields, `predecessor${suffix}`) ?? '',
 				successor: getField(fields, `successor${suffix}`) ?? '',
-				regent: getField(fields, `regent${suffix}`) ?? ''
-			});
+				regent: getField(fields, `regent${suffix}`) ?? '',
+			})
 		}
-		return blocks;
+		return blocks
 	}
 
-	const successionBlocks = getSuccessionBlocks();
+	const successionBlocks = getSuccessionBlocks()
 </script>
 
 <InfoboxShell

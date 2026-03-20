@@ -1,27 +1,27 @@
 <script lang="ts">
-	import type { PageData } from './$types.js';
-	import WikiNodeComponent from '$lib/renderer/WikiNode.svelte';
-	import { createKnowContext } from '$lib/renderer/context.js';
-	import TableOfContents from '$lib/components/TableOfContents.svelte';
-	import CategoryBar from '$lib/components/CategoryBar.svelte';
-	import { page } from '$app/stores';
-	import { goto } from '$app/navigation';
+	import type { PageData } from './$types.js'
+	import WikiNodeComponent from '$lib/renderer/WikiNode.svelte'
+	import { createKnowContext } from '$lib/renderer/context.js'
+	import TableOfContents from '$lib/components/TableOfContents.svelte'
+	import CategoryBar from '$lib/components/CategoryBar.svelte'
+	import { page } from '$app/stores'
+	import { goto } from '$app/navigation'
 
-	let { data }: { data: PageData } = $props();
+	let { data }: { data: PageData } = $props()
 
 	async function deletePage() {
-		if (!confirm(`Delete "${data.title}"? This cannot be undone.`)) return;
-		const res = await fetch(`/api/pages/${data.slug}`, { method: 'DELETE' });
-		if (res.ok) goto('/');
+		if (!confirm(`Delete "${data.title}"? This cannot be undone.`)) return
+		const res = await fetch(`/api/pages/${data.slug}`, { method: 'DELETE' })
+		if (res.ok) goto('/')
 	}
 
-	const layoutData = $derived($page.data);
+	const layoutData = $derived($page.data)
 
 	createKnowContext({
 		existingPages: new Set(layoutData.existingPages || []),
 		mediaBaseUrl: '/api/media',
-		pageBaseUrl: '/know'
-	});
+		pageBaseUrl: '/know',
+	})
 </script>
 
 <svelte:head>
@@ -30,50 +30,61 @@
 
 {#key data.slug}
 {#if data.notFound}
-	<div class="bg-white rounded-lg shadow-sm border border-stone-200 p-8 text-center">
-		<h1 class="text-2xl font-bold mb-3 text-stone-800">{data.title}</h1>
-		<p class="text-stone-500 mb-6">
+	<div class="bg-surface rounded-lg shadow-sm border border-border p-8 text-center">
+		<h1 class="text-2xl font-bold mb-3 text-body">{data.title}</h1>
+		<p class="text-dim mb-6">
 			This article doesn't exist yet.
 		</p>
 		<a
 			href="/know/create?title={encodeURIComponent(data.title)}&slug={data.slug}"
-			class="inline-block px-5 py-2.5 bg-amber-600 text-white rounded-lg font-medium hover:bg-amber-700 transition-colors"
+			class="
+				inline-block px-5 py-2.5 bg-accent text-surface rounded-lg font-medium transition-colors
+				hover:bg-accent-hover
+			"
 		>
 			Create this page
 		</a>
 	</div>
 {:else if data.ast}
 	<!-- Article card -->
-	<div class="bg-white rounded-lg shadow-sm border border-stone-200 overflow-hidden">
+	<div class="bg-surface rounded-lg shadow-sm border border-border overflow-hidden">
 		<!-- Page header -->
-		<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-4 md:px-6 py-4 border-b border-stone-100">
-			<h1 class="text-xl md:text-2xl font-bold text-stone-900">{data.title}</h1>
-			<div class="flex gap-3 md:gap-4 text-sm">
-				<a href="/know/{data.slug}/edit" class="text-amber-700 hover:text-amber-900 font-medium transition-colors">Edit</a>
-				<a href="/know/{data.slug}/move" class="text-stone-500 hover:text-stone-700 transition-colors">Move</a>
-				<a href="/know/{data.slug}/history" class="text-stone-500 hover:text-stone-700 transition-colors">History</a>
+		<div class="
+			flex flex-col justify-between gap-2 p-4 border-b border-border-subtle
+			sm:flex-row sm:items-center
+			md:px-6
+		">
+			<h1 class="text-xl font-bold text-heading md:text-2xl">{data.title}</h1>
+			<div class="flex gap-3 text-sm md:gap-4">
+				<a href="/know/{data.slug}/edit" class="text-link font-medium transition-colors hover:text-link-hover">Edit</a>
+				<a href="/know/{data.slug}/move" class="text-dim transition-colors hover:text-secondary">Move</a>
+				<a href="/know/{data.slug}/history" class="text-dim transition-colors hover:text-secondary">History</a>
 				{#if layoutData.user?.role === 'admin'}
-					<button onclick={deletePage} class="text-red-400 hover:text-red-600 transition-colors text-xs">Delete</button>
+					<button onclick={deletePage} class="text-red-400 transition-colors text-xs hover:text-red-600">Delete</button>
 				{/if}
 			</div>
 		</div>
 
 		<!-- Wordbook link -->
 		{#if data.wordbookMatch}
-			<div class="px-4 md:px-6 pt-3 pb-0">
+			<div class="px-4 pt-3 pb-0 md:px-6">
 				<a
 					href="/wordbook/{data.wordbookMatch.languageSlug}/{encodeURIComponent(data.wordbookMatch.word)}"
-					class="inline-flex items-center gap-1.5 text-xs text-amber-700 hover:text-amber-900 bg-amber-50 border border-amber-200 rounded-full px-3 py-1 transition-colors"
+					class="
+						inline-flex items-center gap-1.5 text-xs text-link bg-accent-subtle border border-accent-border
+						rounded-full px-3 py-1 transition-colors
+						hover:text-link-hover
+					"
 				>
 					<span class="font-medium">Wordbook</span>
-					<span class="text-amber-500">·</span>
+					<span class="text-accent">·</span>
 					<span>See <em>{data.wordbookMatch.word}</em> in {data.wordbookMatch.languageName}</span>
 				</a>
 			</div>
 		{/if}
 
 		<!-- Article body -->
-		<div class="px-4 md:px-6 py-4 md:py-5">
+		<div class="p-4 md:px-6 md:py-5">
 			<TableOfContents ast={data.ast} />
 
 			<article class="know-article">
@@ -83,7 +94,7 @@
 			<CategoryBar categories={data.categories} />
 
 			{#if data.updatedAt}
-				<div class="mt-6 pt-4 border-t border-stone-100 text-xs text-stone-400">
+				<div class="mt-6 pt-4 border-t border-border-subtle text-xs text-faint">
 					Last edited {new Date(data.updatedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
 				</div>
 			{/if}

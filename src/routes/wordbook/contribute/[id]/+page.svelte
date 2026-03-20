@@ -1,9 +1,9 @@
 <script lang="ts">
-	import type { PageData } from './$types.js';
-	import { goto } from '$app/navigation';
-	import EntryForm from '$lib/components/wordbook/EntryForm.svelte';
+	import type { PageData } from './$types.js'
+	import { goto } from '$app/navigation'
+	import EntryForm from '$lib/components/wordbook/EntryForm.svelte'
 
-	let { data }: { data: PageData } = $props();
+	let { data }: { data: PageData } = $props()
 
 	async function handleSubmit(formData: Record<string, unknown>) {
 		// Update headword
@@ -17,34 +17,34 @@
 				etymology: formData.etymology,
 				notes: formData.notes,
 				pageSlug: formData.pageSlug,
-				tags: formData.tags
-			})
-		});
+				tags: formData.tags,
+			}),
+		})
 
 		if (!res.ok) {
-			const err = await res.json();
-			throw new Error(err.error || 'Failed to update entry');
+			const error = await res.json()
+			throw new Error(error.error || 'Failed to update entry')
 		}
 
 		// Bulk replace definitions atomically
-		const defs = formData.defs as Array<{ partOfSpeech?: string; definition: string; usageExample?: string; usageTranslation?: string }>;
+		const defs = formData.defs as Array<{ partOfSpeech?: string, definition: string, usageExample?: string, usageTranslation?: string }>
 		if (defs && defs.length > 0) {
 			const defRes = await fetch(`/api/wordbook/${data.entry.id}/definitions`, {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ defs })
-			});
+				body: JSON.stringify({ defs }),
+			})
 			if (!defRes.ok) {
-				const err = await defRes.json();
-				throw new Error(err.error || 'Failed to update definitions');
+				const error = await defRes.json()
+				throw new Error(error.error || 'Failed to update definitions')
 			}
 		}
 
-		const lang = data.languages.find(l => l.id === formData.languageId);
+		const lang = data.languages.find(l => l.id === formData.languageId)
 		if (lang) {
-			goto(`/wordbook/${lang.slug}/${encodeURIComponent(String(formData.word))}`);
+			goto(`/wordbook/${lang.slug}/${encodeURIComponent(String(formData.word))}`)
 		} else {
-			goto('/wordbook');
+			goto('/wordbook')
 		}
 	}
 </script>
@@ -55,11 +55,11 @@
 
 <div class="space-y-6">
 	<div>
-		<h1 class="text-2xl font-bold text-stone-900 mb-1">Edit: {data.entry.word}</h1>
-		<p class="text-sm text-stone-500">Update this lexicon entry.</p>
+		<h1 class="text-2xl font-bold text-heading mb-1">Edit: {data.entry.word}</h1>
+		<p class="text-sm text-dim">Update this lexicon entry.</p>
 	</div>
 
-	<div class="bg-white rounded-lg border border-stone-200 p-6">
+	<div class="bg-surface rounded-lg border border-border p-6">
 		<EntryForm
 			languages={data.languages}
 			initial={{
@@ -69,13 +69,13 @@
 				etymology: data.entry.etymology || '',
 				notes: data.entry.notes || '',
 				pageSlug: data.entry.pageSlug || '',
-				tags: data.entry.tags || []
+				tags: data.entry.tags || [],
 			}}
 			initialDefinitions={data.definitions.map(d => ({
 				partOfSpeech: d.partOfSpeech,
 				definition: d.definition,
 				usageExample: d.usageExample,
-				usageTranslation: d.usageTranslation
+				usageTranslation: d.usageTranslation,
 			}))}
 			onsubmit={handleSubmit}
 			submitLabel="Save Changes"

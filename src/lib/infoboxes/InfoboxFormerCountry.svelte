@@ -1,28 +1,28 @@
 <script lang="ts">
-	import type { FieldMap } from './types.js';
-	import { getField, getNumberedFields } from './types.js';
-	import InfoboxShell from './InfoboxShell.svelte';
-	import InfoboxRow from './InfoboxRow.svelte';
-	import InfoboxSection from './InfoboxSection.svelte';
+	import type { FieldMap } from './types.js'
+	import { getField, getNumberedFields } from './types.js'
+	import InfoboxShell from './InfoboxShell.svelte'
+	import InfoboxRow from './InfoboxRow.svelte'
+	import InfoboxSection from './InfoboxSection.svelte'
 
-	let { fields }: { fields: FieldMap } = $props();
+	let { fields }: { fields: FieldMap } = $props()
 
-	const title = getField(fields, 'conventional_long_name', 'name', 'common_name') ?? '';
-	const nativeName = getField(fields, 'native_name') ?? '';
-	const status = getField(fields, 'status', 'status_text') ?? '';
-	const yearStart = getField(fields, 'year_start') ?? '';
-	const yearEnd = getField(fields, 'year_end') ?? '';
-	const image = getField(fields, 'image_flag', 'image') ?? '';
-	const capital = getField(fields, 'capital') ?? '';
-	const govType = getField(fields, 'government_type', 'government') ?? '';
-	const religion = getField(fields, 'religion') ?? '';
-	const currency = getField(fields, 'currency') ?? '';
-	const predecessor = getField(fields, 'predecessor') ?? '';
-	const successor = getField(fields, 'successor') ?? '';
-	const todayPartOf = getField(fields, 'today_part_of') ?? '';
-	const established = getNumberedFields(fields, 'established_event', 13);
+	const title = getField(fields, 'conventional_long_name', 'name', 'common_name') ?? ''
+	const nativeName = getField(fields, 'native_name') ?? ''
+	const status = getField(fields, 'status', 'status_text') ?? ''
+	const yearStart = getField(fields, 'year_start') ?? ''
+	const yearEnd = getField(fields, 'year_end') ?? ''
+	const image = getField(fields, 'image_flag', 'image') ?? ''
+	const capital = getField(fields, 'capital') ?? ''
+	const govType = getField(fields, 'government_type', 'government') ?? ''
+	const religion = getField(fields, 'religion') ?? ''
+	const currency = getField(fields, 'currency') ?? ''
+	const predecessor = getField(fields, 'predecessor') ?? ''
+	const successor = getField(fields, 'successor') ?? ''
+	const todayPartOf = getField(fields, 'today_part_of') ?? ''
+	const established = getNumberedFields(fields, 'established_event', 13)
 
-	const dateRange = yearStart || yearEnd ? `${yearStart}–${yearEnd}` : '';
+	const dateRange = yearStart || yearEnd ? `${yearStart}–${yearEnd}` : ''
 </script>
 
 <InfoboxShell

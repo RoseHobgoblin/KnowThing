@@ -1,32 +1,32 @@
 <script lang="ts">
-	import type { WikiNode } from '$lib/parser/types.js';
-	import WikiNodeSelf from './WikiNode.svelte';
-	import WikiHeading from './nodes/WikiHeading.svelte';
-	import WikiParagraph from './nodes/WikiParagraph.svelte';
-	import WikiBold from './nodes/WikiBold.svelte';
-	import WikiItalic from './nodes/WikiItalic.svelte';
-	import WikiStrikethrough from './nodes/WikiStrikethrough.svelte';
-	import WikiSubscript from './nodes/WikiSubscript.svelte';
-	import WikiSuperscript from './nodes/WikiSuperscript.svelte';
-	import WikiUnorderedList from './nodes/WikiUnorderedList.svelte';
-	import WikiOrderedList from './nodes/WikiOrderedList.svelte';
-	import WikiDefinitionList from './nodes/WikiDefinitionList.svelte';
-	import WikiInternalLink from './nodes/WikiInternalLink.svelte';
-	import WikiExternalLink from './nodes/WikiExternalLink.svelte';
-	import WikiTemplate from './nodes/WikiTemplate.svelte';
-	import WikiImage from './nodes/WikiImage.svelte';
-	import WikiTable from './nodes/WikiTable.svelte';
-	import WikiReference from './nodes/WikiReference.svelte';
-	import WikiReferenceList from './nodes/WikiReferenceList.svelte';
-	import WikiHatnote from './nodes/WikiHatnote.svelte';
-	import WikiCollapse from './nodes/WikiCollapse.svelte';
-	import WikiCodeBlock from './nodes/WikiCodeBlock.svelte';
-	import WikiNavbox from './nodes/WikiNavbox.svelte';
-	import WikiGallery from './nodes/WikiGallery.svelte';
-	import WikiNoWiki from './nodes/WikiNoWiki.svelte';
-	import WikiPreformatted from './nodes/WikiPreformatted.svelte';
+	import type { WikiNode } from '$lib/parser/types.js'
+	import WikiNodeSelf from './WikiNode.svelte'
+	import WikiHeading from './nodes/WikiHeading.svelte'
+	import WikiParagraph from './nodes/WikiParagraph.svelte'
+	import WikiBold from './nodes/WikiBold.svelte'
+	import WikiItalic from './nodes/WikiItalic.svelte'
+	import WikiStrikethrough from './nodes/WikiStrikethrough.svelte'
+	import WikiSubscript from './nodes/WikiSubscript.svelte'
+	import WikiSuperscript from './nodes/WikiSuperscript.svelte'
+	import WikiUnorderedList from './nodes/WikiUnorderedList.svelte'
+	import WikiOrderedList from './nodes/WikiOrderedList.svelte'
+	import WikiDefinitionList from './nodes/WikiDefinitionList.svelte'
+	import WikiInternalLink from './nodes/WikiInternalLink.svelte'
+	import WikiExternalLink from './nodes/WikiExternalLink.svelte'
+	import WikiTemplate from './nodes/WikiTemplate.svelte'
+	import WikiImage from './nodes/WikiImage.svelte'
+	import WikiTable from './nodes/WikiTable.svelte'
+	import WikiReference from './nodes/WikiReference.svelte'
+	import WikiReferenceList from './nodes/WikiReferenceList.svelte'
+	import WikiHatnote from './nodes/WikiHatnote.svelte'
+	import WikiCollapse from './nodes/WikiCollapse.svelte'
+	import WikiCodeBlock from './nodes/WikiCodeBlock.svelte'
+	import WikiNavbox from './nodes/WikiNavbox.svelte'
+	import WikiGallery from './nodes/WikiGallery.svelte'
+	import WikiNoWiki from './nodes/WikiNoWiki.svelte'
+	import WikiPreformatted from './nodes/WikiPreformatted.svelte'
 
-	let { node }: { node: WikiNode } = $props();
+	let { node }: { node: WikiNode } = $props()
 </script>
 
 {#if node.type === 'document'}
@@ -82,7 +82,7 @@
 {:else if node.type === 'nowiki'}
 	<WikiNoWiki text={node.text} />
 {:else if node.type === 'horizontal_rule'}
-	<hr class="know-hr my-4 border-stone-300" />
+	<hr class="know-hr my-4 border-border-strong" />
 {:else if node.type === 'preformatted'}
 	<WikiPreformatted text={node.text} />
 {:else if node.type === 'text'}

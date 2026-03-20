@@ -1,8 +1,8 @@
 <script lang="ts">
-	import type { WikiNode } from '$lib/parser/types.js';
-	import WikiNodeComponent from '../WikiNode.svelte';
+	import type { WikiNode } from '$lib/parser/types.js'
+	import WikiNodeComponent from '../WikiNode.svelte'
 
-	let { children }: { children: WikiNode[] } = $props();
+	let { children }: { children: WikiNode[] } = $props()
 </script>
 
 <sub>{#each children as child}<WikiNodeComponent node={child} />{/each}</sub>

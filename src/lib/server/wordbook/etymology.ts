@@ -1,60 +1,60 @@
-import { db } from '$lib/server/db/index.js';
-import { lexicon, lexiconRelations, languages } from '$lib/server/db/schema.js';
-import { eq, sql } from 'drizzle-orm';
+import { db } from '$lib/server/db/index.js'
+import { lexicon, lexiconRelations, languages } from '$lib/server/db/schema.js'
+import { eq, sql } from 'drizzle-orm'
 
 // ── Types ───────────────────────────────────────────────────────────
 
 export interface RelatedEntry {
-	id: number;
-	relationId: number;
-	word: string;
-	definition: string;
-	pronunciation: string | null;
-	partOfSpeech: string | null;
-	languageName: string;
-	languageSlug: string;
-	languageFamily: string | null;
-	languageColor: string | null;
-	relationNotes: string | null;
+	id: number
+	relationId: number
+	word: string
+	definition: string
+	pronunciation: string | null
+	partOfSpeech: string | null
+	languageName: string
+	languageSlug: string
+	languageFamily: string | null
+	languageColor: string | null
+	relationNotes: string | null
 }
 
 export interface DirectRelations {
-	derivedFrom: RelatedEntry[];
-	loanFrom: RelatedEntry[];
-	compoundOf: RelatedEntry[];
-	derivedWords: RelatedEntry[];
-	loanedTo: RelatedEntry[];
-	compoundsUsing: RelatedEntry[];
+	derivedFrom: RelatedEntry[]
+	loanFrom: RelatedEntry[]
+	compoundOf: RelatedEntry[]
+	derivedWords: RelatedEntry[]
+	loanedTo: RelatedEntry[]
+	compoundsUsing: RelatedEntry[]
 }
 
 export interface CognateLanguage {
-	name: string;
-	slug: string;
+	name: string
+	slug: string
 	words: Array<{
-		id: number;
-		word: string;
-		definition: string;
-		pronunciation: string | null;
-	}>;
+		id: number
+		word: string
+		definition: string
+		pronunciation: string | null
+	}>
 }
 
 export interface CognateGroup {
-	family: string;
-	languages: CognateLanguage[];
+	family: string
+	languages: CognateLanguage[]
 }
 
 export interface EtymologyStep {
-	id: number;
-	word: string;
-	definition: string;
-	languageName: string;
-	languageSlug: string;
-	relation: string | null;
+	id: number
+	word: string
+	definition: string
+	languageName: string
+	languageSlug: string
+	relation: string | null
 }
 
 // Helper: subquery for first definition of a lexicon entry
-const firstDefSql = (entryRef: any) => sql<string>`(SELECT definition FROM definitions WHERE entry_id = ${entryRef} ORDER BY sense_number LIMIT 1)`;
-const firstPosSql = (entryRef: any) => sql<string>`(SELECT part_of_speech FROM definitions WHERE entry_id = ${entryRef} ORDER BY sense_number LIMIT 1)`;
+const firstDefSql = (entryRef: any) => sql<string>`(SELECT definition FROM definitions WHERE entry_id = ${entryRef} ORDER BY sense_number LIMIT 1)`
+const firstPosSql = (entryRef: any) => sql<string>`(SELECT part_of_speech FROM definitions WHERE entry_id = ${entryRef} ORDER BY sense_number LIMIT 1)`
 
 // ── Direct Relations ────────────────────────────────────────────────
 
@@ -72,12 +72,12 @@ export async function getDirectRelations(entryId: number): Promise<DirectRelatio
 			languageFamily: languages.family,
 			languageColor: languages.color,
 			relationType: lexiconRelations.relationType,
-			relationNotes: lexiconRelations.notes
+			relationNotes: lexiconRelations.notes,
 		})
 		.from(lexiconRelations)
 		.innerJoin(lexicon, eq(lexiconRelations.targetId, lexicon.id))
 		.innerJoin(languages, eq(lexicon.languageId, languages.id))
-		.where(eq(lexiconRelations.sourceId, entryId));
+		.where(eq(lexiconRelations.sourceId, entryId))
 
 	const incoming = await db
 		.select({
@@ -92,12 +92,12 @@ export async function getDirectRelations(entryId: number): Promise<DirectRelatio
 			languageFamily: languages.family,
 			languageColor: languages.color,
 			relationType: lexiconRelations.relationType,
-			relationNotes: lexiconRelations.notes
+			relationNotes: lexiconRelations.notes,
 		})
 		.from(lexiconRelations)
 		.innerJoin(lexicon, eq(lexiconRelations.sourceId, lexicon.id))
 		.innerJoin(languages, eq(lexicon.languageId, languages.id))
-		.where(eq(lexiconRelations.targetId, entryId));
+		.where(eq(lexiconRelations.targetId, entryId))
 
 	const toRelated = (r: typeof outgoing[0]): RelatedEntry => ({
 		id: r.id,
@@ -110,17 +110,17 @@ export async function getDirectRelations(entryId: number): Promise<DirectRelatio
 		languageSlug: r.languageSlug,
 		languageFamily: r.languageFamily,
 		languageColor: r.languageColor,
-		relationNotes: r.relationNotes
-	});
+		relationNotes: r.relationNotes,
+	})
 
 	return {
-		derivedFrom: outgoing.filter((r) => r.relationType === 'derived_from').map(toRelated),
-		loanFrom: outgoing.filter((r) => r.relationType === 'loan_from').map(toRelated),
-		compoundOf: outgoing.filter((r) => r.relationType === 'compound_of').map(toRelated),
-		derivedWords: incoming.filter((r) => r.relationType === 'derived_from').map(toRelated),
-		loanedTo: incoming.filter((r) => r.relationType === 'loan_from').map(toRelated),
-		compoundsUsing: incoming.filter((r) => r.relationType === 'compound_of').map(toRelated)
-	};
+		derivedFrom: outgoing.filter(r => r.relationType === 'derived_from').map(toRelated),
+		loanFrom: outgoing.filter(r => r.relationType === 'loan_from').map(toRelated),
+		compoundOf: outgoing.filter(r => r.relationType === 'compound_of').map(toRelated),
+		derivedWords: incoming.filter(r => r.relationType === 'derived_from').map(toRelated),
+		loanedTo: incoming.filter(r => r.relationType === 'loan_from').map(toRelated),
+		compoundsUsing: incoming.filter(r => r.relationType === 'compound_of').map(toRelated),
+	}
 }
 
 // ── Ancestry / Root Finding ─────────────────────────────────────────
@@ -145,11 +145,11 @@ export async function findRoots(entryId: number): Promise<number[]> {
 			WHERE lr2.source_id = a.id
 			  AND lr2.relation_type IN ('derived_from', 'loan_from')
 		)
-	`);
+	`)
 
-	const ids = (result as any[]).map((r: any) => r.id as number);
-	if (ids.length === 0) return [entryId];
-	return ids;
+	const ids = (result as any[]).map((r: any) => r.id as number)
+	if (ids.length === 0) return [entryId]
+	return ids
 }
 
 export async function getEtymologyChain(entryId: number): Promise<EtymologyStep[]> {
@@ -181,7 +181,7 @@ export async function getEtymologyChain(entryId: number): Promise<EtymologyStep[
 		SELECT DISTINCT ON (id) id, word, definition, language_name, language_slug, relation, depth
 		FROM chain
 		ORDER BY id, depth DESC
-	`);
+	`)
 
 	const steps = (result as any[]).map((r: any) => ({
 		id: r.id as number,
@@ -189,25 +189,25 @@ export async function getEtymologyChain(entryId: number): Promise<EtymologyStep[
 		definition: (r.definition || '') as string,
 		languageName: r.language_name as string,
 		languageSlug: r.language_slug as string,
-		relation: r.relation as string | null
-	}));
+		relation: r.relation as string | null,
+	}))
 
 	return steps.sort((a, b) => {
-		if (a.relation === null && b.relation !== null) return -1;
-		if (a.relation !== null && b.relation === null) return 1;
-		return 0;
-	});
+		if (a.relation === null && b.relation !== null) return -1
+		if (a.relation !== null && b.relation === null) return 1
+		return 0
+	})
 }
 
 // ── Cognate Computation ─────────────────────────────────────────────
 
 export async function computeCognates(
 	entryId: number,
-	currentLanguageId: number
+	currentLanguageId: number,
 ): Promise<CognateGroup[]> {
-	const roots = await findRoots(entryId);
+	const roots = await findRoots(entryId)
 
-	const allDescendants = new Map<number, { word: string; definition: string; pronunciation: string | null; languageName: string; languageSlug: string; languageFamily: string | null; languageId: number }>();
+	const allDescendants = new Map<number, { word: string, definition: string, pronunciation: string | null, languageName: string, languageSlug: string, languageFamily: string | null, languageId: number }>()
 
 	for (const rootId of roots) {
 		const result = await db.execute(sql`
@@ -229,7 +229,7 @@ export async function computeCognates(
 			JOIN lexicon l ON l.id = d.id
 			JOIN languages lang ON l.language_id = lang.id
 			WHERE l.id != ${entryId}
-		`);
+		`)
 
 		for (const r of result as any[]) {
 			allDescendants.set(r.id, {
@@ -239,57 +239,57 @@ export async function computeCognates(
 				languageName: r.language_name,
 				languageSlug: r.language_slug,
 				languageFamily: r.language_family,
-				languageId: r.language_id
-			});
+				languageId: r.language_id,
+			})
 		}
 	}
 
-	if (allDescendants.size === 0) return [];
+	if (allDescendants.size === 0) return []
 
 	const [currentLang] = await db
 		.select({ family: languages.family })
 		.from(languages)
-		.where(eq(languages.id, currentLanguageId));
-	const currentFamily = currentLang?.family || null;
+		.where(eq(languages.id, currentLanguageId))
+	const currentFamily = currentLang?.family || null
 
-	const familyMap = new Map<string, Map<string, CognateLanguage>>();
+	const familyMap = new Map<string, Map<string, CognateLanguage>>()
 
 	for (const [id, entry] of allDescendants) {
-		const family = entry.languageFamily || 'Other';
-		if (!familyMap.has(family)) familyMap.set(family, new Map());
-		const langMap = familyMap.get(family)!;
+		const family = entry.languageFamily || 'Other'
+		if (!familyMap.has(family)) familyMap.set(family, new Map())
+		const langMap = familyMap.get(family)!
 
 		if (!langMap.has(entry.languageSlug)) {
 			langMap.set(entry.languageSlug, {
 				name: entry.languageName,
 				slug: entry.languageSlug,
-				words: []
-			});
+				words: [],
+			})
 		}
 
 		langMap.get(entry.languageSlug)!.words.push({
 			id,
 			word: entry.word,
 			definition: entry.definition,
-			pronunciation: entry.pronunciation
-		});
+			pronunciation: entry.pronunciation,
+		})
 	}
 
-	const groups: CognateGroup[] = [];
+	const groups: CognateGroup[] = []
 	for (const [family, langMap] of familyMap) {
 		groups.push({
 			family,
-			languages: Array.from(langMap.values()).sort((a, b) => a.name.localeCompare(b.name))
-		});
+			languages: [...langMap.values()].sort((a, b) => a.name.localeCompare(b.name)),
+		})
 	}
 
 	groups.sort((a, b) => {
 		if (currentFamily) {
-			if (a.family === currentFamily && b.family !== currentFamily) return -1;
-			if (a.family !== currentFamily && b.family === currentFamily) return 1;
+			if (a.family === currentFamily && b.family !== currentFamily) return -1
+			if (a.family !== currentFamily && b.family === currentFamily) return 1
 		}
-		return a.family.localeCompare(b.family);
-	});
+		return a.family.localeCompare(b.family)
+	})
 
-	return groups;
+	return groups
 }

@@ -1,17 +1,17 @@
 <script lang="ts">
-	import type { PageData, ActionData } from './$types.js';
+	import type { PageData, ActionData } from './$types.js'
 
-	let { data, form }: { data: PageData; form: ActionData } = $props();
+	let { data, form }: { data: PageData, form: ActionData } = $props()
 </script>
 
 <svelte:head>
 	<title>Move: {data.title} — KnowThing</title>
 </svelte:head>
 
-<div class="bg-white rounded-lg shadow-sm border border-stone-200 p-6 max-w-lg">
-	<h1 class="text-xl font-bold text-stone-900 mb-1">Move / Rename Page</h1>
-	<p class="text-sm text-stone-500 mb-6">
-		Moving <a href="/know/{data.slug}" class="text-amber-700 hover:underline">{data.title}</a>
+<div class="bg-surface rounded-lg shadow-sm border border-border p-6 max-w-lg">
+	<h1 class="text-xl font-bold text-heading mb-1">Move / Rename Page</h1>
+	<p class="text-sm text-dim mb-6">
+		Moving <a href="/know/{data.slug}" class="text-link hover:underline">{data.title}</a>
 	</p>
 
 	{#if form?.error}
@@ -22,20 +22,23 @@
 
 	<form method="POST" class="space-y-4">
 		<div>
-			<label for="title" class="block text-sm font-medium text-stone-700 mb-1">New title</label>
+			<label for="title" class="block text-sm font-medium text-secondary mb-1">New title</label>
 			<input
 				type="text"
 				id="title"
 				name="title"
 				value={data.title}
 				required
-				class="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400"
+				class="
+					w-full border border-border rounded-lg px-3 py-2 text-sm
+					focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent-border
+				"
 			/>
 		</div>
 
 		<div>
-			<label for="slug" class="block text-sm font-medium text-stone-700 mb-1">New URL slug</label>
-			<div class="flex items-center gap-1 text-sm text-stone-400">
+			<label for="slug" class="block text-sm font-medium text-secondary mb-1">New URL slug</label>
+			<div class="flex items-center gap-1 text-sm text-faint">
 				<span>/know/</span>
 				<input
 					type="text"
@@ -43,7 +46,10 @@
 					name="slug"
 					value={data.slug}
 					required
-					class="flex-1 border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400"
+					class="
+						flex-1 border border-border rounded-lg px-3 py-2 text-sm
+						focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent-border
+					"
 				/>
 			</div>
 		</div>
@@ -51,13 +57,19 @@
 		<div class="flex gap-3 pt-2">
 			<button
 				type="submit"
-				class="px-5 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors"
+				class="
+					px-5 py-2 bg-accent text-surface rounded-lg text-sm font-medium transition-colors
+					hover:bg-accent-hover
+				"
 			>
 				Move Page
 			</button>
 			<a
 				href="/know/{data.slug}"
-				class="px-5 py-2 bg-stone-100 text-stone-700 rounded-lg text-sm font-medium hover:bg-stone-200 transition-colors"
+				class="
+					px-5 py-2 bg-raised text-secondary rounded-lg text-sm font-medium transition-colors
+					hover:bg-border
+				"
 			>
 				Cancel
 			</a>

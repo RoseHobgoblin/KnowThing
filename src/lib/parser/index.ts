@@ -1,51 +1,51 @@
-export { parse as parseWikitext } from './parser.js';
-export { parseInline } from './inline.js';
-export { tokenize } from './lexer.js';
-export type * from './types.js';
+export { parse as parseWikitext } from './parser.js'
+export { parseInline } from './inline.js'
+export { tokenize } from './lexer.js'
+export type * from './types.js'
 
-import type { WikiNode } from './types.js';
-import { parse } from './parser.js';
+import type { WikiNode } from './types.js'
+import { parse } from './parser.js'
 
 /**
  * Walk the AST and collect all internal link targets.
  */
 export function extractLinks(input: string): string[] {
-	const ast = parse(input);
-	const links: string[] = [];
+	const ast = parse(input)
+	const links: string[] = []
 	walkNodes([ast], (node) => {
 		if (node.type === 'internal_link') {
-			links.push(node.target);
+			links.push(node.target)
 		}
-	});
-	return links;
+	})
+	return links
 }
 
 /**
  * Walk the AST and collect all category names.
  */
 export function extractCategories(input: string): string[] {
-	const ast = parse(input);
-	const cats: string[] = [];
+	const ast = parse(input)
+	const cats: string[] = []
 	walkNodes([ast], (node) => {
 		if (node.type === 'category') {
-			cats.push(node.name);
+			cats.push(node.name)
 		}
-	});
-	return cats;
+	})
+	return cats
 }
 
 /**
  * Walk the AST and collect all image filenames.
  */
 export function extractImages(input: string): string[] {
-	const ast = parse(input);
-	const images: string[] = [];
+	const ast = parse(input)
+	const images: string[] = []
 	walkNodes([ast], (node) => {
 		if (node.type === 'image') {
-			images.push(node.filename);
+			images.push(node.filename)
 		}
-	});
-	return images;
+	})
+	return images
 }
 
 /**
@@ -54,27 +54,27 @@ export function extractImages(input: string): string[] {
 export function stripMarkup(input: string): string {
 	return input
 		// Remove HTML tags
-		.replace(/<[^>]+>/g, '')
+		.replaceAll(/<[^>]+>/g, '')
 		// Remove templates {{...}} (non-greedy, nested braces not handled — good enough for FTS)
-		.replace(/\{\{[^}]*\}\}/g, '')
+		.replaceAll(/{{[^}]*}}/g, '')
 		// Remove category/file links
-		.replace(/\[\[(Category|File|Image):[^\]]*\]\]/gi, '')
+		.replaceAll(/\[\[(category|file|image):[^\]]*]]/gi, '')
 		// Convert internal links to display text
-		.replace(/\[\[([^|\]]*\|)?([^\]]*)\]\]/g, '$2')
+		.replaceAll(/\[\[([^\]|]*\|)?([^\]]*)]]/g, '$2')
 		// Remove external link brackets
-		.replace(/\[(https?:\/\/\S+)\s*([^\]]*)\]/g, '$2')
+		.replaceAll(/\[(https?:\/\/\S+)\s*([^\]]*)]/g, '$2')
 		// Remove wiki formatting
-		.replace(/'{2,5}/g, '')
-		.replace(/~~([^~]+)~~/g, '$1')
+		.replaceAll(/'{2,5}/g, '')
+		.replaceAll(/~~([^~]+)~~/g, '$1')
 		// Remove heading markers
-		.replace(/^={2,6}\s*(.+?)\s*={2,6}\s*$/gm, '$1')
+		.replaceAll(/^={2,6}\s*(.+?)\s*={2,6}\s*$/gm, '$1')
 		// Remove table syntax
-		.replace(/^[{|!]-?.*$/gm, '')
+		.replaceAll(/^[!{|]-?.*$/gm, '')
 		// Remove list markers
-		.replace(/^[*#;:]+\s*/gm, '')
+		.replaceAll(/^[#*:;]+\s*/gm, '')
 		// Collapse whitespace
-		.replace(/\s+/g, ' ')
-		.trim();
+		.replaceAll(/\s+/g, ' ')
+		.trim()
 }
 
 // ============================================================================
@@ -83,10 +83,10 @@ export function stripMarkup(input: string): string {
 
 function walkNodes(nodes: WikiNode[], visitor: (node: WikiNode) => void): void {
 	for (const node of nodes) {
-		visitor(node);
-		const children = getChildren(node);
+		visitor(node)
+		const children = getChildren(node)
 		if (children.length > 0) {
-			walkNodes(children, visitor);
+			walkNodes(children, visitor)
 		}
 	}
 }
@@ -100,27 +100,27 @@ function getChildren(node: WikiNode): WikiNode[] {
 		case 'strikethrough':
 		case 'subscript':
 		case 'superscript':
-			return node.children;
+			return node.children
 		case 'heading':
-			return node.children;
+			return node.children
 		case 'hatnote':
-			return node.content;
+			return node.content
 		case 'collapse':
-			return node.content;
+			return node.content
 		case 'reference':
-			return node.content;
+			return node.content
 		case 'unordered_list':
 		case 'ordered_list':
-			return node.items.flatMap((item) => item.children);
+			return node.items.flatMap(item => item.children)
 		case 'definition_list':
-			return node.items.flatMap((item) => [...item.term, ...item.definition]);
+			return node.items.flatMap(item => [...item.term, ...item.definition])
 		case 'internal_link':
-			return node.display || [];
+			return node.display || []
 		case 'table':
-			return node.rows.flatMap((row) => row.cells.flatMap((cell) => cell.children));
+			return node.rows.flatMap(row => row.cells.flatMap(cell => cell.children))
 		case 'navbox':
-			return node.groups.flatMap((group) => group.items);
+			return node.groups.flatMap(group => group.items)
 		default:
-			return [];
+			return []
 	}
 }

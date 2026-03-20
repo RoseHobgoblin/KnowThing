@@ -1,28 +1,32 @@
 <script lang="ts">
-	import type { PageData } from './$types.js';
-	import { slugify } from '$lib/renderer/context.js';
+	import type { PageData } from './$types.js'
+	import { slugify } from '$lib/renderer/context.js'
 
-	let { data }: { data: PageData } = $props();
+	let { data }: { data: PageData } = $props()
 </script>
 
 <svelte:head>
 	<title>Categories — KnowThing</title>
 </svelte:head>
 
-<div class="bg-white rounded-lg shadow-sm border border-stone-200 p-6">
-	<h1 class="text-2xl font-bold text-stone-900 mb-6">Categories</h1>
+<div class="bg-surface rounded-lg shadow-sm border border-border p-6">
+	<h1 class="text-2xl font-bold text-heading mb-6">Categories</h1>
 
 	{#if data.categories.length === 0}
-		<p class="text-stone-500">No categories yet. Categories are created when articles use <code>[[Category:Name]]</code> markup.</p>
+		<p class="text-dim">No categories yet. Categories are created when articles use <code>[[Category:Name]]</code> markup.</p>
 	{:else}
 		<div class="flex flex-wrap gap-2">
 			{#each data.categories as cat}
 				<a
 					href="/know/category:{slugify(cat.name)}"
-					class="inline-flex items-center gap-1.5 bg-stone-100 text-stone-700 rounded-full px-4 py-2 text-sm hover:bg-amber-50 hover:text-amber-700 transition-colors"
+					class="
+						inline-flex items-center gap-1.5 bg-raised text-secondary rounded-full px-4 py-2 text-sm
+						transition-colors
+						hover:bg-accent-subtle hover:text-link
+					"
 				>
 					{cat.name}
-					<span class="text-xs text-stone-400 bg-stone-200 rounded-full px-1.5 py-0.5">{cat.count}</span>
+					<span class="text-xs text-faint bg-border rounded-full px-1.5 py-0.5">{cat.count}</span>
 				</a>
 			{/each}
 		</div>

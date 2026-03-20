@@ -1,10 +1,10 @@
 <script lang="ts">
-	import type { FieldMap } from './types.js';
-	import { getField, getRemainingFields } from './types.js';
-	import InfoboxShell from './InfoboxShell.svelte';
-	import InfoboxRow from './InfoboxRow.svelte';
+	import type { FieldMap } from './types.js'
+	import { getField, getRemainingFields } from './types.js'
+	import InfoboxShell from './InfoboxShell.svelte'
+	import InfoboxRow from './InfoboxRow.svelte'
 
-	let { fields }: { fields: FieldMap } = $props();
+	let { fields }: { fields: FieldMap } = $props()
 
 	const KNOWN_KEYS = new Set([
 		'name', 'image', 'caption', 'image_size',
@@ -14,30 +14,30 @@
 		'spouse', 'children', 'parents', 'father', 'mother',
 		'education', 'alma_mater', 'awards', 'signature',
 		'known_for', 'notable_works', 'religion',
-		'predecessor', 'successor', 'reign'
-	]);
+		'predecessor', 'successor', 'reign',
+	])
 
-	const title = getField(fields, 'name') ?? '';
-	const image = getField(fields, 'image') ?? '';
-	const imageCaption = getField(fields, 'caption') ?? '';
-	const birthName = getField(fields, 'birth_name') ?? '';
-	const birthDate = getField(fields, 'birth_date', 'born') ?? '';
-	const birthPlace = getField(fields, 'birth_place') ?? '';
-	const deathDate = getField(fields, 'death_date', 'died') ?? '';
-	const deathPlace = getField(fields, 'death_place') ?? '';
-	const nationality = getField(fields, 'nationality') ?? '';
-	const occupation = getField(fields, 'occupation') ?? '';
-	const knownFor = getField(fields, 'known_for', 'notable_works') ?? '';
-	const spouse = getField(fields, 'spouse') ?? '';
-	const children = getField(fields, 'children') ?? '';
-	const father = getField(fields, 'father', 'parents') ?? '';
-	const mother = getField(fields, 'mother') ?? '';
-	const education = getField(fields, 'education', 'alma_mater') ?? '';
-	const awards = getField(fields, 'awards') ?? '';
-	const religion = getField(fields, 'religion') ?? '';
+	const title = getField(fields, 'name') ?? ''
+	const image = getField(fields, 'image') ?? ''
+	const imageCaption = getField(fields, 'caption') ?? ''
+	const birthName = getField(fields, 'birth_name') ?? ''
+	const birthDate = getField(fields, 'birth_date', 'born') ?? ''
+	const birthPlace = getField(fields, 'birth_place') ?? ''
+	const deathDate = getField(fields, 'death_date', 'died') ?? ''
+	const deathPlace = getField(fields, 'death_place') ?? ''
+	const nationality = getField(fields, 'nationality') ?? ''
+	const occupation = getField(fields, 'occupation') ?? ''
+	const knownFor = getField(fields, 'known_for', 'notable_works') ?? ''
+	const spouse = getField(fields, 'spouse') ?? ''
+	const children = getField(fields, 'children') ?? ''
+	const father = getField(fields, 'father', 'parents') ?? ''
+	const mother = getField(fields, 'mother') ?? ''
+	const education = getField(fields, 'education', 'alma_mater') ?? ''
+	const awards = getField(fields, 'awards') ?? ''
+	const religion = getField(fields, 'religion') ?? ''
 
 	// Fallback: render remaining fields that aren't in the known set
-	const remaining = getRemainingFields(fields, KNOWN_KEYS);
+	const remaining = getRemainingFields(fields, KNOWN_KEYS)
 </script>
 
 <InfoboxShell

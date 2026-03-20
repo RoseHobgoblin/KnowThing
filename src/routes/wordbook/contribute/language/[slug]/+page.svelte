@@ -1,27 +1,27 @@
 <script lang="ts">
-	import type { PageData } from './$types.js';
-	import { goto } from '$app/navigation';
+	import type { PageData } from './$types.js'
+	import { goto } from '$app/navigation'
 
-	let { data }: { data: PageData } = $props();
+	let { data }: { data: PageData } = $props()
 
-	let name = $state(data.language.name);
-	let nativeName = $state(data.language.nativeName || '');
-	let script = $state(data.language.script || 'Latin');
-	let family = $state(data.language.family || '');
-	let color = $state(data.language.color || '#d97706');
-	let description = $state(data.language.description || '');
-	let pageSlug = $state(data.language.pageSlug || '');
-	let parentLanguageId = $state<number | null>(data.language.parentLanguageId || null);
-	let languageType = $state(data.language.languageType || 'language');
-	let submitting = $state(false);
-	let error = $state('');
+	let name = $state(data.language.name)
+	let nativeName = $state(data.language.nativeName || '')
+	let script = $state(data.language.script || 'Latin')
+	let family = $state(data.language.family || '')
+	let color = $state(data.language.color || '#d97706')
+	let description = $state(data.language.description || '')
+	let pageSlug = $state(data.language.pageSlug || '')
+	let parentLanguageId = $state<number | null>(data.language.parentLanguageId || null)
+	let languageType = $state(data.language.languageType || 'language')
+	let submitting = $state(false)
+	let error = $state('')
 
 	async function handleSubmit(e: SubmitEvent) {
-		e.preventDefault();
-		if (!name.trim()) { error = 'Name is required'; return; }
+		e.preventDefault()
+		if (!name.trim()) { error = 'Name is required'; return }
 
-		error = '';
-		submitting = true;
+		error = ''
+		submitting = true
 		try {
 			const res = await fetch(`/api/languages/${data.language.slug}`, {
 				method: 'PUT',
@@ -35,23 +35,23 @@
 					description: description.trim() || null,
 					pageSlug: pageSlug.trim() || null,
 					parentLanguageId: parentLanguageId || null,
-					languageType
-				})
-			});
+					languageType,
+				}),
+			})
 			if (!res.ok) {
-				const err = await res.json();
-				throw new Error(err.error || 'Failed to update');
+				const error_ = await res.json()
+				throw new Error(error_.error || 'Failed to update')
 			}
-			goto(`/wordbook/${data.language.slug}`);
-		} catch (e: any) {
-			error = e.message;
+			goto(`/wordbook/${data.language.slug}`)
+		} catch (error_: any) {
+			error = error_.message
 		} finally {
-			submitting = false;
+			submitting = false
 		}
 	}
 
-	const inputClass = 'w-full px-3 py-2 border border-stone-300 rounded-lg text-sm bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400';
-	const labelClass = 'block text-sm font-medium text-stone-700 mb-1';
+	const inputClass = 'w-full px-3 py-2 border border-border-strong rounded-lg text-sm bg-surface text-heading focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent-border'
+	const labelClass = 'block text-sm font-medium text-secondary mb-1'
 </script>
 
 <svelte:head>
@@ -60,16 +60,16 @@
 
 <div class="space-y-6">
 	<div>
-		<h1 class="text-2xl font-bold text-stone-900 mb-1">Edit Language: {data.language.name}</h1>
+		<h1 class="text-2xl font-bold text-heading mb-1">Edit Language: {data.language.name}</h1>
 	</div>
 
-	<div class="bg-white rounded-lg border border-stone-200 p-6">
+	<div class="bg-surface rounded-lg border border-border p-6">
 		<form onsubmit={handleSubmit} class="space-y-4">
 			{#if error}
 				<div class="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{error}</div>
 			{/if}
 
-			<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+			<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 				<div>
 					<label for="name" class={labelClass}>Name</label>
 					<input id="name" type="text" bind:value={name} required class={inputClass} />
@@ -101,7 +101,7 @@
 						{#if languageType === 'proto'}
 							<span class="text-red-500">*</span>
 						{:else}
-							<span class="text-xs text-stone-400">(optional — inherits from parent)</span>
+							<span class="text-xs text-faint">(optional — inherits from parent)</span>
 						{/if}
 					</label>
 					<input id="family" type="text" bind:value={family} class={inputClass}
@@ -115,7 +115,7 @@
 				<div>
 					<label for="color" class={labelClass}>Accent Color</label>
 					<div class="flex gap-2 items-center">
-						<input id="color" type="color" bind:value={color} class="w-10 h-10 rounded border border-stone-300 cursor-pointer" />
+						<input id="color" type="color" bind:value={color} class="size-10 rounded-sm border border-border-strong cursor-pointer" />
 						<input type="text" bind:value={color} class={inputClass} />
 					</div>
 				</div>
@@ -130,7 +130,11 @@
 				<textarea id="desc" bind:value={description} rows={3} class={inputClass}></textarea>
 			</div>
 
-			<button type="submit" disabled={submitting} class="px-6 py-2.5 bg-amber-600 text-white rounded-lg font-medium hover:bg-amber-700 disabled:opacity-50 transition-colors">
+			<button type="submit" disabled={submitting} class="
+				px-6 py-2.5 bg-accent text-surface rounded-lg font-medium transition-colors
+				hover:bg-accent-hover
+				disabled:opacity-50
+			">
 				{submitting ? 'Saving...' : 'Save Changes'}
 			</button>
 		</form>

@@ -1,20 +1,20 @@
 <script lang="ts">
-	import type { NavboxGroup } from '$lib/parser/types.js';
-	import WikiNodeComponent from '../WikiNode.svelte';
+	import type { NavboxGroup } from '$lib/parser/types.js'
+	import WikiNodeComponent from '../WikiNode.svelte'
 
-	let { title, groups }: { title: string; groups: NavboxGroup[] } = $props();
+	let { title, groups }: { title: string, groups: NavboxGroup[] } = $props()
 </script>
 
-<nav class="know-navbox border border-stone-300 my-4 text-sm">
-	<div class="bg-stone-200 px-3 py-1.5 font-bold text-center">{title}</div>
+<nav class="know-navbox border border-border-strong my-4 text-sm">
+	<div class="bg-border px-3 py-1.5 font-bold text-center">{title}</div>
 	{#each groups as group}
-		<div class="flex border-t border-stone-300">
-			<div class="bg-stone-100 px-3 py-1 font-semibold min-w-[120px] border-r border-stone-300">
+		<div class="flex border-t border-border-strong">
+			<div class="bg-raised px-3 py-1 font-semibold min-w-[120px] border-r border-border-strong">
 				{group.name}
 			</div>
 			<div class="px-3 py-1 flex-1">
-				{#each group.items as item, i}
-					{#if i > 0}<span class="mx-1 text-stone-400">·</span>{/if}
+				{#each group.items as item, index}
+					{#if index > 0}<span class="mx-1 text-faint">·</span>{/if}
 					<WikiNodeComponent node={item} />
 				{/each}
 			</div>

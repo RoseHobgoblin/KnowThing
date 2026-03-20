@@ -1,20 +1,20 @@
-import type { PageServerLoad } from './$types.js';
-import { db } from '$lib/server/db/index.js';
-import { lexicon, definitions, languages, lexiconVariants, languageDialects } from '$lib/server/db/schema.js';
-import { eq, and, asc, sql } from 'drizzle-orm';
-import { error } from '@sveltejs/kit';
-import { getDirectRelations, computeCognates, getEtymologyChain } from '$lib/server/wordbook/etymology.js';
-import { getInflectionTable } from '$lib/server/wordbook/inflection.js';
+import type { PageServerLoad } from './$types.js'
+import { db } from '$lib/server/db/index.js'
+import { lexicon, definitions, languages, lexiconVariants, languageDialects } from '$lib/server/db/schema.js'
+import { eq, and, asc, sql } from 'drizzle-orm'
+import { error } from '@sveltejs/kit'
+import { getDirectRelations, computeCognates, getEtymologyChain } from '$lib/server/wordbook/etymology.js'
+import { getInflectionTable } from '$lib/server/wordbook/inflection.js'
 
 export const load: PageServerLoad = async ({ params }) => {
-	const word = decodeURIComponent(params.word).normalize('NFC');
+	const word = decodeURIComponent(params.word).normalize('NFC')
 
 	const [lang] = await db
 		.select()
 		.from(languages)
-		.where(eq(languages.slug, params.language));
+		.where(eq(languages.slug, params.language))
 
-	if (!lang) error(404, 'Language not found');
+	if (!lang) error(404, 'Language not found')
 
 	// Get ALL homograph entries for this word+language
 	const entries = await db
@@ -28,16 +28,16 @@ export const load: PageServerLoad = async ({ params }) => {
 			tags: lexicon.tags,
 			homographNumber: lexicon.homographNumber,
 			createdAt: lexicon.createdAt,
-			updatedAt: lexicon.updatedAt
+			updatedAt: lexicon.updatedAt,
 		})
 		.from(lexicon)
 		.where(and(
 			sql`LOWER(${lexicon.word}) = LOWER(${word})`,
-			eq(lexicon.languageId, lang.id)
+			eq(lexicon.languageId, lang.id),
 		))
-		.orderBy(asc(lexicon.homographNumber));
+		.orderBy(asc(lexicon.homographNumber))
 
-	if (entries.length === 0) error(404, `No entry for "${word}" in ${lang.name}`);
+	if (entries.length === 0) error(404, `No entry for "${word}" in ${lang.name}`)
 
 	// For each homograph, load definitions, variants, and relations
 	const homographs = await Promise.all(entries.map(async (entry) => {
@@ -47,36 +47,36 @@ export const load: PageServerLoad = async ({ params }) => {
 				.where(eq(definitions.entryId, entry.id))
 				.orderBy(asc(definitions.senseNumber)),
 			db.select({
-					id: lexiconVariants.id,
-					pronunciation: lexiconVariants.pronunciation,
-					spelling: lexiconVariants.spelling,
-					notes: lexiconVariants.notes,
-					dialectName: languageDialects.name,
-					dialectSlug: languageDialects.slug,
-					dialectRegion: languageDialects.region
-				})
+				id: lexiconVariants.id,
+				pronunciation: lexiconVariants.pronunciation,
+				spelling: lexiconVariants.spelling,
+				notes: lexiconVariants.notes,
+				dialectName: languageDialects.name,
+				dialectSlug: languageDialects.slug,
+				dialectRegion: languageDialects.region,
+			})
 				.from(lexiconVariants)
 				.innerJoin(languageDialects, eq(lexiconVariants.dialectId, languageDialects.id))
 				.where(eq(lexiconVariants.entryId, entry.id)),
 			getInflectionTable(entry.id),
 			getDirectRelations(entry.id),
 			computeCognates(entry.id, lang.id),
-			getEtymologyChain(entry.id)
-		]);
+			getEtymologyChain(entry.id),
+		])
 
 		return {
 			entry,
 			definitions: defs,
 			variants,
 			inflection,
-			relations: { direct, cognates, etymologyChain }
-		};
-	}));
+			relations: { direct, cognates, etymologyChain },
+		}
+	}))
 
 	return {
 		word: entries[0].word,
 		language: lang,
 		homographs,
-		isMultipleHomographs: entries.length > 1
-	};
-};
+		isMultipleHomographs: entries.length > 1,
+	}
+}

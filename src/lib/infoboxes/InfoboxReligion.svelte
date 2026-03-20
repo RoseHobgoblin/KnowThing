@@ -1,11 +1,11 @@
 <script lang="ts">
-	import type { FieldMap } from './types.js';
-	import { getField, getRemainingFields } from './types.js';
-	import InfoboxShell from './InfoboxShell.svelte';
-	import InfoboxRow from './InfoboxRow.svelte';
-	import InfoboxSection from './InfoboxSection.svelte';
+	import type { FieldMap } from './types.js'
+	import { getField, getRemainingFields } from './types.js'
+	import InfoboxShell from './InfoboxShell.svelte'
+	import InfoboxRow from './InfoboxRow.svelte'
+	import InfoboxSection from './InfoboxSection.svelte'
 
-	let { fields }: { fields: FieldMap } = $props();
+	let { fields }: { fields: FieldMap } = $props()
 
 	const KNOWN_KEYS = new Set([
 		'name', 'image', 'caption', 'image_size',
@@ -16,26 +16,26 @@
 		'leader', 'authority', 'headquarters',
 		'language', 'branches', 'denominations',
 		'separations', 'merged_into',
-		'region', 'territories'
-	]);
+		'region', 'territories',
+	])
 
-	const title = getField(fields, 'name') ?? '';
-	const image = getField(fields, 'image') ?? '';
-	const imageCaption = getField(fields, 'caption') ?? '';
-	const type = getField(fields, 'type', 'classification') ?? '';
-	const theology = getField(fields, 'theology') ?? '';
-	const founder = getField(fields, 'founder') ?? '';
-	const origin = getField(fields, 'origin', 'founded') ?? '';
-	const scripture = getField(fields, 'scripture') ?? '';
-	const deity = getField(fields, 'deity', 'deities') ?? '';
-	const followers = getField(fields, 'followers', 'adherents', 'members') ?? '';
-	const leader = getField(fields, 'leader', 'authority') ?? '';
-	const headquarters = getField(fields, 'headquarters') ?? '';
-	const language = getField(fields, 'language') ?? '';
-	const branches = getField(fields, 'branches', 'denominations') ?? '';
-	const region = getField(fields, 'region', 'territories') ?? '';
+	const title = getField(fields, 'name') ?? ''
+	const image = getField(fields, 'image') ?? ''
+	const imageCaption = getField(fields, 'caption') ?? ''
+	const type = getField(fields, 'type', 'classification') ?? ''
+	const theology = getField(fields, 'theology') ?? ''
+	const founder = getField(fields, 'founder') ?? ''
+	const origin = getField(fields, 'origin', 'founded') ?? ''
+	const scripture = getField(fields, 'scripture') ?? ''
+	const deity = getField(fields, 'deity', 'deities') ?? ''
+	const followers = getField(fields, 'followers', 'adherents', 'members') ?? ''
+	const leader = getField(fields, 'leader', 'authority') ?? ''
+	const headquarters = getField(fields, 'headquarters') ?? ''
+	const language = getField(fields, 'language') ?? ''
+	const branches = getField(fields, 'branches', 'denominations') ?? ''
+	const region = getField(fields, 'region', 'territories') ?? ''
 
-	const remaining = getRemainingFields(fields, KNOWN_KEYS);
+	const remaining = getRemainingFields(fields, KNOWN_KEYS)
 </script>
 
 <InfoboxShell

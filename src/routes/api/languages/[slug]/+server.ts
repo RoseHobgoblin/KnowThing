@@ -1,10 +1,10 @@
-import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types.js';
-import { db } from '$lib/server/db/index.js';
-import { languages } from '$lib/server/db/schema.js';
-import { requireAuth } from '$lib/server/auth.js';
-import { eq, sql } from 'drizzle-orm';
-import { isDescendant } from '$lib/server/wordbook/language-tree.js';
+import { json } from '@sveltejs/kit'
+import type { RequestHandler } from './$types.js'
+import { db } from '$lib/server/db/index.js'
+import { languages } from '$lib/server/db/schema.js'
+import { requireAuth } from '$lib/server/auth.js'
+import { eq, sql } from 'drizzle-orm'
+import { isDescendant } from '$lib/server/wordbook/language-tree.js'
 
 /** GET /api/languages/:slug */
 export const GET: RequestHandler = async ({ params }) => {
@@ -18,46 +18,44 @@ export const GET: RequestHandler = async ({ params }) => {
 			family: languages.family,
 			color: languages.color,
 			description: languages.description,
-			wordCount: sql<number>`(SELECT COUNT(*) FROM lexicon WHERE language_id = ${languages.id})`.as('word_count')
+			wordCount: sql<number>`(SELECT COUNT(*) FROM lexicon WHERE language_id = ${languages.id})`.as('word_count'),
 		})
 		.from(languages)
-		.where(eq(languages.slug, params.slug));
+		.where(eq(languages.slug, params.slug))
 
 	if (!lang) {
-		return json({ error: 'Language not found' }, { status: 404 });
+		return json({ error: 'Language not found' }, { status: 404 })
 	}
 
-	return json(lang);
-};
+	return json(lang)
+}
 
 /** PUT /api/languages/:slug */
 export const PUT: RequestHandler = async (event) => {
-	requireAuth(event);
-	const body = await event.request.json();
+	requireAuth(event)
+	const body = await event.request.json()
 	const { name, nativeName, script, family, color, description, pageSlug, parentLanguageId, languageType } = body as {
-		name?: string;
-		nativeName?: string;
-		script?: string;
-		family?: string;
-		color?: string;
-		description?: string;
-		pageSlug?: string;
-		parentLanguageId?: number | null;
-		languageType?: string;
-	};
-
-	// Get current language ID for circular reference check
-	const [current] = await db.select({ id: languages.id }).from(languages).where(eq(languages.slug, event.params.slug));
-	if (!current) return json({ error: 'Language not found' }, { status: 404 });
-
-	// Circular reference prevention
-	if (parentLanguageId !== undefined && parentLanguageId !== null) {
-		if (await isDescendant(current.id, parentLanguageId)) {
-			return json({ error: 'Cannot set parent to self or a descendant (circular reference)' }, { status: 400 });
-		}
+		name?: string
+		nativeName?: string
+		script?: string
+		family?: string
+		color?: string
+		description?: string
+		pageSlug?: string
+		parentLanguageId?: number | null
+		languageType?: string
 	}
 
-	const validTypes = ['proto', 'language', 'historical'];
+	// Get current language ID for circular reference check
+	const [current] = await db.select({ id: languages.id }).from(languages).where(eq(languages.slug, event.params.slug))
+	if (!current) return json({ error: 'Language not found' }, { status: 404 })
+
+	// Circular reference prevention
+	if (parentLanguageId !== undefined && parentLanguageId !== null && await isDescendant(current.id, parentLanguageId)) {
+		return json({ error: 'Cannot set parent to self or a descendant (circular reference)' }, { status: 400 })
+	}
+
+	const validTypes = ['proto', 'language', 'historical']
 
 	const [updated] = await db
 		.update(languages)
@@ -71,14 +69,14 @@ export const PUT: RequestHandler = async (event) => {
 			...(pageSlug !== undefined && { pageSlug: pageSlug?.trim() || null }),
 			...(parentLanguageId !== undefined && { parentLanguageId: parentLanguageId || null }),
 			...(languageType && validTypes.includes(languageType) && { languageType }),
-			updatedAt: new Date()
+			updatedAt: new Date(),
 		})
 		.where(eq(languages.slug, event.params.slug))
-		.returning();
+		.returning()
 
 	if (!updated) {
-		return json({ error: 'Language not found' }, { status: 404 });
+		return json({ error: 'Language not found' }, { status: 404 })
 	}
 
-	return json(updated);
-};
+	return json(updated)
+}
