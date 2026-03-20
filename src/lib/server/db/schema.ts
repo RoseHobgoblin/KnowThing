@@ -199,11 +199,31 @@ export const languages = pgTable(
 		color: text('color').default('#d97706'),
 		description: text('description'),
 		pageSlug: text('page_slug'),
+		parentLanguageId: integer('parent_language_id'),
+		languageType: text('language_type').notNull().default('language'), // 'proto', 'language', 'historical'
 		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
 	},
 	(table) => [
-		index('idx_languages_slug').on(table.slug)
+		index('idx_languages_slug').on(table.slug),
+		index('idx_languages_parent').on(table.parentLanguageId)
+	]
+);
+
+export const languageDialects = pgTable(
+	'language_dialects',
+	{
+		id: serial('id').primaryKey(),
+		languageId: integer('language_id')
+			.references(() => languages.id, { onDelete: 'cascade' })
+			.notNull(),
+		name: text('name').notNull(),
+		slug: text('slug').notNull(),
+		region: text('region'),
+		description: text('description')
+	},
+	(table) => [
+		index('idx_dialects_language').on(table.languageId)
 	]
 );
 
@@ -259,10 +279,30 @@ export const definitions = pgTable(
 		definition: text('definition').notNull(),
 		usageExample: text('usage_example'),
 		usageTranslation: text('usage_translation'),
+		dialectId: integer('dialect_id').references(() => languageDialects.id, { onDelete: 'set null' }),
 		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
 	},
 	(table) => [
 		index('idx_definitions_entry').on(table.entryId)
+	]
+);
+
+export const lexiconVariants = pgTable(
+	'lexicon_variants',
+	{
+		id: serial('id').primaryKey(),
+		entryId: integer('entry_id')
+			.references(() => lexicon.id, { onDelete: 'cascade' })
+			.notNull(),
+		dialectId: integer('dialect_id')
+			.references(() => languageDialects.id, { onDelete: 'cascade' })
+			.notNull(),
+		pronunciation: text('pronunciation'),
+		spelling: text('spelling'),
+		notes: text('notes')
+	},
+	(table) => [
+		index('idx_variants_entry').on(table.entryId)
 	]
 );
 

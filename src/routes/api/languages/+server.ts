@@ -30,7 +30,7 @@ export const GET: RequestHandler = async () => {
 export const POST: RequestHandler = async (event) => {
 	requireAuth(event);
 	const body = await event.request.json();
-	const { name, slug, nativeName, script, family, color, description, pageSlug } = body as {
+	const { name, slug, nativeName, script, family, color, description, pageSlug, parentLanguageId, languageType } = body as {
 		name: string;
 		slug: string;
 		nativeName?: string;
@@ -39,11 +39,16 @@ export const POST: RequestHandler = async (event) => {
 		color?: string;
 		description?: string;
 		pageSlug?: string;
+		parentLanguageId?: number;
+		languageType?: string;
 	};
 
 	if (!name?.trim() || !slug?.trim()) {
 		return json({ error: 'Name and slug are required' }, { status: 400 });
 	}
+
+	const validTypes = ['proto', 'language', 'historical'];
+	const type = languageType && validTypes.includes(languageType) ? languageType : 'language';
 
 	const [lang] = await db
 		.insert(languages)
@@ -55,7 +60,9 @@ export const POST: RequestHandler = async (event) => {
 			family: family?.trim() || null,
 			color: color?.trim() || '#d97706',
 			description: description?.trim() || null,
-			pageSlug: pageSlug?.trim() || null
+			pageSlug: pageSlug?.trim() || null,
+			parentLanguageId: parentLanguageId || null,
+			languageType: type
 		})
 		.returning();
 

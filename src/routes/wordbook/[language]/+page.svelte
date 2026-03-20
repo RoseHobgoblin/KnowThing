@@ -24,6 +24,20 @@
 </svelte:head>
 
 <div class="space-y-6">
+	<!-- Ancestry breadcrumb -->
+	{#if data.ancestryChain.length > 1}
+		<nav class="flex items-center gap-1 text-sm text-stone-500 flex-wrap">
+			{#each data.ancestryChain as ancestor, i}
+				{#if i > 0}<span class="text-stone-300">›</span>{/if}
+				{#if ancestor.id === data.language.id}
+					<span class="text-stone-700 font-medium">{ancestor.name}</span>
+				{:else}
+					<a href="/wordbook/{ancestor.slug}" class="hover:text-amber-700">{ancestor.name}</a>
+				{/if}
+			{/each}
+		</nav>
+	{/if}
+
 	<!-- Language header -->
 	<div>
 		<div class="flex items-start justify-between mb-1">
@@ -58,6 +72,44 @@
 			</a>
 		{/if}
 	</div>
+
+	<!-- Child languages -->
+	{#if data.children.length > 0}
+		<div class="bg-white rounded-lg border border-stone-200 p-4">
+			<h3 class="text-sm font-semibold text-stone-800 mb-2">Descendant languages</h3>
+			<div class="flex flex-wrap gap-2">
+				{#each data.children as child}
+					<a href="/wordbook/{child.slug}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-stone-200 hover:border-amber-300 hover:bg-amber-50 text-sm transition-colors">
+						<span class="w-2 h-2 rounded-full" style="background-color: {child.color || '#d97706'}"></span>
+						<span class="font-medium text-stone-800">{child.name}</span>
+						{#if child.nativeName}
+							<span class="text-stone-400 text-xs italic">{child.nativeName}</span>
+						{/if}
+						{#if child.languageType !== 'language'}
+							<span class="text-[10px] text-stone-400">({child.languageType})</span>
+						{/if}
+					</a>
+				{/each}
+			</div>
+		</div>
+	{/if}
+
+	<!-- Dialects -->
+	{#if data.dialects.length > 0}
+		<div class="bg-white rounded-lg border border-stone-200 p-4">
+			<h3 class="text-sm font-semibold text-stone-800 mb-2">Dialects</h3>
+			<div class="space-y-1">
+				{#each data.dialects as dialect}
+					<div class="flex items-center gap-2 text-sm">
+						<span class="font-medium text-stone-700">{dialect.name}</span>
+						{#if dialect.region}
+							<span class="text-stone-400 text-xs">({dialect.region})</span>
+						{/if}
+					</div>
+				{/each}
+			</div>
+		</div>
+	{/if}
 
 	<!-- Alphabet nav -->
 	<div class="border-y border-stone-200 bg-white px-2">

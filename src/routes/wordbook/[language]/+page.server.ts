@@ -1,8 +1,9 @@
 import type { PageServerLoad } from './$types.js';
 import { db } from '$lib/server/db/index.js';
-import { lexicon, definitions, languages } from '$lib/server/db/schema.js';
+import { lexicon, definitions, languages, languageDialects } from '$lib/server/db/schema.js';
 import { eq, sql, asc, and } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
+import { getAncestryChain, getChildren } from '$lib/server/wordbook/language-tree.js';
 
 export const load: PageServerLoad = async ({ params, url }) => {
 	const [lang] = await db
@@ -22,6 +23,13 @@ export const load: PageServerLoad = async ({ params, url }) => {
 		.where(eq(languages.slug, params.language));
 
 	if (!lang) error(404, 'Language not found');
+
+	// Load ancestry, children, dialects
+	const [ancestryChain, children, dialects] = await Promise.all([
+		getAncestryChain(lang.id),
+		getChildren(lang.id),
+		db.select().from(languageDialects).where(eq(languageDialects.languageId, lang.id)).orderBy(asc(languageDialects.name))
+	]);
 
 	const letter = url.searchParams.get('letter') || '';
 	const conditions = [eq(lexicon.languageId, lang.id)];
@@ -58,6 +66,9 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	return {
 		language: lang,
 		entries,
+		ancestryChain,
+		children,
+		dialects,
 		activeLetters: activeLettersResult.map(r => r.letter),
 		currentLetter: letter
 	};

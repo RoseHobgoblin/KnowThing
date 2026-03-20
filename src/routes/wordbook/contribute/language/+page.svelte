@@ -1,5 +1,8 @@
 <script lang="ts">
+	import type { PageData } from './$types.js';
 	import { goto } from '$app/navigation';
+
+	let { data }: { data: PageData } = $props();
 
 	let name = $state('');
 	let slug = $state('');
@@ -9,6 +12,8 @@
 	let color = $state('#d97706');
 	let description = $state('');
 	let pageSlug = $state('');
+	let parentLanguageId = $state<number | null>(null);
+	let languageType = $state('language');
 	let submitting = $state(false);
 	let error = $state('');
 
@@ -45,7 +50,9 @@
 					family: family.trim() || undefined,
 					color: color || '#d97706',
 					description: description.trim() || undefined,
-					pageSlug: pageSlug.trim() || undefined
+					pageSlug: pageSlug.trim() || undefined,
+					parentLanguageId: parentLanguageId || undefined,
+					languageType
 				})
 			});
 
@@ -97,8 +104,25 @@
 					<input id="native" type="text" bind:value={nativeName} class={inputClass} placeholder="Ontsserako" />
 				</div>
 				<div>
-					<label for="family" class={labelClass}>Language Family</label>
-					<input id="family" type="text" bind:value={family} class={inputClass} placeholder="Mirish" />
+					<label for="parent" class={labelClass}>Parent Language</label>
+					<select id="parent" bind:value={parentLanguageId} class={inputClass}>
+						<option value={null}>None (root language)</option>
+						{#each data.existingLanguages as lang}
+							<option value={lang.id}>{lang.name}</option>
+						{/each}
+					</select>
+				</div>
+				<div>
+					<label for="type" class={labelClass}>Type</label>
+					<select id="type" bind:value={languageType} class={inputClass}>
+						<option value="language">Language</option>
+						<option value="proto">Proto / Reconstructed</option>
+						<option value="historical">Historical</option>
+					</select>
+				</div>
+				<div>
+					<label for="family" class={labelClass}>Family <span class="text-xs text-stone-400">(override)</span></label>
+					<input id="family" type="text" bind:value={family} class={inputClass} placeholder="Auto-derived from parent" />
 				</div>
 				<div>
 					<label for="script" class={labelClass}>Script</label>
