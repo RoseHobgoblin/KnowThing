@@ -166,6 +166,7 @@ export const languages = pgTable(
 		family: text('family'),
 		color: text('color').default('#d97706'),
 		description: text('description'),
+		pageSlug: text('page_slug'),
 		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
 	},
@@ -198,5 +199,25 @@ export const lexicon = pgTable(
 	(table) => [
 		index('idx_lexicon_word').on(table.word),
 		index('idx_lexicon_language').on(table.languageId)
+	]
+);
+
+export const lexiconRelations = pgTable(
+	'lexicon_relations',
+	{
+		id: serial('id').primaryKey(),
+		sourceId: integer('source_id')
+			.references(() => lexicon.id, { onDelete: 'cascade' })
+			.notNull(),
+		targetId: integer('target_id')
+			.references(() => lexicon.id, { onDelete: 'cascade' })
+			.notNull(),
+		relationType: text('relation_type').notNull(), // 'derived_from', 'loan_from', 'compound_of'
+		notes: text('notes'),
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+	},
+	(table) => [
+		index('idx_lexrel_source').on(table.sourceId),
+		index('idx_lexrel_target').on(table.targetId)
 	]
 );

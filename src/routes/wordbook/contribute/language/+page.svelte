@@ -8,6 +8,7 @@
 	let family = $state('');
 	let color = $state('#d97706');
 	let description = $state('');
+	let pageSlug = $state('');
 	let submitting = $state(false);
 	let error = $state('');
 
@@ -43,7 +44,8 @@
 					script: script.trim() || 'Latin',
 					family: family.trim() || undefined,
 					color: color || '#d97706',
-					description: description.trim() || undefined
+					description: description.trim() || undefined,
+					pageSlug: pageSlug.trim() || undefined
 				})
 			});
 
@@ -109,6 +111,11 @@
 						<input type="text" bind:value={color} class={inputClass} placeholder="#d97706" />
 					</div>
 				</div>
+			</div>
+
+			<div>
+				<label for="pageSlug" class={labelClass}>Wiki Article <span class="text-xs text-stone-400">(slug)</span></label>
+				<input id="pageSlug" type="text" bind:value={pageSlug} class={inputClass} placeholder="oncheran_language" />
 			</div>
 
 			<div>

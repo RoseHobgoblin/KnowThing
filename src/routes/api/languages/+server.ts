@@ -30,7 +30,7 @@ export const GET: RequestHandler = async () => {
 export const POST: RequestHandler = async (event) => {
 	requireAuth(event);
 	const body = await event.request.json();
-	const { name, slug, nativeName, script, family, color, description } = body as {
+	const { name, slug, nativeName, script, family, color, description, pageSlug } = body as {
 		name: string;
 		slug: string;
 		nativeName?: string;
@@ -38,6 +38,7 @@ export const POST: RequestHandler = async (event) => {
 		family?: string;
 		color?: string;
 		description?: string;
+		pageSlug?: string;
 	};
 
 	if (!name?.trim() || !slug?.trim()) {
@@ -53,7 +54,8 @@ export const POST: RequestHandler = async (event) => {
 			script: script?.trim() || 'Latin',
 			family: family?.trim() || null,
 			color: color?.trim() || '#d97706',
-			description: description?.trim() || null
+			description: description?.trim() || null,
+			pageSlug: pageSlug?.trim() || null
 		})
 		.returning();
 

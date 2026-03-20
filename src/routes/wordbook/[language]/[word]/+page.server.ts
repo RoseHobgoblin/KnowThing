@@ -3,6 +3,7 @@ import { db } from '$lib/server/db/index.js';
 import { lexicon, languages } from '$lib/server/db/schema.js';
 import { eq, and, asc, sql } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
+import { getDirectRelations, computeCognates, getEtymologyChain } from '$lib/server/wordbook/etymology.js';
 
 export const load: PageServerLoad = async ({ params }) => {
 	const word = decodeURIComponent(params.word);
@@ -50,9 +51,18 @@ export const load: PageServerLoad = async ({ params }) => {
 		error(404, `No entry for "${word}" in ${lang.name}`);
 	}
 
+	// Load etymological relations for the first entry
+	const primaryId = entries[0].id;
+	const [direct, cognates, etymologyChain] = await Promise.all([
+		getDirectRelations(primaryId),
+		computeCognates(primaryId, lang.id),
+		getEtymologyChain(primaryId)
+	]);
+
 	return {
 		word,
 		language: lang,
-		entries
+		entries,
+		relations: { direct, cognates, etymologyChain }
 	};
 };

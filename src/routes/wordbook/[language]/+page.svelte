@@ -48,6 +48,12 @@
 		{#if data.language.description}
 			<p class="text-stone-600 leading-relaxed">{data.language.description}</p>
 		{/if}
+
+		{#if data.language.pageSlug}
+			<a href="/know/{data.language.pageSlug}" class="inline-block mt-2 text-sm text-amber-700 hover:text-amber-900 hover:underline">
+				Read the full article →
+			</a>
+		{/if}
 	</div>
 
 	<!-- Alphabet nav -->

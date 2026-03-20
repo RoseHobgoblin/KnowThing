@@ -33,13 +33,14 @@ export const GET: RequestHandler = async ({ params }) => {
 export const PUT: RequestHandler = async (event) => {
 	requireAuth(event);
 	const body = await event.request.json();
-	const { name, nativeName, script, family, color, description } = body as {
+	const { name, nativeName, script, family, color, description, pageSlug } = body as {
 		name?: string;
 		nativeName?: string;
 		script?: string;
 		family?: string;
 		color?: string;
 		description?: string;
+		pageSlug?: string;
 	};
 
 	const [updated] = await db
@@ -51,6 +52,7 @@ export const PUT: RequestHandler = async (event) => {
 			...(family !== undefined && { family: family?.trim() || null }),
 			...(color !== undefined && { color: color?.trim() || '#d97706' }),
 			...(description !== undefined && { description: description?.trim() || null }),
+			...(pageSlug !== undefined && { pageSlug: pageSlug?.trim() || null }),
 			updatedAt: new Date()
 		})
 		.where(eq(languages.slug, event.params.slug))

@@ -58,6 +58,20 @@
 			</div>
 		</div>
 
+		<!-- Wordbook link -->
+		{#if data.wordbookMatch}
+			<div class="px-4 md:px-6 pt-3 pb-0">
+				<a
+					href="/wordbook/{data.wordbookMatch.languageSlug}/{encodeURIComponent(data.wordbookMatch.word)}"
+					class="inline-flex items-center gap-1.5 text-xs text-amber-700 hover:text-amber-900 bg-amber-50 border border-amber-200 rounded-full px-3 py-1 transition-colors"
+				>
+					<span class="font-medium">Wordbook</span>
+					<span class="text-amber-500">·</span>
+					<span>See <em>{data.wordbookMatch.word}</em> in {data.wordbookMatch.languageName}</span>
+				</a>
+			</div>
+		{/if}
+
 		<!-- Article body -->
 		<div class="px-4 md:px-6 py-4 md:py-5">
 			<TableOfContents ast={data.ast} />

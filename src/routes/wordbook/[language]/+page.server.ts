@@ -16,6 +16,7 @@ export const load: PageServerLoad = async ({ params, url }) => {
 			family: languages.family,
 			color: languages.color,
 			description: languages.description,
+			pageSlug: languages.pageSlug,
 			wordCount: sql<number>`(SELECT COUNT(*) FROM lexicon WHERE language_id = ${languages.id})`.as('word_count')
 		})
 		.from(languages)
