@@ -12,6 +12,7 @@ services:
       UPLOAD_DIR: /app/uploads
       PORT: ${PORT:-3000}
       ORIGIN: ${ORIGIN:-http://localhost:3000}
+      BODY_SIZE_LIMIT: "15000000"
       NODE_ENV: production
     volumes:
       - uploads:/app/uploads
