@@ -1,11 +1,11 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.js';
 import { db } from '$lib/server/db/index.js';
-import { lexicon, languages } from '$lib/server/db/schema.js';
+import { lexicon, definitions, lexiconRevisions, languages } from '$lib/server/db/schema.js';
 import { requireAuth } from '$lib/server/auth.js';
-import { eq } from 'drizzle-orm';
+import { eq, asc } from 'drizzle-orm';
 
-/** GET /api/wordbook/:id */
+/** GET /api/wordbook/:id — single entry with all definitions */
 export const GET: RequestHandler = async ({ params }) => {
 	const id = parseInt(params.id);
 	if (isNaN(id)) return json({ error: 'Invalid ID' }, { status: 400 });
@@ -15,15 +15,10 @@ export const GET: RequestHandler = async ({ params }) => {
 			id: lexicon.id,
 			word: lexicon.word,
 			pronunciation: lexicon.pronunciation,
-			partOfSpeech: lexicon.partOfSpeech,
-			definition: lexicon.definition,
 			etymology: lexicon.etymology,
-			usageExample: lexicon.usageExample,
-			usageTranslation: lexicon.usageTranslation,
 			notes: lexicon.notes,
 			pageSlug: lexicon.pageSlug,
 			tags: lexicon.tags,
-			related: lexicon.related,
 			createdAt: lexicon.createdAt,
 			updatedAt: lexicon.updatedAt,
 			languageId: lexicon.languageId,
@@ -35,47 +30,49 @@ export const GET: RequestHandler = async ({ params }) => {
 		.innerJoin(languages, eq(lexicon.languageId, languages.id))
 		.where(eq(lexicon.id, id));
 
-	if (!entry) {
-		return json({ error: 'Entry not found' }, { status: 404 });
-	}
+	if (!entry) return json({ error: 'Entry not found' }, { status: 404 });
 
-	return json(entry);
+	const defs = await db
+		.select()
+		.from(definitions)
+		.where(eq(definitions.entryId, id))
+		.orderBy(asc(definitions.senseNumber));
+
+	return json({ ...entry, definitions: defs });
 };
 
-/** PUT /api/wordbook/:id */
+/** PUT /api/wordbook/:id — update headword fields only */
 export const PUT: RequestHandler = async (event) => {
-	requireAuth(event);
+	const user = requireAuth(event);
 	const id = parseInt(event.params.id);
 	if (isNaN(id)) return json({ error: 'Invalid ID' }, { status: 400 });
 
+	// Snapshot before changes
+	const [current] = await db.select().from(lexicon).where(eq(lexicon.id, id));
+	if (!current) return json({ error: 'Entry not found' }, { status: 404 });
+	const currentDefs = await db.select().from(definitions).where(eq(definitions.entryId, id)).orderBy(asc(definitions.senseNumber));
+	await db.insert(lexiconRevisions).values({
+		entryId: id,
+		snapshot: { ...current, definitions: currentDefs },
+		editSummary: 'Headword updated',
+		userId: user.id
+	});
+
 	const body = await event.request.json();
-	const {
-		word,
-		languageId,
-		pronunciation,
-		partOfSpeech,
-		definition,
-		etymology,
-		usageExample,
-		usageTranslation,
-		notes,
-		pageSlug,
-		tags,
-		related
-	} = body as {
+	const { word, languageId, pronunciation, etymology, notes, pageSlug, tags } = body as {
 		word?: string;
 		languageId?: number;
 		pronunciation?: string;
-		partOfSpeech?: string;
-		definition?: string;
 		etymology?: string;
-		usageExample?: string;
-		usageTranslation?: string;
 		notes?: string;
 		pageSlug?: string;
 		tags?: string[];
-		related?: string[];
 	};
+
+	// Normalize tags
+	const normalizedTags = tags
+		? tags.map(t => t.trim().toLowerCase()).filter((t, i, a) => t && a.indexOf(t) === i)
+		: undefined;
 
 	const [updated] = await db
 		.update(lexicon)
@@ -83,28 +80,19 @@ export const PUT: RequestHandler = async (event) => {
 			...(word && { word: word.trim() }),
 			...(languageId && { languageId }),
 			...(pronunciation !== undefined && { pronunciation: pronunciation?.trim() || null }),
-			...(partOfSpeech !== undefined && { partOfSpeech: partOfSpeech?.trim() || null }),
-			...(definition && { definition: definition.trim() }),
 			...(etymology !== undefined && { etymology: etymology?.trim() || null }),
-			...(usageExample !== undefined && { usageExample: usageExample?.trim() || null }),
-			...(usageTranslation !== undefined && { usageTranslation: usageTranslation?.trim() || null }),
 			...(notes !== undefined && { notes: notes?.trim() || null }),
 			...(pageSlug !== undefined && { pageSlug: pageSlug?.trim() || null }),
-			...(tags && { tags }),
-			...(related && { related }),
+			...(normalizedTags && { tags: normalizedTags }),
 			updatedAt: new Date()
 		})
 		.where(eq(lexicon.id, id))
 		.returning();
 
-	if (!updated) {
-		return json({ error: 'Entry not found' }, { status: 404 });
-	}
-
 	return json(updated);
 };
 
-/** DELETE /api/wordbook/:id */
+/** DELETE /api/wordbook/:id — delete entire entry */
 export const DELETE: RequestHandler = async (event) => {
 	const user = requireAuth(event);
 	if (user.role !== 'admin') {
@@ -115,10 +103,6 @@ export const DELETE: RequestHandler = async (event) => {
 	if (isNaN(id)) return json({ error: 'Invalid ID' }, { status: 400 });
 
 	const [deleted] = await db.delete(lexicon).where(eq(lexicon.id, id)).returning();
-
-	if (!deleted) {
-		return json({ error: 'Entry not found' }, { status: 404 });
-	}
-
+	if (!deleted) return json({ error: 'Entry not found' }, { status: 404 });
 	return json({ success: true });
 };

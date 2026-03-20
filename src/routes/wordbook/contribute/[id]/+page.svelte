@@ -6,10 +6,19 @@
 	let { data }: { data: PageData } = $props();
 
 	async function handleSubmit(formData: Record<string, unknown>) {
+		// Update headword
 		const res = await fetch(`/api/wordbook/${data.entry.id}`, {
 			method: 'PUT',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(formData)
+			body: JSON.stringify({
+				word: formData.word,
+				languageId: formData.languageId,
+				pronunciation: formData.pronunciation,
+				etymology: formData.etymology,
+				notes: formData.notes,
+				pageSlug: formData.pageSlug,
+				tags: formData.tags
+			})
 		});
 
 		if (!res.ok) {
@@ -17,9 +26,23 @@
 			throw new Error(err.error || 'Failed to update entry');
 		}
 
+		// Bulk replace definitions atomically
+		const defs = formData.defs as Array<{ partOfSpeech?: string; definition: string; usageExample?: string; usageTranslation?: string }>;
+		if (defs && defs.length > 0) {
+			const defRes = await fetch(`/api/wordbook/${data.entry.id}/definitions`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ defs })
+			});
+			if (!defRes.ok) {
+				const err = await defRes.json();
+				throw new Error(err.error || 'Failed to update definitions');
+			}
+		}
+
 		const lang = data.languages.find(l => l.id === formData.languageId);
 		if (lang) {
-			goto(`/wordbook/${lang.slug}/${encodeURIComponent(data.entry.word)}`);
+			goto(`/wordbook/${lang.slug}/${encodeURIComponent(String(formData.word))}`);
 		} else {
 			goto('/wordbook');
 		}
@@ -43,15 +66,17 @@
 				word: data.entry.word,
 				languageId: data.entry.languageId,
 				pronunciation: data.entry.pronunciation || '',
-				partOfSpeech: data.entry.partOfSpeech || '',
-				definition: data.entry.definition,
 				etymology: data.entry.etymology || '',
-				usageExample: data.entry.usageExample || '',
-				usageTranslation: data.entry.usageTranslation || '',
 				notes: data.entry.notes || '',
 				pageSlug: data.entry.pageSlug || '',
 				tags: data.entry.tags || []
 			}}
+			initialDefinitions={data.definitions.map(d => ({
+				partOfSpeech: d.partOfSpeech,
+				definition: d.definition,
+				usageExample: d.usageExample,
+				usageTranslation: d.usageTranslation
+			}))}
 			onsubmit={handleSubmit}
 			submitLabel="Save Changes"
 		/>

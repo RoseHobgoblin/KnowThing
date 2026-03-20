@@ -1,11 +1,11 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.js';
 import { db } from '$lib/server/db/index.js';
-import { lexicon, lexiconRelations, languages } from '$lib/server/db/schema.js';
+import { lexicon, lexiconRelations, definitions, languages } from '$lib/server/db/schema.js';
 import { requireAuth } from '$lib/server/auth.js';
-import { eq, sql, asc, desc, and, ilike } from 'drizzle-orm';
+import { eq, sql, asc, desc, and } from 'drizzle-orm';
 
-/** GET /api/wordbook — search and browse lexicon entries */
+/** GET /api/wordbook — search and browse */
 export const GET: RequestHandler = async ({ url }) => {
 	const q = url.searchParams.get('q')?.trim();
 	const language = url.searchParams.get('language');
@@ -20,38 +20,29 @@ export const GET: RequestHandler = async ({ url }) => {
 	if (language) {
 		conditions.push(eq(languages.slug, language));
 	}
-
-	if (pos) {
-		conditions.push(eq(lexicon.partOfSpeech, pos));
-	}
-
 	if (letter) {
 		conditions.push(sql`LOWER(LEFT(${lexicon.word}, 1)) = ${letter.toLowerCase()}`);
 	}
-
 	if (tag) {
 		conditions.push(sql`${tag} = ANY(${lexicon.tags})`);
 	}
+	if (pos) {
+		conditions.push(sql`EXISTS (SELECT 1 FROM definitions d WHERE d.entry_id = ${lexicon.id} AND d.part_of_speech = ${pos})`);
+	}
 
-	// If there's a search query, use tiered matching
 	if (q) {
 		const results = await db
 			.select({
 				id: lexicon.id,
 				word: lexicon.word,
 				pronunciation: lexicon.pronunciation,
-				partOfSpeech: lexicon.partOfSpeech,
-				definition: lexicon.definition,
-				etymology: lexicon.etymology,
-				usageExample: lexicon.usageExample,
-				usageTranslation: lexicon.usageTranslation,
-				notes: lexicon.notes,
-				pageSlug: lexicon.pageSlug,
 				tags: lexicon.tags,
-				related: lexicon.related,
 				languageName: languages.name,
 				languageSlug: languages.slug,
 				languageColor: languages.color,
+				// First definition for preview
+				definition: sql<string>`(SELECT definition FROM definitions WHERE entry_id = ${lexicon.id} ORDER BY sense_number LIMIT 1)`.as('definition'),
+				partOfSpeech: sql<string>`(SELECT part_of_speech FROM definitions WHERE entry_id = ${lexicon.id} ORDER BY sense_number LIMIT 1)`.as('part_of_speech'),
 				relevance: sql<number>`
 					CASE
 						WHEN LOWER(${lexicon.word}) = LOWER(${q}) THEN 4
@@ -69,9 +60,10 @@ export const GET: RequestHandler = async ({ url }) => {
 						LOWER(${lexicon.word}) = LOWER(${q})
 						OR LOWER(${lexicon.word}) LIKE LOWER(${q + '%'})
 						OR ${lexicon.word} % ${q}
-						OR search_vector @@ plainto_tsquery('english', ${q})
+						OR lexicon.search_vector @@ plainto_tsquery('english', ${q})
+						OR EXISTS (SELECT 1 FROM definitions d WHERE d.entry_id = ${lexicon.id} AND d.search_vector @@ plainto_tsquery('english', ${q}))
 					)`,
-					...conditions
+					...(conditions.length > 0 ? conditions : [])
 				)
 			)
 			.orderBy(sql`relevance DESC`, asc(lexicon.word))
@@ -81,36 +73,30 @@ export const GET: RequestHandler = async ({ url }) => {
 		return json(results);
 	}
 
-	// No search query — browse mode
+	// Browse mode
 	const results = await db
 		.select({
 			id: lexicon.id,
 			word: lexicon.word,
 			pronunciation: lexicon.pronunciation,
-			partOfSpeech: lexicon.partOfSpeech,
-			definition: lexicon.definition,
-			etymology: lexicon.etymology,
-			usageExample: lexicon.usageExample,
-			usageTranslation: lexicon.usageTranslation,
-			notes: lexicon.notes,
-			pageSlug: lexicon.pageSlug,
 			tags: lexicon.tags,
-			related: lexicon.related,
 			languageName: languages.name,
 			languageSlug: languages.slug,
-			languageColor: languages.color
+			languageColor: languages.color,
+			definition: sql<string>`(SELECT definition FROM definitions WHERE entry_id = ${lexicon.id} ORDER BY sense_number LIMIT 1)`.as('definition'),
+			partOfSpeech: sql<string>`(SELECT part_of_speech FROM definitions WHERE entry_id = ${lexicon.id} ORDER BY sense_number LIMIT 1)`.as('part_of_speech')
 		})
 		.from(lexicon)
 		.innerJoin(languages, eq(lexicon.languageId, languages.id))
 		.where(conditions.length > 0 ? and(...conditions) : undefined)
-		.orderBy(asc(lexicon.word), asc(lexicon.partOfSpeech))
+		.orderBy(asc(lexicon.word))
 		.limit(limit)
 		.offset(offset);
 
 	return json(results);
 };
 
-/** POST /api/wordbook — create a lexicon entry */
+/** POST /api/wordbook — create entry with definitions */
 export const POST: RequestHandler = async (event) => {
 	requireAuth(event);
 	const body = await event.request.json();
@@ -118,32 +104,57 @@ export const POST: RequestHandler = async (event) => {
 		word,
 		languageId,
 		pronunciation,
-		partOfSpeech,
-		definition,
 		etymology,
-		usageExample,
-		usageTranslation,
 		notes,
 		pageSlug,
 		tags,
+		defs,
 		relations
 	} = body as {
 		word: string;
 		languageId: number;
 		pronunciation?: string;
-		partOfSpeech?: string;
-		definition: string;
 		etymology?: string;
-		usageExample?: string;
-		usageTranslation?: string;
 		notes?: string;
 		pageSlug?: string;
 		tags?: string[];
+		defs?: Array<{ partOfSpeech?: string; definition: string; usageExample?: string; usageTranslation?: string }>;
 		relations?: Array<{ targetId: number; relationType: string }>;
 	};
 
-	if (!word?.trim() || !definition?.trim() || !languageId) {
-		return json({ error: 'Word, definition, and language are required' }, { status: 400 });
+	if (!word?.trim() || !languageId) {
+		return json({ error: 'Word and language are required' }, { status: 400 });
+	}
+
+	const defsList: Array<{ partOfSpeech?: string; definition: string; usageExample?: string; usageTranslation?: string }> =
+		defs && defs.length > 0 ? defs : [{ definition: body.definition || '' }];
+	if (!defsList[0]?.definition?.trim()) {
+		return json({ error: 'At least one definition is required' }, { status: 400 });
+	}
+
+	// Normalize tags
+	const normalizedTags = (tags || []).map((t: string) => t.trim().toLowerCase()).filter((t: string, i: number, a: string[]) => t && a.indexOf(t) === i);
+
+	// Check for existing word in same language — auto-assign homograph number
+	const existing = await db
+		.select({ id: lexicon.id, homographNumber: lexicon.homographNumber, word: lexicon.word })
+		.from(lexicon)
+		.innerJoin(languages, eq(lexicon.languageId, languages.id))
+		.where(and(sql`LOWER(${lexicon.word}) = LOWER(${word.trim()})`, eq(lexicon.languageId, languageId)));
+
+	let homographNumber = 1;
+	if (existing.length > 0) {
+		// If there's already an entry, check if user intended a homograph
+		const isHomograph = body.isHomograph === true;
+		if (!isHomograph) {
+			const lang = await db.select({ name: languages.name, slug: languages.slug }).from(languages).where(eq(languages.id, languageId));
+			return json({
+				error: `"${word.trim()}" already exists in ${lang[0]?.name || 'this language'}. Add a definition to the existing entry, or set isHomograph: true to create a separate homograph.`,
+				existingId: existing[0].id,
+				existingSlug: lang[0]?.slug
+			}, { status: 409 });
+		}
+		homographNumber = Math.max(...existing.map(e => e.homographNumber)) + 1;
 	}
 
 	const [entry] = await db
@@ -152,17 +163,31 @@ export const POST: RequestHandler = async (event) => {
 			word: word.trim(),
 			languageId,
 			pronunciation: pronunciation?.trim() || null,
-			partOfSpeech: partOfSpeech?.trim() || null,
-			definition: definition.trim(),
 			etymology: etymology?.trim() || null,
-			usageExample: usageExample?.trim() || null,
-			usageTranslation: usageTranslation?.trim() || null,
 			notes: notes?.trim() || null,
 			pageSlug: pageSlug?.trim() || null,
-			tags: tags || [],
-			related: []
+			tags: normalizedTags,
+			homographNumber
 		})
 		.returning();
+
+	// Insert definitions
+	for (let i = 0; i < defsList.length; i++) {
+		const d = defsList[i];
+		if (d.definition?.trim()) {
+			await db.insert(definitions).values({
+				entryId: entry.id,
+				senseNumber: i + 1,
+				partOfSpeech: d.partOfSpeech?.trim() || null,
+				definition: d.definition.trim(),
+				usageExample: d.usageExample?.trim() || null,
+				usageTranslation: d.usageTranslation?.trim() || null
+			});
+		}
+	}
+
+	// Refresh search vector (definitions now exist)
+	await db.update(lexicon).set({ updatedAt: new Date() }).where(eq(lexicon.id, entry.id));
 
 	// Insert etymology relations if provided
 	if (relations && relations.length > 0) {

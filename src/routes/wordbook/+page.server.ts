@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types.js';
 import { db } from '$lib/server/db/index.js';
-import { languages, lexicon } from '$lib/server/db/schema.js';
+import { languages, lexicon, definitions } from '$lib/server/db/schema.js';
 import { asc, desc, eq, sql } from 'drizzle-orm';
 
 export const load: PageServerLoad = async () => {
@@ -15,19 +15,21 @@ export const load: PageServerLoad = async () => {
 			family: languages.family,
 			color: languages.color,
 			description: languages.description,
-			wordCount: sql<number>`(SELECT COUNT(*) FROM lexicon WHERE language_id = ${languages.id})`.as('word_count')
+			wordCount: sql<number>`COUNT(${lexicon.id})::int`.as('word_count')
 		})
 		.from(languages)
+		.leftJoin(lexicon, eq(lexicon.languageId, languages.id))
+		.groupBy(languages.id)
 		.orderBy(asc(languages.name));
 
-	// Recently added words
+	// Recently added words with first definition
 	const recent = await db
 		.select({
 			id: lexicon.id,
 			word: lexicon.word,
 			pronunciation: lexicon.pronunciation,
-			partOfSpeech: lexicon.partOfSpeech,
-			definition: lexicon.definition,
+			definition: sql<string>`(SELECT definition FROM definitions WHERE entry_id = ${lexicon.id} ORDER BY sense_number LIMIT 1)`.as('definition'),
+			partOfSpeech: sql<string>`(SELECT part_of_speech FROM definitions WHERE entry_id = ${lexicon.id} ORDER BY sense_number LIMIT 1)`.as('part_of_speech'),
 			languageName: languages.name,
 			languageSlug: languages.slug,
 			languageColor: languages.color
@@ -38,7 +40,7 @@ export const load: PageServerLoad = async () => {
 		.limit(10);
 
 	// Total word count
-	const [{ count }] = await db.select({ count: sql<number>`COUNT(*)` }).from(lexicon);
+	const [{ total }] = await db.select({ total: sql<number>`COUNT(*)::int` }).from(lexicon);
 
-	return { languages: langs, recent, totalWords: Number(count) };
+	return { languages: langs, recent, totalWords: Number(total) };
 };

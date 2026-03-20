@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types.js';
 import { db } from '$lib/server/db/index.js';
-import { lexicon, languages } from '$lib/server/db/schema.js';
+import { lexicon, definitions, languages } from '$lib/server/db/schema.js';
 import { eq, and, asc, sql } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getDirectRelations, computeCognates, getEtymologyChain } from '$lib/server/wordbook/etymology.js';
@@ -8,61 +8,53 @@ import { getDirectRelations, computeCognates, getEtymologyChain } from '$lib/ser
 export const load: PageServerLoad = async ({ params }) => {
 	const word = decodeURIComponent(params.word);
 
-	// Get language
 	const [lang] = await db
 		.select()
 		.from(languages)
 		.where(eq(languages.slug, params.language));
 
-	if (!lang) {
-		error(404, 'Language not found');
-	}
+	if (!lang) error(404, 'Language not found');
 
-	// Get all senses of this word
-	const entries = await db
+	// Get the headword entry
+	const [entry] = await db
 		.select({
 			id: lexicon.id,
 			word: lexicon.word,
 			pronunciation: lexicon.pronunciation,
-			partOfSpeech: lexicon.partOfSpeech,
-			definition: lexicon.definition,
 			etymology: lexicon.etymology,
-			usageExample: lexicon.usageExample,
-			usageTranslation: lexicon.usageTranslation,
 			notes: lexicon.notes,
 			pageSlug: lexicon.pageSlug,
 			tags: lexicon.tags,
-			related: lexicon.related,
 			createdAt: lexicon.createdAt,
-			updatedAt: lexicon.updatedAt,
-			languageName: languages.name,
-			languageSlug: languages.slug,
-			languageColor: languages.color
+			updatedAt: lexicon.updatedAt
 		})
 		.from(lexicon)
-		.innerJoin(languages, eq(lexicon.languageId, languages.id))
 		.where(and(
 			sql`LOWER(${lexicon.word}) = LOWER(${word})`,
 			eq(lexicon.languageId, lang.id)
-		))
-		.orderBy(asc(lexicon.partOfSpeech));
+		));
 
-	if (entries.length === 0) {
-		error(404, `No entry for "${word}" in ${lang.name}`);
-	}
+	if (!entry) error(404, `No entry for "${word}" in ${lang.name}`);
 
-	// Load etymological relations for the first entry
-	const primaryId = entries[0].id;
+	// Get all definitions
+	const defs = await db
+		.select()
+		.from(definitions)
+		.where(eq(definitions.entryId, entry.id))
+		.orderBy(asc(definitions.senseNumber));
+
+	// Load etymological relations
 	const [direct, cognates, etymologyChain] = await Promise.all([
-		getDirectRelations(primaryId),
-		computeCognates(primaryId, lang.id),
-		getEtymologyChain(primaryId)
+		getDirectRelations(entry.id),
+		computeCognates(entry.id, lang.id),
+		getEtymologyChain(entry.id)
 	]);
 
 	return {
-		word,
+		word: entry.word,
 		language: lang,
-		entries,
+		entry,
+		definitions: defs,
 		relations: { direct, cognates, etymologyChain }
 	};
 };

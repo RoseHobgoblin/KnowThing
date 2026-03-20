@@ -59,7 +59,7 @@
 			<h2 class="text-lg font-semibold text-stone-800 mb-3">Recently Added</h2>
 			<div class="bg-white rounded-lg border border-stone-200 divide-y divide-stone-100">
 				{#each data.recent as entry}
-					<WordEntry {entry} compact />
+					<WordEntry {entry} />
 				{/each}
 			</div>
 		</section>

@@ -26,11 +26,14 @@
 <div class="space-y-6">
 	<!-- Language header -->
 	<div>
-		<div class="flex items-baseline gap-3 mb-1">
-			<h1 class="text-3xl font-bold text-stone-900">{data.language.name}</h1>
-			{#if data.language.nativeName}
-				<span class="text-lg text-stone-400 italic">{data.language.nativeName}</span>
-			{/if}
+		<div class="flex items-start justify-between mb-1">
+			<div class="flex items-baseline gap-3">
+				<h1 class="text-3xl font-bold text-stone-900">{data.language.name}</h1>
+				{#if data.language.nativeName}
+					<span class="text-lg text-stone-400 italic">{data.language.nativeName}</span>
+				{/if}
+			</div>
+			<a href="/wordbook/contribute/language/{data.language.slug}" class="text-sm text-amber-700 hover:text-amber-900 hover:underline shrink-0">Edit language</a>
 		</div>
 
 		<div class="flex items-center gap-3 text-sm text-stone-500 mb-3">
@@ -72,7 +75,7 @@
 				<h2 class="text-xl font-bold text-stone-300 mb-2 pl-1" id="letter-{letter}">{letter}</h2>
 				<div class="bg-white rounded-lg border border-stone-200 divide-y divide-stone-100">
 					{#each entries as entry}
-						<WordEntry {entry} showLanguage={false} compact />
+						<WordEntry {entry} showLanguage={false} />
 					{/each}
 				</div>
 			</section>

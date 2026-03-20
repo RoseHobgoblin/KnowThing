@@ -47,7 +47,7 @@
 			<div class="text-sm text-stone-500 mb-2">{data.results.length} result{data.results.length !== 1 ? 's' : ''}</div>
 			<div class="bg-white rounded-lg border border-stone-200 divide-y divide-stone-100">
 				{#each data.results as entry}
-					<WordEntry {entry} compact />
+					<WordEntry {entry} />
 				{/each}
 			</div>
 		{:else}

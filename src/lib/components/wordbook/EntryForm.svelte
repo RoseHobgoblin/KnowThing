@@ -1,7 +1,10 @@
 <script lang="ts">
+	import { PARTS_OF_SPEECH } from './constants.js';
+
 	let {
 		languages = [],
 		initial = {},
+		initialDefinitions = [],
 		submitLabel = 'Save Entry',
 		onsubmit
 	}: {
@@ -10,15 +13,17 @@
 			word?: string;
 			languageId?: number;
 			pronunciation?: string;
-			partOfSpeech?: string;
-			definition?: string;
 			etymology?: string;
-			usageExample?: string;
-			usageTranslation?: string;
 			notes?: string;
 			pageSlug?: string;
 			tags?: string[];
 		};
+		initialDefinitions?: Array<{
+			partOfSpeech?: string | null;
+			definition?: string;
+			usageExample?: string | null;
+			usageTranslation?: string | null;
+		}>;
 		submitLabel?: string;
 		onsubmit: (data: Record<string, unknown>) => Promise<void>;
 	} = $props();
@@ -26,34 +31,49 @@
 	let word = $state(initial.word || '');
 	let languageId = $state(initial.languageId || 0);
 	let pronunciation = $state(initial.pronunciation || '');
-	let partOfSpeech = $state(initial.partOfSpeech || '');
-	let definition = $state(initial.definition || '');
 	let etymology = $state(initial.etymology || '');
-	let usageExample = $state(initial.usageExample || '');
-	let usageTranslation = $state(initial.usageTranslation || '');
 	let notes = $state(initial.notes || '');
 	let pageSlug = $state(initial.pageSlug || '');
 	let tagsInput = $state(initial.tags?.join(', ') || '');
 	let submitting = $state(false);
 	let error = $state('');
 
+	// Definitions
+	type DefRow = { partOfSpeech: string; definition: string; usageExample: string; usageTranslation: string };
+	let defs = $state<DefRow[]>(
+		initialDefinitions.length > 0
+			? initialDefinitions.map(d => ({
+				partOfSpeech: d.partOfSpeech || '',
+				definition: d.definition || '',
+				usageExample: d.usageExample || '',
+				usageTranslation: d.usageTranslation || ''
+			}))
+			: [{ partOfSpeech: '', definition: '', usageExample: '', usageTranslation: '' }]
+	);
+
+	function addDefinition() {
+		defs = [...defs, { partOfSpeech: '', definition: '', usageExample: '', usageTranslation: '' }];
+	}
+
+	function removeDefinition(index: number) {
+		if (defs.length <= 1) return;
+		defs = defs.filter((_, i) => i !== index);
+	}
+
 	// Quick etymology relations
-	type EtymRow = { relationType: string; targetId: number | null; targetDisplay: string; query: string; results: Array<{ id: number; word: string; definition: string; languageName: string; languageSlug: string }>; showDropdown: boolean };
+	type EtymRow = { relationType: string; targetId: number | null; query: string; results: Array<{ id: number; word: string; definition: string; languageName: string; languageSlug: string }>; showDropdown: boolean };
 	let etymRows = $state<EtymRow[]>([]);
 	let searchTimeouts = new Map<number, ReturnType<typeof setTimeout>>();
 
 	function addEtymRow() {
-		etymRows = [...etymRows, { relationType: 'derived_from', targetId: null, targetDisplay: '', query: '', results: [], showDropdown: false }];
+		etymRows = [...etymRows, { relationType: 'derived_from', targetId: null, query: '', results: [], showDropdown: false }];
 	}
-
 	function removeEtymRow(index: number) {
 		etymRows = etymRows.filter((_, i) => i !== index);
 	}
-
 	function handleEtymSearch(index: number) {
 		const row = etymRows[index];
 		row.targetId = null;
-		row.targetDisplay = '';
 		const existing = searchTimeouts.get(index);
 		if (existing) clearTimeout(existing);
 		if (row.query.trim().length < 2) { row.results = []; row.showDropdown = false; return; }
@@ -62,25 +82,23 @@
 			if (res.ok) { row.results = await res.json(); row.showDropdown = row.results.length > 0; }
 		}, 300));
 	}
-
 	function selectEtymTarget(index: number, r: EtymRow['results'][0]) {
 		const row = etymRows[index];
 		row.targetId = r.id;
-		row.targetDisplay = `${r.word} (${r.languageName})`;
-		row.query = row.targetDisplay;
+		row.query = `${r.word} (${r.languageName})`;
 		row.showDropdown = false;
 	}
 
-	const partsOfSpeech = [
-		'noun', 'verb', 'adjective', 'adverb', 'pronoun',
-		'preposition', 'conjunction', 'interjection', 'particle',
-		'determiner', 'prefix', 'suffix', 'proper noun'
-	];
+	const partsOfSpeech = PARTS_OF_SPEECH;
 
 	async function handleSubmit(e: SubmitEvent) {
 		e.preventDefault();
-		if (!word.trim() || !definition.trim() || !languageId) {
-			error = 'Word, language, and definition are required';
+		if (!word.trim() || !languageId) {
+			error = 'Word and language are required';
+			return;
+		}
+		if (!defs.some(d => d.definition.trim())) {
+			error = 'At least one definition is required';
 			return;
 		}
 
@@ -91,14 +109,16 @@
 				word: word.trim(),
 				languageId,
 				pronunciation: pronunciation.trim() || undefined,
-				partOfSpeech: partOfSpeech || undefined,
-				definition: definition.trim(),
 				etymology: etymology.trim() || undefined,
-				usageExample: usageExample.trim() || undefined,
-				usageTranslation: usageTranslation.trim() || undefined,
 				notes: notes.trim() || undefined,
 				pageSlug: pageSlug.trim() || undefined,
 				tags: tagsInput ? tagsInput.split(',').map(t => t.trim()).filter(Boolean) : [],
+				defs: defs.filter(d => d.definition.trim()).map(d => ({
+					partOfSpeech: d.partOfSpeech || undefined,
+					definition: d.definition.trim(),
+					usageExample: d.usageExample.trim() || undefined,
+					usageTranslation: d.usageTranslation.trim() || undefined
+				})),
 				relations: etymRows
 					.filter(r => r.targetId)
 					.map(r => ({ targetId: r.targetId, relationType: r.relationType }))
@@ -114,19 +134,17 @@
 	const labelClass = 'block text-sm font-medium text-stone-700 mb-1';
 </script>
 
-<form onsubmit={handleSubmit} class="space-y-4">
+<form onsubmit={handleSubmit} class="space-y-5">
 	{#if error}
 		<div class="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{error}</div>
 	{/if}
 
+	<!-- Headword fields -->
 	<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-		<!-- Word -->
 		<div>
 			<label for="word" class={labelClass}>Word <span class="text-red-500">*</span></label>
-			<input id="word" type="text" bind:value={word} required class={inputClass} placeholder="txanpon" />
+			<input id="word" type="text" bind:value={word} required class={inputClass} placeholder="kıraŧar" />
 		</div>
-
-		<!-- Language -->
 		<div>
 			<label for="language" class={labelClass}>Language <span class="text-red-500">*</span></label>
 			<select id="language" bind:value={languageId} required class={inputClass}>
@@ -136,75 +154,79 @@
 				{/each}
 			</select>
 		</div>
-
-		<!-- Pronunciation -->
 		<div>
 			<label for="pronunciation" class={labelClass}>Pronunciation (IPA)</label>
-			<input id="pronunciation" type="text" bind:value={pronunciation} class={inputClass} placeholder="/tʃan.pon/" />
+			<input id="pronunciation" type="text" bind:value={pronunciation} class={inputClass} placeholder="/kɪ.ra.θar/" />
 		</div>
-
-		<!-- Part of Speech -->
-		<div>
-			<label for="pos" class={labelClass}>Part of Speech</label>
-			<select id="pos" bind:value={partOfSpeech} class={inputClass}>
-				<option value="">—</option>
-				{#each partsOfSpeech as pos}
-					<option value={pos}>{pos}</option>
-				{/each}
-			</select>
-		</div>
-	</div>
-
-	<!-- Definition -->
-	<div>
-		<label for="definition" class={labelClass}>Definition <span class="text-red-500">*</span></label>
-		<textarea id="definition" bind:value={definition} required rows={3} class={inputClass} placeholder="A unit of currency used in..."></textarea>
-	</div>
-
-	<!-- Usage -->
-	<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-		<div>
-			<label for="usage" class={labelClass}>Usage Example</label>
-			<input id="usage" type="text" bind:value={usageExample} class={inputClass} placeholder="Sentence in the language" />
-		</div>
-		<div>
-			<label for="translation" class={labelClass}>Translation</label>
-			<input id="translation" type="text" bind:value={usageTranslation} class={inputClass} placeholder="English translation" />
-		</div>
-	</div>
-
-	<!-- Tags & Wiki link -->
-	<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 		<div>
 			<label for="tags" class={labelClass}>Tags <span class="text-xs text-stone-400">(comma-separated)</span></label>
-			<input id="tags" type="text" bind:value={tagsInput} class={inputClass} placeholder="economics, currency, daily life" />
+			<input id="tags" type="text" bind:value={tagsInput} class={inputClass} placeholder="religion, astronomy" />
+		</div>
+	</div>
+
+	<!-- Definitions -->
+	<div>
+		<div class="flex items-center justify-between mb-2">
+			<label class={labelClass}>Definitions <span class="text-red-500">*</span></label>
+			<button type="button" onclick={addDefinition} class="text-xs text-amber-700 hover:text-amber-900 hover:underline">+ Add definition</button>
+		</div>
+
+		{#each defs as def, i}
+			<div class="border border-stone-200 rounded-lg p-3 mb-3 bg-stone-50/50 {defs.length > 1 ? 'relative' : ''}">
+				{#if defs.length > 1}
+					<div class="flex items-center justify-between mb-2">
+						<span class="text-xs font-medium text-stone-400">Definition {i + 1}</span>
+						<button type="button" onclick={() => removeDefinition(i)} class="text-xs text-red-400 hover:text-red-600">Remove</button>
+					</div>
+				{/if}
+				<div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-2">
+					<div>
+						<select bind:value={def.partOfSpeech} class="w-full px-2 py-1.5 border border-stone-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400">
+							<option value="">Part of speech</option>
+							{#each partsOfSpeech as pos}
+								<option value={pos}>{pos}</option>
+							{/each}
+						</select>
+					</div>
+					<div class="md:col-span-3">
+						<input type="text" bind:value={def.definition} placeholder="Definition text..." required={i === 0} class={inputClass} />
+					</div>
+				</div>
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+					<input type="text" bind:value={def.usageExample} placeholder="Usage example (in the language)" class={inputClass} />
+					<input type="text" bind:value={def.usageTranslation} placeholder="Translation" class={inputClass} />
+				</div>
+			</div>
+		{/each}
+	</div>
+
+	<!-- Etymology, wiki link, notes -->
+	<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+		<div>
+			<label for="etymology" class={labelClass}>Etymology Notes</label>
+			<input id="etymology" type="text" bind:value={etymology} class={inputClass} placeholder="Narrative etymology notes..." />
 		</div>
 		<div>
 			<label for="pageSlug" class={labelClass}>Wiki Article <span class="text-xs text-stone-400">(slug)</span></label>
-			<input id="pageSlug" type="text" bind:value={pageSlug} class={inputClass} placeholder="oncheran_economy" />
+			<input id="pageSlug" type="text" bind:value={pageSlug} class={inputClass} placeholder="kıraŧar" />
 		</div>
 	</div>
 
-	<!-- Etymology notes & Notes -->
-	<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-		<div>
-			<label for="etymology" class={labelClass}>Etymology Notes <span class="text-xs text-stone-400">(narrative)</span></label>
-			<input id="etymology" type="text" bind:value={etymology} class={inputClass} placeholder="Origin disputed, possibly pre-Mirish substrate" />
-		</div>
+	{#if notes !== undefined}
 		<div>
 			<label for="notes" class={labelClass}>Editorial Notes</label>
 			<input id="notes" type="text" bind:value={notes} class={inputClass} placeholder="Needs verification..." />
 		</div>
-	</div>
+	{/if}
 
-	<!-- Quick Etymology -->
+	<!-- Quick Etymology Links -->
 	<div>
 		<div class="flex items-center justify-between mb-2">
 			<label class={labelClass}>Etymology Links</label>
 			<button type="button" onclick={addEtymRow} class="text-xs text-amber-700 hover:text-amber-900 hover:underline">+ Add source word</button>
 		</div>
 		{#if etymRows.length === 0}
-			<p class="text-xs text-stone-400">No etymological links. Click "+ Add source word" to link derivations, loans, or compounds.</p>
+			<p class="text-xs text-stone-400">Click "+ Add source word" to link derivations, loans, or compounds. You can also add these on the word's page later.</p>
 		{/if}
 		{#each etymRows as row, i}
 			<div class="flex gap-2 items-start mb-2">
@@ -240,11 +262,7 @@
 	</div>
 
 	<div class="pt-2">
-		<button
-			type="submit"
-			disabled={submitting}
-			class="px-6 py-2.5 bg-amber-600 text-white rounded-lg font-medium hover:bg-amber-700 disabled:opacity-50 transition-colors"
-		>
+		<button type="submit" disabled={submitting} class="px-6 py-2.5 bg-amber-600 text-white rounded-lg font-medium hover:bg-amber-700 disabled:opacity-50 transition-colors">
 			{submitting ? 'Saving...' : submitLabel}
 		</button>
 	</div>

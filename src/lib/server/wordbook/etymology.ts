@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db/index.js';
 import { lexicon, lexiconRelations, languages } from '$lib/server/db/schema.js';
-import { eq, sql, and, inArray } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -49,22 +49,24 @@ export interface EtymologyStep {
 	definition: string;
 	languageName: string;
 	languageSlug: string;
-	relation: string | null; // null for the root
+	relation: string | null;
 }
+
+// Helper: subquery for first definition of a lexicon entry
+const firstDefSql = (entryRef: any) => sql<string>`(SELECT definition FROM definitions WHERE entry_id = ${entryRef} ORDER BY sense_number LIMIT 1)`;
+const firstPosSql = (entryRef: any) => sql<string>`(SELECT part_of_speech FROM definitions WHERE entry_id = ${entryRef} ORDER BY sense_number LIMIT 1)`;
 
 // ── Direct Relations ────────────────────────────────────────────────
 
-/** Get all direct relations for an entry (both directions) */
 export async function getDirectRelations(entryId: number): Promise<DirectRelations> {
-	// Relations where this entry is the source (this word comes FROM target)
 	const outgoing = await db
 		.select({
 			id: lexicon.id,
 			relationId: lexiconRelations.id,
 			word: lexicon.word,
-			definition: lexicon.definition,
+			definition: firstDefSql(lexicon.id).as('definition'),
 			pronunciation: lexicon.pronunciation,
-			partOfSpeech: lexicon.partOfSpeech,
+			partOfSpeech: firstPosSql(lexicon.id).as('part_of_speech'),
 			languageName: languages.name,
 			languageSlug: languages.slug,
 			languageFamily: languages.family,
@@ -77,15 +79,14 @@ export async function getDirectRelations(entryId: number): Promise<DirectRelatio
 		.innerJoin(languages, eq(lexicon.languageId, languages.id))
 		.where(eq(lexiconRelations.sourceId, entryId));
 
-	// Relations where this entry is the target (other words come FROM this)
 	const incoming = await db
 		.select({
 			id: lexicon.id,
 			relationId: lexiconRelations.id,
 			word: lexicon.word,
-			definition: lexicon.definition,
+			definition: firstDefSql(lexicon.id).as('definition'),
 			pronunciation: lexicon.pronunciation,
-			partOfSpeech: lexicon.partOfSpeech,
+			partOfSpeech: firstPosSql(lexicon.id).as('part_of_speech'),
 			languageName: languages.name,
 			languageSlug: languages.slug,
 			languageFamily: languages.family,
@@ -102,7 +103,7 @@ export async function getDirectRelations(entryId: number): Promise<DirectRelatio
 		id: r.id,
 		relationId: r.relationId,
 		word: r.word,
-		definition: r.definition,
+		definition: r.definition || '',
 		pronunciation: r.pronunciation,
 		partOfSpeech: r.partOfSpeech,
 		languageName: r.languageName,
@@ -113,11 +114,9 @@ export async function getDirectRelations(entryId: number): Promise<DirectRelatio
 	});
 
 	return {
-		// Outgoing: this word's sources
 		derivedFrom: outgoing.filter((r) => r.relationType === 'derived_from').map(toRelated),
 		loanFrom: outgoing.filter((r) => r.relationType === 'loan_from').map(toRelated),
 		compoundOf: outgoing.filter((r) => r.relationType === 'compound_of').map(toRelated),
-		// Incoming: words derived from this
 		derivedWords: incoming.filter((r) => r.relationType === 'derived_from').map(toRelated),
 		loanedTo: incoming.filter((r) => r.relationType === 'loan_from').map(toRelated),
 		compoundsUsing: incoming.filter((r) => r.relationType === 'compound_of').map(toRelated)
@@ -126,24 +125,20 @@ export async function getDirectRelations(entryId: number): Promise<DirectRelatio
 
 // ── Ancestry / Root Finding ─────────────────────────────────────────
 
-/** Find root ancestor(s) by walking up derived_from/loan_from chains */
 export async function findRoots(entryId: number): Promise<number[]> {
 	const result = await db.execute(sql`
 		WITH RECURSIVE ancestors AS (
-			-- Start: direct parents of the entry
 			SELECT target_id AS id, 1 AS depth
 			FROM lexicon_relations
 			WHERE source_id = ${entryId}
 			  AND relation_type IN ('derived_from', 'loan_from')
 			UNION ALL
-			-- Recurse: parents of parents
 			SELECT lr.target_id, a.depth + 1
 			FROM ancestors a
 			JOIN lexicon_relations lr ON lr.source_id = a.id
 			WHERE lr.relation_type IN ('derived_from', 'loan_from')
 			  AND a.depth < 20
 		)
-		-- Roots are ancestors that have no parents themselves
 		SELECT DISTINCT a.id FROM ancestors a
 		WHERE NOT EXISTS (
 			SELECT 1 FROM lexicon_relations lr2
@@ -153,19 +148,16 @@ export async function findRoots(entryId: number): Promise<number[]> {
 	`);
 
 	const ids = (result as any[]).map((r: any) => r.id as number);
-
-	// If no ancestors found, this entry itself is the root
 	if (ids.length === 0) return [entryId];
 	return ids;
 }
 
-/** Get the full etymology chain from root to this entry */
 export async function getEtymologyChain(entryId: number): Promise<EtymologyStep[]> {
 	const result = await db.execute(sql`
 		WITH RECURSIVE chain AS (
-			-- Start at the entry itself
 			SELECT
-				l.id, l.word, l.definition,
+				l.id, l.word,
+				(SELECT definition FROM definitions WHERE entry_id = l.id ORDER BY sense_number LIMIT 1) AS definition,
 				lang.name AS language_name, lang.slug AS language_slug,
 				CAST(NULL AS TEXT) AS relation,
 				0 AS depth
@@ -173,9 +165,9 @@ export async function getEtymologyChain(entryId: number): Promise<EtymologyStep[
 			JOIN languages lang ON l.language_id = lang.id
 			WHERE l.id = ${entryId}
 			UNION ALL
-			-- Walk up to parents
 			SELECT
-				l.id, l.word, l.definition,
+				l.id, l.word,
+				(SELECT definition FROM definitions WHERE entry_id = l.id ORDER BY sense_number LIMIT 1) AS definition,
 				lang.name AS language_name, lang.slug AS language_slug,
 				lr.relation_type AS relation,
 				c.depth + 1
@@ -194,15 +186,13 @@ export async function getEtymologyChain(entryId: number): Promise<EtymologyStep[
 	const steps = (result as any[]).map((r: any) => ({
 		id: r.id as number,
 		word: r.word as string,
-		definition: r.definition as string,
+		definition: (r.definition || '') as string,
 		languageName: r.language_name as string,
 		languageSlug: r.language_slug as string,
 		relation: r.relation as string | null
 	}));
 
-	// Reverse so root is first
 	return steps.sort((a, b) => {
-		// Root (no relation) first, then by depth
 		if (a.relation === null && b.relation !== null) return -1;
 		if (a.relation !== null && b.relation === null) return 1;
 		return 0;
@@ -211,24 +201,19 @@ export async function getEtymologyChain(entryId: number): Promise<EtymologyStep[
 
 // ── Cognate Computation ─────────────────────────────────────────────
 
-/** Compute cognates: find root, find all descendants, group by family */
 export async function computeCognates(
 	entryId: number,
 	currentLanguageId: number
 ): Promise<CognateGroup[]> {
-	// 1. Find roots
 	const roots = await findRoots(entryId);
 
-	// 2. Find all descendants of each root
 	const allDescendants = new Map<number, { word: string; definition: string; pronunciation: string | null; languageName: string; languageSlug: string; languageFamily: string | null; languageId: number }>();
 
 	for (const rootId of roots) {
 		const result = await db.execute(sql`
 			WITH RECURSIVE descendants AS (
-				-- Start at root
 				SELECT ${rootId}::integer AS id, 0 AS depth
 				UNION ALL
-				-- Walk down to children
 				SELECT lr.source_id, d.depth + 1
 				FROM descendants d
 				JOIN lexicon_relations lr ON lr.target_id = d.id
@@ -236,7 +221,9 @@ export async function computeCognates(
 				  AND d.depth < 20
 			)
 			SELECT DISTINCT
-				l.id, l.word, l.definition, l.pronunciation, l.language_id,
+				l.id, l.word,
+				(SELECT definition FROM definitions WHERE entry_id = l.id ORDER BY sense_number LIMIT 1) AS definition,
+				l.pronunciation, l.language_id,
 				lang.name AS language_name, lang.slug AS language_slug, lang.family AS language_family
 			FROM descendants d
 			JOIN lexicon l ON l.id = d.id
@@ -247,7 +234,7 @@ export async function computeCognates(
 		for (const r of result as any[]) {
 			allDescendants.set(r.id, {
 				word: r.word,
-				definition: r.definition,
+				definition: r.definition || '',
 				pronunciation: r.pronunciation,
 				languageName: r.language_name,
 				languageSlug: r.language_slug,
@@ -259,14 +246,12 @@ export async function computeCognates(
 
 	if (allDescendants.size === 0) return [];
 
-	// 3. Get current language's family for sorting
 	const [currentLang] = await db
 		.select({ family: languages.family })
 		.from(languages)
 		.where(eq(languages.id, currentLanguageId));
 	const currentFamily = currentLang?.family || null;
 
-	// 4. Group by family → language
 	const familyMap = new Map<string, Map<string, CognateLanguage>>();
 
 	for (const [id, entry] of allDescendants) {
@@ -290,9 +275,7 @@ export async function computeCognates(
 		});
 	}
 
-	// 5. Convert to sorted array — current family first
 	const groups: CognateGroup[] = [];
-
 	for (const [family, langMap] of familyMap) {
 		groups.push({
 			family,

@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types.js';
 import { db } from '$lib/server/db/index.js';
-import { lexicon, languages } from '$lib/server/db/schema.js';
+import { lexicon, definitions, languages } from '$lib/server/db/schema.js';
 import { eq, sql, asc, and } from 'drizzle-orm';
 
 export const load: PageServerLoad = async ({ url }) => {
@@ -10,16 +10,9 @@ export const load: PageServerLoad = async ({ url }) => {
 	const pos = url.searchParams.get('pos') || '';
 
 	const conditions = [];
-
-	if (language) {
-		conditions.push(eq(languages.slug, language));
-	}
-	if (pos) {
-		conditions.push(eq(lexicon.partOfSpeech, pos));
-	}
-	if (tag) {
-		conditions.push(sql`${tag} = ANY(${lexicon.tags})`);
-	}
+	if (language) conditions.push(eq(languages.slug, language));
+	if (tag) conditions.push(sql`${tag} = ANY(${lexicon.tags})`);
+	if (pos) conditions.push(sql`EXISTS (SELECT 1 FROM definitions d WHERE d.entry_id = ${lexicon.id} AND d.part_of_speech = ${pos})`);
 
 	let results: any[] = [];
 
@@ -29,12 +22,12 @@ export const load: PageServerLoad = async ({ url }) => {
 				id: lexicon.id,
 				word: lexicon.word,
 				pronunciation: lexicon.pronunciation,
-				partOfSpeech: lexicon.partOfSpeech,
-				definition: lexicon.definition,
 				tags: lexicon.tags,
 				languageName: languages.name,
 				languageSlug: languages.slug,
 				languageColor: languages.color,
+				definition: sql<string>`(SELECT definition FROM definitions WHERE entry_id = ${lexicon.id} ORDER BY sense_number LIMIT 1)`.as('definition'),
+				partOfSpeech: sql<string>`(SELECT part_of_speech FROM definitions WHERE entry_id = ${lexicon.id} ORDER BY sense_number LIMIT 1)`.as('part_of_speech'),
 				relevance: sql<number>`
 					CASE
 						WHEN LOWER(${lexicon.word}) = LOWER(${q}) THEN 4
@@ -52,9 +45,9 @@ export const load: PageServerLoad = async ({ url }) => {
 						LOWER(${lexicon.word}) = LOWER(${q})
 						OR LOWER(${lexicon.word}) LIKE LOWER(${q + '%'})
 						OR ${lexicon.word} % ${q}
-						OR search_vector @@ plainto_tsquery('english', ${q})
+						OR EXISTS (SELECT 1 FROM definitions d WHERE d.entry_id = ${lexicon.id} AND d.search_vector @@ plainto_tsquery('english', ${q}))
 					)`,
-					...conditions
+					...(conditions.length > 0 ? conditions : [])
 				)
 			)
 			.orderBy(sql`relevance DESC`, asc(lexicon.word))
@@ -65,12 +58,12 @@ export const load: PageServerLoad = async ({ url }) => {
 				id: lexicon.id,
 				word: lexicon.word,
 				pronunciation: lexicon.pronunciation,
-				partOfSpeech: lexicon.partOfSpeech,
-				definition: lexicon.definition,
 				tags: lexicon.tags,
 				languageName: languages.name,
 				languageSlug: languages.slug,
-				languageColor: languages.color
+				languageColor: languages.color,
+				definition: sql<string>`(SELECT definition FROM definitions WHERE entry_id = ${lexicon.id} ORDER BY sense_number LIMIT 1)`.as('definition'),
+				partOfSpeech: sql<string>`(SELECT part_of_speech FROM definitions WHERE entry_id = ${lexicon.id} ORDER BY sense_number LIMIT 1)`.as('part_of_speech')
 			})
 			.from(lexicon)
 			.innerJoin(languages, eq(lexicon.languageId, languages.id))
@@ -79,7 +72,6 @@ export const load: PageServerLoad = async ({ url }) => {
 			.limit(100);
 	}
 
-	// Get all languages for filter dropdown
 	const langs = await db
 		.select({ name: languages.name, slug: languages.slug })
 		.from(languages)

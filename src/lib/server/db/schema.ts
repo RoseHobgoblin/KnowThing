@@ -216,21 +216,53 @@ export const lexicon = pgTable(
 			.references(() => languages.id, { onDelete: 'cascade' })
 			.notNull(),
 		pronunciation: text('pronunciation'),
-		partOfSpeech: text('part_of_speech'),
-		definition: text('definition').notNull(),
 		etymology: text('etymology'),
-		usageExample: text('usage_example'),
-		usageTranslation: text('usage_translation'),
 		notes: text('notes'),
 		pageSlug: text('page_slug'),
 		tags: text('tags').array().default([]),
-		related: text('related').array().default([]),
+		homographNumber: integer('homograph_number').notNull().default(1),
 		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
 	},
 	(table) => [
 		index('idx_lexicon_word').on(table.word),
 		index('idx_lexicon_language').on(table.languageId)
+	]
+);
+
+export const lexiconRevisions = pgTable(
+	'lexicon_revisions',
+	{
+		id: serial('id').primaryKey(),
+		entryId: integer('entry_id')
+			.references(() => lexicon.id, { onDelete: 'cascade' })
+			.notNull(),
+		snapshot: jsonb('snapshot').notNull(),
+		editSummary: text('edit_summary'),
+		userId: integer('user_id').references(() => users.id),
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+	},
+	(table) => [
+		index('idx_lexrev_entry').on(table.entryId)
+	]
+);
+
+export const definitions = pgTable(
+	'definitions',
+	{
+		id: serial('id').primaryKey(),
+		entryId: integer('entry_id')
+			.references(() => lexicon.id, { onDelete: 'cascade' })
+			.notNull(),
+		senseNumber: integer('sense_number').notNull().default(1),
+		partOfSpeech: text('part_of_speech'),
+		definition: text('definition').notNull(),
+		usageExample: text('usage_example'),
+		usageTranslation: text('usage_translation'),
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+	},
+	(table) => [
+		index('idx_definitions_entry').on(table.entryId)
 	]
 );
 
