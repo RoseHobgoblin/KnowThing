@@ -88,7 +88,7 @@ export const POST: RequestHandler = async (event) => {
 	}
 
 	// Validate MIME type
-	const allowedTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml', 'image/avif'];
+	const allowedTypes = ['image/png', 'image/jpeg', 'image/pjpeg', 'image/gif', 'image/webp', 'image/svg+xml', 'image/avif', 'image/tiff'];
 	if (!allowedTypes.includes(file.type)) {
 		return json({ error: `Unsupported file type: ${file.type}. Allowed: PNG, JPEG, GIF, WebP, SVG, AVIF` }, { status: 400 });
 	}
