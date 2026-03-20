@@ -21,36 +21,20 @@
 	// Simple wikitext stream parser for syntax highlighting
 	const wikitextLanguage = StreamLanguage.define({
 		token(stream) {
-			// Bold/italic
-			if (stream.match("'''''") || stream.match("'''") || stream.match("''")) {
-				return 'strong';
-			}
-			// Heading
-			if (stream.sol() && stream.match(/^={2,6}/)) {
-				stream.skipToEnd();
-				return 'heading';
-			}
-			// Template {{ }}
+			if (stream.match("'''''") || stream.match("'''") || stream.match("''")) return 'strong';
+			if (stream.sol() && stream.match(/^={2,6}/)) { stream.skipToEnd(); return 'heading'; }
 			if (stream.match('{{')) return 'keyword';
 			if (stream.match('}}')) return 'keyword';
-			// Internal link [[ ]]
 			if (stream.match('[[')) return 'link';
 			if (stream.match(']]')) return 'link';
-			// External link
 			if (stream.match('[')) return 'url';
 			if (stream.match(']')) return 'url';
-			// HTML tags
 			if (stream.match(/<\/?[a-zA-Z][^>]*>/)) return 'tag';
-			// Table
 			if (stream.sol() && stream.match(/^[{|!}\|]-?/)) return 'meta';
-			// List
 			if (stream.sol() && stream.match(/^[*#;:]+/)) return 'list';
-			// Template param {{{ }}}
 			if (stream.match('{{{')) return 'variableName';
 			if (stream.match('}}}')) return 'variableName';
-			// Horizontal rule
 			if (stream.sol() && stream.match(/^-{4,}/)) return 'contentSeparator';
-
 			stream.next();
 			return null;
 		}
@@ -67,6 +51,37 @@
 		{ tag: tags.variableName, color: '#dc2626' },
 		{ tag: tags.contentSeparator, color: '#9ca3af' }
 	]);
+
+	// ── Toolbar actions ──────────────────────────────────────────
+	function wrapSelection(before: string, after: string, placeholder: string = '') {
+		if (!view) return;
+		const { from, to } = view.state.selection.main;
+		const selected = view.state.sliceDoc(from, to);
+		const text = selected || placeholder;
+		view.dispatch({
+			changes: { from, to, insert: `${before}${text}${after}` },
+			selection: { anchor: from + before.length, head: from + before.length + text.length }
+		});
+		view.focus();
+	}
+
+	function insertAtCursor(text: string) {
+		if (!view) return;
+		const pos = view.state.selection.main.head;
+		view.dispatch({ changes: { from: pos, insert: text } });
+		view.focus();
+	}
+
+	const toolbar = [
+		{ label: 'B', title: 'Bold', action: () => wrapSelection("'''", "'''", 'bold text') },
+		{ label: 'I', title: 'Italic', action: () => wrapSelection("''", "''", 'italic text') },
+		{ label: 'Link', title: 'Internal link', action: () => wrapSelection('[[', ']]', 'Page Name') },
+		{ label: 'H2', title: 'Heading 2', action: () => wrapSelection('== ', ' ==', 'Heading') },
+		{ label: 'H3', title: 'Heading 3', action: () => wrapSelection('=== ', ' ===', 'Heading') },
+		{ label: 'Img', title: 'Image', action: () => insertAtCursor('[[File:filename.png|thumb|Caption]]') },
+		{ label: '{}', title: 'Template', action: () => wrapSelection('{{', '}}', 'Template') },
+		{ label: 'List', title: 'Bullet list', action: () => insertAtCursor('\n* Item\n* Item\n') },
+	];
 
 	onMount(() => {
 		const state = EditorState.create({
@@ -87,28 +102,42 @@
 				]),
 				EditorView.updateListener.of((update) => {
 					if (update.docChanged) {
-						const newValue = update.state.doc.toString();
-						onchange?.(newValue);
+						onchange?.(update.state.doc.toString());
 					}
 				}),
 				EditorView.theme({
 					'&': { height: '100%', fontSize: '14px' },
 					'.cm-scroller': { overflow: 'auto', fontFamily: 'Consolas, monospace' },
 					'.cm-content': { padding: '8px 0' },
-					'&.cm-focused': { outline: '2px solid #3b82f6' }
+					'&.cm-focused': { outline: '2px solid #d97706' }
 				})
 			]
 		});
 
 		view = new EditorView({ state, parent: container });
-
 		return () => view.destroy();
 	});
 
-	// Expose the current value for form submission
 	export function getValue(): string {
 		return view?.state.doc.toString() ?? value;
 	}
 </script>
 
-<div bind:this={container} class="border border-stone-300 rounded overflow-hidden h-full"></div>
+<div class="border border-stone-300 rounded overflow-hidden h-full flex flex-col">
+	<!-- Toolbar -->
+	<div class="flex items-center gap-0.5 px-2 py-1.5 bg-stone-50 border-b border-stone-200 flex-wrap">
+		{#each toolbar as btn}
+			<button
+				type="button"
+				onclick={btn.action}
+				title={btn.title}
+				class="px-2 py-1 text-xs font-mono text-stone-600 hover:bg-amber-100 hover:text-amber-800 rounded transition-colors min-w-[2rem] text-center"
+			>
+				{btn.label}
+			</button>
+		{/each}
+	</div>
+
+	<!-- Editor -->
+	<div bind:this={container} class="flex-1 min-h-0"></div>
+</div>
