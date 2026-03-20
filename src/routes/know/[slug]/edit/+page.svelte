@@ -43,7 +43,7 @@
 
 			<!-- Preview pane — fixed width on right, like the article page -->
 			{#if showPreview}
-				<div class="w-full md:w-[28rem] lg:w-[32rem] xl:w-[36rem] h-1/2 md:h-auto border-l border-stone-200 bg-white flex flex-col min-h-0 shrink-0">
+				<div class="w-full md:max-w-4xl h-1/2 md:h-auto border-l border-stone-200 bg-white flex flex-col min-h-0 shrink-0">
 					<div class="bg-stone-50 px-4 py-1.5 text-xs font-medium text-stone-400 border-b border-stone-100 uppercase tracking-wide">Preview</div>
 					<div class="flex-1 overflow-y-auto">
 						<LivePreview {content} />

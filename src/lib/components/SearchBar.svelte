@@ -41,7 +41,9 @@
 
 <form onsubmit={onSubmit} class="relative">
 	<input
-		type="search"
+		type="text"
+		dir="ltr"
+		autocomplete="off"
 		bind:value={query}
 		oninput={onInput}
 		onfocusin={() => results.length > 0 && (showResults = true)}
