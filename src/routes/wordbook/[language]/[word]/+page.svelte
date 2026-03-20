@@ -6,6 +6,7 @@
 	import LanguageBadge from '$lib/components/wordbook/LanguageBadge.svelte';
 	import TagPill from '$lib/components/wordbook/TagPill.svelte';
 	import EtymologySection from '$lib/components/wordbook/EtymologySection.svelte';
+	import InflectionTable from '$lib/components/wordbook/InflectionTable.svelte';
 	import { PARTS_OF_SPEECH, POS_COLORS } from '$lib/components/wordbook/constants.js';
 
 	let { data }: { data: PageData } = $props();
@@ -188,6 +189,16 @@
 						<button onclick={() => addingSenseFor = entry.id} class="mt-3 text-sm text-amber-700 hover:text-amber-900 hover:underline">+ Add definition</button>
 					{/if}
 				{/if}
+
+				<!-- Inflection table -->
+				<InflectionTable
+					dimensions={hom.inflection.dimensions}
+					forms={hom.inflection.forms}
+					overrides={hom.inflection.overrides}
+					className={hom.inflection.className}
+					stem={hom.inflection.stem}
+					hasInflection={hom.inflection.hasInflection}
+				/>
 
 				<!-- Tags -->
 				{#if entry.tags && entry.tags.length > 0}

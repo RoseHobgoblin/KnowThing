@@ -325,3 +325,86 @@ export const lexiconRelations = pgTable(
 		index('idx_lexrel_target').on(table.targetId)
 	]
 );
+
+// ============================================================================
+// Inflection / Declension / Conjugation
+// ============================================================================
+
+export const inflectionDimensions = pgTable(
+	'inflection_dimensions',
+	{
+		id: serial('id').primaryKey(),
+		languageId: integer('language_id')
+			.references(() => languages.id, { onDelete: 'cascade' })
+			.notNull(),
+		partOfSpeech: text('part_of_speech').notNull(),
+		name: text('name').notNull(),
+		dimValues: text('dim_values').array().notNull(),
+		sortOrder: integer('sort_order').notNull().default(0)
+	},
+	(table) => [
+		index('idx_infl_dim_lang').on(table.languageId, table.partOfSpeech)
+	]
+);
+
+export const paradigmClasses = pgTable(
+	'paradigm_classes',
+	{
+		id: serial('id').primaryKey(),
+		languageId: integer('language_id')
+			.references(() => languages.id, { onDelete: 'cascade' })
+			.notNull(),
+		partOfSpeech: text('part_of_speech').notNull(),
+		name: text('name').notNull(),
+		description: text('description')
+	}
+);
+
+export const paradigmRules = pgTable(
+	'paradigm_rules',
+	{
+		id: serial('id').primaryKey(),
+		classId: integer('class_id')
+			.references(() => paradigmClasses.id, { onDelete: 'cascade' })
+			.notNull(),
+		cellKey: text('cell_key').notNull(),
+		pattern: text('pattern').notNull()
+	},
+	(table) => [
+		index('idx_paradigm_rules_class').on(table.classId)
+	]
+);
+
+export const lexiconInflections = pgTable(
+	'lexicon_inflections',
+	{
+		id: serial('id').primaryKey(),
+		entryId: integer('entry_id')
+			.references(() => lexicon.id, { onDelete: 'cascade' })
+			.notNull(),
+		classId: integer('class_id')
+			.references(() => paradigmClasses.id, { onDelete: 'set null' }),
+		stem: text('stem'),
+		overrides: jsonb('overrides').default({})
+	},
+	(table) => [
+		index('idx_lex_infl_entry').on(table.entryId)
+	]
+);
+
+export const inflectedForms = pgTable(
+	'inflected_forms',
+	{
+		id: serial('id').primaryKey(),
+		entryId: integer('entry_id')
+			.references(() => lexicon.id, { onDelete: 'cascade' })
+			.notNull(),
+		form: text('form').notNull(),
+		cellKey: text('cell_key').notNull(),
+		isOverride: boolean('is_override').default(false)
+	},
+	(table) => [
+		index('idx_inflected_forms_form').on(table.form),
+		index('idx_inflected_forms_entry').on(table.entryId)
+	]
+);

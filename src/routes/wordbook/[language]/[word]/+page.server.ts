@@ -4,6 +4,7 @@ import { lexicon, definitions, languages, lexiconVariants, languageDialects } fr
 import { eq, and, asc, sql } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getDirectRelations, computeCognates, getEtymologyChain } from '$lib/server/wordbook/etymology.js';
+import { getInflectionTable } from '$lib/server/wordbook/inflection.js';
 
 export const load: PageServerLoad = async ({ params }) => {
 	const word = decodeURIComponent(params.word).normalize('NFC');
@@ -40,7 +41,7 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	// For each homograph, load definitions, variants, and relations
 	const homographs = await Promise.all(entries.map(async (entry) => {
-		const [defs, variants, direct, cognates, etymologyChain] = await Promise.all([
+		const [defs, variants, inflection, direct, cognates, etymologyChain] = await Promise.all([
 			db.select()
 				.from(definitions)
 				.where(eq(definitions.entryId, entry.id))
@@ -57,6 +58,7 @@ export const load: PageServerLoad = async ({ params }) => {
 				.from(lexiconVariants)
 				.innerJoin(languageDialects, eq(lexiconVariants.dialectId, languageDialects.id))
 				.where(eq(lexiconVariants.entryId, entry.id)),
+			getInflectionTable(entry.id),
 			getDirectRelations(entry.id),
 			computeCognates(entry.id, lang.id),
 			getEtymologyChain(entry.id)
@@ -66,6 +68,7 @@ export const load: PageServerLoad = async ({ params }) => {
 			entry,
 			definitions: defs,
 			variants,
+			inflection,
 			relations: { direct, cognates, etymologyChain }
 		};
 	}));

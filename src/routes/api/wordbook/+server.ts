@@ -45,7 +45,8 @@ export const GET: RequestHandler = async ({ url }) => {
 				partOfSpeech: sql<string>`(SELECT part_of_speech FROM definitions WHERE entry_id = ${lexicon.id} ORDER BY sense_number LIMIT 1)`.as('part_of_speech'),
 				relevance: sql<number>`
 					CASE
-						WHEN LOWER(${lexicon.word}) = LOWER(${q}) THEN 4
+						WHEN LOWER(${lexicon.word}) = LOWER(${q}) THEN 5
+						WHEN EXISTS (SELECT 1 FROM inflected_forms f WHERE f.entry_id = ${lexicon.id} AND LOWER(f.form) = LOWER(${q})) THEN 4
 						WHEN LOWER(${lexicon.word}) LIKE LOWER(${q + '%'}) THEN 3
 						WHEN ${lexicon.word} % ${q} THEN 2
 						ELSE 1
@@ -62,6 +63,7 @@ export const GET: RequestHandler = async ({ url }) => {
 						OR ${lexicon.word} % ${q}
 						OR lexicon.search_vector @@ plainto_tsquery('english', ${q})
 						OR EXISTS (SELECT 1 FROM definitions d WHERE d.entry_id = ${lexicon.id} AND d.search_vector @@ plainto_tsquery('english', ${q}))
+						OR EXISTS (SELECT 1 FROM inflected_forms f WHERE f.entry_id = ${lexicon.id} AND LOWER(f.form) = LOWER(${q}))
 					)`,
 					...(conditions.length > 0 ? conditions : [])
 				)
