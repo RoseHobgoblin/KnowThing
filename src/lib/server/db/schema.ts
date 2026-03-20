@@ -150,3 +150,53 @@ export const mediaUsage = pgTable(
 	},
 	(table) => [primaryKey({ columns: [table.pageSlug, table.filename] })]
 );
+
+// ============================================================================
+// Wordbook: Languages & Lexicon
+// ============================================================================
+
+export const languages = pgTable(
+	'languages',
+	{
+		id: serial('id').primaryKey(),
+		name: text('name').unique().notNull(),
+		slug: text('slug').unique().notNull(),
+		nativeName: text('native_name'),
+		script: text('script').default('Latin'),
+		family: text('family'),
+		color: text('color').default('#d97706'),
+		description: text('description'),
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+	},
+	(table) => [
+		index('idx_languages_slug').on(table.slug)
+	]
+);
+
+export const lexicon = pgTable(
+	'lexicon',
+	{
+		id: serial('id').primaryKey(),
+		word: text('word').notNull(),
+		languageId: integer('language_id')
+			.references(() => languages.id, { onDelete: 'cascade' })
+			.notNull(),
+		pronunciation: text('pronunciation'),
+		partOfSpeech: text('part_of_speech'),
+		definition: text('definition').notNull(),
+		etymology: text('etymology'),
+		usageExample: text('usage_example'),
+		usageTranslation: text('usage_translation'),
+		notes: text('notes'),
+		pageSlug: text('page_slug'),
+		tags: text('tags').array().default([]),
+		related: text('related').array().default([]),
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+	},
+	(table) => [
+		index('idx_lexicon_word').on(table.word),
+		index('idx_lexicon_language').on(table.languageId)
+	]
+);

@@ -64,6 +64,9 @@
 			<a href="/calendar" class="px-3 py-2.5 text-stone-600 hover:text-amber-700 hover:bg-amber-50 rounded-t-md transition-colors font-medium">
 				Calendar
 			</a>
+			<a href="/wordbook" class="px-3 py-2.5 text-stone-600 hover:text-amber-700 hover:bg-amber-50 rounded-t-md transition-colors font-medium">
+				Wordbook
+			</a>
 			<a href="/search" class="px-3 py-2.5 text-stone-600 hover:text-amber-700 hover:bg-amber-50 rounded-t-md transition-colors font-medium">
 				Search
 			</a>
@@ -99,6 +102,7 @@
 				<a href="/" onclick={() => mobileMenuOpen = false} class="block px-3 py-2 text-stone-700 hover:bg-amber-50 hover:text-amber-700 rounded-md text-sm font-medium">Main Page</a>
 				<a href="/know/create" onclick={() => mobileMenuOpen = false} class="block px-3 py-2 text-stone-700 hover:bg-amber-50 hover:text-amber-700 rounded-md text-sm font-medium">Create</a>
 				<a href="/calendar" onclick={() => mobileMenuOpen = false} class="block px-3 py-2 text-stone-700 hover:bg-amber-50 hover:text-amber-700 rounded-md text-sm font-medium">Calendar</a>
+				<a href="/wordbook" onclick={() => mobileMenuOpen = false} class="block px-3 py-2 text-stone-700 hover:bg-amber-50 hover:text-amber-700 rounded-md text-sm font-medium">Wordbook</a>
 				<a href="/search" onclick={() => mobileMenuOpen = false} class="block px-3 py-2 text-stone-700 hover:bg-amber-50 hover:text-amber-700 rounded-md text-sm font-medium">Search</a>
 				<div class="border-t border-stone-100 my-1"></div>
 				<a href="/special/random" onclick={() => mobileMenuOpen = false} class="block px-3 py-2 text-stone-500 hover:bg-amber-50 hover:text-amber-700 rounded-md text-sm">Random</a>

@@ -105,7 +105,8 @@
 		'sfn',
 		'cite book',
 		'cite web',
-		'cite journal'
+		'cite journal',
+		'wt'
 	]);
 
 	const resolution = resolve();
@@ -228,6 +229,18 @@
 		<div class="columns-2 gap-6">
 			{getPositionalArgs().join('\n')}
 		</div>
+	{:else if resolution.component === 'wt'}
+		{@const wtWord = getPositionalArgs()[0]?.trim() || ''}
+		{@const wtLang = getPositionalArgs()[1]?.trim() || ''}
+		{#if wtWord && wtLang}
+			<a
+				href="/wordbook/{encodeURIComponent(wtLang.toLowerCase())}/{encodeURIComponent(wtWord)}"
+				class="italic text-amber-700 hover:text-amber-900 border-b border-dotted border-amber-400 hover:border-amber-700 transition-colors"
+				title="{wtWord} ({wtLang})"
+			>{wtWord}</a>
+		{:else if wtWord}
+			<span class="italic text-stone-600">{wtWord}</span>
+		{/if}
 	{:else if resolution.component === 'sidebar'}
 		<div class="know-sidebar float-right ml-4 mb-4 border border-stone-300 bg-stone-50 text-sm w-56 p-3">
 			{#if getArgValue('title')}

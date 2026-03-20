@@ -1,5 +1,5 @@
 import postgres from 'postgres';
-import { readFileSync } from 'fs';
+import { readFileSync, readdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -23,18 +23,22 @@ async function migrate() {
 		)
 	`;
 
-	// Read and apply migrations
+	// Auto-discover all .sql migration files, sorted by name
 	const migrationsDir = join(__dirname, '../../../../drizzle');
-	const migrationFile = '0001_initial.sql';
+	const files = readdirSync(migrationsDir)
+		.filter((f) => f.endsWith('.sql'))
+		.sort();
 
-	const applied = await sql`SELECT name FROM _migrations WHERE name = ${migrationFile}`;
-	if (applied.length === 0) {
-		const migrationSql = readFileSync(join(migrationsDir, migrationFile), 'utf-8');
-		await sql.unsafe(migrationSql);
-		await sql`INSERT INTO _migrations (name) VALUES (${migrationFile})`;
-		console.log(`Applied migration: ${migrationFile}`);
-	} else {
-		console.log(`Migration already applied: ${migrationFile}`);
+	for (const migrationFile of files) {
+		const applied = await sql`SELECT name FROM _migrations WHERE name = ${migrationFile}`;
+		if (applied.length === 0) {
+			const migrationSql = readFileSync(join(migrationsDir, migrationFile), 'utf-8');
+			await sql.unsafe(migrationSql);
+			await sql`INSERT INTO _migrations (name) VALUES (${migrationFile})`;
+			console.log(`  apply: ${migrationFile}`);
+		} else {
+			console.log(`  skip: ${migrationFile} (already applied)`);
+		}
 	}
 
 	await sql.end();
