@@ -2,7 +2,7 @@ import type { PageServerLoad } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { lexicon, definitions, languages, languageDialects, inflectionDimensions, paradigmClasses } from '$lib/server/db/schema.js'
 import { eq, sql, asc, and } from 'drizzle-orm'
-import { error } from '@sveltejs/kit'
+import { error, redirect } from '@sveltejs/kit'
 import { getAncestryChain, getChildren } from '$lib/server/wordbook/language-tree.js'
 
 export const load: PageServerLoad = async ({ params, url }) => {
@@ -20,9 +20,15 @@ export const load: PageServerLoad = async ({ params, url }) => {
 			wordCount: sql<number>`(SELECT COUNT(*)::int FROM lexicon WHERE language_id = ${languages.id})`.as('word_count'),
 		})
 		.from(languages)
-		.where(eq(languages.slug, params.language))
+		.where(sql`LOWER(${languages.slug}) = LOWER(${params.language})`)
 
 	if (!lang) error(404, 'Language not found')
+
+	// Canonical redirect if casing doesn't match
+	if (lang.slug !== params.language) {
+		const query = url.searchParams.toString()
+		redirect(301, `/wordbook/${lang.slug}${query ? `?${query}` : ''}`)
+	}
 
 	// Load ancestry, children, dialects, inflection setup
 	const [ancestryChain, children, dialects, dimensions, classes] = await Promise.all([

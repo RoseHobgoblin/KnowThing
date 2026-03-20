@@ -64,10 +64,12 @@ export const getWikiContext = getKnowContext
 /** Alias used by WikiTemplate dispatch chain */
 export const getRenderContext = getKnowContext
 
-/** Convert a page title to a URL slug */
+/** Convert a page title to a URL slug — first letter uppercase, rest preserved */
 export function slugify(title: string): string {
-	return title
+	const cleaned = title
+		.trim()
 		.replaceAll(' ', '_')
 		.replaceAll(/[^\w().\-]/g, '')
-		.toLowerCase()
+	if (!cleaned) return cleaned
+	return cleaned[0].toUpperCase() + cleaned.slice(1)
 }

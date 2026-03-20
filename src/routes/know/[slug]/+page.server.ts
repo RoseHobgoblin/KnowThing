@@ -1,4 +1,4 @@
-import { error } from '@sveltejs/kit'
+import { error, redirect } from '@sveltejs/kit'
 import type { PageServerLoad } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { pages, categories, lexicon, languages } from '$lib/server/db/schema.js'
@@ -6,17 +6,25 @@ import { eq, sql } from 'drizzle-orm'
 import { parseWikitext, extractCategories } from '$lib/parser/index.js'
 
 export const load: PageServerLoad = async ({ params }) => {
+	// Case-insensitive lookup
 	const [page] = await db
 		.select()
 		.from(pages)
-		.where(eq(pages.slug, params.slug))
+		.where(sql`LOWER(${pages.slug}) = LOWER(${params.slug})`)
 		.limit(1)
 
+	// Canonical redirect: if slug casing doesn't match stored form
+	if (page && page.slug !== params.slug) {
+		redirect(301, `/know/${page.slug}`)
+	}
+
 	if (!page) {
+		// Normalize the "create" slug to first-letter-uppercase
+		const normalizedSlug = params.slug[0].toUpperCase() + params.slug.slice(1)
 		return {
 			notFound: true,
-			slug: params.slug,
-			title: params.slug.replaceAll('_', ' '),
+			slug: normalizedSlug,
+			title: normalizedSlug.replaceAll('_', ' '),
 			ast: null,
 			categories: [],
 		}

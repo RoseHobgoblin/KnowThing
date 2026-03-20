@@ -2,7 +2,7 @@ import type { PageServerLoad } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { lexicon, definitions, languages, lexiconVariants, languageDialects } from '$lib/server/db/schema.js'
 import { eq, and, asc, sql } from 'drizzle-orm'
-import { error } from '@sveltejs/kit'
+import { error, redirect } from '@sveltejs/kit'
 import { getDirectRelations, computeCognates, getEtymologyChain } from '$lib/server/wordbook/etymology.js'
 import { getInflectionTable } from '$lib/server/wordbook/inflection.js'
 
@@ -38,6 +38,12 @@ export const load: PageServerLoad = async ({ params }) => {
 		.orderBy(asc(lexicon.homographNumber))
 
 	if (entries.length === 0) error(404, `No entry for "${word}" in ${lang.name}`)
+
+	// Canonical redirect: URL must match stored word casing exactly
+	const storedWord = entries[0].word
+	if (decodeURIComponent(params.word) !== storedWord) {
+		redirect(301, `/wordbook/${params.language}/${encodeURIComponent(storedWord)}`)
+	}
 
 	// For each homograph, load definitions, variants, and relations
 	const homographs = await Promise.all(entries.map(async (entry) => {
