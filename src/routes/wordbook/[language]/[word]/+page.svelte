@@ -7,6 +7,7 @@
 	import TagPill from '$lib/components/wordbook/TagPill.svelte'
 	import EtymologySection from '$lib/components/wordbook/EtymologySection.svelte'
 	import InflectionTable from '$lib/components/wordbook/InflectionTable.svelte'
+	import InflectionEditor from '$lib/components/wordbook/InflectionEditor.svelte'
 	import { PARTS_OF_SPEECH, POS_COLORS } from '$lib/components/wordbook/constants.js'
 
 	let { data }: { data: PageData } = $props()
@@ -210,6 +211,13 @@
 					stem={hom.inflection.stem}
 					hasInflection={hom.inflection.hasInflection}
 				/>
+				{#if isAuthenticated}
+					<InflectionEditor
+						entryId={entry.id}
+						inflection={hom.inflection}
+						availableClasses={data.availableClasses}
+					/>
+				{/if}
 
 				<!-- Tags -->
 				{#if entry.tags && entry.tags.length > 0}

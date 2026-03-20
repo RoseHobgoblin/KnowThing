@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types.js'
 import { db } from '$lib/server/db/index.js'
-import { lexicon, definitions, languages, lexiconVariants, languageDialects } from '$lib/server/db/schema.js'
+import { lexicon, definitions, languages, lexiconVariants, languageDialects, paradigmClasses } from '$lib/server/db/schema.js'
 import { eq, and, asc, sql } from 'drizzle-orm'
 import { error, redirect } from '@sveltejs/kit'
 import { getDirectRelations, computeCognates, getEtymologyChain } from '$lib/server/wordbook/etymology.js'
@@ -79,10 +79,18 @@ export const load: PageServerLoad = async ({ params }) => {
 		}
 	}))
 
+	// Load available paradigm classes for this language (for inflection assignment)
+	const availableClasses = await db
+		.select({ id: paradigmClasses.id, name: paradigmClasses.name, partOfSpeech: paradigmClasses.partOfSpeech })
+		.from(paradigmClasses)
+		.where(eq(paradigmClasses.languageId, lang.id))
+		.orderBy(asc(paradigmClasses.partOfSpeech), asc(paradigmClasses.name))
+
 	return {
 		word: entries[0].word,
 		language: lang,
 		homographs,
 		isMultipleHomographs: entries.length > 1,
+		availableClasses,
 	}
 }
