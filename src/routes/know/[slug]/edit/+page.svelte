@@ -37,7 +37,7 @@
 		<!-- Editor + Preview -->
 		<div class="flex-1 flex flex-col min-h-0 md:flex-row">
 			<!-- Editor pane — takes all remaining space -->
-			<div class="flex-1 min-h-0 {showPreview ? 'h-1/2 md:h-auto' : ''}">
+			<div class="flex-1 min-h-0 min-w-0 overflow-hidden {showPreview ? 'h-1/2 md:h-auto' : ''}">
 				<Editor value={data.content} onchange={v => (content = v)} bind:this={editorRef} />
 			</div>
 

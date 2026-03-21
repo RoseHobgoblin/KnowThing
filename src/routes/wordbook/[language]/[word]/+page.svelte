@@ -24,26 +24,37 @@
 	let newTranslation = $state('')
 	let submittingSense = $state(false)
 
+	let senseError = $state('')
+
 	async function addSense(entryId: number, e: SubmitEvent) {
 		e.preventDefault()
 		if (!newDef.trim()) return
 		submittingSense = true
-		const res = await fetch(`/api/wordbook/${entryId}/definitions`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				partOfSpeech: newPos || undefined,
-				definition: newDef.trim(),
-				usageExample: newUsage.trim() || undefined,
-				usageTranslation: newTranslation.trim() || undefined,
-			}),
-		})
-		if (res.ok) {
-			newPos = ''; newDef = ''; newUsage = ''; newTranslation = ''
-			addingSenseFor = null
-			invalidateAll()
+		senseError = ''
+		try {
+			const res = await fetch(`/api/wordbook/${entryId}/definitions`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					partOfSpeech: newPos || undefined,
+					definition: newDef.trim(),
+					usageExample: newUsage.trim() || undefined,
+					usageTranslation: newTranslation.trim() || undefined,
+				}),
+			})
+			if (res.ok) {
+				newPos = ''; newDef = ''; newUsage = ''; newTranslation = ''
+				addingSenseFor = null
+				invalidateAll()
+			} else {
+				const data = await res.json()
+				senseError = data.error || 'Failed to add definition'
+			}
+		} catch {
+			senseError = 'Network error'
+		} finally {
+			submittingSense = false
 		}
-		submittingSense = false
 	}
 
 	async function deleteSense(entryId: number, defId: number) {
@@ -172,6 +183,9 @@
 				{#if isAuthenticated}
 					{#if addingSenseFor === entry.id}
 						<form onsubmit={e => addSense(entry.id, e)} class="mt-4 p-3 bg-page rounded-lg border border-border space-y-2">
+							{#if senseError}
+								<div class="p-2 bg-red-50 border border-red-200 text-error text-xs rounded-md">{senseError}</div>
+							{/if}
 							<div class="flex gap-2">
 								<select bind:value={newPos} class="
 									px-2 py-1.5 border border-border-strong rounded-lg text-xs bg-surface
@@ -214,6 +228,7 @@
 				{#if isAuthenticated}
 					<InflectionEditor
 						entryId={entry.id}
+						languageSlug={data.language.slug}
 						inflection={hom.inflection}
 						availableClasses={data.availableClasses}
 					/>

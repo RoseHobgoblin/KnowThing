@@ -5,8 +5,10 @@
 		entryId,
 		inflection,
 		availableClasses = [],
+		languageSlug = '',
 	}: {
 		entryId: number
+		languageSlug?: string
 		inflection: {
 			dimensions: Array<{ id: number, name: string, values: string[], sortOrder: number }>
 			forms: Record<string, string>
@@ -137,7 +139,13 @@
 						{/each}
 					</select>
 				{:else}
-					<p class="text-xs text-faint">No paradigm classes defined for this language. <a href="/wordbook/{inflection.dimensions.length > 0 ? '' : 'contribute/language'}" class="text-link hover:underline">Set up inflection dimensions first.</a></p>
+					<p class="text-xs text-faint">No paradigm classes defined for this language.
+					{#if inflection.dimensions.length > 0}
+						<a href="/wordbook/{languageSlug}" class="text-link hover:underline">Add a paradigm class on the language page.</a>
+					{:else}
+						<a href="/wordbook/{languageSlug}" class="text-link hover:underline">Set up inflection dimensions on the language page first.</a>
+					{/if}
+				</p>
 				{/if}
 			</div>
 

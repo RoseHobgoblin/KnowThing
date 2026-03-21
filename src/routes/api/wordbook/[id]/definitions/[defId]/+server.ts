@@ -41,7 +41,7 @@ export const DELETE: RequestHandler = async (event) => {
 
 	const entryId = Number.parseInt(event.params.id)
 	const defId = Number.parseInt(event.params.defId)
-	if (isNaN(defId)) return json({ error: 'Invalid definition ID' }, { status: 400 })
+	if (isNaN(entryId) || isNaN(defId)) return json({ error: 'Invalid ID' }, { status: 400 })
 
 	// Check this isn't the last definition
 	const [{ count }] = await db

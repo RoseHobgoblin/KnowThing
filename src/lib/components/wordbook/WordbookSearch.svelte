@@ -8,14 +8,20 @@
 
 	let query = $state('')
 	let selectedLanguage = $state('')
+	let searching = $state(false)
 
-	function handleSubmit(e: SubmitEvent) {
+	async function handleSubmit(e: SubmitEvent) {
 		e.preventDefault()
 		if (!query.trim()) return
+		searching = true
 		const params = new URLSearchParams()
 		params.set('q', query.trim())
 		if (selectedLanguage) params.set('language', selectedLanguage)
-		goto(`/wordbook/search?${params.toString()}`)
+		try {
+			await goto(`/wordbook/search?${params.toString()}`)
+		} finally {
+			searching = false
+		}
 	}
 </script>
 
@@ -48,9 +54,10 @@
 	</div>
 	<button
 		type="submit"
+		disabled={searching}
 		class="px-6 {large ? 'py-3' : 'py-2'} bg-accent text-surface rounded-lg font-medium
-			transition-colors text-sm hover:bg-accent-hover"
+			transition-colors text-sm hover:bg-accent-hover disabled:opacity-50"
 	>
-		Search
+		{searching ? 'Searching...' : 'Search'}
 	</button>
 </form>

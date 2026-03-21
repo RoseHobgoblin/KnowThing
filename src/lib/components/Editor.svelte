@@ -105,6 +105,7 @@
 						onchange?.(update.state.doc.toString())
 					}
 				}),
+				EditorView.lineWrapping,
 				EditorView.theme({
 					'&': { height: '100%', fontSize: '14px' },
 					'.cm-scroller': { overflow: 'auto', fontFamily: 'Consolas, monospace' },

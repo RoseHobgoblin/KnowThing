@@ -11,7 +11,7 @@ export const load: PageServerLoad = async ({ url }) => {
 
 	const conditions = []
 	if (language) conditions.push(eq(languages.slug, language))
-	if (tag) conditions.push(sql`${tag} = ANY(${lexicon.tags})`)
+	if (tag) conditions.push(sql`LOWER(${tag}) = ANY(${lexicon.tags})`)
 	if (pos) conditions.push(sql`EXISTS (SELECT 1 FROM definitions d WHERE d.entry_id = ${lexicon.id} AND d.part_of_speech = ${pos})`)
 
 	let results: any[] = []
