@@ -6,28 +6,39 @@ import { requireAuth } from '$lib/server/auth.js'
 import { eq, sql } from 'drizzle-orm'
 import { isDescendant } from '$lib/server/wordbook/language-tree.js'
 
-/** GET /api/languages/:slug */
+/** GET /api/languages/:slug — with inherited family from ancestors */
 export const GET: RequestHandler = async ({ params }) => {
-	const [lang] = await db
-		.select({
-			id: languages.id,
-			name: languages.name,
-			slug: languages.slug,
-			nativeName: languages.nativeName,
-			script: languages.script,
-			family: languages.family,
-			color: languages.color,
-			description: languages.description,
-			wordCount: sql<number>`(SELECT COUNT(*) FROM lexicon WHERE language_id = ${languages.id})`.as('word_count'),
-		})
-		.from(languages)
-		.where(eq(languages.slug, params.slug))
+	const result = await db.execute(sql`
+		WITH RECURSIVE ancestry AS (
+			SELECT id, family, parent_language_id, 0 AS depth
+			FROM languages
+			WHERE slug = ${params.slug}
+			UNION ALL
+			SELECT a.id, p.family, p.parent_language_id, a.depth + 1
+			FROM ancestry a
+			JOIN languages p ON p.id = a.parent_language_id
+			WHERE a.family IS NULL AND a.depth < 10
+		)
+		SELECT
+			l.id, l.name, l.slug, l.native_name AS "nativeName",
+			l.script,
+			COALESCE(l.family, (
+				SELECT a.family FROM ancestry a WHERE a.id = l.id AND a.family IS NOT NULL ORDER BY a.depth LIMIT 1
+			)) AS family,
+			l.color, l.description,
+			l.parent_language_id AS "parentLanguageId",
+			l.language_type AS "languageType",
+			l.page_slug AS "pageSlug",
+			(SELECT COUNT(*) FROM lexicon WHERE language_id = l.id)::int AS "wordCount"
+		FROM languages l
+		WHERE l.slug = ${params.slug}
+	`)
 
-	if (!lang) {
+	if (!result.length) {
 		return json({ error: 'Language not found' }, { status: 404 })
 	}
 
-	return json(lang)
+	return json(result[0])
 }
 
 /** PUT /api/languages/:slug */

@@ -6,7 +6,7 @@ import { error, redirect } from '@sveltejs/kit'
 import { getAncestryChain, getChildren } from '$lib/server/wordbook/language-tree.js'
 
 export const load: PageServerLoad = async ({ params, url }) => {
-	const [lang] = await db
+	const langResult = await db
 		.select({
 			id: languages.id,
 			name: languages.name,
@@ -17,12 +17,19 @@ export const load: PageServerLoad = async ({ params, url }) => {
 			color: languages.color,
 			description: languages.description,
 			pageSlug: languages.pageSlug,
-			wordCount: sql<number>`(SELECT COUNT(*)::int FROM lexicon WHERE language_id = ${languages.id})`.as('word_count'),
 		})
 		.from(languages)
 		.where(sql`LOWER(${languages.slug}) = LOWER(${params.language})`)
 
+	const lang = langResult[0]
 	if (!lang) error(404, 'Language not found')
+
+	const [{ count: wordCount }] = await db
+		.select({ count: sql<number>`COUNT(*)::int` })
+		.from(lexicon)
+		.where(eq(lexicon.languageId, lang.id))
+
+	const langWithCount = { ...lang, wordCount }
 
 	// Canonical redirect if casing doesn't match
 	if (lang.slug !== params.language) {
@@ -72,7 +79,7 @@ export const load: PageServerLoad = async ({ params, url }) => {
 		.orderBy(sql`letter`)
 
 	return {
-		language: lang,
+		language: langWithCount,
 		entries,
 		ancestryChain,
 		children,
