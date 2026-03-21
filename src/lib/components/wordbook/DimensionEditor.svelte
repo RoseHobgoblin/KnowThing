@@ -27,6 +27,30 @@
 		return map
 	})
 
+	// Generate cell keys from dimensions for a given POS
+	function getCellKeysForPos(pos: string): string[] {
+		const dims = grouped().get(pos)
+		if (!dims || dims.length === 0) return []
+		const sorted = [...dims].sort((a, b) => a.sortOrder - b.sortOrder)
+
+		function cartesian(dimIndex: number): string[] {
+			if (dimIndex >= sorted.length) return ['']
+			const rest = cartesian(dimIndex + 1)
+			const result: string[] = []
+			for (const value of sorted[dimIndex].dimValues) {
+				for (const suffix of rest) {
+					result.push(suffix ? `${value}.${suffix}` : value)
+				}
+			}
+			return result
+		}
+		return cartesian(0)
+	}
+
+	function cellKeyLabel(key: string): string {
+		return key.split('.').join(' · ')
+	}
+
 	// Add dimension form
 	let showAddDim = $state(false)
 	let newDimPos = $state('noun')
@@ -87,6 +111,65 @@
 			invalidateAll()
 		}
 		addingClass = false
+	}
+
+	async function deleteClass(classId: number) {
+		if (!confirm('Delete this paradigm class and all its rules?')) return
+		await fetch(`/api/languages/${languageSlug}/inflections/classes/${classId}`, { method: 'DELETE' })
+		invalidateAll()
+	}
+
+	// Rules editor state
+	let editingClassId = $state<number | null>(null)
+	let editingRules = $state<Array<{ cellKey: string, pattern: string }>>([])
+	let loadingRules = $state(false)
+	let savingRules = $state(false)
+	let previewStem = $state('tsida')
+
+	async function openRulesEditor(cls: { id: number, partOfSpeech: string }) {
+		if (editingClassId === cls.id) {
+			editingClassId = null
+			return
+		}
+		loadingRules = true
+		editingClassId = cls.id
+
+		// Fetch existing rules
+		const res = await fetch(`/api/languages/${languageSlug}/inflections/classes/${cls.id}`)
+		const data = await res.json()
+		const existingRules: Record<string, string> = {}
+		for (const r of data.rules || []) {
+			existingRules[r.cellKey] = r.pattern
+		}
+
+		// Generate all cell keys for this POS and pre-fill
+		const cellKeys = getCellKeysForPos(cls.partOfSpeech)
+		editingRules = cellKeys.map(key => ({
+			cellKey: key,
+			pattern: existingRules[key] || '',
+		}))
+
+		loadingRules = false
+	}
+
+	async function saveRules() {
+		if (editingClassId === null) return
+		savingRules = true
+		const nonEmpty = editingRules.filter(r => r.pattern.trim())
+		await fetch(`/api/languages/${languageSlug}/inflections/classes/${editingClassId}`, {
+			method: 'PUT',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ rules: nonEmpty }),
+		})
+		savingRules = false
+		editingClassId = null
+		invalidateAll()
+	}
+
+	function previewForm(pattern: string): string {
+		if (!pattern.trim()) return '—'
+		if (!pattern.includes('{stem}')) return pattern
+		return pattern.replaceAll('{stem}', previewStem)
 	}
 
 	const inputClass = 'px-3 py-1.5 border border-border-strong rounded-lg text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent'
@@ -152,16 +235,16 @@
 
 	<!-- Existing dimensions grouped by POS -->
 	{#if dimensions.length > 0}
-		<div class="space-y-3">
+		<div class="space-y-4">
 			{#each [...grouped().entries()] as [pos, dims]}
 				<div>
-					<div class="text-xs font-medium text-dim mb-1">{pos}</div>
-					<div class="space-y-1">
+					<div class="text-xs font-semibold text-dim uppercase tracking-wide mb-1">{pos}</div>
+					<div class="space-y-1 mb-2">
 						{#each dims as dim}
 							<div class="flex items-center gap-2 text-sm group">
 								<span class="font-medium text-secondary">{dim.name}</span>
 								<span class="text-faint text-xs">[{dim.dimValues.join(', ')}]</span>
-								<span class="text-faint text-xs">sort: {dim.sortOrder}</span>
+								<span class="text-faint text-[10px]">axis {dim.sortOrder}</span>
 								<button onclick={() => deleteDimension(dim.id)} class="
 									text-red-400 text-xs opacity-0 transition-opacity
 									hover:text-red-600
@@ -173,14 +256,95 @@
 
 					<!-- Classes for this POS -->
 					{#if classesGrouped().has(pos)}
-						<div class="mt-1 ml-3">
+						<div class="ml-2 space-y-1">
 							{#each classesGrouped().get(pos) || [] as cls}
-								<div class="flex items-center gap-2 text-xs text-dim">
-									<span class="text-link font-medium">{cls.name}</span>
-									{#if cls.description}
-										<span class="text-faint">— {cls.description}</span>
+								<div class="group">
+									<div class="flex items-center gap-2 text-sm">
+										<button
+											onclick={() => openRulesEditor(cls)}
+											class="text-link font-medium cursor-pointer text-sm hover:underline"
+										>
+											{cls.name}
+										</button>
+										{#if cls.description}
+											<span class="text-faint text-xs">— {cls.description}</span>
+										{/if}
+										<button onclick={() => deleteClass(cls.id)} class="
+											text-red-400 text-xs opacity-0 transition-opacity
+											hover:text-red-600
+											group-hover:opacity-100
+										">×</button>
+									</div>
+
+									<!-- Inline rules editor -->
+									{#if editingClassId === cls.id}
+										<div class="mt-2 p-3 bg-page rounded-lg border border-border">
+											{#if loadingRules}
+												<p class="text-xs text-faint">Loading rules...</p>
+											{:else}
+												<div class="flex items-center gap-2 mb-3">
+													<span class="text-xs text-dim">Preview stem:</span>
+													<input type="text" bind:value={previewStem} class="
+														w-32 px-2 py-1 border border-border-strong rounded-sm text-sm bg-surface font-mono
+													" />
+												</div>
+
+												<div class="overflow-x-auto">
+													<table class="w-full text-sm">
+														<thead>
+															<tr class="border-b border-border">
+																<th class="text-left text-xs text-dim font-medium py-1 pr-3">Cell</th>
+																<th class="text-left text-xs text-dim font-medium py-1 pr-3">Pattern</th>
+																<th class="text-left text-xs text-dim font-medium py-1">Preview</th>
+															</tr>
+														</thead>
+														<tbody>
+															{#each editingRules as rule, index}
+																<tr class="border-b border-border-subtle">
+																	<td class="py-1.5 pr-3 text-xs text-secondary font-mono whitespace-nowrap">{cellKeyLabel(rule.cellKey)}</td>
+																	<td class="py-1.5 pr-3">
+																		<input
+																			type="text"
+																			bind:value={editingRules[index].pattern}
+																			placeholder="{{ stem }}n"
+																			class="
+																				w-full px-2 py-1 border border-border-strong rounded-sm text-sm bg-surface
+																				font-mono
+																			"
+																		/>
+																	</td>
+																	<td class="py-1.5 text-xs font-mono text-faint">{previewForm(rule.pattern)}</td>
+																</tr>
+															{/each}
+														</tbody>
+													</table>
+												</div>
+
+												{#if editingRules.length === 0}
+													<p class="text-xs text-faint py-2">No dimensions defined for {pos}. Add dimensions first.</p>
+												{/if}
+
+												<div class="flex gap-2 mt-3">
+													<button
+														onclick={saveRules}
+														disabled={savingRules}
+														class="
+															px-3 py-1 bg-accent text-surface text-xs rounded-md
+															hover:bg-accent-hover
+															disabled:opacity-50
+														"
+													>
+														{savingRules ? 'Saving...' : 'Save rules'}
+													</button>
+													<button onclick={() => editingClassId = null} class="text-xs text-faint hover:text-dim">Cancel</button>
+												</div>
+
+												<p class="text-[10px] text-faint mt-2">
+													Use <code class="bg-surface-dim px-1 rounded-sm">{{ stem }}</code> as placeholder. Example: <code class="bg-surface-dim px-1 rounded-sm">{{ stem }}n</code> produces "{previewStem}n"
+												</p>
+											{/if}
+										</div>
 									{/if}
-									<a href="/api/languages/{languageSlug}/inflections/classes/{cls.id}" target="_blank" class="text-faint hover:text-dim">[rules]</a>
 								</div>
 							{/each}
 						</div>
