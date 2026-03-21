@@ -85,24 +85,26 @@ export const PUT: RequestHandler = async (event) => {
 	// Snapshot before changes
 	await snapshotEntry(entryId, user.id, 'Definitions updated')
 
-	// Delete all existing and re-insert in one go
-	await db.delete(definitions).where(eq(definitions.entryId, entryId))
-
+	// Delete + re-insert atomically in a transaction
 	const validDefs = defs.filter(d => d.definition?.trim())
-	for (let index = 0; index < validDefs.length; index++) {
-		const d = validDefs[index]
-		await db.insert(definitions).values({
-			entryId,
-			senseNumber: index + 1,
-			partOfSpeech: d.partOfSpeech?.trim() || null,
-			definition: d.definition.trim(),
-			usageExample: d.usageExample?.trim() || null,
-			usageTranslation: d.usageTranslation?.trim() || null,
-		})
-	}
+	await db.transaction(async (tx) => {
+		await tx.delete(definitions).where(eq(definitions.entryId, entryId))
 
-	// Refresh search vector
-	await db.update(lexicon).set({ updatedAt: new Date() }).where(eq(lexicon.id, entryId))
+		for (let index = 0; index < validDefs.length; index++) {
+			const d = validDefs[index]
+			await tx.insert(definitions).values({
+				entryId,
+				senseNumber: index + 1,
+				partOfSpeech: d.partOfSpeech?.trim() || null,
+				definition: d.definition.trim(),
+				usageExample: d.usageExample?.trim() || null,
+				usageTranslation: d.usageTranslation?.trim() || null,
+			})
+		}
+
+		// Refresh search vector inside transaction
+		await tx.update(lexicon).set({ updatedAt: new Date() }).where(eq(lexicon.id, entryId))
+	})
 
 	return json({ success: true, count: validDefs.length })
 }

@@ -24,7 +24,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		conditions.push(sql`LOWER(LEFT(${lexicon.word}, 1)) = ${letter.toLowerCase()}`)
 	}
 	if (tag) {
-		conditions.push(sql`${tag} = ANY(${lexicon.tags})`)
+		conditions.push(sql`LOWER(${tag}) = ANY(${lexicon.tags})`)
 	}
 	if (pos) {
 		conditions.push(sql`EXISTS (SELECT 1 FROM definitions d WHERE d.entry_id = ${lexicon.id} AND d.part_of_speech = ${pos})`)
@@ -158,55 +158,62 @@ export const POST: RequestHandler = async (event) => {
 				existingSlug: lang[0]?.slug,
 			}, { status: 409 })
 		}
-		homographNumber = Math.max(...existing.map(e => e.homographNumber)) + 1
+		homographNumber = existing.length > 0
+			? Math.max(...existing.map(e => e.homographNumber)) + 1
+			: 1
 	}
 
-	const [entry] = await db
-		.insert(lexicon)
-		.values({
-			word: word.trim(),
-			languageId,
-			pronunciation: pronunciation?.trim() || null,
-			etymology: etymology?.trim() || null,
-			notes: notes?.trim() || null,
-			pageSlug: pageSlug?.trim() || null,
-			tags: normalizedTags,
-			homographNumber,
-		})
-		.returning()
-
-	// Insert definitions
-	for (let index = 0; index < defsList.length; index++) {
-		const d = defsList[index]
-		if (d.definition?.trim()) {
-			await db.insert(definitions).values({
-				entryId: entry.id,
-				senseNumber: index + 1,
-				partOfSpeech: d.partOfSpeech?.trim() || null,
-				definition: d.definition.trim(),
-				usageExample: d.usageExample?.trim() || null,
-				usageTranslation: d.usageTranslation?.trim() || null,
+	// All inserts in a single transaction — no orphaned entries on partial failure
+	const entry = await db.transaction(async (tx) => {
+		const [newEntry] = await tx
+			.insert(lexicon)
+			.values({
+				word: word.trim(),
+				languageId,
+				pronunciation: pronunciation?.trim() || null,
+				etymology: etymology?.trim() || null,
+				notes: notes?.trim() || null,
+				pageSlug: pageSlug?.trim() || null,
+				tags: normalizedTags,
+				homographNumber,
 			})
-		}
-	}
+			.returning()
 
-	// Refresh search vector (definitions now exist)
-	await db.update(lexicon).set({ updatedAt: new Date() }).where(eq(lexicon.id, entry.id))
-
-	// Insert etymology relations if provided
-	if (relations && relations.length > 0) {
-		const validTypes = new Set(['derived_from', 'loan_from', 'compound_of'])
-		const validRelations = relations.filter((r: { targetId: number, relationType: string }) => r.targetId && validTypes.has(r.relationType))
-		if (validRelations.length > 0) {
-			await db.insert(lexiconRelations).values(
-				validRelations.map((r: { targetId: number, relationType: string }) => ({
-					sourceId: entry.id,
-					targetId: r.targetId,
-					relationType: r.relationType,
-				})),
-			).onConflictDoNothing()
+		// Insert definitions
+		for (let index = 0; index < defsList.length; index++) {
+			const d = defsList[index]
+			if (d.definition?.trim()) {
+				await tx.insert(definitions).values({
+					entryId: newEntry.id,
+					senseNumber: index + 1,
+					partOfSpeech: d.partOfSpeech?.trim() || null,
+					definition: d.definition.trim(),
+					usageExample: d.usageExample?.trim() || null,
+					usageTranslation: d.usageTranslation?.trim() || null,
+				})
+			}
 		}
-	}
+
+		// Refresh search vector INSIDE transaction (after definitions exist)
+		await tx.update(lexicon).set({ updatedAt: new Date() }).where(eq(lexicon.id, newEntry.id))
+
+		// Insert etymology relations if provided
+		if (relations && relations.length > 0) {
+			const validTypes = new Set(['derived_from', 'loan_from', 'compound_of'])
+			const validRelations = relations.filter((r: { targetId: number, relationType: string }) => r.targetId && validTypes.has(r.relationType))
+			if (validRelations.length > 0) {
+				await tx.insert(lexiconRelations).values(
+					validRelations.map((r: { targetId: number, relationType: string }) => ({
+						sourceId: newEntry.id,
+						targetId: r.targetId,
+						relationType: r.relationType,
+					})),
+				).onConflictDoNothing()
+			}
+		}
+
+		return newEntry
+	})
 
 	return json(entry, { status: 201 })
 }

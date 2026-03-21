@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { languages } from '$lib/server/db/schema.js'
-import { requireAuth } from '$lib/server/auth.js'
+import { requireRole } from '$lib/server/auth.js'
 import { eq, sql } from 'drizzle-orm'
 import { isDescendant } from '$lib/server/wordbook/language-tree.js'
 
@@ -43,7 +43,7 @@ export const GET: RequestHandler = async ({ params }) => {
 
 /** PUT /api/languages/:slug */
 export const PUT: RequestHandler = async (event) => {
-	requireAuth(event)
+	requireRole(event, 'admin')
 	const body = await event.request.json()
 	const { name, nativeName, script, family, color, description, pageSlug, parentLanguageId, languageType } = body as {
 		name?: string

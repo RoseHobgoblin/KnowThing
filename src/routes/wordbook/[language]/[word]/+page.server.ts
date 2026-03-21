@@ -1,10 +1,20 @@
 import type { PageServerLoad } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { lexicon, definitions, languages, lexiconVariants, languageDialects, paradigmClasses } from '$lib/server/db/schema.js'
-import { eq, and, asc, sql } from 'drizzle-orm'
+import { eq, and, asc, sql, inArray } from 'drizzle-orm'
 import { error, redirect } from '@sveltejs/kit'
 import { getDirectRelations, computeCognates, getEtymologyChain } from '$lib/server/wordbook/etymology.js'
 import { getInflectionTable } from '$lib/server/wordbook/inflection.js'
+
+function groupBy<T>(items: T[], keyFn: (item: T) => number): Map<number, T[]> {
+	const map = new Map<number, T[]>()
+	for (const item of items) {
+		const key = keyFn(item)
+		if (!map.has(key)) map.set(key, [])
+		map.get(key)!.push(item)
+	}
+	return map
+}
 
 export const load: PageServerLoad = async ({ params }) => {
 	const word = decodeURIComponent(params.word).normalize('NFC')
@@ -45,38 +55,50 @@ export const load: PageServerLoad = async ({ params }) => {
 		redirect(301, `/wordbook/${params.language}/${encodeURIComponent(storedWord)}`)
 	}
 
-	// For each homograph, load definitions, variants, and relations
-	const homographs = await Promise.all(entries.map(async (entry) => {
-		const [defs, variants, inflection, direct, cognates, etymologyChain] = await Promise.all([
-			db.select()
-				.from(definitions)
-				.where(eq(definitions.entryId, entry.id))
-				.orderBy(asc(definitions.senseNumber)),
-			db.select({
-				id: lexiconVariants.id,
-				pronunciation: lexiconVariants.pronunciation,
-				spelling: lexiconVariants.spelling,
-				notes: lexiconVariants.notes,
-				dialectName: languageDialects.name,
-				dialectSlug: languageDialects.slug,
-				dialectRegion: languageDialects.region,
-			})
-				.from(lexiconVariants)
-				.innerJoin(languageDialects, eq(lexiconVariants.dialectId, languageDialects.id))
-				.where(eq(lexiconVariants.entryId, entry.id)),
-			getInflectionTable(entry.id),
-			getDirectRelations(entry.id),
-			computeCognates(entry.id, lang.id),
-			getEtymologyChain(entry.id),
-		])
+	const entryIds = entries.map(e => e.id)
 
-		return {
-			entry,
-			definitions: defs,
-			variants,
-			inflection,
-			relations: { direct, cognates, etymologyChain },
-		}
+	// Batch load definitions and variants for ALL homographs in 2 queries instead of 2N
+	const [allDefs, allVariants, allInflections, ...etymologyResults] = await Promise.all([
+		db.select()
+			.from(definitions)
+			.where(inArray(definitions.entryId, entryIds))
+			.orderBy(asc(definitions.entryId), asc(definitions.senseNumber)),
+		db.select({
+			id: lexiconVariants.id,
+			entryId: lexiconVariants.entryId,
+			pronunciation: lexiconVariants.pronunciation,
+			spelling: lexiconVariants.spelling,
+			notes: lexiconVariants.notes,
+			dialectName: languageDialects.name,
+			dialectSlug: languageDialects.slug,
+			dialectRegion: languageDialects.region,
+		})
+			.from(lexiconVariants)
+			.innerJoin(languageDialects, eq(lexiconVariants.dialectId, languageDialects.id))
+			.where(inArray(lexiconVariants.entryId, entryIds)),
+		// Inflection tables still need per-entry calls (paradigm rule application)
+		Promise.all(entryIds.map(id => getInflectionTable(id))),
+		// Etymology still needs per-entry calls (graph traversal)
+		...entryIds.map(id => Promise.all([
+			getDirectRelations(id),
+			computeCognates(id, lang.id),
+			getEtymologyChain(id),
+		])),
+	])
+
+	const defsByEntry = groupBy(allDefs, d => d.entryId)
+	const variantsByEntry = groupBy(allVariants, v => v.entryId)
+
+	const homographs = entries.map((entry, index) => ({
+		entry,
+		definitions: defsByEntry.get(entry.id) || [],
+		variants: variantsByEntry.get(entry.id) || [],
+		inflection: allInflections[index],
+		relations: {
+			direct: etymologyResults[index][0],
+			cognates: etymologyResults[index][1],
+			etymologyChain: etymologyResults[index][2],
+		},
 	}))
 
 	// Load available paradigm classes for this language (for inflection assignment)

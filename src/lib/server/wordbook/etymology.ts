@@ -225,6 +225,8 @@ export async function computeCognates(
 
 	const allDescendants = new Map<number, { word: string, definition: string, pronunciation: string | null, languageName: string, languageSlug: string, languageFamily: string | null, languageId: number }>()
 
+	if (roots.length === 0) return []
+
 	for (const rootId of roots) {
 		const result = await db.execute(sql`
 			WITH RECURSIVE descendants AS (
@@ -245,6 +247,7 @@ export async function computeCognates(
 			JOIN lexicon l ON l.id = d.id
 			JOIN languages lang ON l.language_id = lang.id
 			WHERE l.id != ${entryId}
+			LIMIT 200
 		`)
 
 		for (const r of result as any[]) {

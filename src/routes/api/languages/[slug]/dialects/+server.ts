@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { languages, languageDialects } from '$lib/server/db/schema.js'
-import { requireAuth } from '$lib/server/auth.js'
+import { requireAuth, requireRole } from '$lib/server/auth.js'
 import { eq, asc } from 'drizzle-orm'
 
 /** GET /api/languages/:slug/dialects */
@@ -21,7 +21,7 @@ export const GET: RequestHandler = async ({ params }) => {
 
 /** POST /api/languages/:slug/dialects */
 export const POST: RequestHandler = async (event) => {
-	requireAuth(event)
+	requireRole(event, 'admin')
 
 	const [lang] = await db.select({ id: languages.id }).from(languages).where(eq(languages.slug, event.params.slug))
 	if (!lang) return json({ error: 'Language not found' }, { status: 404 })

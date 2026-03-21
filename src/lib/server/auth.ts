@@ -113,3 +113,15 @@ export function requireAuth(event: RequestEvent): AuthUser {
 	}
 	return user
 }
+
+/** Require a specific role — returns user or throws 403 */
+export function requireRole(event: RequestEvent, role: string): AuthUser {
+	const user = requireAuth(event)
+	if (user.role !== role) {
+		throw Response.json({ error: 'Insufficient permissions' }, {
+			status: 403,
+			headers: { 'Content-Type': 'application/json' },
+		})
+	}
+	return user
+}

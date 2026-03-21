@@ -36,9 +36,16 @@ export function applyPattern(pattern: string, stem: string): string {
 	return pattern.replaceAll('{stem}', stem)
 }
 
+const MAX_CELL_KEYS = 1000
+
 /** Generate all cell keys from dimensions (cartesian product) */
 export function generateCellKeys(dimensions: Dimension[]): string[] {
 	if (dimensions.length === 0) return []
+
+	const total = dimensions.reduce((accumulator, d) => accumulator * d.values.length, 1)
+	if (total > MAX_CELL_KEYS) {
+		throw new Error(`Too many inflection cells (${total}). Maximum is ${MAX_CELL_KEYS}. Reduce dimension values.`)
+	}
 
 	const sorted = [...dimensions].sort((a, b) => a.sortOrder - b.sortOrder)
 

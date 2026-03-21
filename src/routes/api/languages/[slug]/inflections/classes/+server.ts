@@ -2,12 +2,12 @@ import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { languages, paradigmClasses } from '$lib/server/db/schema.js'
-import { requireAuth } from '$lib/server/auth.js'
+import { requireRole } from '$lib/server/auth.js'
 import { eq } from 'drizzle-orm'
 
 /** POST /api/languages/:slug/inflections/classes — create a paradigm class */
 export const POST: RequestHandler = async (event) => {
-	requireAuth(event)
+	requireRole(event, 'admin')
 
 	const [lang] = await db.select({ id: languages.id }).from(languages).where(eq(languages.slug, event.params.slug))
 	if (!lang) return json({ error: 'Language not found' }, { status: 404 })

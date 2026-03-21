@@ -9,7 +9,7 @@
 	} = $props()
 
 	// Group dimensions by POS
-	const grouped = $derived(() => {
+	const grouped = $derived.by(() => {
 		const map = new Map<string, typeof dimensions>()
 		for (const d of dimensions) {
 			if (!map.has(d.partOfSpeech)) map.set(d.partOfSpeech, [])
@@ -18,7 +18,7 @@
 		return map
 	})
 
-	const classesGrouped = $derived(() => {
+	const classesGrouped = $derived.by(() => {
 		const map = new Map<string, typeof classes>()
 		for (const c of classes) {
 			if (!map.has(c.partOfSpeech)) map.set(c.partOfSpeech, [])
@@ -29,7 +29,7 @@
 
 	// Generate cell keys from dimensions for a given POS
 	function getCellKeysForPos(pos: string): string[] {
-		const dims = grouped().get(pos)
+		const dims = grouped.get(pos)
 		if (!dims || dims.length === 0) return []
 		const sorted = [...dims].sort((a, b) => a.sortOrder - b.sortOrder)
 
@@ -236,7 +236,7 @@
 	<!-- Existing dimensions grouped by POS -->
 	{#if dimensions.length > 0}
 		<div class="space-y-4">
-			{#each [...grouped().entries()] as [pos, dims]}
+			{#each [...grouped.entries()] as [pos, dims]}
 				<div>
 					<div class="text-xs font-semibold text-dim uppercase tracking-wide mb-1">{pos}</div>
 					<div class="space-y-1 mb-2">
@@ -255,9 +255,9 @@
 					</div>
 
 					<!-- Classes for this POS -->
-					{#if classesGrouped().has(pos)}
+					{#if classesGrouped.has(pos)}
 						<div class="ml-2 space-y-1">
-							{#each classesGrouped().get(pos) || [] as cls}
+							{#each classesGrouped.get(pos) || [] as cls}
 								<div class="group">
 									<div class="flex items-center gap-2 text-sm">
 										<button
@@ -306,7 +306,7 @@
 																		<input
 																			type="text"
 																			bind:value={editingRules[index].pattern}
-																			placeholder="{{ stem }}n"
+																			placeholder={'{stem}n'}
 																			class="
 																				w-full px-2 py-1 border border-border-strong rounded-sm text-sm bg-surface
 																				font-mono
@@ -340,7 +340,7 @@
 												</div>
 
 												<p class="text-[10px] text-faint mt-2">
-													Use <code class="bg-surface-dim px-1 rounded-sm">{{ stem }}</code> as placeholder. Example: <code class="bg-surface-dim px-1 rounded-sm">{{ stem }}n</code> produces "{previewStem}n"
+													Use <code class="bg-surface-dim px-1 rounded-sm">{'{'+'stem}'}</code> as placeholder. Example: <code class="bg-surface-dim px-1 rounded-sm">{'{'+'stem}n'}</code> produces "{previewStem}n"
 												</p>
 											{/if}
 										</div>

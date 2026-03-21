@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { lexicon, lexiconVariants, languageDialects } from '$lib/server/db/schema.js'
 import { requireAuth } from '$lib/server/auth.js'
-import { eq } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
 
 /** GET /api/wordbook/:id/variants */
 export const GET: RequestHandler = async ({ params }) => {
@@ -49,6 +49,15 @@ export const POST: RequestHandler = async (event) => {
 	if (!dialectId) return json({ error: 'dialectId is required' }, { status: 400 })
 	if (!pronunciation?.trim() && !spelling?.trim()) {
 		return json({ error: 'At least pronunciation or spelling is required' }, { status: 400 })
+	}
+
+	// Check for existing variant for this dialect
+	const [existingVariant] = await db
+		.select({ id: lexiconVariants.id })
+		.from(lexiconVariants)
+		.where(and(eq(lexiconVariants.entryId, entryId), eq(lexiconVariants.dialectId, dialectId)))
+	if (existingVariant) {
+		return json({ error: 'A variant for this dialect already exists. Edit it instead.' }, { status: 409 })
 	}
 
 	const [variant] = await db
