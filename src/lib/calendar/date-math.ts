@@ -297,35 +297,8 @@ export function phaseName(phase: number): string {
 }
 
 // ============================================================================
-// Auto-advance
+// Current date resolution
 // ============================================================================
-
-/** Parse ISO 8601 date to days since civil epoch (using Hinnant's algorithm) */
-function daysFromCivil(y: number, m: number, d: number): number {
-	const yr = m <= 2 ? y - 1 : y
-	const era = Math.floor((yr >= 0 ? yr : yr - 399) / 400)
-	const yoe = yr - era * 400
-	const doy = Math.floor((153 * (m + (m > 2 ? -3 : 9)) + 2) / 5) + d - 1
-	const doe = yoe * 365 + Math.floor(yoe / 4) - Math.floor(yoe / 100) + doy
-	return era * 146097 + doe - 719468
-}
-
-/** Get today's real-world date as days since Unix epoch */
-function realTodayAsDays(): number {
-	const now = new Date()
-	return daysFromCivil(now.getFullYear(), now.getMonth() + 1, now.getDate())
-}
-
-/** Parse "YYYY-MM-DD" to days since civil epoch */
-function parseIsoDate(s: string): number | null {
-	const parts = s.split('-')
-	if (parts.length !== 3) return null
-	const y = Number.parseInt(parts[0], 10)
-	const m = Number.parseInt(parts[1], 10)
-	const d = Number.parseInt(parts[2], 10)
-	if (isNaN(y) || isNaN(m) || isNaN(d)) return null
-	return daysFromCivil(y, m, d)
-}
 
 /** Resolve the current in-world date from Date.now() + epoch_offset */
 export function resolveCalendarDate(config: CalendarConfig): CalendarDate {

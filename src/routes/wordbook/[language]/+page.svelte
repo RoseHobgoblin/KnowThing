@@ -52,7 +52,10 @@
 					<span class="text-lg text-faint italic">{data.language.nativeName}</span>
 				{/if}
 			</div>
-			<a href="/wordbook/contribute/language/{data.language.slug}" class="text-sm text-link shrink-0 hover:text-link-hover hover:underline">Edit language</a>
+			<div class="flex gap-3 shrink-0">
+				<a href="/wordbook/contribute" class="text-sm text-link hover:text-link-hover hover:underline">+ Add word</a>
+				<a href="/wordbook/contribute/language/{data.language.slug}" class="text-sm text-faint hover:text-link hover:underline">Edit language</a>
+			</div>
 		</div>
 
 		<div class="flex items-center gap-3 text-sm text-dim mb-3">

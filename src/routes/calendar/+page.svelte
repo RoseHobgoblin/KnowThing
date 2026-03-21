@@ -22,8 +22,8 @@
 	{#if data.calendars.length === 0}
 		<div class="bg-accent-subtle border border-accent-border rounded-lg p-6 text-center">
 			<p class="text-accent-text font-medium">No calendars configured yet.</p>
-			<p class="text-accent text-sm mt-2">
-				Create a calendar via the API: POST to <code>/api/calendar</code> with your calendar JSON config.
+			<p class="text-dim text-sm mt-2">
+				<a href="/dashboard/calendar" class="text-link hover:text-link-hover hover:underline">Create one in the Dashboard →</a>
 			</p>
 		</div>
 	{:else}

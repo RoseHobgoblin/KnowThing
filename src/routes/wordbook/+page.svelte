@@ -21,6 +21,9 @@
 		<div class="max-w-2xl mx-auto">
 			<WordbookSearch languages={data.languages} large />
 		</div>
+		<div class="flex justify-center gap-3 mt-4">
+			<a href="/wordbook/contribute" class="text-sm text-link hover:text-link-hover hover:underline">+ Add word</a>
+		</div>
 	</div>
 
 	<!-- Languages -->
