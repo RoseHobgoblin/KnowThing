@@ -68,8 +68,9 @@ export const getRenderContext = getKnowContext
 export function slugify(title: string): string {
 	const cleaned = title
 		.trim()
+		.normalize('NFC')
 		.replaceAll(' ', '_')
-		.replaceAll(/[^\w().\-]/g, '')
+		.replaceAll(/[^\p{L}\p{N}_().\-]/gu, '')
 	if (!cleaned) return cleaned
 	return cleaned[0].toUpperCase() + cleaned.slice(1)
 }

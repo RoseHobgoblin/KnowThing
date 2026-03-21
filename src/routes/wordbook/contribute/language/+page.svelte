@@ -25,7 +25,7 @@
 	}
 
 	function slugify(s: string): string {
-		return s.toLowerCase().replaceAll(/[^\da-z]+/g, '-').replaceAll(/^-|-$/g, '')
+		return s.toLowerCase().normalize('NFC').replaceAll(/[^\p{L}\p{N}]+/gu, '-').replaceAll(/^-|-$/g, '')
 	}
 
 	async function handleSubmit(e: SubmitEvent) {

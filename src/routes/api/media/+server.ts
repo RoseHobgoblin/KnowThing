@@ -112,7 +112,7 @@ export const POST: RequestHandler = async (event) => {
 	}
 
 	const originalFilename = file.name
-	const filename = file.name.replaceAll(/[^\w.-]/g, '_')
+	const filename = file.name.replaceAll(/[^\p{L}\p{N}_.-]/gu, '_')
 
 	// Ensure directories exist
 	await mkdir(UPLOAD_DIR, { recursive: true })
