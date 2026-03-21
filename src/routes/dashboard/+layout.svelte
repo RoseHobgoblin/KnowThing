@@ -43,6 +43,12 @@
 				</a>
 				{#if data.user?.role === 'admin'}
 					<div class="border-t border-border my-2"></div>
+					<a href="/dashboard/calendar" class="
+						block px-2 py-1.5 rounded-md text-secondary transition-colors
+						hover:bg-accent-subtle hover:text-link
+					">
+						Calendars
+					</a>
 					<a href="/dashboard/users" class="
 						block px-2 py-1.5 rounded-md text-secondary transition-colors
 						hover:bg-accent-subtle hover:text-link

@@ -107,6 +107,7 @@
 		'cite web',
 		'cite journal',
 		'wt',
+		'date',
 	])
 
 	const resolution = resolve()
@@ -243,6 +244,15 @@
 			>{wtWord}</a>
 		{:else if wtWord}
 			<span class="italic text-secondary">{wtWord}</span>
+		{/if}
+	{:else if resolution.component === 'date'}
+		{@const tsString = getPositionalArguments()[0]?.trim() || ''}
+		{@const ts = Number.parseInt(tsString)}
+		{#if !isNaN(ts) && ctx.calendarDate}
+			{@const formatted = `${ctx.calendarDate.day_of_week_name}, ${ctx.calendarDate.day} ${ctx.calendarDate.month_name}, ${ctx.calendarDate.year_display}`}
+			<a href="/calendar?date={ts}" class="text-link hover:text-link-hover hover:underline" title="View in calendar">{formatted}</a>
+		{:else}
+			<span class="text-faint">[date: {tsString}]</span>
 		{/if}
 	{:else if resolution.component === 'sidebar'}
 		<div class="know-sidebar float-right ml-4 mb-4 border border-border-strong bg-page text-sm w-56 p-3">

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { CalendarConfig, StaticCalendarData, CurrentDate } from './types.js'
+import type { CalendarConfig, StaticCalendarData, CalendarDate } from './types.js'
 import {
 	leapDayApplies,
 	daysInMonth,
@@ -93,6 +93,7 @@ const TEST_DATA: StaticCalendarData = {
 	],
 	display_moons: true,
 	year_offset: 0,
+	epoch_offset: 0,
 }
 
 const TEST_CONFIG: CalendarConfig = {
@@ -100,8 +101,6 @@ const TEST_CONFIG: CalendarConfig = {
 	description: 'Test calendar',
 	primary: true,
 	static_data: TEST_DATA,
-	current_date: { year: 4524, month: 3, day: 14 },
-	auto_advance: null,
 }
 
 describe('leapDayApplies', () => {
@@ -160,7 +159,7 @@ describe('absoluteDay and dateFromAbsolute', () => {
 	})
 
 	it('round-trips through absolute', () => {
-		const dates: CurrentDate[] = [
+		const dates: CalendarDate[] = [
 			{ year: 1, month: 1, day: 1 },
 			{ year: 1, month: 1, day: 30 },
 			{ year: 1, month: 2, day: 1 },
@@ -268,8 +267,8 @@ describe('moon phases', () => {
 })
 
 describe('resolveDisplay', () => {
-	it('resolves the current date', () => {
-		const resolved = resolveDisplay(TEST_CONFIG)
+	it('resolves a given date', () => {
+		const resolved = resolveDisplay(TEST_CONFIG, { year: 4524, month: 3, day: 14 })
 		expect(resolved.year).toBe(4524)
 		expect(resolved.month_name).toBe('Rethe')
 		expect(resolved.day).toBe(14)

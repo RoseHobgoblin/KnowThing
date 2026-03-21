@@ -8,8 +8,6 @@ export interface CalendarConfig {
 	description: string
 	primary: boolean
 	static_data: StaticCalendarData
-	current_date: CurrentDate
-	auto_advance?: AutoAdvance | null
 }
 
 /** All calendar rules: months, weekdays, leap days, moons, eras, seasons */
@@ -26,6 +24,10 @@ export interface StaticCalendarData {
 	display_moons: boolean
 	/** Added to displayed year numbers (for year numbering offset) */
 	year_offset: number
+	/** Days between Unix epoch (1970-01-01) and this calendar's year 1 day 1.
+	 *  Positive = calendar year 1 is before 1970. Negative = after 1970.
+	 *  Example: if year 1 day 1 = 1970-01-01, offset = 0. */
+	epoch_offset: number
 }
 
 export interface Weekday {
@@ -112,8 +114,8 @@ export interface Weather {
 	wind_intensity?: number
 }
 
-/** The in-world date */
-export interface CurrentDate {
+/** A date in the calendar system (year/month/day) */
+export interface CalendarDate {
 	year: number
 	/** 1-indexed month number */
 	month: number
@@ -121,15 +123,8 @@ export interface CurrentDate {
 	day: number
 }
 
-/** Links in-world time to real-world time for auto-advancing */
-export interface AutoAdvance {
-	/** ISO 8601 date "YYYY-MM-DD" */
-	real_anchor: string
-	/** In-world date at that real-world moment */
-	world_anchor: CurrentDate
-	/** In-world days per real-world day */
-	ratio: number
-}
+/** @deprecated Use CalendarDate instead */
+export type CurrentDate = CalendarDate
 
 /** Fully resolved display info for a date */
 export interface ResolvedDate {

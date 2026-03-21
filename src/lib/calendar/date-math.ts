@@ -1,7 +1,7 @@
 import type {
 	CalendarConfig,
 	StaticCalendarData,
-	CurrentDate,
+	CalendarDate,
 	LeapDay,
 	Moon,
 	Era,
@@ -78,7 +78,7 @@ export function daysInYear(data: StaticCalendarData, year: number): number {
 // ============================================================================
 
 /** Convert a date to an absolute day number */
-export function absoluteDay(data: StaticCalendarData, date: CurrentDate): number {
+export function absoluteDay(data: StaticCalendarData, date: CalendarDate): number {
 	let abs = 0
 
 	// Sum all prior years
@@ -105,7 +105,7 @@ export function absoluteDay(data: StaticCalendarData, date: CurrentDate): number
 }
 
 /** Convert an absolute day number back to a date */
-export function dateFromAbsolute(data: StaticCalendarData, abs: number): CurrentDate {
+export function dateFromAbsolute(data: StaticCalendarData, abs: number): CalendarDate {
 	let remaining = abs
 	let year: number
 
@@ -147,7 +147,7 @@ export function dateFromAbsolute(data: StaticCalendarData, abs: number): Current
 // ============================================================================
 
 /** Get 0-based weekday index for a date */
-export function dayOfWeek(data: StaticCalendarData, date: CurrentDate): number {
+export function dayOfWeek(data: StaticCalendarData, date: CalendarDate): number {
 	const abs = absoluteDay(data, date)
 	const weekLength = data.weekdays.length
 	if (weekLength === 0) return 0
@@ -176,7 +176,7 @@ export function dayOfWeek(data: StaticCalendarData, date: CurrentDate): number {
 }
 
 /** Get weekday name for a date */
-export function dayOfWeekName(data: StaticCalendarData, date: CurrentDate): string {
+export function dayOfWeekName(data: StaticCalendarData, date: CalendarDate): string {
 	const index = dayOfWeek(data, date)
 	return data.weekdays[index]?.name ?? ''
 }
@@ -218,7 +218,7 @@ export function formatYearWithEra(data: StaticCalendarData, year: number): strin
 // ============================================================================
 
 /** Find the season for a given date */
-export function seasonForDate(data: StaticCalendarData, date: CurrentDate): Season | null {
+export function seasonForDate(data: StaticCalendarData, date: CalendarDate): Season | null {
 	const dated = data.seasons.filter(s => s.timing.type === 'dated')
 	const periodic = data.seasons.filter(s => s.timing.type === 'periodic')
 
@@ -273,7 +273,7 @@ export function seasonForDate(data: StaticCalendarData, date: CurrentDate): Seas
 // ============================================================================
 
 /** Get moon phase (0.0 = new, 0.5 = full) */
-export function moonPhase(moon: Moon, data: StaticCalendarData, date: CurrentDate): number {
+export function moonPhase(moon: Moon, data: StaticCalendarData, date: CalendarDate): number {
 	const abs = absoluteDay(data, date)
 	if (moon.cycle <= 0) return 0
 	const raw = ((abs - moon.offset) / moon.cycle) % 1
@@ -327,20 +327,11 @@ function parseIsoDate(s: string): number | null {
 	return daysFromCivil(y, m, d)
 }
 
-/** Resolve the current in-world date, applying auto-advance if configured */
-export function resolveCurrentDate(config: CalendarConfig): CurrentDate {
-	if (!config.auto_advance) return config.current_date
-
-	const aa = config.auto_advance
-	const realAnchorDays = parseIsoDate(aa.real_anchor)
-	if (realAnchorDays == null) return config.current_date
-
-	const todayDays = realTodayAsDays()
-	const realElapsed = todayDays - realAnchorDays
-	const worldElapsed = Math.floor(realElapsed * aa.ratio)
-
-	const anchorAbs = absoluteDay(config.static_data, aa.world_anchor)
-	return dateFromAbsolute(config.static_data, anchorAbs + worldElapsed)
+/** Resolve the current in-world date from Date.now() + epoch_offset */
+export function resolveCalendarDate(config: CalendarConfig): CalendarDate {
+	const epochOffset = config.static_data.epoch_offset ?? 0
+	const absDay = Math.floor(Date.now() / 86_400_000) + epochOffset
+	return dateFromAbsolute(config.static_data, absDay)
 }
 
 // ============================================================================
@@ -348,8 +339,8 @@ export function resolveCurrentDate(config: CalendarConfig): CurrentDate {
 // ============================================================================
 
 /** Resolve a date to its full display representation */
-export function resolveDisplay(config: CalendarConfig, date?: CurrentDate): ResolvedDate {
-	const d = date ?? resolveCurrentDate(config)
+export function resolveDisplay(config: CalendarConfig, date?: CalendarDate): ResolvedDate {
+	const d = date ?? resolveCalendarDate(config)
 	const data = config.static_data
 
 	const monthIndex = d.month - 1
