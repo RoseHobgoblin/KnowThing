@@ -15,6 +15,7 @@ export type WikiNode =
 	| OrderedListNode
 	| DefinitionListNode
 	| InternalLinkNode
+	| WordbookLinkNode
 	| ExternalLinkNode
 	| TemplateNode
 	| ImageNode
@@ -98,6 +99,12 @@ export interface SuperscriptNode {
 export interface InternalLinkNode {
 	type: 'internal_link'
 	target: string
+	display: WikiNode[] | null
+}
+export interface WordbookLinkNode {
+	type: 'wordbook_link'
+	language: string
+	word: string
 	display: WikiNode[] | null
 }
 export interface ExternalLinkNode {

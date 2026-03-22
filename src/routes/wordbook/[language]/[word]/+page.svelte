@@ -9,6 +9,7 @@
 	import InflectionTable from '$lib/components/wordbook/InflectionTable.svelte'
 	import InflectionEditor from '$lib/components/wordbook/InflectionEditor.svelte'
 	import { PARTS_OF_SPEECH, POS_COLORS } from '$lib/components/wordbook/constants.js'
+	import InlineMarkup from '$lib/renderer/InlineMarkup.svelte'
 
 	let { data }: { data: PageData } = $props()
 
@@ -166,7 +167,7 @@
 									">Remove</button>
 								{/if}
 							</div>
-							<p class="text-body leading-relaxed">{def.definition}</p>
+							<p class="text-body leading-relaxed"><InlineMarkup text={def.definition} /></p>
 							{#if def.usageExample}
 								<div class="mt-2 pl-3 border-l-2 border-accent-border">
 									<p class="text-sm italic text-secondary">{def.usageExample}</p>

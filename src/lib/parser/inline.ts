@@ -483,6 +483,18 @@ function parseInternalLink(input: string, start: number): ParseResult<WikiNode> 
 		return { node: { type: 'image', filename, options }, end: index }
 	}
 
+	// Wordbook link: [[wb:language:word]] or [[wb:language:word|display]]
+	if (/^wb:/i.test(target)) {
+		const wbTarget = target.replace(/^wb:\s*/i, '')
+		const colonIndex = wbTarget.indexOf(':')
+		if (colonIndex > 0) {
+			const language = wbTarget.slice(0, colonIndex).trim().toLowerCase()
+			const word = wbTarget.slice(colonIndex + 1).trim()
+			const display = parts.length > 1 ? parseInline(parts.slice(1).join('|')) : null
+			return { node: { type: 'wordbook_link', language, word, display }, end: index }
+		}
+	}
+
 	// Regular internal link
 	if (parts.length > 1) {
 		const display = parseInline(parts.slice(1).join('|'))
