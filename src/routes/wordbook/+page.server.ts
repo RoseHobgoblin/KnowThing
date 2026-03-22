@@ -4,23 +4,28 @@ import { languages, lexicon, definitions } from '$lib/server/db/schema.js'
 import { asc, desc, eq, sql } from 'drizzle-orm'
 
 export const load: PageServerLoad = async () => {
-	// Languages with word counts
-	const langs = await db
-		.select({
-			id: languages.id,
-			name: languages.name,
-			slug: languages.slug,
-			nativeName: languages.nativeName,
-			script: languages.script,
-			family: languages.family,
-			color: languages.color,
-			description: languages.description,
-			wordCount: sql<number>`COUNT(${lexicon.id})::int`.as('word_count'),
-		})
-		.from(languages)
-		.leftJoin(lexicon, eq(lexicon.languageId, languages.id))
-		.groupBy(languages.id)
-		.orderBy(asc(languages.name))
+	// Languages with word counts + inherited family from ancestors
+	const langs = await db.execute(sql`
+		WITH RECURSIVE ancestry AS (
+			SELECT id, family, parent_language_id, 0 AS depth
+			FROM languages
+			UNION ALL
+			SELECT a.id, p.family, p.parent_language_id, a.depth + 1
+			FROM ancestry a
+			JOIN languages p ON p.id = a.parent_language_id
+			WHERE a.family IS NULL AND a.depth < 10
+		)
+		SELECT
+			l.id, l.name, l.slug, l.native_name AS "nativeName",
+			l.script,
+			COALESCE(l.family, (
+				SELECT a.family FROM ancestry a WHERE a.id = l.id AND a.family IS NOT NULL ORDER BY a.depth LIMIT 1
+			)) AS family,
+			l.color, l.description,
+			(SELECT COUNT(*)::int FROM lexicon WHERE language_id = l.id) AS "wordCount"
+		FROM languages l
+		ORDER BY l.name ASC
+	`) as any[]
 
 	// Recently added words with first definition
 	const recent = await db
