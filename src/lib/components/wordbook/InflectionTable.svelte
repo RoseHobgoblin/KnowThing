@@ -38,7 +38,11 @@
 	}
 </script>
 
-{#if hasInflection && dimensions.length > 0 && Object.keys(forms).length > 0}
+{#if hasInflection && dimensions.length > 0 && Object.keys(forms).length === 0}
+	<div class="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+		Inflection is assigned but no forms were generated. Check that the paradigm class has rules defined, and that a stem is set.
+	</div>
+{:else if hasInflection && dimensions.length > 0 && Object.keys(forms).length > 0}
 	<div class="mt-4">
 		<div class="flex items-baseline gap-2 mb-2">
 			<h3 class="text-xs font-medium uppercase tracking-wide text-faint">Inflection</h3>

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation'
 	import { PARTS_OF_SPEECH } from './constants.js'
+	import { generateCellKeys, cellKeyLabel } from '$lib/wordbook/cell-keys.js'
 
 	let { languageSlug, dimensions = [], classes = [] }: {
 		languageSlug: string
@@ -31,25 +32,10 @@
 	function getCellKeysForPos(pos: string): string[] {
 		const dims = grouped.get(pos)
 		if (!dims || dims.length === 0) return []
-		const sorted = [...dims].sort((a, b) => a.sortOrder - b.sortOrder)
-
-		function cartesian(dimIndex: number): string[] {
-			if (dimIndex >= sorted.length) return ['']
-			const rest = cartesian(dimIndex + 1)
-			const result: string[] = []
-			for (const value of sorted[dimIndex].dimValues) {
-				for (const suffix of rest) {
-					result.push(suffix ? `${value}.${suffix}` : value)
-				}
-			}
-			return result
-		}
-		return cartesian(0)
+		return generateCellKeys(dims.map(d => ({ values: d.dimValues, sortOrder: d.sortOrder })))
 	}
 
-	function cellKeyLabel(key: string): string {
-		return key.split('.').join(' · ')
-	}
+	let showHelp = $state(false)
 
 	// Add dimension form
 	let showAddDim = $state(false)
@@ -177,12 +163,25 @@
 
 <div class="bg-surface rounded-lg border border-border p-4">
 	<div class="flex items-center justify-between mb-3">
-		<h3 class="text-sm font-semibold text-body">Inflection System</h3>
+		<div class="flex items-center gap-2">
+			<h3 class="text-sm font-semibold text-body">Inflection System</h3>
+			<button onclick={() => showHelp = !showHelp} class="text-[10px] text-faint hover:text-link border border-border-subtle rounded px-1.5 py-0.5">{showHelp ? 'Hide help' : '?'}</button>
+		</div>
 		<div class="flex gap-2">
 			<button onclick={() => showAddDim = !showAddDim} class="text-xs text-link hover:text-link-hover hover:underline">+ Dimension</button>
 			<button onclick={() => showAddClass = !showAddClass} class="text-xs text-link hover:text-link-hover hover:underline">+ Class</button>
 		</div>
 	</div>
+
+	{#if showHelp}
+		<div class="mb-4 p-3 bg-page rounded-lg border border-border-subtle text-xs text-secondary space-y-2">
+			<p><strong>Dimensions</strong> are axes of variation — like <em>Case</em> (nominative, accusative...) or <em>Number</em> (singular, plural). Each dimension applies to a part of speech.</p>
+			<p><strong>Sort order</strong> controls table layout: <code class="bg-surface-dim px-1 rounded">0</code> = table rows, <code class="bg-surface-dim px-1 rounded">1</code> = columns, <code class="bg-surface-dim px-1 rounded">2+</code> = grouped sections.</p>
+			<p><strong>Paradigm classes</strong> group words that inflect the same way (e.g. "Class I regular nouns").</p>
+			<p><strong>Rules</strong> define the pattern for each cell. Use <code class="bg-surface-dim px-1 rounded">{'{'+'stem}'}</code> as a placeholder for the word's stem. Example: <code class="bg-surface-dim px-1 rounded">{'{'+'stem}n'}</code> means "add -n to the stem".</p>
+			<p class="text-faint"><strong>Workflow:</strong> Add dimensions → Create a class → Click the class name to add rules → Go to a word page and assign the class + set the stem.</p>
+		</div>
+	{/if}
 
 	<!-- Add dimension form -->
 	{#if showAddDim}

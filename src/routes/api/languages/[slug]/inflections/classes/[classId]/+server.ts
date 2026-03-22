@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { paradigmClasses, paradigmRules } from '$lib/server/db/schema.js'
-import { requireAuth } from '$lib/server/auth.js'
+import { requireAuth, requireRole } from '$lib/server/auth.js'
 import { eq, asc } from 'drizzle-orm'
 import { rebuildClassForms } from '$lib/server/wordbook/inflection.js'
 
@@ -25,7 +25,7 @@ export const GET: RequestHandler = async ({ params }) => {
 
 /** PUT /api/languages/:slug/inflections/classes/:classId — bulk update rules */
 export const PUT: RequestHandler = async (event) => {
-	requireAuth(event)
+	requireRole(event, 'admin')
 	const classId = Number.parseInt(event.params.classId)
 	if (isNaN(classId)) return json({ error: 'Invalid ID' }, { status: 400 })
 
@@ -67,7 +67,7 @@ export const PUT: RequestHandler = async (event) => {
 
 /** DELETE /api/languages/:slug/inflections/classes/:classId */
 export const DELETE: RequestHandler = async (event) => {
-	requireAuth(event)
+	requireRole(event, 'admin')
 	const classId = Number.parseInt(event.params.classId)
 	if (isNaN(classId)) return json({ error: 'Invalid ID' }, { status: 400 })
 

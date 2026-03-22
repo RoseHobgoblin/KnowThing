@@ -1,14 +1,17 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation'
+	import { generateCellKeys, cellKeyLabel } from '$lib/wordbook/cell-keys.js'
 
 	let {
 		entryId,
 		inflection,
 		availableClasses = [],
 		languageSlug = '',
+		partOfSpeech = '',
 	}: {
 		entryId: number
 		languageSlug?: string
+		partOfSpeech?: string
 		inflection: {
 			dimensions: Array<{ id: number, name: string, values: string[], sortOrder: number }>
 			forms: Record<string, string>
@@ -20,6 +23,13 @@
 		availableClasses: Array<{ id: number, name: string, partOfSpeech: string }>
 	} = $props()
 
+	// Filter classes to only show those matching this word's POS
+	const filteredClasses = $derived(
+		partOfSpeech
+			? availableClasses.filter(c => c.partOfSpeech === partOfSpeech)
+			: availableClasses
+	)
+
 	let editing = $state(false)
 	let selectedClassId = $state<number | null>(null)
 	let stem = $state('')
@@ -28,14 +38,12 @@
 	let error = $state('')
 
 	function startEditing() {
-		// Initialize from current inflection state
 		selectedClassId = null
 		stem = inflection.stem || ''
 		overrides = { ...(inflection.overrides || {}) }
 
-		// Try to find the current class ID from the name
 		if (inflection.className) {
-			const match = availableClasses.find(c => c.name === inflection.className)
+			const match = filteredClasses.find(c => c.name === inflection.className)
 			if (match) selectedClassId = match.id
 		}
 
@@ -76,7 +84,6 @@
 	async function removeInflection() {
 		if (!confirm('Remove inflection data for this entry?')) return
 		saving = true
-		// Delete by setting everything to null/empty
 		await fetch(`/api/wordbook/${entryId}/inflection`, {
 			method: 'PUT',
 			headers: { 'Content-Type': 'application/json' },
@@ -87,26 +94,9 @@
 		invalidateAll()
 	}
 
-	// Generate cell keys from dimensions for override inputs
-	function getCellKeys(dimensions: typeof inflection.dimensions): string[] {
-		if (dimensions.length === 0) return []
-		const sorted = [...dimensions].sort((a, b) => a.sortOrder - b.sortOrder)
-
-		function cartesian(index: number): string[] {
-			if (index >= sorted.length) return ['']
-			const rest = cartesian(index + 1)
-			const result: string[] = []
-			for (const value of sorted[index].values) {
-				for (const suffix of rest) {
-					result.push(suffix ? `${value}.${suffix}` : value)
-				}
-			}
-			return result
-		}
-		return cartesian(0)
-	}
-
-	const cellKeys = $derived(getCellKeys(inflection.dimensions))
+	const cellKeys = $derived(
+		generateCellKeys(inflection.dimensions.map(d => ({ values: d.values, sortOrder: d.sortOrder })))
+	)
 
 	const inputClass = 'px-2 py-1 border border-border-strong rounded-md text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent'
 </script>
@@ -131,28 +121,38 @@
 			<!-- Paradigm class -->
 			<div class="flex-1 min-w-[200px]">
 				<label class="block text-xs font-medium text-secondary mb-1">Paradigm Class</label>
-				{#if availableClasses.length > 0}
+				{#if filteredClasses.length > 0}
 					<select bind:value={selectedClassId} class="w-full {inputClass}">
 						<option value={null}>Manual (no class)</option>
-						{#each availableClasses as cls}
-							<option value={cls.id}>{cls.name} ({cls.partOfSpeech})</option>
+						{#each filteredClasses as cls}
+							<option value={cls.id}>{cls.name}</option>
 						{/each}
 					</select>
+					<p class="text-[10px] text-faint mt-1">Select a class to auto-generate forms from its rules.</p>
 				{:else}
-					<p class="text-xs text-faint">No paradigm classes defined for this language.
-					{#if inflection.dimensions.length > 0}
-						<a href="/wordbook/{languageSlug}" class="text-link hover:underline">Add a paradigm class on the language page.</a>
-					{:else}
-						<a href="/wordbook/{languageSlug}" class="text-link hover:underline">Set up inflection dimensions on the language page first.</a>
-					{/if}
-				</p>
+					<div class="p-2 bg-amber-50 border border-amber-200 rounded-md text-xs text-amber-800">
+						{#if availableClasses.length > 0}
+							No paradigm classes for <strong>{partOfSpeech || 'this part of speech'}</strong>.
+							Classes exist for other parts of speech — check the
+							<a href="/wordbook/{languageSlug}" class="text-link hover:underline">language page</a>.
+						{:else if inflection.dimensions.length > 0}
+							No paradigm classes defined yet.
+							<a href="/wordbook/{languageSlug}" class="text-link hover:underline">Create a class on the language page</a>,
+							then come back to assign it.
+						{:else}
+							No inflection system set up for this language.
+							<a href="/wordbook/{languageSlug}" class="text-link hover:underline">Go to the language page</a>
+							to add dimensions (e.g. Case, Number) and paradigm classes first.
+						{/if}
+					</div>
 				{/if}
 			</div>
 
 			<!-- Stem -->
 			<div class="flex-1 min-w-[150px]">
 				<label class="block text-xs font-medium text-secondary mb-1">Stem</label>
-				<input type="text" bind:value={stem} class="w-full {inputClass}" placeholder="e.g. tsida" />
+				<input type="text" bind:value={stem} class="w-full {inputClass}" placeholder="e.g. tsid" />
+				<p class="text-[10px] text-faint mt-1">The base form that rules transform. Usually the word minus its ending.</p>
 			</div>
 		</div>
 
@@ -160,13 +160,14 @@
 		{#if cellKeys.length > 0}
 			<div>
 				<label class="block text-xs font-medium text-secondary mb-1">
-					Overrides <span class="text-faint font-normal">— leave blank to use paradigm rules</span>
+					Overrides
 				</label>
+				<p class="text-[10px] text-faint mb-2">Leave blank to use the class rule. Fill in to override with an irregular form.</p>
 				<div class="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
 					{#each cellKeys as key}
 						{@const generated = inflection.forms[key] || ''}
 						<div class="flex items-center gap-2">
-							<span class="text-xs text-faint w-32 truncate" title={key}>{key.replaceAll('.', ' · ')}</span>
+							<span class="text-xs text-faint w-32 truncate" title={key}>{cellKeyLabel(key)}</span>
 							<input
 								type="text"
 								value={overrides[key] || ''}
@@ -191,11 +192,7 @@
 		<button
 			onclick={save}
 			disabled={saving}
-			class="
-				px-4 py-1.5 bg-accent text-surface text-sm rounded-md font-medium transition-colors
-				hover:bg-accent-hover
-				disabled:opacity-50
-			"
+			class="px-4 py-1.5 bg-accent text-surface text-sm rounded-md font-medium transition-colors hover:bg-accent-hover disabled:opacity-50"
 		>
 			{saving ? 'Saving...' : 'Save Inflection'}
 		</button>

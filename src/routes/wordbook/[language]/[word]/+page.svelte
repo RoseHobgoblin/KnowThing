@@ -230,6 +230,7 @@
 					<InflectionEditor
 						entryId={entry.id}
 						languageSlug={data.language.slug}
+						partOfSpeech={hom.definitions[0]?.partOfSpeech || ''}
 						inflection={hom.inflection}
 						availableClasses={data.availableClasses}
 					/>

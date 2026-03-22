@@ -9,6 +9,7 @@ import {
 	languages,
 } from '$lib/server/db/schema.js'
 import { eq, and, asc, sql } from 'drizzle-orm'
+import { generateCellKeys } from '$lib/wordbook/cell-keys.js'
 
 // ── Types ───────────────────────────────────────────────────────
 
@@ -28,40 +29,15 @@ export interface InflectionTable {
 	hasInflection: boolean
 }
 
+// Re-export for consumers
+export { generateCellKeys } from '$lib/wordbook/cell-keys.js'
+
 // ── Pattern application ─────────────────────────────────────────
 
 /** Apply a pattern to a stem: "{stem}n" + "tsida" → "tsidan" */
 export function applyPattern(pattern: string, stem: string): string {
 	if (!pattern.includes('{stem}')) return pattern // literal override
 	return pattern.replaceAll('{stem}', stem)
-}
-
-const MAX_CELL_KEYS = 1000
-
-/** Generate all cell keys from dimensions (cartesian product) */
-export function generateCellKeys(dimensions: Dimension[]): string[] {
-	if (dimensions.length === 0) return []
-
-	const total = dimensions.reduce((accumulator, d) => accumulator * d.values.length, 1)
-	if (total > MAX_CELL_KEYS) {
-		throw new Error(`Too many inflection cells (${total}). Maximum is ${MAX_CELL_KEYS}. Reduce dimension values.`)
-	}
-
-	const sorted = [...dimensions].sort((a, b) => a.sortOrder - b.sortOrder)
-
-	function cartesian(dimIndex: number): string[] {
-		if (dimIndex >= sorted.length) return ['']
-		const rest = cartesian(dimIndex + 1)
-		const result: string[] = []
-		for (const value of sorted[dimIndex].values) {
-			for (const suffix of rest) {
-				result.push(suffix ? `${value}.${suffix}` : value)
-			}
-		}
-		return result
-	}
-
-	return cartesian(0)
 }
 
 // ── Data loading ────────────────────────────────────────────────
