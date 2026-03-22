@@ -4,7 +4,7 @@ import { languages } from '$lib/server/db/schema.js'
 import { asc } from 'drizzle-orm'
 import { redirect } from '@sveltejs/kit'
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, url }) => {
 	if (!locals.user) {
 		redirect(302, '/auth/login')
 	}
@@ -14,5 +14,11 @@ export const load: PageServerLoad = async ({ locals }) => {
 		.from(languages)
 		.orderBy(asc(languages.name))
 
-	return { languages: langs }
+	// Pre-select language if passed via query param
+	const langSlug = url.searchParams.get('language')
+	const preselectedLanguageId = langSlug
+		? langs.find(l => l.slug === langSlug)?.id ?? null
+		: null
+
+	return { languages: langs, preselectedLanguageId }
 }

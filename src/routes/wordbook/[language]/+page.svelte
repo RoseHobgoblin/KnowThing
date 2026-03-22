@@ -53,7 +53,7 @@
 				{/if}
 			</div>
 			<div class="flex gap-3 shrink-0">
-				<a href="/wordbook/contribute" class="text-sm text-link hover:text-link-hover hover:underline">+ Add word</a>
+				<a href="/wordbook/contribute?language={data.language.slug}" class="text-sm text-link hover:text-link-hover hover:underline">+ Add word</a>
 				<a href="/wordbook/contribute/language/{data.language.slug}" class="text-sm text-faint hover:text-link hover:underline">Edit language</a>
 			</div>
 		</div>
@@ -160,7 +160,7 @@
 			{:else}
 				<p class="text-lg mb-2">No words yet</p>
 				<p class="text-sm">
-					<a href="/wordbook/contribute" class="text-link hover:underline">Add the first word</a>
+					<a href="/wordbook/contribute?language={data.language.slug}" class="text-link hover:underline">Add the first word</a>
 				</p>
 			{/if}
 		</div>

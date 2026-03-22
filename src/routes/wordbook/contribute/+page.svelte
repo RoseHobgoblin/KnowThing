@@ -45,7 +45,12 @@
 		</div>
 	{:else}
 		<div class="bg-surface rounded-lg border border-border p-6">
-			<EntryForm languages={data.languages} onsubmit={handleSubmit} submitLabel="Add Entry" />
+			<EntryForm
+				languages={data.languages}
+				initial={data.preselectedLanguageId ? { languageId: data.preselectedLanguageId } : {}}
+				onsubmit={handleSubmit}
+				submitLabel="Add Entry"
+			/>
 		</div>
 	{/if}
 </div>
