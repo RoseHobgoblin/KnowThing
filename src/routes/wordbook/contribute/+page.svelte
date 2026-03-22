@@ -18,7 +18,6 @@
 		}
 
 		const entry = await res.json()
-		// Find the language slug for redirect
 		const lang = data.languages.find(l => l.id === formData.languageId)
 		if (lang) {
 			goto(`/wordbook/${lang.slug}/${encodeURIComponent(entry.word)}`)
@@ -33,9 +32,14 @@
 </svelte:head>
 
 <div class="space-y-6">
-	<div>
-		<h1 class="text-2xl font-bold text-heading mb-1">Add a Word</h1>
-		<p class="text-sm text-dim">Contribute to the Wordbook by adding a new lexicon entry.</p>
+	<div class="flex items-center justify-between">
+		<div>
+			<h1 class="text-2xl font-bold text-heading mb-1">Add a Word</h1>
+			<p class="text-sm text-dim">
+				<a href="/wordbook" class="text-link hover:underline">← Back to Wordbook</a>
+			</p>
+		</div>
+		<a href="/wordbook/contribute/language" class="text-sm text-link hover:underline">+ New language</a>
 	</div>
 
 	{#if data.languages.length === 0}

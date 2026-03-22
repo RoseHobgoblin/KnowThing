@@ -5,8 +5,9 @@
 
 	let { data }: { data: PageData } = $props()
 
+	const currentLang = $derived(data.languages.find(l => l.id === data.entry.languageId))
+
 	async function handleSubmit(formData: Record<string, unknown>) {
-		// Update headword
 		const res = await fetch(`/api/wordbook/${data.entry.id}`, {
 			method: 'PUT',
 			headers: { 'Content-Type': 'application/json' },
@@ -26,7 +27,6 @@
 			throw new Error(error.error || 'Failed to update entry')
 		}
 
-		// Bulk replace definitions atomically
 		const defs = formData.defs as Array<{ partOfSpeech?: string, definition: string, usageExample?: string, usageTranslation?: string }>
 		if (defs && defs.length > 0) {
 			const defRes = await fetch(`/api/wordbook/${data.entry.id}/definitions`, {
@@ -56,7 +56,13 @@
 <div class="space-y-6">
 	<div>
 		<h1 class="text-2xl font-bold text-heading mb-1">Edit: {data.entry.word}</h1>
-		<p class="text-sm text-dim">Update this lexicon entry.</p>
+		<p class="text-sm text-dim">
+			{#if currentLang}
+				<a href="/wordbook/{currentLang.slug}/{encodeURIComponent(data.entry.word)}" class="text-link hover:underline">← Back to {data.entry.word}</a>
+			{:else}
+				<a href="/wordbook" class="text-link hover:underline">← Back to Wordbook</a>
+			{/if}
+		</p>
 	</div>
 
 	<div class="bg-surface rounded-lg border border-border p-6">
