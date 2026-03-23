@@ -29,6 +29,10 @@
 </svelte:head>
 
 {#key data.slug}
+{#if data.ast}
+	<TableOfContents ast={data.ast} />
+{/if}
+
 {#if data.notFound}
 	<div class="bg-surface rounded-lg shadow-sm border border-border p-8 text-center">
 		<h1 class="text-2xl font-bold mb-3 text-body">{data.title}</h1>
@@ -85,8 +89,6 @@
 
 		<!-- Article body -->
 		<div class="p-4 md:px-6 md:py-5">
-			<TableOfContents ast={data.ast} />
-
 			<article class="know-article">
 				<WikiNodeComponent node={data.ast} />
 			</article>
