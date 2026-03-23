@@ -7,7 +7,7 @@
 	import { buildFieldMap } from '$lib/infoboxes/types.js'
 	import type { InfoboxType, FieldMap } from '$lib/infoboxes/types.js'
 
-	// Infobox components — static imports (small components, always needed for a wiki)
+	// Infobox components — map lookup instead of if/else chain
 	import InfoboxCountry from '$lib/infoboxes/InfoboxCountry.svelte'
 	import InfoboxFormerCountry from '$lib/infoboxes/InfoboxFormerCountry.svelte'
 	import InfoboxLanguage from '$lib/infoboxes/InfoboxLanguage.svelte'
@@ -17,6 +17,17 @@
 	import InfoboxPerson from '$lib/infoboxes/InfoboxPerson.svelte'
 	import InfoboxReligion from '$lib/infoboxes/InfoboxReligion.svelte'
 	import InfoboxGeneric from '$lib/infoboxes/InfoboxGeneric.svelte'
+
+	const INFOBOX_COMPONENTS: Record<string, typeof InfoboxGeneric> = {
+		country: InfoboxCountry,
+		former_country: InfoboxFormerCountry,
+		language: InfoboxLanguage,
+		settlement: InfoboxSettlement,
+		royalty: InfoboxRoyalty,
+		officeholder: InfoboxOfficeholder,
+		person: InfoboxPerson,
+		religion: InfoboxReligion,
+	}
 
 	let { name, args }: { name: string, args: TemplateArg[] } = $props()
 
@@ -117,6 +128,37 @@
 		return argument?.value
 	}
 
+	function convertUnit(value: number, from: string, to: string): { value: string, unit: string } | null {
+		if (Number.isNaN(value)) return null
+		const conversions = new Map<string, Map<string, [number | null, string]>>([
+			['km', new Map([['mi', [0.621371, 'mi']], ['m', [1000, 'm']], ['ft', [3280.84, 'ft']]])],
+			['mi', new Map([['km', [1.60934, 'km']], ['m', [1609.34, 'm']], ['ft', [5280, 'ft']]])],
+			['m', new Map([['ft', [3.28084, 'ft']], ['km', [0.001, 'km']], ['mi', [0.000621371, 'mi']]])],
+			['ft', new Map([['m', [0.3048, 'm']], ['km', [0.0003048, 'km']]])],
+			['kg', new Map([['lb', [2.20462, 'lb']], ['g', [1000, 'g']]])],
+			['lb', new Map([['kg', [0.453592, 'kg']], ['g', [453.592, 'g']]])],
+			['km2', new Map([['sqmi', [0.386102, 'sq mi']], ['ha', [100, 'ha']]])],
+			['sqmi', new Map([['km2', [2.58999, 'km²']], ['ha', [258.999, 'ha']]])],
+			['°c', new Map([['°f', [null, '°F']]])],
+			['°f', new Map([['°c', [null, '°C']]])],
+		])
+		const fromLower = from.toLowerCase().replaceAll(/\s/g, '')
+		const toLower = to?.toLowerCase().replaceAll(/\s/g, '') || ''
+
+		const fromEntry = conversions.get(fromLower)
+		if (!fromEntry) return null
+		const target = toLower && fromEntry.has(toLower) ? toLower : fromEntry.keys().next().value!
+		const conv = fromEntry.get(target)
+		if (!conv) return null
+
+		if (fromLower === '°c') return { value: ((value * 9 / 5) + 32).toFixed(1), unit: '°F' }
+		if (fromLower === '°f') return { value: ((value - 32) * 5 / 9).toFixed(1), unit: '°C' }
+
+		const result = value * conv[0]!
+		const formatted = result < 10 ? result.toFixed(2) : (result < 1000 ? result.toFixed(1) : Math.round(result).toLocaleString())
+		return { value: formatted, unit: conv[1] }
+	}
+
 	function getPositionalArguments(): string[] {
 		return args.filter(a => !a.name).map(a => a.value)
 	}
@@ -129,25 +171,8 @@
 {#if resolution.kind === 'text'}
 	{resolution.value}
 {:else if resolution.kind === 'infobox'}
-	{#if resolution.infoboxType === 'country'}
-		<InfoboxCountry fields={resolution.fields} />
-	{:else if resolution.infoboxType === 'former_country'}
-		<InfoboxFormerCountry fields={resolution.fields} />
-	{:else if resolution.infoboxType === 'language'}
-		<InfoboxLanguage fields={resolution.fields} />
-	{:else if resolution.infoboxType === 'settlement'}
-		<InfoboxSettlement fields={resolution.fields} />
-	{:else if resolution.infoboxType === 'royalty'}
-		<InfoboxRoyalty fields={resolution.fields} />
-	{:else if resolution.infoboxType === 'officeholder'}
-		<InfoboxOfficeholder fields={resolution.fields} />
-	{:else if resolution.infoboxType === 'person'}
-		<InfoboxPerson fields={resolution.fields} />
-	{:else if resolution.infoboxType === 'religion'}
-		<InfoboxReligion fields={resolution.fields} />
-	{:else}
-		<InfoboxGeneric fields={resolution.fields} />
-	{/if}
+	{@const InfoboxComponent = INFOBOX_COMPONENTS[resolution.infoboxType] || InfoboxGeneric}
+	<InfoboxComponent fields={resolution.fields} />
 {:else if resolution.kind === 'component'}
 	{#if resolution.component === 'quote'}
 		<blockquote class="know-quote border-l-4 border-border-strong pl-4 my-4 italic text-secondary">
@@ -263,6 +288,47 @@
 				<div class="py-0.5 text-secondary">{argument.value}</div>
 			{/each}
 		</div>
+	{:else if resolution.component === 'refn' || resolution.component === 'efn'}
+		<!-- Inline footnote: renders as superscript number -->
+		{@const noteText = getPositionalArguments()[0] || getArgumentValue('text') || ''}
+		<sup class="text-xs text-link cursor-help" title={noteText}>[{resolution.component === 'efn' ? 'n' : 'r'}]</sup>
+	{:else if resolution.component === 'sfn'}
+		<!-- Short footnote: Author (Year) -->
+		{@const author = getPositionalArguments()[0] || ''}
+		{@const year = getPositionalArguments()[1] || ''}
+		{@const page = getArgumentValue('p') || getArgumentValue('page') || ''}
+		<sup class="text-xs text-link cursor-help" title="{author} ({year}){page ? `, p. ${page}` : ''}">[{author} {year}]</sup>
+	{:else if resolution.component === 'notelist'}
+		<!-- Note list: renders collected footnotes -->
+		<div class="text-xs text-dim border-t border-border mt-4 pt-2">
+			<div class="font-medium text-secondary mb-1">Notes</div>
+			<p class="italic text-faint">Footnotes are displayed inline as tooltips.</p>
+		</div>
+	{:else if resolution.component === 'flag'}
+		<!-- Flag icon + country name -->
+		{@const countryName = getPositionalArguments()[0] || ''}
+		<span class="inline-flex items-center gap-1 text-sm">
+			<span class="inline-block size-3.5 rounded-sm bg-accent-subtle border border-border" title="Flag of {countryName}"></span>
+			<a href="/know/{encodeURIComponent(countryName.trim())}" class="text-link hover:underline">{countryName}</a>
+		</span>
+	{:else if resolution.component === 'convert'}
+		<!-- Unit conversion: {{convert|value|from|to}} -->
+		{@const value = getPositionalArguments()[0] || ''}
+		{@const fromUnit = getPositionalArguments()[1] || ''}
+		{@const toUnit = getPositionalArguments()[2] || ''}
+		{@const numValue = Number.parseFloat(value)}
+		{@const converted = convertUnit(numValue, fromUnit, toUnit)}
+		<span>{value}&nbsp;{fromUnit}{#if converted !== null} ({converted.value}&nbsp;{converted.unit}){/if}</span>
+	{:else if resolution.component === 'age'}
+		<!-- Age calculation: {{age|birth|death}} or {{age|birth}} -->
+		{@const birthYear = Number.parseInt(getPositionalArguments()[0] || '')}
+		{@const deathYear = Number.parseInt(getPositionalArguments()[1] || '')}
+		{#if !Number.isNaN(birthYear)}
+			{@const endYear = Number.isNaN(deathYear) ? new Date().getFullYear() : deathYear}
+			<span>{endYear - birthYear}</span>
+		{:else}
+			<span class="text-faint">[age: ?]</span>
+		{/if}
 	{:else}
 		<!-- Built-in template not yet rendered: {resolution.component} -->
 		<span class="

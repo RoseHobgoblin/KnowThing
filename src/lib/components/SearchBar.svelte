@@ -27,8 +27,8 @@
 		}
 	}
 
-	function onSubmit(e: Event) {
-		e.preventDefault()
+	function onSubmit(event: Event) {
+		event.preventDefault()
 		if (query.trim()) {
 			globalThis.location.href = `/search?q=${encodeURIComponent(query)}`
 		}

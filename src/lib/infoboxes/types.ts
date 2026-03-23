@@ -15,8 +15,13 @@ export type InfoboxType =
 	| 'religion'
 	| 'generic'
 
-/** Map of lowercase field name -> value, built from TemplateArg[] */
+/** Map of normalized field name -> value, built from TemplateArg[] */
 export type FieldMap = Map<string, string>
+
+/** Normalize a field key: lowercase, spaces → underscores, trim */
+function normalizeKey(key: string): string {
+	return key.trim().toLowerCase().replaceAll(/\s+/g, '_')
+}
 
 /** Convert TemplateArg[] to a FieldMap for easy lookup */
 export function buildFieldMap(args: TemplateArg[]): FieldMap {
@@ -24,7 +29,7 @@ export function buildFieldMap(args: TemplateArg[]): FieldMap {
 	let positional = 0
 	for (const argument of args) {
 		if (argument.name) {
-			map.set(argument.name.trim().toLowerCase(), argument.value.trim())
+			map.set(normalizeKey(argument.name), argument.value.trim())
 		} else {
 			positional++
 			map.set(String(positional), argument.value.trim())
@@ -36,7 +41,7 @@ export function buildFieldMap(args: TemplateArg[]): FieldMap {
 /** Get field value by trying multiple alias keys */
 export function getField(fields: FieldMap, ...keys: string[]): string | undefined {
 	for (const key of keys) {
-		const value = fields.get(key.toLowerCase())
+		const value = fields.get(normalizeKey(key))
 		if (value) return value
 	}
 	return undefined
