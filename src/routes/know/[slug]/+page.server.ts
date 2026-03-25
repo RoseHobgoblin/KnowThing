@@ -1,9 +1,9 @@
 import { error, redirect } from '@sveltejs/kit'
 import type { PageServerLoad } from './$types.js'
 import { db } from '$lib/server/db/index.js'
-import { pages, categories, lexicon, languages } from '$lib/server/db/schema.js'
-import { eq, sql } from 'drizzle-orm'
-import { parseWikitext, extractCategoriesFromAst } from '$lib/parser/index.js'
+import { pages, categories, lexicon, languages, phonemes } from '$lib/server/db/schema.js'
+import { eq, sql, asc } from 'drizzle-orm'
+import { parseWikitext, extractCategoriesFromAst, extractTemplateRefsFromAst } from '$lib/parser/index.js'
 
 export const load: PageServerLoad = async ({ params }) => {
 	// Case-insensitive lookup
@@ -33,6 +33,35 @@ export const load: PageServerLoad = async ({ params }) => {
 	const ast = parseWikitext(page.content)
 	const cats = extractCategoriesFromAst(ast)
 
+	// Detect structured-data templates and load phoneme data if needed
+	const PHONEME_TEMPLATES = new Set(['consonants', 'vowels', 'phonology'])
+	const templateRefs = extractTemplateRefsFromAst(ast, PHONEME_TEMPLATES)
+	let phonemeData: Record<string, any[]> | null = null
+
+	// Collect all language names referenced by phoneme templates
+	const phonemeLanguages = new Set<string>()
+	for (const langNames of templateRefs.values()) {
+		for (const name of langNames) phonemeLanguages.add(name)
+	}
+
+	if (phonemeLanguages.size > 0) {
+		phonemeData = {}
+		for (const langName of phonemeLanguages) {
+			const [lang] = await db
+				.select({ id: languages.id })
+				.from(languages)
+				.where(sql`LOWER(${languages.name}) = LOWER(${langName})`)
+				.limit(1)
+			if (lang) {
+				phonemeData[langName.toLowerCase()] = await db
+					.select()
+					.from(phonemes)
+					.where(eq(phonemes.languageId, lang.id))
+					.orderBy(asc(phonemes.sortOrder))
+			}
+		}
+	}
+
 	// Check if this page title matches a word in the wordbook
 	const wordbookMatches = await db
 		.select({
@@ -54,5 +83,6 @@ export const load: PageServerLoad = async ({ params }) => {
 		categories: cats,
 		updatedAt: page.updatedAt,
 		wordbookMatch: wordbookMatches[0] || null,
+		phonemeData,
 	}
 }

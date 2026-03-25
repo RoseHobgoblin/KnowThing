@@ -5,6 +5,21 @@ import type { ResolvedDate } from '$lib/calendar/types.js'
 
 const KNOW_CONTEXT_KEY = 'know-render-context'
 
+export interface PhonemeRecord {
+	id: number
+	ipa: string
+	type: string
+	place?: string | null
+	manner?: string | null
+	subtype?: string | null
+	voicing?: string | null
+	height?: string | null
+	backness?: string | null
+	rounded?: boolean | null
+	notes?: string | null
+	sortOrder: number
+}
+
 export interface KnowRenderContext {
 	/** Base URL for media files, e.g. '/api/media' */
 	mediaBaseUrl: string
@@ -24,6 +39,8 @@ export interface KnowRenderContext {
 	templates: Map<string, string> | null
 	/** Resolved calendar date for calendar magic words */
 	calendarDate: ResolvedDate | null
+	/** Phoneme data keyed by lowercase language name, loaded for {{consonants}} / {{vowels}} templates */
+	phonemeData: Record<string, PhonemeRecord[]> | null
 }
 
 /** @deprecated Use KnowRenderContext */
@@ -45,6 +62,7 @@ export function createKnowContext(overrides: Partial<KnowRenderContext> = {}): K
 		namespace: '',
 		templates: null,
 		calendarDate: null,
+		phonemeData: null,
 		...overrides,
 	}
 	setContext(KNOW_CONTEXT_KEY, ctx)

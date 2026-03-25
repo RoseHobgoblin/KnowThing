@@ -49,6 +49,27 @@ export function extractImagesFromAst(ast: WikiNode): string[] {
 	return images
 }
 
+/**
+ * Walk a pre-parsed AST and collect all template invocations with their first positional arg.
+ * Useful for detecting structured-data templates like {{consonants|Oncheran}}.
+ */
+export function extractTemplateRefsFromAst(ast: WikiNode, templateNames: Set<string>): Map<string, Set<string>> {
+	const refs = new Map<string, Set<string>>()
+	walkNodes([ast], (node) => {
+		if (node.type === 'template') {
+			const lower = node.name.toLowerCase().trim()
+			if (templateNames.has(lower)) {
+				const langArg = node.args[0]?.value?.trim()
+				if (langArg) {
+					if (!refs.has(lower)) refs.set(lower, new Set())
+					refs.get(lower)!.add(langArg)
+				}
+			}
+		}
+	})
+	return refs
+}
+
 // ============================================================================
 // Convenience wrappers (parse from raw wikitext)
 // ============================================================================

@@ -21,6 +21,7 @@
 		existingPages: new Set(layoutData.existingPages || []),
 		mediaBaseUrl: '/api/media',
 		pageBaseUrl: '/know',
+		phonemeData: data.phonemeData || null,
 	})
 </script>
 

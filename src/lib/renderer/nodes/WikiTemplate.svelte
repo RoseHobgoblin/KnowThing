@@ -4,6 +4,7 @@
 	import { resolveCalendarMagicWord } from '$lib/calendar/magic-words.js'
 	import { getRenderContext } from '$lib/renderer/context.js'
 	import { detectInfoboxType } from '$lib/infoboxes/detect.js'
+	import PhonemeGrid from '$lib/components/wordbook/PhonemeGrid.svelte'
 	import { buildFieldMap } from '$lib/infoboxes/types.js'
 	import type { InfoboxType, FieldMap } from '$lib/infoboxes/types.js'
 
@@ -119,6 +120,9 @@
 		'cite journal',
 		'wt',
 		'date',
+		'consonants',
+		'vowels',
+		'phonology',
 	])
 
 	const resolution = resolve()
@@ -319,6 +323,33 @@
 		{@const numValue = Number.parseFloat(value)}
 		{@const converted = convertUnit(numValue, fromUnit, toUnit)}
 		<span>{value}&nbsp;{fromUnit}{#if converted !== null} ({converted.value}&nbsp;{converted.unit}){/if}</span>
+	{:else if resolution.component === 'consonants' || resolution.component === 'vowels'}
+		{@const langName = getPositionalArguments()[0]?.trim() || ''}
+		{@const allPhonemes = ctx.phonemeData?.[langName.toLowerCase()] || []}
+		{@const gridType = resolution.component === 'consonants' ? 'consonant' : 'vowel'}
+		{@const filtered = allPhonemes.filter((/** @type {any} */ p) => gridType === 'consonant' ? p.type === 'consonant' : (p.type === 'vowel' || p.type === 'diphthong'))}
+		{#if filtered.length > 0}
+			<PhonemeGrid phonemes={filtered} type={gridType} />
+		{:else}
+			<span class="text-faint text-sm italic">No {gridType} data found for "{langName}"</span>
+		{/if}
+	{:else if resolution.component === 'phonology'}
+		{@const langName = getPositionalArguments()[0]?.trim() || ''}
+		{@const allPhonemes = ctx.phonemeData?.[langName.toLowerCase()] || []}
+		{@const consonants = allPhonemes.filter((/** @type {any} */ p) => p.type === 'consonant')}
+		{@const vowels = allPhonemes.filter((/** @type {any} */ p) => p.type === 'vowel' || p.type === 'diphthong')}
+		{#if consonants.length > 0 || vowels.length > 0}
+			{#if consonants.length > 0}
+				<h3 class="text-lg font-semibold text-heading mt-4 mb-2">Consonants</h3>
+				<PhonemeGrid phonemes={consonants} type="consonant" />
+			{/if}
+			{#if vowels.length > 0}
+				<h3 class="text-lg font-semibold text-heading mt-4 mb-2">Vowels</h3>
+				<PhonemeGrid phonemes={vowels} type="vowel" />
+			{/if}
+		{:else}
+			<span class="text-faint text-sm italic">No phoneme data found for "{langName}"</span>
+		{/if}
 	{:else if resolution.component === 'age'}
 		<!-- Age calculation: {{age|birth|death}} or {{age|birth}} -->
 		{@const birthYear = Number.parseInt(getPositionalArguments()[0] || '')}

@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types.js'
 import { db } from '$lib/server/db/index.js'
-import { lexicon, definitions, languages, languageDialects, inflectionDimensions, paradigmClasses } from '$lib/server/db/schema.js'
+import { lexicon, definitions, languages, languageDialects, inflectionDimensions, paradigmClasses, phonemes } from '$lib/server/db/schema.js'
 import { eq, sql, asc, and } from 'drizzle-orm'
 import { error, redirect } from '@sveltejs/kit'
 import { getAncestryChain, getChildren } from '$lib/server/wordbook/language-tree.js'
@@ -43,12 +43,13 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	}
 
 	// Load ancestry, children, dialects, inflection setup
-	const [ancestryChain, children, dialects, dimensions, classes] = await Promise.all([
+	const [ancestryChain, children, dialects, dimensions, classes, langPhonemes] = await Promise.all([
 		getAncestryChain(lang.id),
 		getChildren(lang.id),
 		db.select().from(languageDialects).where(eq(languageDialects.languageId, lang.id)).orderBy(asc(languageDialects.name)),
 		db.select().from(inflectionDimensions).where(eq(inflectionDimensions.languageId, lang.id)).orderBy(asc(inflectionDimensions.partOfSpeech), asc(inflectionDimensions.sortOrder)),
 		db.select().from(paradigmClasses).where(eq(paradigmClasses.languageId, lang.id)).orderBy(asc(paradigmClasses.partOfSpeech), asc(paradigmClasses.name)),
+		db.select().from(phonemes).where(eq(phonemes.languageId, lang.id)).orderBy(asc(phonemes.type), asc(phonemes.sortOrder)),
 	])
 
 	const letter = url.searchParams.get('letter') || ''
@@ -91,6 +92,7 @@ export const load: PageServerLoad = async ({ params, url }) => {
 		dialects,
 		inflectionDimensions: dimensions,
 		paradigmClasses: classes,
+		phonemes: langPhonemes,
 		activeLetters: activeLettersResult.map(r => r.letter),
 		currentLetter: letter,
 	}

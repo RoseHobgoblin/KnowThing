@@ -4,6 +4,7 @@
 	import AlphabetNav from '$lib/components/wordbook/AlphabetNav.svelte'
 	import WordEntry from '$lib/components/wordbook/WordEntry.svelte'
 	import DimensionEditor from '$lib/components/wordbook/DimensionEditor.svelte'
+	import PhonemeEditor from '$lib/components/wordbook/PhonemeEditor.svelte'
 
 	let { data }: { data: PageData } = $props()
 
@@ -121,6 +122,14 @@
 				{/each}
 			</div>
 		</div>
+	{/if}
+
+	<!-- Phoneme inventory -->
+	{#if data.phonemes.length > 0 || isAuthenticated}
+		<PhonemeEditor
+			languageSlug={data.language.slug}
+			phonemes={data.phonemes}
+		/>
 	{/if}
 
 	<!-- Inflection system (editor+ only) -->
