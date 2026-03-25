@@ -6,11 +6,14 @@ export type * from './types.js'
 import type { WikiNode } from './types.js'
 import { parse } from './parser.js'
 
+// ============================================================================
+// AST-based extractors (accept a pre-parsed AST)
+// ============================================================================
+
 /**
- * Walk the AST and collect all internal link targets.
+ * Walk a pre-parsed AST and collect all internal link targets.
  */
-export function extractLinks(input: string): string[] {
-	const ast = parse(input)
+export function extractLinksFromAst(ast: WikiNode): string[] {
 	const links: string[] = []
 	walkNodes([ast], (node) => {
 		if (node.type === 'internal_link') {
@@ -21,10 +24,9 @@ export function extractLinks(input: string): string[] {
 }
 
 /**
- * Walk the AST and collect all category names.
+ * Walk a pre-parsed AST and collect all category names.
  */
-export function extractCategories(input: string): string[] {
-	const ast = parse(input)
+export function extractCategoriesFromAst(ast: WikiNode): string[] {
 	const cats: string[] = []
 	walkNodes([ast], (node) => {
 		if (node.type === 'category') {
@@ -35,10 +37,9 @@ export function extractCategories(input: string): string[] {
 }
 
 /**
- * Walk the AST and collect all image filenames.
+ * Walk a pre-parsed AST and collect all image filenames.
  */
-export function extractImages(input: string): string[] {
-	const ast = parse(input)
+export function extractImagesFromAst(ast: WikiNode): string[] {
 	const images: string[] = []
 	walkNodes([ast], (node) => {
 		if (node.type === 'image') {
@@ -46,6 +47,22 @@ export function extractImages(input: string): string[] {
 		}
 	})
 	return images
+}
+
+// ============================================================================
+// Convenience wrappers (parse from raw wikitext)
+// ============================================================================
+
+export function extractLinks(input: string): string[] {
+	return extractLinksFromAst(parse(input))
+}
+
+export function extractCategories(input: string): string[] {
+	return extractCategoriesFromAst(parse(input))
+}
+
+export function extractImages(input: string): string[] {
+	return extractImagesFromAst(parse(input))
 }
 
 /**

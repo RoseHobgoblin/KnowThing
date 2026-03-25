@@ -1,7 +1,7 @@
 import { db } from './db/index.js'
 import { links, categories, mediaUsage } from './db/schema.js'
 import { eq } from 'drizzle-orm'
-import { extractLinks, extractCategories, extractImages, stripMarkup } from '$lib/parser/index.js'
+import { parseWikitext, extractLinksFromAst, extractCategoriesFromAst, extractImagesFromAst, stripMarkup } from '$lib/parser/index.js'
 import { slugify } from '$lib/renderer/context.js'
 
 /**
@@ -12,10 +12,11 @@ export async function updatePageEffects(
 	pageSlug: string,
 	content: string,
 ): Promise<string> {
-	// Extract metadata from wikitext
-	const linkTargets = extractLinks(content).map(t => slugify(t))
-	const cats = extractCategories(content)
-	const images = extractImages(content)
+	// Extract metadata from wikitext (parse once, walk AST for each extraction)
+	const ast = parseWikitext(content)
+	const linkTargets = extractLinksFromAst(ast).map(t => slugify(t))
+	const cats = extractCategoriesFromAst(ast)
+	const images = extractImagesFromAst(ast)
 	const plainText = stripMarkup(content)
 
 	// Update links

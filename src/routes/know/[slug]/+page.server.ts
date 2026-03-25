@@ -3,7 +3,7 @@ import type { PageServerLoad } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { pages, categories, lexicon, languages } from '$lib/server/db/schema.js'
 import { eq, sql } from 'drizzle-orm'
-import { parseWikitext, extractCategories } from '$lib/parser/index.js'
+import { parseWikitext, extractCategoriesFromAst } from '$lib/parser/index.js'
 
 export const load: PageServerLoad = async ({ params }) => {
 	// Case-insensitive lookup
@@ -31,7 +31,7 @@ export const load: PageServerLoad = async ({ params }) => {
 	}
 
 	const ast = parseWikitext(page.content)
-	const cats = extractCategories(page.content)
+	const cats = extractCategoriesFromAst(ast)
 
 	// Check if this page title matches a word in the wordbook
 	const wordbookMatches = await db

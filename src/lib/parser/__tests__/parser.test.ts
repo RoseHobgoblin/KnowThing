@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseWikitext, extractLinks, extractCategories, extractImages, stripMarkup } from '../index.js'
+import { parseWikitext, extractLinks, extractCategories, extractImages, extractLinksFromAst, extractCategoriesFromAst, extractImagesFromAst, stripMarkup } from '../index.js'
 import type { WikiNode } from '../types.js'
 
 describe('parser', () => {
@@ -156,6 +156,32 @@ describe('extractImages', () => {
 	it('extracts image filenames', () => {
 		const images = extractImages('[[File:flag.png|thumb]] and [[File:map.jpg]]')
 		expect(images).toEqual(['flag.png', 'map.jpg'])
+	})
+})
+
+describe('extractLinksFromAst', () => {
+	it('extracts links from a pre-parsed AST', () => {
+		const ast = parseWikitext('Visit [[Amalur]] and [[Onchera]].')
+		expect(extractLinksFromAst(ast)).toEqual(['Amalur', 'Onchera'])
+	})
+
+	it('returns empty array for no links', () => {
+		const ast = parseWikitext('No links here.')
+		expect(extractLinksFromAst(ast)).toEqual([])
+	})
+})
+
+describe('extractCategoriesFromAst', () => {
+	it('extracts categories from a pre-parsed AST', () => {
+		const ast = parseWikitext('[[Category:Countries]]\n[[Category:Monarchies]]')
+		expect(extractCategoriesFromAst(ast)).toEqual(['Countries', 'Monarchies'])
+	})
+})
+
+describe('extractImagesFromAst', () => {
+	it('extracts images from a pre-parsed AST', () => {
+		const ast = parseWikitext('[[File:flag.png|thumb]] and [[File:map.jpg]]')
+		expect(extractImagesFromAst(ast)).toEqual(['flag.png', 'map.jpg'])
 	})
 })
 
