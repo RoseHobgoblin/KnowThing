@@ -408,32 +408,3 @@ export const inflectedForms = pgTable(
 		index('idx_inflected_forms_entry').on(table.entryId),
 	],
 )
-
-// ============================================================================
-// Phoneme Inventory
-// ============================================================================
-
-export const phonemes = pgTable(
-	'phonemes',
-	{
-		id: serial('id').primaryKey(),
-		languageId: integer('language_id')
-			.references(() => languages.id, { onDelete: 'cascade' })
-			.notNull(),
-		ipa: text('ipa').notNull(),
-		type: text('type').notNull(), // 'consonant' | 'vowel' | 'diphthong' | 'special'
-		place: text('place'),
-		manner: text('manner'),
-		subtype: text('subtype'),
-		voicing: text('voicing'),
-		height: text('height'),
-		backness: text('backness'),
-		rounded: boolean('rounded').default(false),
-		notes: text('notes'),
-		sortOrder: integer('sort_order').notNull().default(0),
-	},
-	table => [
-		index('idx_phonemes_language').on(table.languageId),
-		index('idx_phonemes_type').on(table.languageId, table.type),
-	],
-)
