@@ -325,12 +325,24 @@ Upload .woff2 files. The system validates that the font covers the PUA code poin
 
 ### Phoneme Editor
 
-Grid-based editor for defining a language's sound inventory. Similar to the existing InflectionEditor pattern:
+**Input model: IPA picker, not feature dropdowns.** Don't make the user construct a phoneme from dropdowns (place + manner + voicing) — show the actual IPA chart as a clickable grid. User clicks a symbol, features auto-populate.
 
-- Add phonemes with IPA, type, articulatory features
-- Drag to reorder (sort_order)
-- Add footnotes per phoneme
-- Preview renders the consonant/vowel grid in real time
+The IPA chart is a finite, well-defined grid (~200 symbols). A static JSON lookup maps every symbol to its features. The picker renders it as a styled interactive chart with sections for:
+
+- Pulmonic consonants (the standard manner × place grid)
+- Affricates (t͡s, d͡z, t͡ʃ, d͡ʒ, etc.)
+- Non-pulmonic consonants (clicks, implosives, ejectives)
+- Co-articulated consonants (k͡p, ɡ͡b, ɫ, etc.)
+- Vowels (height × backness)
+- Diphthongs
+
+**Flow:** Click symbol → IPA + features auto-fill → features are editable for grid placement override → add.
+
+**Fantasy sound checkbox** disables the picker and switches to manual entry — type any IPA string, manually set features for grid placement. For conlang-specific sounds that don't exist in natural language.
+
+**Why not dropdowns:** The IPA doesn't decompose cleanly into independent features. Affricates have two manners (stop + fricative). Co-articulated consonants have two places. Denti-alveolars fall between place categories. A dropdown form can't represent these without becoming a monster. The chart IS the standard UI — every linguistics textbook uses it.
+
+**Feature fields are freeform text, not enums.** If a conlang needs "denti-alveolar" or "labial-velar" as a place, they edit the auto-filled value. The grid renderer derives its columns from whatever values are present in the data, so custom values just work.
 
 ### Grapheme/Orthography Editor
 
@@ -340,6 +352,55 @@ Mapping editor connecting script symbols to phonemes:
 - Link to a phoneme from this language's inventory
 - Add romanization, environment, notes
 - Preview renders the orthography table in real time
+
+---
+
+## Dialects and Phonology
+
+**Open design question.** The Wordbook already has `languageDialects` (name, slug, region, description) used for lexicon variants. But dialects also affect phonology — how do we model that?
+
+### How Dialects Affect Sound Inventories
+
+Dialects rarely have completely different phoneme inventories. The changes are usually:
+
+- **Mergers** — Two sounds collapse into one. /ɑ/ and /ɔ/ merge (cot-caught merger). The phoneme exists in the base language but this dialect doesn't distinguish it.
+- **Splits** — One sound becomes two in certain contexts.
+- **Shifts** — A phoneme moves to a different articulation. The "slot" is the same but the realization changes (e.g., /a/ → [æ]).
+- **Additions** — The dialect has a sound the standard language lost or never had.
+- **Losses** — The dialect drops a sound entirely.
+
+### Recommended Approach: Dialect Overlays
+
+Phonemes belong to the language (the base/standard inventory). Dialects store *differences from the base* — a thin overlay table.
+
+```
+dialect_phoneme_overrides
+  id
+  dialect_id     FK → languageDialects
+  phoneme_id     FK → phonemes (the base language phoneme)
+  status         'merged' | 'shifted' | 'added' | 'lost'
+  realization    text    -- actual IPA in this dialect (e.g., /æ/ instead of /a/)
+  merged_into_id FK → phonemes (nullable — which phoneme it merged with)
+  notes          text    -- "before front vowels", "word-final only"
+```
+
+**Example:** Base Oncheran has /θ/ and /ð/. The Eastern dialect override: `/θ/ merged into /s/`.
+
+**Why overlays, not per-dialect inventories:** No data duplication. The base inventory is the source of truth. Differences are explicit and queryable ("which dialects lost /θ/?"). Updates to the base propagate automatically.
+
+**Rendering:**
+
+- Default view: base language phonemes
+- Dialect view: base phonemes with overrides applied — merged sounds grayed out, shifted sounds showing dialect realization, added sounds highlighted
+- Comparison view: side-by-side diff
+
+**Wiki templates:**
+```
+{{consonants|Oncheran}}                   ← base inventory
+{{consonants|Oncheran|dialect=Eastern}}   ← with dialect overrides applied
+```
+
+**Implementation note:** This is an additive schema change — the overlay table doesn't modify the existing phonemes table. Build it when dialect-level phonology is actually needed, not before. Nothing in the current phoneme design prevents it.
 
 ---
 
