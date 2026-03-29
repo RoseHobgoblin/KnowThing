@@ -16,7 +16,7 @@
 	let { data }: { data: PageData } = $props()
 
 	const kind = data.kind
-	const isAdmin = data.isAdmin
+	const isAdmin = $derived($page.data.isAdmin)
 	const isEditMode = data.isEditMode
 	const raw = data.body as any
 	const ast = data.ast as import('$lib/parser/types.js').WikiNode | null

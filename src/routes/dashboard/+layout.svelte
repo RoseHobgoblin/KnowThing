@@ -14,7 +14,7 @@
 	let { children, data }: { children: Snippet, data: LayoutData } = $props()
 
 	const currentPath = $derived($page.url.pathname)
-	const isAdmin = $derived(data.user?.role === 'admin')
+	const isAdmin = $derived($page.data.isAdmin)
 
 	const linkClass = 'flex items-center gap-2 px-3 py-1.5 text-xs transition-colors'
 	const activeClass = 'text-accent font-medium bg-raised'

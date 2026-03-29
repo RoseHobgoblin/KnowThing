@@ -8,8 +8,6 @@ import { requireAuth } from '$lib/server/auth.js'
 import { updateContentEffects } from '$lib/server/content-effects.js'
 
 export const load: PageServerLoad = async ({ params, locals }) => {
-	const isAdmin = locals.user?.role === 'admin'
-
 	const pathSegments = params.path.split('/')
 	const isEditMode = pathSegments.at(-1) === 'edit'
 	if (isEditMode) pathSegments.pop()
@@ -44,7 +42,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			WHERE s.system_id = ${system.id}
 			ORDER BY pb.semi_major_axis_au NULLS LAST, pb.name
 		`)
-		return { kind: 'system' as const, body: system, isAdmin, isEditMode, systemStars, systemBodies, ...content }
+		return { kind: 'system' as const, body: system, isEditMode, systemStars, systemBodies, ...content }
 	}
 
 	const [star] = await db.select().from(stars).where(sql`LOWER(${stars.slug}) = LOWER(${slug}) OR LOWER(${stars.pageSlug}) = LOWER(${slug})`)
@@ -61,7 +59,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 		const allSystems = await db.select({ id: starSystems.id, name: starSystems.name }).from(starSystems).orderBy(starSystems.name)
 		const content = await getContent(star.contentRecordId)
-		return { kind: 'star' as const, body: star, allSystems, isAdmin, isEditMode, ...content }
+		return { kind: 'star' as const, body: star, allSystems, isEditMode, ...content }
 	}
 
 	const [planet] = await db.select().from(planetaryBodies).where(sql`LOWER(${planetaryBodies.slug}) = LOWER(${slug}) OR LOWER(${planetaryBodies.pageSlug}) = LOWER(${slug})`)
@@ -86,7 +84,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 				.where(eq(planetaryBodies.starId, planet.starId))
 			: []
 		const content = await getContent(planet.contentRecordId)
-		return { kind: 'planet' as const, body: planet, allStars, siblings, isAdmin, isEditMode, ...content }
+		return { kind: 'planet' as const, body: planet, allStars, siblings, isEditMode, ...content }
 	}
 
 	error(404, 'Celestial body not found')

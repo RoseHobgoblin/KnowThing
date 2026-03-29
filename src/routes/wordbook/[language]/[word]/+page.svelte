@@ -18,7 +18,7 @@
 
 	const layoutData = $derived($page.data)
 	const isAuthenticated = $derived(!!layoutData.user)
-	const isAdmin = $derived(layoutData.user?.role === 'admin')
+	const isAdmin = $derived(layoutData.isAdmin)
 
 	// Add sense form state (per homograph)
 	let addingSenseFor = $state<number | null>(null)

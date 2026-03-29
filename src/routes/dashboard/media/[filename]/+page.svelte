@@ -15,7 +15,7 @@
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
 
 	const layoutData = $derived($page.data)
-	const isAdmin = $derived(layoutData.user?.role === 'admin')
+	const isAdmin = $derived(layoutData.isAdmin)
 
 	function formatBytes(bytes: number | null): string {
 		if (!bytes) return '—'

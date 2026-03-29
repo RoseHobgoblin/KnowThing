@@ -5,12 +5,13 @@
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import { invalidateAll } from '$app/navigation'
+	import { page } from '$app/stores'
 	import { urlSlugify } from '$lib/utils/slugify.js'
 
 	let { data }: { data: PageData } = $props()
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
 
-	const isAdmin = $derived(data.isAdmin)
+	const isAdmin = $derived($page.data.isAdmin)
 
 	let newSystemName = $state('')
 	let newStarName = $state('')

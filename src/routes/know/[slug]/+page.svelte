@@ -94,7 +94,7 @@ import CategoryBar from '$lib/components/CategoryBar.svelte'
 			<a href="/know/{data.slug}/edit" class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover"><PencilSimple size={14} weight="fill" />Edit</a>
 			<a href="/know/{data.slug}/move" class="text-dim transition-colors flex items-center gap-1 hover:text-secondary"><ArrowsLeftRight size={14} weight="fill" />Move</a>
 			<a href="/know/{data.slug}/history" class="text-dim transition-colors flex items-center gap-1 hover:text-secondary"><ClockCounterClockwise size={14} weight="fill" />History</a>
-			{#if layoutData.user?.role === 'admin'}
+			{#if layoutData.isAdmin}
 				<button onclick={deletePage} class="text-error transition-colors flex items-center gap-1 hover:text-error-hover"><Trash size={14} weight="fill" />Delete</button>
 			{/if}
 		{/snippet}

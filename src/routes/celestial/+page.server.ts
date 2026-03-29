@@ -39,6 +39,5 @@ export const load: PageServerLoad = async ({ locals }) => {
 		systems,
 		stars: allStars,
 		bodies: allBodies,
-		isAdmin: locals.user?.role === 'admin',
 	}
 }

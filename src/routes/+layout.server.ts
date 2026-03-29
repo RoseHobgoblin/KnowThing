@@ -39,6 +39,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 
 	return {
 		user: locals.user,
+		isAdmin: locals.user?.role === 'admin' ?? false,
 		existingPages: allContent.filter(c => c.domain === 'know').map(c => c.slug.toLowerCase()),
 		existingContent: allContent.map(c => ({ domain: c.domain, slug: c.slug.toLowerCase() })),
 		calendarDate,
