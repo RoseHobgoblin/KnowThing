@@ -10,6 +10,7 @@
 	import Shuffle from 'phosphor-svelte/lib/Shuffle'
 	import BookOpen from 'phosphor-svelte/lib/BookOpen'
 	import CalendarBlank from 'phosphor-svelte/lib/CalendarBlank'
+	import Planet from 'phosphor-svelte/lib/Planet'
 	import Tag from 'phosphor-svelte/lib/Tag'
 	import ClockCounterClockwise from 'phosphor-svelte/lib/ClockCounterClockwise'
 	import GearSix from 'phosphor-svelte/lib/GearSix'
@@ -64,6 +65,7 @@
 			{#if sc?.calendarEnabled !== false}
 				<a href="/calendar" class="{linkClass} {isActive('/calendar') ? activeClass : inactiveClass}"><CalendarBlank size={16} weight="fill" />{sc?.navCalendarLabel ?? 'Calendar'}</a>
 			{/if}
+			<a href="/celestial" class="{linkClass} {isActive('/celestial') ? activeClass : inactiveClass}"><Planet size={16} weight="fill" />Celestial</a>
 
 			<div class="my-2 border-t border-border-subtle"></div>
 
@@ -151,6 +153,7 @@
 					{#if sc?.calendarEnabled !== false}
 						<a href="/calendar" onclick={navClick} class="{linkClass} {isActive('/calendar') ? activeClass : inactiveClass}"><CalendarBlank size={16} weight="fill" />{sc?.navCalendarLabel ?? 'Calendar'}</a>
 					{/if}
+					<a href="/celestial" onclick={navClick} class="{linkClass} {isActive('/celestial') ? activeClass : inactiveClass}"><Planet size={16} weight="fill" />Celestial</a>
 
 					<div class="my-2 border-t border-border-subtle"></div>
 

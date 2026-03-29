@@ -13,6 +13,8 @@ export type InfoboxType =
 	| 'officeholder'
 	| 'person'
 	| 'religion'
+	| 'star'
+	| 'planet'
 	| 'generic'
 
 /** Map of normalized field name -> value, built from TemplateArg[] */

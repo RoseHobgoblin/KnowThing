@@ -16,6 +16,8 @@
 	import InfoboxOfficeholder from '$lib/infoboxes/InfoboxOfficeholder.svelte'
 	import InfoboxPerson from '$lib/infoboxes/InfoboxPerson.svelte'
 	import InfoboxReligion from '$lib/infoboxes/InfoboxReligion.svelte'
+	import InfoboxStar from '$lib/infoboxes/InfoboxStar.svelte'
+	import InfoboxPlanet from '$lib/infoboxes/InfoboxPlanet.svelte'
 	import InfoboxGeneric from '$lib/infoboxes/InfoboxGeneric.svelte'
 
 	const INFOBOX_COMPONENTS: Record<string, typeof InfoboxGeneric> = {
@@ -27,6 +29,8 @@
 		officeholder: InfoboxOfficeholder,
 		person: InfoboxPerson,
 		religion: InfoboxReligion,
+		star: InfoboxStar,
+		planet: InfoboxPlanet,
 	}
 
 	let { name, args }: { name: string, args: TemplateArg[] } = $props()
@@ -68,7 +72,16 @@
 
 		// 3. Infoboxes — detect by name prefix "infobox"
 		if (lowerName.startsWith('infobox')) {
-			const fields = buildFieldMap(args)
+			let fields = buildFieldMap(args)
+
+			// from=slug: merge pre-fetched structured data (DB fields as base, wikitext overrides)
+			const fromSlug = fields.get('from')
+			if (fromSlug && ctx.structuredData?.has(fromSlug)) {
+				const dbFields = ctx.structuredData.get(fromSlug)!
+				fields = new Map([...dbFields, ...fields])
+				fields.delete('from')
+			}
+
 			const infoboxType = detectInfoboxType(normalizedName, fields)
 			return { kind: 'infobox', infoboxType, fields }
 		}

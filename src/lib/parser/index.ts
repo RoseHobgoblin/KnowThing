@@ -66,6 +66,25 @@ export function extractImages(input: string): string[] {
 }
 
 /**
+ * Walk a pre-parsed AST and find infobox templates with a `from=slug` argument.
+ * Returns the infobox subtype and the slug to resolve.
+ */
+export function extractInfoboxFromRefs(ast: WikiNode): { type: string, slug: string }[] {
+	const refs: { type: string, slug: string }[] = []
+	walkNodes([ast], (node) => {
+		if (node.type === 'template' && node.name.toLowerCase().startsWith('infobox')) {
+			const fromArg = node.args.find(a => a.name?.toLowerCase().trim() === 'from')
+			if (fromArg?.value) {
+				const match = node.name.match(/^infobox\s+(.+)$/i)
+				const subtype = match?.[1]?.trim().toLowerCase() ?? 'generic'
+				refs.push({ type: subtype, slug: fromArg.value.trim() })
+			}
+		}
+	})
+	return refs
+}
+
+/**
  * Strip wiki markup to plain text (for FTS indexing).
  */
 export function stripMarkup(input: string): string {

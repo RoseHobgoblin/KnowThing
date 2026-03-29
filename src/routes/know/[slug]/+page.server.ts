@@ -3,7 +3,8 @@ import type { PageServerLoad } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { pages, categories, lexicon, languages } from '$lib/server/db/schema.js'
 import { eq, sql } from 'drizzle-orm'
-import { parseWikitext, extractCategoriesFromAst } from '$lib/parser/index.js'
+import { parseWikitext, extractCategoriesFromAst, extractInfoboxFromRefs } from '$lib/parser/index.js'
+import { resolveAllStructuredData } from '$lib/server/structured-data.js'
 
 export const load: PageServerLoad = async ({ params }) => {
 	// Case-insensitive lookup
@@ -34,6 +35,19 @@ export const load: PageServerLoad = async ({ params }) => {
 	const ast = (page.parsedAst as import('$lib/parser/types.js').WikiNode) ?? parseWikitext(page.content)
 	const cats = extractCategoriesFromAst(ast)
 
+	// Pre-fetch structured data for any from=slug infobox references
+	const fromRefs = extractInfoboxFromRefs(ast)
+	let structuredData: Record<string, Record<string, string>> | null = null
+	if (fromRefs.length > 0) {
+		const resolved = await resolveAllStructuredData(fromRefs)
+		if (resolved.size > 0) {
+			structuredData = {}
+			for (const [slug, fieldMap] of resolved) {
+				structuredData[slug] = Object.fromEntries(fieldMap)
+			}
+		}
+	}
+
 	// Check if this page title matches a word in the wordbook
 	const wordbookMatches = await db
 		.select({
@@ -55,5 +69,6 @@ export const load: PageServerLoad = async ({ params }) => {
 		categories: cats,
 		updatedAt: page.updatedAt,
 		wordbookMatch: wordbookMatches[0] || null,
+		structuredData,
 	}
 }

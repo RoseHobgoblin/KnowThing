@@ -24,6 +24,8 @@ export interface KnowRenderContext {
 	templates: Map<string, string> | null
 	/** Resolved calendar date for calendar magic words */
 	calendarDate: ResolvedDate | null
+	/** Pre-fetched structured data for from=slug infobox resolution */
+	structuredData: Map<string, Map<string, string>> | null
 }
 
 /** @deprecated Use KnowRenderContext */
@@ -45,6 +47,7 @@ export function createKnowContext(overrides: Partial<KnowRenderContext> = {}): K
 		namespace: '',
 		templates: null,
 		calendarDate: null,
+		structuredData: null,
 		...overrides,
 	}
 	setContext(KNOW_CONTEXT_KEY, ctx)

@@ -11,6 +11,8 @@ const INFOBOX_COMPONENTS: Record<InfoboxType, () => Promise<{ default: Component
 	officeholder: () => import('./InfoboxOfficeholder.svelte'),
 	person: () => import('./InfoboxPerson.svelte'),
 	religion: () => import('./InfoboxReligion.svelte'),
+	star: () => import('./InfoboxStar.svelte'),
+	planet: () => import('./InfoboxPlanet.svelte'),
 	generic: () => import('./InfoboxGeneric.svelte'),
 }
 

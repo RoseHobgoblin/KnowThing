@@ -82,6 +82,20 @@ const KEYWORD_MAP: Record<string, InfoboxType> = {
 	'denomination': 'religion',
 	'church': 'religion',
 	'sect': 'religion',
+
+	// Star
+	'star': 'star',
+	'stellar': 'star',
+	'sun': 'star',
+
+	// Planet / celestial body
+	'planet': 'planet',
+	'moon': 'planet',
+	'dwarf planet': 'planet',
+	'celestial': 'planet',
+	'celestial body': 'planet',
+	'satellite': 'planet',
+	'asteroid': 'planet',
 }
 
 /**
@@ -123,6 +137,12 @@ export function detectInfoboxType(templateName: string, fields: FieldMap): Infob
 	}
 	if (hasField(fields, 'theology', 'scripture', 'deity', 'founder', 'origin', 'followers')) {
 		return 'religion'
+	}
+	if (hasField(fields, 'spectral_type', 'luminosity', 'luminosity_visual')) {
+		return 'star'
+	}
+	if (hasField(fields, 'surface_gravity', 'escape_velocity', 'atmosphere', 'composition', 'rotation_period')) {
+		return 'planet'
 	}
 
 	return 'generic'

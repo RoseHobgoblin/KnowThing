@@ -3,6 +3,7 @@ import {
 	serial,
 	text,
 	integer,
+	doublePrecision,
 	timestamp,
 	boolean,
 	jsonb,
@@ -333,6 +334,103 @@ export const lexiconRelations = pgTable(
 	table => [
 		index('idx_lexrel_source').on(table.sourceId),
 		index('idx_lexrel_target').on(table.targetId),
+	],
+)
+
+// ============================================================================
+// Celestial Bodies
+// ============================================================================
+
+export const stars = pgTable(
+	'stars',
+	{
+		id: serial('id').primaryKey(),
+		name: text('name').notNull(),
+		slug: text('slug').unique().notNull(),
+		pageSlug: text('page_slug'),
+
+		spectralType: text('spectral_type'),
+		mass: text('mass'),
+		radius: text('radius'),
+		luminosity: text('luminosity'),
+		luminosityVisual: text('luminosity_visual'),
+		temperature: text('temperature'),
+		age: text('age'),
+		color: text('color'),
+
+		orbitalPeriod: text('orbital_period'),
+		semiMajorAxis: text('semi_major_axis'),
+		semiMajorAxisAu: doublePrecision('semi_major_axis_au'),
+		eccentricity: doublePrecision('eccentricity'),
+		periastron: text('periastron'),
+		apastron: text('apastron'),
+
+		apparentMagnitude: text('apparent_magnitude'),
+		angularDiameter: text('angular_diameter'),
+
+		companion: text('companion'),
+		parentStarId: integer('parent_star_id'),
+
+		extra: jsonb('extra').default({}),
+		description: text('description').default(''),
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+	},
+	table => [
+		index('idx_stars_slug').on(table.slug),
+	],
+)
+
+export const planetaryBodies = pgTable(
+	'planetary_bodies',
+	{
+		id: serial('id').primaryKey(),
+		name: text('name').notNull(),
+		slug: text('slug').unique().notNull(),
+		bodyType: text('body_type').notNull().default('planet'),
+		starId: integer('star_id').references(() => stars.id, { onDelete: 'set null' }),
+		parentId: integer('parent_id'),
+		pageSlug: text('page_slug'),
+
+		mass: text('mass'),
+		radius: text('radius'),
+		density: text('density'),
+		surfaceGravity: text('surface_gravity'),
+		escapeVelocity: text('escape_velocity'),
+		temperature: text('temperature'),
+		age: text('age'),
+
+		composition: text('composition'),
+		atmosphere: text('atmosphere'),
+		surfacePressure: text('surface_pressure'),
+
+		orbitalPeriod: text('orbital_period'),
+		orbitalPeriodDays: doublePrecision('orbital_period_days'),
+		semiMajorAxis: text('semi_major_axis'),
+		semiMajorAxisAu: doublePrecision('semi_major_axis_au'),
+		eccentricity: doublePrecision('eccentricity'),
+		inclination: doublePrecision('inclination'),
+
+		rotationPeriod: text('rotation_period'),
+		rotationPeriodS: doublePrecision('rotation_period_s'),
+		axialTilt: doublePrecision('axial_tilt'),
+
+		apparentMagnitude: text('apparent_magnitude'),
+		angularDiameter: text('angular_diameter'),
+		albedo: text('albedo'),
+
+		satellites: integer('satellites'),
+		hasRings: boolean('has_rings').default(false),
+
+		extra: jsonb('extra').default({}),
+		description: text('description').default(''),
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+	},
+	table => [
+		index('idx_planetary_bodies_slug').on(table.slug),
+		index('idx_planetary_bodies_star').on(table.starId),
+		index('idx_planetary_bodies_parent').on(table.parentId),
 	],
 )
 

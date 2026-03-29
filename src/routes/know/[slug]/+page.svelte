@@ -25,11 +25,23 @@ import CategoryBar from '$lib/components/CategoryBar.svelte'
 
 	const layoutData = $derived($page.data)
 
+	// Reconstruct structured data Maps from serialized JSON
+	const structuredData = $derived.by(() => {
+		const raw = data.structuredData
+		if (!raw) return null
+		const map = new Map<string, Map<string, string>>()
+		for (const [slug, fields] of Object.entries(raw)) {
+			map.set(slug, new Map(Object.entries(fields)))
+		}
+		return map
+	})
+
 	createKnowContext({
 		existingPages: new Set(layoutData.existingPages || []),
 		mediaBaseUrl: '/api/media',
 		pageBaseUrl: '/know',
 		calendarDate: layoutData.calendarDate ?? null,
+		structuredData: structuredData,
 	})
 </script>
 
