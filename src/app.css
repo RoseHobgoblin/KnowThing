@@ -110,10 +110,9 @@ h1, h2, h3, h4, h5, h6 {
 	color: var(--color-heading);
 }
 
-/* Gold rule under H2s in article content */
+/* Gold rule under headings in article content */
 .know-article h2 {
-	border-bottom: 2px solid;
-	border-image: linear-gradient(to right, var(--color-accent), var(--color-accent-hover)) 1;
+	border-bottom: 1px solid var(--color-border-strong);
 	padding-bottom: 0.375rem;
 	margin-bottom: 1rem;
 }

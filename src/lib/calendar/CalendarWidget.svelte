@@ -207,9 +207,9 @@
 	<!-- Header -->
 	<div class="flex items-center justify-between px-4 py-3 bg-border border-b border-border-strong">
 		{#if viewMode === 'month'}
-			<button onclick={previousMonth} class="text-secondary px-2 py-1 transition-colors hover:text-heading hover:bg-stone-300">&larr;</button>
+			<button onclick={previousMonth} class="text-secondary px-2 py-1 transition-colors hover:text-heading hover:bg-raised">&larr;</button>
 		{:else}
-			<button onclick={() => viewYear--} class="text-secondary px-2 py-1 transition-colors hover:text-heading hover:bg-stone-300">&larr;</button>
+			<button onclick={() => viewYear--} class="text-secondary px-2 py-1 transition-colors hover:text-heading hover:bg-raised">&larr;</button>
 		{/if}
 
 		<div class="text-center">
@@ -241,9 +241,9 @@
 		</div>
 
 		{#if viewMode === 'month'}
-			<button onclick={nextMonth} class="text-secondary px-2 py-1 transition-colors hover:text-heading hover:bg-stone-300">&rarr;</button>
+			<button onclick={nextMonth} class="text-secondary px-2 py-1 transition-colors hover:text-heading hover:bg-raised">&rarr;</button>
 		{:else}
-			<button onclick={() => viewYear++} class="text-secondary px-2 py-1 transition-colors hover:text-heading hover:bg-stone-300">&rarr;</button>
+			<button onclick={() => viewYear++} class="text-secondary px-2 py-1 transition-colors hover:text-heading hover:bg-raised">&rarr;</button>
 		{/if}
 	</div>
 

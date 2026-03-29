@@ -39,7 +39,7 @@
 </script>
 
 {#if hasInflection && dimensions.length > 0 && Object.keys(forms).length === 0}
-	<div class="mt-4 p-3 bg-amber-50 border border-amber-200 text-sm text-amber-800">
+	<div class="mt-4 p-3 bg-warning-bg border border-warning-border text-sm text-body">
 		Inflection is assigned but no forms were generated. Check that the paradigm class has rules defined, and that a stem is set.
 	</div>
 {:else if hasInflection && dimensions.length > 0 && Object.keys(forms).length > 0}

@@ -142,7 +142,7 @@
 					</select>
 					<p class="text-[10px] text-faint mt-1">Select a class to auto-generate forms from its rules.</p>
 				{:else}
-					<div class="p-2 bg-amber-50 border border-amber-200 text-xs text-amber-800">
+					<div class="p-2 bg-warning-bg border border-warning-border text-xs text-body">
 						{#if availableClasses.length > 0}
 							No paradigm classes for <strong>{partOfSpeech || 'this part of speech'}</strong>.
 							Classes exist for other parts of speech — check the

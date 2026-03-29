@@ -59,42 +59,34 @@ import CategoryBar from '$lib/components/CategoryBar.svelte'
 	<!-- Article card -->
 	<div class="bg-surface shadow-sm border border-border overflow-hidden">
 		<!-- Page header -->
-		<div class="
-			flex flex-col justify-between gap-2 p-4 border-b border-border-subtle
-			sm:flex-row sm:items-center
-			md:px-6
-		">
-			<h1 class="text-2xl font-bold text-heading md:text-3xl">{data.title}</h1>
-			<div class="flex gap-3 text-sm md:gap-4">
-				<a href="/know/{data.slug}/edit" class="text-link font-medium transition-colors hover:text-link-hover">Edit</a>
-				<a href="/know/{data.slug}/move" class="text-dim transition-colors hover:text-secondary">Move</a>
-				<a href="/know/{data.slug}/history" class="text-dim transition-colors hover:text-secondary">History</a>
-				{#if layoutData.user?.role === 'admin'}
-					<button onclick={deletePage} class="text-error transition-colors hover:text-error-hover">Delete</button>
-				{/if}
+		<div class="px-4 pt-4 md:px-6">
+			<div class="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+				<h1 class="text-2xl font-bold text-heading md:text-3xl">{data.title}</h1>
+				<div class="flex gap-3 text-sm md:gap-4">
+					<a href="/know/{data.slug}/edit" class="text-link font-medium transition-colors hover:text-link-hover">Edit</a>
+					<a href="/know/{data.slug}/move" class="text-dim transition-colors hover:text-secondary">Move</a>
+					<a href="/know/{data.slug}/history" class="text-dim transition-colors hover:text-secondary">History</a>
+					{#if layoutData.user?.role === 'admin'}
+						<button onclick={deletePage} class="text-error transition-colors hover:text-error-hover">Delete</button>
+					{/if}
+				</div>
 			</div>
+			{#if data.wordbookMatch}
+				<div class="flex items-center gap-2 mt-1.5 text-xs">
+					<span class="px-1.5 py-0.5 bg-accent-light text-accent-text font-semibold uppercase tracking-wider text-[10px]">Wordbook</span>
+					<a
+						href="/wordbook/{data.wordbookMatch.languageSlug}/{encodeURIComponent(data.wordbookMatch.word)}"
+						class="text-link transition-colors hover:text-link-hover"
+					>
+						See <em>{data.wordbookMatch.word}</em> in {data.wordbookMatch.languageName}
+					</a>
+				</div>
+			{/if}
+			<div class="mt-2 h-0.5 bg-gradient-to-r from-accent to-accent-hover"></div>
 		</div>
 
-		<!-- Wordbook link -->
-		{#if data.wordbookMatch}
-			<div class="px-4 pt-3 pb-0 md:px-6">
-				<a
-					href="/wordbook/{data.wordbookMatch.languageSlug}/{encodeURIComponent(data.wordbookMatch.word)}"
-					class="
-						inline-flex items-center gap-1.5 text-xs text-link bg-accent-subtle border border-accent-border
-						px-3 py-1 transition-colors
-						hover:text-link-hover
-					"
-				>
-					<span class="font-medium">Wordbook</span>
-					<span class="text-accent">·</span>
-					<span>See <em>{data.wordbookMatch.word}</em> in {data.wordbookMatch.languageName}</span>
-				</a>
-			</div>
-		{/if}
-
 		<!-- Article body -->
-		<div class="p-4 md:px-6 md:py-5">
+		<div class="px-4 pt-3 pb-4 md:px-6 md:pb-5">
 			<article class="know-article">
 				<WikiNodeComponent node={data.ast} />
 			</article>
