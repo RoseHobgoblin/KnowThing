@@ -8,6 +8,7 @@
 	let mobileMenuOpen = $state(false)
 
 	const sc = $derived(data.siteConfig)
+	const siteNameParts = $derived((sc?.siteName ?? 'KnowThing').split(/(?=[A-Z])/))
 	const navClass = 'px-3 py-2.5 text-secondary rounded-t-md transition-colors font-medium hover:text-link hover:bg-accent-subtle'
 	const navSmallClass = 'px-3 py-2.5 text-dim rounded-t-md transition-colors text-xs hover:text-link hover:bg-accent-subtle'
 	const mobileNavClass = 'block px-3 py-2 text-secondary rounded-md text-sm font-medium hover:bg-accent-subtle hover:text-link'
@@ -41,9 +42,8 @@
 				</a>
 			{:else}
 				<a href="/" class="text-xl font-bold text-heading tracking-tight transition-colors hover:text-link">
-					{@const parts = (sc?.siteName ?? 'KnowThing').split(/(?=[A-Z])/)}
-					{#if parts.length >= 2}
-						{parts[0]}<span class="text-accent">{parts.slice(1).join('')}</span>
+					{#if siteNameParts.length >= 2}
+						{siteNameParts[0]}<span class="text-accent">{siteNameParts.slice(1).join('')}</span>
 					{:else}
 						{sc?.siteName ?? 'KnowThing'}
 					{/if}
