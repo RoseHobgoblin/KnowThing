@@ -1,8 +1,8 @@
-import { error } from '@sveltejs/kit'
+import { error, redirect } from '@sveltejs/kit'
 import type { PageServerLoad } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { starSystems, stars, planetaryBodies, contentRecords } from '$lib/server/db/schema.js'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { parseWikitext } from '$lib/parser/index.js'
 
 export const load: PageServerLoad = async ({ params, locals }) => {
@@ -12,22 +12,32 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	const pathSegments = params.path.split('/')
 	const slug = pathSegments.at(-1)!
 
-	// Try systems first, then stars, then planetary bodies
-	const [system] = await db.select().from(starSystems).where(eq(starSystems.slug, slug))
+	// Try systems first, then stars, then planetary bodies (case-insensitive)
+	const [system] = await db.select().from(starSystems).where(sql`LOWER(${starSystems.slug}) = LOWER(${slug})`)
 	if (system) {
+		if (system.slug !== slug) redirect(301, `/celestial/${system.slug}`)
 		const content = await getContent(system.contentRecordId)
 		return { kind: 'system' as const, body: system, isAdmin, ...content }
 	}
 
-	const [star] = await db.select().from(stars).where(eq(stars.slug, slug))
+	const [star] = await db.select().from(stars).where(sql`LOWER(${stars.slug}) = LOWER(${slug})`)
 	if (star) {
+		// Canonical redirect if casing is wrong
+		const systemSlug = pathSegments.length > 1 ? pathSegments[0] : null
+		const canonicalPath = systemSlug ? `/celestial/${systemSlug}/${star.slug}` : `/celestial/${star.slug}`
+		if (star.slug !== slug) redirect(301, canonicalPath)
+
 		const allSystems = await db.select({ id: starSystems.id, name: starSystems.name }).from(starSystems).orderBy(starSystems.name)
 		const content = await getContent(star.contentRecordId)
 		return { kind: 'star' as const, body: star, allSystems, isAdmin, ...content }
 	}
 
-	const [planet] = await db.select().from(planetaryBodies).where(eq(planetaryBodies.slug, slug))
+	const [planet] = await db.select().from(planetaryBodies).where(sql`LOWER(${planetaryBodies.slug}) = LOWER(${slug})`)
 	if (planet) {
+		const systemSlug = pathSegments.length > 1 ? pathSegments[0] : null
+		const canonicalPath = systemSlug ? `/celestial/${systemSlug}/${planet.slug}` : `/celestial/${planet.slug}`
+		if (planet.slug !== slug) redirect(301, canonicalPath)
+
 		const allStars = await db.select({ id: stars.id, name: stars.name, slug: stars.slug }).from(stars).orderBy(stars.name)
 		const siblings = planet.starId
 			? await db.select({ id: planetaryBodies.id, name: planetaryBodies.name, slug: planetaryBodies.slug })
