@@ -8,6 +8,7 @@
 	import CalendarWidget from '$lib/calendar/CalendarWidget.svelte'
 	import type { CalendarConfig } from '$lib/calendar/types.js'
 	import Input from '$lib/components/ui/Input.svelte'
+	import Select from '$lib/components/ui/Select.svelte'
 	import Tooltip from '$lib/components/ui/Tooltip.svelte'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 
@@ -93,8 +94,6 @@
 
 	const totalDaysInYear = $derived(months.reduce((sum, m) => sum + m.length, 0))
 	const dayLengthHours = $derived(Math.round((dayLengthSeconds / 3600) * 100) / 100)
-
-	const indexClass = 'px-2 py-1.5 border border-border-strong text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent'
 </script>
 
 <svelte:head>
@@ -173,7 +172,7 @@
 						<span class="text-faint text-xs cursor-help">ⓘ</span>
 					</Tooltip>
 				</div>
-				<input type="number" bind:value={epochOffset} class="w-full {indexClass}" />
+				<Input type="number" bind:value={epochOffset} />
 			</div>
 			<div>
 				<div class="flex items-center gap-1 mb-1">
@@ -182,7 +181,7 @@
 						<span class="text-faint text-xs cursor-help">ⓘ</span>
 					</Tooltip>
 				</div>
-				<input type="number" bind:value={dayLengthSeconds} min={1} class="w-full {indexClass}" />
+				<Input type="number" bind:value={dayLengthSeconds} min={1} />
 				<p class="text-[10px] text-faint mt-1">{dayLengthHours} hours</p>
 			</div>
 			<div>
@@ -192,7 +191,7 @@
 						<span class="text-faint text-xs cursor-help">ⓘ</span>
 					</Tooltip>
 				</div>
-				<input type="number" bind:value={yearOffset} class="w-full {indexClass}" />
+				<Input type="number" bind:value={yearOffset} />
 			</div>
 		</div>
 	</section>
@@ -213,16 +212,13 @@
 			{#each months as month, index (month._id)}
 				<div class="flex gap-2 items-center group">
 					<span class="text-[10px] text-faint w-5 text-right shrink-0">{index + 1}</span>
-					<input type="text" bind:value={month.name} placeholder="Month name" class="flex-1 {indexClass}" />
-					<input type="text" bind:value={month.short_name} placeholder="Abbr" class="w-14 {indexClass}" />
+					<Input bind:value={month.name} placeholder="Month name" containerClass="flex-1" />
+					<Input bind:value={month.short_name} placeholder="Abbr" containerClass="w-14" />
 					<div class="flex items-center gap-1">
-						<input type="number" bind:value={month.length} min={1} class="w-14 {indexClass} text-center" />
+						<Input type="number" bind:value={month.length} min={1} containerClass="w-14" class="text-center" />
 						<span class="text-[10px] text-faint">days</span>
 					</div>
-					<select bind:value={month.month_type} class="w-28 {indexClass}">
-						<option value="regular">Regular</option>
-						<option value="intercalary">Intercalary</option>
-					</select>
+					<Select bind:value={month.month_type} items={[{ value: 'regular', label: 'Regular' }, { value: 'intercalary', label: 'Intercalary' }]} containerClass="w-28" size="sm" />
 					<button onclick={() => months = months.filter((_, index_) => index_ !== index)} class="text-faint opacity-0 transition-opacity group-hover:opacity-100 hover:text-error">×</button>
 				</div>
 			{/each}
@@ -243,7 +239,7 @@
 			<Tooltip content="Which weekday (0-indexed) does the very first day of your calendar fall on?" side="top">
 				<span class="text-faint text-xs cursor-help">ⓘ</span>
 			</Tooltip>
-			<input type="number" bind:value={firstWeekDay} min={0} max={weekdays.length - 1} class="w-14 ml-2 {indexClass} text-center" />
+			<Input type="number" bind:value={firstWeekDay} min={0} max={weekdays.length - 1} containerClass="w-14 ml-2" class="text-center" />
 			{#if weekdays[firstWeekDay]}
 				<span class="text-xs text-faint">({weekdays[firstWeekDay].name || '...'})</span>
 			{/if}
@@ -252,8 +248,8 @@
 			{#each weekdays as day, index (day._id)}
 				<div class="flex gap-2 items-center group">
 					<span class="text-[10px] text-faint w-5 text-right shrink-0">{index}</span>
-					<input type="text" bind:value={day.name} placeholder="Weekday name" class="flex-1 {indexClass}" />
-					<input type="text" bind:value={day.abbreviation} placeholder="Abbr" class="w-16 {indexClass}" />
+					<Input bind:value={day.name} placeholder="Weekday name" containerClass="flex-1" />
+					<Input bind:value={day.abbreviation} placeholder="Abbr" containerClass="w-16" />
 					<button onclick={() => weekdays = weekdays.filter((_, index_) => index_ !== index)} class="text-faint opacity-0 transition-opacity group-hover:opacity-100 hover:text-error">×</button>
 				</div>
 			{/each}
@@ -275,42 +271,27 @@
 		{#each leapDays as ld, index (ld._id)}
 			<div class="border border-border-subtle p-4 space-y-3 bg-page">
 				<div class="flex items-center justify-between">
-					<input type="text" bind:value={ld.name} placeholder="Leap day name" class="flex-1 {indexClass} font-medium" />
+					<Input bind:value={ld.name} placeholder="Leap day name" containerClass="flex-1" class="font-medium" />
 					<button onclick={() => leapDays = leapDays.filter((_, index_) => index_ !== index)} class="text-faint ml-2 text-sm hover:text-error">×</button>
 				</div>
 
 				<div class="grid grid-cols-2 gap-3 md:grid-cols-4">
 					<div>
 						<span class="text-xs font-medium text-secondary block mb-1">Insert after</span>
-						<select bind:value={ld.month_index} class="w-full {indexClass}">
+						<select bind:value={ld.month_index} class="w-full px-2 py-2 text-sm border border-border-strong bg-surface text-body outline-none transition-colors hover:border-border focus:ring-2 focus:ring-accent">
 							{#each months as m, mi (mi)}
 								<option value={mi}>{m.name || `Month ${mi + 1}`}</option>
 							{/each}
 						</select>
 					</div>
-					<div>
-						<span class="text-xs font-medium text-secondary block mb-1">After day #</span>
-						<input type="number" bind:value={ld.after_day} min={0} class="w-full {indexClass}" />
-					</div>
-					<div>
-						<span class="text-xs font-medium text-secondary block mb-1">Every N years</span>
-						<input type="number" bind:value={ld.interval} min={1} class="w-full {indexClass}" />
-					</div>
-					<div>
-						<span class="text-xs font-medium text-secondary block mb-1">Year offset</span>
-						<input type="number" bind:value={ld.offset} class="w-full {indexClass}" />
-					</div>
+					<Input type="number" label="After day #" bind:value={ld.after_day} min={0} />
+					<Input type="number" label="Every N years" bind:value={ld.interval} min={1} />
+					<Input type="number" label="Year offset" bind:value={ld.offset} />
 				</div>
 
 				<div class="grid grid-cols-2 gap-3">
-					<div>
-						<span class="text-xs font-medium text-secondary block mb-1">Skip years divisible by</span>
-						<input type="text" bind:value={ld.ignore} placeholder="e.g. 100" class="w-full {indexClass}" />
-					</div>
-					<div>
-						<span class="text-xs font-medium text-secondary block mb-1">But keep years divisible by</span>
-						<input type="text" bind:value={ld.exclusive} placeholder="e.g. 400" class="w-full {indexClass}" />
-					</div>
+					<Input label="Skip years divisible by" bind:value={ld.ignore} placeholder="e.g. 100" />
+					<Input label="But keep years divisible by" bind:value={ld.exclusive} placeholder="e.g. 400" />
 				</div>
 
 				<label class="flex items-center gap-2 text-xs text-secondary cursor-pointer">
@@ -336,18 +317,12 @@
 		{#each eras as era, index (era._id)}
 			<div class="border border-border-subtle p-4 space-y-3 bg-page">
 				<div class="flex items-center justify-between">
-					<input type="text" bind:value={era.name} placeholder="Era name (e.g. FA, AD)" class="flex-1 {indexClass} font-medium" />
+					<Input bind:value={era.name} placeholder="Era name (e.g. FA, AD)" containerClass="flex-1" class="font-medium" />
 					<button onclick={() => eras = eras.filter((_, index_) => index_ !== index)} class="text-faint ml-2 text-sm hover:text-error">×</button>
 				</div>
 				<div class="grid grid-cols-2 gap-3 md:grid-cols-4">
-					<div>
-						<span class="text-xs font-medium text-secondary block mb-1">Starts at year</span>
-						<input type="number" bind:value={era.start_year} class="w-full {indexClass}" />
-					</div>
-					<div>
-						<span class="text-xs font-medium text-secondary block mb-1">Ends at year</span>
-						<input type="text" bind:value={era.end_year} placeholder="Open-ended" class="w-full {indexClass}" />
-					</div>
+					<Input type="number" label="Starts at year" bind:value={era.start_year} />
+					<Input label="Ends at year" bind:value={era.end_year} placeholder="Open-ended" />
 					<div>
 						<div class="flex items-center gap-1 mb-1">
 							<span class="text-xs font-medium text-secondary">Display format</span>
@@ -355,7 +330,7 @@
 								<span class="text-faint text-xs cursor-help">ⓘ</span>
 							</Tooltip>
 						</div>
-						<input type="text" bind:value={era.format} placeholder={'{{year}} {{era_name}}'} class="w-full {indexClass}" />
+						<Input bind:value={era.format} placeholder={'{{year}} {{era_name}}'} />
 					</div>
 					<label class="flex items-center gap-2 text-xs text-secondary self-end cursor-pointer">
 						<input type="checkbox" bind:checked={era.reverse_numbering} class="accent-accent" />
@@ -384,13 +359,13 @@
 					<input type="color" bind:value={moon.face_color} class="size-7 border border-border cursor-pointer" title="Lit color" />
 					<input type="color" bind:value={moon.shadow_color} class="size-7 border border-border cursor-pointer" title="Shadow color" />
 				</div>
-				<input type="text" bind:value={moon.name} placeholder="Moon name" class="flex-1 {indexClass}" />
+				<Input bind:value={moon.name} placeholder="Moon name" containerClass="flex-1" />
 				<div class="flex items-center gap-1">
-					<input type="number" bind:value={moon.cycle} step="0.01" class="w-20 {indexClass} text-center" />
+					<Input type="number" bind:value={moon.cycle} step="0.01" containerClass="w-20" class="text-center" />
 					<span class="text-[10px] text-faint whitespace-nowrap">day cycle</span>
 				</div>
 				<div class="flex items-center gap-1">
-					<input type="number" bind:value={moon.offset} class="w-16 {indexClass} text-center" />
+					<Input type="number" bind:value={moon.offset} containerClass="w-16" class="text-center" />
 					<span class="text-[10px] text-faint">offset</span>
 				</div>
 				<button onclick={() => moons = moons.filter((_, index_) => index_ !== index)} class="text-faint opacity-0 transition-opacity group-hover:opacity-100 hover:text-error">×</button>
@@ -414,25 +389,26 @@
 			<div class="border border-border-subtle p-4 space-y-3 bg-page">
 				<div class="flex items-center gap-3">
 					<input type="color" bind:value={season.color} class="size-7 border border-border cursor-pointer shrink-0" />
-					<input type="text" bind:value={season.name} placeholder="Season name" class="flex-1 {indexClass} font-medium" />
-					<select bind:value={season.kind} class="w-24 {indexClass}">
-						<option value="spring">Spring</option>
-						<option value="summer">Summer</option>
-						<option value="autumn">Autumn</option>
-						<option value="winter">Winter</option>
-						<option value="custom">Custom</option>
-					</select>
+					<Input bind:value={season.name} placeholder="Season name" containerClass="flex-1" class="font-medium" />
+					<Select
+						bind:value={season.kind}
+						items={[{ value: 'spring', label: 'Spring' }, { value: 'summer', label: 'Summer' }, { value: 'autumn', label: 'Autumn' }, { value: 'winter', label: 'Winter' }, { value: 'custom', label: 'Custom' }]}
+						containerClass="w-24"
+						size="sm"
+					/>
 					<button onclick={() => seasons = seasons.filter((_, index_) => index_ !== index)} class="text-faint text-sm hover:text-error">×</button>
 				</div>
 				<div class="flex items-center gap-3">
-					<select bind:value={season.timing_type} class="w-28 {indexClass}">
-						<option value="dated">Starts on date</option>
-						<option value="periodic">Rolling duration</option>
-					</select>
+					<Select
+						bind:value={season.timing_type}
+						items={[{ value: 'dated', label: 'Starts on date' }, { value: 'periodic', label: 'Rolling duration' }]}
+						containerClass="w-36"
+						size="sm"
+					/>
 					{#if season.timing_type === 'dated'}
 						<div class="flex items-center gap-1">
 							<span class="text-xs text-secondary">Month</span>
-							<select bind:value={season.month} class="w-32 {indexClass}">
+							<select bind:value={season.month} class="px-2 py-1.5 text-sm border border-border-strong bg-surface text-body outline-none transition-colors hover:border-border focus:ring-2 focus:ring-accent w-32">
 								{#each months as m, mi (mi)}
 									<option value={mi}>{m.name || `Month ${mi + 1}`}</option>
 								{/each}
@@ -440,12 +416,12 @@
 						</div>
 						<div class="flex items-center gap-1">
 							<span class="text-xs text-secondary">Day</span>
-							<input type="number" bind:value={season.day} min={1} class="w-14 {indexClass} text-center" />
+							<Input type="number" bind:value={season.day} min={1} containerClass="w-14" class="text-center" />
 						</div>
 					{:else}
 						<div class="flex items-center gap-1">
 							<span class="text-xs text-secondary">Lasts</span>
-							<input type="number" bind:value={season.duration} min={1} class="w-16 {indexClass} text-center" />
+							<Input type="number" bind:value={season.duration} min={1} containerClass="w-16" class="text-center" />
 							<span class="text-xs text-faint">days</span>
 						</div>
 					{/if}

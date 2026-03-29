@@ -47,11 +47,12 @@
 			if (event.key === 'Enter') {
 				event.preventDefault()
 				if (query.trim()) {
+					const searchQuery = query
 					query = ''
 					results = []
 					showResults = false
 					inputEl?.blur()
-					goto(`/search?q=${encodeURIComponent(query)}`)
+					goto(`/search?q=${encodeURIComponent(searchQuery)}`)
 				}
 			}
 			return

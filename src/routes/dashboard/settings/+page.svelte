@@ -17,7 +17,7 @@
 	let navCreateLabel = $state(data.settings.nav_create_label ?? 'Create')
 	let navWordbookLabel = $state(data.settings.nav_wordbook_label ?? 'Wordbook')
 	let navCalendarLabel = $state(data.settings.nav_calendar_label ?? 'Calendar')
-	let navSearchLabel = $state(data.settings.nav_search_label ?? 'Search')
+
 
 	let wordbookName = $state(data.settings.wordbook_name ?? 'Wordbook')
 	let wordbookEnabled = $state(data.settings.wordbook_enabled !== 'false')
@@ -41,7 +41,7 @@
 				nav_create_label: navCreateLabel,
 				nav_wordbook_label: navWordbookLabel,
 				nav_calendar_label: navCalendarLabel,
-				nav_search_label: navSearchLabel,
+
 				wordbook_name: wordbookName,
 				wordbook_enabled: String(wordbookEnabled),
 				calendar_enabled: String(calendarEnabled),
@@ -94,8 +94,7 @@
 		</div>
 		<div class="grid grid-cols-2 gap-4 md:grid-cols-3">
 			<Input label="Main page" bind:value={navWikiLabel} placeholder="Main Page" />
-			<Input label="Create page" bind:value={navCreateLabel} placeholder="Create" />
-			<Input label="Search" bind:value={navSearchLabel} placeholder="Search" />
+			<Input label="Create page" bind:value={navCreateLabel} placeholder="New Page" />
 			<Input label="Wordbook" bind:value={navWordbookLabel} placeholder="Wordbook" />
 			<Input label="Calendar" bind:value={navCalendarLabel} placeholder="Calendar" />
 			<Input label="Wordbook display name" bind:value={wordbookName} placeholder="Wordbook" />

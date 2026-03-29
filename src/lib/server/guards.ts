@@ -18,7 +18,7 @@ export function requireAdmin(event: RequestEvent): AuthUser {
 		throw redirect(302, `/auth/login?redirect=${encodeURIComponent(event.url.pathname)}`)
 	}
 	if (user.role !== 'admin') {
-		throw redirect(302, '/dashboard?error=forbidden')
+		throw redirect(302, '/')
 	}
 	return user
 }
