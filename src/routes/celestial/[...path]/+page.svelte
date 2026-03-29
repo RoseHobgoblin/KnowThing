@@ -35,6 +35,18 @@
 	const viewPath = $derived($page.url.pathname.replace(/\/edit$/, ''))
 	const editPath = $derived(viewPath + '/edit')
 
+	// Strip infobox templates from the AST — the celestial page renders its own infobox from structured data
+	function stripInfoboxes(node: import('$lib/parser/types.js').WikiNode): import('$lib/parser/types.js').WikiNode | null {
+		if (node.type === 'template' && node.name.toLowerCase().startsWith('infobox')) return null
+		if ('children' in node && Array.isArray(node.children)) {
+			const filtered = node.children.map(stripInfoboxes).filter(Boolean) as import('$lib/parser/types.js').WikiNode[]
+			return { ...node, children: filtered }
+		}
+		return node
+	}
+
+	const strippedAst = $derived(ast ? stripInfoboxes(ast) : null)
+
 	// Build FieldMaps from structured data for infobox rendering
 	function buildFields(body: any, fieldDefs: [string, string[]][]): Map<string, string> {
 		const fields = new Map<string, string>()
@@ -187,8 +199,8 @@
 					<InfoboxPlanet fields={infoboxFields} />
 				{/if}
 
-				{#if ast}
-					<WikiNodeComponent node={ast} />
+				{#if strippedAst}
+					<WikiNodeComponent node={strippedAst} />
 				{:else if !data.wikiContent}
 					<p class="text-dim italic mt-4">No article content yet.</p>
 				{/if}
