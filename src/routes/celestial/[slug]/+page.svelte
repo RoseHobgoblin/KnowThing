@@ -1,6 +1,9 @@
 <script lang="ts">
 	import type { PageData } from './$types.js'
 	import Input from '$lib/components/ui/Input.svelte'
+	import WikiNodeComponent from '$lib/renderer/WikiNode.svelte'
+	import { createKnowContext } from '$lib/renderer/context.js'
+	import { page } from '$app/stores'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 
 	let { data }: { data: PageData } = $props()
@@ -10,6 +13,16 @@
 	const isSystem = kind === 'system'
 	const isAdmin = data.isAdmin
 	const raw = data.body as any
+	const ast = data.ast as import('$lib/parser/types.js').WikiNode | null
+
+	const layoutData = $derived($page.data)
+
+	createKnowContext({
+		existingPages: new Set(layoutData.existingPages || []),
+		mediaBaseUrl: '/api/media',
+		pageBaseUrl: '/know',
+		calendarDate: layoutData.calendarDate ?? null,
+	})
 
 	// Shared fields
 	let name = $state(raw.name ?? '')
@@ -331,9 +344,25 @@
 	{/if}
 
 	<!-- Extra fields -->
-	<section class="bg-surface border border-border p-5 space-y-4">
-		<h2 class="text-sm font-semibold text-heading border-b border-border-subtle pb-2">Extra Fields (JSON)</h2>
-		<p class="text-xs text-faint">Overflow fields not captured above. These are merged into the infobox.</p>
-		<textarea bind:value={extraJson} rows={4} class="w-full px-3 py-2 text-sm font-mono bg-page border border-border-strong text-body outline-none focus:ring-2 focus:ring-accent"></textarea>
-	</section>
+	{#if isAdmin}
+		<section class="bg-surface border border-border p-5 space-y-4">
+			<h2 class="text-sm font-semibold text-heading border-b border-border-subtle pb-2">Extra Fields (JSON)</h2>
+			<p class="text-xs text-faint">Overflow fields not captured above. These are merged into the infobox.</p>
+			<textarea bind:value={extraJson} rows={4} class="w-full px-3 py-2 text-sm font-mono bg-page border border-border-strong text-body outline-none focus:ring-2 focus:ring-accent"></textarea>
+		</section>
+	{/if}
+
+	<!-- Wiki content -->
+	{#if ast}
+		<section class="bg-surface border border-border overflow-hidden">
+			<div class="px-4 pt-4 md:px-6">
+				<div class="mt-2 h-0.5 bg-gradient-to-r from-accent to-accent-hover"></div>
+			</div>
+			<div class="px-4 pt-3 pb-4 md:px-6 md:pb-5">
+				<article class="know-article">
+					<WikiNodeComponent node={ast} />
+				</article>
+			</div>
+		</section>
+	{/if}
 </div>

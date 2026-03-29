@@ -440,6 +440,7 @@ export const starSystems = pgTable(
 		slug: text('slug').unique().notNull(),
 		pageSlug: text('page_slug'),
 		systemType: text('system_type').default('single'),
+		contentRecordId: integer('content_record_id').references(() => contentRecords.id, { onDelete: 'set null' }),
 		description: text('description').default(''),
 		extra: jsonb('extra').default({}),
 		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
@@ -480,6 +481,7 @@ export const stars = pgTable(
 		companion: text('companion'),
 		parentStarId: integer('parent_star_id'),
 		systemId: integer('system_id').references(() => starSystems.id, { onDelete: 'set null' }),
+		contentRecordId: integer('content_record_id').references(() => contentRecords.id, { onDelete: 'set null' }),
 
 		extra: jsonb('extra').default({}),
 		description: text('description').default(''),
@@ -500,6 +502,7 @@ export const planetaryBodies = pgTable(
 		bodyType: text('body_type').notNull().default('planet'),
 		starId: integer('star_id').references(() => stars.id, { onDelete: 'set null' }),
 		parentId: integer('parent_id'),
+		contentRecordId: integer('content_record_id').references(() => contentRecords.id, { onDelete: 'set null' }),
 		pageSlug: text('page_slug'),
 
 		mass: text('mass'),

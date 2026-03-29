@@ -23,6 +23,20 @@ export const load: PageServerLoad = async ({ params }) => {
 	}
 
 	if (!record) {
+		// Check if this slug exists in another domain (e.g. moved to celestial)
+		const [otherDomain] = await db
+			.select({ domain: contentRecords.domain, slug: contentRecords.slug, parentPath: contentRecords.parentPath })
+			.from(contentRecords)
+			.where(sql`LOWER(${contentRecords.slug}) = LOWER(${params.slug})`)
+			.limit(1)
+
+		if (otherDomain) {
+			const path = otherDomain.parentPath
+				? `/${otherDomain.domain}/${otherDomain.parentPath}/${otherDomain.slug}`
+				: `/${otherDomain.domain}/${otherDomain.slug}`
+			redirect(301, path)
+		}
+
 		const normalizedSlug = params.slug[0].toUpperCase() + params.slug.slice(1)
 		return {
 			notFound: true,
