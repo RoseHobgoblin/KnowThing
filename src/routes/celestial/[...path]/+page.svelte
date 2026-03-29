@@ -6,13 +6,15 @@
 	import InfoboxStar from '$lib/infoboxes/InfoboxStar.svelte'
 	import InfoboxPlanet from '$lib/infoboxes/InfoboxPlanet.svelte'
 	import InfoboxSystem from '$lib/infoboxes/InfoboxSystem.svelte'
-	import { buildFieldMap } from '$lib/infoboxes/types.js'
 	import PencilSimple from 'phosphor-svelte/lib/PencilSimple'
+	import Editor from '$lib/components/Editor.svelte'
+	import LivePreview from '$lib/components/LivePreview.svelte'
 
 	let { data }: { data: PageData } = $props()
 
 	const kind = data.kind
 	const isAdmin = data.isAdmin
+	const isEditMode = data.isEditMode
 	const raw = data.body as any
 	const ast = data.ast as import('$lib/parser/types.js').WikiNode | null
 
@@ -25,28 +27,26 @@
 		calendarDate: layoutData.calendarDate ?? null,
 	})
 
-	// Build a FieldMap from the structured data for the infobox
-	function buildStarFields(body: any): Map<string, string> {
+	// Edit mode state
+	let content = $state(data.wikiContent ?? '')
+	let showPreview = $state(true)
+
+	// Build the current path without /edit for cancel link
+	const viewPath = $derived($page.url.pathname.replace(/\/edit$/, ''))
+	const editPath = $derived(viewPath + '/edit')
+
+	// Build FieldMaps from structured data for infobox rendering
+	function buildFields(body: any, fieldDefs: [string, string[]][]): Map<string, string> {
 		const fields = new Map<string, string>()
-		const set = (k: string, v: unknown) => { if (v != null && v !== '') fields.set(k, String(v)) }
-		set('name', body.name)
-		set('spectral_type', body.spectralType ?? body.spectral_type)
-		set('mass', body.mass)
-		set('radius', body.radius)
-		set('luminosity', body.luminosity)
-		set('luminosity_visual', body.luminosityVisual ?? body.luminosity_visual)
-		set('temperature', body.temperature)
-		set('age', body.age)
-		set('color', body.color)
-		set('orbital_period', body.orbitalPeriod ?? body.orbital_period)
-		set('orbital_semimajor', body.semiMajorAxis ?? body.semi_major_axis)
-		set('orbital_eccentricity', body.eccentricity)
-		set('periastron', body.periastron)
-		set('apastron', body.apastron)
-		set('apparent_magnitude', body.apparentMagnitude ?? body.apparent_magnitude)
-		set('angular_diameter', body.angularDiameter ?? body.angular_diameter)
-		set('companion', body.companion)
-		// Merge extra JSONB
+		for (const [key, aliases] of fieldDefs) {
+			for (const alias of aliases) {
+				const val = body[alias]
+				if (val != null && val !== '') {
+					fields.set(key, String(val))
+					break
+				}
+			}
+		}
 		const extra = body.extra as Record<string, unknown> | undefined
 		if (extra) {
 			for (const [k, v] of Object.entries(extra)) {
@@ -56,91 +56,139 @@
 		return fields
 	}
 
-	function buildPlanetFields(body: any): Map<string, string> {
-		const fields = new Map<string, string>()
-		const set = (k: string, v: unknown) => { if (v != null && v !== '') fields.set(k, String(v)) }
-		set('name', body.name)
-		set('body_type', body.bodyType ?? body.body_type)
-		set('mass', body.mass)
-		set('radius', body.radius)
-		set('density', body.density)
-		set('surface_gravity', body.surfaceGravity ?? body.surface_gravity)
-		set('escape_velocity', body.escapeVelocity ?? body.escape_velocity)
-		set('temperature', body.temperature)
-		set('age', body.age)
-		set('composition', body.composition)
-		set('atmosphere', body.atmosphere)
-		set('surface_pressure', body.surfacePressure ?? body.surface_pressure)
-		set('orbital_period', body.orbitalPeriod ?? body.orbital_period)
-		set('semi_major_axis', body.semiMajorAxis ?? body.semi_major_axis)
-		set('eccentricity', body.eccentricity)
-		set('rotation_period', body.rotationPeriod ?? body.rotation_period)
-		set('axial_tilt', body.axialTilt ?? body.axial_tilt)
-		set('apparent_magnitude', body.apparentMagnitude ?? body.apparent_magnitude)
-		set('angular_diameter', body.angularDiameter ?? body.angular_diameter)
-		set('albedo', body.albedo)
-		set('satellites', body.satellites)
-		if (body.hasRings || body.has_rings) set('has_rings', 'yes')
-		const extra = body.extra as Record<string, unknown> | undefined
-		if (extra) {
-			for (const [k, v] of Object.entries(extra)) {
-				if (v != null && v !== '') fields.set(k, String(v))
-			}
-		}
-		return fields
-	}
+	const starFieldDefs: [string, string[]][] = [
+		['name', ['name']], ['spectral_type', ['spectralType', 'spectral_type']],
+		['mass', ['mass']], ['radius', ['radius']], ['luminosity', ['luminosity']],
+		['luminosity_visual', ['luminosityVisual', 'luminosity_visual']],
+		['temperature', ['temperature']], ['age', ['age']], ['color', ['color']],
+		['orbital_period', ['orbitalPeriod', 'orbital_period']],
+		['orbital_semimajor', ['semiMajorAxis', 'semi_major_axis']],
+		['orbital_eccentricity', ['eccentricity']],
+		['periastron', ['periastron']], ['apastron', ['apastron']],
+		['apparent_magnitude', ['apparentMagnitude', 'apparent_magnitude']],
+		['angular_diameter', ['angularDiameter', 'angular_diameter']],
+		['companion', ['companion']],
+	]
 
-	function buildSystemFields(body: any): Map<string, string> {
-		const fields = new Map<string, string>()
-		fields.set('name', body.name ?? '')
-		fields.set('system_type', body.systemType ?? body.system_type ?? '')
-		return fields
-	}
+	const planetFieldDefs: [string, string[]][] = [
+		['name', ['name']], ['body_type', ['bodyType', 'body_type']],
+		['mass', ['mass']], ['radius', ['radius']], ['density', ['density']],
+		['surface_gravity', ['surfaceGravity', 'surface_gravity']],
+		['escape_velocity', ['escapeVelocity', 'escape_velocity']],
+		['temperature', ['temperature']], ['age', ['age']],
+		['composition', ['composition']], ['atmosphere', ['atmosphere']],
+		['surface_pressure', ['surfacePressure', 'surface_pressure']],
+		['orbital_period', ['orbitalPeriod', 'orbital_period']],
+		['semi_major_axis', ['semiMajorAxis', 'semi_major_axis']],
+		['eccentricity', ['eccentricity']],
+		['rotation_period', ['rotationPeriod', 'rotation_period']],
+		['axial_tilt', ['axialTilt', 'axial_tilt']],
+		['apparent_magnitude', ['apparentMagnitude', 'apparent_magnitude']],
+		['angular_diameter', ['angularDiameter', 'angular_diameter']],
+		['albedo', ['albedo']], ['satellites', ['satellites']],
+	]
 
-	const editPath = $derived(`/dashboard/celestial/${raw.slug}`)
+	const infoboxFields = $derived(
+		kind === 'star' ? buildFields(raw, starFieldDefs) :
+		kind === 'planet' ? buildFields(raw, planetFieldDefs) :
+		new Map([['name', raw.name ?? ''], ['system_type', raw.systemType ?? raw.system_type ?? '']]),
+	)
 </script>
 
 <svelte:head>
-	<title>{raw.name} — Celestial — KnowThing</title>
+	<title>{isEditMode ? 'Editing ' : ''}{raw.name} — Celestial — KnowThing</title>
 </svelte:head>
 
-<div class="max-w-4xl mx-auto">
-	<!-- Header -->
-	<div class="px-4 pt-4 md:px-6">
-		<div class="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
-			<div>
-				<a href="/celestial" class="text-xs text-faint hover:text-link">← Celestial Registry</a>
-				<h1 class="text-2xl font-bold text-heading md:text-3xl">{raw.name}</h1>
-			</div>
-			{#if isAdmin}
-				<div class="flex gap-3 text-sm">
-					<a href={editPath} class="text-link font-medium transition-colors hover:text-link-hover flex items-center gap-1">
-						<PencilSimple size={14} weight="fill" />Edit
-					</a>
+{#if isEditMode}
+	<!-- EDIT MODE -->
+	<div>
+		<form method="POST" class="flex flex-col h-[calc(100vh-5rem)]">
+			<input type="hidden" name="content" value={content} />
+			<input type="hidden" name="contentRecordId" value={data.contentRecordId ?? ''} />
+
+			<!-- Top bar -->
+			<div class="flex items-center justify-between px-6 py-2 bg-surface border-b border-border">
+				<h1 class="text-sm font-bold text-secondary truncate">
+					Editing: <span class="text-heading">{raw.name}</span>
+				</h1>
+				<div class="flex items-center gap-2">
+					<button
+						type="button"
+						onclick={() => (showPreview = !showPreview)}
+						class="px-3 py-1 border border-border text-xs text-secondary hover:bg-raised {showPreview ? 'bg-accent-subtle border-accent-border text-accent' : ''}"
+					>
+						{showPreview ? 'Hide preview' : 'Show preview'}
+					</button>
 				</div>
-			{/if}
+			</div>
+
+			<!-- Editor + Preview -->
+			<div class="flex-1 flex flex-col min-h-0 md:flex-row">
+				<div class="flex-1 min-h-0 min-w-0 overflow-hidden {showPreview ? 'h-1/2 md:h-auto' : ''}">
+					<Editor value={data.wikiContent ?? ''} onchange={v => (content = v)} />
+				</div>
+
+				{#if showPreview}
+					<div class="w-full h-1/2 border-l border-border bg-surface flex flex-col min-h-0 shrink-0 md:w-[45%] md:max-w-2xl md:h-auto">
+						<div class="bg-raised px-6 py-1.5 text-xs font-medium text-faint border-b border-border-subtle uppercase tracking-wide">Preview</div>
+						<div class="flex-1 overflow-y-auto px-6 py-4">
+							<LivePreview {content} />
+						</div>
+					</div>
+				{/if}
+			</div>
+
+			<!-- Bottom bar -->
+			<div class="flex flex-col items-stretch gap-2 px-6 py-2.5 bg-surface border-t border-border sm:flex-row sm:items-center sm:gap-3">
+				<input
+					name="summary"
+					type="text"
+					placeholder="Edit summary (optional)"
+					class="flex-1 border border-border px-3 py-2 text-sm bg-page text-body focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent-border"
+				/>
+				<div class="flex gap-2">
+					<button type="submit" class="flex-1 bg-accent text-accent-text px-5 py-2 font-medium transition-colors text-sm sm:flex-none hover:bg-accent-hover">Save</button>
+					<a href={viewPath} class="flex-1 text-center px-5 py-2 border border-border text-secondary text-sm sm:flex-none hover:bg-raised">Cancel</a>
+				</div>
+			</div>
+		</form>
+	</div>
+{:else}
+	<!-- VIEW MODE -->
+	<div class="max-w-4xl mx-auto">
+		<div class="px-4 pt-4 md:px-6">
+			<div class="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+				<div>
+					<a href="/celestial" class="text-xs text-faint hover:text-link">← Celestial Registry</a>
+					<h1 class="text-2xl font-bold text-heading md:text-3xl">{raw.name}</h1>
+				</div>
+				{#if isAdmin}
+					<div class="flex gap-3 text-sm">
+						<a href={editPath} class="text-link font-medium transition-colors hover:text-link-hover flex items-center gap-1">
+							<PencilSimple size={14} weight="fill" />Edit
+						</a>
+					</div>
+				{/if}
+			</div>
+			<div class="mt-2 h-0.5 bg-gradient-to-r from-accent to-accent-hover"></div>
 		</div>
-		<div class="mt-2 h-0.5 bg-gradient-to-r from-accent to-accent-hover"></div>
-	</div>
 
-	<!-- Infobox + Content -->
-	<div class="px-4 pt-3 pb-4 md:px-6 md:pb-5">
-		<article class="know-article">
-			<!-- Infobox from structured data -->
-			{#if kind === 'system'}
-				<InfoboxSystem fields={buildSystemFields(raw)} />
-			{:else if kind === 'star'}
-				<InfoboxStar fields={buildStarFields(raw)} />
-			{:else}
-				<InfoboxPlanet fields={buildPlanetFields(raw)} />
-			{/if}
+		<div class="px-4 pt-3 pb-4 md:px-6 md:pb-5">
+			<article class="know-article">
+				{#if kind === 'system'}
+					<InfoboxSystem fields={infoboxFields} />
+				{:else if kind === 'star'}
+					<InfoboxStar fields={infoboxFields} />
+				{:else}
+					<InfoboxPlanet fields={infoboxFields} />
+				{/if}
 
-			<!-- Wiki content -->
-			{#if ast}
-				<WikiNodeComponent node={ast} />
-			{:else if !data.wikiContent}
-				<p class="text-dim italic mt-4">No article content yet.</p>
-			{/if}
-		</article>
+				{#if ast}
+					<WikiNodeComponent node={ast} />
+				{:else if !data.wikiContent}
+					<p class="text-dim italic mt-4">No article content yet.</p>
+				{/if}
+			</article>
+		</div>
 	</div>
-</div>
+{/if}
