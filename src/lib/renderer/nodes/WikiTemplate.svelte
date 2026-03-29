@@ -20,6 +20,7 @@
 	import InfoboxPlanet from '$lib/infoboxes/InfoboxPlanet.svelte'
 	import InfoboxSystem from '$lib/infoboxes/InfoboxSystem.svelte'
 	import InfoboxGeneric from '$lib/infoboxes/InfoboxGeneric.svelte'
+	import SystemMap from '$lib/celestial/SystemMap.svelte'
 
 	const INFOBOX_COMPONENTS: Record<string, typeof InfoboxGeneric> = {
 		country: InfoboxCountry,
@@ -134,6 +135,7 @@
 		'cite journal',
 		'wt',
 		'date',
+		'system map',
 	])
 
 	const resolution = resolve()
@@ -347,6 +349,17 @@
 			{/if}
 		{:else}
 			<span class="text-faint">[age: ?]</span>
+		{/if}
+	{:else if resolution.component === 'system map'}
+		<!-- System map: {{System map|slug}} -->
+		{@const mapSlug = getPositionalArguments()[0]?.trim() || ''}
+		{@const mapData = mapSlug ? ctx.systemMaps?.[mapSlug] : null}
+		{#if mapData}
+			<div class="my-4">
+				<SystemMap systemName={mapData.systemName} stars={mapData.stars} bodies={mapData.bodies} />
+			</div>
+		{:else}
+			<span class="text-faint">[system map: {mapSlug || '?'}]</span>
 		{/if}
 	{:else}
 		<!-- Built-in template not yet rendered: {resolution.component} -->

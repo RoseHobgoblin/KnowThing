@@ -42,6 +42,7 @@ import CategoryBar from '$lib/components/CategoryBar.svelte'
 		pageBaseUrl: '/know',
 		calendarDate: layoutData.calendarDate ?? null,
 		structuredData: structuredData,
+		systemMaps: data.systemMaps ?? null,
 	})
 </script>
 

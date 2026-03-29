@@ -85,6 +85,21 @@ export function extractInfoboxFromRefs(ast: WikiNode): { type: string, slug: str
 }
 
 /**
+ * Walk a pre-parsed AST and find {{System map|slug}} templates.
+ * Returns the system slugs to pre-fetch.
+ */
+export function extractSystemMapRefs(ast: WikiNode): string[] {
+	const slugs: string[] = []
+	walkNodes([ast], (node) => {
+		if (node.type === 'template' && node.name.toLowerCase().trim() === 'system map') {
+			const slug = node.args[0]?.value?.trim()
+			if (slug) slugs.push(slug)
+		}
+	})
+	return slugs
+}
+
+/**
  * Strip wiki markup to plain text (for FTS indexing).
  */
 export function stripMarkup(input: string): string {

@@ -2,6 +2,13 @@ import { db } from './db/index.js'
 import { stars, planetaryBodies, starSystems } from './db/schema.js'
 import { eq, sql } from 'drizzle-orm'
 import type { FieldMap } from '$lib/infoboxes/types.js'
+import type { MapBody } from '$lib/celestial/SystemMap.svelte'
+
+export interface SystemMapData {
+	systemName: string
+	stars: MapBody[]
+	bodies: MapBody[]
+}
 
 /**
  * Convert a DB row to a FieldMap by mapping camelCase fields to snake_case keys.
@@ -124,6 +131,53 @@ DOMAIN_RESOLVERS['system'] = async (slug) => {
 }
 DOMAIN_RESOLVERS['star system'] = DOMAIN_RESOLVERS['system']
 DOMAIN_RESOLVERS['planetary system'] = DOMAIN_RESOLVERS['system']
+
+/**
+ * Fetch full system map data for rendering {{System map|slug}}.
+ */
+export async function resolveSystemMapData(slug: string): Promise<SystemMapData | null> {
+	const [system] = await db.select().from(starSystems).where(eq(starSystems.slug, slug))
+	if (!system) return null
+
+	const systemStars = await db.execute(sql`
+		SELECT id, name, slug, spectral_type AS "spectralType", color,
+			page_slug AS "pageSlug", semi_major_axis_au AS "semiMajorAxisAu",
+			eccentricity, parent_star_id AS "parentStarId"
+		FROM stars WHERE system_id = ${system.id}
+		ORDER BY parent_star_id NULLS FIRST, name
+	`)
+
+	const systemBodies = await db.execute(sql`
+		SELECT pb.id, pb.name, pb.slug, pb.body_type AS "bodyType",
+			pb.page_slug AS "pageSlug", pb.semi_major_axis_au AS "semiMajorAxisAu",
+			pb.eccentricity, pb.star_id AS "starId", pb.parent_id AS "parentId",
+			(SELECT COUNT(*) FROM planetary_bodies m WHERE m.parent_id = pb.id)::int AS "moonCount"
+		FROM planetary_bodies pb
+		JOIN stars s ON s.id = pb.star_id
+		WHERE s.system_id = ${system.id}
+		ORDER BY pb.semi_major_axis_au NULLS LAST, pb.name
+	`)
+
+	return {
+		systemName: system.name,
+		stars: systemStars as unknown as MapBody[],
+		bodies: systemBodies as unknown as MapBody[],
+	}
+}
+
+/**
+ * Batch-fetch system map data for multiple slugs.
+ */
+export async function resolveAllSystemMaps(slugs: string[]): Promise<Record<string, SystemMapData>> {
+	const result: Record<string, SystemMapData> = {}
+	await Promise.all(
+		slugs.map(async slug => {
+			const data = await resolveSystemMapData(slug)
+			if (data) result[slug] = data
+		}),
+	)
+	return result
+}
 
 /**
  * Resolve a `from=slug` reference for a given infobox type.

@@ -3,8 +3,8 @@ import type { PageServerLoad } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { pages, categories, lexicon, languages } from '$lib/server/db/schema.js'
 import { eq, sql } from 'drizzle-orm'
-import { parseWikitext, extractCategoriesFromAst, extractInfoboxFromRefs } from '$lib/parser/index.js'
-import { resolveAllStructuredData } from '$lib/server/structured-data.js'
+import { parseWikitext, extractCategoriesFromAst, extractInfoboxFromRefs, extractSystemMapRefs } from '$lib/parser/index.js'
+import { resolveAllStructuredData, resolveAllSystemMaps } from '$lib/server/structured-data.js'
 
 export const load: PageServerLoad = async ({ params }) => {
 	// Case-insensitive lookup
@@ -48,6 +48,12 @@ export const load: PageServerLoad = async ({ params }) => {
 		}
 	}
 
+	// Pre-fetch system map data for {{System map|slug}} templates
+	const systemMapSlugs = extractSystemMapRefs(ast)
+	const systemMaps = systemMapSlugs.length > 0
+		? await resolveAllSystemMaps(systemMapSlugs)
+		: null
+
 	// Check if this page title matches a word in the wordbook
 	const wordbookMatches = await db
 		.select({
@@ -70,5 +76,6 @@ export const load: PageServerLoad = async ({ params }) => {
 		updatedAt: page.updatedAt,
 		wordbookMatch: wordbookMatches[0] || null,
 		structuredData,
+		systemMaps,
 	}
 }

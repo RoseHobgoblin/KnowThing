@@ -26,6 +26,8 @@ export interface KnowRenderContext {
 	calendarDate: ResolvedDate | null
 	/** Pre-fetched structured data for from=slug infobox resolution */
 	structuredData: Map<string, Map<string, string>> | null
+	/** Pre-fetched system map data for {{System map|slug}} */
+	systemMaps: Record<string, { systemName: string, stars: any[], bodies: any[] }> | null
 }
 
 /** @deprecated Use KnowRenderContext */
@@ -48,6 +50,7 @@ export function createKnowContext(overrides: Partial<KnowRenderContext> = {}): K
 		templates: null,
 		calendarDate: null,
 		structuredData: null,
+		systemMaps: null,
 		...overrides,
 	}
 	setContext(KNOW_CONTEXT_KEY, ctx)
