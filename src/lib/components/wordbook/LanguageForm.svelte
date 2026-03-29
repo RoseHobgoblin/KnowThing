@@ -2,6 +2,7 @@
 	import Input from '$lib/components/ui/Input.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
 	import Label from '$lib/components/ui/Label.svelte'
+	import { urlSlugify } from '$lib/utils/slugify.js'
 
 	let {
 		initial = {},
@@ -67,9 +68,7 @@
 		}
 	}
 
-	function slugify(s: string): string {
-		return s.toLowerCase().normalize('NFC').replaceAll(/[^\p{L}\p{N}]+/gu, '-').replaceAll(/^-|-$/g, '')
-	}
+	const slugify = urlSlugify
 
 	async function handleSubmit(e: SubmitEvent) {
 		e.preventDefault()

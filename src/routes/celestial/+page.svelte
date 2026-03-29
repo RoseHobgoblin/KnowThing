@@ -1,9 +1,11 @@
 <script lang="ts">
 	import type { PageData } from './$types.js'
 	import Input from '$lib/components/ui/Input.svelte'
+	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import { invalidateAll } from '$app/navigation'
+	import { urlSlugify } from '$lib/utils/slugify.js'
 
 	let { data }: { data: PageData } = $props()
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
@@ -38,9 +40,7 @@
 		return (data.bodies as any[]).filter((b: any) => b.parentId === bodyId)
 	}
 
-	function slugify(name: string) {
-		return name.trim().toLowerCase().replaceAll(/\s+/g, '-').replaceAll(/[^a-z0-9-]/g, '')
-	}
+	const slugify = urlSlugify
 
 	async function createSystem() {
 		if (!newSystemName.trim()) return
@@ -118,16 +118,10 @@
 	<title>Celestial Registry — KnowThing</title>
 </svelte:head>
 
-<div class="bg-surface shadow-sm border border-border overflow-hidden">
-	<div class="px-4 pt-4 md:px-6">
-		<div class="text-[10px] font-semibold uppercase tracking-wider mb-1">
-			<span class="text-accent">Celestial Registry</span>
-		</div>
-		<h1 class="text-2xl font-bold text-heading md:text-3xl">Celestial Registry</h1>
-		<div class="mt-2 h-0.5 bg-gradient-to-r from-accent to-accent-hover"></div>
-	</div>
-
-	<div class="px-4 pt-3 pb-4 md:px-6 md:pb-5">
+<ArticleShell
+	breadcrumbs={[{ label: 'Celestial Registry' }]}
+	title="Celestial Registry"
+>
 
 	{#if (data.systems as any[]).length === 0 && orphanStars().length === 0 && orphanBodies().length === 0}
 		<div class="bg-surface border border-border p-8 text-center">
@@ -306,7 +300,6 @@
 			</section>
 		</div>
 	{/if}
-	</div>
-</div>
+</ArticleShell>
 
 <ConfirmDialog bind:this={confirmDialog} />

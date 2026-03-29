@@ -8,6 +8,7 @@
 	import InfoboxSystem from '$lib/infoboxes/InfoboxSystem.svelte'
 	import SystemMap from '$lib/celestial/SystemMap.svelte'
 	import SystemSidebar from '$lib/celestial/SystemSidebar.svelte'
+	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import PencilSimple from 'phosphor-svelte/lib/PencilSimple'
 	import Editor from '$lib/components/Editor.svelte'
 	import LivePreview from '$lib/components/LivePreview.svelte'
@@ -66,9 +67,9 @@
 		const fields = new Map<string, string>()
 		for (const [key, aliases] of fieldDefs) {
 			for (const alias of aliases) {
-				const val = body[alias]
-				if (val != null && val !== '') {
-					fields.set(key, String(val))
+				const value = body[alias]
+				if (value != null && value !== '') {
+					fields.set(key, String(value))
 					break
 				}
 			}
@@ -181,33 +182,21 @@
 	</div>
 {:else}
 	<!-- VIEW MODE -->
-	<div class="bg-surface shadow-sm border border-border overflow-hidden">
-		<!-- Page header -->
-		<div class="px-4 pt-4 md:px-6">
-			<div class="text-[10px] font-semibold uppercase tracking-wider mb-1">
-				<a href="/celestial" class="text-link hover:text-link-hover transition-colors">Celestial</a>
-				{#each pathSegments as segment (segment.slug)}
-					<span class="text-faint"> / </span>
-					<a href={segment.href} class="text-link transition-colors hover:text-link-hover">{segment.label}</a>
-				{/each}
-				<span class="text-faint"> / </span>
-				<span class="text-accent">{raw.name}</span>
-			</div>
-			<div class="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
-				<h1 class="text-2xl font-bold text-heading md:text-3xl">{raw.name}</h1>
-				{#if isAdmin}
-					<div class="flex gap-3 text-sm">
-						<a href={editPath} class="text-link font-medium transition-colors hover:text-link-hover flex items-center gap-1">
-							<PencilSimple size={14} weight="fill" />Edit
-						</a>
-					</div>
-				{/if}
-			</div>
-			<div class="mt-2 h-0.5 bg-gradient-to-r from-accent to-accent-hover"></div>
-		</div>
-
-		<!-- Article body -->
-		<div class="px-4 pt-3 pb-4 md:px-6 md:pb-5">
+	<ArticleShell
+		breadcrumbs={[
+			{ label: 'Celestial', href: '/celestial' },
+			...pathSegments.map(s => ({ label: s.label, href: s.href })),
+			{ label: raw.name },
+		]}
+		title={raw.name}
+	>
+		{#snippet actions()}
+			{#if isAdmin}
+				<a href={editPath} class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover">
+					<PencilSimple size={14} weight="fill" />Edit
+				</a>
+			{/if}
+		{/snippet}
 			{#if kind === 'system'}
 				<!-- System: two-column layout -->
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-[1fr_280px]">
@@ -269,6 +258,5 @@
 					{/if}
 				</article>
 			{/if}
-		</div>
-	</div>
+	</ArticleShell>
 {/if}

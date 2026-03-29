@@ -3,6 +3,7 @@
 	import WikiNodeComponent from '$lib/renderer/WikiNode.svelte'
 	import { createKnowContext } from '$lib/renderer/context.js'
 import CategoryBar from '$lib/components/CategoryBar.svelte'
+	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import { page } from '$app/stores'
@@ -85,22 +86,20 @@ import CategoryBar from '$lib/components/CategoryBar.svelte'
 		</a>
 	</div>
 {:else if data.ast}
-	<!-- Article card -->
-	<div class="bg-surface shadow-sm border border-border overflow-hidden">
-		<!-- Page header -->
-		<div class="px-4 pt-4 md:px-6">
-			<div class="text-[10px] font-semibold uppercase tracking-wider mb-1"><a href="/" class="text-link hover:text-link-hover transition-colors">Main Page</a> <span class="text-faint">/</span> <span class="text-accent">{data.title}</span></div>
-			<div class="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
-				<h1 class="text-2xl font-bold text-heading md:text-3xl">{data.title}</h1>
-				<div class="flex gap-3 text-sm md:gap-4">
-					<a href="/know/{data.slug}/edit" class="text-link font-medium transition-colors hover:text-link-hover flex items-center gap-1"><PencilSimple size={14} weight="fill" />Edit</a>
-					<a href="/know/{data.slug}/move" class="text-dim transition-colors hover:text-secondary flex items-center gap-1"><ArrowsLeftRight size={14} weight="fill" />Move</a>
-					<a href="/know/{data.slug}/history" class="text-dim transition-colors hover:text-secondary flex items-center gap-1"><ClockCounterClockwise size={14} weight="fill" />History</a>
-					{#if layoutData.user?.role === 'admin'}
-						<button onclick={deletePage} class="text-error transition-colors hover:text-error-hover flex items-center gap-1"><Trash size={14} weight="fill" />Delete</button>
-					{/if}
-				</div>
-			</div>
+	<ArticleShell
+		breadcrumbs={[{ label: 'Main Page', href: '/' }, { label: data.title }]}
+		title={data.title}
+	>
+		{#snippet actions()}
+			<a href="/know/{data.slug}/edit" class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover"><PencilSimple size={14} weight="fill" />Edit</a>
+			<a href="/know/{data.slug}/move" class="text-dim transition-colors flex items-center gap-1 hover:text-secondary"><ArrowsLeftRight size={14} weight="fill" />Move</a>
+			<a href="/know/{data.slug}/history" class="text-dim transition-colors flex items-center gap-1 hover:text-secondary"><ClockCounterClockwise size={14} weight="fill" />History</a>
+			{#if layoutData.user?.role === 'admin'}
+				<button onclick={deletePage} class="text-error transition-colors flex items-center gap-1 hover:text-error-hover"><Trash size={14} weight="fill" />Delete</button>
+			{/if}
+		{/snippet}
+
+		{#snippet badges()}
 			{#if data.wordbookMatch}
 				<div class="flex items-center gap-2 mt-1.5 text-xs">
 					<span class="px-1.5 py-0.5 bg-accent-light text-accent-text font-semibold uppercase tracking-wider text-[10px]">Wordbook</span>
@@ -112,24 +111,20 @@ import CategoryBar from '$lib/components/CategoryBar.svelte'
 					</a>
 				</div>
 			{/if}
-			<div class="mt-2 h-0.5 bg-gradient-to-r from-accent to-accent-hover"></div>
-		</div>
+		{/snippet}
 
-		<!-- Article body -->
-		<div class="px-4 pt-3 pb-4 md:px-6 md:pb-5">
-			<article class="know-article">
-				<WikiNodeComponent node={data.ast} />
-			</article>
+		<article class="know-article">
+			<WikiNodeComponent node={data.ast} />
+		</article>
 
-			<CategoryBar categories={data.categories} />
+		<CategoryBar categories={data.categories} />
 
-			{#if data.updatedAt}
-				<div class="clear-both mt-6 pt-4 border-t border-border-subtle text-xs text-faint">
-					Last edited {new Date(data.updatedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
-				</div>
-			{/if}
-		</div>
-	</div>
+		{#if data.updatedAt}
+			<div class="clear-both mt-6 pt-4 border-t border-border-subtle text-xs text-faint">
+				Last edited {new Date(data.updatedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+			</div>
+		{/if}
+	</ArticleShell>
 {/if}
 {/key}
 
