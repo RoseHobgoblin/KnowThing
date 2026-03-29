@@ -15,7 +15,7 @@
 	</p>
 
 	{#if form?.error}
-		<div class="bg-red-50 border border-red-200 rounded-md p-3 mb-4 text-sm text-red-700">
+		<div class="bg-error-bg border border-error-border rounded-md p-3 mb-4 text-sm text-error-text">
 			{form.error}
 		</div>
 	{/if}

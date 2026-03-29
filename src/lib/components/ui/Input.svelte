@@ -134,7 +134,7 @@
 		<Label for={id} class={labelClass}>
 			{label}
 			{#if required}
-				<span class="text-red-500">*</span>
+				<span class="text-error">*</span>
 			{/if}
 		</Label>
 	{/if}
@@ -152,7 +152,7 @@
 				'flex w-full min-w-0 px-3 py-2 rounded-md text-sm text-body bg-surface border border-border-strong outline-none transition-colors',
 				'placeholder:text-faint',
 				!readonly && 'hover:border-border focus:ring-2 focus:ring-accent focus:border-accent-border',
-				'aria-invalid:ring-1 aria-invalid:ring-red-400 aria-invalid:border-red-400',
+				'aria-invalid:ring-1 aria-invalid:ring-error-border aria-invalid:border-error-border',
 				'disabled:pointer-events-none disabled:opacity-50',
 				readonly && 'bg-raised text-secondary cursor-default',
 				(copyable || clearable || type === 'password') && 'pr-10',
@@ -183,7 +183,7 @@
 
 	{#if (validate || externalError)}
 		<div
-			class="text-red-500 text-xs transition-opacity absolute bottom-0 left-0 pointer-events-none"
+			class="text-error text-xs transition-opacity absolute bottom-0 left-0 pointer-events-none"
 			class:opacity-0={!isErrorState}
 		>
 			{isErrorState ? (externalError || errorText) : ''}

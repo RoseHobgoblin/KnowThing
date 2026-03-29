@@ -147,7 +147,7 @@
 
 <form onsubmit={handleSubmit} class="space-y-5">
 	{#if error}
-		<div class="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{error}</div>
+		<div class="p-3 bg-error-bg border border-error-border text-error-text rounded-lg text-sm">{error}</div>
 	{/if}
 
 	<!-- Headword fields -->
@@ -161,7 +161,7 @@
 	<!-- Definitions -->
 	<div>
 		<div class="flex items-center justify-between mb-2">
-			<label class={labelClass}>Definitions <span class="text-red-500">*</span></label>
+			<label class={labelClass}>Definitions <span class="text-error">*</span></label>
 			<button type="button" onclick={addDefinition} class="text-xs text-link hover:text-link-hover hover:underline">+ Add definition</button>
 		</div>
 
@@ -170,7 +170,7 @@
 				{#if defs.length > 1}
 					<div class="flex items-center justify-between mb-2">
 						<span class="text-xs font-medium text-faint">Definition {index + 1}</span>
-						<button type="button" onclick={() => removeDefinition(index)} class="text-xs text-red-400 hover:text-red-600">Remove</button>
+						<button type="button" onclick={() => removeDefinition(index)} class="text-xs text-error hover:text-error-hover">Remove</button>
 					</div>
 				{/if}
 				<div class="grid grid-cols-1 gap-3 mb-2 md:grid-cols-4">
@@ -220,7 +220,7 @@
 						class="
 							w-full px-3 py-1.5 rounded-md text-sm text-body bg-surface border border-border-strong outline-none transition-colors
 							placeholder:text-faint hover:border-border focus:ring-2 focus:ring-accent focus:border-accent-border
-							{row.targetId ? 'border-green-300 bg-green-50' : ''}"
+							{row.targetId ? 'border-success-border bg-success-bg' : ''}"
 					/>
 					{#if row.showDropdown}
 						<div class="
@@ -240,7 +240,7 @@
 						</div>
 					{/if}
 				</div>
-				<button type="button" onclick={() => removeEtymRow(index)} class="text-red-400 text-sm p-1 hover:text-red-600">×</button>
+				<button type="button" onclick={() => removeEtymRow(index)} class="text-error text-sm p-1 hover:text-error-hover">×</button>
 			</div>
 		{/each}
 	</div>

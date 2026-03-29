@@ -6,8 +6,8 @@
 
 	const colors = {
 		info: { icon: 'text-link', bar: 'bg-link' },
-		success: { icon: 'text-green-600', bar: 'bg-green-500' },
-		error: { icon: 'text-red-600', bar: 'bg-red-500' },
+		success: { icon: 'text-success', bar: 'bg-success' },
+		error: { icon: 'text-error-hover', bar: 'bg-error' },
 	}
 
 	const icons = { info: 'ℹ', success: '✓', error: '!' }

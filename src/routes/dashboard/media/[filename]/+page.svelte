@@ -214,8 +214,8 @@
 					</a>
 					{#if isAdmin}
 						<button onclick={deleteFile} class="
-							w-full text-left px-3 py-2 text-sm rounded-md text-red-500 transition-colors
-							hover:bg-red-50
+							w-full text-left px-3 py-2 text-sm rounded-md text-error transition-colors
+							hover:bg-error-bg
 						">
 							Delete file{data.usage.length > 0 ? ` (used in ${data.usage.length} pages)` : ''}
 						</button>

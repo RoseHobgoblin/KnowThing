@@ -1,5 +1,5 @@
 <script lang="ts">
-	let { name, slug, nativeName, family, script, color = '#d97706', wordCount = 0 }: {
+	let { name, slug, nativeName, family, script, color = 'var(--color-accent)', wordCount = 0 }: {
 		name: string
 		slug: string
 		nativeName?: string | null

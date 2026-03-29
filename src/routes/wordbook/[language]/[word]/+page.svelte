@@ -133,7 +133,7 @@
 						<div class="flex gap-3 text-sm shrink-0">
 							<a href="/wordbook/contribute/{entry.id}" class="text-link font-medium hover:text-link-hover">Edit</a>
 							{#if isAdmin}
-								<button onclick={() => deleteEntry(entry.id)} class="text-red-400 text-xs hover:text-red-600">Delete</button>
+								<button onclick={() => deleteEntry(entry.id)} class="text-error text-xs hover:text-error-hover">Delete</button>
 							{/if}
 						</div>
 					{/if}
@@ -176,8 +176,8 @@
 								{/if}
 								{#if isAuthenticated && defs.length > 1}
 									<button onclick={() => deleteSense(entry.id, def.id)} class="
-										text-red-400 text-xs opacity-0 transition-opacity ml-auto
-										hover:text-red-600
+										text-error text-xs opacity-0 transition-opacity ml-auto
+										hover:text-error-hover
 										group-hover:opacity-100
 									">Remove</button>
 								{/if}
@@ -200,7 +200,7 @@
 					{#if addingSenseFor === entry.id}
 						<form onsubmit={e => addSense(entry.id, e)} class="mt-4 p-3 bg-page rounded-lg border border-border space-y-2">
 							{#if senseError}
-								<div class="p-2 bg-red-50 border border-red-200 text-error text-xs rounded-md">{senseError}</div>
+								<div class="p-2 bg-error-bg border border-error-border text-error text-xs rounded-md">{senseError}</div>
 							{/if}
 							<div class="flex gap-2">
 								<select bind:value={newPos} class="

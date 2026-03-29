@@ -78,23 +78,23 @@
 {#if !error}
 	<div
 		bind:this={popupEl}
-		class="link-preview fixed z-50 rounded-lg border border-stone-200 bg-white shadow-lg overflow-hidden"
+		class="link-preview fixed z-50 rounded-lg border border-border bg-surface shadow-lg overflow-hidden"
 		style={style}
 		role="tooltip"
 	>
 		{#if loading}
 			<div class="p-4">
-				<div class="h-4 w-3/4 bg-stone-100 rounded animate-pulse mb-2"></div>
-				<div class="h-3 w-full bg-stone-50 rounded animate-pulse mb-1"></div>
-				<div class="h-3 w-5/6 bg-stone-50 rounded animate-pulse"></div>
+				<div class="h-4 w-3/4 bg-skeleton rounded animate-pulse mb-2"></div>
+				<div class="h-3 w-full bg-skeleton-shimmer rounded animate-pulse mb-1"></div>
+				<div class="h-3 w-5/6 bg-skeleton-shimmer rounded animate-pulse"></div>
 			</div>
 		{:else}
 			<div class="p-4">
-				<h3 class="font-semibold text-stone-900 text-sm mb-1.5 leading-tight">{title}</h3>
+				<h3 class="font-semibold text-heading text-sm mb-1.5 leading-tight">{title}</h3>
 				{#if summary}
-					<p class="text-xs text-stone-600 leading-relaxed">{summary}</p>
+					<p class="text-xs text-body leading-relaxed">{summary}</p>
 				{:else}
-					<p class="text-xs text-stone-400 italic">No summary available.</p>
+					<p class="text-xs text-faint italic">No summary available.</p>
 				{/if}
 			</div>
 		{/if}

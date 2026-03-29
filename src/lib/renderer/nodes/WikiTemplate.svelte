@@ -341,8 +341,8 @@
 {:else}
 	<!-- Unresolved template -->
 	<span class="
-		know-template inline-block bg-red-50 border border-red-200 rounded-sm px-1.5 py-0.5 text-xs
-		text-red-700 font-mono
+		know-template inline-block bg-error-bg border border-error-border rounded-sm px-1.5 py-0.5 text-xs
+		text-error-text font-mono
 	">
 		<a href="/know/Template:{encodeURIComponent(normalizedName)}" class="hover:underline">
 			{name}

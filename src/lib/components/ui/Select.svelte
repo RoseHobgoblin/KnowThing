@@ -74,7 +74,7 @@
 		<Label for={id} class={labelClass}>
 			{label}
 			{#if required}
-				<span class="text-red-500">*</span>
+				<span class="text-error">*</span>
 			{/if}
 		</Label>
 	{/if}
@@ -89,7 +89,7 @@
 					'data-disabled:opacity-50 data-disabled:cursor-not-allowed',
 					triggerSize[size],
 					open && 'ring-2 ring-accent border-accent-border',
-					isErrorState && 'ring-1 ring-red-400 border-red-400',
+					isErrorState && 'ring-1 ring-error-border border-error-border',
 					className,
 				)}
 			>
@@ -143,7 +143,7 @@
 
 	{#if validate}
 		<div
-			class="text-red-500 text-xs transition-opacity absolute -bottom-4 left-0 pointer-events-none"
+			class="text-error text-xs transition-opacity absolute -bottom-4 left-0 pointer-events-none"
 			class:opacity-0={!isErrorState}
 		>
 			{isErrorState ? errorText : ''}

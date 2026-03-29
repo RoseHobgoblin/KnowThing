@@ -74,7 +74,7 @@
 				<a href="/know/{data.slug}/move" class="text-dim transition-colors hover:text-secondary">Move</a>
 				<a href="/know/{data.slug}/history" class="text-dim transition-colors hover:text-secondary">History</a>
 				{#if layoutData.user?.role === 'admin'}
-					<button onclick={deletePage} class="text-red-400 transition-colors text-xs hover:text-red-600">Delete</button>
+					<button onclick={deletePage} class="text-error transition-colors text-xs hover:text-error-hover">Delete</button>
 				{/if}
 			</div>
 		</div>

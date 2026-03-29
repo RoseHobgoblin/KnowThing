@@ -1,6 +1,6 @@
 <script lang="ts">
 	let { name, slug, color }: { name: string, slug: string, color?: string | null } = $props()
-	const c = color || '#d97706'
+	const c = color || 'var(--color-accent)'
 </script>
 
 <a

@@ -41,7 +41,7 @@
 						nativeName={lang.nativeName}
 						family={lang.family}
 						script={lang.script}
-						color={lang.color || '#d97706'}
+						color={lang.color || 'var(--color-accent)'}
 						wordCount={Number(lang.wordCount)}
 					/>
 				{/each}

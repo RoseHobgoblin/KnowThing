@@ -272,8 +272,8 @@
 								<span class="text-faint text-xs">[{dim.dimValues.join(', ')}]</span>
 								<span class="text-faint text-[10px]">axis {dim.sortOrder}</span>
 								<button onclick={() => deleteDimension(dim.id)} class="
-									text-red-400 text-xs opacity-0 transition-opacity
-									hover:text-red-600
+									text-error text-xs opacity-0 transition-opacity
+									hover:text-error-hover
 									group-hover:opacity-100
 								">×</button>
 							</div>
@@ -296,8 +296,8 @@
 											<span class="text-faint text-xs">— {cls.description}</span>
 										{/if}
 										<button onclick={() => deleteClass(cls.id)} class="
-											text-red-400 text-xs opacity-0 transition-opacity
-											hover:text-red-600
+											text-error text-xs opacity-0 transition-opacity
+											hover:text-error-hover
 											group-hover:opacity-100
 										">×</button>
 									</div>

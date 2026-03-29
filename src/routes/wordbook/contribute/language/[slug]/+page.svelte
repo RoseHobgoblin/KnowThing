@@ -41,7 +41,7 @@
 				nativeName: data.language.nativeName || '',
 				script: data.language.script || 'Latin',
 				family: data.language.family || '',
-				color: data.language.color || '#d97706',
+				color: data.language.color || 'var(--color-accent)',
 				description: data.language.description || '',
 				pageSlug: data.language.pageSlug || '',
 				parentLanguageId: data.language.parentLanguageId || null,

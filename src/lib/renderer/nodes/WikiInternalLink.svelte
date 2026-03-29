@@ -41,7 +41,7 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <a
 	{href}
-	class="know-link {exists ? 'text-link hover:underline' : 'text-red-600 hover:underline'}"
+	class="know-link {exists ? 'text-link hover:underline' : 'text-error-hover hover:underline'}"
 	title={exists && showPreview ? undefined : target}
 	onmouseenter={onMouseEnter}
 	onmousemove={onMouseMove}

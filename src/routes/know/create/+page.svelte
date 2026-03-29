@@ -15,7 +15,7 @@
 <h1 class="text-xl font-bold mb-3">Create new page</h1>
 
 {#if form?.error}
-	<div class="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-sm mb-3 text-sm">
+	<div class="bg-error-bg border border-error-border text-error-text px-4 py-2 rounded-sm mb-3 text-sm">
 		{form.error}
 	</div>
 {/if}

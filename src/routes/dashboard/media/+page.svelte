@@ -161,7 +161,7 @@
 			</label>
 		{/if}
 		{#if uploadError}
-			<p class="text-red-500 text-sm mt-2">{uploadError}</p>
+			<p class="text-error text-sm mt-2">{uploadError}</p>
 		{/if}
 	</div>
 

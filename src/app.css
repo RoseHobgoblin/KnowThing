@@ -18,6 +18,7 @@
 	--color-accent-subtle: #fffbeb;
 	--color-accent-text: #78350f;
 	--color-accent-border: #fde68a;
+	--color-accent-subtle0: #f59e0b;
 
 	/* Surfaces */
 	--color-page: #fafaf9;
@@ -44,80 +45,40 @@
 
 	/* Status */
 	--color-success: #16a34a;
+	--color-success-bg: #f0fdf4;
+	--color-success-border: #bbf7d0;
 	--color-error: #dc2626;
+	--color-error-hover: #b91c1c;
+	--color-error-bg: #fef2f2;
+	--color-error-border: #fecaca;
+	--color-error-text: #991b1b;
 	--color-warning: #d97706;
+	--color-warning-bg: #fffbeb;
+	--color-warning-border: #fde68a;
 	--color-info: #0284c7;
+	--color-info-bg: #f0f9ff;
+	--color-info-border: #bae6fd;
+
+	/* Diff */
+	--color-diff-add-bg: #f0fdf4;
+	--color-diff-add-text: #166534;
+	--color-diff-add-border: #4ade80;
+	--color-diff-rm-bg: #fef2f2;
+	--color-diff-rm-text: #991b1b;
+	--color-diff-rm-border: #f87171;
+
+	/* Skeleton / loading */
+	--color-skeleton: #f5f5f4;
+	--color-skeleton-shimmer: #e7e5e4;
 }
 
 /* ============================================================================
-   KnowThing — Design Tokens
-   University-microstate encyclopedia aesthetic
+   Non-Tailwind Variables (referenced directly in CSS, not via utility classes)
    ============================================================================ */
 
 :root {
-	/* ── Brand ──────────────────────────────────────────────────── */
-	--color-accent: #d97706;          /* amber-600 — primary brand */
-	--color-accent-hover: #b45309;    /* amber-700 */
-	--color-accent-light: #fef3c7;    /* amber-100 */
-	--color-accent-subtle: #fffbeb;   /* amber-50 */
-	--color-accent-text: #78350f;     /* amber-900 */
-	--color-accent-border: #fde68a;   /* amber-200 */
-
-	/* ── Surfaces ───────────────────────────────────────────────── */
-	--color-bg: #fafaf9;              /* stone-50 — page background */
-	--color-surface: #ffffff;         /* white — cards, panels */
-	--color-surface-raised: #f5f5f4;  /* stone-100 — raised elements */
-	--color-surface-muted: #fafaf9;   /* stone-50 — subtle backgrounds */
-
-	/* ── Borders ────────────────────────────────────────────────── */
-	--color-border: #e7e5e4;          /* stone-200 */
-	--color-border-strong: #d6d3d1;   /* stone-300 */
-	--color-border-subtle: #f5f5f4;   /* stone-100 */
-
-	/* ── Text ───────────────────────────────────────────────────── */
-	--color-text: #1c1917;            /* stone-900 — headings */
-	--color-text-body: #292524;       /* stone-800 — body text */
-	--color-text-secondary: #44403c;  /* stone-700 — labels */
-	--color-text-muted: #78716c;      /* stone-500 — subtle text */
-	--color-text-faint: #a8a29e;      /* stone-400 — timestamps, metadata */
-
-	/* ── Links ──────────────────────────────────────────────────── */
-	--color-link: #b45309;            /* amber-700 */
-	--color-link-hover: #78350f;      /* amber-900 */
-	--color-link-missing: #ef4444;    /* red-500 — red links */
-	--color-link-external: #b45309;   /* amber-700 */
-
-	/* ── Status ──────────────────────────────────────────────────── */
-	--color-success: #16a34a;         /* green-600 */
-	--color-error: #dc2626;           /* red-600 */
-	--color-warning: #d97706;         /* amber-600 */
-	--color-info: #0284c7;            /* sky-600 */
-
-	/* ── Diff ────────────────────────────────────────────────────── */
-	--color-diff-add-bg: #f0fdf4;     /* green-50 */
-	--color-diff-add-text: #166534;   /* green-800 */
-	--color-diff-add-border: #4ade80; /* green-400 */
-	--color-diff-rm-bg: #fef2f2;     /* red-50 */
-	--color-diff-rm-text: #991b1b;   /* red-800 */
-	--color-diff-rm-border: #f87171; /* red-400 */
-
-	/* ── Editor ──────────────────────────────────────────────────── */
-	--color-editor-focus: #d97706;    /* amber-600 */
-	--color-editor-toolbar: #f5f5f4;  /* stone-100 */
-	--color-editor-toolbar-hover: #fef3c7; /* amber-100 */
-
-	/* ── Shadows ─────────────────────────────────────────────────── */
-	--shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06);
-	--shadow-dropdown: 0 4px 12px rgba(0, 0, 0, 0.1);
-
-	/* ── Radii ───────────────────────────────────────────────────── */
-	--radius-sm: 0.25rem;
-	--radius-md: 0.5rem;
-	--radius-lg: 0.75rem;
-	--radius-full: 9999px;
-
-	/* ── Spacing ──────────────────────────────────────────────────── */
-	--content-max-width: 56rem;       /* max-w-4xl */
+	/* ── Layout ──────────────────────────────────────────────────── */
+	--content-max-width: 56rem;
 	--infobox-width: 20rem;
 }
 

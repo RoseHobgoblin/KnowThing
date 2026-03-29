@@ -126,7 +126,7 @@
 		</div>
 
 		{#if error}
-			<div class="p-2 bg-red-50 border border-red-200 text-error rounded-md text-xs">{error}</div>
+			<div class="p-2 bg-error-bg border border-error-border text-error rounded-md text-xs">{error}</div>
 		{/if}
 
 		<div class="flex gap-3 flex-wrap">

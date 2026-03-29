@@ -43,9 +43,9 @@
 			<div class="font-mono text-xs/relaxed overflow-x-auto">
 				{#each data.diff as part}
 					{#if part.added}
-						<div class="bg-green-50 text-green-800 border-l-4 border-green-400 px-2 py-0.5">{part.value}</div>
+						<div class="bg-diff-add-bg text-diff-add-text border-l-4 border-diff-add-border px-2 py-0.5">{part.value}</div>
 					{:else if part.removed}
-						<div class="bg-red-50 text-red-800 border-l-4 border-red-400 px-2 py-0.5">{part.value}</div>
+						<div class="bg-diff-rm-bg text-diff-rm-text border-l-4 border-diff-rm-border px-2 py-0.5">{part.value}</div>
 					{:else}
 						<div class="text-secondary px-2 py-0.5">{part.value}</div>
 					{/if}

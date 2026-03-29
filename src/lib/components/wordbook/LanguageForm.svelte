@@ -33,7 +33,7 @@
 	let nativeName = $state(initial.nativeName || '')
 	let script = $state(initial.script || 'Latin')
 	let family = $state(initial.family || '')
-	let color = $state(initial.color || '#d97706')
+	let color = $state(initial.color || 'var(--color-accent)')
 	let description = $state(initial.description || '')
 	let pageSlug = $state(initial.pageSlug || '')
 	let parentLanguageId = $state<number | null>(initial.parentLanguageId ?? null)
@@ -85,7 +85,7 @@
 				nativeName: nativeName.trim() || null,
 				script: script.trim() || 'Latin',
 				family: family.trim() || null,
-				color: color || '#d97706',
+				color: color || 'var(--color-accent)',
 				description: description.trim() || null,
 				pageSlug: pageSlug.trim() || null,
 				parentLanguageId: parentLanguageId || null,
@@ -103,7 +103,7 @@
 
 <form onsubmit={handleSubmit} class="space-y-4">
 	{#if error}
-		<div class="p-3 bg-red-50 border border-red-200 text-error rounded-lg text-sm">{error}</div>
+		<div class="p-3 bg-error-bg border border-error-border text-error rounded-lg text-sm">{error}</div>
 	{/if}
 
 	<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -131,7 +131,7 @@
 			<Label>
 				Family
 				{#if languageType === 'proto'}
-					<span class="text-red-500">*</span>
+					<span class="text-error">*</span>
 				{:else}
 					<span class="text-xs text-faint">(inherits from parent)</span>
 				{/if}

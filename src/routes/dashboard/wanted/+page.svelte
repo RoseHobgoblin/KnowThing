@@ -22,7 +22,7 @@
 				<div class="px-6 py-3 flex items-center justify-between">
 					<a
 						href="/know/create?slug={encodeURIComponent(w.slug)}&title={encodeURIComponent(w.slug.replaceAll('_', ' '))}"
-						class="text-red-500 font-medium text-sm hover:text-red-700"
+						class="text-error font-medium text-sm hover:text-error-text"
 					>
 						{w.slug.replaceAll('_', ' ')}
 					</a>

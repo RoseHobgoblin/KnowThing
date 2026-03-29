@@ -182,7 +182,7 @@
 			<button
 				onclick={() => deleteRelation(entry.relationId)}
 				disabled={deleting === entry.relationId}
-				class="text-xs text-red-400 hover:text-red-600 transition-colors ml-1 {deleting === entry.relationId ? 'opacity-50' : ''}"
+				class="text-xs text-error hover:text-error-hover transition-colors ml-1 {deleting === entry.relationId ? 'opacity-50' : ''}"
 				title="Remove relation"
 			>✕</button>
 		{/if}
@@ -211,7 +211,7 @@
 
 		<form onsubmit={addRelation} class="space-y-3">
 			{#if formError}
-				<div class="p-2 bg-red-50 border border-red-200 text-error rounded-md text-xs">{formError}</div>
+				<div class="p-2 bg-error-bg border border-error-border text-error rounded-md text-xs">{formError}</div>
 			{/if}
 
 			<div class="flex gap-3 flex-wrap">
@@ -305,7 +305,7 @@
 						<a href="/wordbook/{entry.languageSlug}/{encodeURIComponent(entry.word)}" class="font-medium text-link italic hover:text-link-hover hover:underline">{entry.word}</a>
 						<span class="text-dim text-xs">({entry.definition})</span>
 						{#if isAuthenticated}
-							<button onclick={() => deleteRelation(entry.relationId)} disabled={deleting === entry.relationId} class="text-xs text-red-400 hover:text-red-600 {deleting === entry.relationId ? 'opacity-50' : ''}" title="Remove">✕</button>
+							<button onclick={() => deleteRelation(entry.relationId)} disabled={deleting === entry.relationId} class="text-xs text-error hover:text-error-hover {deleting === entry.relationId ? 'opacity-50' : ''}" title="Remove">✕</button>
 						{/if}
 					{/each}
 				</div>

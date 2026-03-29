@@ -110,7 +110,7 @@
 					'&': { height: '100%', fontSize: '14px' },
 					'.cm-scroller': { overflow: 'auto', fontFamily: 'Consolas, monospace' },
 					'.cm-content': { padding: '8px 0' },
-					'&.cm-focused': { outline: '2px solid #d97706' },
+					'&.cm-focused': { outline: '2px solid var(--color-accent)' },
 				}),
 			],
 		})

@@ -92,7 +92,7 @@
 						transition-colors
 						hover:border-accent-border hover:bg-accent-subtle
 					">
-						<span class="size-2 rounded-full" style="background-color: {child.color || '#d97706'}"></span>
+						<span class="size-2 rounded-full" style="background-color: {child.color || 'var(--color-accent)'}"></span>
 						<span class="font-medium text-body">{child.name}</span>
 						{#if child.nativeName}
 							<span class="text-faint text-xs italic">{child.nativeName}</span>
