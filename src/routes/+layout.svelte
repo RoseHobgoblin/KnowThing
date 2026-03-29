@@ -16,7 +16,6 @@
 	import Layout from 'phosphor-svelte/lib/Layout'
 	import ClockCounterClockwise from 'phosphor-svelte/lib/ClockCounterClockwise'
 	import Image from 'phosphor-svelte/lib/Image'
-	import Gear from 'phosphor-svelte/lib/Gear'
 	import Users from 'phosphor-svelte/lib/Users'
 	import Wrench from 'phosphor-svelte/lib/Wrench'
 	import Export from 'phosphor-svelte/lib/Export'
@@ -65,37 +64,37 @@
 		<!-- Nav links -->
 		<nav class="flex-1 overflow-y-auto px-2 py-3 space-y-1">
 			<span class="px-3 text-[10px] font-semibold text-faint uppercase tracking-wider">Browse</span>
-			<a href="/" class="{linkClass} {isActive('/') && currentPath === '/' ? activeClass : inactiveClass}"><House size={16} />{sc?.navWikiLabel ?? 'Main Page'}</a>
-			<a href="/know/create" class="{linkClass} {isActive('/know/create') ? activeClass : inactiveClass}"><PlusCircle size={16} />{sc?.navCreateLabel ?? 'Create'}</a>
-			<a href="/search" class="{linkClass} {isActive('/search') ? activeClass : inactiveClass}"><MagnifyingGlass size={16} />{sc?.navSearchLabel ?? 'Search'}</a>
-			<a href="/special/random" class="{linkClass} {inactiveClass}"><Shuffle size={16} />Random</a>
+			<a href="/" class="{linkClass} {isActive('/') && currentPath === '/' ? activeClass : inactiveClass}"><House size={16} weight="fill" />{sc?.navWikiLabel ?? 'Main Page'}</a>
+			<a href="/know/create" class="{linkClass} {isActive('/know/create') ? activeClass : inactiveClass}"><PlusCircle size={16} weight="fill" />{sc?.navCreateLabel ?? 'Create'}</a>
+			<a href="/search" class="{linkClass} {isActive('/search') ? activeClass : inactiveClass}"><MagnifyingGlass size={16} weight="fill" />{sc?.navSearchLabel ?? 'Search'}</a>
+			<a href="/special/random" class="{linkClass} {inactiveClass}"><Shuffle size={16} weight="fill" />Random</a>
 
 			{#if sc?.wordbookEnabled !== false}
 				<div class="pt-3"><span class="px-3 text-[10px] font-semibold text-faint uppercase tracking-wider">{sc?.wordbookName ?? 'Wordbook'}</span></div>
-				<a href="/wordbook" class="{linkClass} {isActive('/wordbook') ? activeClass : inactiveClass}"><BookOpen size={16} />{sc?.navWordbookLabel ?? 'Wordbook'}</a>
+				<a href="/wordbook" class="{linkClass} {isActive('/wordbook') ? activeClass : inactiveClass}"><BookOpen size={16} weight="fill" />{sc?.navWordbookLabel ?? 'Wordbook'}</a>
 			{/if}
 
 			{#if sc?.calendarEnabled !== false}
 				<div class="pt-3"><span class="px-3 text-[10px] font-semibold text-faint uppercase tracking-wider">{sc?.navCalendarLabel ?? 'Calendar'}</span></div>
-				<a href="/calendar" class="{linkClass} {isActive('/calendar') ? activeClass : inactiveClass}"><CalendarBlank size={16} />{sc?.navCalendarLabel ?? 'Calendar'}</a>
+				<a href="/calendar" class="{linkClass} {isActive('/calendar') ? activeClass : inactiveClass}"><CalendarBlank size={16} weight="fill" />{sc?.navCalendarLabel ?? 'Calendar'}</a>
 			{/if}
 
 			<div class="pt-3"><span class="px-3 text-[10px] font-semibold text-faint uppercase tracking-wider">Discover</span></div>
-			<a href="/special/categories" class="{linkClass} {isActive('/special/categories') ? activeClass : inactiveClass}"><Tag size={16} />Categories</a>
-			<a href="/special/stats" class="{linkClass} {isActive('/special/stats') ? activeClass : inactiveClass}"><ChartBar size={16} />Statistics</a>
+			<a href="/special/categories" class="{linkClass} {isActive('/special/categories') ? activeClass : inactiveClass}"><Tag size={16} weight="fill" />Categories</a>
+			<a href="/special/stats" class="{linkClass} {isActive('/special/stats') ? activeClass : inactiveClass}"><ChartBar size={16} weight="fill" />Statistics</a>
 
 			{#if data.user}
 				<div class="pt-3"><span class="px-3 text-[10px] font-semibold text-faint uppercase tracking-wider">Contribute</span></div>
-				<a href="/dashboard" class="{linkClass} {isActive('/dashboard') && currentPath === '/dashboard' ? activeClass : inactiveClass}"><Layout size={16} />Dashboard</a>
-				<a href="/dashboard/recent" class="{linkClass} {isActive('/dashboard/recent') ? activeClass : inactiveClass}"><ClockCounterClockwise size={16} />Recent Changes</a>
-				<a href="/dashboard/media" class="{linkClass} {isActive('/dashboard/media') ? activeClass : inactiveClass}"><Image size={16} />Media Library</a>
+				<a href="/dashboard" class="{linkClass} {isActive('/dashboard') && currentPath === '/dashboard' ? activeClass : inactiveClass}"><Layout size={16} weight="fill" />Dashboard</a>
+				<a href="/dashboard/recent" class="{linkClass} {isActive('/dashboard/recent') ? activeClass : inactiveClass}"><ClockCounterClockwise size={16} weight="fill" />Recent Changes</a>
+				<a href="/dashboard/media" class="{linkClass} {isActive('/dashboard/media') ? activeClass : inactiveClass}"><Image size={16} weight="fill" />Media Library</a>
 
 				{#if data.user.role === 'admin'}
 					<div class="pt-3"><span class="px-3 text-[10px] font-semibold text-faint uppercase tracking-wider">Admin</span></div>
-					<a href="/dashboard/calendar" class="{linkClass} {isActive('/dashboard/calendar') ? activeClass : inactiveClass}"><CalendarBlank size={16} />Calendars</a>
-					<a href="/dashboard/users" class="{linkClass} {isActive('/dashboard/users') ? activeClass : inactiveClass}"><Users size={16} />Users</a>
-					<a href="/dashboard/settings" class="{linkClass} {isActive('/dashboard/settings') ? activeClass : inactiveClass}"><Wrench size={16} />Site Settings</a>
-					<a href="/dashboard/export" class="{linkClass} {isActive('/dashboard/export') ? activeClass : inactiveClass}"><Export size={16} />Export</a>
+					<a href="/dashboard/calendar" class="{linkClass} {isActive('/dashboard/calendar') ? activeClass : inactiveClass}"><CalendarBlank size={16} weight="fill" />Calendars</a>
+					<a href="/dashboard/users" class="{linkClass} {isActive('/dashboard/users') ? activeClass : inactiveClass}"><Users size={16} weight="fill" />Users</a>
+					<a href="/dashboard/settings" class="{linkClass} {isActive('/dashboard/settings') ? activeClass : inactiveClass}"><Wrench size={16} weight="fill" />Site Settings</a>
+					<a href="/dashboard/export" class="{linkClass} {isActive('/dashboard/export') ? activeClass : inactiveClass}"><Export size={16} weight="fill" />Export</a>
 				{/if}
 			{/if}
 		</nav>
@@ -106,12 +105,12 @@
 				<div class="flex items-center justify-between">
 					<span class="text-dim truncate">{data.user.username}</span>
 					<form method="POST" action="/auth/logout">
-						<button type="submit" class="text-link flex items-center gap-1.5 transition-colors hover:text-link-hover"><SignOut size={14} />Log out</button>
+						<button type="submit" class="text-link flex items-center gap-1.5 transition-colors hover:text-link-hover"><SignOut size={14} weight="fill" />Log out</button>
 					</form>
 				</div>
 			{:else}
 				<div class="flex items-center gap-3">
-					<a href="/auth/login" class="text-link flex items-center gap-1.5 transition-colors hover:text-link-hover"><SignIn size={14} />Log in</a>
+					<a href="/auth/login" class="text-link flex items-center gap-1.5 transition-colors hover:text-link-hover"><SignIn size={14} weight="fill" />Log in</a>
 					<a href="/auth/register" class="text-link transition-colors hover:text-link-hover">Register</a>
 				</div>
 			{/if}

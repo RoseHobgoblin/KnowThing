@@ -10,14 +10,14 @@ import { lexicon } from '$lib/server/db/schema.js'
 const createLanguageSchema = z.object({
 	name: z.string().min(1, 'Name is required'),
 	slug: z.string().min(1, 'Slug is required'),
-	nativeName: z.string().optional(),
-	family: z.string().optional(),
-	script: z.string().optional(),
-	parentLanguageId: z.number().optional(),
-	languageType: z.string().optional(),
-	color: z.string().optional(),
-	pageSlug: z.string().optional(),
-	description: z.string().optional(),
+	nativeName: z.string().nullish(),
+	family: z.string().nullish(),
+	script: z.string().nullish(),
+	parentLanguageId: z.number().nullish(),
+	languageType: z.string().nullish(),
+	color: z.string().nullish(),
+	pageSlug: z.string().nullish(),
+	description: z.string().nullish(),
 })
 
 /** GET /api/languages — list all languages with word counts, inheriting family from ancestors */

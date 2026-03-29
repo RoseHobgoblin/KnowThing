@@ -8,15 +8,15 @@ import { eq, sql } from 'drizzle-orm'
 import { isDescendant } from '$lib/server/wordbook/language-tree.js'
 
 const updateLanguageSchema = z.object({
-	name: z.string().optional(),
-	nativeName: z.string().optional(),
-	family: z.string().optional(),
-	script: z.string().optional(),
-	parentLanguageId: z.number().nullable().optional(),
-	languageType: z.string().optional(),
-	color: z.string().optional(),
-	pageSlug: z.string().optional(),
-	description: z.string().optional(),
+	name: z.string().nullish(),
+	nativeName: z.string().nullish(),
+	family: z.string().nullish(),
+	script: z.string().nullish(),
+	parentLanguageId: z.number().nullish(),
+	languageType: z.string().nullish(),
+	color: z.string().nullish(),
+	pageSlug: z.string().nullish(),
+	description: z.string().nullish(),
 })
 
 /** GET /api/languages/:slug — with inherited family from ancestors */
