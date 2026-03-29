@@ -3,11 +3,6 @@ import { absoluteDay, dateFromAbsolute, resolveDisplay } from './date-math.js'
 
 const DEFAULT_DAY_SECONDS = 86_400
 
-/** Get ms per day for a calendar config */
-function msPerDay(config: CalendarConfig): number {
-	return (config.static_data.day_length_seconds ?? DEFAULT_DAY_SECONDS) * 1000
-}
-
 /** Convert Unix timestamp (ms) to absolute day number in this calendar */
 export function unixToAbsoluteDay(timestamp: number, epochOffset: number, dayLengthSeconds = DEFAULT_DAY_SECONDS): number {
 	return Math.floor(timestamp / (dayLengthSeconds * 1000)) + epochOffset
