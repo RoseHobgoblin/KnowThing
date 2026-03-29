@@ -14,7 +14,7 @@
 
 	type ViewMode = 'month' | 'year' | 'seasons'
 
-	const resolved = resolveDisplay(config)
+	const resolved = $derived(resolveDisplay(config))
 	let viewYear = $state(initialYear ?? resolved.year)
 	let viewMonth = $state(initialMonth ?? resolved.month_index)
 	let viewMode = $state<ViewMode>('month')
@@ -92,7 +92,7 @@
 	}
 
 	/** SVG moon phase icon */
-	function moonSvgPath(phase: number): string {
+	function moonPhaseKey(phase: number): string {
 		// Simplified: return a circle descriptor for CSS-based rendering
 		// phase 0 = new (all shadow), 0.5 = full (all face)
 		const p = ((phase % 1) + 1) % 1
@@ -284,7 +284,7 @@
 							<div class="flex gap-0.5 mt-0.5">
 								{#each moons as moon}
 									<span class="text-[10px] leading-none" title="{moon.name}: {moon.phase_name}">
-										{MOON_EMOJI[moonSvgPath(moon.phase)] ?? '🌑'}
+										{MOON_EMOJI[moonPhaseKey(moon.phase)] ?? '🌑'}
 									</span>
 								{/each}
 							</div>

@@ -104,7 +104,7 @@ export interface Season {
 }
 
 export type SeasonTiming =
-	| { type: 'dated', month: number, day: number }
+	| { type: 'dated', /** 0-indexed month */ month: number, /** 1-indexed day of month */ day: number }
 	| { type: 'periodic', duration: number }
 
 export type SeasonKind = 'winter' | 'spring' | 'summer' | 'autumn' | 'custom'
@@ -125,9 +125,6 @@ export interface CalendarDate {
 	/** 1-indexed day of month */
 	day: number
 }
-
-/** @deprecated Use CalendarDate instead */
-export type CurrentDate = CalendarDate
 
 /** Fully resolved display info for a date */
 export interface ResolvedDate {

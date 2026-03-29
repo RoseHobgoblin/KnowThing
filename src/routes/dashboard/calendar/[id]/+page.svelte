@@ -1,3 +1,8 @@
+<script module lang="ts">
+	let _nextId = 0
+	function uid() { return ++_nextId }
+</script>
+
 <script lang="ts">
 	import type { PageData } from './$types.js'
 	import CalendarWidget from '$lib/calendar/CalendarWidget.svelte'
@@ -18,29 +23,29 @@
 	let dayLengthSeconds = $state(sd.day_length_seconds ?? 86_400)
 	let displayMoons = $state(sd.display_moons ?? false)
 
-	let months = $state<Array<{ name: string, length: number, month_type: string, short_name: string }>>(
-		(sd.months || []).map((m: any) => ({ name: m.name, length: m.length, month_type: m.month_type || 'regular', short_name: m.short_name || '' })),
+	let months = $state<Array<{ _id: number, name: string, length: number, month_type: string, short_name: string }>>(
+		(sd.months || []).map((m: any) => ({ _id: uid(), name: m.name, length: m.length, month_type: m.month_type || 'regular', short_name: m.short_name || '' })),
 	)
-	let weekdays = $state<Array<{ name: string, abbreviation: string }>>(
-		(sd.weekdays || []).map((w: any) => ({ name: w.name, abbreviation: w.abbreviation || '' })),
+	let weekdays = $state<Array<{ _id: number, name: string, abbreviation: string }>>(
+		(sd.weekdays || []).map((w: any) => ({ _id: uid(), name: w.name, abbreviation: w.abbreviation || '' })),
 	)
-	let eras = $state<Array<{ name: string, start_year: number, end_year: string, format: string, reverse_numbering: boolean }>>(
-		(sd.eras || []).map((e: any) => ({ name: e.name, start_year: e.start_year, end_year: e.end_year?.toString() ?? '', format: e.format || '{{year}} {{era_name}}', reverse_numbering: e.reverse_numbering ?? false })),
+	let eras = $state<Array<{ _id: number, name: string, start_year: number, end_year: string, format: string, reverse_numbering: boolean }>>(
+		(sd.eras || []).map((e: any) => ({ _id: uid(), name: e.name, start_year: e.start_year, end_year: e.end_year?.toString() ?? '', format: e.format || '{{year}} {{era_name}}', reverse_numbering: e.reverse_numbering ?? false })),
 	)
-	let moons = $state<Array<{ name: string, cycle: number, offset: number, face_color: string, shadow_color: string }>>(
-		(sd.moons || []).map((m: any) => ({ name: m.name, cycle: m.cycle, offset: m.offset, face_color: m.face_color || '#ffffff', shadow_color: m.shadow_color || '#000000' })),
+	let moons = $state<Array<{ _id: number, name: string, cycle: number, offset: number, face_color: string, shadow_color: string }>>(
+		(sd.moons || []).map((m: any) => ({ _id: uid(), name: m.name, cycle: m.cycle, offset: m.offset, face_color: m.face_color || '#ffffff', shadow_color: m.shadow_color || '#000000' })),
 	)
-	let seasons = $state<Array<{ name: string, kind: string, timing_type: string, month: number, day: number, duration: number, color: string }>>(
+	let seasons = $state<Array<{ _id: number, name: string, kind: string, timing_type: string, month: number, day: number, duration: number, color: string }>>(
 		(sd.seasons || []).map((s: any) => ({
-			name: s.name, kind: s.kind || 'custom',
+			_id: uid(), name: s.name, kind: s.kind || 'custom',
 			timing_type: s.timing?.type || 'dated',
 			month: s.timing?.month ?? 0, day: s.timing?.day ?? 1,
 			duration: s.timing?.duration ?? 90, color: s.color || '#888888',
 		})),
 	)
-	let leapDays = $state<Array<{ name: string, month_index: number, after_day: number, interval: number, ignore: string, exclusive: string, intercalary: boolean, offset: number }>>(
+	let leapDays = $state<Array<{ _id: number, name: string, month_index: number, after_day: number, interval: number, ignore: string, exclusive: string, intercalary: boolean, offset: number }>>(
 		(sd.leap_days || []).map((ld: any) => ({
-			name: ld.name || '', month_index: ld.month_index ?? 0, after_day: ld.after_day ?? 0,
+			_id: uid(), name: ld.name || '', month_index: ld.month_index ?? 0, after_day: ld.after_day ?? 0,
 			interval: ld.interval ?? 4, ignore: (ld.ignore || []).join(', '),
 			exclusive: (ld.exclusive || []).join(', '), intercalary: ld.intercalary ?? false, offset: ld.offset ?? 0,
 		})),
@@ -199,13 +204,13 @@
 				<h2 class="text-sm font-semibold text-heading">Months</h2>
 				<p class="text-xs text-faint">{months.length} months · {totalDaysInYear} days total</p>
 			</div>
-			<button onclick={() => months = [...months, { name: '', length: 30, month_type: 'regular', short_name: '' }]} class="text-xs text-link font-medium hover:underline">+ Add month</button>
+			<button onclick={() => months = [...months, { _id: uid(), name: '', length: 30, month_type: 'regular', short_name: '' }]} class="text-xs text-link font-medium hover:underline">+ Add month</button>
 		</div>
 		{#if months.length === 0}
 			<p class="text-sm text-faint text-center py-4">No months defined. Add one to get started.</p>
 		{/if}
 		<div class="space-y-2">
-			{#each months as month, index (index)}
+			{#each months as month, index (month._id)}
 				<div class="flex gap-2 items-center group">
 					<span class="text-[10px] text-faint w-5 text-right shrink-0">{index + 1}</span>
 					<input type="text" bind:value={month.name} placeholder="Month name" class="flex-1 {indexClass}" />
@@ -231,7 +236,7 @@
 				<h2 class="text-sm font-semibold text-heading">Weekdays</h2>
 				<p class="text-xs text-faint">{weekdays.length}-day week</p>
 			</div>
-			<button onclick={() => weekdays = [...weekdays, { name: '', abbreviation: '' }]} class="text-xs text-link font-medium hover:underline">+ Add weekday</button>
+			<button onclick={() => weekdays = [...weekdays, { _id: uid(), name: '', abbreviation: '' }]} class="text-xs text-link font-medium hover:underline">+ Add weekday</button>
 		</div>
 		<div class="flex items-center gap-1 mb-1">
 			<span class="text-xs font-medium text-secondary">First weekday of Year 1, Day 1</span>
@@ -244,7 +249,7 @@
 			{/if}
 		</div>
 		<div class="space-y-2">
-			{#each weekdays as day, index (index)}
+			{#each weekdays as day, index (day._id)}
 				<div class="flex gap-2 items-center group">
 					<span class="text-[10px] text-faint w-5 text-right shrink-0">{index}</span>
 					<input type="text" bind:value={day.name} placeholder="Weekday name" class="flex-1 {indexClass}" />
@@ -259,7 +264,7 @@
 	<section class="bg-surface border border-border p-5 space-y-3">
 		<div class="flex items-center justify-between border-b border-border-subtle pb-2">
 			<h2 class="text-sm font-semibold text-heading">Leap Days</h2>
-			<button onclick={() => leapDays = [...leapDays, { name: '', month_index: 0, after_day: 0, interval: 4, ignore: '', exclusive: '', intercalary: false, offset: 0 }]} class="text-xs text-link font-medium hover:underline">+ Add leap day</button>
+			<button onclick={() => leapDays = [...leapDays, { _id: uid(), name: '', month_index: 0, after_day: 0, interval: 4, ignore: '', exclusive: '', intercalary: false, offset: 0 }]} class="text-xs text-link font-medium hover:underline">+ Add leap day</button>
 		</div>
 		{#if leapDays.length === 0}
 			<div class="text-center py-4">
@@ -267,7 +272,7 @@
 				<p class="text-[11px] text-faint mt-1">Example: Gregorian leap year adds a day every 4 years, except centuries, but including every 400th year.</p>
 			</div>
 		{/if}
-		{#each leapDays as ld, index (index)}
+		{#each leapDays as ld, index (ld._id)}
 			<div class="border border-border-subtle p-4 space-y-3 bg-page">
 				<div class="flex items-center justify-between">
 					<input type="text" bind:value={ld.name} placeholder="Leap day name" class="flex-1 {indexClass} font-medium" />
@@ -323,12 +328,12 @@
 				<h2 class="text-sm font-semibold text-heading">Eras</h2>
 				<p class="text-xs text-faint">Named periods of time (e.g. BC/AD, First Age/Second Age)</p>
 			</div>
-			<button onclick={() => eras = [...eras, { name: '', start_year: 1, end_year: '', format: '{{year}} {{era_name}}', reverse_numbering: false }]} class="text-xs text-link font-medium hover:underline">+ Add era</button>
+			<button onclick={() => eras = [...eras, { _id: uid(), name: '', start_year: 1, end_year: '', format: '{{year}} {{era_name}}', reverse_numbering: false }]} class="text-xs text-link font-medium hover:underline">+ Add era</button>
 		</div>
 		{#if eras.length === 0}
 			<p class="text-sm text-faint text-center py-4">No eras defined. Years will display as plain numbers.</p>
 		{/if}
-		{#each eras as era, index (index)}
+		{#each eras as era, index (era._id)}
 			<div class="border border-border-subtle p-4 space-y-3 bg-page">
 				<div class="flex items-center justify-between">
 					<input type="text" bind:value={era.name} placeholder="Era name (e.g. FA, AD)" class="flex-1 {indexClass} font-medium" />
@@ -368,12 +373,12 @@
 				<h2 class="text-sm font-semibold text-heading">Moons</h2>
 				<p class="text-xs text-faint">Celestial bodies with orbital cycles. Phase is calculated automatically.</p>
 			</div>
-			<button onclick={() => moons = [...moons, { name: '', cycle: 29.5, offset: 0, face_color: '#ffffff', shadow_color: '#1c1917' }]} class="text-xs text-link font-medium hover:underline">+ Add moon</button>
+			<button onclick={() => moons = [...moons, { _id: uid(), name: '', cycle: 29.5, offset: 0, face_color: '#ffffff', shadow_color: '#1c1917' }]} class="text-xs text-link font-medium hover:underline">+ Add moon</button>
 		</div>
 		{#if moons.length === 0}
 			<p class="text-sm text-faint text-center py-4">No moons. Enable "Show moon phases" above to display them.</p>
 		{/if}
-		{#each moons as moon, index (index)}
+		{#each moons as moon, index (moon._id)}
 			<div class="flex gap-3 items-center group border border-border-subtle p-3 bg-page">
 				<div class="flex gap-1 shrink-0">
 					<input type="color" bind:value={moon.face_color} class="size-7 border border-border cursor-pointer" title="Lit color" />
@@ -400,12 +405,12 @@
 				<h2 class="text-sm font-semibold text-heading">Seasons</h2>
 				<p class="text-xs text-faint">Define when seasons start — by date or by rolling duration.</p>
 			</div>
-			<button onclick={() => seasons = [...seasons, { name: '', kind: 'custom', timing_type: 'dated', month: 0, day: 1, duration: 90, color: '#888888' }]} class="text-xs text-link font-medium hover:underline">+ Add season</button>
+			<button onclick={() => seasons = [...seasons, { _id: uid(), name: '', kind: 'custom', timing_type: 'dated', month: 0, day: 1, duration: 90, color: '#888888' }]} class="text-xs text-link font-medium hover:underline">+ Add season</button>
 		</div>
 		{#if seasons.length === 0}
 			<p class="text-sm text-faint text-center py-4">No seasons defined.</p>
 		{/if}
-		{#each seasons as season, index (index)}
+		{#each seasons as season, index (season._id)}
 			<div class="border border-border-subtle p-4 space-y-3 bg-page">
 				<div class="flex items-center gap-3">
 					<input type="color" bind:value={season.color} class="size-7 border border-border cursor-pointer shrink-0" />

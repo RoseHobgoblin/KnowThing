@@ -4,13 +4,14 @@ import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { calendars } from '$lib/server/db/schema.js'
 import { requireAuth } from '$lib/server/auth.js'
-import { eq, asc } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
+import { staticDataSchema } from '$lib/calendar/schema.js'
 
 const createCalendarSchema = z.object({
 	name: z.string().min(1, 'Name is required'),
 	description: z.string().optional(),
 	isPrimary: z.boolean().optional(),
-	staticData: z.record(z.string(), z.unknown()),
+	staticData: staticDataSchema,
 })
 
 /** GET /api/calendar — get primary calendar */

@@ -324,8 +324,12 @@
 		{@const birthYear = Number.parseInt(getPositionalArguments()[0] || '')}
 		{@const deathYear = Number.parseInt(getPositionalArguments()[1] || '')}
 		{#if !Number.isNaN(birthYear)}
-			{@const endYear = Number.isNaN(deathYear) ? (ctx.calendarDate?.year ?? new Date().getFullYear()) : deathYear}
-			<span>{endYear - birthYear}</span>
+			{@const endYear = Number.isNaN(deathYear) ? ctx.calendarDate?.year : deathYear}
+			{#if endYear != null}
+				<span>{endYear - birthYear}</span>
+			{:else}
+				<span class="text-faint">[age: no calendar]</span>
+			{/if}
 		{:else}
 			<span class="text-faint">[age: ?]</span>
 		{/if}

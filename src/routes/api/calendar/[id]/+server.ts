@@ -5,12 +5,13 @@ import { db } from '$lib/server/db/index.js'
 import { calendars } from '$lib/server/db/schema.js'
 import { requireAuth } from '$lib/server/auth.js'
 import { eq } from 'drizzle-orm'
+import { staticDataSchema } from '$lib/calendar/schema.js'
 
 const updateCalendarSchema = z.object({
 	name: z.string().optional(),
 	description: z.string().optional(),
 	isPrimary: z.boolean().optional(),
-	staticData: z.record(z.string(), z.unknown()).optional(),
+	staticData: staticDataSchema.optional(),
 })
 
 /** GET /api/calendar/:id */
