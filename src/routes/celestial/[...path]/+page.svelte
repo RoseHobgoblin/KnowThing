@@ -37,6 +37,18 @@
 	const viewPath = $derived($page.url.pathname.replace(/\/edit$/, ''))
 	const editPath = $derived(viewPath + '/edit')
 
+	// Breadcrumb: derive parent path segments from URL
+	const pathSegments = $derived.by(() => {
+		const parts = viewPath.replace('/celestial/', '').split('/').filter(Boolean)
+		// Last segment is the current page, everything before is parent
+		const parents = parts.slice(0, -1)
+		return parents.map((slug, i) => ({
+			slug,
+			label: slug.replaceAll('-', ' '),
+			href: '/celestial/' + parts.slice(0, i + 1).join('/'),
+		}))
+	})
+
 	// Strip infobox templates from the AST — the celestial page renders its own infobox from structured data
 	function stripInfoboxes(node: import('$lib/parser/types.js').WikiNode): import('$lib/parser/types.js').WikiNode | null {
 		if (node.type === 'template' && node.name.toLowerCase().startsWith('infobox')) return null
@@ -174,6 +186,10 @@
 		<div class="px-4 pt-4 md:px-6">
 			<div class="text-[10px] font-semibold uppercase tracking-wider mb-1">
 				<a href="/celestial" class="text-link hover:text-link-hover transition-colors">Celestial</a>
+				{#each pathSegments as segment (segment.slug)}
+					<span class="text-faint"> / </span>
+					<a href={segment.href} class="text-link transition-colors hover:text-link-hover">{segment.label}</a>
+				{/each}
 				<span class="text-faint"> / </span>
 				<span class="text-accent">{raw.name}</span>
 			</div>
