@@ -150,16 +150,18 @@
 					</div>
 
 					<!-- System map -->
-					{@const sysStars = starsForSystem(system.id)}
-					{@const sysBodies = (data.bodies as any[]).filter(b => sysStars.some(s => s.id === b.starId))}
-					{#if sysStars.length > 0}
+					{#if starsForSystem(system.id).length > 0}
 						<div class="p-4 border-b border-border-subtle">
-							<SystemMap systemName={system.name} stars={sysStars} bodies={sysBodies} />
+							<SystemMap
+								systemName={system.name}
+								stars={starsForSystem(system.id)}
+								bodies={(data.bodies as any[]).filter(b => starsForSystem(system.id).some(s => s.id === b.starId))}
+							/>
 						</div>
 					{/if}
 
 					<!-- Stars in this system -->
-					{#each sysStars as star (star.id)}
+					{#each starsForSystem(system.id) as star (star.id)}
 						<div class="border-b border-border-subtle last:border-0">
 							<div class="flex items-center justify-between px-4 py-2.5">
 								<div class="flex items-center gap-2 ml-2">
