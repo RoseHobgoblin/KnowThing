@@ -21,8 +21,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		redirect(302, `/auth/login?redirect=${encodeURIComponent(`/celestial/${params.path}`)}`)
 	}
 
-	// Try systems first, then stars, then planetary bodies (case-insensitive)
-	const [system] = await db.select().from(starSystems).where(sql`LOWER(${starSystems.slug}) = LOWER(${slug})`)
+	// Try systems first, then stars, then planetary bodies (case-insensitive, also match by page_slug)
+	const [system] = await db.select().from(starSystems).where(sql`LOWER(${starSystems.slug}) = LOWER(${slug}) OR LOWER(${starSystems.pageSlug}) = LOWER(${slug})`)
 	if (system) {
 		if (system.slug !== slug && !isEditMode) redirect(301, `/celestial/${system.slug}`)
 		const content = await getContent(system.contentRecordId)
@@ -47,7 +47,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		return { kind: 'system' as const, body: system, isAdmin, isEditMode, systemStars, systemBodies, ...content }
 	}
 
-	const [star] = await db.select().from(stars).where(sql`LOWER(${stars.slug}) = LOWER(${slug})`)
+	const [star] = await db.select().from(stars).where(sql`LOWER(${stars.slug}) = LOWER(${slug}) OR LOWER(${stars.pageSlug}) = LOWER(${slug})`)
 	if (star) {
 		// Resolve canonical system slug from DB
 		let canonicalSystemSlug: string | null = null
@@ -64,7 +64,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		return { kind: 'star' as const, body: star, allSystems, isAdmin, isEditMode, ...content }
 	}
 
-	const [planet] = await db.select().from(planetaryBodies).where(sql`LOWER(${planetaryBodies.slug}) = LOWER(${slug})`)
+	const [planet] = await db.select().from(planetaryBodies).where(sql`LOWER(${planetaryBodies.slug}) = LOWER(${slug}) OR LOWER(${planetaryBodies.pageSlug}) = LOWER(${slug})`)
 	if (planet) {
 		// Resolve canonical system slug from the planet's star
 		let canonicalSystemSlug: string | null = null
