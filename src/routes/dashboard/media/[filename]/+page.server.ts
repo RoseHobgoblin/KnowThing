@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types.js'
 import { db } from '$lib/server/db/index.js'
-import { media, mediaHistory, mediaCategories, mediaUsage, users } from '$lib/server/db/schema.js'
+import { media, mediaHistory, mediaCategories, contentMediaUsage, contentRecords, users } from '$lib/server/db/schema.js'
 import { eq, desc, sql } from 'drizzle-orm'
 import { error, redirect } from '@sveltejs/kit'
 
@@ -50,9 +50,10 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 	// Get usage
 	const usage = await db
-		.select({ pageSlug: mediaUsage.pageSlug })
-		.from(mediaUsage)
-		.where(eq(mediaUsage.filename, filename))
+		.select({ pageSlug: contentRecords.slug })
+		.from(contentMediaUsage)
+		.innerJoin(contentRecords, eq(contentMediaUsage.contentRecordId, contentRecords.id))
+		.where(eq(contentMediaUsage.filename, filename))
 
 	// Get history
 	const history = await db

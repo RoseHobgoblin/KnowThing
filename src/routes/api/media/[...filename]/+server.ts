@@ -1,7 +1,7 @@
 import { error, json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
-import { media, mediaHistory, mediaCategories, mediaUsage } from '$lib/server/db/schema.js'
+import { media, mediaHistory, mediaCategories } from '$lib/server/db/schema.js'
 import { eq, sql } from 'drizzle-orm'
 import { requireAuth } from '$lib/server/auth.js'
 import { readFile, unlink } from 'node:fs/promises'
