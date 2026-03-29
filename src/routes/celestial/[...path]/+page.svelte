@@ -159,7 +159,11 @@
 		<div class="px-4 pt-4 md:px-6">
 			<div class="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
 				<div>
-					<a href="/celestial" class="text-[10px] font-semibold text-faint uppercase tracking-wider hover:text-link transition-colors">Celestial Registry</a>
+					<div class="text-[10px] font-semibold text-faint uppercase tracking-wider">
+						<a href="/celestial" class="hover:text-link transition-colors">Celestial</a>
+						<span class="text-border-strong"> / </span>
+						{raw.name}
+					</div>
 					<h1 class="text-2xl font-bold text-heading md:text-3xl">{raw.name}</h1>
 				</div>
 				{#if isAdmin}
