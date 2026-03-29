@@ -21,6 +21,7 @@
 		existingPages: new Set(layoutData.existingPages || []),
 		mediaBaseUrl: '/api/media',
 		pageBaseUrl: '/know',
+		calendarDate: layoutData.calendarDate ?? null,
 	})
 </script>
 
