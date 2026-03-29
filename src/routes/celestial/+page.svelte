@@ -2,6 +2,7 @@
 	import type { PageData } from './$types.js'
 	import Input from '$lib/components/ui/Input.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
+	import SystemMap from '$lib/celestial/SystemMap.svelte'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import { invalidateAll } from '$app/navigation'
 
@@ -56,8 +57,8 @@
 				newSystemName = ''
 				invalidateAll()
 			} else {
-				const err = await res.json()
-				pushError(err.error || 'Failed to create')
+				const error = await res.json()
+				pushError(error.error || 'Failed to create')
 			}
 		} finally { creating = false }
 	}
@@ -76,8 +77,8 @@
 				newStarName = ''
 				invalidateAll()
 			} else {
-				const err = await res.json()
-				pushError(err.error || 'Failed to create')
+				const error = await res.json()
+				pushError(error.error || 'Failed to create')
 			}
 		} finally { creating = false }
 	}
@@ -96,8 +97,8 @@
 				newBodyName = ''
 				invalidateAll()
 			} else {
-				const err = await res.json()
-				pushError(err.error || 'Failed to create')
+				const error = await res.json()
+				pushError(error.error || 'Failed to create')
 			}
 		} finally { creating = false }
 	}
@@ -148,8 +149,17 @@
 						{/if}
 					</div>
 
+					<!-- System map -->
+					{@const sysStars = starsForSystem(system.id)}
+					{@const sysBodies = (data.bodies as any[]).filter(b => sysStars.some(s => s.id === b.starId))}
+					{#if sysStars.length > 0}
+						<div class="p-4 border-b border-border-subtle">
+							<SystemMap systemName={system.name} stars={sysStars} bodies={sysBodies} />
+						</div>
+					{/if}
+
 					<!-- Stars in this system -->
-					{#each starsForSystem(system.id) as star (star.id)}
+					{#each sysStars as star (star.id)}
 						<div class="border-b border-border-subtle last:border-0">
 							<div class="flex items-center justify-between px-4 py-2.5">
 								<div class="flex items-center gap-2 ml-2">
