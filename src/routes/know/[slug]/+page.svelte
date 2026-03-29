@@ -7,6 +7,10 @@ import CategoryBar from '$lib/components/CategoryBar.svelte'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import { page } from '$app/stores'
 	import { goto } from '$app/navigation'
+	import PencilSimple from 'phosphor-svelte/lib/PencilSimple'
+	import ArrowsLeftRight from 'phosphor-svelte/lib/ArrowsLeftRight'
+	import ClockCounterClockwise from 'phosphor-svelte/lib/ClockCounterClockwise'
+	import Trash from 'phosphor-svelte/lib/Trash'
 
 	let { data }: { data: PageData } = $props()
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
@@ -88,11 +92,11 @@ import CategoryBar from '$lib/components/CategoryBar.svelte'
 			<div class="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
 				<h1 class="text-2xl font-bold text-heading md:text-3xl">{data.title}</h1>
 				<div class="flex gap-3 text-sm md:gap-4">
-					<a href="/know/{data.slug}/edit" class="text-link font-medium transition-colors hover:text-link-hover">Edit</a>
-					<a href="/know/{data.slug}/move" class="text-dim transition-colors hover:text-secondary">Move</a>
-					<a href="/know/{data.slug}/history" class="text-dim transition-colors hover:text-secondary">History</a>
+					<a href="/know/{data.slug}/edit" class="text-link font-medium transition-colors hover:text-link-hover flex items-center gap-1"><PencilSimple size={14} weight="fill" />Edit</a>
+					<a href="/know/{data.slug}/move" class="text-dim transition-colors hover:text-secondary flex items-center gap-1"><ArrowsLeftRight size={14} weight="fill" />Move</a>
+					<a href="/know/{data.slug}/history" class="text-dim transition-colors hover:text-secondary flex items-center gap-1"><ClockCounterClockwise size={14} weight="fill" />History</a>
 					{#if layoutData.user?.role === 'admin'}
-						<button onclick={deletePage} class="text-error transition-colors hover:text-error-hover">Delete</button>
+						<button onclick={deletePage} class="text-error transition-colors hover:text-error-hover flex items-center gap-1"><Trash size={14} weight="fill" />Delete</button>
 					{/if}
 				</div>
 			</div>
