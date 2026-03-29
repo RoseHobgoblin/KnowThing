@@ -12,6 +12,8 @@
 
 	const icons = { info: 'ℹ', success: '✓', error: '!' }
 
+	const variant = $derived(notification.type ?? 'info')
+
 	function onclick() {
 		expireNotification(notification.id)
 	}
@@ -24,7 +26,6 @@
 		notification.expired && 'animate-slide-out',
 	)}
 >
-	{@const variant = notification.type ?? 'info'}
 	<div class={cn('size-7 flex items-center justify-center rounded-md bg-raised shrink-0 text-sm font-bold', colors[variant].icon)}>
 		{#if notification.loading}
 			<span class="animate-spin">⟳</span>
