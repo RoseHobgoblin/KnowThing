@@ -30,7 +30,8 @@ export const load: PageServerLoad = async ({ params }) => {
 		}
 	}
 
-	const ast = parseWikitext(page.content)
+	// Use cached AST if available, otherwise parse fresh
+	const ast = (page.parsedAst as import('$lib/parser/types.js').WikiNode) ?? parseWikitext(page.content)
 	const cats = extractCategoriesFromAst(ast)
 
 	// Check if this page title matches a word in the wordbook

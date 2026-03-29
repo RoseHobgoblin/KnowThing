@@ -35,11 +35,11 @@ export const actions: Actions = {
 		if (!existing) throw error(404, 'Page not found')
 
 		const sizeBytes = new TextEncoder().encode(content).length
-		const plainText = await updatePageEffects(slug, content)
+		const { plainText, ast } = await updatePageEffects(slug, content)
 
 		await db
 			.update(pages)
-			.set({ content, plainText, sizeBytes, updatedAt: new Date() })
+			.set({ content, plainText, parsedAst: ast, sizeBytes, updatedAt: new Date() })
 			.where(eq(pages.slug, slug))
 
 		await db.insert(revisions).values({

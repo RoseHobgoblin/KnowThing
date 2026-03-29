@@ -45,7 +45,7 @@ export const PUT: RequestHandler = async (event) => {
 	if (!existing) throw error(404, 'Page not found')
 
 	const sizeBytes = new TextEncoder().encode(content).length
-	const plainText = await updatePageEffects(slug, content)
+	const { plainText, ast } = await updatePageEffects(slug, content)
 
 	const [updated] = await db
 		.update(pages)
@@ -53,6 +53,7 @@ export const PUT: RequestHandler = async (event) => {
 			title: title?.trim() || existing.title,
 			content,
 			plainText,
+			parsedAst: ast,
 			sizeBytes,
 			updatedAt: new Date(),
 		})

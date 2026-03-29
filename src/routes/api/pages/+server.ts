@@ -40,11 +40,11 @@ export const POST: RequestHandler = async (event) => {
 
 	const slug = (body as Record<string, unknown>).slug as string || slugify(title)
 	const sizeBytes = new TextEncoder().encode(content || '').length
-	const plainText = await updatePageEffects(slug, content || '')
+	const { plainText, ast } = await updatePageEffects(slug, content || '')
 
 	const [page] = await db
 		.insert(pages)
-		.values({ slug, title: title.trim(), content: content || '', plainText, sizeBytes })
+		.values({ slug, title: title.trim(), content: content || '', plainText, parsedAst: ast, sizeBytes })
 		.returning()
 
 	// Create initial revision

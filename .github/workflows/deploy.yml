@@ -18,5 +18,6 @@ jobs:
           script: |
             cd ~/KnowThing
             git pull origin main
-            docker compose -f docker-compose.prod.yml up --build -d
+            docker compose -f docker-compose.prod.yml build --no-cache app
+            docker compose -f docker-compose.prod.yml up -d
             docker image prune -f

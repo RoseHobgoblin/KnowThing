@@ -43,6 +43,7 @@ export const pages = pgTable(
 		title: text('title').notNull(),
 		content: text('content').notNull().default(''),
 		plainText: text('plain_text').notNull().default(''), // stripped markup for FTS
+		parsedAst: jsonb('parsed_ast'),
 		sizeBytes: integer('size_bytes').notNull().default(0),
 		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),

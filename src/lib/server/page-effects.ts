@@ -3,16 +3,16 @@ import { links, categories, mediaUsage } from './db/schema.js'
 import { eq } from 'drizzle-orm'
 import { parseWikitext, extractLinksFromAst, extractCategoriesFromAst, extractImagesFromAst, stripMarkup } from '$lib/parser/index.js'
 import { slugify } from '$lib/renderer/context.js'
+import type { WikiNode } from '$lib/parser/types.js'
 
 /**
  * After saving a page, update derived tables: links, categories, media_usage.
- * Returns the plain_text for FTS indexing.
+ * Returns the plain_text for FTS indexing and the parsed AST for caching.
  */
 export async function updatePageEffects(
 	pageSlug: string,
 	content: string,
-): Promise<string> {
-	// Extract metadata from wikitext (parse once, walk AST for each extraction)
+): Promise<{ plainText: string, ast: WikiNode }> {
 	const ast = parseWikitext(content)
 	const linkTargets = extractLinksFromAst(ast).map(t => slugify(t))
 	const cats = extractCategoriesFromAst(ast)
@@ -43,7 +43,7 @@ export async function updatePageEffects(
 		).onConflictDoNothing()
 	}
 
-	return plainText
+	return { plainText, ast }
 }
 
 /**
