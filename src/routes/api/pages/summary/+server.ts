@@ -41,13 +41,21 @@ export const GET: RequestHandler = async ({ url }) => {
 function extractSummary(wikitext: string, maxLength: number): string {
 	const lines = wikitext.split('\n')
 	let paragraph = ''
+	let insideTemplate = false
 
 	for (const line of lines) {
 		const trimmed = line.trim()
-		// Skip empty lines, headings, templates, categories, images, tables
+		// Track multi-line templates (infoboxes etc.)
+		if (trimmed.startsWith('{{') && !trimmed.endsWith('}}')) insideTemplate = true
+		if (insideTemplate) {
+			if (trimmed.endsWith('}}')) insideTemplate = false
+			continue
+		}
+		// Skip empty lines, headings, single-line templates, categories, images, tables
 		if (!trimmed) continue
 		if (trimmed.startsWith('=')) continue
 		if (trimmed.startsWith('{{') && trimmed.endsWith('}}')) continue
+		if (trimmed === '}}') continue
 		if (trimmed.startsWith('[[Category:')) continue
 		if (trimmed.startsWith('[[File:') || trimmed.startsWith('[[Image:')) continue
 		if (trimmed.startsWith('{|') || trimmed.startsWith('|}') || trimmed.startsWith('|') || trimmed.startsWith('!')) continue
@@ -63,6 +71,8 @@ function extractSummary(wikitext: string, maxLength: number): string {
 	let text = paragraph
 	// Strip '''bold''' and ''italic''
 	text = text.replaceAll(/'{2,3}/g, '')
+	// Strip [[File:...|...]] and [[Image:...|...]] entirely
+	text = text.replaceAll(/\[\[(?:File|Image):[^\]]*\]\]/gi, '')
 	// Convert [[link|display]] to display, [[link]] to link
 	text = text.replaceAll(/\[\[(?:[^|\]]*\|)?([^\]]*)\]\]/g, '$1')
 	// Strip {{templates}}

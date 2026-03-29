@@ -106,6 +106,9 @@ export const load: PageServerLoad = async () => {
 			if (!trimmed || trimmed.startsWith('=') || trimmed.startsWith('[[Category:') || trimmed.startsWith('[[File:') || trimmed.startsWith('{|') || trimmed.startsWith('|}') || trimmed.startsWith('|') || trimmed.startsWith('!') || trimmed.startsWith('*') || trimmed.startsWith('#') || trimmed.startsWith(':') || trimmed.startsWith(';') || trimmed === '}}') continue
 			featuredSummary = trimmed
 				.replaceAll(/'{2,3}/g, '')
+				// Strip [[File:...|...]] and [[Image:...|...]] entirely
+				.replaceAll(/\[\[(?:File|Image):[^\]]*\]\]/gi, '')
+				// Convert [[link|display]] to display, [[link]] to link
 				.replaceAll(/\[\[(?:[^|\]]*\|)?([^\]]*)\]\]/g, '$1')
 				.replaceAll(/\{\{[^}]*\}\}/g, '')
 				.replaceAll(/<ref[^>]*>[\S\s]*?<\/ref>/gi, '')
