@@ -13,8 +13,9 @@
 		'temperature', 'age', 'color',
 		'orbital_period', 'orbital_semimajor', 'semi_major_axis', 'eccentricity',
 		'orbital_eccentricity', 'periastron', 'apastron',
-		'apparent_magnitude', 'angular_diameter',
-		'mean_distance', 'companion', 'description',
+		'apparent_magnitude', 'apparent_magnitude_bright', 'apparent_magnitude_dim',
+		'angular_diameter', 'angular_diameter_max', 'angular_diameter_min',
+		'mean_distance', 'companion', 'description', 'from',
 	])
 
 	const title = getField(fields, 'name') ?? ''
@@ -36,13 +37,19 @@
 	const periastron = getField(fields, 'periastron') ?? ''
 	const apastron = getField(fields, 'apastron') ?? ''
 
+	// Single or range magnitude/diameter
 	const apparentMagnitude = getField(fields, 'apparent_magnitude') ?? ''
-	const meanDistance = getField(fields, 'mean_distance') ?? ''
+	const apparentMagnitudeBright = getField(fields, 'apparent_magnitude_bright') ?? ''
+	const apparentMagnitudeDim = getField(fields, 'apparent_magnitude_dim') ?? ''
 	const angularDiameter = getField(fields, 'angular_diameter') ?? ''
+	const angularDiameterMax = getField(fields, 'angular_diameter_max') ?? ''
+	const angularDiameterMin = getField(fields, 'angular_diameter_min') ?? ''
+
+	const meanDistance = getField(fields, 'mean_distance') ?? ''
 	const companion = getField(fields, 'companion') ?? ''
 
 	const hasOrbital = orbitalPeriod || semiMajorAxis || eccentricity || periastron || apastron
-	const hasObservation = apparentMagnitude || angularDiameter || meanDistance
+	const hasObservation = apparentMagnitude || apparentMagnitudeBright || angularDiameter || angularDiameterMax || meanDistance
 
 	const remaining = getRemainingFields(fields, KNOWN_KEYS)
 </script>
@@ -76,9 +83,25 @@
 
 	{#if hasObservation}
 		<InfoboxSection title="Observation" />
-		<InfoboxRow label="Apparent magnitude" value={apparentMagnitude} />
+		{#if apparentMagnitude}
+			<InfoboxRow label="Apparent magnitude" value={apparentMagnitude} />
+		{/if}
+		{#if apparentMagnitudeBright}
+			<InfoboxRow label="Apparent mag. (bright)" value={apparentMagnitudeBright} />
+		{/if}
+		{#if apparentMagnitudeDim}
+			<InfoboxRow label="Apparent mag. (dim)" value={apparentMagnitudeDim} />
+		{/if}
 		<InfoboxRow label="Mean distance" value={meanDistance} />
-		<InfoboxRow label="Angular diameter" value={angularDiameter} />
+		{#if angularDiameter}
+			<InfoboxRow label="Angular diameter" value={angularDiameter} />
+		{/if}
+		{#if angularDiameterMax}
+			<InfoboxRow label="Angular diameter (max)" value={angularDiameterMax} />
+		{/if}
+		{#if angularDiameterMin}
+			<InfoboxRow label="Angular diameter (min)" value={angularDiameterMin} />
+		{/if}
 	{/if}
 
 	{#if companion}
