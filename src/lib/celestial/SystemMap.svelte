@@ -11,6 +11,28 @@
 		moonCount?: number
 		parentStarId?: number | null
 	}
+
+	/** Map descriptive color names to hex values */
+	const COLOR_MAP: Record<string, string> = {
+		'yellow-white': '#FFF8DC',
+		'yellow': '#FFD700',
+		'white': '#F0F0F0',
+		'blue-white': '#CAE1FF',
+		'blue': '#6B8BCD',
+		'orange': '#E8820C',
+		'orange-red': '#CC4400',
+		'deep orange-red': '#B33000',
+		'red': '#CC3333',
+		'pale yellow': '#FAFAD2',
+	}
+
+	function resolveColor(color: string | null | undefined, fallback: string): string {
+		if (!color) return fallback
+		// Already a hex/rgb/css value
+		if (color.startsWith('#') || color.startsWith('rgb') || color.startsWith('var')) return color
+		// Try lookup
+		return COLOR_MAP[color.toLowerCase()] ?? fallback
+	}
 </script>
 
 <script lang="ts">
@@ -31,7 +53,7 @@
 
 	const SIZE = 800
 	const CENTER = SIZE / 2
-	const PADDING = 60
+	const PADDING = 80
 
 	// Primary star is the one with no parentStarId
 	const primaryStar = $derived(stars.find(s => !s.parentStarId) ?? stars[0])
@@ -57,15 +79,17 @@
 	})
 
 	// Sqrt scale: map AU to pixel radius
+	// Account for eccentricity offset so orbits don't clip
 	const maxAu = $derived(Math.max(...orbitingBodies.map(b => b.orbitAu), 1))
-	const maxVisualRadius = CENTER - PADDING
+	const maxEcc = $derived(Math.max(...orbitingBodies.map(b => b.ecc), 0))
+	const maxVisualRadius = $derived((CENTER - PADDING) / (1 + maxEcc * 0.5))
 
 	function auToPixels(au: number): number {
 		return (Math.sqrt(au) / Math.sqrt(maxAu)) * maxVisualRadius
 	}
 
 	// Body sizes by type
-	function bodyRadius(body: MapBody & { isStar: boolean }): number {
+	function bodyRadius(body: { isStar: boolean, bodyType: string }): number {
 		if (body.isStar) return 6
 		switch (body.bodyType) {
 			case 'planet': return 4
@@ -75,15 +99,8 @@
 		}
 	}
 
-	// Body color with fallbacks
-	function bodyColor(body: MapBody & { isStar: boolean }): string {
-		if (body.color) return body.color
-		if (body.isStar) return 'var(--color-accent)'
-		return 'var(--color-secondary)'
-	}
-
-	// Position each body on its orbit (spread evenly for visual clarity)
-	function bodyPosition(body: MapBody & { isStar: boolean, orbitAu: number, ecc: number }, index: number, total: number) {
+	// Position each body on its orbit
+	function bodyPosition(body: { orbitAu: number, ecc: number }, index: number, total: number) {
 		const a = auToPixels(body.orbitAu)
 		const b = a * Math.sqrt(1 - body.ecc * body.ecc)
 		const offset = a * body.ecc
@@ -110,7 +127,13 @@
 		goto(target)
 	}
 
-	// Star glow gradient ID
+	// Tooltip positioning — flip below if near top
+	const tipWidth = 150
+	const tipHeight = 56
+	const tipX = $derived(Math.min(Math.max(hoveredPos.x - tipWidth / 2, 4), SIZE - tipWidth - 4))
+	const tipAbove = $derived(hoveredPos.y - tipHeight - 12 > 0)
+	const tipY = $derived(tipAbove ? hoveredPos.y - tipHeight - 12 : hoveredPos.y + 16)
+
 	const glowId = 'star-glow'
 </script>
 
@@ -122,10 +145,9 @@
 	onmouseleave={() => hovered = null}
 >
 	<defs>
-		<!-- Star glow -->
 		<radialGradient id={glowId}>
-			<stop offset="0%" stop-color="var(--color-accent)" stop-opacity="0.3" />
-			<stop offset="60%" stop-color="var(--color-accent)" stop-opacity="0.05" />
+			<stop offset="0%" stop-color="var(--color-accent)" stop-opacity="0.25" />
+			<stop offset="50%" stop-color="var(--color-accent)" stop-opacity="0.04" />
 			<stop offset="100%" stop-color="var(--color-accent)" stop-opacity="0" />
 		</radialGradient>
 	</defs>
@@ -148,9 +170,9 @@
 		/>
 	{/each}
 
-	<!-- Star glow effect -->
+	<!-- Star glow -->
 	{#if primaryStar}
-		<circle cx={CENTER} cy={CENTER} r={40} fill="url(#{glowId})" />
+		<circle cx={CENTER} cy={CENTER} r={35} fill="url(#{glowId})" />
 	{/if}
 
 	<!-- Primary star -->
@@ -159,12 +181,11 @@
 			cx={CENTER}
 			cy={CENTER}
 			r={10}
-			fill={primaryStar.color || 'var(--color-accent)'}
+			fill={resolveColor(primaryStar.color, '#FFE088')}
 			class="cursor-pointer"
-			onmouseenter={() => handleHover({ ...primaryStar, isStar: true, orbitAu: 0, ecc: 0 }, { x: CENTER, y: CENTER - 20 })}
+			onmouseenter={() => handleHover({ ...primaryStar, isStar: true, orbitAu: 0, ecc: 0 }, { x: CENTER, y: CENTER - 16 })}
 			onclick={() => handleClick(primaryStar)}
 		/>
-		<!-- Star label -->
 		<text
 			x={CENTER}
 			y={CENTER + 22}
@@ -180,18 +201,16 @@
 		{@const pos = bodyPosition(body, i, orbitingBodies.length)}
 		{@const r = bodyRadius(body)}
 
-		<!-- Body dot -->
 		<circle
 			cx={pos.x}
 			cy={pos.y}
 			{r}
-			fill={bodyColor(body)}
+			fill={resolveColor(body.color, body.isStar ? '#FFE088' : 'var(--color-secondary)')}
 			class="cursor-pointer"
-			onmouseenter={() => handleHover(body, { x: pos.x, y: pos.y - r - 8 })}
+			onmouseenter={() => handleHover(body, { x: pos.x, y: pos.y })}
 			onclick={() => handleClick(body)}
 		/>
 
-		<!-- Label -->
 		<text
 			x={pos.x}
 			y={pos.y + r + 12}
@@ -202,7 +221,6 @@
 			class="transition-colors pointer-events-none"
 		>{body.name}</text>
 
-		<!-- Moon count annotation -->
 		{#if body.moonCount && body.moonCount > 0}
 			<text
 				x={pos.x + r + 4}
@@ -217,11 +235,6 @@
 
 	<!-- Tooltip -->
 	{#if hovered}
-		{@const tipWidth = 140}
-		{@const tipHeight = 52}
-		{@const tipX = Math.min(Math.max(hoveredPos.x - tipWidth / 2, 4), SIZE - tipWidth - 4)}
-		{@const tipY = hoveredPos.y - tipHeight - 8}
-
 		<foreignObject x={tipX} y={tipY} width={tipWidth} height={tipHeight}>
 			<div class="bg-surface border border-border-strong p-2 text-xs shadow-lg">
 				<div class="font-semibold text-heading">{hovered.name}</div>
