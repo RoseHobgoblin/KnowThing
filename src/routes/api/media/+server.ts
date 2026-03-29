@@ -38,7 +38,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			hasThumb300: media.hasThumb300,
 			hasThumb600: media.hasThumb600,
 			uploadedAt: media.uploadedAt,
-			usageCount: sql<number>`(SELECT COUNT(*) FROM media_usage WHERE filename = ${media.filename})::int`.as('usage_count'),
+			usageCount: sql<number>`(SELECT COUNT(*) FROM content_media_usage WHERE filename = ${media.filename})::int`.as('usage_count'),
 		})
 		.from(media)
 		.$dynamic()
@@ -48,7 +48,7 @@ export const GET: RequestHandler = async ({ url }) => {
 	}
 
 	if (unused) {
-		query = query.where(sql`NOT EXISTS (SELECT 1 FROM media_usage WHERE filename = ${media.filename})`)
+		query = query.where(sql`NOT EXISTS (SELECT 1 FROM content_media_usage WHERE filename = ${media.filename})`)
 	}
 
 	switch (sort) {
