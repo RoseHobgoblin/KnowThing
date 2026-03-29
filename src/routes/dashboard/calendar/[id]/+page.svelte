@@ -12,6 +12,7 @@
 	let epochOffset = $state(sd.epoch_offset ?? 0)
 	let firstWeekDay = $state(sd.first_week_day ?? 0)
 	let yearOffset = $state(sd.year_offset ?? 0)
+	let dayLengthSeconds = $state(sd.day_length_seconds ?? 86_400)
 	let displayMoons = $state(sd.display_moons ?? false)
 
 	// Editable arrays
@@ -36,6 +37,19 @@
 		})),
 	)
 
+	let leapDays = $state<Array<{ name: string, month_index: number, after_day: number, interval: number, ignore: string, exclusive: string, intercalary: boolean, offset: number }>>(
+		(sd.leap_days || []).map((ld: any) => ({
+			name: ld.name || '',
+			month_index: ld.month_index ?? 0,
+			after_day: ld.after_day ?? 0,
+			interval: ld.interval ?? 4,
+			ignore: (ld.ignore || []).join(', '),
+			exclusive: (ld.exclusive || []).join(', '),
+			intercalary: ld.intercalary ?? false,
+			offset: ld.offset ?? 0,
+		})),
+	)
+
 	let saving = $state(false)
 	let saveMessage = $state('')
 
@@ -47,7 +61,16 @@
 			first_week_day: firstWeekDay,
 			weekdays: weekdays.map(w => ({ name: w.name, abbreviation: w.abbreviation || undefined })),
 			months: months.map(m => ({ name: m.name, length: m.length, month_type: m.month_type, short_name: m.short_name || undefined })),
-			leap_days: sd.leap_days || [], // keep existing leap days (complex to edit inline)
+			leap_days: leapDays.map(ld => ({
+				name: ld.name,
+				month_index: ld.month_index,
+				after_day: ld.after_day,
+				interval: ld.interval,
+				ignore: ld.ignore ? ld.ignore.split(',').map(s => Number.parseInt(s.trim())).filter(n => !Number.isNaN(n)) : [],
+				exclusive: ld.exclusive ? ld.exclusive.split(',').map(s => Number.parseInt(s.trim())).filter(n => !Number.isNaN(n)) : [],
+				intercalary: ld.intercalary,
+				offset: ld.offset,
+			})),
 			moons: moons.map(m => ({ name: m.name, cycle: m.cycle, offset: m.offset, face_color: m.face_color, shadow_color: m.shadow_color })),
 			eras: eras.map(e => ({ name: e.name, start_year: e.start_year, end_year: e.end_year ? Number.parseInt(e.end_year) : null, format: e.format, reverse_numbering: e.reverse_numbering })),
 			seasons: seasons.map(s => ({
@@ -57,6 +80,7 @@
 			display_moons: displayMoons,
 			year_offset: yearOffset,
 			epoch_offset: epochOffset,
+			day_length_seconds: dayLengthSeconds,
 		}
 
 		const res = await fetch(`/api/calendar/${data.calendar.id}`, {
@@ -120,6 +144,10 @@
 				<input type="number" bind:value={yearOffset} class="w-full {inputClass}" />
 			</div>
 			<div>
+				<label class={labelClass}>Day Length <span class="text-faint font-normal">(seconds — 86400 = 24h, 72000 = 20h)</span></label>
+				<input type="number" bind:value={dayLengthSeconds} min={1} class="w-full {inputClass}" />
+			</div>
+			<div>
 				<label class={labelClass}>First Weekday Index</label>
 				<input type="number" bind:value={firstWeekDay} min={0} class="w-full {inputClass}" />
 			</div>
@@ -151,6 +179,65 @@
 				<button onclick={() => months = months.filter((_, idx) => idx !== index)} class="text-error text-xs">×</button>
 			</div>
 		{/each}
+	</section>
+
+	<!-- Leap Days -->
+	<section class="bg-surface rounded-lg border border-border p-4 space-y-3">
+		<div class="flex items-center justify-between">
+			<h2 class="text-sm font-semibold text-heading">Leap Days</h2>
+			<button onclick={() => leapDays = [...leapDays, { name: '', month_index: 0, after_day: 0, interval: 4, ignore: '', exclusive: '', intercalary: false, offset: 0 }]} class="text-xs text-link hover:underline">+ Add</button>
+		</div>
+		{#if leapDays.length === 0}
+			<p class="text-xs text-faint">No leap days. Click + Add to create one.</p>
+		{/if}
+		{#each leapDays as ld, index}
+			<div class="border border-border-subtle rounded-md p-3 space-y-2">
+				<div class="flex gap-2 items-center">
+					<input type="text" bind:value={ld.name} placeholder="Name (e.g. Leap Day)" class="flex-1 {inputClass}" />
+					<button onclick={() => leapDays = leapDays.filter((_, idx) => idx !== index)} class="text-error text-xs">×</button>
+				</div>
+				<div class="grid grid-cols-2 gap-2 md:grid-cols-4">
+					<div>
+						<label class={labelClass}>After month</label>
+						<select bind:value={ld.month_index} class="w-full {inputClass}">
+							{#each months as m, mi}
+								<option value={mi}>{m.name || `Month ${mi + 1}`}</option>
+							{/each}
+						</select>
+					</div>
+					<div>
+						<label class={labelClass}>After day</label>
+						<input type="number" bind:value={ld.after_day} min={0} class="w-full {inputClass}" />
+					</div>
+					<div>
+						<label class={labelClass}>Every N years</label>
+						<input type="number" bind:value={ld.interval} min={1} class="w-full {inputClass}" />
+					</div>
+					<div>
+						<label class={labelClass}>Year offset</label>
+						<input type="number" bind:value={ld.offset} class="w-full {inputClass}" />
+					</div>
+				</div>
+				<div class="grid grid-cols-2 gap-2">
+					<div>
+						<label class={labelClass}>Except years divisible by <span class="text-faint font-normal">(comma-separated)</span></label>
+						<input type="text" bind:value={ld.ignore} placeholder="e.g. 100" class="w-full {inputClass}" />
+					</div>
+					<div>
+						<label class={labelClass}>But include years divisible by <span class="text-faint font-normal">(overrides exceptions)</span></label>
+						<input type="text" bind:value={ld.exclusive} placeholder="e.g. 400" class="w-full {inputClass}" />
+					</div>
+				</div>
+				<label class="flex items-center gap-2 text-xs text-secondary">
+					<input type="checkbox" bind:checked={ld.intercalary} class="rounded-sm" />
+					Intercalary (doesn't advance weekday cycle)
+				</label>
+			</div>
+		{/each}
+		<p class="text-[11px] text-faint leading-snug">
+			Example — Gregorian leap year: interval = 4, except 100, but include 400.
+			The day is inserted after the specified day of the specified month.
+		</p>
 	</section>
 
 	<!-- Weekdays -->

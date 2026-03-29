@@ -1,29 +1,36 @@
 import type { CalendarConfig, CalendarDate, ResolvedDate } from './types.js'
 import { absoluteDay, dateFromAbsolute, resolveDisplay } from './date-math.js'
 
-const MS_PER_DAY = 86_400_000
+const DEFAULT_DAY_SECONDS = 86_400
+
+/** Get ms per day for a calendar config */
+function msPerDay(config: CalendarConfig): number {
+	return (config.static_data.day_length_seconds ?? DEFAULT_DAY_SECONDS) * 1000
+}
 
 /** Convert Unix timestamp (ms) to absolute day number in this calendar */
-export function unixToAbsoluteDay(timestamp: number, epochOffset: number): number {
-	return Math.floor(timestamp / MS_PER_DAY) + epochOffset
+export function unixToAbsoluteDay(timestamp: number, epochOffset: number, dayLengthSeconds = DEFAULT_DAY_SECONDS): number {
+	return Math.floor(timestamp / (dayLengthSeconds * 1000)) + epochOffset
 }
 
 /** Convert absolute day number back to Unix timestamp (ms, midnight UTC) */
-export function absoluteDayToUnix(absDay: number, epochOffset: number): number {
-	return (absDay - epochOffset) * MS_PER_DAY
+export function absoluteDayToUnix(absDay: number, epochOffset: number, dayLengthSeconds = DEFAULT_DAY_SECONDS): number {
+	return (absDay - epochOffset) * (dayLengthSeconds * 1000)
 }
 
 /** Get current in-world date from Date.now() */
 export function now(config: CalendarConfig): CalendarDate {
 	const epochOffset = config.static_data.epoch_offset ?? 0
-	const absDay = unixToAbsoluteDay(Date.now(), epochOffset)
+	const dayLengthSeconds = config.static_data.day_length_seconds ?? DEFAULT_DAY_SECONDS
+	const absDay = unixToAbsoluteDay(Date.now(), epochOffset, dayLengthSeconds)
 	return dateFromAbsolute(config.static_data, absDay)
 }
 
 /** Unix timestamp (ms) → fully resolved calendar date */
 export function fromTimestamp(timestamp: number, config: CalendarConfig): ResolvedDate {
 	const epochOffset = config.static_data.epoch_offset ?? 0
-	const absDay = unixToAbsoluteDay(timestamp, epochOffset)
+	const dayLengthSeconds = config.static_data.day_length_seconds ?? DEFAULT_DAY_SECONDS
+	const absDay = unixToAbsoluteDay(timestamp, epochOffset, dayLengthSeconds)
 	const date = dateFromAbsolute(config.static_data, absDay)
 	return resolveDisplay(config, date)
 }
@@ -31,8 +38,9 @@ export function fromTimestamp(timestamp: number, config: CalendarConfig): Resolv
 /** CalendarDate → Unix timestamp (ms) */
 export function toTimestamp(date: CalendarDate, config: CalendarConfig): number {
 	const epochOffset = config.static_data.epoch_offset ?? 0
+	const dayLengthSeconds = config.static_data.day_length_seconds ?? DEFAULT_DAY_SECONDS
 	const absDay = absoluteDay(config.static_data, date)
-	return absoluteDayToUnix(absDay, epochOffset)
+	return absoluteDayToUnix(absDay, epochOffset, dayLengthSeconds)
 }
 
 /** Get current fully resolved date (for magic words, display) */

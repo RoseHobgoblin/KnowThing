@@ -28,6 +28,9 @@ export interface StaticCalendarData {
 	 *  Positive = calendar year 1 is before 1970. Negative = after 1970.
 	 *  Example: if year 1 day 1 = 1970-01-01, offset = 0. */
 	epoch_offset: number
+	/** Length of one calendar day in real seconds. Default: 86400 (24 Earth-hours).
+	 *  Use 72000 for a 20-hour day, 43200 for a 12-hour day, etc. */
+	day_length_seconds?: number
 }
 
 export interface Weekday {

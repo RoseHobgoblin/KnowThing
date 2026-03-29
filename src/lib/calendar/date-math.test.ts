@@ -303,3 +303,49 @@ describe('getMonthGrid', () => {
 		expect(grid.totalDays).toBe(31)
 	})
 })
+
+// ── Variable day length ───────────────────────────────────────────────────
+
+describe('variable day length', () => {
+	// A calendar with 20-hour days (72000 seconds)
+	const SHORT_DAY_DATA: StaticCalendarData = {
+		...TEST_DATA,
+		day_length_seconds: 72_000,
+	}
+
+	const SHORT_DAY_CONFIG: CalendarConfig = {
+		name: 'Zhevra Calendar',
+		description: 'Uses 20-hour days',
+		primary: false,
+		static_data: SHORT_DAY_DATA,
+	}
+
+	it('date math is unaffected by day_length_seconds', () => {
+		// absoluteDay and dateFromAbsolute work in calendar days, not real time
+		// So they should be identical regardless of day_length_seconds
+		const date: CalendarDate = { year: 1, month: 1, day: 15 }
+		const abs = absoluteDay(SHORT_DAY_DATA, date)
+		expect(abs).toBe(absoluteDay(TEST_DATA, date))
+
+		const roundTrip = dateFromAbsolute(SHORT_DAY_DATA, abs)
+		expect(roundTrip).toEqual(date)
+	})
+
+	it('know-date converts timestamps using day length', async () => {
+		const { unixToAbsoluteDay, absoluteDayToUnix } = await import('./know-date.js')
+
+		// With 86400s day: 86400000ms = 1 day
+		expect(unixToAbsoluteDay(86_400_000, 0, 86_400)).toBe(1)
+
+		// With 72000s day: 72000000ms = 1 day
+		expect(unixToAbsoluteDay(72_000_000, 0, 72_000)).toBe(1)
+
+		// 86400000ms at 72000s/day = 1.2 days = day 1 (floor)
+		expect(unixToAbsoluteDay(86_400_000, 0, 72_000)).toBe(1)
+
+		// Round-trip
+		const ts = absoluteDayToUnix(10, 0, 72_000)
+		expect(ts).toBe(10 * 72_000_000)
+		expect(unixToAbsoluteDay(ts, 0, 72_000)).toBe(10)
+	})
+})

@@ -231,7 +231,7 @@ export function seasonForDate(data: StaticCalendarData, date: CalendarDate): Sea
 		})
 
 		// Find the latest season that starts on or before the current date
-		let result: Season | null = sorted.at(-1) ?? null // wrap: last season of previous year
+		let result: Season | null = sorted.at(-1) ?? null
 		for (const season of sorted) {
 			const t = season.timing as { type: 'dated', month: number, day: number }
 			// t.month is 0-indexed, date.month is 1-indexed
@@ -303,7 +303,8 @@ export function phaseName(phase: number): string {
 /** Resolve the current in-world date from Date.now() + epoch_offset */
 export function resolveCalendarDate(config: CalendarConfig): CalendarDate {
 	const epochOffset = config.static_data.epoch_offset ?? 0
-	const absDay = Math.floor(Date.now() / 86_400_000) + epochOffset
+	const dayLengthMs = (config.static_data.day_length_seconds ?? 86_400) * 1000
+	const absDay = Math.floor(Date.now() / dayLengthMs) + epochOffset
 	return dateFromAbsolute(config.static_data, absDay)
 }
 

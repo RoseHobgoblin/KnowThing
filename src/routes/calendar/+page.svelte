@@ -50,7 +50,11 @@
 			{@const resolved = resolveDisplay(selectedCalendar)}
 			<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
 				<!-- Calendar widget -->
-				<CalendarWidget config={selectedCalendar} />
+				<CalendarWidget
+					config={selectedCalendar}
+					year={data.initialYear ?? undefined}
+					monthIndex={data.initialMonth != null ? data.initialMonth - 1 : undefined}
+				/>
 
 				<!-- Current date info -->
 				<div class="bg-page border border-border-strong rounded-lg p-4">

@@ -3,7 +3,7 @@ import { db } from '$lib/server/db/index.js'
 import { calendars } from '$lib/server/db/schema.js'
 import type { CalendarConfig } from '$lib/calendar/types.js'
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async ({ url }) => {
 	const allCalendars = await db
 		.select()
 		.from(calendars)
@@ -30,5 +30,14 @@ export const load: PageServerLoad = async () => {
 
 	const primary = configs.find(c => c.primary) ?? null
 
-	return { calendars: configs, primary }
+	// Read optional query params for initial navigation
+	const yearParam = url.searchParams.get('year')
+	const monthParam = url.searchParams.get('month')
+
+	return {
+		calendars: configs,
+		primary,
+		initialYear: yearParam ? Number.parseInt(yearParam) : null,
+		initialMonth: monthParam ? Number.parseInt(monthParam) : null,
+	}
 }
