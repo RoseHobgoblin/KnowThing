@@ -121,7 +121,7 @@
 		aria-autocomplete="list"
 		aria-activedescendant={selectedIndex >= 0 ? `search-result-${selectedIndex}` : undefined}
 		class="
-			w-full border border-border rounded-lg px-3 py-1.5 text-sm bg-page transition-colors
+			w-full border border-border px-3 py-1.5 text-sm bg-page transition-colors
 			focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent-border
 		"
 	/>
@@ -129,7 +129,7 @@
 	{#if showResults && results.length > 0}
 		<div
 			class="
-				absolute top-full inset-x-0 bg-surface border border-border rounded-b-lg shadow-lg z-50 max-h-80
+				absolute top-full inset-x-0 bg-surface border border-border shadow-lg z-50 max-h-80
 				overflow-y-auto mt-0.5
 			"
 			role="listbox"

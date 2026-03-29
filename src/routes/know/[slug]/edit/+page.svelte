@@ -27,7 +27,7 @@
 				<button
 					type="button"
 					onclick={() => (showPreview = !showPreview)}
-					class="px-3 py-1 rounded-sm border border-border text-xs text-secondary hover:bg-page {showPreview ? 'bg-accent-subtle border-accent-border text-link' : ''}"
+					class="px-3 py-1 border border-border text-xs text-secondary hover:bg-page {showPreview ? 'bg-accent-subtle border-accent-border text-link' : ''}"
 				>
 					{showPreview ? 'Hide preview' : 'Show preview'}
 				</button>
@@ -68,7 +68,7 @@
 				type="text"
 				placeholder="Edit summary (optional)"
 				class="
-					flex-1 border border-border rounded-lg px-3 py-2 text-sm bg-page
+					flex-1 border border-border px-3 py-2 text-sm bg-page
 					focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent-border
 				"
 			/>
@@ -76,7 +76,7 @@
 				<button
 					type="submit"
 					class="
-						flex-1 bg-accent text-surface px-5 py-2 rounded-lg font-medium transition-colors text-sm
+						flex-1 bg-accent text-surface px-5 py-2 font-medium transition-colors text-sm
 						sm:flex-none
 						hover:bg-accent-hover
 					"
@@ -86,7 +86,7 @@
 				<a
 					href="/know/{data.slug}"
 					class="
-						flex-1 text-center px-5 py-2 rounded-lg border border-border text-secondary text-sm
+						flex-1 text-center px-5 py-2 border border-border text-secondary text-sm
 						sm:flex-none
 						hover:bg-page
 					"

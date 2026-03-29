@@ -93,7 +93,7 @@
 	}
 
 	const posColors = POS_COLORS
-	const inputClass = 'w-full px-3 py-1.5 border border-border-strong rounded-lg text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent'
+	const inputClass = 'w-full px-3 py-1.5 border border-border-strong text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent'
 </script>
 
 <svelte:head>
@@ -117,7 +117,7 @@
 		{@const relations = hom.relations}
 
 		<!-- Headword card -->
-		<article class="bg-surface rounded-lg border border-border overflow-hidden">
+		<article class="bg-surface border border-border overflow-hidden">
 			<div class="p-6">
 				<!-- Header -->
 				<div class="flex items-start justify-between mb-1">
@@ -172,7 +172,7 @@
 									<span class="text-xs font-bold text-faint">{index + 1}.</span>
 								{/if}
 								{#if def.partOfSpeech}
-									<span class="px-1.5 py-0.5 rounded-sm text-[10px] font-medium {posColors[def.partOfSpeech] || 'bg-raised text-secondary'}">{def.partOfSpeech}</span>
+									<span class="px-1.5 py-0.5 text-[10px] font-medium {posColors[def.partOfSpeech] || 'bg-raised text-secondary'}">{def.partOfSpeech}</span>
 								{/if}
 								{#if isAuthenticated && defs.length > 1}
 									<button onclick={() => deleteSense(entry.id, def.id)} class="
@@ -198,13 +198,13 @@
 				<!-- Add sense -->
 				{#if isAuthenticated}
 					{#if addingSenseFor === entry.id}
-						<form onsubmit={e => addSense(entry.id, e)} class="mt-4 p-3 bg-page rounded-lg border border-border space-y-2">
+						<form onsubmit={e => addSense(entry.id, e)} class="mt-4 p-3 bg-page border border-border space-y-2">
 							{#if senseError}
-								<div class="p-2 bg-error-bg border border-error-border text-error text-xs rounded-md">{senseError}</div>
+								<div class="p-2 bg-error-bg border border-error-border text-error text-xs">{senseError}</div>
 							{/if}
 							<div class="flex gap-2">
 								<select bind:value={newPos} class="
-									px-2 py-1.5 border border-border-strong rounded-lg text-xs bg-surface
+									px-2 py-1.5 border border-border-strong text-xs bg-surface
 									focus:ring-2 focus:ring-accent
 								">
 									<option value="">Part of speech</option>
@@ -220,7 +220,7 @@
 							</div>
 							<div class="flex gap-2">
 								<button type="submit" disabled={submittingSense} class="
-									px-3 py-1 bg-accent text-surface text-sm rounded-md
+									px-3 py-1 bg-accent text-surface text-sm
 									hover:bg-accent-hover
 									disabled:opacity-50
 								">Add</button>
@@ -272,7 +272,7 @@
 		</article>
 
 		<!-- Etymology & Relations (per homograph) -->
-		<div class="bg-surface rounded-lg border border-border p-6">
+		<div class="bg-surface border border-border p-6">
 			<EtymologySection
 				entryId={entry.id}
 				direct={relations.direct}

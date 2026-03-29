@@ -185,10 +185,10 @@
 		return pattern.replaceAll('{stem}', previewStem)
 	}
 
-	const inputClass = 'px-3 py-1.5 border border-border-strong rounded-lg text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent'
+	const inputClass = 'px-3 py-1.5 border border-border-strong text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent'
 </script>
 
-<div class="bg-surface rounded-lg border border-border p-4">
+<div class="bg-surface border border-border p-4">
 	<div class="flex items-center justify-between mb-3">
 		<div class="flex items-center gap-2">
 			<h3 class="text-sm font-semibold text-body">Inflection System</h3>
@@ -201,7 +201,7 @@
 	</div>
 
 	{#if showHelp}
-		<div class="mb-4 p-3 bg-page rounded-lg border border-border-subtle text-xs text-secondary space-y-2">
+		<div class="mb-4 p-3 bg-page border border-border-subtle text-xs text-secondary space-y-2">
 			<p><strong>Dimensions</strong> are axes of variation — like <em>Case</em> (nominative, accusative...) or <em>Number</em> (singular, plural). Each dimension applies to a part of speech.</p>
 			<p><strong>Sort order</strong> controls table layout: <code class="bg-surface-dim px-1 rounded">0</code> = table rows, <code class="bg-surface-dim px-1 rounded">1</code> = columns, <code class="bg-surface-dim px-1 rounded">2+</code> = grouped sections.</p>
 			<p><strong>Paradigm classes</strong> group words that inflect the same way (e.g. "Class I regular nouns").</p>
@@ -212,7 +212,7 @@
 
 	<!-- Add dimension form -->
 	{#if showAddDim}
-		<form onsubmit={addDimension} class="p-3 bg-page rounded-lg border border-border mb-3 space-y-2">
+		<form onsubmit={addDimension} class="p-3 bg-page border border-border mb-3 space-y-2">
 			<div class="text-xs font-medium text-dim mb-1">New dimension</div>
 			<div class="flex gap-2 flex-wrap">
 				<select bind:value={newDimPos} class={inputClass}>
@@ -226,7 +226,7 @@
 			<input type="text" bind:value={newDimValues} placeholder="Values, comma-separated (e.g. nominative, accusative, genitive, dative)" required class="w-full {inputClass}" />
 			<div class="flex gap-2">
 				<button type="submit" disabled={addingDim} class="
-					px-3 py-1 bg-accent text-surface text-xs rounded-md
+					px-3 py-1 bg-accent text-surface text-xs
 					hover:bg-accent-hover
 					disabled:opacity-50
 				">Add</button>
@@ -237,7 +237,7 @@
 
 	<!-- Add class form -->
 	{#if showAddClass}
-		<form onsubmit={addClass} class="p-3 bg-page rounded-lg border border-border mb-3 space-y-2">
+		<form onsubmit={addClass} class="p-3 bg-page border border-border mb-3 space-y-2">
 			<div class="text-xs font-medium text-dim mb-1">New paradigm class</div>
 			<div class="flex gap-2 flex-wrap">
 				<select bind:value={newClassPos} class={inputClass}>
@@ -250,7 +250,7 @@
 			<input type="text" bind:value={newClassDesc} placeholder="Description (optional)" class="w-full {inputClass}" />
 			<div class="flex gap-2">
 				<button type="submit" disabled={addingClass} class="
-					px-3 py-1 bg-accent text-surface text-xs rounded-md
+					px-3 py-1 bg-accent text-surface text-xs
 					hover:bg-accent-hover
 					disabled:opacity-50
 				">Add</button>
@@ -304,14 +304,14 @@
 
 									<!-- Inline rules editor -->
 									{#if editingClassId === cls.id}
-										<div class="mt-2 p-3 bg-page rounded-lg border border-border">
+										<div class="mt-2 p-3 bg-page border border-border">
 											{#if loadingRules}
 												<p class="text-xs text-faint">Loading rules...</p>
 											{:else}
 												<div class="flex items-center gap-2 mb-3">
 													<span class="text-xs text-dim">Preview stem:</span>
 													<input type="text" bind:value={previewStem} class="
-														w-32 px-2 py-1 border border-border-strong rounded-sm text-sm bg-surface font-mono
+														w-32 px-2 py-1 border border-border-strong text-sm bg-surface font-mono
 													" />
 												</div>
 
@@ -334,7 +334,7 @@
 																			bind:value={editingRules[index].pattern}
 																			placeholder={'{stem}n'}
 																			class="
-																				w-full px-2 py-1 border border-border-strong rounded-sm text-sm bg-surface
+																				w-full px-2 py-1 border border-border-strong text-sm bg-surface
 																				font-mono
 																			"
 																		/>
@@ -355,7 +355,7 @@
 														onclick={saveRules}
 														disabled={savingRules}
 														class="
-															px-3 py-1 bg-accent text-surface text-xs rounded-md
+															px-3 py-1 bg-accent text-surface text-xs
 															hover:bg-accent-hover
 															disabled:opacity-50
 														"
@@ -366,7 +366,7 @@
 												</div>
 
 												<p class="text-[10px] text-faint mt-2">
-													Use <code class="bg-surface-dim px-1 rounded-sm">{'{'+'stem}'}</code> as placeholder. Example: <code class="bg-surface-dim px-1 rounded-sm">{'{'+'stem}n'}</code> produces "{previewStem}n"
+													Use <code class="bg-surface-dim px-1">{'{'+'stem}'}</code> as placeholder. Example: <code class="bg-surface-dim px-1">{'{'+'stem}n'}</code> produces "{previewStem}n"
 												</p>
 											{/if}
 										</div>

@@ -124,7 +124,7 @@
 	}
 </script>
 
-<div class="border border-border-strong rounded-sm overflow-hidden h-full flex flex-col">
+<div class="border border-border-strong overflow-hidden h-full flex flex-col">
 	<!-- Toolbar -->
 	<div class="flex items-center gap-0.5 px-2 py-1.5 bg-page border-b border-border flex-wrap">
 		{#each toolbar as button}
@@ -133,7 +133,7 @@
 				onclick={button.action}
 				title={button.title}
 				class="
-					px-2 py-1 text-xs font-mono text-secondary rounded-sm transition-colors min-w-8 text-center
+					px-2 py-1 text-xs font-mono text-secondary transition-colors min-w-8 text-center
 					hover:bg-accent-light hover:text-accent-text
 				"
 			>

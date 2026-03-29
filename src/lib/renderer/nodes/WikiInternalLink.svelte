@@ -46,14 +46,4 @@
 	onmouseenter={onMouseEnter}
 	onmousemove={onMouseMove}
 	onmouseleave={onMouseLeave}
->
-	{#if display}
-		{#each display as child}<WikiNodeComponent node={child} />{/each}
-	{:else}
-		{target}
-	{/if}
-</a>
-
-{#if showPreview}
-	<LinkPreview {slug} x={previewX} y={previewY} />
-{/if}
+>{#if display}{#each display as child}<WikiNodeComponent node={child} />{/each}{:else}{target}{/if}</a>{#if showPreview}<LinkPreview {slug} x={previewX} y={previewY} />{/if}

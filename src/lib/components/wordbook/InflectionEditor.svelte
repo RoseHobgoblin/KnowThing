@@ -110,11 +110,11 @@
 		generateCellKeys(inflection.dimensions.map(d => ({ values: d.values, sortOrder: d.sortOrder })))
 	)
 
-	const inputClass = 'px-2 py-1 border border-border-strong rounded-md text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent'
+	const inputClass = 'px-2 py-1 border border-border-strong text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent'
 </script>
 
 {#if editing}
-	<div class="mt-4 p-4 bg-raised rounded-lg border border-border space-y-3">
+	<div class="mt-4 p-4 bg-raised border border-border space-y-3">
 		<div class="flex items-center justify-between">
 			<h4 class="text-xs font-medium uppercase tracking-wide text-dim">Set up inflection</h4>
 			<div class="flex gap-2">
@@ -126,7 +126,7 @@
 		</div>
 
 		{#if error}
-			<div class="p-2 bg-error-bg border border-error-border text-error rounded-md text-xs">{error}</div>
+			<div class="p-2 bg-error-bg border border-error-border text-error text-xs">{error}</div>
 		{/if}
 
 		<div class="flex gap-3 flex-wrap">
@@ -142,7 +142,7 @@
 					</select>
 					<p class="text-[10px] text-faint mt-1">Select a class to auto-generate forms from its rules.</p>
 				{:else}
-					<div class="p-2 bg-amber-50 border border-amber-200 rounded-md text-xs text-amber-800">
+					<div class="p-2 bg-amber-50 border border-amber-200 text-xs text-amber-800">
 						{#if availableClasses.length > 0}
 							No paradigm classes for <strong>{partOfSpeech || 'this part of speech'}</strong>.
 							Classes exist for other parts of speech — check the
@@ -204,7 +204,7 @@
 		<button
 			onclick={save}
 			disabled={saving}
-			class="px-4 py-1.5 bg-accent text-surface text-sm rounded-md font-medium transition-colors hover:bg-accent-hover disabled:opacity-50"
+			class="px-4 py-1.5 bg-accent text-surface text-sm font-medium transition-colors hover:bg-accent-hover disabled:opacity-50"
 		>
 			{saving ? 'Saving...' : 'Save Inflection'}
 		</button>

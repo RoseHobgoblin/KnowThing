@@ -65,7 +65,7 @@
 	<div class="flex items-center justify-between">
 		<h1 class="text-xl font-bold text-heading">Site Settings</h1>
 		<button onclick={save} disabled={saving} class="
-			px-5 py-2 bg-accent text-surface text-sm rounded-md font-medium transition-colors
+			px-5 py-2 bg-accent text-surface text-sm font-medium transition-colors
 			hover:bg-accent-hover disabled:opacity-50
 		">
 			{saving ? 'Saving...' : 'Save changes'}
@@ -73,7 +73,7 @@
 	</div>
 
 	<!-- Identity -->
-	<section class="bg-surface rounded-lg border border-border p-5 space-y-4">
+	<section class="bg-surface border border-border p-5 space-y-4">
 		<div>
 			<h2 class="text-sm font-semibold text-heading">Identity</h2>
 			<p class="text-xs text-faint mt-0.5">The name and branding of your site.</p>
@@ -87,7 +87,7 @@
 	</section>
 
 	<!-- Navigation Labels -->
-	<section class="bg-surface rounded-lg border border-border p-5 space-y-4">
+	<section class="bg-surface border border-border p-5 space-y-4">
 		<div>
 			<h2 class="text-sm font-semibold text-heading">Navigation Labels</h2>
 			<p class="text-xs text-faint mt-0.5">Customise what the nav bar links are called.</p>
@@ -103,21 +103,21 @@
 	</section>
 
 	<!-- Features -->
-	<section class="bg-surface rounded-lg border border-border p-5 space-y-4">
+	<section class="bg-surface border border-border p-5 space-y-4">
 		<div>
 			<h2 class="text-sm font-semibold text-heading">Features</h2>
 			<p class="text-xs text-faint mt-0.5">Toggle site features on or off.</p>
 		</div>
 		<div class="flex flex-col gap-3">
 			<label class="flex items-center gap-3 cursor-pointer">
-				<input type="checkbox" bind:checked={wordbookEnabled} class="rounded-sm accent-accent" />
+				<input type="checkbox" bind:checked={wordbookEnabled} class="accent-accent" />
 				<div>
 					<span class="text-sm font-medium text-body">Wordbook</span>
 					<p class="text-xs text-faint">Multilingual dictionary and linguistic database</p>
 				</div>
 			</label>
 			<label class="flex items-center gap-3 cursor-pointer">
-				<input type="checkbox" bind:checked={calendarEnabled} class="rounded-sm accent-accent" />
+				<input type="checkbox" bind:checked={calendarEnabled} class="accent-accent" />
 				<div>
 					<span class="text-sm font-medium text-body">Calendar</span>
 					<p class="text-xs text-faint">Custom calendar system with moons, eras, and seasons</p>
@@ -127,7 +127,7 @@
 	</section>
 
 	<!-- Display -->
-	<section class="bg-surface rounded-lg border border-border p-5 space-y-4">
+	<section class="bg-surface border border-border p-5 space-y-4">
 		<div>
 			<h2 class="text-sm font-semibold text-heading">Display</h2>
 			<p class="text-xs text-faint mt-0.5">Visual and layout settings.</p>

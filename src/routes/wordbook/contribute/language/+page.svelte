@@ -32,7 +32,7 @@
 		<p class="text-sm text-dim">Register a new language for the Wordbook.</p>
 	</div>
 
-	<div class="bg-surface rounded-lg border border-border p-6">
+	<div class="bg-surface border border-border p-6">
 		<LanguageForm
 			existingLanguages={data.existingLanguages}
 			onsubmit={handleSubmit}

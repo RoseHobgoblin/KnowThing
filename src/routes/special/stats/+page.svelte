@@ -16,23 +16,23 @@
 	<title>Statistics — KnowThing</title>
 </svelte:head>
 
-<div class="bg-surface rounded-lg shadow-sm border border-border p-6">
+<div class="bg-surface shadow-sm border border-border p-6">
 	<h1 class="text-2xl font-bold text-heading mb-6">Statistics</h1>
 
 	<div class="grid grid-cols-2 gap-4 md:grid-cols-4">
-		<div class="bg-page rounded-lg p-4 text-center">
+		<div class="bg-page p-4 text-center">
 			<div class="text-3xl font-bold text-link">{s.articles}</div>
 			<div class="text-xs text-dim mt-1 uppercase tracking-wide">Articles</div>
 		</div>
-		<div class="bg-page rounded-lg p-4 text-center">
+		<div class="bg-page p-4 text-center">
 			<div class="text-3xl font-bold text-link">{s.revisions}</div>
 			<div class="text-xs text-dim mt-1 uppercase tracking-wide">Revisions</div>
 		</div>
-		<div class="bg-page rounded-lg p-4 text-center">
+		<div class="bg-page p-4 text-center">
 			<div class="text-3xl font-bold text-link">{s.categories}</div>
 			<div class="text-xs text-dim mt-1 uppercase tracking-wide">Categories</div>
 		</div>
-		<div class="bg-page rounded-lg p-4 text-center">
+		<div class="bg-page p-4 text-center">
 			<div class="text-3xl font-bold text-link">{s.mediaFiles}</div>
 			<div class="text-xs text-dim mt-1 uppercase tracking-wide">Media Files</div>
 		</div>

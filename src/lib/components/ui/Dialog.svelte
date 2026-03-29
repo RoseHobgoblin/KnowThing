@@ -68,7 +68,7 @@
 		/>
 		<Dialog.Content
 			class={cn(
-				'fixed left-1/2 top-1/2 -translate-1/2 bg-surface rounded-lg shadow-xl border border-border',
+				'fixed left-1/2 top-1/2 -translate-1/2 bg-surface shadow-xl border border-border',
 				'w-[calc(100dvw-2rem)] max-w-lg max-h-[calc(100dvh-5rem)]',
 				!topmost && 'pointer-events-none',
 				'h-fit overflow-y-auto overflow-x-hidden',
@@ -83,7 +83,7 @@
 		>
 			{#if !unclosable}
 				<Dialog.Close class="
-					absolute top-3 right-3 z-10 cursor-pointer rounded-sm text-faint transition-colors
+					absolute top-3 right-3 z-10 cursor-pointer text-faint transition-colors
 					hover:text-heading text-lg leading-none px-1
 				">
 					&times;

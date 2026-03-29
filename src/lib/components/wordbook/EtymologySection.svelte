@@ -191,7 +191,7 @@
 
 <!-- Reusable add-relation form -->
 {#snippet addRelationForm()}
-	<div class="p-4 bg-page rounded-lg border border-border">
+	<div class="p-4 bg-page border border-border">
 		<div class="flex items-center justify-between mb-3">
 			<h4 class="text-xs font-medium uppercase tracking-wide text-dim">Add relation</h4>
 			<button onclick={() => { showForm = false; resetForm() }} class="text-xs text-faint hover:text-secondary">Cancel</button>
@@ -201,22 +201,22 @@
 		<div class="flex gap-1 mb-3 text-xs">
 			<button
 				onclick={() => direction = 'from'}
-				class="px-3 py-1.5 rounded-md transition-colors {direction === 'from' ? 'bg-accent text-surface' : 'bg-surface text-secondary border border-border-strong hover:bg-page'}"
+				class="px-3 py-1.5 transition-colors {direction === 'from' ? 'bg-accent text-surface' : 'bg-surface text-secondary border border-border-strong hover:bg-page'}"
 			>This word comes from...</button>
 			<button
 				onclick={() => direction = 'to'}
-				class="px-3 py-1.5 rounded-md transition-colors {direction === 'to' ? 'bg-accent text-surface' : 'bg-surface text-secondary border border-border-strong hover:bg-page'}"
+				class="px-3 py-1.5 transition-colors {direction === 'to' ? 'bg-accent text-surface' : 'bg-surface text-secondary border border-border-strong hover:bg-page'}"
 			>Another word comes from this...</button>
 		</div>
 
 		<form onsubmit={addRelation} class="space-y-3">
 			{#if formError}
-				<div class="p-2 bg-error-bg border border-error-border text-error rounded-md text-xs">{formError}</div>
+				<div class="p-2 bg-error-bg border border-error-border text-error text-xs">{formError}</div>
 			{/if}
 
 			<div class="flex gap-3 flex-wrap">
 				<select bind:value={relationType} class="
-					px-3 py-1.5 border border-border-strong rounded-lg text-sm bg-surface
+					px-3 py-1.5 border border-border-strong text-sm bg-surface
 					focus:outline-none focus:ring-2 focus:ring-accent
 				">
 					{#each typeOptions as opt}
@@ -232,10 +232,10 @@
 						onfocus={() => { if (searchResults.length > 0) showDropdown = true }}
 						onblur={() => setTimeout(() => showDropdown = false, 200)}
 						placeholder="Search for a word..."
-						class="w-full px-3 py-1.5 border border-border-strong rounded-lg text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent"
+						class="w-full px-3 py-1.5 border border-border-strong text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent"
 					/>
 					{#if showDropdown}
-						<div class="absolute z-10 top-full inset-x-0 mt-1 bg-surface border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+						<div class="absolute z-10 top-full inset-x-0 mt-1 bg-surface border border-border shadow-lg max-h-48 overflow-y-auto">
 							{#each searchResults as result}
 								<button type="button" onclick={() => selectTarget(result)} class="w-full text-left px-3 py-2 text-sm border-b border-border-subtle hover:bg-accent-subtle last:border-0">
 									<span class="font-medium">{result.word}</span>
@@ -254,9 +254,9 @@
 				<p class="text-xs text-faint -mt-1">{currentHelp}</p>
 			{/if}
 
-			<input type="text" bind:value={notes} placeholder="Notes (optional)" class="w-full px-3 py-1.5 border border-border-strong rounded-lg text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent" />
+			<input type="text" bind:value={notes} placeholder="Notes (optional)" class="w-full px-3 py-1.5 border border-border-strong text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent" />
 
-			<button type="submit" disabled={submitting || !targetId} class="px-4 py-1.5 bg-accent text-surface rounded-lg text-sm font-medium transition-colors hover:bg-accent-hover disabled:opacity-50">
+			<button type="submit" disabled={submitting || !targetId} class="px-4 py-1.5 bg-accent text-surface text-sm font-medium transition-colors hover:bg-accent-hover disabled:opacity-50">
 				{submitting ? 'Adding...' : 'Add'}
 			</button>
 		</form>
@@ -276,7 +276,7 @@
 				{/if}
 				<a
 					href="/wordbook/{step.languageSlug}/{encodeURIComponent(step.word)}"
-					class="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm bg-page text-link transition-colors hover:bg-accent-subtle hover:text-link-hover"
+					class="inline-flex items-center gap-1 px-2 py-0.5 bg-page text-link transition-colors hover:bg-accent-subtle hover:text-link-hover"
 					title={step.definition}
 				>
 					<span class="italic font-medium">{step.word}</span>

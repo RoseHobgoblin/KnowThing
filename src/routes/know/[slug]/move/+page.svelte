@@ -8,14 +8,14 @@
 	<title>Move: {data.title} — KnowThing</title>
 </svelte:head>
 
-<div class="bg-surface rounded-lg shadow-sm border border-border p-6 max-w-lg">
+<div class="bg-surface shadow-sm border border-border p-6 max-w-lg">
 	<h1 class="text-xl font-bold text-heading mb-1">Move / Rename Page</h1>
 	<p class="text-sm text-dim mb-6">
 		Moving <a href="/know/{data.slug}" class="text-link hover:underline">{data.title}</a>
 	</p>
 
 	{#if form?.error}
-		<div class="bg-error-bg border border-error-border rounded-md p-3 mb-4 text-sm text-error-text">
+		<div class="bg-error-bg border border-error-border p-3 mb-4 text-sm text-error-text">
 			{form.error}
 		</div>
 	{/if}
@@ -30,7 +30,7 @@
 				value={data.title}
 				required
 				class="
-					w-full border border-border rounded-lg px-3 py-2 text-sm
+					w-full border border-border px-3 py-2 text-sm
 					focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent-border
 				"
 			/>
@@ -47,7 +47,7 @@
 					value={data.slug}
 					required
 					class="
-						flex-1 border border-border rounded-lg px-3 py-2 text-sm
+						flex-1 border border-border px-3 py-2 text-sm
 						focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent-border
 					"
 				/>
@@ -58,7 +58,7 @@
 			<button
 				type="submit"
 				class="
-					px-5 py-2 bg-accent text-surface rounded-lg text-sm font-medium transition-colors
+					px-5 py-2 bg-accent text-surface text-sm font-medium transition-colors
 					hover:bg-accent-hover
 				"
 			>
@@ -67,7 +67,7 @@
 			<a
 				href="/know/{data.slug}"
 				class="
-					px-5 py-2 bg-raised text-secondary rounded-lg text-sm font-medium transition-colors
+					px-5 py-2 bg-raised text-secondary text-sm font-medium transition-colors
 					hover:bg-border
 				"
 			>

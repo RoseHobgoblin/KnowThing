@@ -27,7 +27,7 @@
 <div class="space-y-4">
 	<h1 class="text-xl font-bold text-heading">Users</h1>
 
-	<div class="bg-surface rounded-lg border border-border">
+	<div class="bg-surface border border-border">
 		<div class="divide-y divide-border-subtle">
 			{#each data.users as user}
 				<div class="flex items-center justify-between px-4 py-3">
@@ -41,7 +41,7 @@
 						value={user.role}
 						onchange={(e) => setRole(user.id, (e.target as HTMLSelectElement).value)}
 						class="
-							px-3 py-1 border border-border-strong rounded-md text-sm bg-surface text-body
+							px-3 py-1 border border-border-strong text-sm bg-surface text-body
 							focus:outline-none focus:ring-2 focus:ring-accent
 						"
 					>

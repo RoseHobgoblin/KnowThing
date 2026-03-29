@@ -22,12 +22,12 @@
 		<div class="flex items-center gap-2 flex-wrap text-sm">
 			<span class="text-dim">Filters:</span>
 			{#if data.query}
-				<span class="px-2 py-0.5 bg-accent-subtle text-link rounded-sm border border-accent-border">
+				<span class="px-2 py-0.5 bg-accent-subtle text-link border border-accent-border">
 					"{data.query}"
 				</span>
 			{/if}
 			{#if data.language}
-				<span class="px-2 py-0.5 bg-raised text-secondary rounded-sm border border-border">
+				<span class="px-2 py-0.5 bg-raised text-secondary border border-border">
 					{data.language}
 				</span>
 			{/if}
@@ -35,7 +35,7 @@
 				<TagPill tag={data.tag} />
 			{/if}
 			{#if data.pos}
-				<span class="px-2 py-0.5 bg-raised text-secondary rounded-sm border border-border">
+				<span class="px-2 py-0.5 bg-raised text-secondary border border-border">
 					{data.pos}
 				</span>
 			{/if}
@@ -45,7 +45,7 @@
 		<!-- Results -->
 		{#if data.results.length > 0}
 			<div class="text-sm text-dim mb-2">{data.results.length} result{data.results.length === 1 ? '' : 's'}</div>
-			<div class="bg-surface rounded-lg border border-border divide-y divide-border-subtle">
+			<div class="bg-surface border border-border divide-y divide-border-subtle">
 				{#each data.results as entry}
 					<WordEntry {entry} />
 				{/each}

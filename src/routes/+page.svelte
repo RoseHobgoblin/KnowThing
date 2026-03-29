@@ -14,7 +14,7 @@
 	<p class="text-dim">Redirecting to <a href="/know/main_page" class="text-link hover:underline">Main Page</a>...</p>
 {:else}
 	<div class="
-		bg-surface rounded-lg shadow-sm border border-border p-10 text-center max-w-lg mx-auto mt-12
+		bg-surface shadow-sm border border-border p-10 text-center max-w-lg mx-auto mt-12
 	">
 		<div class="text-4xl mb-4">
 			Know<span class="text-accent">Thing</span>
@@ -25,7 +25,7 @@
 		<a
 			href="/know/create?title=Main+Page&slug=main_page"
 			class="
-				inline-block bg-accent text-surface px-6 py-3 rounded-lg font-medium transition-colors
+				inline-block bg-accent text-surface px-6 py-3 font-medium transition-colors
 				shadow-sm
 				hover:bg-accent-hover
 			"

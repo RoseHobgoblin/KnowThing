@@ -78,7 +78,7 @@
 {#if !error}
 	<div
 		bind:this={popupEl}
-		class="link-preview fixed z-50 rounded-lg border border-border bg-surface shadow-lg overflow-hidden"
+		class="link-preview fixed z-50 border border-border bg-surface shadow-lg overflow-hidden"
 		style={style}
 		role="tooltip"
 	>

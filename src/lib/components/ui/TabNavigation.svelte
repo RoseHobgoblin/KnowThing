@@ -33,9 +33,9 @@
 	}: Props = $props()
 
 	const tabClasses = {
-		sm: 'h-8 text-xs rounded-md px-3',
-		md: 'h-9 text-sm rounded-md px-4',
-		lg: 'h-10 text-sm rounded-lg px-5',
+		sm: 'h-8 text-xs px-3',
+		md: 'h-9 text-sm px-4',
+		lg: 'h-10 text-sm px-5',
 	} as const
 
 	const items = $derived(
@@ -121,14 +121,14 @@
 	<div
 		bind:this={containerElement}
 		class={cn(
-			'p-1 relative bg-raised rounded-lg',
+			'p-1 relative bg-raised',
 			fullWidth ? 'grid grid-flow-col auto-cols-fr w-full gap-1' : 'inline-flex gap-1',
 		)}
 	>
 		<!-- Active indicator -->
 		<div
 			class={cn(
-				'absolute left-0 top-0 bg-surface shadow-sm rounded-md',
+				'absolute left-0 top-0 bg-surface shadow-sm',
 				indicatorReady && 'transition-[transform,width] duration-300 ease-out',
 			)}
 			style:transform={indicatorStyle.transform}

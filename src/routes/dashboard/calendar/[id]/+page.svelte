@@ -89,7 +89,7 @@
 	const totalDaysInYear = $derived(months.reduce((sum, m) => sum + m.length, 0))
 	const dayLengthHours = $derived(Math.round((dayLengthSeconds / 3600) * 100) / 100)
 
-	const indexClass = 'px-2 py-1.5 border border-border-strong rounded-md text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent'
+	const indexClass = 'px-2 py-1.5 border border-border-strong text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent'
 </script>
 
 <svelte:head>
@@ -105,7 +105,7 @@
 			<p class="text-xs text-faint mt-0.5">{totalDaysInYear} days/year · {weekdays.length}-day week · {dayLengthHours}h days</p>
 		</div>
 		<button onclick={save} disabled={saving} class="
-			px-5 py-2 bg-accent text-surface text-sm rounded-md font-medium transition-colors
+			px-5 py-2 bg-accent text-surface text-sm font-medium transition-colors
 			hover:bg-accent-hover
 			disabled:opacity-50
 		">
@@ -114,10 +114,10 @@
 	</div>
 
 	<!-- Live Preview -->
-	<details class="bg-surface rounded-lg border border-border">
+	<details class="bg-surface border border-border">
 		<summary class="
 			px-4 py-3 cursor-pointer text-sm font-semibold text-heading select-none transition-colors
-			rounded-lg
+		
 			hover:bg-raised
 		">
 			Preview
@@ -136,7 +136,7 @@
 	</details>
 
 	<!-- Identity -->
-	<section class="bg-surface rounded-lg border border-border p-5 space-y-4">
+	<section class="bg-surface border border-border p-5 space-y-4">
 		<h2 class="text-sm font-semibold text-heading border-b border-border-subtle pb-2">Identity</h2>
 		<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 			<Input label="Calendar name" bind:value={name} required placeholder="e.g. Republican Calendar" />
@@ -144,18 +144,18 @@
 		</div>
 		<div class="flex gap-6">
 			<label class="flex items-center gap-2 text-sm text-secondary cursor-pointer">
-				<input type="checkbox" bind:checked={isPrimary} class="rounded-sm accent-accent" />
+				<input type="checkbox" bind:checked={isPrimary} class="accent-accent" />
 				Primary calendar
 			</label>
 			<label class="flex items-center gap-2 text-sm text-secondary cursor-pointer">
-				<input type="checkbox" bind:checked={displayMoons} class="rounded-sm accent-accent" />
+				<input type="checkbox" bind:checked={displayMoons} class="accent-accent" />
 				Show moon phases
 			</label>
 		</div>
 	</section>
 
 	<!-- Time -->
-	<section class="bg-surface rounded-lg border border-border p-5 space-y-4">
+	<section class="bg-surface border border-border p-5 space-y-4">
 		<div>
 			<h2 class="text-sm font-semibold text-heading">Time Configuration</h2>
 			<p class="text-xs text-faint mt-0.5">How this calendar maps to real-world time.</p>
@@ -193,7 +193,7 @@
 	</section>
 
 	<!-- Months -->
-	<section class="bg-surface rounded-lg border border-border p-5 space-y-3">
+	<section class="bg-surface border border-border p-5 space-y-3">
 		<div class="flex items-center justify-between border-b border-border-subtle pb-2">
 			<div>
 				<h2 class="text-sm font-semibold text-heading">Months</h2>
@@ -225,7 +225,7 @@
 	</section>
 
 	<!-- Weekdays -->
-	<section class="bg-surface rounded-lg border border-border p-5 space-y-3">
+	<section class="bg-surface border border-border p-5 space-y-3">
 		<div class="flex items-center justify-between border-b border-border-subtle pb-2">
 			<div>
 				<h2 class="text-sm font-semibold text-heading">Weekdays</h2>
@@ -256,7 +256,7 @@
 	</section>
 
 	<!-- Leap Days -->
-	<section class="bg-surface rounded-lg border border-border p-5 space-y-3">
+	<section class="bg-surface border border-border p-5 space-y-3">
 		<div class="flex items-center justify-between border-b border-border-subtle pb-2">
 			<h2 class="text-sm font-semibold text-heading">Leap Days</h2>
 			<button onclick={() => leapDays = [...leapDays, { name: '', month_index: 0, after_day: 0, interval: 4, ignore: '', exclusive: '', intercalary: false, offset: 0 }]} class="text-xs text-link font-medium hover:underline">+ Add leap day</button>
@@ -268,7 +268,7 @@
 			</div>
 		{/if}
 		{#each leapDays as ld, index (index)}
-			<div class="border border-border-subtle rounded-lg p-4 space-y-3 bg-page">
+			<div class="border border-border-subtle p-4 space-y-3 bg-page">
 				<div class="flex items-center justify-between">
 					<input type="text" bind:value={ld.name} placeholder="Leap day name" class="flex-1 {indexClass} font-medium" />
 					<button onclick={() => leapDays = leapDays.filter((_, index_) => index_ !== index)} class="text-faint ml-2 text-sm hover:text-error">×</button>
@@ -309,7 +309,7 @@
 				</div>
 
 				<label class="flex items-center gap-2 text-xs text-secondary cursor-pointer">
-					<input type="checkbox" bind:checked={ld.intercalary} class="rounded-sm accent-accent" />
+					<input type="checkbox" bind:checked={ld.intercalary} class="accent-accent" />
 					Intercalary — this day doesn't advance the weekday cycle
 				</label>
 			</div>
@@ -317,7 +317,7 @@
 	</section>
 
 	<!-- Eras -->
-	<section class="bg-surface rounded-lg border border-border p-5 space-y-3">
+	<section class="bg-surface border border-border p-5 space-y-3">
 		<div class="flex items-center justify-between border-b border-border-subtle pb-2">
 			<div>
 				<h2 class="text-sm font-semibold text-heading">Eras</h2>
@@ -329,7 +329,7 @@
 			<p class="text-sm text-faint text-center py-4">No eras defined. Years will display as plain numbers.</p>
 		{/if}
 		{#each eras as era, index (index)}
-			<div class="border border-border-subtle rounded-lg p-4 space-y-3 bg-page">
+			<div class="border border-border-subtle p-4 space-y-3 bg-page">
 				<div class="flex items-center justify-between">
 					<input type="text" bind:value={era.name} placeholder="Era name (e.g. FA, AD)" class="flex-1 {indexClass} font-medium" />
 					<button onclick={() => eras = eras.filter((_, index_) => index_ !== index)} class="text-faint ml-2 text-sm hover:text-error">×</button>
@@ -353,7 +353,7 @@
 						<input type="text" bind:value={era.format} placeholder={'{{year}} {{era_name}}'} class="w-full {indexClass}" />
 					</div>
 					<label class="flex items-center gap-2 text-xs text-secondary self-end cursor-pointer">
-						<input type="checkbox" bind:checked={era.reverse_numbering} class="rounded-sm accent-accent" />
+						<input type="checkbox" bind:checked={era.reverse_numbering} class="accent-accent" />
 						Count backwards
 					</label>
 				</div>
@@ -362,7 +362,7 @@
 	</section>
 
 	<!-- Moons -->
-	<section class="bg-surface rounded-lg border border-border p-5 space-y-3">
+	<section class="bg-surface border border-border p-5 space-y-3">
 		<div class="flex items-center justify-between border-b border-border-subtle pb-2">
 			<div>
 				<h2 class="text-sm font-semibold text-heading">Moons</h2>
@@ -374,10 +374,10 @@
 			<p class="text-sm text-faint text-center py-4">No moons. Enable "Show moon phases" above to display them.</p>
 		{/if}
 		{#each moons as moon, index (index)}
-			<div class="flex gap-3 items-center group border border-border-subtle rounded-lg p-3 bg-page">
+			<div class="flex gap-3 items-center group border border-border-subtle p-3 bg-page">
 				<div class="flex gap-1 shrink-0">
-					<input type="color" bind:value={moon.face_color} class="size-7 rounded-sm border border-border cursor-pointer" title="Lit color" />
-					<input type="color" bind:value={moon.shadow_color} class="size-7 rounded-sm border border-border cursor-pointer" title="Shadow color" />
+					<input type="color" bind:value={moon.face_color} class="size-7 border border-border cursor-pointer" title="Lit color" />
+					<input type="color" bind:value={moon.shadow_color} class="size-7 border border-border cursor-pointer" title="Shadow color" />
 				</div>
 				<input type="text" bind:value={moon.name} placeholder="Moon name" class="flex-1 {indexClass}" />
 				<div class="flex items-center gap-1">
@@ -394,7 +394,7 @@
 	</section>
 
 	<!-- Seasons -->
-	<section class="bg-surface rounded-lg border border-border p-5 space-y-3">
+	<section class="bg-surface border border-border p-5 space-y-3">
 		<div class="flex items-center justify-between border-b border-border-subtle pb-2">
 			<div>
 				<h2 class="text-sm font-semibold text-heading">Seasons</h2>
@@ -406,9 +406,9 @@
 			<p class="text-sm text-faint text-center py-4">No seasons defined.</p>
 		{/if}
 		{#each seasons as season, index (index)}
-			<div class="border border-border-subtle rounded-lg p-4 space-y-3 bg-page">
+			<div class="border border-border-subtle p-4 space-y-3 bg-page">
 				<div class="flex items-center gap-3">
-					<input type="color" bind:value={season.color} class="size-7 rounded-sm border border-border cursor-pointer shrink-0" />
+					<input type="color" bind:value={season.color} class="size-7 border border-border cursor-pointer shrink-0" />
 					<input type="text" bind:value={season.name} placeholder="Season name" class="flex-1 {indexClass} font-medium" />
 					<select bind:value={season.kind} class="w-24 {indexClass}">
 						<option value="spring">Spring</option>

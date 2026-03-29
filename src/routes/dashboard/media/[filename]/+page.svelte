@@ -82,12 +82,12 @@
 	<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
 		<!-- Image preview -->
 		<div class="lg:col-span-2">
-			<div class="bg-surface rounded-lg border border-border overflow-hidden">
+			<div class="bg-surface border border-border overflow-hidden">
 				<div class="bg-raised p-4 flex items-center justify-center min-h-[300px]">
 					<img
 						src="/api/media/{data.file.filename}"
 						alt={data.file.filename}
-						class="max-w-full max-h-[600px] object-contain rounded-sm shadow-sm"
+						class="max-w-full max-h-[600px] object-contain shadow-sm"
 					/>
 				</div>
 
@@ -98,19 +98,19 @@
 						<div class="flex gap-3">
 							{#if data.file.hasThumb150}
 								<div class="text-center">
-									<img src="/api/media/{data.file.filename}?w=150" alt="150px" class="h-16 object-contain rounded-sm border border-border" />
+									<img src="/api/media/{data.file.filename}?w=150" alt="150px" class="h-16 object-contain border border-border" />
 									<span class="text-[10px] text-faint block mt-1">150px</span>
 								</div>
 							{/if}
 							{#if data.file.hasThumb300}
 								<div class="text-center">
-									<img src="/api/media/{data.file.filename}?w=300" alt="300px" class="h-16 object-contain rounded-sm border border-border" />
+									<img src="/api/media/{data.file.filename}?w=300" alt="300px" class="h-16 object-contain border border-border" />
 									<span class="text-[10px] text-faint block mt-1">300px</span>
 								</div>
 							{/if}
 							{#if data.file.hasThumb600}
 								<div class="text-center">
-									<img src="/api/media/{data.file.filename}?w=600" alt="600px" class="h-16 object-contain rounded-sm border border-border" />
+									<img src="/api/media/{data.file.filename}?w=600" alt="600px" class="h-16 object-contain border border-border" />
 									<span class="text-[10px] text-faint block mt-1">600px</span>
 								</div>
 							{/if}
@@ -120,26 +120,26 @@
 			</div>
 
 			<!-- Description & Categories -->
-			<div class="bg-surface rounded-lg border border-border p-4 mt-4">
+			<div class="bg-surface border border-border p-4 mt-4">
 				<h3 class="text-sm font-semibold text-body mb-3">Details</h3>
 				<div class="space-y-3">
 					<div>
 						<label for="desc" class="block text-xs font-medium text-secondary mb-1">Description</label>
 						<textarea id="desc" bind:value={description} rows={3} class="
-							w-full px-3 py-2 border border-border-strong rounded-lg text-sm
+							w-full px-3 py-2 border border-border-strong text-sm
 							focus:outline-none focus:ring-2 focus:ring-accent
 						" placeholder="Describe this file..."></textarea>
 					</div>
 					<div>
 						<label for="cats" class="block text-xs font-medium text-secondary mb-1">Categories <span class="text-faint">(comma-separated)</span></label>
 						<input id="cats" type="text" bind:value={categoriesInput} class="
-							w-full px-3 py-2 border border-border-strong rounded-lg text-sm
+							w-full px-3 py-2 border border-border-strong text-sm
 							focus:outline-none focus:ring-2 focus:ring-accent
 						" placeholder="flags, maps, portraits" />
 					</div>
 					<div class="flex items-center gap-3">
 						<button onclick={saveDetails} disabled={saving} class="
-							px-4 py-1.5 bg-accent text-surface text-sm rounded-md transition-colors
+							px-4 py-1.5 bg-accent text-surface text-sm transition-colors
 							hover:bg-accent-hover
 							disabled:opacity-50
 						">
@@ -153,7 +153,7 @@
 		<!-- Sidebar -->
 		<div class="space-y-4">
 			<!-- Metadata -->
-			<div class="bg-surface rounded-lg border border-border p-4">
+			<div class="bg-surface border border-border p-4">
 				<h3 class="text-sm font-semibold text-body mb-3">File Info</h3>
 				<dl class="text-sm space-y-2">
 					<div class="flex justify-between">
@@ -200,21 +200,21 @@
 			</div>
 
 			<!-- Actions -->
-			<div class="bg-surface rounded-lg border border-border p-4">
+			<div class="bg-surface border border-border p-4">
 				<h3 class="text-sm font-semibold text-body mb-3">Actions</h3>
 				<div class="space-y-2">
 					<button onclick={copyWikitext} class="
-						w-full text-left px-3 py-2 text-sm rounded-md text-link transition-colors
+						w-full text-left px-3 py-2 text-sm text-link transition-colors
 						hover:bg-accent-subtle
 					">
 						{copied ? 'Copied!' : 'Copy wikitext'}
 					</button>
-					<a href="/api/media/{data.file.filename}" target="_blank" class="block px-3 py-2 text-sm rounded-md text-secondary transition-colors hover:bg-page">
+					<a href="/api/media/{data.file.filename}" target="_blank" class="block px-3 py-2 text-sm text-secondary transition-colors hover:bg-page">
 						View full size ↗
 					</a>
 					{#if isAdmin}
 						<button onclick={deleteFile} class="
-							w-full text-left px-3 py-2 text-sm rounded-md text-error transition-colors
+							w-full text-left px-3 py-2 text-sm text-error transition-colors
 							hover:bg-error-bg
 						">
 							Delete file{data.usage.length > 0 ? ` (used in ${data.usage.length} pages)` : ''}
@@ -224,7 +224,7 @@
 			</div>
 
 			<!-- Usage -->
-			<div class="bg-surface rounded-lg border border-border p-4">
+			<div class="bg-surface border border-border p-4">
 				<h3 class="text-sm font-semibold text-body mb-3">Used in {data.usage.length} {data.usage.length === 1 ? 'page' : 'pages'}</h3>
 				{#if data.usage.length > 0}
 					<ul class="text-sm space-y-1">
@@ -241,7 +241,7 @@
 
 			<!-- History -->
 			{#if data.history.length > 0}
-				<div class="bg-surface rounded-lg border border-border p-4">
+				<div class="bg-surface border border-border p-4">
 					<h3 class="text-sm font-semibold text-body mb-3">History</h3>
 					<div class="space-y-2">
 						{#each data.history as entry}

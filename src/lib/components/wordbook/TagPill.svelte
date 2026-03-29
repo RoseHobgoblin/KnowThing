@@ -8,7 +8,7 @@
 <a
 	{href}
 	class="
-		inline-block px-2.5 py-1 rounded-full text-xs bg-raised text-secondary border border-border
+		inline-block px-2.5 py-1 text-xs bg-raised text-secondary border border-border
 		transition-colors
 		hover:bg-accent-subtle hover:text-link hover:border-accent-border
 	"

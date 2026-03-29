@@ -67,7 +67,7 @@
 		</p>
 	</div>
 
-	<div class="bg-surface rounded-lg border border-border p-6">
+	<div class="bg-surface border border-border p-6">
 		<EntryForm
 			languages={data.languages}
 			initial={{

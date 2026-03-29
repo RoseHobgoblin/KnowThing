@@ -141,13 +141,13 @@
 		}
 	}
 
-	const textareaClass = 'w-full px-3 py-2 rounded-md text-sm text-body bg-surface border border-border-strong outline-none transition-colors placeholder:text-faint hover:border-border focus:ring-2 focus:ring-accent focus:border-accent-border'
+	const textareaClass = 'w-full px-3 py-2 text-sm text-body bg-surface border border-border-strong outline-none transition-colors placeholder:text-faint hover:border-border focus:ring-2 focus:ring-accent focus:border-accent-border'
 	const labelClass = 'block text-sm font-medium text-secondary mb-1'
 </script>
 
 <form onsubmit={handleSubmit} class="space-y-5">
 	{#if error}
-		<div class="p-3 bg-error-bg border border-error-border text-error-text rounded-lg text-sm">{error}</div>
+		<div class="p-3 bg-error-bg border border-error-border text-error-text text-sm">{error}</div>
 	{/if}
 
 	<!-- Headword fields -->
@@ -166,7 +166,7 @@
 		</div>
 
 		{#each defs as def, index}
-			<div class="border border-border rounded-lg p-3 mb-3 bg-page/50 {defs.length > 1 ? 'relative' : ''}">
+			<div class="border border-border p-3 mb-3 bg-page/50 {defs.length > 1 ? 'relative' : ''}">
 				{#if defs.length > 1}
 					<div class="flex items-center justify-between mb-2">
 						<span class="text-xs font-medium text-faint">Definition {index + 1}</span>
@@ -218,13 +218,13 @@
 						onblur={() => setTimeout(() => row.showDropdown = false, 200)}
 						placeholder="Search for a word..."
 						class="
-							w-full px-3 py-1.5 rounded-md text-sm text-body bg-surface border border-border-strong outline-none transition-colors
+							w-full px-3 py-1.5 text-sm text-body bg-surface border border-border-strong outline-none transition-colors
 							placeholder:text-faint hover:border-border focus:ring-2 focus:ring-accent focus:border-accent-border
 							{row.targetId ? 'border-success-border bg-success-bg' : ''}"
 					/>
 					{#if row.showDropdown}
 						<div class="
-							absolute z-10 top-full inset-x-0 mt-1 bg-surface border border-border rounded-lg shadow-lg
+							absolute z-10 top-full inset-x-0 mt-1 bg-surface border border-border shadow-lg
 							max-h-40 overflow-y-auto
 						">
 							{#each row.results as result}
@@ -247,7 +247,7 @@
 
 	<div class="pt-2">
 		<button type="submit" disabled={submitting} class="
-			px-6 py-2.5 bg-accent text-surface rounded-lg font-medium transition-colors
+			px-6 py-2.5 bg-accent text-surface font-medium transition-colors
 			hover:bg-accent-hover
 			disabled:opacity-50
 		">

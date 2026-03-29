@@ -25,14 +25,14 @@
 </script>
 
 <!-- Compact: search result / list item -->
-<a href="/wordbook/{entry.languageSlug}/{encodeURIComponent(entry.word)}" class="block p-4 transition-colors rounded-lg hover:bg-accent-subtle/30">
+<a href="/wordbook/{entry.languageSlug}/{encodeURIComponent(entry.word)}" class="block p-4 transition-colors hover:bg-accent-subtle/30">
 	<div class="flex items-baseline gap-2 flex-wrap">
 		<span class="text-lg font-semibold text-heading">{entry.word}</span>
 		{#if entry.pronunciation}
 			<span class="text-sm text-faint font-mono">{entry.pronunciation}</span>
 		{/if}
 		{#if entry.partOfSpeech}
-			<span class="px-1.5 py-0.5 rounded-sm text-[10px] font-medium {posClass}">{entry.partOfSpeech}</span>
+			<span class="px-1.5 py-0.5 text-[10px] font-medium {posClass}">{entry.partOfSpeech}</span>
 		{/if}
 		{#if showLanguage && entry.languageName && entry.languageSlug}
 			<LanguageBadge name={entry.languageName} slug={entry.languageSlug} color={entry.languageColor} />

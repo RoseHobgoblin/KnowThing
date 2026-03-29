@@ -17,7 +17,7 @@
 	<title>History: {data.title} — KnowThing</title>
 </svelte:head>
 
-<div class="bg-surface rounded-lg shadow-sm border border-border">
+<div class="bg-surface shadow-sm border border-border">
 	<div class="px-6 py-4 border-b border-border-subtle flex items-center justify-between">
 		<div>
 			<h1 class="text-xl font-bold text-heading">Revision History</h1>
@@ -25,7 +25,7 @@
 		</div>
 		{#if selectedOld && selectedNew}
 			<button onclick={compareDiff} class="
-				px-4 py-1.5 bg-accent text-surface text-sm rounded-md transition-colors
+				px-4 py-1.5 bg-accent text-surface text-sm transition-colors
 				hover:bg-accent-hover
 			">
 				Compare selected

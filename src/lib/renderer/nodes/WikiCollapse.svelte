@@ -5,7 +5,7 @@
 	let { title, content }: { title: string, content: WikiNode[] } = $props()
 </script>
 
-<details class="know-collapse border border-border-strong rounded-sm my-2">
+<details class="know-collapse border border-border-strong my-2">
 	<summary class="bg-raised px-3 py-2 cursor-pointer font-semibold text-sm">{title}</summary>
 	<div class="px-3 py-2">
 		{#each content as child}<WikiNodeComponent node={child} />{/each}

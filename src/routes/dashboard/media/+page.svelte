@@ -135,7 +135,7 @@
 	<!-- Drop zone + Upload -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
-		class="relative border-2 border-dashed rounded-lg p-6 text-center transition-colors
+		class="relative border-2 border-dashed p-6 text-center transition-colors
 			{dragOver ? 'border-accent-border bg-accent-subtle' : 'border-border-strong bg-surface hover:border-border-strong'}"
 		ondrop={handleDrop}
 		ondragover={handleDragOver}
@@ -152,7 +152,7 @@
 		</div>
 		{#if !uploading}
 			<label class="
-				inline-block px-4 py-1.5 bg-accent text-surface text-sm rounded-md cursor-pointer
+				inline-block px-4 py-1.5 bg-accent text-surface text-sm cursor-pointer
 				transition-colors
 				hover:bg-accent-hover
 			">
@@ -173,7 +173,7 @@
 			oninput={handleSearch}
 			placeholder="Search files..."
 			class="
-				flex-1 min-w-[200px] px-3 py-2 border border-border-strong rounded-lg text-sm bg-surface
+				flex-1 min-w-[200px] px-3 py-2 border border-border-strong text-sm bg-surface
 				focus:outline-none focus:ring-2 focus:ring-accent
 			"
 		/>
@@ -182,7 +182,7 @@
 			bind:value={sortBy}
 			onchange={() => { currentPage = 0; loadFiles() }}
 			class="
-				px-3 py-2 border border-border-strong rounded-lg text-sm bg-surface
+				px-3 py-2 border border-border-strong text-sm bg-surface
 				focus:outline-none focus:ring-2 focus:ring-accent
 			"
 		>
@@ -194,11 +194,11 @@
 		</select>
 
 		<label class="flex items-center gap-1.5 text-sm text-secondary">
-			<input type="checkbox" bind:checked={showUnused} onchange={() => { currentPage = 0; loadFiles() }} class="rounded-sm border-border-strong text-accent focus:ring-accent" />
+			<input type="checkbox" bind:checked={showUnused} onchange={() => { currentPage = 0; loadFiles() }} class="border-border-strong text-accent focus:ring-accent" />
 			Unused only
 		</label>
 
-		<div class="flex border border-border-strong rounded-lg overflow-hidden">
+		<div class="flex border border-border-strong overflow-hidden">
 			<button
 				onclick={() => viewMode = 'grid'}
 				class="px-2.5 py-1.5 text-xs {viewMode === 'grid' ? 'bg-accent text-surface' : 'bg-surface text-secondary hover:bg-page'}"
@@ -223,7 +223,7 @@
 				<a
 					href="/dashboard/media/{encodeURIComponent(file.filename)}"
 					class="
-						group bg-surface rounded-lg border border-border overflow-hidden transition-all
+						group bg-surface border border-border overflow-hidden transition-all
 						hover:border-accent-border hover:shadow-md
 					"
 				>
@@ -253,11 +253,11 @@
 			{/each}
 		</div>
 	{:else}
-		<div class="bg-surface rounded-lg border border-border divide-y divide-border-subtle">
+		<div class="bg-surface border border-border divide-y divide-border-subtle">
 			{#each files as file}
 				<a href="/dashboard/media/{encodeURIComponent(file.filename)}" class="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-accent-subtle/30">
 					<div class="
-						size-12 bg-raised rounded-sm flex items-center justify-center shrink-0 overflow-hidden
+						size-12 bg-raised flex items-center justify-center shrink-0 overflow-hidden
 					">
 						{#if file.mimeType?.startsWith('image/')}
 							<img src="/api/media/{file.filename}?w=150" alt={file.filename} loading="lazy" class="size-full object-cover" />
@@ -293,7 +293,7 @@
 				onclick={() => { currentPage = Math.max(0, currentPage - 1); loadFiles() }}
 				disabled={currentPage === 0}
 				class="
-					px-3 py-1 text-sm rounded-md border border-border-strong
+					px-3 py-1 text-sm border border-border-strong
 					disabled:opacity-30
 					hover:bg-page
 				"
@@ -305,7 +305,7 @@
 				onclick={() => { currentPage = Math.min(totalPages - 1, currentPage + 1); loadFiles() }}
 				disabled={currentPage >= totalPages - 1}
 				class="
-					px-3 py-1 text-sm rounded-md border border-border-strong
+					px-3 py-1 text-sm border border-border-strong
 					disabled:opacity-30
 					hover:bg-page
 				"

@@ -84,7 +84,7 @@
 			<Select.Trigger
 				{id}
 				class={cn(
-					'inline-flex items-center gap-2 rounded-md text-body font-medium w-full cursor-pointer select-none appearance-none transition-colors border border-border-strong bg-surface',
+					'inline-flex items-center gap-2 text-body font-medium w-full cursor-pointer select-none appearance-none transition-colors border border-border-strong bg-surface',
 					'hover:not-data-disabled:border-border',
 					'data-disabled:opacity-50 data-disabled:cursor-not-allowed',
 					triggerSize[size],
@@ -107,7 +107,7 @@
 					{...contentProps}
 					class="
 						z-[9999] max-h-64 w-(--bits-select-anchor-width) min-w-(--bits-select-anchor-width)
-						select-none rounded-md bg-surface border border-border shadow-lg outline-none overflow-hidden
+						select-none bg-surface border border-border shadow-lg outline-none overflow-hidden
 						data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95
 						data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95
 					"

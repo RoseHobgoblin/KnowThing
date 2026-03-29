@@ -81,7 +81,7 @@ def greet(name):
 		<WikiNode node={ast} />
 	</div>
 
-	<details class="mt-12 border border-border-strong rounded-sm">
+	<details class="mt-12 border border-border-strong">
 		<summary class="bg-raised px-4 py-2 cursor-pointer font-mono text-sm">AST Debug Output</summary>
 		<pre class="p-4 text-xs overflow-auto max-h-96 bg-page">{JSON.stringify(ast, null, 2)}</pre>
 	</details>

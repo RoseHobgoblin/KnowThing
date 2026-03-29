@@ -1,149 +1,274 @@
 <script lang="ts">
 	import '../app.css'
+	import { Tooltip } from 'bits-ui'
+	import { page } from '$app/stores'
 	import SearchBar from '$lib/components/SearchBar.svelte'
 	import Notifications from '$lib/components/ui/Notifications.svelte'
 	import type { LayoutData } from './$types.js'
 
 	let { children, data }: { children: any, data: LayoutData } = $props()
-	let mobileMenuOpen = $state(false)
+	let sidebarOpen = $state(false)
+	let sidebarCollapsed = $state(false)
 
 	const sc = $derived(data.siteConfig)
 	const siteNameParts = $derived((sc?.siteName ?? 'KnowThing').split(/(?=[A-Z])/))
-	const navClass = 'px-3 py-2.5 text-secondary rounded-t-md transition-colors font-medium hover:text-link hover:bg-accent-subtle'
-	const navSmallClass = 'px-3 py-2.5 text-dim rounded-t-md transition-colors text-xs hover:text-link hover:bg-accent-subtle'
-	const mobileNavClass = 'block px-3 py-2 text-secondary rounded-md text-sm font-medium hover:bg-accent-subtle hover:text-link'
-	const mobileNavSmallClass = 'block px-3 py-2 text-dim rounded-md text-sm hover:bg-accent-subtle hover:text-link'
+	const currentPath = $derived($page.url.pathname)
+
+	function isActive(href: string): boolean {
+		if (href === '/') return currentPath === '/'
+		return currentPath.startsWith(href)
+	}
+
+	const linkClass = 'flex items-center gap-3 px-3 py-2 text-sm transition-colors'
+	const activeClass = 'bg-accent-subtle text-link font-medium'
+	const inactiveClass = 'text-secondary hover:bg-raised hover:text-heading'
+
+	function navClick() {
+		sidebarOpen = false
+	}
 </script>
 
-<div class="h-screen flex flex-col bg-page overflow-hidden" dir={sc?.textDirection ?? 'ltr'}>
-	<!-- Accent strip -->
-	<div class="h-1 bg-accent-subtle0 shrink-0"></div>
+<Tooltip.Provider>
+<div class="h-screen flex bg-page overflow-hidden" dir={sc?.textDirection ?? 'ltr'}>
 
-	<!-- Header -->
-	<header class="bg-surface border-b border-border px-4 py-3 flex items-center justify-between shrink-0 md:px-6">
-		<div class="flex items-center gap-3">
-			<button
-				onclick={() => mobileMenuOpen = !mobileMenuOpen}
-				class="text-secondary p-1 md:hidden hover:text-link"
-				aria-label="Toggle menu"
-			>
-				<svg class="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					{#if mobileMenuOpen}
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-					{:else}
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-					{/if}
-				</svg>
-			</button>
-
-			{#if sc?.logoUrl}
-				<a href="/">
-					<img src={sc.logoUrl} alt={sc.siteName} class="h-8" />
-				</a>
-			{:else}
-				<a href="/" class="text-xl font-bold text-heading tracking-tight transition-colors hover:text-link">
-					{#if siteNameParts.length >= 2}
+	<!-- Sidebar (desktop) -->
+	<aside class="hidden w-56 shrink-0 bg-surface border-r border-border flex-col h-screen md:flex"
+		class:!w-14={sidebarCollapsed}
+	>
+		<!-- Logo -->
+		<div class="px-4 py-4 border-b border-border-subtle flex items-center justify-between">
+			{#if !sidebarCollapsed}
+				<a href="/" class="text-lg font-bold text-heading tracking-tight transition-colors hover:text-link">
+					{#if sc?.logoUrl}
+						<img src={sc.logoUrl} alt={sc?.siteName} class="h-7" />
+					{:else if siteNameParts.length >= 2}
 						{siteNameParts[0]}<span class="text-accent">{siteNameParts.slice(1).join('')}</span>
 					{:else}
 						{sc?.siteName ?? 'KnowThing'}
 					{/if}
 				</a>
 			{/if}
+			<button
+				onclick={() => sidebarCollapsed = !sidebarCollapsed}
+				class="text-faint transition-colors hover:text-secondary"
+				aria-label="Toggle sidebar"
+			>
+				{sidebarCollapsed ? '▸' : '◂'}
+			</button>
 		</div>
 
-		<div class="hidden flex-1 max-w-md mx-8 md:block">
-			<SearchBar />
-		</div>
-
-		<nav class="flex items-center gap-3 text-sm md:gap-4">
-			{#if data.user}
-				<span class="text-dim hidden sm:inline">{data.user.username}</span>
-				<form method="POST" action="/auth/logout">
-					<button type="submit" class="text-link transition-colors hover:text-link-hover hover:underline">Log out</button>
-				</form>
-			{:else}
-				<a href="/auth/login" class="text-link transition-colors hover:text-link-hover hover:underline">Log in</a>
-				<a href="/auth/register" class="
-					px-3 py-1.5 bg-accent text-surface rounded-md text-xs font-medium transition-colors hidden
-					hover:bg-accent-hover
-					sm:inline-block
-				">Register</a>
+		<!-- Nav links -->
+		<nav class="flex-1 overflow-y-auto px-2 py-3 space-y-1">
+			{#if !sidebarCollapsed}
+				<span class="px-3 text-[10px] font-semibold text-faint uppercase tracking-wider">Browse</span>
 			{/if}
-		</nav>
-	</header>
 
-	<!-- Desktop navigation -->
-	<nav class="hidden bg-surface border-b border-border px-6 shadow-sm shrink-0 md:block">
-		<div class="max-w-4xl mx-auto flex items-center gap-1 text-sm">
-			<a href="/" class={navClass}>{sc?.navWikiLabel ?? 'Main Page'}</a>
-			<a href="/know/create" class={navClass}>{sc?.navCreateLabel ?? 'Create'}</a>
-			{#if sc?.calendarEnabled !== false}
-				<a href="/calendar" class={navClass}>{sc?.navCalendarLabel ?? 'Calendar'}</a>
-			{/if}
+			<a href="/" class="{linkClass} {isActive('/') && currentPath === '/' ? activeClass : inactiveClass}">
+				{#if !sidebarCollapsed}{sc?.navWikiLabel ?? 'Main Page'}{:else}<span class="mx-auto text-base" title={sc?.navWikiLabel ?? 'Main Page'}>⌂</span>{/if}
+			</a>
+			<a href="/know/create" class="{linkClass} {isActive('/know/create') ? activeClass : inactiveClass}">
+				{#if !sidebarCollapsed}{sc?.navCreateLabel ?? 'Create'}{:else}<span class="mx-auto text-base" title={sc?.navCreateLabel ?? 'Create'}>+</span>{/if}
+			</a>
+			<a href="/search" class="{linkClass} {isActive('/search') ? activeClass : inactiveClass}">
+				{#if !sidebarCollapsed}{sc?.navSearchLabel ?? 'Search'}{:else}<span class="mx-auto text-base" title={sc?.navSearchLabel ?? 'Search'}>⌕</span>{/if}
+			</a>
+			<a href="/special/random" class="{linkClass} {inactiveClass}">
+				{#if !sidebarCollapsed}Random{:else}<span class="mx-auto text-base" title="Random">⟳</span>{/if}
+			</a>
+
 			{#if sc?.wordbookEnabled !== false}
-				<a href="/wordbook" class={navClass}>{sc?.navWordbookLabel ?? 'Wordbook'}</a>
-			{/if}
-			<a href="/search" class={navClass}>{sc?.navSearchLabel ?? 'Search'}</a>
-
-			<div class="h-4 w-px bg-border mx-1"></div>
-
-			<a href="/special/random" class={navSmallClass}>Random</a>
-			<a href="/special/categories" class={navSmallClass}>Categories</a>
-			<a href="/special/stats" class={navSmallClass}>Stats</a>
-
-			{#if data.user}
-				<div class="h-4 w-px bg-border mx-1"></div>
-				<a href="/dashboard" class="px-3 py-2.5 text-link rounded-t-md transition-colors text-xs font-medium hover:text-link-hover hover:bg-accent-subtle">
-					Dashboard
+				{#if !sidebarCollapsed}<div class="pt-3"><span class="px-3 text-[10px] font-semibold text-faint uppercase tracking-wider">{sc?.wordbookName ?? 'Wordbook'}</span></div>{:else}<div class="border-t border-border-subtle my-2"></div>{/if}
+				<a href="/wordbook" class="{linkClass} {isActive('/wordbook') ? activeClass : inactiveClass}">
+					{#if !sidebarCollapsed}{sc?.navWordbookLabel ?? 'Wordbook'}{:else}<span class="mx-auto text-base" title={sc?.navWordbookLabel ?? 'Wordbook'}>📖</span>{/if}
 				</a>
 			{/if}
-		</div>
-	</nav>
 
-	<!-- Mobile menu -->
-	{#if mobileMenuOpen}
-		<div class="bg-surface border-b border-border shadow-sm shrink-0 md:hidden">
-			<div class="px-4 py-3">
+			{#if sc?.calendarEnabled !== false}
+				{#if !sidebarCollapsed}<div class="pt-3"><span class="px-3 text-[10px] font-semibold text-faint uppercase tracking-wider">{sc?.navCalendarLabel ?? 'Calendar'}</span></div>{:else}<div class="border-t border-border-subtle my-2"></div>{/if}
+				<a href="/calendar" class="{linkClass} {isActive('/calendar') ? activeClass : inactiveClass}">
+					{#if !sidebarCollapsed}{sc?.navCalendarLabel ?? 'Calendar'}{:else}<span class="mx-auto text-base" title={sc?.navCalendarLabel ?? 'Calendar'}>📅</span>{/if}
+				</a>
+			{/if}
+
+			{#if !sidebarCollapsed}<div class="pt-3"><span class="px-3 text-[10px] font-semibold text-faint uppercase tracking-wider">Discover</span></div>{:else}<div class="border-t border-border-subtle my-2"></div>{/if}
+			<a href="/special/categories" class="{linkClass} {isActive('/special/categories') ? activeClass : inactiveClass}">
+				{#if !sidebarCollapsed}Categories{:else}<span class="mx-auto text-base" title="Categories">≡</span>{/if}
+			</a>
+			<a href="/special/stats" class="{linkClass} {isActive('/special/stats') ? activeClass : inactiveClass}">
+				{#if !sidebarCollapsed}Statistics{:else}<span class="mx-auto text-base" title="Statistics">#</span>{/if}
+			</a>
+
+			{#if data.user}
+				{#if !sidebarCollapsed}<div class="pt-3"><span class="px-3 text-[10px] font-semibold text-faint uppercase tracking-wider">Contribute</span></div>{:else}<div class="border-t border-border-subtle my-2"></div>{/if}
+				<a href="/dashboard" class="{linkClass} {isActive('/dashboard') && currentPath === '/dashboard' ? activeClass : inactiveClass}">
+					{#if !sidebarCollapsed}Dashboard{:else}<span class="mx-auto text-base" title="Dashboard">⊞</span>{/if}
+				</a>
+				<a href="/dashboard/recent" class="{linkClass} {isActive('/dashboard/recent') ? activeClass : inactiveClass}">
+					{#if !sidebarCollapsed}Recent Changes{:else}<span class="mx-auto text-base" title="Recent Changes">↻</span>{/if}
+				</a>
+				<a href="/dashboard/media" class="{linkClass} {isActive('/dashboard/media') ? activeClass : inactiveClass}">
+					{#if !sidebarCollapsed}Media Library{:else}<span class="mx-auto text-base" title="Media Library">🖼</span>{/if}
+				</a>
+
+				{#if data.user.role === 'admin'}
+					{#if !sidebarCollapsed}<div class="pt-3"><span class="px-3 text-[10px] font-semibold text-faint uppercase tracking-wider">Admin</span></div>{:else}<div class="border-t border-border-subtle my-2"></div>{/if}
+					<a href="/dashboard/calendar" class="{linkClass} {isActive('/dashboard/calendar') ? activeClass : inactiveClass}">
+						{#if !sidebarCollapsed}Calendars{:else}<span class="mx-auto text-base" title="Calendars">⚙</span>{/if}
+					</a>
+					<a href="/dashboard/users" class="{linkClass} {isActive('/dashboard/users') ? activeClass : inactiveClass}">
+						{#if !sidebarCollapsed}Users{:else}<span class="mx-auto text-base" title="Users">👤</span>{/if}
+					</a>
+					<a href="/dashboard/settings" class="{linkClass} {isActive('/dashboard/settings') ? activeClass : inactiveClass}">
+						{#if !sidebarCollapsed}Site Settings{:else}<span class="mx-auto text-base" title="Site Settings">⚙</span>{/if}
+					</a>
+					<a href="/dashboard/export" class="{linkClass} {isActive('/dashboard/export') ? activeClass : inactiveClass}">
+						{#if !sidebarCollapsed}Export{:else}<span class="mx-auto text-base" title="Export">↓</span>{/if}
+					</a>
+				{/if}
+			{/if}
+		</nav>
+
+		<!-- User footer -->
+		<div class="px-3 py-3 border-t border-border-subtle text-xs">
+			{#if data.user}
+				{#if !sidebarCollapsed}
+					<div class="flex items-center justify-between">
+						<span class="text-dim truncate">{data.user.username}</span>
+						<form method="POST" action="/auth/logout">
+							<button type="submit" class="text-link transition-colors hover:text-link-hover">Log out</button>
+						</form>
+					</div>
+				{:else}
+					<form method="POST" action="/auth/logout">
+						<button type="submit" class="text-faint mx-auto block transition-colors hover:text-link" title="Log out">⏻</button>
+					</form>
+				{/if}
+			{:else}
+				{#if !sidebarCollapsed}
+					<div class="flex items-center gap-2">
+						<a href="/auth/login" class="text-link transition-colors hover:text-link-hover">Log in</a>
+						<a href="/auth/register" class="text-link transition-colors hover:text-link-hover">Register</a>
+					</div>
+				{:else}
+					<a href="/auth/login" class="text-faint mx-auto block transition-colors hover:text-link text-center" title="Log in">→</a>
+				{/if}
+			{/if}
+		</div>
+	</aside>
+
+	<!-- Main area -->
+	<div class="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+		<!-- Top bar -->
+		<header class="bg-surface border-b border-border px-4 py-2.5 flex items-center gap-4 shrink-0">
+			<button
+				onclick={() => sidebarOpen = !sidebarOpen}
+				class="text-secondary p-1 md:hidden hover:text-link"
+				aria-label="Toggle menu"
+			>
+				<svg class="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					{#if sidebarOpen}
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+					{:else}
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+					{/if}
+				</svg>
+			</button>
+			<a href="/" class="text-lg font-bold text-heading md:hidden">
+				{#if siteNameParts.length >= 2}
+					{siteNameParts[0]}<span class="text-accent">{siteNameParts.slice(1).join('')}</span>
+				{:else}
+					{sc?.siteName ?? 'KnowThing'}
+				{/if}
+			</a>
+			<div class="flex-1 max-w-xl">
 				<SearchBar />
 			</div>
-			<nav class="px-2 pb-3 space-y-0.5">
-				<a href="/" onclick={() => mobileMenuOpen = false} class={mobileNavClass}>{sc?.navWikiLabel ?? 'Main Page'}</a>
-				<a href="/know/create" onclick={() => mobileMenuOpen = false} class={mobileNavClass}>{sc?.navCreateLabel ?? 'Create'}</a>
-				{#if sc?.calendarEnabled !== false}
-					<a href="/calendar" onclick={() => mobileMenuOpen = false} class={mobileNavClass}>{sc?.navCalendarLabel ?? 'Calendar'}</a>
-				{/if}
-				{#if sc?.wordbookEnabled !== false}
-					<a href="/wordbook" onclick={() => mobileMenuOpen = false} class={mobileNavClass}>{sc?.navWordbookLabel ?? 'Wordbook'}</a>
-				{/if}
-				<a href="/search" onclick={() => mobileMenuOpen = false} class={mobileNavClass}>{sc?.navSearchLabel ?? 'Search'}</a>
-				<div class="border-t border-border-subtle my-1"></div>
-				<a href="/special/random" onclick={() => mobileMenuOpen = false} class={mobileNavSmallClass}>Random</a>
-				<a href="/special/categories" onclick={() => mobileMenuOpen = false} class={mobileNavSmallClass}>Categories</a>
-				<a href="/special/stats" onclick={() => mobileMenuOpen = false} class={mobileNavSmallClass}>Stats</a>
+			<div class="hidden items-center gap-3 text-sm md:flex">
 				{#if data.user}
-					<div class="border-t border-border-subtle my-1"></div>
-					<a href="/dashboard" onclick={() => mobileMenuOpen = false} class="block px-3 py-2 text-link rounded-md text-sm font-medium hover:bg-accent-subtle">Dashboard</a>
-				{/if}
-			</nav>
-		</div>
-	{/if}
-
-	<!-- Content -->
-	<main class="flex-1 overflow-y-auto">
-		<div class="max-w-4xl mx-auto w-full px-4 py-6 md:px-6 md:py-8">
-			{@render children()}
-		</div>
-
-		<footer class="border-t border-border bg-surface p-4 md:px-6">
-			<div class="max-w-4xl mx-auto text-xs text-faint text-center">
-				{#if sc?.footerText}
-					{sc.footerText}
-				{:else}
-					{sc?.siteName ?? 'KnowThing'} — {sc?.siteTagline ?? 'A collaborative encyclopedia'}
+					<span class="text-dim">{data.user.username}</span>
 				{/if}
 			</div>
-		</footer>
-	</main>
+		</header>
+
+		<!-- Mobile sidebar overlay -->
+		{#if sidebarOpen}
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<!-- svelte-ignore a11y_click_events_have_key_events -->
+			<div class="fixed inset-0 z-40 bg-black/40 md:hidden" onclick={() => sidebarOpen = false}></div>
+			<aside class="fixed left-0 top-0 z-50 w-64 h-full bg-surface border-r border-border overflow-y-auto md:hidden">
+				<div class="px-4 py-4 border-b border-border-subtle">
+					<a href="/" class="text-lg font-bold text-heading" onclick={navClick}>
+						{#if siteNameParts.length >= 2}
+							{siteNameParts[0]}<span class="text-accent">{siteNameParts.slice(1).join('')}</span>
+						{:else}
+							{sc?.siteName ?? 'KnowThing'}
+						{/if}
+					</a>
+				</div>
+				<nav class="px-2 py-3 space-y-1">
+					<span class="px-3 text-[10px] font-semibold text-faint uppercase tracking-wider">Browse</span>
+					<a href="/" onclick={navClick} class="{linkClass} {isActive('/') && currentPath === '/' ? activeClass : inactiveClass}">{sc?.navWikiLabel ?? 'Main Page'}</a>
+					<a href="/know/create" onclick={navClick} class="{linkClass} {isActive('/know/create') ? activeClass : inactiveClass}">{sc?.navCreateLabel ?? 'Create'}</a>
+					<a href="/search" onclick={navClick} class="{linkClass} {isActive('/search') ? activeClass : inactiveClass}">{sc?.navSearchLabel ?? 'Search'}</a>
+					<a href="/special/random" onclick={navClick} class="{linkClass} {inactiveClass}">Random</a>
+					{#if sc?.wordbookEnabled !== false}
+						<div class="pt-2"><span class="px-3 text-[10px] font-semibold text-faint uppercase tracking-wider">{sc?.wordbookName ?? 'Wordbook'}</span></div>
+						<a href="/wordbook" onclick={navClick} class="{linkClass} {isActive('/wordbook') ? activeClass : inactiveClass}">{sc?.navWordbookLabel ?? 'Wordbook'}</a>
+					{/if}
+					{#if sc?.calendarEnabled !== false}
+						<div class="pt-2"><span class="px-3 text-[10px] font-semibold text-faint uppercase tracking-wider">{sc?.navCalendarLabel ?? 'Calendar'}</span></div>
+						<a href="/calendar" onclick={navClick} class="{linkClass} {isActive('/calendar') ? activeClass : inactiveClass}">{sc?.navCalendarLabel ?? 'Calendar'}</a>
+					{/if}
+					<div class="pt-2"><span class="px-3 text-[10px] font-semibold text-faint uppercase tracking-wider">Discover</span></div>
+					<a href="/special/categories" onclick={navClick} class="{linkClass} {isActive('/special/categories') ? activeClass : inactiveClass}">Categories</a>
+					<a href="/special/stats" onclick={navClick} class="{linkClass} {isActive('/special/stats') ? activeClass : inactiveClass}">Statistics</a>
+					{#if data.user}
+						<div class="pt-2"><span class="px-3 text-[10px] font-semibold text-faint uppercase tracking-wider">Contribute</span></div>
+						<a href="/dashboard" onclick={navClick} class="{linkClass} {isActive('/dashboard') ? activeClass : inactiveClass}">Dashboard</a>
+						<a href="/dashboard/recent" onclick={navClick} class="{linkClass} {isActive('/dashboard/recent') ? activeClass : inactiveClass}">Recent Changes</a>
+						<a href="/dashboard/media" onclick={navClick} class="{linkClass} {isActive('/dashboard/media') ? activeClass : inactiveClass}">Media Library</a>
+						{#if data.user.role === 'admin'}
+							<div class="pt-2"><span class="px-3 text-[10px] font-semibold text-faint uppercase tracking-wider">Admin</span></div>
+							<a href="/dashboard/calendar" onclick={navClick} class="{linkClass} {isActive('/dashboard/calendar') ? activeClass : inactiveClass}">Calendars</a>
+							<a href="/dashboard/users" onclick={navClick} class="{linkClass} {isActive('/dashboard/users') ? activeClass : inactiveClass}">Users</a>
+							<a href="/dashboard/settings" onclick={navClick} class="{linkClass} {isActive('/dashboard/settings') ? activeClass : inactiveClass}">Settings</a>
+							<a href="/dashboard/export" onclick={navClick} class="{linkClass} {isActive('/dashboard/export') ? activeClass : inactiveClass}">Export</a>
+						{/if}
+					{/if}
+				</nav>
+				{#if data.user}
+					<div class="px-4 py-3 border-t border-border-subtle text-xs flex items-center justify-between">
+						<span class="text-dim">{data.user.username}</span>
+						<form method="POST" action="/auth/logout">
+							<button type="submit" class="text-link" onclick={navClick}>Log out</button>
+						</form>
+					</div>
+				{:else}
+					<div class="px-4 py-3 border-t border-border-subtle text-xs flex gap-3">
+						<a href="/auth/login" onclick={navClick} class="text-link">Log in</a>
+						<a href="/auth/register" onclick={navClick} class="text-link">Register</a>
+					</div>
+				{/if}
+			</aside>
+		{/if}
+
+		<!-- Scrollable content -->
+		<main class="flex-1 overflow-y-auto">
+			<div class="max-w-4xl mx-auto w-full px-4 py-6 md:px-6 md:py-8">
+				{@render children()}
+			</div>
+			<footer class="border-t border-border bg-surface p-4">
+				<div class="max-w-4xl mx-auto text-xs text-faint text-center">
+					{#if sc?.footerText}
+						{sc.footerText}
+					{:else}
+						{sc?.siteName ?? 'KnowThing'} — {sc?.siteTagline ?? 'A collaborative encyclopedia'}
+					{/if}
+				</div>
+			</footer>
+		</main>
+	</div>
 </div>
+</Tooltip.Provider>
 
 <Notifications />

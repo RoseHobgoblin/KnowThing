@@ -32,7 +32,7 @@
 			bind:value={query}
 			placeholder="Search words, definitions, etymology..."
 			class="flex-1 px-4 {large ? 'py-3 text-lg' : 'py-2 text-sm'}
-				border border-border-strong rounded-lg bg-surface text-heading
+				border border-border-strong bg-surface text-heading
 				focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent-border
 				placeholder:text-faint
 			"
@@ -41,7 +41,7 @@
 			<select
 				bind:value={selectedLanguage}
 				class="px-3 {large ? 'py-3' : 'py-2'}
-					border border-border-strong rounded-lg text-sm bg-surface text-secondary
+					border border-border-strong text-sm bg-surface text-secondary
 					focus:outline-none focus:ring-2 focus:ring-accent
 				"
 			>
@@ -55,7 +55,7 @@
 	<button
 		type="submit"
 		disabled={searching}
-		class="px-6 {large ? 'py-3' : 'py-2'} bg-accent text-surface rounded-lg font-medium
+		class="px-6 {large ? 'py-3' : 'py-2'} bg-accent text-surface font-medium
 			transition-colors text-sm hover:bg-accent-hover disabled:opacity-50"
 	>
 		{searching ? 'Searching...' : 'Search'}

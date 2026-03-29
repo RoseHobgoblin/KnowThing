@@ -62,7 +62,7 @@
 					onclick={handleClose}
 					disabled={confirming}
 					class="
-						px-4 py-2 text-sm rounded-md border border-border text-secondary transition-colors
+						px-4 py-2 text-sm border border-border text-secondary transition-colors
 						hover:bg-raised disabled:opacity-50
 					"
 				>
@@ -74,7 +74,7 @@
 					onclick={handleComplete}
 					disabled={confirming}
 					class="
-						px-4 py-2 text-sm rounded-md bg-accent text-surface font-medium transition-colors
+						px-4 py-2 text-sm bg-accent text-surface font-medium transition-colors
 						hover:bg-accent-hover disabled:opacity-50
 					"
 				>

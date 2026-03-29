@@ -14,7 +14,7 @@
 	<h1 class="text-2xl font-bold mb-6">Create account</h1>
 
 	{#if form?.error}
-		<div class="bg-error-bg border border-error-border text-error-text px-4 py-2 rounded-sm mb-4 text-sm">
+		<div class="bg-error-bg border border-error-border text-error-text px-4 py-2 mb-4 text-sm">
 			{form.error}
 		</div>
 	{/if}
@@ -47,7 +47,7 @@
 		<button
 			type="submit"
 			class="
-				w-full bg-accent text-surface py-2 rounded-sm font-medium transition-colors
+				w-full bg-accent text-surface py-2 font-medium transition-colors
 				hover:bg-accent-hover
 			"
 		>

@@ -149,7 +149,7 @@
 			{readonly}
 			tabindex={readonly ? -1 : undefined}
 			class={cn(
-				'flex w-full min-w-0 px-3 py-2 rounded-md text-sm text-body bg-surface border border-border-strong outline-none transition-colors',
+				'flex w-full min-w-0 px-3 py-2 text-sm text-body bg-surface border border-border-strong outline-none transition-colors',
 				'placeholder:text-faint',
 				!readonly && 'hover:border-border focus:ring-2 focus:ring-accent focus:border-accent-border',
 				'aria-invalid:ring-1 aria-invalid:ring-error-border aria-invalid:border-error-border',

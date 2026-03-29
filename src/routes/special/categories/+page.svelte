@@ -9,7 +9,7 @@
 	<title>Categories — KnowThing</title>
 </svelte:head>
 
-<div class="bg-surface rounded-lg shadow-sm border border-border p-6">
+<div class="bg-surface shadow-sm border border-border p-6">
 	<h1 class="text-2xl font-bold text-heading mb-6">Categories</h1>
 
 	{#if data.categories.length === 0}
@@ -20,13 +20,13 @@
 				<a
 					href="/know/category:{slugify(cat.name)}"
 					class="
-						inline-flex items-center gap-1.5 bg-raised text-secondary rounded-full px-4 py-2 text-sm
+						inline-flex items-center gap-1.5 bg-raised text-secondary px-4 py-2 text-sm
 						transition-colors
 						hover:bg-accent-subtle hover:text-link
 					"
 				>
 					{cat.name}
-					<span class="text-xs text-faint bg-border rounded-full px-1.5 py-0.5">{cat.count}</span>
+					<span class="text-xs text-faint bg-border px-1.5 py-0.5">{cat.count}</span>
 				</a>
 			{/each}
 		</div>

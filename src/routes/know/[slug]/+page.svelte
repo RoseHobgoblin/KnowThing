@@ -44,7 +44,7 @@
 {/if}
 
 {#if data.notFound}
-	<div class="bg-surface rounded-lg shadow-sm border border-border p-8 text-center">
+	<div class="bg-surface shadow-sm border border-border p-8 text-center">
 		<h1 class="text-2xl font-bold mb-3 text-body">{data.title}</h1>
 		<p class="text-dim mb-6">
 			This article doesn't exist yet.
@@ -52,7 +52,7 @@
 		<a
 			href="/know/create?title={encodeURIComponent(data.title)}&slug={data.slug}"
 			class="
-				inline-block px-5 py-2.5 bg-accent text-surface rounded-lg font-medium transition-colors
+				inline-block px-5 py-2.5 bg-accent text-surface font-medium transition-colors
 				hover:bg-accent-hover
 			"
 		>
@@ -61,7 +61,7 @@
 	</div>
 {:else if data.ast}
 	<!-- Article card -->
-	<div class="bg-surface rounded-lg shadow-sm border border-border overflow-hidden">
+	<div class="bg-surface shadow-sm border border-border overflow-hidden">
 		<!-- Page header -->
 		<div class="
 			flex flex-col justify-between gap-2 p-4 border-b border-border-subtle
@@ -86,7 +86,7 @@
 					href="/wordbook/{data.wordbookMatch.languageSlug}/{encodeURIComponent(data.wordbookMatch.word)}"
 					class="
 						inline-flex items-center gap-1.5 text-xs text-link bg-accent-subtle border border-accent-border
-						rounded-full px-3 py-1 transition-colors
+						px-3 py-1 transition-colors
 						hover:text-link-hover
 					"
 				>

@@ -22,11 +22,11 @@
 <button
 	{onclick}
 	class={cn(
-		'relative flex items-center gap-3 px-4 py-3 rounded-lg bg-surface border border-border shadow-lg cursor-pointer animate-slide-in min-w-64 max-w-sm overflow-hidden text-left',
+		'relative flex items-center gap-3 px-4 py-3 bg-surface border border-border shadow-lg cursor-pointer animate-slide-in min-w-64 max-w-sm overflow-hidden text-left',
 		notification.expired && 'animate-slide-out',
 	)}
 >
-	<div class={cn('size-7 flex items-center justify-center rounded-md bg-raised shrink-0 text-sm font-bold', colors[variant].icon)}>
+	<div class={cn('size-7 flex items-center justify-center bg-raised shrink-0 text-sm font-bold', colors[variant].icon)}>
 		{#if notification.loading}
 			<span class="animate-spin">⟳</span>
 		{:else}

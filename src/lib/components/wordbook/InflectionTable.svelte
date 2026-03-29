@@ -39,7 +39,7 @@
 </script>
 
 {#if hasInflection && dimensions.length > 0 && Object.keys(forms).length === 0}
-	<div class="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+	<div class="mt-4 p-3 bg-amber-50 border border-amber-200 text-sm text-amber-800">
 		Inflection is assigned but no forms were generated. Check that the paradigm class has rules defined, and that a stem is set.
 	</div>
 {:else if hasInflection && dimensions.length > 0 && Object.keys(forms).length > 0}
@@ -56,7 +56,7 @@
 
 		{#if dimensions.length === 1 && rowDim}
 			<!-- Single dimension: simple list -->
-			<div class="border border-border rounded-lg overflow-hidden text-sm">
+			<div class="border border-border overflow-hidden text-sm">
 				{#each rowDim.values as value}
 					{@const key = value}
 					{@const form = getForm(key)}
@@ -71,7 +71,7 @@
 		{:else if dimensions.length >= 2 && rowDim && colDim}
 			<!-- Two+ dimensions: table -->
 			{#if extraDims.length === 0}
-				<div class="border border-border rounded-lg overflow-hidden overflow-x-auto">
+				<div class="border border-border overflow-hidden overflow-x-auto">
 					<table class="w-full text-sm">
 						<thead>
 							<tr class="bg-page">
@@ -117,7 +117,7 @@
 						<div class="text-xs text-dim font-medium mb-1">
 							{extraDims.map((d, index) => `${d.name}: ${extraVals[index]}`).join(', ')}
 						</div>
-						<div class="border border-border rounded-lg overflow-hidden overflow-x-auto">
+						<div class="border border-border overflow-hidden overflow-x-auto">
 							<table class="w-full text-sm">
 								<thead>
 									<tr class="bg-page">

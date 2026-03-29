@@ -98,12 +98,12 @@
 		}
 	}
 
-	const textareaClass = 'flex w-full min-w-0 px-3 py-2 rounded-md text-sm text-body bg-surface border border-border-strong outline-none transition-colors placeholder:text-faint hover:border-border focus:ring-2 focus:ring-accent focus:border-accent-border disabled:pointer-events-none disabled:opacity-50'
+	const textareaClass = 'flex w-full min-w-0 px-3 py-2 text-sm text-body bg-surface border border-border-strong outline-none transition-colors placeholder:text-faint hover:border-border focus:ring-2 focus:ring-accent focus:border-accent-border disabled:pointer-events-none disabled:opacity-50'
 </script>
 
 <form onsubmit={handleSubmit} class="space-y-4">
 	{#if error}
-		<div class="p-3 bg-error-bg border border-error-border text-error rounded-lg text-sm">{error}</div>
+		<div class="p-3 bg-error-bg border border-error-border text-error text-sm">{error}</div>
 	{/if}
 
 	<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -146,7 +146,7 @@
 		<div>
 			<Label>Accent Color</Label>
 			<div class="flex gap-2 items-center mt-1">
-				<input id="color" type="color" bind:value={color} class="size-10 rounded-sm border border-border-strong cursor-pointer" />
+				<input id="color" type="color" bind:value={color} class="size-10 border border-border-strong cursor-pointer" />
 				<Input bind:value={color} placeholder="#d97706" />
 			</div>
 		</div>
@@ -161,7 +161,7 @@
 
 	<div class="pt-2">
 		<button type="submit" disabled={submitting} class="
-			px-6 py-2.5 bg-accent text-surface rounded-lg font-medium transition-colors
+			px-6 py-2.5 bg-accent text-surface font-medium transition-colors
 			hover:bg-accent-hover disabled:opacity-50
 		">
 			{submitting ? 'Saving...' : submitLabel}

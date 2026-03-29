@@ -248,7 +248,7 @@
 		<span lang={getPositionalArguments()[0] || ''}>{getPositionalArguments()[1] || ''}</span>
 	{:else if resolution.component === 'legend'}
 		<span class="inline-flex items-center gap-1.5 text-sm">
-			<span class="inline-block size-3 rounded-sm" style="background-color: {getPositionalArguments()[0] || '#ccc'}"></span>
+			<span class="inline-block size-3" style="background-color: {getPositionalArguments()[0] || '#ccc'}"></span>
 			{getPositionalArguments()[1] || ''}
 		</span>
 	{:else if resolution.component === 'columns'}
@@ -308,7 +308,7 @@
 		<!-- Flag icon + country name -->
 		{@const countryName = getPositionalArguments()[0] || ''}
 		<span class="inline-flex items-center gap-1 text-sm">
-			<span class="inline-block size-3.5 rounded-sm bg-accent-subtle border border-border" title="Flag of {countryName}"></span>
+			<span class="inline-block size-3.5 bg-accent-subtle border border-border" title="Flag of {countryName}"></span>
 			<a href="/know/{encodeURIComponent(countryName.trim())}" class="text-link hover:underline">{countryName}</a>
 		</span>
 	{:else if resolution.component === 'convert'}
@@ -332,7 +332,7 @@
 	{:else}
 		<!-- Built-in template not yet rendered: {resolution.component} -->
 		<span class="
-			know-template inline-block bg-accent-subtle border border-accent-border rounded-sm px-1.5 py-0.5 text-xs
+			know-template inline-block bg-accent-subtle border border-accent-border px-1.5 py-0.5 text-xs
 			text-accent-text font-mono
 		">
 			{name}{#if args.length > 0}: {formatArguments(args)}{/if}
@@ -341,7 +341,7 @@
 {:else}
 	<!-- Unresolved template -->
 	<span class="
-		know-template inline-block bg-error-bg border border-error-border rounded-sm px-1.5 py-0.5 text-xs
+		know-template inline-block bg-error-bg border border-error-border px-1.5 py-0.5 text-xs
 		text-error-text font-mono
 	">
 		<a href="/know/Template:{encodeURIComponent(normalizedName)}" class="hover:underline">

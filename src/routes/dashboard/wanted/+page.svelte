@@ -8,7 +8,7 @@
 	<title>Wanted Pages — KnowThing</title>
 </svelte:head>
 
-<div class="bg-surface rounded-lg shadow-sm border border-border">
+<div class="bg-surface shadow-sm border border-border">
 	<div class="px-6 py-4 border-b border-border-subtle">
 		<h1 class="text-xl font-bold text-heading">Wanted Pages</h1>
 		<p class="text-sm text-dim mt-1">Pages linked to but not yet created, sorted by demand.</p>

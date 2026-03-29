@@ -20,7 +20,7 @@
 	<h1 class="text-2xl font-bold text-body mb-6">World Calendar</h1>
 
 	{#if data.calendars.length === 0}
-		<div class="bg-accent-subtle border border-accent-border rounded-lg p-6 text-center">
+		<div class="bg-accent-subtle border border-accent-border p-6 text-center">
 			<p class="text-accent-text font-medium">No calendars configured yet.</p>
 			<p class="text-dim text-sm mt-2">
 				<a href="/dashboard/calendar" class="text-link hover:text-link-hover hover:underline">Create one in the Dashboard →</a>
@@ -32,7 +32,7 @@
 				{#each data.calendars as cal}
 					<button
 						onclick={() => selectCalendar(cal)}
-						class="px-3 py-1.5 rounded-lg text-sm transition-colors
+						class="px-3 py-1.5 text-sm transition-colors
 							{selectedCalendar?.name === cal.name
 								? 'bg-secondary text-surface'
 								: 'bg-raised text-secondary hover:bg-border'}"
@@ -57,7 +57,7 @@
 				/>
 
 				<!-- Current date info -->
-				<div class="bg-page border border-border-strong rounded-lg p-4">
+				<div class="bg-page border border-border-strong p-4">
 					<h2 class="font-bold text-body mb-3">Current Date</h2>
 					<div class="space-y-2 text-sm">
 						<div class="flex justify-between">

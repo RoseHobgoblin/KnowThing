@@ -60,7 +60,7 @@
 	{#if data.recent.length > 0}
 		<section>
 			<h2 class="text-lg font-semibold text-body mb-3">Recently Added</h2>
-			<div class="bg-surface rounded-lg border border-border divide-y divide-border-subtle">
+			<div class="bg-surface border border-border divide-y divide-border-subtle">
 				{#each data.recent as entry}
 					<WordEntry {entry} />
 				{/each}

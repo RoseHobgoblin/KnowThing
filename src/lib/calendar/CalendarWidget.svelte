@@ -203,13 +203,13 @@
 	})
 </script>
 
-<div class="calendar-widget bg-page border border-border-strong rounded-lg shadow-sm" class:max-w-md={viewMode === 'month'}>
+<div class="calendar-widget bg-page border border-border-strong shadow-sm" class:max-w-md={viewMode === 'month'}>
 	<!-- Header -->
-	<div class="flex items-center justify-between px-4 py-3 bg-border rounded-t-lg border-b border-border-strong">
+	<div class="flex items-center justify-between px-4 py-3 bg-border border-b border-border-strong">
 		{#if viewMode === 'month'}
-			<button onclick={previousMonth} class="text-secondary px-2 py-1 rounded-sm transition-colors hover:text-heading hover:bg-stone-300">&larr;</button>
+			<button onclick={previousMonth} class="text-secondary px-2 py-1 transition-colors hover:text-heading hover:bg-stone-300">&larr;</button>
 		{:else}
-			<button onclick={() => viewYear--} class="text-secondary px-2 py-1 rounded-sm transition-colors hover:text-heading hover:bg-stone-300">&larr;</button>
+			<button onclick={() => viewYear--} class="text-secondary px-2 py-1 transition-colors hover:text-heading hover:bg-stone-300">&larr;</button>
 		{/if}
 
 		<div class="text-center">
@@ -241,9 +241,9 @@
 		</div>
 
 		{#if viewMode === 'month'}
-			<button onclick={nextMonth} class="text-secondary px-2 py-1 rounded-sm transition-colors hover:text-heading hover:bg-stone-300">&rarr;</button>
+			<button onclick={nextMonth} class="text-secondary px-2 py-1 transition-colors hover:text-heading hover:bg-stone-300">&rarr;</button>
 		{:else}
-			<button onclick={() => viewYear++} class="text-secondary px-2 py-1 rounded-sm transition-colors hover:text-heading hover:bg-stone-300">&rarr;</button>
+			<button onclick={() => viewYear++} class="text-secondary px-2 py-1 transition-colors hover:text-heading hover:bg-stone-300">&rarr;</button>
 		{/if}
 	</div>
 
@@ -303,7 +303,7 @@
 					<!-- svelte-ignore a11y_click_events_have_key_events -->
 					<!-- svelte-ignore a11y_no_static_element_interactions -->
 					<div
-						class="cursor-pointer rounded-md border p-1.5 transition-colors {isCurrent ? 'border-accent bg-accent-subtle' : 'border-border-subtle hover:border-border-strong hover:bg-raised'}"
+						class="cursor-pointer border p-1.5 transition-colors {isCurrent ? 'border-accent bg-accent-subtle' : 'border-border-subtle hover:border-border-strong hover:bg-raised'}"
 						onclick={() => selectMiniMonth(monthIdx)}
 					>
 						<div class="text-[10px] font-semibold text-heading mb-1 text-center truncate">{miniGrid.monthName}</div>
@@ -315,7 +315,7 @@
 									{@const isToday = isCurrent && day === resolved.day}
 									{@const seasonColor = getSeasonColor(day, monthIdx)}
 									<div
-										class="h-2.5 rounded-[1px] text-center leading-[10px] {isToday ? 'bg-accent text-white' : ''}"
+										class="h-2.5 text-center leading-[10px] {isToday ? 'bg-accent text-white' : ''}"
 										style={!isToday && seasonColor ? `background: ${seasonColor}22` : ''}
 									>
 										<span class="text-[6px] {isToday ? 'text-white' : 'text-body'}">{day}</span>
@@ -336,7 +336,7 @@
 			{:else}
 				<!-- Season bar -->
 				{@const totalDays = seasonBlocks.reduce((sum, b) => sum + b.totalDays, 0)}
-				<div class="flex rounded-md overflow-hidden h-6 border border-border-subtle">
+				<div class="flex overflow-hidden h-6 border border-border-subtle">
 					{#each seasonBlocks as block}
 						<div
 							class="flex items-center justify-center text-[9px] font-medium text-white overflow-hidden"
@@ -351,7 +351,7 @@
 				<!-- Season list -->
 				{#each seasonBlocks as block}
 					<div class="flex items-center gap-3 py-1.5 border-b border-border-subtle last:border-0">
-						<div class="size-3 rounded-sm shrink-0" style="background: {block.color}"></div>
+						<div class="size-3 shrink-0" style="background: {block.color}"></div>
 						<div class="flex-1 min-w-0">
 							<div class="text-sm font-medium text-heading">{block.name}</div>
 							<div class="text-xs text-secondary">

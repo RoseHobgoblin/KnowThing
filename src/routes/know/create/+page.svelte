@@ -15,7 +15,7 @@
 <h1 class="text-xl font-bold mb-3">Create new page</h1>
 
 {#if form?.error}
-	<div class="bg-error-bg border border-error-border text-error-text px-4 py-2 rounded-sm mb-3 text-sm">
+	<div class="bg-error-bg border border-error-border text-error-text px-4 py-2 mb-3 text-sm">
 		{form.error}
 	</div>
 {/if}
@@ -32,7 +32,7 @@
 				placeholder="Page title"
 				value={form?.title ?? data.suggestedTitle}
 				class="
-					w-full border border-border-strong rounded-sm px-3 py-1.5 text-sm
+					w-full border border-border-strong px-3 py-1.5 text-sm
 					focus:outline-none focus:ring-2 focus:ring-accent
 				"
 			/>
@@ -40,7 +40,7 @@
 		<button
 			onclick={() => (showPreview = !showPreview)}
 			type="button"
-			class="px-3 py-1.5 rounded-sm border border-border-strong text-sm hover:bg-page {showPreview ? 'bg-accent-subtle border-accent-border' : ''}"
+			class="px-3 py-1.5 border border-border-strong text-sm hover:bg-page {showPreview ? 'bg-accent-subtle border-accent-border' : ''}"
 		>
 			{showPreview ? 'Hide preview' : 'Show preview'}
 		</button>
@@ -52,7 +52,7 @@
 		</div>
 
 		{#if showPreview}
-			<div class="w-1/2 border border-border-strong rounded-sm overflow-hidden">
+			<div class="w-1/2 border border-border-strong overflow-hidden">
 				<div class="bg-raised px-3 py-1 text-xs font-medium text-dim border-b border-border-strong">Preview</div>
 				<LivePreview {content} />
 			</div>
@@ -63,7 +63,7 @@
 		<button
 			type="submit"
 			class="
-				bg-accent text-surface px-4 py-1.5 rounded-sm font-medium transition-colors text-sm
+				bg-accent text-surface px-4 py-1.5 font-medium transition-colors text-sm
 				hover:bg-accent-hover
 			"
 		>

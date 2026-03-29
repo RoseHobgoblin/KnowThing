@@ -45,12 +45,12 @@
 	</div>
 
 	{#if data.languages.length === 0}
-		<div class="p-6 bg-accent-subtle border border-accent-border rounded-lg text-center">
+		<div class="p-6 bg-accent-subtle border border-accent-border text-center">
 			<p class="text-accent-text mb-2">No languages have been created yet.</p>
 			<a href="/wordbook/contribute/language" class="text-link font-medium hover:underline">Create a language first →</a>
 		</div>
 	{:else}
-		<div class="bg-surface rounded-lg border border-border p-6">
+		<div class="bg-surface border border-border p-6">
 			<EntryForm
 				languages={data.languages}
 				initial={data.preselectedLanguageId ? { languageId: data.preselectedLanguageId } : {}}

@@ -83,16 +83,16 @@
 
 	<!-- Child languages -->
 	{#if data.children.length > 0}
-		<div class="bg-surface rounded-lg border border-border p-4">
+		<div class="bg-surface border border-border p-4">
 			<h3 class="text-sm font-semibold text-body mb-2">Descendant languages</h3>
 			<div class="flex flex-wrap gap-2">
 				{#each data.children as child}
 					<a href="/wordbook/{child.slug}" class="
-						inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-sm
+						inline-flex items-center gap-1.5 px-3 py-1.5 border border-border text-sm
 						transition-colors
 						hover:border-accent-border hover:bg-accent-subtle
 					">
-						<span class="size-2 rounded-full" style="background-color: {child.color || 'var(--color-accent)'}"></span>
+						<span class="size-2" style="background-color: {child.color || 'var(--color-accent)'}"></span>
 						<span class="font-medium text-body">{child.name}</span>
 						{#if child.nativeName}
 							<span class="text-faint text-xs italic">{child.nativeName}</span>
@@ -108,7 +108,7 @@
 
 	<!-- Dialects -->
 	{#if data.dialects.length > 0}
-		<div class="bg-surface rounded-lg border border-border p-4">
+		<div class="bg-surface border border-border p-4">
 			<h3 class="text-sm font-semibold text-body mb-2">Dialects</h3>
 			<div class="space-y-1">
 				{#each data.dialects as dialect}
@@ -146,7 +146,7 @@
 		{#each grouped as [letter, entries]}
 			<section>
 				<h2 class="text-xl font-bold text-faint mb-2 pl-1" id="letter-{letter}">{letter}</h2>
-				<div class="bg-surface rounded-lg border border-border divide-y divide-border-subtle">
+				<div class="bg-surface border border-border divide-y divide-border-subtle">
 					{#each entries as entry}
 						<WordEntry {entry} showLanguage={false} />
 					{/each}

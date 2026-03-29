@@ -13,7 +13,7 @@
 <a
 	href="/wordbook/{slug}"
 	class="
-		block bg-surface rounded-lg border border-border transition-all overflow-hidden group
+		block bg-surface border border-border transition-all overflow-hidden group
 		hover:border-accent-border hover:shadow-md
 	"
 >

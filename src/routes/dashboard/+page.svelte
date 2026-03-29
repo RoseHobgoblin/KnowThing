@@ -9,28 +9,28 @@
 </svelte:head>
 
 <div class="space-y-6">
-	<div class="bg-surface rounded-lg shadow-sm border border-border p-6">
+	<div class="bg-surface shadow-sm border border-border p-6">
 		<h1 class="text-xl font-bold text-heading mb-1">Welcome back, {data.user?.username}</h1>
 		<p class="text-dim text-sm">Contributor dashboard</p>
 	</div>
 
 	<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
 		<a href="/know/create" class="
-			bg-surface rounded-lg shadow-sm border border-border p-4 transition-colors group
+			bg-surface shadow-sm border border-border p-4 transition-colors group
 			hover:border-accent-border
 		">
 			<div class="text-2xl font-bold text-link group-hover:text-accent">{data.pageCount}</div>
 			<div class="text-xs text-dim mt-1">Total articles</div>
 		</a>
 		<a href="/dashboard/recent" class="
-			bg-surface rounded-lg shadow-sm border border-border p-4 transition-colors
+			bg-surface shadow-sm border border-border p-4 transition-colors
 			hover:border-accent-border
 		">
 			<div class="font-semibold text-body">Recent Changes</div>
 			<div class="text-xs text-dim mt-1">View all recent edits</div>
 		</a>
 		<a href="/dashboard/wanted" class="
-			bg-surface rounded-lg shadow-sm border border-border p-4 transition-colors
+			bg-surface shadow-sm border border-border p-4 transition-colors
 			hover:border-accent-border
 		">
 			<div class="font-semibold text-body">Wanted Pages</div>
@@ -39,7 +39,7 @@
 	</div>
 
 	{#if data.recentEdits.length > 0}
-		<div class="bg-surface rounded-lg shadow-sm border border-border p-6">
+		<div class="bg-surface shadow-sm border border-border p-6">
 			<h2 class="font-semibold text-body mb-3">Your Recent Edits</h2>
 			<div class="space-y-2">
 				{#each data.recentEdits as edit}
