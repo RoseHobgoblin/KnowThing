@@ -51,7 +51,7 @@
 						src="/api/media/{image}?w=300"
 						alt={imageCaption || image}
 						class="max-w-full h-auto mx-auto"
-						onerror={(e) => { const element = e.currentTarget as HTMLImageElement; element.style.display = 'none'; if (element.nextElementSibling) (element.nextElementSibling as HTMLElement).style.display = 'block' }}
+						onerror={(error) => { const element = error.currentTarget as HTMLImageElement; element.style.display = 'none'; if (element.nextElementSibling) (element.nextElementSibling as HTMLElement).style.display = 'block' }}
 					/>
 					<div class="
 						text-faint italic text-xs border border-dashed border-border p-6 bg-page
