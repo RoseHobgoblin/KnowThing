@@ -49,9 +49,15 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 	const [star] = await db.select().from(stars).where(sql`LOWER(${stars.slug}) = LOWER(${slug})`)
 	if (star) {
-		const systemSlug = pathSegments.length > 1 ? pathSegments[0] : null
-		const canonicalPath = systemSlug ? `/celestial/${systemSlug}/${star.slug}` : `/celestial/${star.slug}`
-		if (star.slug !== slug && !isEditMode) redirect(301, canonicalPath)
+		// Resolve canonical system slug from DB
+		let canonicalSystemSlug: string | null = null
+		if (star.systemId) {
+			const [sys] = await db.select({ slug: starSystems.slug }).from(starSystems).where(eq(starSystems.id, star.systemId))
+			canonicalSystemSlug = sys?.slug ?? null
+		}
+		const canonicalPath = canonicalSystemSlug ? `/celestial/${canonicalSystemSlug}/${star.slug}` : `/celestial/${star.slug}`
+		const inputPath = `/celestial/${pathSegments.join('/')}`
+		if (canonicalPath !== inputPath && !isEditMode) redirect(301, canonicalPath)
 
 		const allSystems = await db.select({ id: starSystems.id, name: starSystems.name }).from(starSystems).orderBy(starSystems.name)
 		const content = await getContent(star.contentRecordId)
@@ -60,9 +66,18 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 	const [planet] = await db.select().from(planetaryBodies).where(sql`LOWER(${planetaryBodies.slug}) = LOWER(${slug})`)
 	if (planet) {
-		const systemSlug = pathSegments.length > 1 ? pathSegments[0] : null
-		const canonicalPath = systemSlug ? `/celestial/${systemSlug}/${planet.slug}` : `/celestial/${planet.slug}`
-		if (planet.slug !== slug && !isEditMode) redirect(301, canonicalPath)
+		// Resolve canonical system slug from the planet's star
+		let canonicalSystemSlug: string | null = null
+		if (planet.starId) {
+			const [parentStar] = await db.select({ systemId: stars.systemId }).from(stars).where(eq(stars.id, planet.starId))
+			if (parentStar?.systemId) {
+				const [sys] = await db.select({ slug: starSystems.slug }).from(starSystems).where(eq(starSystems.id, parentStar.systemId))
+				canonicalSystemSlug = sys?.slug ?? null
+			}
+		}
+		const canonicalPath = canonicalSystemSlug ? `/celestial/${canonicalSystemSlug}/${planet.slug}` : `/celestial/${planet.slug}`
+		const inputPath = `/celestial/${pathSegments.join('/')}`
+		if (canonicalPath !== inputPath && !isEditMode) redirect(301, canonicalPath)
 
 		const allStars = await db.select({ id: stars.id, name: stars.name, slug: stars.slug }).from(stars).orderBy(stars.name)
 		const siblings = planet.starId
