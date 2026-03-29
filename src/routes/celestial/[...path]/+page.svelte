@@ -155,17 +155,16 @@
 	</div>
 {:else}
 	<!-- VIEW MODE -->
-	<div class="max-w-4xl mx-auto">
+	<div class="bg-surface shadow-sm border border-border overflow-hidden">
+		<!-- Page header -->
 		<div class="px-4 pt-4 md:px-6">
+			<div class="text-[10px] font-semibold uppercase tracking-wider mb-1">
+				<a href="/celestial" class="text-link hover:text-link-hover transition-colors">Celestial</a>
+				<span class="text-faint"> / </span>
+				<span class="text-accent">{raw.name}</span>
+			</div>
 			<div class="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
-				<div>
-					<div class="text-[10px] font-semibold uppercase tracking-wider">
-						<a href="/celestial" class="text-link hover:text-link-hover transition-colors">Celestial</a>
-						<span class="text-faint"> / </span>
-						<span class="text-accent">{raw.name}</span>
-					</div>
-					<h1 class="text-2xl font-bold text-heading md:text-3xl">{raw.name}</h1>
-				</div>
+				<h1 class="text-2xl font-bold text-heading md:text-3xl">{raw.name}</h1>
 				{#if isAdmin}
 					<div class="flex gap-3 text-sm">
 						<a href={editPath} class="text-link font-medium transition-colors hover:text-link-hover flex items-center gap-1">
@@ -177,6 +176,7 @@
 			<div class="mt-2 h-0.5 bg-gradient-to-r from-accent to-accent-hover"></div>
 		</div>
 
+		<!-- Article body -->
 		<div class="px-4 pt-3 pb-4 md:px-6 md:pb-5">
 			<article class="know-article">
 				{#if kind === 'system'}
