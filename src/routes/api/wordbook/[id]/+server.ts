@@ -1,9 +1,20 @@
 import { json } from '@sveltejs/kit'
+import { z } from 'zod'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { lexicon, definitions, lexiconRevisions, languages } from '$lib/server/db/schema.js'
 import { requireAuth } from '$lib/server/auth.js'
 import { eq, asc } from 'drizzle-orm'
+
+const updateWordSchema = z.object({
+	word: z.string().optional(),
+	languageId: z.number().optional(),
+	pronunciation: z.string().optional(),
+	etymology: z.string().optional(),
+	notes: z.string().optional(),
+	pageSlug: z.string().optional(),
+	tags: z.array(z.string()).optional(),
+})
 
 /** GET /api/wordbook/:id — single entry with all definitions */
 export const GET: RequestHandler = async ({ params }) => {
@@ -59,15 +70,12 @@ export const PUT: RequestHandler = async (event) => {
 	})
 
 	const body = await event.request.json()
-	const { word, languageId, pronunciation, etymology, notes, pageSlug, tags } = body as {
-		word?: string
-		languageId?: number
-		pronunciation?: string
-		etymology?: string
-		notes?: string
-		pageSlug?: string
-		tags?: string[]
+	const parsed = updateWordSchema.safeParse(body)
+	if (!parsed.success) {
+		return json({ error: parsed.error.issues[0].message }, { status: 400 })
 	}
+
+	const { word, languageId, pronunciation, etymology, notes, pageSlug, tags } = parsed.data
 
 	// Normalize tags
 	const normalizedTags = tags

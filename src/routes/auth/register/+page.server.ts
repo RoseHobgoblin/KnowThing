@@ -1,6 +1,13 @@
 import { fail, redirect } from '@sveltejs/kit'
+import { z } from 'zod'
 import type { Actions, PageServerLoad } from './$types.js'
 import { createUser, createSession, setSessionCookie } from '$lib/server/auth.js'
+
+const registerSchema = z.object({
+	username: z.string().min(3, 'Username must be at least 3 characters'),
+	password: z.string().min(8, 'Password must be at least 8 characters'),
+	confirm: z.string(),
+})
 
 export const load: PageServerLoad = async ({ locals }) => {
 	if (locals.user) throw redirect(302, '/')
@@ -9,21 +16,15 @@ export const load: PageServerLoad = async ({ locals }) => {
 export const actions: Actions = {
 	default: async (event) => {
 		const formData = await event.request.formData()
-		const username = formData.get('username')?.toString()?.trim()
-		const password = formData.get('password')?.toString()
-		const confirm = formData.get('confirm')?.toString()
-
-		if (!username || !password) {
-			return fail(400, { error: 'Username and password are required', username })
+		const parsed = registerSchema.safeParse({
+			username: formData.get('username')?.toString()?.trim(),
+			password: formData.get('password')?.toString(),
+			confirm: formData.get('confirm')?.toString(),
+		})
+		if (!parsed.success) {
+			return fail(400, { error: parsed.error.issues[0].message, username: formData.get('username')?.toString()?.trim() })
 		}
-
-		if (username.length < 3) {
-			return fail(400, { error: 'Username must be at least 3 characters', username })
-		}
-
-		if (password.length < 8) {
-			return fail(400, { error: 'Password must be at least 8 characters', username })
-		}
+		const { username, password, confirm } = parsed.data
 
 		if (password !== confirm) {
 			return fail(400, { error: 'Passwords do not match', username })

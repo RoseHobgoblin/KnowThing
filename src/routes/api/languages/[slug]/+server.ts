@@ -1,10 +1,23 @@
 import { json } from '@sveltejs/kit'
+import { z } from 'zod'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { languages } from '$lib/server/db/schema.js'
 import { requireRole } from '$lib/server/auth.js'
 import { eq, sql } from 'drizzle-orm'
 import { isDescendant } from '$lib/server/wordbook/language-tree.js'
+
+const updateLanguageSchema = z.object({
+	name: z.string().optional(),
+	nativeName: z.string().optional(),
+	family: z.string().optional(),
+	script: z.string().optional(),
+	parentLanguageId: z.number().nullable().optional(),
+	languageType: z.string().optional(),
+	color: z.string().optional(),
+	pageSlug: z.string().optional(),
+	description: z.string().optional(),
+})
 
 /** GET /api/languages/:slug — with inherited family from ancestors */
 export const GET: RequestHandler = async ({ params }) => {
@@ -45,17 +58,12 @@ export const GET: RequestHandler = async ({ params }) => {
 export const PUT: RequestHandler = async (event) => {
 	requireRole(event, 'admin')
 	const body = await event.request.json()
-	const { name, nativeName, script, family, color, description, pageSlug, parentLanguageId, languageType } = body as {
-		name?: string
-		nativeName?: string
-		script?: string
-		family?: string
-		color?: string
-		description?: string
-		pageSlug?: string
-		parentLanguageId?: number | null
-		languageType?: string
+	const parsed = updateLanguageSchema.safeParse(body)
+	if (!parsed.success) {
+		return json({ error: parsed.error.issues[0].message }, { status: 400 })
 	}
+
+	const { name, nativeName, script, family, color, description, pageSlug, parentLanguageId, languageType } = parsed.data
 
 	// Get current language ID for circular reference check
 	const [current] = await db.select({ id: languages.id }).from(languages).where(eq(languages.slug, event.params.slug))

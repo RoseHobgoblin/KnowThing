@@ -1,9 +1,17 @@
 import { json } from '@sveltejs/kit'
+import { z } from 'zod'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { calendars } from '$lib/server/db/schema.js'
 import { requireAuth } from '$lib/server/auth.js'
 import { eq, asc } from 'drizzle-orm'
+
+const createCalendarSchema = z.object({
+	name: z.string().min(1, 'Name is required'),
+	description: z.string().optional(),
+	isPrimary: z.boolean().optional(),
+	staticData: z.record(z.string(), z.unknown()),
+})
 
 /** GET /api/calendar — get primary calendar */
 export const GET: RequestHandler = async () => {
@@ -28,16 +36,12 @@ export const POST: RequestHandler = async (event) => {
 	}
 
 	const body = await event.request.json()
-	const { name, description, isPrimary, staticData } = body as {
-		name: string
-		description?: string
-		isPrimary?: boolean
-		staticData: Record<string, unknown>
+	const parsed = createCalendarSchema.safeParse(body)
+	if (!parsed.success) {
+		return json({ error: parsed.error.issues[0].message }, { status: 400 })
 	}
 
-	if (!name?.trim()) {
-		return json({ error: 'Name is required' }, { status: 400 })
-	}
+	const { name, description, isPrimary, staticData } = parsed.data
 
 	// If this is set as primary, unset other primaries
 	if (isPrimary) {

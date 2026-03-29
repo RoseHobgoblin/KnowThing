@@ -1,9 +1,17 @@
 import { json } from '@sveltejs/kit'
+import { z } from 'zod'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { calendars } from '$lib/server/db/schema.js'
 import { requireAuth } from '$lib/server/auth.js'
 import { eq } from 'drizzle-orm'
+
+const updateCalendarSchema = z.object({
+	name: z.string().optional(),
+	description: z.string().optional(),
+	isPrimary: z.boolean().optional(),
+	staticData: z.record(z.string(), z.unknown()).optional(),
+})
 
 /** GET /api/calendar/:id */
 export const GET: RequestHandler = async ({ params }) => {
@@ -27,12 +35,12 @@ export const PUT: RequestHandler = async (event) => {
 	if (isNaN(id)) return json({ error: 'Invalid ID' }, { status: 400 })
 
 	const body = await event.request.json()
-	const { name, description, isPrimary, staticData } = body as {
-		name?: string
-		description?: string
-		isPrimary?: boolean
-		staticData?: Record<string, unknown>
+	const parsed = updateCalendarSchema.safeParse(body)
+	if (!parsed.success) {
+		return json({ error: parsed.error.issues[0].message }, { status: 400 })
 	}
+
+	const { name, description, isPrimary, staticData } = parsed.data
 
 	// If setting as primary, unset others
 	if (isPrimary) {

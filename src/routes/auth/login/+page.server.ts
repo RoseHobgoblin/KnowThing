@@ -1,6 +1,12 @@
 import { fail, redirect } from '@sveltejs/kit'
+import { z } from 'zod'
 import type { Actions, PageServerLoad } from './$types.js'
 import { verifyCredentials, createSession, setSessionCookie } from '$lib/server/auth.js'
+
+const loginSchema = z.object({
+	username: z.string().min(1, 'Username is required'),
+	password: z.string().min(1, 'Password is required'),
+})
 
 export const load: PageServerLoad = async ({ locals }) => {
 	if (locals.user) throw redirect(302, '/')
@@ -9,12 +15,14 @@ export const load: PageServerLoad = async ({ locals }) => {
 export const actions: Actions = {
 	default: async (event) => {
 		const formData = await event.request.formData()
-		const username = formData.get('username')?.toString()?.trim()
-		const password = formData.get('password')?.toString()
-
-		if (!username || !password) {
-			return fail(400, { error: 'Username and password are required', username })
+		const parsed = loginSchema.safeParse({
+			username: formData.get('username')?.toString()?.trim(),
+			password: formData.get('password')?.toString(),
+		})
+		if (!parsed.success) {
+			return fail(400, { error: parsed.error.issues[0].message, username: formData.get('username')?.toString()?.trim() })
 		}
+		const { username, password } = parsed.data
 
 		const user = await verifyCredentials(username, password)
 		if (!user) {

@@ -81,16 +81,14 @@ export const POST: RequestHandler = async (event) => {
 	const user = requireAuth(event)
 
 	const formData = await event.request.formData()
-	const file = formData.get('file') as File
+	const file = formData.get('file')
 
 	if (!file || !(file instanceof File)) {
 		return json({ error: 'No file provided' }, { status: 400 })
 	}
 
-	// Validate MIME type
-	const allowedTypes = ['image/png', 'image/jpeg', 'image/pjpeg', 'image/gif', 'image/webp', 'image/svg+xml', 'image/avif', 'image/tiff']
-	if (!allowedTypes.includes(file.type)) {
-		return json({ error: `Unsupported file type: ${file.type}. Allowed: PNG, JPEG, GIF, WebP, SVG, AVIF` }, { status: 400 })
+	if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+		return json({ error: `Unsupported file type: ${file.type}. Allowed: image/* or application/pdf` }, { status: 400 })
 	}
 
 	// Size limit

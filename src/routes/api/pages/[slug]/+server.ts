@@ -1,10 +1,17 @@
 import { json, error } from '@sveltejs/kit'
+import { z } from 'zod'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { pages, revisions } from '$lib/server/db/schema.js'
 import { eq } from 'drizzle-orm'
 import { requireAuth } from '$lib/server/auth.js'
 import { updatePageEffects, deletePageEffects } from '$lib/server/page-effects.js'
+
+const updatePageSchema = z.object({
+	content: z.string(),
+	title: z.string().min(1).optional(),
+	editSummary: z.string().optional(),
+})
 
 /** GET /api/pages/:slug */
 export const GET: RequestHandler = async ({ params }) => {
@@ -23,11 +30,11 @@ export const PUT: RequestHandler = async (event) => {
 	const user = requireAuth(event)
 	const { slug } = event.params
 	const body = await event.request.json()
-	const { title, content, editSummary } = body as {
-		title?: string
-		content: string
-		editSummary?: string
+	const parsed = updatePageSchema.safeParse(body)
+	if (!parsed.success) {
+		return json({ error: parsed.error.issues[0].message }, { status: 400 })
 	}
+	const { title, content, editSummary } = parsed.data
 
 	const [existing] = await db
 		.select()

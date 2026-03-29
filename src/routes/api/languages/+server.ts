@@ -1,10 +1,24 @@
 import { json } from '@sveltejs/kit'
+import { z } from 'zod'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { languages } from '$lib/server/db/schema.js'
 import { requireRole } from '$lib/server/auth.js'
 import { asc, sql } from 'drizzle-orm'
 import { lexicon } from '$lib/server/db/schema.js'
+
+const createLanguageSchema = z.object({
+	name: z.string().min(1, 'Name is required'),
+	slug: z.string().min(1, 'Slug is required'),
+	nativeName: z.string().optional(),
+	family: z.string().optional(),
+	script: z.string().optional(),
+	parentLanguageId: z.number().optional(),
+	languageType: z.string().optional(),
+	color: z.string().optional(),
+	pageSlug: z.string().optional(),
+	description: z.string().optional(),
+})
 
 /** GET /api/languages — list all languages with word counts, inheriting family from ancestors */
 export const GET: RequestHandler = async () => {
@@ -39,22 +53,12 @@ export const GET: RequestHandler = async () => {
 export const POST: RequestHandler = async (event) => {
 	requireRole(event, 'admin')
 	const body = await event.request.json()
-	const { name, slug, nativeName, script, family, color, description, pageSlug, parentLanguageId, languageType } = body as {
-		name: string
-		slug: string
-		nativeName?: string
-		script?: string
-		family?: string
-		color?: string
-		description?: string
-		pageSlug?: string
-		parentLanguageId?: number
-		languageType?: string
+	const parsed = createLanguageSchema.safeParse(body)
+	if (!parsed.success) {
+		return json({ error: parsed.error.issues[0].message }, { status: 400 })
 	}
 
-	if (!name?.trim() || !slug?.trim()) {
-		return json({ error: 'Name and slug are required' }, { status: 400 })
-	}
+	const { name, slug, nativeName, script, family, color, description, pageSlug, parentLanguageId, languageType } = parsed.data
 
 	const validTypes = ['proto', 'language', 'historical']
 	const type = languageType && validTypes.includes(languageType) ? languageType : 'language'

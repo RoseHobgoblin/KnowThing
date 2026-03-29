@@ -1,9 +1,32 @@
 import { json } from '@sveltejs/kit'
+import { z } from 'zod'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { lexicon, lexiconRelations, definitions, languages } from '$lib/server/db/schema.js'
 import { requireAuth } from '$lib/server/auth.js'
 import { eq, sql, asc, desc, and } from 'drizzle-orm'
+
+const createWordSchema = z.object({
+	word: z.string().min(1, 'Word is required'),
+	languageId: z.number({ error: 'Language is required' }),
+	pronunciation: z.string().optional(),
+	etymology: z.string().optional(),
+	notes: z.string().optional(),
+	pageSlug: z.string().optional(),
+	tags: z.array(z.string()).optional(),
+	defs: z.array(z.object({
+		partOfSpeech: z.string().optional(),
+		definition: z.string(),
+		usageExample: z.string().optional(),
+		usageTranslation: z.string().optional(),
+	})).optional(),
+	relations: z.array(z.object({
+		targetId: z.number(),
+		relationType: z.string(),
+	})).optional(),
+	definition: z.string().optional(),
+	isHomograph: z.boolean().optional(),
+})
 
 /** GET /api/wordbook — search and browse */
 export const GET: RequestHandler = async ({ url }) => {
@@ -104,6 +127,11 @@ export const GET: RequestHandler = async ({ url }) => {
 export const POST: RequestHandler = async (event) => {
 	requireAuth(event)
 	const body = await event.request.json()
+	const parsed = createWordSchema.safeParse(body)
+	if (!parsed.success) {
+		return json({ error: parsed.error.issues[0].message }, { status: 400 })
+	}
+
 	const {
 		word,
 		languageId,
@@ -114,24 +142,10 @@ export const POST: RequestHandler = async (event) => {
 		tags,
 		defs,
 		relations,
-	} = body as {
-		word: string
-		languageId: number
-		pronunciation?: string
-		etymology?: string
-		notes?: string
-		pageSlug?: string
-		tags?: string[]
-		defs?: Array<{ partOfSpeech?: string, definition: string, usageExample?: string, usageTranslation?: string }>
-		relations?: Array<{ targetId: number, relationType: string }>
-	}
-
-	if (!word?.trim() || !languageId) {
-		return json({ error: 'Word and language are required' }, { status: 400 })
-	}
+	} = parsed.data
 
 	const defsList: Array<{ partOfSpeech?: string, definition: string, usageExample?: string, usageTranslation?: string }> =
-		defs && defs.length > 0 ? defs : [{ definition: body.definition || '' }]
+		defs && defs.length > 0 ? defs : [{ definition: parsed.data.definition || '' }]
 	if (!defsList[0]?.definition?.trim()) {
 		return json({ error: 'At least one definition is required' }, { status: 400 })
 	}
@@ -149,7 +163,7 @@ export const POST: RequestHandler = async (event) => {
 	let homographNumber = 1
 	if (existing.length > 0) {
 		// If there's already an entry, check if user intended a homograph
-		const isHomograph = body.isHomograph === true
+		const isHomograph = parsed.data.isHomograph === true
 		if (!isHomograph) {
 			const lang = await db.select({ name: languages.name, slug: languages.slug }).from(languages).where(eq(languages.id, languageId))
 			return json({
