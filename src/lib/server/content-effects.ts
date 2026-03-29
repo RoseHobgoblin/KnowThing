@@ -1,7 +1,7 @@
 import { db } from './db/index.js'
 import { contentLinks, contentCategories, contentMediaUsage, contentRecords } from './db/schema.js'
 import { eq, and, sql } from 'drizzle-orm'
-import { parseWikitext, extractLinksFromAst, extractCategoriesFromAst, extractImagesFromAst, stripMarkup } from '$lib/parser/index.js'
+import { parseWikitext, extractLinksFromAst, extractDomainLinksFromAst, extractCategoriesFromAst, extractImagesFromAst, stripMarkup } from '$lib/parser/index.js'
 import { slugify } from '$lib/renderer/context.js'
 import type { WikiNode } from '$lib/parser/types.js'
 
@@ -16,6 +16,7 @@ export async function updateContentEffects(
 ): Promise<{ plainText: string, ast: WikiNode }> {
 	const ast = parseWikitext(content)
 	const linkTargets = extractLinksFromAst(ast).map(t => slugify(t))
+	const domainLinks = extractDomainLinksFromAst(ast)
 	const cats = extractCategoriesFromAst(ast)
 	const images = extractImagesFromAst(ast)
 	const plainText = stripMarkup(content)
@@ -34,9 +35,21 @@ export async function updateContentEffects(
 		await db.insert(contentLinks).values(
 			linkTargets.map(target => ({
 				sourceId: contentRecordId,
-				targetDomain: 'know', // TODO: parse domain prefixes from links
+				targetDomain: sourceDomain,
 				targetSlug: target,
 				targetId: slugToId.get(target.toLowerCase()) ?? null,
+			})),
+		).onConflictDoNothing()
+	}
+
+	// Store cross-domain links
+	if (domainLinks.length > 0) {
+		await db.insert(contentLinks).values(
+			domainLinks.map(({ domain, target }) => ({
+				sourceId: contentRecordId,
+				targetDomain: domain,
+				targetSlug: slugify(target),
+				targetId: null, // resolved lazily
 			})),
 		).onConflictDoNothing()
 	}

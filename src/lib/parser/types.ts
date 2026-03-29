@@ -16,6 +16,7 @@ export type WikiNode =
 	| DefinitionListNode
 	| InternalLinkNode
 	| WordbookLinkNode
+	| DomainLinkNode
 	| ExternalLinkNode
 	| TemplateNode
 	| ImageNode
@@ -105,6 +106,12 @@ export interface WordbookLinkNode {
 	type: 'wordbook_link'
 	language: string
 	word: string
+	display: WikiNode[] | null
+}
+export interface DomainLinkNode {
+	type: 'domain_link'
+	domain: string
+	target: string
 	display: WikiNode[] | null
 }
 export interface ExternalLinkNode {

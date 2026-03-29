@@ -36,8 +36,20 @@ import CategoryBar from '$lib/components/CategoryBar.svelte'
 		return map
 	})
 
+	// Build existingContent map from layout data
+	const existingContent = $derived.by(() => {
+		const map = new Map<string, Set<string>>()
+		const items = layoutData.existingContent || []
+		for (const { domain, slug } of items) {
+			if (!map.has(domain)) map.set(domain, new Set())
+			map.get(domain)!.add(slug)
+		}
+		return map
+	})
+
 	createKnowContext({
 		existingPages: new Set(layoutData.existingPages || []),
+		existingContent,
 		mediaBaseUrl: '/api/media',
 		pageBaseUrl: '/know',
 		calendarDate: layoutData.calendarDate ?? null,

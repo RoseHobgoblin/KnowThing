@@ -24,6 +24,19 @@ export function extractLinksFromAst(ast: WikiNode): string[] {
 }
 
 /**
+ * Walk a pre-parsed AST and collect all cross-domain link targets.
+ */
+export function extractDomainLinksFromAst(ast: WikiNode): { domain: string, target: string }[] {
+	const links: { domain: string, target: string }[] = []
+	walkNodes([ast], (node) => {
+		if (node.type === 'domain_link') {
+			links.push({ domain: node.domain, target: node.target })
+		}
+	})
+	return links
+}
+
+/**
  * Walk a pre-parsed AST and collect all category names.
  */
 export function extractCategoriesFromAst(ast: WikiNode): string[] {
@@ -166,6 +179,7 @@ function getChildren(node: WikiNode): WikiNode[] {
 		case 'definition_list':
 			return node.items.flatMap(item => [...item.term, ...item.definition])
 		case 'internal_link':
+		case 'domain_link':
 			return node.display || []
 		case 'table':
 			return node.rows.flatMap(row => row.cells.flatMap(cell => cell.children))

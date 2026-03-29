@@ -13,6 +13,7 @@
 	import WikiDefinitionList from './nodes/WikiDefinitionList.svelte'
 	import WikiInternalLink from './nodes/WikiInternalLink.svelte'
 	import WikiWordbookLink from './nodes/WikiWordbookLink.svelte'
+	import WikiDomainLink from './nodes/WikiDomainLink.svelte'
 	import WikiExternalLink from './nodes/WikiExternalLink.svelte'
 	import WikiTemplate from './nodes/WikiTemplate.svelte'
 	import WikiImage from './nodes/WikiImage.svelte'
@@ -58,6 +59,8 @@
 	<WikiInternalLink target={node.target} display={node.display} />
 {:else if node.type === 'wordbook_link'}
 	<WikiWordbookLink {node} />
+{:else if node.type === 'domain_link'}
+	<WikiDomainLink {node} />
 {:else if node.type === 'external_link'}
 	<WikiExternalLink url={node.url} display={node.display} />
 {:else if node.type === 'template'}

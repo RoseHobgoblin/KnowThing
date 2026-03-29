@@ -495,6 +495,17 @@ function parseInternalLink(input: string, start: number): ParseResult<WikiNode> 
 		}
 	}
 
+	// Cross-domain link: [[domain:target]] or [[domain:target|display]]
+	if (/^[a-z][\da-z]*:/i.test(target)) {
+		const colonIndex = target.indexOf(':')
+		const domain = target.slice(0, colonIndex).trim().toLowerCase()
+		const domainTarget = target.slice(colonIndex + 1).trim()
+		if (domainTarget) {
+			const display = parts.length > 1 ? parseInline(parts.slice(1).join('|')) : null
+			return { node: { type: 'domain_link' as const, domain, target: domainTarget, display }, end: index }
+		}
+	}
+
 	// Regular internal link
 	if (parts.length > 1) {
 		const display = parseInline(parts.slice(1).join('|'))
