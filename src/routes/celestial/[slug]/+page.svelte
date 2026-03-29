@@ -119,8 +119,12 @@
 				body: JSON.stringify(payload),
 			})
 
-			if (res.ok) pushSuccess('Saved')
-			else pushError('Failed to save')
+			if (res.ok) {
+				pushSuccess('Saved')
+			} else {
+				const err = await res.json().catch(() => null)
+				pushError(err?.error || 'Failed to save')
+			}
 		} finally {
 			saving = false
 		}

@@ -56,6 +56,7 @@ export const PUT: RequestHandler = async (event) => {
 	if (data.angularDiameter !== undefined) setClause.angularDiameter = data.angularDiameter?.trim() || null
 	if (data.companion !== undefined) setClause.companion = data.companion?.trim() || null
 	if (data.parentStarId !== undefined) setClause.parentStarId = data.parentStarId ?? null
+	if (data.systemId !== undefined) setClause.systemId = data.systemId ?? null
 	if (data.extra !== undefined) setClause.extra = data.extra ?? {}
 	if (data.description !== undefined) setClause.description = data.description?.trim() || ''
 
