@@ -83,7 +83,7 @@
    ============================================================================ */
 
 :root {
-	--content-max-width: 56rem;
+	--content-max-width: 72rem;
 	--infobox-width: 20rem;
 
 	/* Ambient tinted shadow for floating elements */
@@ -139,7 +139,7 @@ h1, h2, h3, h4, h5, h6 {
 	margin: 0 0 1.5rem 1.5rem;
 	width: var(--infobox-width);
 	font-size: 0.8rem;
-	border: none;
+	border: 1px solid var(--color-border-strong);
 	border-collapse: collapse;
 	background: var(--color-surface);
 	border-radius: 0;

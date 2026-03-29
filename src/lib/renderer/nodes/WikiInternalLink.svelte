@@ -9,7 +9,7 @@
 	const ctx = getWikiContext()
 	const slug = $derived(slugify(target))
 	const href = $derived(`${ctx.pageBaseUrl}/${slug}`)
-	const exists = $derived(ctx.existingPages.has(slug))
+	const exists = $derived(ctx.existingPages.has(slug.toLowerCase()))
 
 	let showPreview = $state(false)
 	let previewX = $state(0)
@@ -26,10 +26,8 @@
 	}
 
 	function onMouseMove(event: MouseEvent) {
-		if (!showPreview) {
-			previewX = event.clientX
-			previewY = event.clientY
-		}
+		previewX = event.clientX
+		previewY = event.clientY
 	}
 
 	function onMouseLeave() {

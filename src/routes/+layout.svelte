@@ -194,11 +194,11 @@
 
 		<!-- Scrollable content -->
 		<main class="flex-1 overflow-y-auto">
-			<div class="max-w-4xl mx-auto w-full px-4 py-6 md:px-6 md:py-8">
+			<div class="max-w-6xl mx-auto w-full px-4 py-6 md:px-6 md:py-8">
 				{@render children()}
 			</div>
 			<footer class="border-t border-border bg-surface p-4">
-				<div class="max-w-4xl mx-auto text-xs text-faint text-center">
+				<div class="max-w-6xl mx-auto text-xs text-faint text-center">
 					{#if sc?.footerText}
 						{sc.footerText}
 					{:else}

@@ -2,8 +2,7 @@
 	import type { PageData } from './$types.js'
 	import WikiNodeComponent from '$lib/renderer/WikiNode.svelte'
 	import { createKnowContext } from '$lib/renderer/context.js'
-	import TableOfContents from '$lib/components/TableOfContents.svelte'
-	import CategoryBar from '$lib/components/CategoryBar.svelte'
+import CategoryBar from '$lib/components/CategoryBar.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import { page } from '$app/stores'
@@ -39,9 +38,6 @@
 </svelte:head>
 
 {#key data.slug}
-{#if data.ast}
-	<TableOfContents ast={data.ast} />
-{/if}
 
 {#if data.notFound}
 	<div class="bg-surface shadow-sm border border-border p-8 text-center">
@@ -68,13 +64,13 @@
 			sm:flex-row sm:items-center
 			md:px-6
 		">
-			<h1 class="text-xl font-bold text-heading md:text-2xl">{data.title}</h1>
+			<h1 class="text-2xl font-bold text-heading md:text-3xl">{data.title}</h1>
 			<div class="flex gap-3 text-sm md:gap-4">
 				<a href="/know/{data.slug}/edit" class="text-link font-medium transition-colors hover:text-link-hover">Edit</a>
 				<a href="/know/{data.slug}/move" class="text-dim transition-colors hover:text-secondary">Move</a>
 				<a href="/know/{data.slug}/history" class="text-dim transition-colors hover:text-secondary">History</a>
 				{#if layoutData.user?.role === 'admin'}
-					<button onclick={deletePage} class="text-error transition-colors text-xs hover:text-error-hover">Delete</button>
+					<button onclick={deletePage} class="text-error transition-colors hover:text-error-hover">Delete</button>
 				{/if}
 			</div>
 		</div>

@@ -39,7 +39,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 
 	return {
 		user: locals.user,
-		existingPages: allPages.map(p => p.slug),
+		existingPages: allPages.map(p => p.slug.toLowerCase()),
 		calendarDate,
 		siteConfig,
 	}
