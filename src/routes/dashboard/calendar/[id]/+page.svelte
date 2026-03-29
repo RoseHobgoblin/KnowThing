@@ -1,6 +1,8 @@
 <script lang="ts">
 	import type { PageData } from './$types.js'
 	import { goto } from '$app/navigation'
+	import CalendarWidget from '$lib/calendar/CalendarWidget.svelte'
+	import type { CalendarConfig } from '$lib/calendar/types.js'
 
 	let { data }: { data: PageData } = $props()
 
@@ -49,6 +51,40 @@
 			offset: ld.offset ?? 0,
 		})),
 	)
+
+	// Live preview config — rebuilt from current editor state
+	let previewConfig = $derived<CalendarConfig>({
+		name,
+		description,
+		primary: isPrimary,
+		static_data: {
+			first_week_day: firstWeekDay,
+			weekdays: weekdays.map(w => ({ name: w.name, abbreviation: w.abbreviation || undefined })),
+			months: months.map(m => ({ name: m.name, length: m.length, month_type: m.month_type as 'regular' | 'intercalary', short_name: m.short_name || undefined })),
+			leap_days: leapDays.map(ld => ({
+				name: ld.name,
+				month_index: ld.month_index,
+				after_day: ld.after_day,
+				interval: ld.interval,
+				ignore: ld.ignore ? ld.ignore.split(',').map(s => Number.parseInt(s.trim())).filter(n => !Number.isNaN(n)) : [],
+				exclusive: ld.exclusive ? ld.exclusive.split(',').map(s => Number.parseInt(s.trim())).filter(n => !Number.isNaN(n)) : [],
+				intercalary: ld.intercalary,
+				offset: ld.offset,
+			})),
+			moons: moons.map(m => ({ name: m.name, cycle: m.cycle, offset: m.offset, face_color: m.face_color, shadow_color: m.shadow_color })),
+			eras: eras.map(e => ({ name: e.name, start_year: e.start_year, end_year: e.end_year ? Number.parseInt(e.end_year) : null, format: e.format, reverse_numbering: e.reverse_numbering })),
+			seasons: seasons.map(s => ({
+				name: s.name, kind: s.kind as any, color: s.color,
+				timing: s.timing_type === 'dated' ? { type: 'dated' as const, month: s.month, day: s.day } : { type: 'periodic' as const, duration: s.duration },
+			})),
+			display_moons: displayMoons,
+			year_offset: yearOffset,
+			epoch_offset: epochOffset,
+			day_length_seconds: dayLengthSeconds,
+		},
+	})
+
+	let showPreview = $state(true)
 
 	let saving = $state(false)
 	let saveMessage = $state('')
@@ -104,7 +140,9 @@
 	<title>Edit {data.calendar.name} — Dashboard — KnowThing</title>
 </svelte:head>
 
-<div class="space-y-6">
+<div class="flex gap-6 items-start">
+<!-- Editor column -->
+<div class="flex-1 min-w-0 space-y-6">
 	<div class="flex items-center justify-between">
 		<div>
 			<a href="/dashboard/calendar" class="text-sm text-faint hover:text-link">← Calendars</a>
@@ -136,19 +174,19 @@
 				<input type="text" bind:value={description} class="w-full {inputClass}" />
 			</div>
 			<div>
-				<label class={labelClass}>Epoch Offset <span class="text-faint font-normal">(days from Unix epoch to year 1 day 1)</span></label>
+				<label class={labelClass}>Epoch Offset <span class="text-faint font-normal" title="How many calendar days separate Unix epoch (1 Jan 1970) from your calendar's Year 1, Day 1. Positive = your calendar starts before 1970. Negative = after. This determines what 'today' maps to in your calendar.">(days from Unix epoch to year 1 day 1) ⓘ</span></label>
 				<input type="number" bind:value={epochOffset} class="w-full {inputClass}" />
 			</div>
 			<div>
-				<label class={labelClass}>Year Display Offset</label>
+				<label class={labelClass}>Year Display Offset <span class="text-faint font-normal" title="Added to displayed year numbers. Use if your internal year 1 should display as a different number (e.g. offset of 999 makes year 1 display as 1000).">ⓘ</span></label>
 				<input type="number" bind:value={yearOffset} class="w-full {inputClass}" />
 			</div>
 			<div>
-				<label class={labelClass}>Day Length <span class="text-faint font-normal">(seconds — 86400 = 24h, 72000 = 20h)</span></label>
+				<label class={labelClass}>Day Length <span class="text-faint font-normal" title="How many real-world seconds make up one calendar day. Earth = 86400 (24 hours). Change this for worlds where a 'day' is a different length. Affects how fast the calendar ticks relative to real time.">(seconds — 86400 = 24h, 72000 = 20h) ⓘ</span></label>
 				<input type="number" bind:value={dayLengthSeconds} min={1} class="w-full {inputClass}" />
 			</div>
 			<div>
-				<label class={labelClass}>First Weekday Index</label>
+				<label class={labelClass}>First Weekday Index <span class="text-faint font-normal" title="Which weekday (0-indexed) does Year 1, Month 1, Day 1 fall on? 0 = first weekday in your list above.">ⓘ</span></label>
 				<input type="number" bind:value={firstWeekDay} min={0} class="w-full {inputClass}" />
 			</div>
 			<label class="flex items-center gap-2 text-sm text-secondary self-end">
@@ -324,4 +362,28 @@
 			</div>
 		{/each}
 	</section>
+</div>
+
+<!-- Preview sidebar -->
+<div class="hidden w-96 shrink-0 lg:block">
+	<div class="sticky top-4 space-y-3">
+		<div class="flex items-center justify-between">
+			<h2 class="text-sm font-semibold text-heading">Live Preview</h2>
+			<button onclick={() => showPreview = !showPreview} class="text-xs text-link hover:underline">
+				{showPreview ? 'Hide' : 'Show'}
+			</button>
+		</div>
+		{#if showPreview}
+			{#if previewConfig.static_data.months.length > 0 && previewConfig.static_data.weekdays.length > 0}
+				{#key JSON.stringify(previewConfig.static_data)}
+					<CalendarWidget config={previewConfig} />
+				{/key}
+			{:else}
+				<div class="bg-surface border border-border rounded-lg p-4 text-sm text-faint text-center">
+					Add months and weekdays to see a preview.
+				</div>
+			{/if}
+		{/if}
+	</div>
+</div>
 </div>
