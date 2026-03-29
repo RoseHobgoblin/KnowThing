@@ -8,7 +8,6 @@
 
 	let { children, data }: { children: any, data: LayoutData } = $props()
 	let sidebarOpen = $state(false)
-	let sidebarCollapsed = $state(false)
 
 	const sc = $derived(data.siteConfig)
 	const siteNameParts = $derived((sc?.siteName ?? 'KnowThing').split(/(?=[A-Z])/))
@@ -32,98 +31,54 @@
 <div class="h-screen flex bg-page overflow-hidden" dir={sc?.textDirection ?? 'ltr'}>
 
 	<!-- Sidebar (desktop) -->
-	<aside class="hidden w-56 shrink-0 bg-surface border-r border-border flex-col h-screen md:flex"
-		class:!w-14={sidebarCollapsed}
-	>
+	<aside class="hidden w-56 shrink-0 bg-surface border-r border-border flex-col h-screen md:flex">
 		<!-- Logo -->
-		<div class="px-4 py-4 border-b border-border-subtle flex items-center justify-between">
-			{#if !sidebarCollapsed}
-				<a href="/" class="text-lg font-bold text-heading tracking-tight transition-colors hover:text-link">
-					{#if sc?.logoUrl}
-						<img src={sc.logoUrl} alt={sc?.siteName} class="h-7" />
-					{:else if siteNameParts.length >= 2}
-						{siteNameParts[0]}<span class="text-accent">{siteNameParts.slice(1).join('')}</span>
-					{:else}
-						{sc?.siteName ?? 'KnowThing'}
-					{/if}
-				</a>
-			{/if}
-			<button
-				onclick={() => sidebarCollapsed = !sidebarCollapsed}
-				class="text-faint transition-colors hover:text-secondary"
-				aria-label="Toggle sidebar"
-			>
-				{sidebarCollapsed ? '▸' : '◂'}
-			</button>
+		<div class="px-4 py-4 border-b border-border-subtle">
+			<a href="/" class="text-lg font-bold text-heading tracking-tight transition-colors hover:text-link">
+				{#if sc?.logoUrl}
+					<img src={sc.logoUrl} alt={sc?.siteName} class="h-7" />
+				{:else if siteNameParts.length >= 2}
+					{siteNameParts[0]}<span class="text-accent">{siteNameParts.slice(1).join('')}</span>
+				{:else}
+					{sc?.siteName ?? 'KnowThing'}
+				{/if}
+			</a>
 		</div>
 
 		<!-- Nav links -->
 		<nav class="flex-1 overflow-y-auto px-2 py-3 space-y-1">
-			{#if !sidebarCollapsed}
-				<span class="px-3 text-[10px] font-semibold text-faint uppercase tracking-wider">Browse</span>
-			{/if}
-
-			<a href="/" class="{linkClass} {isActive('/') && currentPath === '/' ? activeClass : inactiveClass}">
-				{#if !sidebarCollapsed}{sc?.navWikiLabel ?? 'Main Page'}{:else}<span class="mx-auto text-base" title={sc?.navWikiLabel ?? 'Main Page'}>⌂</span>{/if}
-			</a>
-			<a href="/know/create" class="{linkClass} {isActive('/know/create') ? activeClass : inactiveClass}">
-				{#if !sidebarCollapsed}{sc?.navCreateLabel ?? 'Create'}{:else}<span class="mx-auto text-base" title={sc?.navCreateLabel ?? 'Create'}>+</span>{/if}
-			</a>
-			<a href="/search" class="{linkClass} {isActive('/search') ? activeClass : inactiveClass}">
-				{#if !sidebarCollapsed}{sc?.navSearchLabel ?? 'Search'}{:else}<span class="mx-auto text-base" title={sc?.navSearchLabel ?? 'Search'}>⌕</span>{/if}
-			</a>
-			<a href="/special/random" class="{linkClass} {inactiveClass}">
-				{#if !sidebarCollapsed}Random{:else}<span class="mx-auto text-base" title="Random">⟳</span>{/if}
-			</a>
+			<span class="px-3 text-[10px] font-semibold text-faint uppercase tracking-wider">Browse</span>
+			<a href="/" class="{linkClass} {isActive('/') && currentPath === '/' ? activeClass : inactiveClass}">{sc?.navWikiLabel ?? 'Main Page'}</a>
+			<a href="/know/create" class="{linkClass} {isActive('/know/create') ? activeClass : inactiveClass}">{sc?.navCreateLabel ?? 'Create'}</a>
+			<a href="/search" class="{linkClass} {isActive('/search') ? activeClass : inactiveClass}">{sc?.navSearchLabel ?? 'Search'}</a>
+			<a href="/special/random" class="{linkClass} {inactiveClass}">Random</a>
 
 			{#if sc?.wordbookEnabled !== false}
-				{#if !sidebarCollapsed}<div class="pt-3"><span class="px-3 text-[10px] font-semibold text-faint uppercase tracking-wider">{sc?.wordbookName ?? 'Wordbook'}</span></div>{:else}<div class="border-t border-border-subtle my-2"></div>{/if}
-				<a href="/wordbook" class="{linkClass} {isActive('/wordbook') ? activeClass : inactiveClass}">
-					{#if !sidebarCollapsed}{sc?.navWordbookLabel ?? 'Wordbook'}{:else}<span class="mx-auto text-base" title={sc?.navWordbookLabel ?? 'Wordbook'}>📖</span>{/if}
-				</a>
+				<div class="pt-3"><span class="px-3 text-[10px] font-semibold text-faint uppercase tracking-wider">{sc?.wordbookName ?? 'Wordbook'}</span></div>
+				<a href="/wordbook" class="{linkClass} {isActive('/wordbook') ? activeClass : inactiveClass}">{sc?.navWordbookLabel ?? 'Wordbook'}</a>
 			{/if}
 
 			{#if sc?.calendarEnabled !== false}
-				{#if !sidebarCollapsed}<div class="pt-3"><span class="px-3 text-[10px] font-semibold text-faint uppercase tracking-wider">{sc?.navCalendarLabel ?? 'Calendar'}</span></div>{:else}<div class="border-t border-border-subtle my-2"></div>{/if}
-				<a href="/calendar" class="{linkClass} {isActive('/calendar') ? activeClass : inactiveClass}">
-					{#if !sidebarCollapsed}{sc?.navCalendarLabel ?? 'Calendar'}{:else}<span class="mx-auto text-base" title={sc?.navCalendarLabel ?? 'Calendar'}>📅</span>{/if}
-				</a>
+				<div class="pt-3"><span class="px-3 text-[10px] font-semibold text-faint uppercase tracking-wider">{sc?.navCalendarLabel ?? 'Calendar'}</span></div>
+				<a href="/calendar" class="{linkClass} {isActive('/calendar') ? activeClass : inactiveClass}">{sc?.navCalendarLabel ?? 'Calendar'}</a>
 			{/if}
 
-			{#if !sidebarCollapsed}<div class="pt-3"><span class="px-3 text-[10px] font-semibold text-faint uppercase tracking-wider">Discover</span></div>{:else}<div class="border-t border-border-subtle my-2"></div>{/if}
-			<a href="/special/categories" class="{linkClass} {isActive('/special/categories') ? activeClass : inactiveClass}">
-				{#if !sidebarCollapsed}Categories{:else}<span class="mx-auto text-base" title="Categories">≡</span>{/if}
-			</a>
-			<a href="/special/stats" class="{linkClass} {isActive('/special/stats') ? activeClass : inactiveClass}">
-				{#if !sidebarCollapsed}Statistics{:else}<span class="mx-auto text-base" title="Statistics">#</span>{/if}
-			</a>
+			<div class="pt-3"><span class="px-3 text-[10px] font-semibold text-faint uppercase tracking-wider">Discover</span></div>
+			<a href="/special/categories" class="{linkClass} {isActive('/special/categories') ? activeClass : inactiveClass}">Categories</a>
+			<a href="/special/stats" class="{linkClass} {isActive('/special/stats') ? activeClass : inactiveClass}">Statistics</a>
 
 			{#if data.user}
-				{#if !sidebarCollapsed}<div class="pt-3"><span class="px-3 text-[10px] font-semibold text-faint uppercase tracking-wider">Contribute</span></div>{:else}<div class="border-t border-border-subtle my-2"></div>{/if}
-				<a href="/dashboard" class="{linkClass} {isActive('/dashboard') && currentPath === '/dashboard' ? activeClass : inactiveClass}">
-					{#if !sidebarCollapsed}Dashboard{:else}<span class="mx-auto text-base" title="Dashboard">⊞</span>{/if}
-				</a>
-				<a href="/dashboard/recent" class="{linkClass} {isActive('/dashboard/recent') ? activeClass : inactiveClass}">
-					{#if !sidebarCollapsed}Recent Changes{:else}<span class="mx-auto text-base" title="Recent Changes">↻</span>{/if}
-				</a>
-				<a href="/dashboard/media" class="{linkClass} {isActive('/dashboard/media') ? activeClass : inactiveClass}">
-					{#if !sidebarCollapsed}Media Library{:else}<span class="mx-auto text-base" title="Media Library">🖼</span>{/if}
-				</a>
+				<div class="pt-3"><span class="px-3 text-[10px] font-semibold text-faint uppercase tracking-wider">Contribute</span></div>
+				<a href="/dashboard" class="{linkClass} {isActive('/dashboard') && currentPath === '/dashboard' ? activeClass : inactiveClass}">Dashboard</a>
+				<a href="/dashboard/recent" class="{linkClass} {isActive('/dashboard/recent') ? activeClass : inactiveClass}">Recent Changes</a>
+				<a href="/dashboard/media" class="{linkClass} {isActive('/dashboard/media') ? activeClass : inactiveClass}">Media Library</a>
 
 				{#if data.user.role === 'admin'}
-					{#if !sidebarCollapsed}<div class="pt-3"><span class="px-3 text-[10px] font-semibold text-faint uppercase tracking-wider">Admin</span></div>{:else}<div class="border-t border-border-subtle my-2"></div>{/if}
-					<a href="/dashboard/calendar" class="{linkClass} {isActive('/dashboard/calendar') ? activeClass : inactiveClass}">
-						{#if !sidebarCollapsed}Calendars{:else}<span class="mx-auto text-base" title="Calendars">⚙</span>{/if}
-					</a>
-					<a href="/dashboard/users" class="{linkClass} {isActive('/dashboard/users') ? activeClass : inactiveClass}">
-						{#if !sidebarCollapsed}Users{:else}<span class="mx-auto text-base" title="Users">👤</span>{/if}
-					</a>
-					<a href="/dashboard/settings" class="{linkClass} {isActive('/dashboard/settings') ? activeClass : inactiveClass}">
-						{#if !sidebarCollapsed}Site Settings{:else}<span class="mx-auto text-base" title="Site Settings">⚙</span>{/if}
-					</a>
-					<a href="/dashboard/export" class="{linkClass} {isActive('/dashboard/export') ? activeClass : inactiveClass}">
-						{#if !sidebarCollapsed}Export{:else}<span class="mx-auto text-base" title="Export">↓</span>{/if}
-					</a>
+					<div class="pt-3"><span class="px-3 text-[10px] font-semibold text-faint uppercase tracking-wider">Admin</span></div>
+					<a href="/dashboard/calendar" class="{linkClass} {isActive('/dashboard/calendar') ? activeClass : inactiveClass}">Calendars</a>
+					<a href="/dashboard/users" class="{linkClass} {isActive('/dashboard/users') ? activeClass : inactiveClass}">Users</a>
+					<a href="/dashboard/settings" class="{linkClass} {isActive('/dashboard/settings') ? activeClass : inactiveClass}">Site Settings</a>
+					<a href="/dashboard/export" class="{linkClass} {isActive('/dashboard/export') ? activeClass : inactiveClass}">Export</a>
 				{/if}
 			{/if}
 		</nav>
@@ -131,27 +86,17 @@
 		<!-- User footer -->
 		<div class="px-3 py-3 border-t border-border-subtle text-xs">
 			{#if data.user}
-				{#if !sidebarCollapsed}
-					<div class="flex items-center justify-between">
-						<span class="text-dim truncate">{data.user.username}</span>
-						<form method="POST" action="/auth/logout">
-							<button type="submit" class="text-link transition-colors hover:text-link-hover">Log out</button>
-						</form>
-					</div>
-				{:else}
+				<div class="flex items-center justify-between">
+					<span class="text-dim truncate">{data.user.username}</span>
 					<form method="POST" action="/auth/logout">
-						<button type="submit" class="text-faint mx-auto block transition-colors hover:text-link" title="Log out">⏻</button>
+						<button type="submit" class="text-link transition-colors hover:text-link-hover">Log out</button>
 					</form>
-				{/if}
+				</div>
 			{:else}
-				{#if !sidebarCollapsed}
-					<div class="flex items-center gap-2">
-						<a href="/auth/login" class="text-link transition-colors hover:text-link-hover">Log in</a>
-						<a href="/auth/register" class="text-link transition-colors hover:text-link-hover">Register</a>
-					</div>
-				{:else}
-					<a href="/auth/login" class="text-faint mx-auto block transition-colors hover:text-link text-center" title="Log in">→</a>
-				{/if}
+				<div class="flex items-center gap-2">
+					<a href="/auth/login" class="text-link transition-colors hover:text-link-hover">Log in</a>
+					<a href="/auth/register" class="text-link transition-colors hover:text-link-hover">Register</a>
+				</div>
 			{/if}
 		</div>
 	</aside>
@@ -183,12 +128,7 @@
 			<div class="flex-1 max-w-xl">
 				<SearchBar />
 			</div>
-			<div class="hidden items-center gap-3 text-sm md:flex">
-				{#if data.user}
-					<span class="text-dim">{data.user.username}</span>
-				{/if}
-			</div>
-		</header>
+			</header>
 
 		<!-- Mobile sidebar overlay -->
 		{#if sidebarOpen}
