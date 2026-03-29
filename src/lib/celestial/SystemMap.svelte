@@ -10,6 +10,9 @@
 		color?: string | null
 		moonCount?: number
 		parentStarId?: number | null
+		spectralType?: string | null
+		starId?: number | null
+		parentId?: number | null
 	}
 </script>
 
@@ -27,7 +30,7 @@
 		bodies: MapBody[]
 	} = $props()
 
-	let hovered = $state<MapBody | null>(null)
+	let hovered = $state<(MapBody & { isStar: boolean, spectralType?: string | null }) | null>(null)
 	let hoveredPos = $state({ x: 0, y: 0 })
 
 	const SIZE = 800
@@ -106,12 +109,12 @@
 		goto(target)
 	}
 
-	// Tooltip positioning — flip below if near top
-	const tipWidth = 150
-	const tipHeight = 56
-	const tipX = $derived(Math.min(Math.max(hoveredPos.x - tipWidth / 2, 4), SIZE - tipWidth - 4))
-	const tipAbove = $derived(hoveredPos.y - tipHeight - 12 > 0)
-	const tipY = $derived(tipAbove ? hoveredPos.y - tipHeight - 12 : hoveredPos.y + 16)
+	// Tooltip positioning — to the right of the body, fall back left if near edge
+	const tipWidth = 140
+	const tipHeight = 40
+	const tipRight = $derived(hoveredPos.x + 16 + tipWidth < SIZE)
+	const tipX = $derived(tipRight ? hoveredPos.x + 16 : hoveredPos.x - tipWidth - 16)
+	const tipY = $derived(Math.min(Math.max(hoveredPos.y - tipHeight / 2, 4), SIZE - tipHeight - 4))
 
 	const glowId = 'star-glow'
 </script>
@@ -215,17 +218,8 @@
 	<!-- Tooltip -->
 	{#if hovered}
 		<foreignObject x={tipX} y={tipY} width={tipWidth} height={tipHeight}>
-			<div class="bg-surface border border-border-strong p-2 text-xs shadow-lg">
-				<div class="font-semibold text-heading">{hovered.name}</div>
-				<div class="text-dim mt-0.5">
-					{hovered.isStar ? 'Star' : hovered.bodyType}
-					{#if hovered.orbitAu}
-						 · {hovered.orbitAu.toFixed(2)} AU
-					{/if}
-					{#if hovered.ecc}
-						 · e={hovered.ecc.toFixed(2)}
-					{/if}
-				</div>
+			<div class="bg-surface border border-accent/30 px-2.5 py-1.5 shadow-lg">
+				<div class="font-semibold text-heading text-xs whitespace-nowrap">{hovered.name}{#if hovered.isStar && hovered.spectralType} <span class="text-faint font-normal">({hovered.spectralType})</span>{/if}</div>
 			</div>
 		</foreignObject>
 	{/if}
