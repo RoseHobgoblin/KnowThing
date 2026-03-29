@@ -261,3 +261,41 @@ h1, h2, h3, h4, h5, h6 {
 ::-webkit-scrollbar-thumb:hover {
 	background: var(--color-dim);
 }
+
+/* ── CodeMirror dark theme overrides ──────────────────────── */
+
+.cm-editor {
+	background: var(--color-page) !important;
+	color: var(--color-body) !important;
+}
+
+.cm-editor .cm-gutters {
+	background: var(--color-surface) !important;
+	color: var(--color-dim) !important;
+	border-right: 1px solid var(--color-border) !important;
+}
+
+.cm-editor .cm-activeLineGutter {
+	background: var(--color-raised) !important;
+}
+
+.cm-editor .cm-activeLine {
+	background: rgba(255, 224, 136, 0.03) !important;
+}
+
+.cm-editor .cm-cursor {
+	border-left-color: var(--color-accent) !important;
+}
+
+.cm-editor .cm-selectionBackground {
+	background: rgba(233, 195, 73, 0.15) !important;
+}
+
+.cm-editor .cm-content ::selection {
+	background: rgba(233, 195, 73, 0.2) !important;
+}
+
+.cm-editor .cm-matchingBracket {
+	background: rgba(233, 195, 73, 0.2) !important;
+	color: var(--color-accent) !important;
+}

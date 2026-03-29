@@ -57,6 +57,7 @@
 		"codemirror": "^6.0.2",
 		"diff": "^8.0.3",
 		"drizzle-orm": "^0.45.1",
+		"phosphor-svelte": "^3.1.0",
 		"postgres": "^3.4.8",
 		"sharp": "^0.34.5",
 		"tailwind-merge": "^3.5.0",

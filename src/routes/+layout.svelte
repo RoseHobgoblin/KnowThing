@@ -5,6 +5,23 @@
 	import SearchBar from '$lib/components/SearchBar.svelte'
 	import Notifications from '$lib/components/ui/Notifications.svelte'
 	import type { LayoutData } from './$types.js'
+	import House from 'phosphor-svelte/lib/House'
+	import PlusCircle from 'phosphor-svelte/lib/PlusCircle'
+	import MagnifyingGlass from 'phosphor-svelte/lib/MagnifyingGlass'
+	import Shuffle from 'phosphor-svelte/lib/Shuffle'
+	import BookOpen from 'phosphor-svelte/lib/BookOpen'
+	import CalendarBlank from 'phosphor-svelte/lib/CalendarBlank'
+	import Tag from 'phosphor-svelte/lib/Tag'
+	import ChartBar from 'phosphor-svelte/lib/ChartBar'
+	import Layout from 'phosphor-svelte/lib/Layout'
+	import ClockCounterClockwise from 'phosphor-svelte/lib/ClockCounterClockwise'
+	import Image from 'phosphor-svelte/lib/Image'
+	import Gear from 'phosphor-svelte/lib/Gear'
+	import Users from 'phosphor-svelte/lib/Users'
+	import Wrench from 'phosphor-svelte/lib/Wrench'
+	import Export from 'phosphor-svelte/lib/Export'
+	import SignOut from 'phosphor-svelte/lib/SignOut'
+	import SignIn from 'phosphor-svelte/lib/SignIn'
 
 	let { children, data }: { children: any, data: LayoutData } = $props()
 	let sidebarOpen = $state(false)
@@ -19,7 +36,7 @@
 	}
 
 	const linkClass = 'flex items-center gap-3 px-3 py-2 text-sm transition-colors'
-	const activeClass = 'bg-accent-subtle text-link font-medium'
+	const activeClass = 'bg-raised text-accent font-medium'
 	const inactiveClass = 'text-secondary hover:bg-raised hover:text-heading'
 
 	function navClick() {
@@ -48,37 +65,37 @@
 		<!-- Nav links -->
 		<nav class="flex-1 overflow-y-auto px-2 py-3 space-y-1">
 			<span class="px-3 text-[10px] font-semibold text-faint uppercase tracking-wider">Browse</span>
-			<a href="/" class="{linkClass} {isActive('/') && currentPath === '/' ? activeClass : inactiveClass}">{sc?.navWikiLabel ?? 'Main Page'}</a>
-			<a href="/know/create" class="{linkClass} {isActive('/know/create') ? activeClass : inactiveClass}">{sc?.navCreateLabel ?? 'Create'}</a>
-			<a href="/search" class="{linkClass} {isActive('/search') ? activeClass : inactiveClass}">{sc?.navSearchLabel ?? 'Search'}</a>
-			<a href="/special/random" class="{linkClass} {inactiveClass}">Random</a>
+			<a href="/" class="{linkClass} {isActive('/') && currentPath === '/' ? activeClass : inactiveClass}"><House size={16} />{sc?.navWikiLabel ?? 'Main Page'}</a>
+			<a href="/know/create" class="{linkClass} {isActive('/know/create') ? activeClass : inactiveClass}"><PlusCircle size={16} />{sc?.navCreateLabel ?? 'Create'}</a>
+			<a href="/search" class="{linkClass} {isActive('/search') ? activeClass : inactiveClass}"><MagnifyingGlass size={16} />{sc?.navSearchLabel ?? 'Search'}</a>
+			<a href="/special/random" class="{linkClass} {inactiveClass}"><Shuffle size={16} />Random</a>
 
 			{#if sc?.wordbookEnabled !== false}
 				<div class="pt-3"><span class="px-3 text-[10px] font-semibold text-faint uppercase tracking-wider">{sc?.wordbookName ?? 'Wordbook'}</span></div>
-				<a href="/wordbook" class="{linkClass} {isActive('/wordbook') ? activeClass : inactiveClass}">{sc?.navWordbookLabel ?? 'Wordbook'}</a>
+				<a href="/wordbook" class="{linkClass} {isActive('/wordbook') ? activeClass : inactiveClass}"><BookOpen size={16} />{sc?.navWordbookLabel ?? 'Wordbook'}</a>
 			{/if}
 
 			{#if sc?.calendarEnabled !== false}
 				<div class="pt-3"><span class="px-3 text-[10px] font-semibold text-faint uppercase tracking-wider">{sc?.navCalendarLabel ?? 'Calendar'}</span></div>
-				<a href="/calendar" class="{linkClass} {isActive('/calendar') ? activeClass : inactiveClass}">{sc?.navCalendarLabel ?? 'Calendar'}</a>
+				<a href="/calendar" class="{linkClass} {isActive('/calendar') ? activeClass : inactiveClass}"><CalendarBlank size={16} />{sc?.navCalendarLabel ?? 'Calendar'}</a>
 			{/if}
 
 			<div class="pt-3"><span class="px-3 text-[10px] font-semibold text-faint uppercase tracking-wider">Discover</span></div>
-			<a href="/special/categories" class="{linkClass} {isActive('/special/categories') ? activeClass : inactiveClass}">Categories</a>
-			<a href="/special/stats" class="{linkClass} {isActive('/special/stats') ? activeClass : inactiveClass}">Statistics</a>
+			<a href="/special/categories" class="{linkClass} {isActive('/special/categories') ? activeClass : inactiveClass}"><Tag size={16} />Categories</a>
+			<a href="/special/stats" class="{linkClass} {isActive('/special/stats') ? activeClass : inactiveClass}"><ChartBar size={16} />Statistics</a>
 
 			{#if data.user}
 				<div class="pt-3"><span class="px-3 text-[10px] font-semibold text-faint uppercase tracking-wider">Contribute</span></div>
-				<a href="/dashboard" class="{linkClass} {isActive('/dashboard') && currentPath === '/dashboard' ? activeClass : inactiveClass}">Dashboard</a>
-				<a href="/dashboard/recent" class="{linkClass} {isActive('/dashboard/recent') ? activeClass : inactiveClass}">Recent Changes</a>
-				<a href="/dashboard/media" class="{linkClass} {isActive('/dashboard/media') ? activeClass : inactiveClass}">Media Library</a>
+				<a href="/dashboard" class="{linkClass} {isActive('/dashboard') && currentPath === '/dashboard' ? activeClass : inactiveClass}"><Layout size={16} />Dashboard</a>
+				<a href="/dashboard/recent" class="{linkClass} {isActive('/dashboard/recent') ? activeClass : inactiveClass}"><ClockCounterClockwise size={16} />Recent Changes</a>
+				<a href="/dashboard/media" class="{linkClass} {isActive('/dashboard/media') ? activeClass : inactiveClass}"><Image size={16} />Media Library</a>
 
 				{#if data.user.role === 'admin'}
 					<div class="pt-3"><span class="px-3 text-[10px] font-semibold text-faint uppercase tracking-wider">Admin</span></div>
-					<a href="/dashboard/calendar" class="{linkClass} {isActive('/dashboard/calendar') ? activeClass : inactiveClass}">Calendars</a>
-					<a href="/dashboard/users" class="{linkClass} {isActive('/dashboard/users') ? activeClass : inactiveClass}">Users</a>
-					<a href="/dashboard/settings" class="{linkClass} {isActive('/dashboard/settings') ? activeClass : inactiveClass}">Site Settings</a>
-					<a href="/dashboard/export" class="{linkClass} {isActive('/dashboard/export') ? activeClass : inactiveClass}">Export</a>
+					<a href="/dashboard/calendar" class="{linkClass} {isActive('/dashboard/calendar') ? activeClass : inactiveClass}"><CalendarBlank size={16} />Calendars</a>
+					<a href="/dashboard/users" class="{linkClass} {isActive('/dashboard/users') ? activeClass : inactiveClass}"><Users size={16} />Users</a>
+					<a href="/dashboard/settings" class="{linkClass} {isActive('/dashboard/settings') ? activeClass : inactiveClass}"><Wrench size={16} />Site Settings</a>
+					<a href="/dashboard/export" class="{linkClass} {isActive('/dashboard/export') ? activeClass : inactiveClass}"><Export size={16} />Export</a>
 				{/if}
 			{/if}
 		</nav>
@@ -89,12 +106,12 @@
 				<div class="flex items-center justify-between">
 					<span class="text-dim truncate">{data.user.username}</span>
 					<form method="POST" action="/auth/logout">
-						<button type="submit" class="text-link transition-colors hover:text-link-hover">Log out</button>
+						<button type="submit" class="text-link flex items-center gap-1.5 transition-colors hover:text-link-hover"><SignOut size={14} />Log out</button>
 					</form>
 				</div>
 			{:else}
-				<div class="flex items-center gap-2">
-					<a href="/auth/login" class="text-link transition-colors hover:text-link-hover">Log in</a>
+				<div class="flex items-center gap-3">
+					<a href="/auth/login" class="text-link flex items-center gap-1.5 transition-colors hover:text-link-hover"><SignIn size={14} />Log in</a>
 					<a href="/auth/register" class="text-link transition-colors hover:text-link-hover">Register</a>
 				</div>
 			{/if}
@@ -194,7 +211,7 @@
 
 		<!-- Scrollable content -->
 		<main class="flex-1 overflow-y-auto">
-			<div class="max-w-6xl mx-auto w-full px-4 py-6 md:px-6 md:py-8">
+			<div class="{currentPath.includes('/edit') || currentPath === '/know/create' ? 'w-full px-6 py-4' : 'max-w-6xl mx-auto w-full px-4 py-6 md:px-6 md:py-8'}">
 				{@render children()}
 			</div>
 			<footer class="border-t border-border bg-surface p-4">
