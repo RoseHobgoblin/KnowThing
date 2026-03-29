@@ -26,7 +26,25 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	if (system) {
 		if (system.slug !== slug && !isEditMode) redirect(301, `/celestial/${system.slug}`)
 		const content = await getContent(system.contentRecordId)
-		return { kind: 'system' as const, body: system, isAdmin, isEditMode, ...content }
+		// Fetch stars + bodies for system map
+		const systemStars = await db.execute(sql`
+			SELECT id, name, slug, spectral_type AS "spectralType", color,
+				page_slug AS "pageSlug", semi_major_axis_au AS "semiMajorAxisAu",
+				eccentricity, parent_star_id AS "parentStarId"
+			FROM stars WHERE system_id = ${system.id}
+			ORDER BY parent_star_id NULLS FIRST, name
+		`)
+		const systemBodies = await db.execute(sql`
+			SELECT pb.id, pb.name, pb.slug, pb.body_type AS "bodyType",
+				pb.page_slug AS "pageSlug", pb.semi_major_axis_au AS "semiMajorAxisAu",
+				pb.eccentricity, pb.star_id AS "starId", pb.parent_id AS "parentId",
+				(SELECT COUNT(*) FROM planetary_bodies m WHERE m.parent_id = pb.id)::int AS "moonCount"
+			FROM planetary_bodies pb
+			JOIN stars s ON s.id = pb.star_id
+			WHERE s.system_id = ${system.id}
+			ORDER BY pb.semi_major_axis_au NULLS LAST, pb.name
+		`)
+		return { kind: 'system' as const, body: system, isAdmin, isEditMode, systemStars, systemBodies, ...content }
 	}
 
 	const [star] = await db.select().from(stars).where(sql`LOWER(${stars.slug}) = LOWER(${slug})`)

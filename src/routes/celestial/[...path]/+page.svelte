@@ -6,6 +6,7 @@
 	import InfoboxStar from '$lib/infoboxes/InfoboxStar.svelte'
 	import InfoboxPlanet from '$lib/infoboxes/InfoboxPlanet.svelte'
 	import InfoboxSystem from '$lib/infoboxes/InfoboxSystem.svelte'
+	import SystemMap from '$lib/celestial/SystemMap.svelte'
 	import PencilSimple from 'phosphor-svelte/lib/PencilSimple'
 	import Editor from '$lib/components/Editor.svelte'
 	import LivePreview from '$lib/components/LivePreview.svelte'
@@ -193,6 +194,15 @@
 			<article class="know-article">
 				{#if kind === 'system'}
 					<InfoboxSystem fields={infoboxFields} />
+					{#if data.systemStars && data.systemStars.length > 0}
+						<div class="my-4">
+							<SystemMap
+								systemName={raw.name}
+								stars={data.systemStars}
+								bodies={data.systemBodies ?? []}
+							/>
+						</div>
+					{/if}
 				{:else if kind === 'star'}
 					<InfoboxStar fields={infoboxFields} />
 				{:else}

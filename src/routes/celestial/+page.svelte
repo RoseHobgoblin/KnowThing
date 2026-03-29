@@ -2,7 +2,6 @@
 	import type { PageData } from './$types.js'
 	import Input from '$lib/components/ui/Input.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
-	import SystemMap from '$lib/celestial/SystemMap.svelte'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import { invalidateAll } from '$app/navigation'
 
@@ -119,8 +118,16 @@
 	<title>Celestial Registry — KnowThing</title>
 </svelte:head>
 
-<div class="max-w-4xl mx-auto">
-	<h1 class="text-2xl font-bold text-heading mb-6">Celestial Registry</h1>
+<div class="bg-surface shadow-sm border border-border overflow-hidden">
+	<div class="px-4 pt-4 md:px-6">
+		<div class="text-[10px] font-semibold uppercase tracking-wider mb-1">
+			<span class="text-accent">Celestial Registry</span>
+		</div>
+		<h1 class="text-2xl font-bold text-heading md:text-3xl">Celestial Registry</h1>
+		<div class="mt-2 h-0.5 bg-gradient-to-r from-accent to-accent-hover"></div>
+	</div>
+
+	<div class="px-4 pt-3 pb-4 md:px-6 md:pb-5">
 
 	{#if (data.systems as any[]).length === 0 && orphanStars().length === 0 && orphanBodies().length === 0}
 		<div class="bg-surface border border-border p-8 text-center">
@@ -144,17 +151,6 @@
 							</div>
 						{/if}
 					</div>
-
-					<!-- System map -->
-					{#if starsForSystem(system.id).length > 0}
-						<div class="p-4 border-b border-border-subtle">
-							<SystemMap
-								systemName={system.name}
-								stars={starsForSystem(system.id)}
-								bodies={(data.bodies as any[]).filter(b => starsForSystem(system.id).some(s => s.id === b.starId))}
-							/>
-						</div>
-					{/if}
 
 					<!-- Stars in this system -->
 					{#each starsForSystem(system.id) as star (star.id)}
@@ -310,6 +306,7 @@
 			</section>
 		</div>
 	{/if}
+	</div>
 </div>
 
 <ConfirmDialog bind:this={confirmDialog} />
