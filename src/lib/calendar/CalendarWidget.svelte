@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { CalendarConfig } from './types.js'
-	import { getMonthGrid, resolveDisplay, moonPhase, phaseName, daysInMonth } from './date-math.js'
+	import { getMonthGrid, resolveDisplay, moonPhase, phaseName, daysInMonth, formatYearWithEra, seasonForDate } from './date-math.js'
 
 	let {
 		config,
@@ -12,9 +12,14 @@
 		monthIndex?: number
 	} = $props()
 
+	type ViewMode = 'month' | 'year' | 'seasons'
+
 	const resolved = resolveDisplay(config)
 	let viewYear = $state(initialYear ?? resolved.year)
 	let viewMonth = $state(initialMonth ?? resolved.month_index)
+	let viewMode = $state<ViewMode>('month')
+	let jumpYear = $state('')
+	let showJump = $state(false)
 
 	function previousMonth() {
 		viewMonth--
@@ -46,6 +51,22 @@
 	function goToToday() {
 		viewYear = resolved.year
 		viewMonth = resolved.month_index
+		viewMode = 'month'
+	}
+
+	function jumpToYear(e: SubmitEvent) {
+		e.preventDefault()
+		const y = Number.parseInt(jumpYear)
+		if (!Number.isNaN(y)) {
+			viewYear = y
+			showJump = false
+			jumpYear = ''
+		}
+	}
+
+	function selectMiniMonth(monthIndex: number) {
+		viewMonth = monthIndex
+		viewMode = 'month'
 	}
 
 	// Reactive grid
@@ -95,104 +116,259 @@
 		'last-quarter': '🌗',
 		'waning-crescent': '🌘',
 	}
+
+	function getSeasonColor(day: number, monthIdx: number): string | null {
+		const season = seasonForDate(config.static_data, { year: viewYear, month: monthIdx + 1, day })
+		return season?.color ?? null
+	}
+
+	// Year view: generate mini-grids for all months
+	let yearGrids = $derived(
+		config.static_data.months.map((_, i) => {
+			const days = daysInMonth(config.static_data, viewYear, i)
+			if (days === 0) return null
+			return getMonthGrid(config, viewYear, i)
+		}),
+	)
+
+	// Season view: build a list of seasons with their date ranges for the current year
+	let seasonBlocks = $derived.by(() => {
+		const seasons = config.static_data.seasons
+		if (seasons.length === 0) return []
+
+		const blocks: Array<{
+			name: string
+			kind: string
+			color: string
+			startMonth: string
+			startDay: number
+			endMonth: string
+			endDay: number
+			totalDays: number
+		}> = []
+
+		// Walk through every day of the year and group by season
+		let currentSeason: string | null = null
+		let blockStart: { month: number, day: number } | null = null
+		let dayCount = 0
+
+		for (let m = 0; m < config.static_data.months.length; m++) {
+			const mDays = daysInMonth(config.static_data, viewYear, m)
+			for (let d = 1; d <= mDays; d++) {
+				const season = seasonForDate(config.static_data, { year: viewYear, month: m + 1, day: d })
+				const sName = season?.name ?? 'Unknown'
+
+				if (sName !== currentSeason) {
+					// Close previous block
+					if (currentSeason !== null && blockStart) {
+						const prevSeason = seasons.find(s => s.name === currentSeason)
+						blocks.push({
+							name: currentSeason,
+							kind: prevSeason?.kind ?? 'custom',
+							color: prevSeason?.color ?? '#888888',
+							startMonth: config.static_data.months[blockStart.month]?.name ?? '',
+							startDay: blockStart.day,
+							endMonth: config.static_data.months[m]?.name ?? '',
+							endDay: d - 1 > 0 ? d - 1 : daysInMonth(config.static_data, viewYear, m > 0 ? m - 1 : 0),
+							totalDays: dayCount,
+						})
+					}
+					currentSeason = sName
+					blockStart = { month: m, day: d }
+					dayCount = 1
+				} else {
+					dayCount++
+				}
+			}
+		}
+
+		// Close last block
+		if (currentSeason !== null && blockStart) {
+			const lastMonth = config.static_data.months.length - 1
+			const lastDay = daysInMonth(config.static_data, viewYear, lastMonth)
+			const prevSeason = seasons.find(s => s.name === currentSeason)
+			blocks.push({
+				name: currentSeason,
+				kind: prevSeason?.kind ?? 'custom',
+				color: prevSeason?.color ?? '#888888',
+				startMonth: config.static_data.months[blockStart.month]?.name ?? '',
+				startDay: blockStart.day,
+				endMonth: config.static_data.months[lastMonth]?.name ?? '',
+				endDay: lastDay,
+				totalDays: dayCount,
+			})
+		}
+
+		return blocks
+	})
 </script>
 
-<div class="calendar-widget bg-page border border-border-strong rounded-lg shadow-sm max-w-md">
+<div class="calendar-widget bg-page border border-border-strong rounded-lg shadow-sm" class:max-w-md={viewMode === 'month'}>
 	<!-- Header -->
-	<div class="
-		flex items-center justify-between px-4 py-3 bg-border rounded-t-lg border-b border-border-strong
-	">
-		<button
-			onclick={previousMonth}
-			class="
-				text-secondary px-2 py-1 rounded-sm transition-colors
-				hover:text-heading hover:bg-stone-300
-			"
-		>
-			&larr;
-		</button>
+	<div class="flex items-center justify-between px-4 py-3 bg-border rounded-t-lg border-b border-border-strong">
+		{#if viewMode === 'month'}
+			<button onclick={previousMonth} class="text-secondary px-2 py-1 rounded-sm transition-colors hover:text-heading hover:bg-stone-300">&larr;</button>
+		{:else}
+			<button onclick={() => viewYear--} class="text-secondary px-2 py-1 rounded-sm transition-colors hover:text-heading hover:bg-stone-300">&larr;</button>
+		{/if}
+
 		<div class="text-center">
-			<div class="font-bold text-body">{grid.monthName}</div>
-			<div class="text-xs text-secondary">
-				{config.static_data.eras.length > 0
-					? (() => {
-						const era = config.static_data.eras.find(
-							e => viewYear >= e.start_year && (e.end_year == null || viewYear <= e.end_year),
-						)
-						if (!era) return `Year ${viewYear}`
-						const display = era.reverse_numbering && era.end_year != null
-							? era.end_year - viewYear + 1
-							: viewYear - era.start_year + 1
-						return (era.format ?? '{{year}} {{era_name}}')
-							.replace('{{year}}', String(display))
-							.replace('{{era_name}}', era.name)
-					})()
-					: `Year ${viewYear}`}
-			</div>
-		</div>
-		<button
-			onclick={nextMonth}
-			class="
-				text-secondary px-2 py-1 rounded-sm transition-colors
-				hover:text-heading hover:bg-stone-300
-			"
-		>
-			&rarr;
-		</button>
-	</div>
-
-	<!-- Weekday headers -->
-	<div class="grid gap-px bg-border" style="grid-template-columns: repeat({grid.weekdays.length}, 1fr)">
-		{#each grid.weekdays as wd}
-			<div class="text-center text-xs font-semibold text-secondary bg-raised py-1.5">
-				{wd}
-			</div>
-		{/each}
-	</div>
-
-	<!-- Day grid -->
-	<div class="grid gap-px bg-border" style="grid-template-columns: repeat({grid.weekdays.length}, 1fr)">
-		{#each grid.days as day}
-			{#if day === null}
-				<div class="bg-page min-h-10"></div>
+			{#if showJump}
+				<form onsubmit={jumpToYear} class="flex items-center gap-1">
+					<input
+						type="number"
+						bind:value={jumpYear}
+						placeholder="Year"
+						class="w-20 px-2 py-0.5 text-sm border border-border-strong rounded bg-surface text-center focus:outline-none focus:ring-1 focus:ring-accent"
+					/>
+					<button type="submit" class="text-xs text-link hover:underline">Go</button>
+					<button type="button" onclick={() => showJump = false} class="text-xs text-faint hover:underline">Cancel</button>
+				</form>
 			{:else}
-				{@const isToday = isCurrentMonth && day === resolved.day}
-				{@const moons = getMoonPhases(day)}
+				{#if viewMode === 'month'}
+					<div class="font-bold text-body">{grid.monthName}</div>
+				{/if}
+				<!-- svelte-ignore a11y_click_events_have_key_events -->
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div
-					class="bg-surface min-h-10 p-1 text-sm relative
-						{isToday ? 'ring-2 ring-accent bg-accent-subtle font-bold' : 'hover:bg-page'}"
+					class="text-xs text-secondary cursor-pointer hover:text-link hover:underline"
+					onclick={() => showJump = true}
+					title="Click to jump to a year"
 				>
-					<span class="text-body">{day}</span>
-					{#if moons.length > 0}
-						<div class="flex gap-0.5 mt-0.5">
-							{#each moons as moon}
-								<span
-									class="text-[10px] leading-none"
-									title="{moon.name}: {moon.phase_name}"
-								>
-									{MOON_EMOJI[moonSvgPath(moon.phase)] ?? '🌑'}
-								</span>
-							{/each}
-						</div>
-					{/if}
+					{formatYearWithEra(config.static_data, viewYear)}
 				</div>
 			{/if}
+		</div>
+
+		{#if viewMode === 'month'}
+			<button onclick={nextMonth} class="text-secondary px-2 py-1 rounded-sm transition-colors hover:text-heading hover:bg-stone-300">&rarr;</button>
+		{:else}
+			<button onclick={() => viewYear++} class="text-secondary px-2 py-1 rounded-sm transition-colors hover:text-heading hover:bg-stone-300">&rarr;</button>
+		{/if}
+	</div>
+
+	<!-- View mode tabs -->
+	<div class="flex border-b border-border text-xs">
+		{#each [['month', 'Month'], ['year', 'Year'], ['seasons', 'Seasons']] as [mode, label]}
+			<button
+				onclick={() => viewMode = mode as ViewMode}
+				class="flex-1 py-1.5 text-center transition-colors {viewMode === mode ? 'text-link font-semibold border-b-2 border-accent' : 'text-secondary hover:text-body'}"
+			>{label}</button>
 		{/each}
 	</div>
 
+	{#if viewMode === 'month'}
+		<!-- MONTH VIEW -->
+		<!-- Weekday headers -->
+		<div class="grid gap-px bg-border" style="grid-template-columns: repeat({grid.weekdays.length}, 1fr)">
+			{#each grid.weekdays as wd}
+				<div class="text-center text-xs font-semibold text-secondary bg-raised py-1.5">{wd}</div>
+			{/each}
+		</div>
+
+		<!-- Day grid -->
+		<div class="grid gap-px bg-border" style="grid-template-columns: repeat({grid.weekdays.length}, 1fr)">
+			{#each grid.days as day}
+				{#if day === null}
+					<div class="bg-page min-h-10"></div>
+				{:else}
+					{@const isToday = isCurrentMonth && day === resolved.day}
+					{@const moons = getMoonPhases(day)}
+					{@const seasonColor = getSeasonColor(day, viewMonth)}
+					<div
+						class="bg-surface min-h-10 p-1 text-sm relative {isToday ? 'ring-2 ring-accent font-bold' : 'hover:bg-page'}"
+						style={seasonColor ? `border-left: 3px solid ${seasonColor}` : ''}
+					>
+						<span class="text-body">{day}</span>
+						{#if moons.length > 0}
+							<div class="flex gap-0.5 mt-0.5">
+								{#each moons as moon}
+									<span class="text-[10px] leading-none" title="{moon.name}: {moon.phase_name}">
+										{MOON_EMOJI[moonSvgPath(moon.phase)] ?? '🌑'}
+									</span>
+								{/each}
+							</div>
+						{/if}
+					</div>
+				{/if}
+			{/each}
+		</div>
+
+	{:else if viewMode === 'year'}
+		<!-- YEAR VIEW -->
+		<div class="grid grid-cols-3 gap-2 p-3 md:grid-cols-4">
+			{#each yearGrids as miniGrid, monthIdx}
+				{#if miniGrid}
+					{@const isCurrent = viewYear === resolved.year && monthIdx === resolved.month_index}
+					<!-- svelte-ignore a11y_click_events_have_key_events -->
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<div
+						class="cursor-pointer rounded-md border p-1.5 transition-colors {isCurrent ? 'border-accent bg-accent-subtle' : 'border-border-subtle hover:border-border-strong hover:bg-raised'}"
+						onclick={() => selectMiniMonth(monthIdx)}
+					>
+						<div class="text-[10px] font-semibold text-heading mb-1 text-center truncate">{miniGrid.monthName}</div>
+						<div class="grid gap-px" style="grid-template-columns: repeat({miniGrid.weekdays.length}, 1fr)">
+							{#each miniGrid.days as day}
+								{#if day === null}
+									<div class="h-2.5"></div>
+								{:else}
+									{@const isToday = isCurrent && day === resolved.day}
+									{@const seasonColor = getSeasonColor(day, monthIdx)}
+									<div
+										class="h-2.5 rounded-[1px] text-center leading-[10px] {isToday ? 'bg-accent text-white' : ''}"
+										style={!isToday && seasonColor ? `background: ${seasonColor}22` : ''}
+									>
+										<span class="text-[6px] {isToday ? 'text-white' : 'text-body'}">{day}</span>
+									</div>
+								{/if}
+							{/each}
+						</div>
+					</div>
+				{/if}
+			{/each}
+		</div>
+
+	{:else if viewMode === 'seasons'}
+		<!-- SEASONS VIEW -->
+		<div class="p-3 space-y-2">
+			{#if seasonBlocks.length === 0}
+				<p class="text-sm text-faint text-center py-4">No seasons defined for this calendar.</p>
+			{:else}
+				<!-- Season bar -->
+				{@const totalDays = seasonBlocks.reduce((sum, b) => sum + b.totalDays, 0)}
+				<div class="flex rounded-md overflow-hidden h-6 border border-border-subtle">
+					{#each seasonBlocks as block}
+						<div
+							class="flex items-center justify-center text-[9px] font-medium text-white overflow-hidden"
+							style="width: {(block.totalDays / totalDays) * 100}%; background: {block.color}"
+							title="{block.name}: {block.totalDays} days"
+						>
+							{block.totalDays > totalDays * 0.08 ? block.name : ''}
+						</div>
+					{/each}
+				</div>
+
+				<!-- Season list -->
+				{#each seasonBlocks as block}
+					<div class="flex items-center gap-3 py-1.5 border-b border-border-subtle last:border-0">
+						<div class="size-3 rounded-sm shrink-0" style="background: {block.color}"></div>
+						<div class="flex-1 min-w-0">
+							<div class="text-sm font-medium text-heading">{block.name}</div>
+							<div class="text-xs text-secondary">
+								{block.startDay} {block.startMonth} — {block.endDay} {block.endMonth}
+							</div>
+						</div>
+						<div class="text-xs text-faint shrink-0">{block.totalDays} days</div>
+					</div>
+				{/each}
+			{/if}
+		</div>
+	{/if}
+
 	<!-- Footer -->
-	<div class="
-		px-4 py-2 border-t border-border flex items-center justify-between text-xs text-secondary
-	">
+	<div class="px-4 py-2 border-t border-border flex items-center justify-between text-xs text-secondary">
 		<span>{resolved.season_name}</span>
-		{#if !isCurrentMonth || resolved.day !== undefined}
-			<button
-				onclick={goToToday}
-				class="text-link hover:underline"
-			>
-				Today
-			</button>
-		{/if}
+		<button onclick={goToToday} class="text-link hover:underline">Today</button>
 		<span>{config.name}</span>
 	</div>
 </div>
