@@ -1,26 +1,28 @@
 import { error, redirect } from '@sveltejs/kit'
 import type { PageServerLoad } from './$types.js'
 import { db } from '$lib/server/db/index.js'
-import { pages, categories, lexicon, languages } from '$lib/server/db/schema.js'
-import { eq, sql } from 'drizzle-orm'
+import { contentRecords, lexicon, languages } from '$lib/server/db/schema.js'
+import { eq, and, sql } from 'drizzle-orm'
 import { parseWikitext, extractCategoriesFromAst, extractInfoboxFromRefs, extractSystemMapRefs } from '$lib/parser/index.js'
 import { resolveAllStructuredData, resolveAllSystemMaps } from '$lib/server/structured-data.js'
 
 export const load: PageServerLoad = async ({ params }) => {
-	// Case-insensitive lookup
-	const [page] = await db
+	// Case-insensitive lookup within the 'know' domain
+	const [record] = await db
 		.select()
-		.from(pages)
-		.where(sql`LOWER(${pages.slug}) = LOWER(${params.slug})`)
+		.from(contentRecords)
+		.where(and(
+			eq(contentRecords.domain, 'know'),
+			sql`LOWER(${contentRecords.slug}) = LOWER(${params.slug})`,
+		))
 		.limit(1)
 
 	// Canonical redirect: if slug casing doesn't match stored form
-	if (page && page.slug !== params.slug) {
-		redirect(301, `/know/${page.slug}`)
+	if (record && record.slug !== params.slug) {
+		redirect(301, `/know/${record.slug}`)
 	}
 
-	if (!page) {
-		// Normalize the "create" slug to first-letter-uppercase
+	if (!record) {
 		const normalizedSlug = params.slug[0].toUpperCase() + params.slug.slice(1)
 		return {
 			notFound: true,
@@ -32,7 +34,7 @@ export const load: PageServerLoad = async ({ params }) => {
 	}
 
 	// Use cached AST if available, otherwise parse fresh
-	const ast = (page.parsedAst as import('$lib/parser/types.js').WikiNode) ?? parseWikitext(page.content)
+	const ast = (record.parsedAst as import('$lib/parser/types.js').WikiNode) ?? parseWikitext(record.content)
 	const cats = extractCategoriesFromAst(ast)
 
 	// Pre-fetch structured data for any from=slug infobox references
@@ -63,17 +65,18 @@ export const load: PageServerLoad = async ({ params }) => {
 		})
 		.from(lexicon)
 		.innerJoin(languages, eq(lexicon.languageId, languages.id))
-		.where(sql`LOWER(${lexicon.word}) = LOWER(${page.title.replaceAll(' ', '_')}) OR LOWER(${lexicon.word}) = LOWER(${page.title})`)
+		.where(sql`LOWER(${lexicon.word}) = LOWER(${record.title.replaceAll(' ', '_')}) OR LOWER(${lexicon.word}) = LOWER(${record.title})`)
 		.limit(1)
 
 	return {
 		notFound: false,
-		slug: page.slug,
-		title: page.title,
-		content: page.content,
+		slug: record.slug,
+		title: record.title,
+		content: record.content,
+		contentRecordId: record.id,
 		ast,
 		categories: cats,
-		updatedAt: page.updatedAt,
+		updatedAt: record.updatedAt,
 		wordbookMatch: wordbookMatches[0] || null,
 		structuredData,
 		systemMaps,

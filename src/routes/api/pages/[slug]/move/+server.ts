@@ -1,9 +1,10 @@
 import { json, error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
-import { pages, revisions, links, categories, mediaUsage } from '$lib/server/db/schema.js'
-import { eq } from 'drizzle-orm'
+import { contentRecords, contentRevisions, contentLinks } from '$lib/server/db/schema.js'
+import { eq, and } from 'drizzle-orm'
 import { requireAuth } from '$lib/server/auth.js'
+import { updateContentEffects } from '$lib/server/content-effects.js'
 
 /** POST /api/pages/:slug/move — rename/move page */
 export const POST: RequestHandler = async (event) => {
@@ -18,17 +19,17 @@ export const POST: RequestHandler = async (event) => {
 
 	const [existing] = await db
 		.select()
-		.from(pages)
-		.where(eq(pages.slug, slug))
+		.from(contentRecords)
+		.where(and(eq(contentRecords.domain, 'know'), eq(contentRecords.slug, slug)))
 		.limit(1)
 
 	if (!existing) throw error(404, 'Page not found')
 
 	// Check target doesn't already exist
 	const [conflict] = await db
-		.select({ id: pages.id })
-		.from(pages)
-		.where(eq(pages.slug, newSlug.trim()))
+		.select({ id: contentRecords.id })
+		.from(contentRecords)
+		.where(and(eq(contentRecords.domain, 'know'), eq(contentRecords.slug, newSlug.trim())))
 		.limit(1)
 
 	if (conflict) {
@@ -39,15 +40,18 @@ export const POST: RequestHandler = async (event) => {
 
 	// Update page
 	await db
-		.update(pages)
+		.update(contentRecords)
 		.set({ slug: newSlug.trim(), title, updatedAt: new Date() })
-		.where(eq(pages.slug, slug))
+		.where(and(eq(contentRecords.domain, 'know'), eq(contentRecords.slug, slug)))
 
-	// Update derived tables
-	await db.update(revisions).set({ pageSlug: newSlug.trim() }).where(eq(revisions.pageSlug, slug))
-	await db.update(links).set({ sourceSlug: newSlug.trim() }).where(eq(links.sourceSlug, slug))
-	await db.update(categories).set({ pageSlug: newSlug.trim() }).where(eq(categories.pageSlug, slug))
-	await db.update(mediaUsage).set({ pageSlug: newSlug.trim() }).where(eq(mediaUsage.pageSlug, slug))
+	// Update link references pointing to old slug
+	await db
+		.update(contentLinks)
+		.set({ targetSlug: newSlug.trim(), targetId: existing.id })
+		.where(and(eq(contentLinks.targetDomain, 'know'), eq(contentLinks.targetSlug, slug)))
+
+	// Re-derive outgoing links, categories, media from content
+	await updateContentEffects(existing.id, existing.content, 'know')
 
 	return json({ slug: newSlug.trim(), title })
 }

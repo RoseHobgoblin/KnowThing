@@ -1,21 +1,21 @@
 import { error, fail, redirect } from '@sveltejs/kit'
 import type { Actions, PageServerLoad } from './$types.js'
 import { db } from '$lib/server/db/index.js'
-import { pages, revisions } from '$lib/server/db/schema.js'
-import { eq } from 'drizzle-orm'
+import { contentRecords, contentRevisions } from '$lib/server/db/schema.js'
+import { eq, and } from 'drizzle-orm'
 import { requireAuth } from '$lib/server/auth.js'
-import { updatePageEffects } from '$lib/server/page-effects.js'
+import { updateContentEffects } from '$lib/server/content-effects.js'
 
 export const load: PageServerLoad = async ({ params }) => {
-	const [page] = await db
-		.select({ slug: pages.slug, title: pages.title, content: pages.content })
-		.from(pages)
-		.where(eq(pages.slug, params.slug))
+	const [record] = await db
+		.select({ id: contentRecords.id, slug: contentRecords.slug, title: contentRecords.title, content: contentRecords.content })
+		.from(contentRecords)
+		.where(and(eq(contentRecords.domain, 'know'), eq(contentRecords.slug, params.slug)))
 		.limit(1)
 
-	if (!page) throw error(404, 'Page not found')
+	if (!record) throw error(404, 'Page not found')
 
-	return { slug: page.slug, title: page.title, content: page.content }
+	return { slug: record.slug, title: record.title, content: record.content }
 }
 
 export const actions: Actions = {
@@ -28,23 +28,22 @@ export const actions: Actions = {
 
 		const [existing] = await db
 			.select()
-			.from(pages)
-			.where(eq(pages.slug, slug))
+			.from(contentRecords)
+			.where(and(eq(contentRecords.domain, 'know'), eq(contentRecords.slug, slug)))
 			.limit(1)
 
 		if (!existing) throw error(404, 'Page not found')
 
 		const sizeBytes = new TextEncoder().encode(content).length
-		const { plainText, ast } = await updatePageEffects(slug, content)
+		const { plainText, ast } = await updateContentEffects(existing.id, content)
 
 		await db
-			.update(pages)
+			.update(contentRecords)
 			.set({ content, plainText, parsedAst: ast, sizeBytes, updatedAt: new Date() })
-			.where(eq(pages.slug, slug))
+			.where(eq(contentRecords.id, existing.id))
 
-		await db.insert(revisions).values({
-			pageId: existing.id,
-			pageSlug: slug,
+		await db.insert(contentRevisions).values({
+			contentRecordId: existing.id,
 			title: existing.title,
 			content,
 			sizeBytes,

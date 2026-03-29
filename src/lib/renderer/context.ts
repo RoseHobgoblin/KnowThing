@@ -12,8 +12,10 @@ export interface KnowRenderContext {
 	pageBaseUrl: string
 	/** Footnotes collected by WikiReference, consumed by WikiReferenceList */
 	footnotes: Writable<FootnoteEntry[]>
-	/** Set of existing page slugs for red-link detection */
+	/** Set of existing page slugs for red-link detection (know domain) */
 	existingPages: Set<string>
+	/** All existing content across domains for cross-domain red-link detection */
+	existingContent: Map<string, Set<string>>
 	/** Resolve a simple (DB-stored) template — returns expanded AST or null */
 	templateResolver: ((name: string, args: TemplateArg[]) => WikiNode[] | null) | null
 	/** Current page name (for magic words like {{PAGENAME}}) */
@@ -44,6 +46,7 @@ export function createKnowContext(overrides: Partial<KnowRenderContext> = {}): K
 		pageBaseUrl: '/know',
 		footnotes: writable([]),
 		existingPages: new Set(),
+		existingContent: new Map(),
 		templateResolver: null,
 		pageName: '',
 		namespace: '',

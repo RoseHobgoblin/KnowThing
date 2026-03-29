@@ -1,9 +1,10 @@
 import { fail, redirect } from '@sveltejs/kit'
 import type { Actions, PageServerLoad } from './$types.js'
 import { db } from '$lib/server/db/index.js'
-import { pages, revisions } from '$lib/server/db/schema.js'
+import { contentRecords, contentRevisions } from '$lib/server/db/schema.js'
+import { eq } from 'drizzle-orm'
 import { requireAuth } from '$lib/server/auth.js'
-import { updatePageEffects } from '$lib/server/page-effects.js'
+import { updateContentEffects } from '$lib/server/content-effects.js'
 import { slugify } from '$lib/renderer/context.js'
 
 export const load: PageServerLoad = async ({ url }) => {
@@ -26,25 +27,30 @@ export const actions: Actions = {
 
 		const slug = slugify(title)
 		const sizeBytes = new TextEncoder().encode(content).length
-		const plainText = await updatePageEffects(slug, content)
 
 		try {
-			const [page] = await db
-				.insert(pages)
-				.values({ slug, title, content, plainText, sizeBytes })
+			const [record] = await db
+				.insert(contentRecords)
+				.values({ domain: 'know', slug, title, content, plainText: '', sizeBytes })
 				.returning()
 
-			await db.insert(revisions).values({
-				pageId: page.id,
-				pageSlug: slug,
+			const { plainText, ast } = await updateContentEffects(record.id, content)
+
+			await db
+				.update(contentRecords)
+				.set({ plainText, parsedAst: ast })
+				.where(eq(contentRecords.id, record.id))
+
+			await db.insert(contentRevisions).values({
+				contentRecordId: record.id,
 				title,
 				content,
 				sizeBytes,
 				editSummary: 'Page created',
 				userId: user.id,
 			})
-		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : ''
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : ''
 			if (message.includes('unique') || message.includes('duplicate')) {
 				return fail(409, { error: 'A page with this title already exists', title, content })
 			}

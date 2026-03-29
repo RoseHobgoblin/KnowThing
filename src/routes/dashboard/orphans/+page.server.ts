@@ -1,16 +1,22 @@
 import type { PageServerLoad } from './$types.js'
 import { db } from '$lib/server/db/index.js'
-import { pages, links } from '$lib/server/db/schema.js'
-import { notInArray } from 'drizzle-orm'
+import { contentRecords, contentLinks } from '$lib/server/db/schema.js'
+import { eq, sql } from 'drizzle-orm'
 
 export const load: PageServerLoad = async () => {
-	const linkedSlugs = db.selectDistinct({ slug: links.targetSlug }).from(links)
+	// Pages that are not the target of any link
+	const linkedIds = db
+		.selectDistinct({ id: contentLinks.targetId })
+		.from(contentLinks)
+		.where(sql`${contentLinks.targetId} IS NOT NULL`)
 
 	const orphans = await db
-		.select({ slug: pages.slug, title: pages.title, updatedAt: pages.updatedAt })
-		.from(pages)
-		.where(notInArray(pages.slug, linkedSlugs))
-		.orderBy(pages.title)
+		.select({ slug: contentRecords.slug, title: contentRecords.title, updatedAt: contentRecords.updatedAt })
+		.from(contentRecords)
+		.where(
+			sql`${contentRecords.domain} = 'know' AND ${contentRecords.id} NOT IN (${linkedIds})`,
+		)
+		.orderBy(contentRecords.title)
 
 	return { orphans }
 }

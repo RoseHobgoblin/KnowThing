@@ -1,14 +1,14 @@
 import type { LayoutServerLoad } from './$types.js'
 import { db } from '$lib/server/db/index.js'
-import { pages, calendars } from '$lib/server/db/schema.js'
+import { contentRecords, calendars } from '$lib/server/db/schema.js'
 import { eq } from 'drizzle-orm'
 import { resolveDisplay } from '$lib/calendar/date-math.js'
 import type { CalendarConfig, ResolvedDate, StaticCalendarData } from '$lib/calendar/types.js'
 import { getSiteConfig } from '$lib/server/settings.js'
 
 export const load: LayoutServerLoad = async ({ locals }) => {
-	const [allPages, primaryCalendarRows, siteConfig] = await Promise.all([
-		db.select({ slug: pages.slug, title: pages.title }).from(pages),
+	const [allContent, primaryCalendarRows, siteConfig] = await Promise.all([
+		db.select({ domain: contentRecords.domain, slug: contentRecords.slug }).from(contentRecords),
 		db.select().from(calendars).where(eq(calendars.isPrimary, true)).limit(1),
 		getSiteConfig(),
 	])
@@ -39,7 +39,8 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 
 	return {
 		user: locals.user,
-		existingPages: allPages.map(p => p.slug.toLowerCase()),
+		existingPages: allContent.filter(c => c.domain === 'know').map(c => c.slug.toLowerCase()),
+		existingContent: allContent.map(c => ({ domain: c.domain, slug: c.slug.toLowerCase() })),
 		calendarDate,
 		siteConfig,
 	}

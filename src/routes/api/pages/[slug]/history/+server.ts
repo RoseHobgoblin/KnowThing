@@ -1,24 +1,32 @@
-import { json } from '@sveltejs/kit'
+import { json, error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
-import { revisions, users } from '$lib/server/db/schema.js'
-import { eq, desc } from 'drizzle-orm'
+import { contentRecords, contentRevisions, users } from '$lib/server/db/schema.js'
+import { eq, and, desc } from 'drizzle-orm'
 
 /** GET /api/pages/:slug/history — revision list */
 export const GET: RequestHandler = async ({ params }) => {
+	const [record] = await db
+		.select({ id: contentRecords.id })
+		.from(contentRecords)
+		.where(and(eq(contentRecords.domain, 'know'), eq(contentRecords.slug, params.slug)))
+		.limit(1)
+
+	if (!record) throw error(404, 'Page not found')
+
 	const result = await db
 		.select({
-			id: revisions.id,
-			title: revisions.title,
-			sizeBytes: revisions.sizeBytes,
-			editSummary: revisions.editSummary,
+			id: contentRevisions.id,
+			title: contentRevisions.title,
+			sizeBytes: contentRevisions.sizeBytes,
+			editSummary: contentRevisions.editSummary,
 			username: users.username,
-			createdAt: revisions.createdAt,
+			createdAt: contentRevisions.createdAt,
 		})
-		.from(revisions)
-		.leftJoin(users, eq(revisions.userId, users.id))
-		.where(eq(revisions.pageSlug, params.slug))
-		.orderBy(desc(revisions.createdAt))
+		.from(contentRevisions)
+		.leftJoin(users, eq(contentRevisions.userId, users.id))
+		.where(eq(contentRevisions.contentRecordId, record.id))
+		.orderBy(desc(contentRevisions.createdAt))
 
 	return json(result)
 }

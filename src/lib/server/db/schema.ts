@@ -33,7 +33,98 @@ export const sessions = pgTable('sessions', {
 })
 
 // ============================================================================
-// Pages & Revisions
+// Unified Content Records
+// ============================================================================
+
+export const contentRecords = pgTable(
+	'content_records',
+	{
+		id: serial('id').primaryKey(),
+		domain: text('domain').notNull(),
+		slug: text('slug').notNull(),
+		parentPath: text('parent_path'),
+		title: text('title').notNull(),
+		content: text('content').notNull().default(''),
+		plainText: text('plain_text').notNull().default(''),
+		parsedAst: jsonb('parsed_ast'),
+		sizeBytes: integer('size_bytes').notNull().default(0),
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+	},
+	table => [
+		index('idx_cr_domain_slug').on(table.domain, table.slug),
+		index('idx_cr_domain').on(table.domain),
+		index('idx_cr_updated').on(table.updatedAt),
+	],
+)
+
+export const contentRevisions = pgTable(
+	'content_revisions',
+	{
+		id: serial('id').primaryKey(),
+		contentRecordId: integer('content_record_id')
+			.references(() => contentRecords.id, { onDelete: 'cascade' })
+			.notNull(),
+		title: text('title').notNull(),
+		content: text('content').notNull(),
+		sizeBytes: integer('size_bytes').notNull().default(0),
+		editSummary: text('edit_summary').default(''),
+		userId: integer('user_id').references(() => users.id),
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+	},
+	table => [
+		index('idx_crev_record').on(table.contentRecordId),
+		index('idx_crev_date').on(table.createdAt),
+	],
+)
+
+export const contentLinks = pgTable(
+	'content_links',
+	{
+		sourceId: integer('source_id')
+			.references(() => contentRecords.id, { onDelete: 'cascade' })
+			.notNull(),
+		targetDomain: text('target_domain').notNull(),
+		targetSlug: text('target_slug').notNull(),
+		targetId: integer('target_id')
+			.references(() => contentRecords.id, { onDelete: 'set null' }),
+	},
+	table => [
+		primaryKey({ columns: [table.sourceId, table.targetDomain, table.targetSlug] }),
+		index('idx_clinks_target').on(table.targetId),
+		index('idx_clinks_target_slug').on(table.targetDomain, table.targetSlug),
+	],
+)
+
+export const contentCategories = pgTable(
+	'content_categories',
+	{
+		contentRecordId: integer('content_record_id')
+			.references(() => contentRecords.id, { onDelete: 'cascade' })
+			.notNull(),
+		category: text('category').notNull(),
+	},
+	table => [
+		primaryKey({ columns: [table.contentRecordId, table.category] }),
+		index('idx_ccat_cat').on(table.category),
+	],
+)
+
+export const contentMediaUsage = pgTable(
+	'content_media_usage',
+	{
+		contentRecordId: integer('content_record_id')
+			.references(() => contentRecords.id, { onDelete: 'cascade' })
+			.notNull(),
+		filename: text('filename').notNull(),
+	},
+	table => [
+		primaryKey({ columns: [table.contentRecordId, table.filename] }),
+	],
+)
+
+// ============================================================================
+// Pages & Revisions (legacy — being replaced by content_records)
 // ============================================================================
 
 export const pages = pgTable(

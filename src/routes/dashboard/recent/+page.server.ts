@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types.js'
 import { db } from '$lib/server/db/index.js'
-import { revisions, users } from '$lib/server/db/schema.js'
+import { contentRecords, contentRevisions, users } from '$lib/server/db/schema.js'
 import { desc, eq } from 'drizzle-orm'
 
 export const load: PageServerLoad = async ({ url }) => {
@@ -10,17 +10,19 @@ export const load: PageServerLoad = async ({ url }) => {
 
 	const edits = await db
 		.select({
-			id: revisions.id,
-			pageSlug: revisions.pageSlug,
-			title: revisions.title,
-			editSummary: revisions.editSummary,
-			sizeBytes: revisions.sizeBytes,
-			createdAt: revisions.createdAt,
+			id: contentRevisions.id,
+			pageSlug: contentRecords.slug,
+			title: contentRevisions.title,
+			editSummary: contentRevisions.editSummary,
+			sizeBytes: contentRevisions.sizeBytes,
+			createdAt: contentRevisions.createdAt,
 			username: users.username,
 		})
-		.from(revisions)
-		.leftJoin(users, eq(revisions.userId, users.id))
-		.orderBy(desc(revisions.createdAt))
+		.from(contentRevisions)
+		.innerJoin(contentRecords, eq(contentRevisions.contentRecordId, contentRecords.id))
+		.leftJoin(users, eq(contentRevisions.userId, users.id))
+		.where(eq(contentRecords.domain, 'know'))
+		.orderBy(desc(contentRevisions.createdAt))
 		.limit(perPage)
 		.offset(offset)
 

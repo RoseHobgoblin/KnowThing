@@ -1,7 +1,7 @@
 import { json, type RequestHandler } from '@sveltejs/kit'
 import { db } from '$lib/server/db/index.js'
-import { pages } from '$lib/server/db/schema.js'
-import { eq, sql } from 'drizzle-orm'
+import { contentRecords } from '$lib/server/db/schema.js'
+import { eq, and, sql } from 'drizzle-orm'
 
 /**
  * GET /api/pages/summary?slug=onchera
@@ -16,11 +16,11 @@ export const GET: RequestHandler = async ({ url }) => {
 
 	const [page] = await db
 		.select({
-			title: pages.title,
-			content: pages.content,
+			title: contentRecords.title,
+			content: contentRecords.content,
 		})
-		.from(pages)
-		.where(eq(sql`LOWER(${pages.slug})`, slug))
+		.from(contentRecords)
+		.where(and(eq(contentRecords.domain, 'know'), eq(sql`LOWER(${contentRecords.slug})`, slug)))
 		.limit(1)
 
 	if (!page) {

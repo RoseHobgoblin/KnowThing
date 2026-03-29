@@ -1,8 +1,8 @@
 import { error } from '@sveltejs/kit'
 import type { PageServerLoad } from './$types.js'
 import { db } from '$lib/server/db/index.js'
-import { pages, revisions, users } from '$lib/server/db/schema.js'
-import { eq, desc } from 'drizzle-orm'
+import { contentRecords, contentRevisions, users } from '$lib/server/db/schema.js'
+import { eq, and, desc } from 'drizzle-orm'
 import { diffLines } from 'diff'
 import { requireEditor } from '$lib/server/guards.js'
 
@@ -11,25 +11,25 @@ export const load: PageServerLoad = async (event) => {
 	const { params, url } = event
 
 	const [page] = await db
-		.select({ title: pages.title, content: pages.content })
-		.from(pages)
-		.where(eq(pages.slug, params.slug))
+		.select({ id: contentRecords.id, title: contentRecords.title, content: contentRecords.content })
+		.from(contentRecords)
+		.where(and(eq(contentRecords.domain, 'know'), eq(contentRecords.slug, params.slug)))
 		.limit(1)
 
 	if (!page) throw error(404, 'Page not found')
 
 	const history = await db
 		.select({
-			id: revisions.id,
-			sizeBytes: revisions.sizeBytes,
-			editSummary: revisions.editSummary,
+			id: contentRevisions.id,
+			sizeBytes: contentRevisions.sizeBytes,
+			editSummary: contentRevisions.editSummary,
 			username: users.username,
-			createdAt: revisions.createdAt,
+			createdAt: contentRevisions.createdAt,
 		})
-		.from(revisions)
-		.leftJoin(users, eq(revisions.userId, users.id))
-		.where(eq(revisions.pageSlug, params.slug))
-		.orderBy(desc(revisions.createdAt))
+		.from(contentRevisions)
+		.leftJoin(users, eq(contentRevisions.userId, users.id))
+		.where(eq(contentRevisions.contentRecordId, page.id))
+		.orderBy(desc(contentRevisions.createdAt))
 
 	// Diff mode: ?diff=123&against=456
 	const diffId = url.searchParams.get('diff')
@@ -40,15 +40,15 @@ export const load: PageServerLoad = async (event) => {
 
 	if (diffId && againstId) {
 		const [oldRev] = await db
-			.select({ content: revisions.content, createdAt: revisions.createdAt })
-			.from(revisions)
-			.where(eq(revisions.id, Number.parseInt(againstId)))
+			.select({ content: contentRevisions.content, createdAt: contentRevisions.createdAt })
+			.from(contentRevisions)
+			.where(eq(contentRevisions.id, Number.parseInt(againstId)))
 			.limit(1)
 
 		const [newRev] = await db
-			.select({ content: revisions.content, createdAt: revisions.createdAt })
-			.from(revisions)
-			.where(eq(revisions.id, Number.parseInt(diffId)))
+			.select({ content: contentRevisions.content, createdAt: contentRevisions.createdAt })
+			.from(contentRevisions)
+			.where(eq(contentRevisions.id, Number.parseInt(diffId)))
 			.limit(1)
 
 		if (oldRev && newRev) {

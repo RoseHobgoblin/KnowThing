@@ -2,10 +2,10 @@ import { json } from '@sveltejs/kit'
 import { z } from 'zod'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
-import { pages, revisions } from '$lib/server/db/schema.js'
-import { desc } from 'drizzle-orm'
+import { contentRecords, contentRevisions } from '$lib/server/db/schema.js'
+import { desc, eq } from 'drizzle-orm'
 import { requireAuth } from '$lib/server/auth.js'
-import { updatePageEffects } from '$lib/server/page-effects.js'
+import { updateContentEffects } from '$lib/server/content-effects.js'
 import { slugify } from '$lib/renderer/context.js'
 
 const createPageSchema = z.object({
@@ -17,13 +17,14 @@ const createPageSchema = z.object({
 export const GET: RequestHandler = async () => {
 	const result = await db
 		.select({
-			slug: pages.slug,
-			title: pages.title,
-			sizeBytes: pages.sizeBytes,
-			updatedAt: pages.updatedAt,
+			slug: contentRecords.slug,
+			title: contentRecords.title,
+			sizeBytes: contentRecords.sizeBytes,
+			updatedAt: contentRecords.updatedAt,
 		})
-		.from(pages)
-		.orderBy(desc(pages.updatedAt))
+		.from(contentRecords)
+		.where(eq(contentRecords.domain, 'know'))
+		.orderBy(desc(contentRecords.updatedAt))
 
 	return json(result)
 }
@@ -40,23 +41,27 @@ export const POST: RequestHandler = async (event) => {
 
 	const slug = (body as Record<string, unknown>).slug as string || slugify(title)
 	const sizeBytes = new TextEncoder().encode(content || '').length
-	const { plainText, ast } = await updatePageEffects(slug, content || '')
 
-	const [page] = await db
-		.insert(pages)
-		.values({ slug, title: title.trim(), content: content || '', plainText, parsedAst: ast, sizeBytes })
+	const [record] = await db
+		.insert(contentRecords)
+		.values({ domain: 'know', slug, title: title.trim(), content: content || '', plainText: '', sizeBytes })
 		.returning()
 
-	// Create initial revision
-	await db.insert(revisions).values({
-		pageId: page.id,
-		pageSlug: slug,
-		title: page.title,
-		content: page.content,
+	const { plainText, ast } = await updateContentEffects(record.id, content || '')
+
+	await db
+		.update(contentRecords)
+		.set({ plainText, parsedAst: ast })
+		.where(eq(contentRecords.id, record.id))
+
+	await db.insert(contentRevisions).values({
+		contentRecordId: record.id,
+		title: record.title,
+		content: record.content,
 		sizeBytes,
 		editSummary: 'Page created',
 		userId: user.id,
 	})
 
-	return json(page, { status: 201 })
+	return json(record, { status: 201 })
 }

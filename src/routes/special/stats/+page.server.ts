@@ -1,23 +1,27 @@
 import type { PageServerLoad } from './$types.js'
 import { db } from '$lib/server/db/index.js'
-import { pages, revisions, categories, media } from '$lib/server/db/schema.js'
-import { sql, countDistinct, max } from 'drizzle-orm'
+import { contentRecords, contentRevisions, contentCategories, media } from '$lib/server/db/schema.js'
+import { sql, eq, countDistinct, max } from 'drizzle-orm'
 
 export const load: PageServerLoad = async () => {
 	const [[pageStats], [revisionStats], [categoryStats], [mediaStats]] = await Promise.all([
 		db.select({
 			count: sql<number>`count(*)::int`,
-			totalSize: sql<number>`coalesce(sum(size_bytes), 0)::int`,
-			lastEdit: max(pages.updatedAt),
-		}).from(pages),
+			totalSize: sql<number>`coalesce(sum(${contentRecords.sizeBytes}), 0)::int`,
+			lastEdit: max(contentRecords.updatedAt),
+		}).from(contentRecords).where(eq(contentRecords.domain, 'know')),
 
 		db.select({
 			count: sql<number>`count(*)::int`,
-		}).from(revisions),
+		}).from(contentRevisions)
+			.innerJoin(contentRecords, eq(contentRevisions.contentRecordId, contentRecords.id))
+			.where(eq(contentRecords.domain, 'know')),
 
 		db.select({
-			count: countDistinct(categories.category),
-		}).from(categories),
+			count: countDistinct(contentCategories.category),
+		}).from(contentCategories)
+			.innerJoin(contentRecords, eq(contentCategories.contentRecordId, contentRecords.id))
+			.where(eq(contentRecords.domain, 'know')),
 
 		db.select({
 			count: sql<number>`count(*)::int`,

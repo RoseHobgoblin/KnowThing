@@ -2,10 +2,10 @@ import { json, error } from '@sveltejs/kit'
 import { z } from 'zod'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
-import { pages, revisions } from '$lib/server/db/schema.js'
-import { eq } from 'drizzle-orm'
+import { contentRecords, contentRevisions } from '$lib/server/db/schema.js'
+import { eq, and } from 'drizzle-orm'
 import { requireAuth } from '$lib/server/auth.js'
-import { updatePageEffects, deletePageEffects } from '$lib/server/page-effects.js'
+import { updateContentEffects, deleteContentEffects } from '$lib/server/content-effects.js'
 
 const updatePageSchema = z.object({
 	content: z.string(),
@@ -15,14 +15,14 @@ const updatePageSchema = z.object({
 
 /** GET /api/pages/:slug */
 export const GET: RequestHandler = async ({ params }) => {
-	const [page] = await db
+	const [record] = await db
 		.select()
-		.from(pages)
-		.where(eq(pages.slug, params.slug))
+		.from(contentRecords)
+		.where(and(eq(contentRecords.domain, 'know'), eq(contentRecords.slug, params.slug)))
 		.limit(1)
 
-	if (!page) throw error(404, 'Page not found')
-	return json(page)
+	if (!record) throw error(404, 'Page not found')
+	return json(record)
 }
 
 /** PUT /api/pages/:slug — update page */
@@ -38,17 +38,17 @@ export const PUT: RequestHandler = async (event) => {
 
 	const [existing] = await db
 		.select()
-		.from(pages)
-		.where(eq(pages.slug, slug))
+		.from(contentRecords)
+		.where(and(eq(contentRecords.domain, 'know'), eq(contentRecords.slug, slug)))
 		.limit(1)
 
 	if (!existing) throw error(404, 'Page not found')
 
 	const sizeBytes = new TextEncoder().encode(content).length
-	const { plainText, ast } = await updatePageEffects(slug, content)
+	const { plainText, ast } = await updateContentEffects(existing.id, content)
 
 	const [updated] = await db
-		.update(pages)
+		.update(contentRecords)
 		.set({
 			title: title?.trim() || existing.title,
 			content,
@@ -57,13 +57,11 @@ export const PUT: RequestHandler = async (event) => {
 			sizeBytes,
 			updatedAt: new Date(),
 		})
-		.where(eq(pages.slug, slug))
+		.where(eq(contentRecords.id, existing.id))
 		.returning()
 
-	// Save revision
-	await db.insert(revisions).values({
-		pageId: existing.id,
-		pageSlug: slug,
+	await db.insert(contentRevisions).values({
+		contentRecordId: existing.id,
 		title: updated.title,
 		content,
 		sizeBytes,
@@ -80,15 +78,15 @@ export const DELETE: RequestHandler = async (event) => {
 	const { slug } = event.params
 
 	const [existing] = await db
-		.select({ id: pages.id })
-		.from(pages)
-		.where(eq(pages.slug, slug))
+		.select({ id: contentRecords.id })
+		.from(contentRecords)
+		.where(and(eq(contentRecords.domain, 'know'), eq(contentRecords.slug, slug)))
 		.limit(1)
 
 	if (!existing) throw error(404, 'Page not found')
 
-	await deletePageEffects(slug)
-	await db.delete(pages).where(eq(pages.slug, slug))
+	await deleteContentEffects(existing.id)
+	await db.delete(contentRecords).where(eq(contentRecords.id, existing.id))
 
 	return json({ ok: true })
 }

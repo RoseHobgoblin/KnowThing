@@ -2,17 +2,18 @@ import { error, redirect, fail } from '@sveltejs/kit'
 import type { PageServerLoad, Actions } from './$types.js'
 import { requireEditor } from '$lib/server/guards.js'
 import { db } from '$lib/server/db/index.js'
-import { pages, links, categories, mediaUsage, revisions } from '$lib/server/db/schema.js'
-import { eq } from 'drizzle-orm'
+import { contentRecords, contentLinks, contentRevisions } from '$lib/server/db/schema.js'
+import { eq, and } from 'drizzle-orm'
 import { slugify } from '$lib/renderer/context.js'
+import { updateContentEffects } from '$lib/server/content-effects.js'
 
 export const load: PageServerLoad = async (event) => {
 	requireEditor(event)
 
 	const [page] = await db
-		.select({ title: pages.title, slug: pages.slug })
-		.from(pages)
-		.where(eq(pages.slug, event.params.slug))
+		.select({ title: contentRecords.title, slug: contentRecords.slug })
+		.from(contentRecords)
+		.where(and(eq(contentRecords.domain, 'know'), eq(contentRecords.slug, event.params.slug)))
 		.limit(1)
 
 	if (!page) throw error(404, 'Page not found')
@@ -34,9 +35,9 @@ export const actions: Actions = {
 		// Check if target slug already exists (and isn't the same page)
 		if (newSlug !== oldSlug) {
 			const [existing] = await db
-				.select({ id: pages.id })
-				.from(pages)
-				.where(eq(pages.slug, newSlug))
+				.select({ id: contentRecords.id })
+				.from(contentRecords)
+				.where(and(eq(contentRecords.domain, 'know'), eq(contentRecords.slug, newSlug)))
 				.limit(1)
 
 			if (existing) return fail(400, { error: `A page with slug "${newSlug}" already exists` })
@@ -45,16 +46,15 @@ export const actions: Actions = {
 		// Get current page
 		const [page] = await db
 			.select()
-			.from(pages)
-			.where(eq(pages.slug, oldSlug))
+			.from(contentRecords)
+			.where(and(eq(contentRecords.domain, 'know'), eq(contentRecords.slug, oldSlug)))
 			.limit(1)
 
 		if (!page) throw error(404, 'Page not found')
 
 		// Save a revision recording the move
-		await db.insert(revisions).values({
-			pageId: page.id,
-			pageSlug: newSlug,
+		await db.insert(contentRevisions).values({
+			contentRecordId: page.id,
 			title: newTitle,
 			content: page.content,
 			sizeBytes: page.sizeBytes,
@@ -64,38 +64,18 @@ export const actions: Actions = {
 
 		// Update the page itself
 		await db
-			.update(pages)
+			.update(contentRecords)
 			.set({ slug: newSlug, title: newTitle, updatedAt: new Date() })
-			.where(eq(pages.slug, oldSlug))
+			.where(and(eq(contentRecords.domain, 'know'), eq(contentRecords.slug, oldSlug)))
 
-		// Update link references
+		// Update link references: update targetSlug and targetId for links pointing to the old slug
 		await db
-			.update(links)
-			.set({ sourceSlug: newSlug })
-			.where(eq(links.sourceSlug, oldSlug))
+			.update(contentLinks)
+			.set({ targetSlug: newSlug, targetId: page.id })
+			.where(and(eq(contentLinks.targetDomain, 'know'), eq(contentLinks.targetSlug, oldSlug)))
 
-		await db
-			.update(links)
-			.set({ targetSlug: newSlug })
-			.where(eq(links.targetSlug, oldSlug))
-
-		// Update categories
-		await db
-			.update(categories)
-			.set({ pageSlug: newSlug })
-			.where(eq(categories.pageSlug, oldSlug))
-
-		// Update media usage
-		await db
-			.update(mediaUsage)
-			.set({ pageSlug: newSlug })
-			.where(eq(mediaUsage.pageSlug, oldSlug))
-
-		// Update old revision slugs
-		await db
-			.update(revisions)
-			.set({ pageSlug: newSlug })
-			.where(eq(revisions.pageSlug, oldSlug))
+		// Re-derive links, categories, media from content
+		await updateContentEffects(page.id, page.content, 'know')
 
 		throw redirect(302, `/know/${newSlug}`)
 	},

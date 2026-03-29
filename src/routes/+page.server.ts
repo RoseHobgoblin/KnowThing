@@ -1,7 +1,7 @@
 import type { PageServerLoad } from './$types.js'
 import { db } from '$lib/server/db/index.js'
-import { pages, revisions, lexicon, languages, media, calendars, users } from '$lib/server/db/schema.js'
-import { desc, eq, sql, count } from 'drizzle-orm'
+import { contentRecords, contentRevisions, lexicon, languages, media, calendars, users } from '$lib/server/db/schema.js'
+import { desc, eq, sql, count, and } from 'drizzle-orm'
 import { resolveDisplay } from '$lib/calendar/date-math.js'
 import type { CalendarConfig, StaticCalendarData } from '$lib/calendar/types.js'
 
@@ -20,18 +20,20 @@ export const load: PageServerLoad = async () => {
 		// Recent edits (last 8)
 		db
 			.select({
-				pageSlug: revisions.pageSlug,
-				title: revisions.title,
-				editSummary: revisions.editSummary,
-				createdAt: revisions.createdAt,
-				userId: revisions.userId,
+				pageSlug: contentRecords.slug,
+				title: contentRevisions.title,
+				editSummary: contentRevisions.editSummary,
+				createdAt: contentRevisions.createdAt,
+				userId: contentRevisions.userId,
 			})
-			.from(revisions)
-			.orderBy(desc(revisions.createdAt))
+			.from(contentRevisions)
+			.innerJoin(contentRecords, eq(contentRevisions.contentRecordId, contentRecords.id))
+			.where(eq(contentRecords.domain, 'know'))
+			.orderBy(desc(contentRevisions.createdAt))
 			.limit(8),
 
 		// Counts
-		db.select({ value: count() }).from(pages),
+		db.select({ value: count() }).from(contentRecords).where(eq(contentRecords.domain, 'know')),
 		db.select({ value: count() }).from(lexicon),
 		db.select({ value: count() }).from(languages),
 		db.select({ value: count() }).from(media),
@@ -39,10 +41,10 @@ export const load: PageServerLoad = async () => {
 
 		// Featured: most recently updated article with decent content
 		db
-			.select({ slug: pages.slug, title: pages.title, content: pages.content })
-			.from(pages)
-			.where(sql`LENGTH(${pages.content}) > 200`)
-			.orderBy(desc(pages.updatedAt))
+			.select({ slug: contentRecords.slug, title: contentRecords.title, content: contentRecords.content })
+			.from(contentRecords)
+			.where(and(eq(contentRecords.domain, 'know'), sql`LENGTH(${contentRecords.content}) > 200`))
+			.orderBy(desc(contentRecords.updatedAt))
 			.limit(1),
 
 		// Random word with definition

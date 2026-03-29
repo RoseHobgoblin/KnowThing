@@ -1,15 +1,16 @@
 import type { PageServerLoad, Actions } from './$types.js'
 import { requireAdmin } from '$lib/server/guards.js'
 import { db } from '$lib/server/db/index.js'
-import { pages, media } from '$lib/server/db/schema.js'
+import { contentRecords, media } from '$lib/server/db/schema.js'
+import { eq, sql } from 'drizzle-orm'
 
 export const load: PageServerLoad = async (event) => {
 	requireAdmin(event)
 
 	// Just show the export page — actual download is via action
 	const [[pageCount], [mediaCount]] = await Promise.all([
-		db.select({ count: pages.id }).from(pages),
-		db.select({ count: media.id }).from(media),
+		db.select({ count: sql<number>`count(*)::int` }).from(contentRecords).where(eq(contentRecords.domain, 'know')),
+		db.select({ count: sql<number>`count(*)::int` }).from(media),
 	])
 
 	return {
@@ -23,8 +24,9 @@ export const actions: Actions = {
 		requireAdmin(event)
 
 		const allPages = await db
-			.select({ slug: pages.slug, title: pages.title, content: pages.content })
-			.from(pages)
+			.select({ slug: contentRecords.slug, title: contentRecords.title, content: contentRecords.content })
+			.from(contentRecords)
+			.where(eq(contentRecords.domain, 'know'))
 
 		// Build a simple JSON export (ZIP would need archiver package)
 		const exportData = {
