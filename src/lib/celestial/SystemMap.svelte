@@ -145,7 +145,7 @@
 			rx={a}
 			ry={b}
 			fill="none"
-			stroke={hovered?.id === body.id ? 'var(--color-accent)' : '#E9C34926'}
+			stroke={hovered?.id === body.id ? 'var(--color-accent)' : 'color-mix(in srgb, var(--color-accent-light) 15%, transparent)'}
 			stroke-width={hovered?.id === body.id ? 1 : 0.5}
 			stroke-dasharray={body.isStar ? '4 3' : 'none'}
 			class="transition-colors"
