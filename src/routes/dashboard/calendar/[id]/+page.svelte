@@ -2,11 +2,12 @@
 	import type { PageData } from './$types.js'
 	import CalendarWidget from '$lib/calendar/CalendarWidget.svelte'
 	import type { CalendarConfig } from '$lib/calendar/types.js'
+	import Input from '$lib/components/ui/Input.svelte'
+	import Tooltip from '$lib/components/ui/Tooltip.svelte'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 
 	let { data }: { data: PageData } = $props()
 
-	// Deep clone the static data for editing
 	const sd = data.calendar.staticData as any
 	let name = $state(data.calendar.name)
 	let description = $state(data.calendar.description || '')
@@ -17,7 +18,6 @@
 	let dayLengthSeconds = $state(sd.day_length_seconds ?? 86_400)
 	let displayMoons = $state(sd.display_moons ?? false)
 
-	// Editable arrays
 	let months = $state<Array<{ name: string, length: number, month_type: string, short_name: string }>>(
 		(sd.months || []).map((m: any) => ({ name: m.name, length: m.length, month_type: m.month_type || 'regular', short_name: m.short_name || '' })),
 	)
@@ -38,38 +38,25 @@
 			duration: s.timing?.duration ?? 90, color: s.color || '#888888',
 		})),
 	)
-
 	let leapDays = $state<Array<{ name: string, month_index: number, after_day: number, interval: number, ignore: string, exclusive: string, intercalary: boolean, offset: number }>>(
 		(sd.leap_days || []).map((ld: any) => ({
-			name: ld.name || '',
-			month_index: ld.month_index ?? 0,
-			after_day: ld.after_day ?? 0,
-			interval: ld.interval ?? 4,
-			ignore: (ld.ignore || []).join(', '),
-			exclusive: (ld.exclusive || []).join(', '),
-			intercalary: ld.intercalary ?? false,
-			offset: ld.offset ?? 0,
+			name: ld.name || '', month_index: ld.month_index ?? 0, after_day: ld.after_day ?? 0,
+			interval: ld.interval ?? 4, ignore: (ld.ignore || []).join(', '),
+			exclusive: (ld.exclusive || []).join(', '), intercalary: ld.intercalary ?? false, offset: ld.offset ?? 0,
 		})),
 	)
 
-	// Live preview config — rebuilt from current editor state
 	let previewConfig = $derived<CalendarConfig>({
-		name,
-		description,
-		primary: isPrimary,
+		name, description, primary: isPrimary,
 		static_data: {
 			first_week_day: firstWeekDay,
 			weekdays: weekdays.map(w => ({ name: w.name, abbreviation: w.abbreviation || undefined })),
 			months: months.map(m => ({ name: m.name, length: m.length, month_type: m.month_type as 'regular' | 'intercalary', short_name: m.short_name || undefined })),
 			leap_days: leapDays.map(ld => ({
-				name: ld.name,
-				month_index: ld.month_index,
-				after_day: ld.after_day,
-				interval: ld.interval,
+				name: ld.name, month_index: ld.month_index, after_day: ld.after_day, interval: ld.interval,
 				ignore: ld.ignore ? ld.ignore.split(',').map(s => Number.parseInt(s.trim())).filter(n => !Number.isNaN(n)) : [],
 				exclusive: ld.exclusive ? ld.exclusive.split(',').map(s => Number.parseInt(s.trim())).filter(n => !Number.isNaN(n)) : [],
-				intercalary: ld.intercalary,
-				offset: ld.offset,
+				intercalary: ld.intercalary, offset: ld.offset,
 			})),
 			moons: moons.map(m => ({ name: m.name, cycle: m.cycle, offset: m.offset, face_color: m.face_color, shadow_color: m.shadow_color })),
 			eras: eras.map(e => ({ name: e.name, start_year: e.start_year, end_year: e.end_year ? Number.parseInt(e.end_year) : null, format: e.format, reverse_numbering: e.reverse_numbering })),
@@ -77,60 +64,32 @@
 				name: s.name, kind: s.kind as any, color: s.color,
 				timing: s.timing_type === 'dated' ? { type: 'dated' as const, month: s.month, day: s.day } : { type: 'periodic' as const, duration: s.duration },
 			})),
-			display_moons: displayMoons,
-			year_offset: yearOffset,
-			epoch_offset: epochOffset,
-			day_length_seconds: dayLengthSeconds,
+			display_moons: displayMoons, year_offset: yearOffset, epoch_offset: epochOffset, day_length_seconds: dayLengthSeconds,
 		},
 	})
 
 	let saving = $state(false)
 
+	function buildStaticData() {
+		return previewConfig.static_data
+	}
+
 	async function save() {
 		saving = true
-
-		const staticData = {
-			first_week_day: firstWeekDay,
-			weekdays: weekdays.map(w => ({ name: w.name, abbreviation: w.abbreviation || undefined })),
-			months: months.map(m => ({ name: m.name, length: m.length, month_type: m.month_type, short_name: m.short_name || undefined })),
-			leap_days: leapDays.map(ld => ({
-				name: ld.name,
-				month_index: ld.month_index,
-				after_day: ld.after_day,
-				interval: ld.interval,
-				ignore: ld.ignore ? ld.ignore.split(',').map(s => Number.parseInt(s.trim())).filter(n => !Number.isNaN(n)) : [],
-				exclusive: ld.exclusive ? ld.exclusive.split(',').map(s => Number.parseInt(s.trim())).filter(n => !Number.isNaN(n)) : [],
-				intercalary: ld.intercalary,
-				offset: ld.offset,
-			})),
-			moons: moons.map(m => ({ name: m.name, cycle: m.cycle, offset: m.offset, face_color: m.face_color, shadow_color: m.shadow_color })),
-			eras: eras.map(e => ({ name: e.name, start_year: e.start_year, end_year: e.end_year ? Number.parseInt(e.end_year) : null, format: e.format, reverse_numbering: e.reverse_numbering })),
-			seasons: seasons.map(s => ({
-				name: s.name, kind: s.kind, color: s.color,
-				timing: s.timing_type === 'dated' ? { type: 'dated', month: s.month, day: s.day } : { type: 'periodic', duration: s.duration },
-			})),
-			display_moons: displayMoons,
-			year_offset: yearOffset,
-			epoch_offset: epochOffset,
-			day_length_seconds: dayLengthSeconds,
-		}
-
-		const res = await fetch(`/api/calendar/${data.calendar.id}`, {
+		const response = await fetch(`/api/calendar/${data.calendar.id}`, {
 			method: 'PUT',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ name, description, isPrimary, staticData }),
+			body: JSON.stringify({ name, description, isPrimary, staticData: buildStaticData() }),
 		})
-
-		if (res.ok) {
-			pushSuccess('Calendar saved')
-		} else {
-			pushError('Failed to save calendar')
-		}
+		if (response.ok) pushSuccess('Calendar saved')
+		else pushError('Failed to save calendar')
 		saving = false
 	}
 
-	const inputClass = 'px-2 py-1.5 border border-border-strong rounded-md text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent'
-	const labelClass = 'block text-xs font-medium text-secondary mb-1'
+	const totalDaysInYear = $derived(months.reduce((sum, m) => sum + m.length, 0))
+	const dayLengthHours = $derived(Math.round((dayLengthSeconds / 3600) * 100) / 100)
+
+	const indexClass = 'px-2 py-1.5 border border-border-strong rounded-md text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent'
 </script>
 
 <svelte:head>
@@ -138,242 +97,354 @@
 </svelte:head>
 
 <div class="space-y-6">
+	<!-- Header -->
 	<div class="flex items-center justify-between">
 		<div>
-			<a href="/dashboard/calendar" class="text-sm text-faint hover:text-link">← Calendars</a>
-			<h1 class="text-xl font-bold text-heading">{name}</h1>
+			<a href="/dashboard/calendar" class="text-xs text-faint hover:text-link">← Back to calendars</a>
+			<h1 class="text-xl font-bold text-heading">{name || 'Untitled Calendar'}</h1>
+			<p class="text-xs text-faint mt-0.5">{totalDaysInYear} days/year · {weekdays.length}-day week · {dayLengthHours}h days</p>
 		</div>
-		<div class="flex items-center gap-3">
-			<button onclick={save} disabled={saving} class="
-				px-4 py-1.5 bg-accent text-surface text-sm rounded-md font-medium transition-colors
-				hover:bg-accent-hover
-				disabled:opacity-50
-			">
-				{saving ? 'Saving...' : 'Save'}
-			</button>
-		</div>
+		<button onclick={save} disabled={saving} class="
+			px-5 py-2 bg-accent text-surface text-sm rounded-md font-medium transition-colors
+			hover:bg-accent-hover
+			disabled:opacity-50
+		">
+			{saving ? 'Saving...' : 'Save changes'}
+		</button>
 	</div>
 
 	<!-- Live Preview -->
-	<details class="bg-surface rounded-lg border border-border" open>
+	<details class="bg-surface rounded-lg border border-border">
 		<summary class="
 			px-4 py-3 cursor-pointer text-sm font-semibold text-heading select-none transition-colors
 			rounded-lg
 			hover:bg-raised
 		">
-			Live Preview
+			Preview
 		</summary>
 		<div class="px-4 pb-4">
-			{#if previewConfig.static_data.months.length > 0 && previewConfig.static_data.weekdays.length > 0}
+			{#if months.length > 0 && weekdays.length > 0}
 				<div class="max-w-md mx-auto">
 					{#key JSON.stringify(previewConfig.static_data)}
 						<CalendarWidget config={previewConfig} />
 					{/key}
 				</div>
 			{:else}
-				<p class="text-sm text-faint text-center py-4">Add months and weekdays to see a preview.</p>
+				<p class="text-sm text-faint text-center py-6">Add at least one month and one weekday to see a preview.</p>
 			{/if}
 		</div>
 	</details>
 
-	<!-- General -->
-	<section class="bg-surface rounded-lg border border-border p-4 space-y-3">
-		<h2 class="text-sm font-semibold text-heading">General</h2>
-		<div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-			<div>
-				<label class={labelClass}>Name</label>
-				<input type="text" bind:value={name} class="w-full {inputClass}" />
-			</div>
-			<div>
-				<label class={labelClass}>Description</label>
-				<input type="text" bind:value={description} class="w-full {inputClass}" />
-			</div>
-			<div>
-				<label class={labelClass}>Epoch Offset <span class="text-faint font-normal" title="How many calendar days separate Unix epoch (1 Jan 1970) from your calendar's Year 1, Day 1. Positive = your calendar starts before 1970. Negative = after. This determines what 'today' maps to in your calendar.">(days from Unix epoch to year 1 day 1) ⓘ</span></label>
-				<input type="number" bind:value={epochOffset} class="w-full {inputClass}" />
-			</div>
-			<div>
-				<label class={labelClass}>Year Display Offset <span class="text-faint font-normal" title="Added to displayed year numbers. Use if your internal year 1 should display as a different number (e.g. offset of 999 makes year 1 display as 1000).">ⓘ</span></label>
-				<input type="number" bind:value={yearOffset} class="w-full {inputClass}" />
-			</div>
-			<div>
-				<label class={labelClass}>Day Length <span class="text-faint font-normal" title="How many real-world seconds make up one calendar day. Earth = 86400 (24 hours). Change this for worlds where a 'day' is a different length. Affects how fast the calendar ticks relative to real time.">(seconds — 86400 = 24h, 72000 = 20h) ⓘ</span></label>
-				<input type="number" bind:value={dayLengthSeconds} min={1} class="w-full {inputClass}" />
-			</div>
-			<div>
-				<label class={labelClass}>First Weekday Index <span class="text-faint font-normal" title="Which weekday (0-indexed) does Year 1, Month 1, Day 1 fall on? 0 = first weekday in your list above.">ⓘ</span></label>
-				<input type="number" bind:value={firstWeekDay} min={0} class="w-full {inputClass}" />
-			</div>
-			<label class="flex items-center gap-2 text-sm text-secondary self-end">
-				<input type="checkbox" bind:checked={isPrimary} class="rounded-sm" /> Primary calendar
+	<!-- Identity -->
+	<section class="bg-surface rounded-lg border border-border p-5 space-y-4">
+		<h2 class="text-sm font-semibold text-heading border-b border-border-subtle pb-2">Identity</h2>
+		<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+			<Input label="Calendar name" bind:value={name} required placeholder="e.g. Republican Calendar" />
+			<Input label="Description" bind:value={description} placeholder="A short description of this calendar" />
+		</div>
+		<div class="flex gap-6">
+			<label class="flex items-center gap-2 text-sm text-secondary cursor-pointer">
+				<input type="checkbox" bind:checked={isPrimary} class="rounded-sm accent-accent" />
+				Primary calendar
 			</label>
-			<label class="flex items-center gap-2 text-sm text-secondary">
-				<input type="checkbox" bind:checked={displayMoons} class="rounded-sm" /> Show moon phases
+			<label class="flex items-center gap-2 text-sm text-secondary cursor-pointer">
+				<input type="checkbox" bind:checked={displayMoons} class="rounded-sm accent-accent" />
+				Show moon phases
 			</label>
+		</div>
+	</section>
+
+	<!-- Time -->
+	<section class="bg-surface rounded-lg border border-border p-5 space-y-4">
+		<div>
+			<h2 class="text-sm font-semibold text-heading">Time Configuration</h2>
+			<p class="text-xs text-faint mt-0.5">How this calendar maps to real-world time.</p>
+		</div>
+		<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+			<div>
+				<div class="flex items-center gap-1 mb-1">
+					<span class="text-xs font-medium text-secondary">Epoch Offset</span>
+					<Tooltip content="How many calendar days separate Unix epoch (1 Jan 1970) from your calendar's Year 1, Day 1. Positive = calendar starts before 1970. Negative = after." side="top">
+						<span class="text-faint text-xs cursor-help">ⓘ</span>
+					</Tooltip>
+				</div>
+				<input type="number" bind:value={epochOffset} class="w-full {indexClass}" />
+			</div>
+			<div>
+				<div class="flex items-center gap-1 mb-1">
+					<span class="text-xs font-medium text-secondary">Day Length</span>
+					<Tooltip content="Real-world seconds per calendar day. Earth = 86400 (24h). Use 72000 for a 20h day." side="top">
+						<span class="text-faint text-xs cursor-help">ⓘ</span>
+					</Tooltip>
+				</div>
+				<input type="number" bind:value={dayLengthSeconds} min={1} class="w-full {indexClass}" />
+				<p class="text-[10px] text-faint mt-1">{dayLengthHours} hours</p>
+			</div>
+			<div>
+				<div class="flex items-center gap-1 mb-1">
+					<span class="text-xs font-medium text-secondary">Year Display Offset</span>
+					<Tooltip content="Added to year numbers when displayed. E.g. offset 999 makes internal year 1 display as year 1000." side="top">
+						<span class="text-faint text-xs cursor-help">ⓘ</span>
+					</Tooltip>
+				</div>
+				<input type="number" bind:value={yearOffset} class="w-full {indexClass}" />
+			</div>
 		</div>
 	</section>
 
 	<!-- Months -->
-	<section class="bg-surface rounded-lg border border-border p-4 space-y-3">
-		<div class="flex items-center justify-between">
-			<h2 class="text-sm font-semibold text-heading">Months</h2>
-			<button onclick={() => months = [...months, { name: '', length: 30, month_type: 'regular', short_name: '' }]} class="text-xs text-link hover:underline">+ Add</button>
-		</div>
-		{#each months as month, index}
-			<div class="flex gap-2 items-center">
-				<span class="text-xs text-faint w-6">{index + 1}.</span>
-				<input type="text" bind:value={month.name} placeholder="Name" class="flex-1 {inputClass}" />
-				<input type="text" bind:value={month.short_name} placeholder="Short" class="w-16 {inputClass}" />
-				<input type="number" bind:value={month.length} class="w-16 {inputClass}" title="Days" />
-				<select bind:value={month.month_type} class="w-28 {inputClass}">
-					<option value="regular">Regular</option>
-					<option value="intercalary">Intercalary</option>
-				</select>
-				<button onclick={() => months = months.filter((_, index_) => index_ !== index)} class="text-error text-xs">×</button>
+	<section class="bg-surface rounded-lg border border-border p-5 space-y-3">
+		<div class="flex items-center justify-between border-b border-border-subtle pb-2">
+			<div>
+				<h2 class="text-sm font-semibold text-heading">Months</h2>
+				<p class="text-xs text-faint">{months.length} months · {totalDaysInYear} days total</p>
 			</div>
-		{/each}
+			<button onclick={() => months = [...months, { name: '', length: 30, month_type: 'regular', short_name: '' }]} class="text-xs text-link font-medium hover:underline">+ Add month</button>
+		</div>
+		{#if months.length === 0}
+			<p class="text-sm text-faint text-center py-4">No months defined. Add one to get started.</p>
+		{/if}
+		<div class="space-y-2">
+			{#each months as month, index (index)}
+				<div class="flex gap-2 items-center group">
+					<span class="text-[10px] text-faint w-5 text-right shrink-0">{index + 1}</span>
+					<input type="text" bind:value={month.name} placeholder="Month name" class="flex-1 {indexClass}" />
+					<input type="text" bind:value={month.short_name} placeholder="Abbr" class="w-14 {indexClass}" />
+					<div class="flex items-center gap-1">
+						<input type="number" bind:value={month.length} min={1} class="w-14 {indexClass} text-center" />
+						<span class="text-[10px] text-faint">days</span>
+					</div>
+					<select bind:value={month.month_type} class="w-28 {indexClass}">
+						<option value="regular">Regular</option>
+						<option value="intercalary">Intercalary</option>
+					</select>
+					<button onclick={() => months = months.filter((_, index_) => index_ !== index)} class="text-faint opacity-0 transition-opacity group-hover:opacity-100 hover:text-error">×</button>
+				</div>
+			{/each}
+		</div>
+	</section>
+
+	<!-- Weekdays -->
+	<section class="bg-surface rounded-lg border border-border p-5 space-y-3">
+		<div class="flex items-center justify-between border-b border-border-subtle pb-2">
+			<div>
+				<h2 class="text-sm font-semibold text-heading">Weekdays</h2>
+				<p class="text-xs text-faint">{weekdays.length}-day week</p>
+			</div>
+			<button onclick={() => weekdays = [...weekdays, { name: '', abbreviation: '' }]} class="text-xs text-link font-medium hover:underline">+ Add weekday</button>
+		</div>
+		<div class="flex items-center gap-1 mb-1">
+			<span class="text-xs font-medium text-secondary">First weekday of Year 1, Day 1</span>
+			<Tooltip content="Which weekday (0-indexed) does the very first day of your calendar fall on?" side="top">
+				<span class="text-faint text-xs cursor-help">ⓘ</span>
+			</Tooltip>
+			<input type="number" bind:value={firstWeekDay} min={0} max={weekdays.length - 1} class="w-14 ml-2 {indexClass} text-center" />
+			{#if weekdays[firstWeekDay]}
+				<span class="text-xs text-faint">({weekdays[firstWeekDay].name || '...'})</span>
+			{/if}
+		</div>
+		<div class="space-y-2">
+			{#each weekdays as day, index (index)}
+				<div class="flex gap-2 items-center group">
+					<span class="text-[10px] text-faint w-5 text-right shrink-0">{index}</span>
+					<input type="text" bind:value={day.name} placeholder="Weekday name" class="flex-1 {indexClass}" />
+					<input type="text" bind:value={day.abbreviation} placeholder="Abbr" class="w-16 {indexClass}" />
+					<button onclick={() => weekdays = weekdays.filter((_, index_) => index_ !== index)} class="text-faint opacity-0 transition-opacity group-hover:opacity-100 hover:text-error">×</button>
+				</div>
+			{/each}
+		</div>
 	</section>
 
 	<!-- Leap Days -->
-	<section class="bg-surface rounded-lg border border-border p-4 space-y-3">
-		<div class="flex items-center justify-between">
+	<section class="bg-surface rounded-lg border border-border p-5 space-y-3">
+		<div class="flex items-center justify-between border-b border-border-subtle pb-2">
 			<h2 class="text-sm font-semibold text-heading">Leap Days</h2>
-			<button onclick={() => leapDays = [...leapDays, { name: '', month_index: 0, after_day: 0, interval: 4, ignore: '', exclusive: '', intercalary: false, offset: 0 }]} class="text-xs text-link hover:underline">+ Add</button>
+			<button onclick={() => leapDays = [...leapDays, { name: '', month_index: 0, after_day: 0, interval: 4, ignore: '', exclusive: '', intercalary: false, offset: 0 }]} class="text-xs text-link font-medium hover:underline">+ Add leap day</button>
 		</div>
 		{#if leapDays.length === 0}
-			<p class="text-xs text-faint">No leap days. Click + Add to create one.</p>
+			<div class="text-center py-4">
+				<p class="text-sm text-faint">No leap days defined.</p>
+				<p class="text-[11px] text-faint mt-1">Example: Gregorian leap year adds a day every 4 years, except centuries, but including every 400th year.</p>
+			</div>
 		{/if}
-		{#each leapDays as ld, index}
-			<div class="border border-border-subtle rounded-md p-3 space-y-2">
-				<div class="flex gap-2 items-center">
-					<input type="text" bind:value={ld.name} placeholder="Name (e.g. Leap Day)" class="flex-1 {inputClass}" />
-					<button onclick={() => leapDays = leapDays.filter((_, index_) => index_ !== index)} class="text-error text-xs">×</button>
+		{#each leapDays as ld, index (index)}
+			<div class="border border-border-subtle rounded-lg p-4 space-y-3 bg-page">
+				<div class="flex items-center justify-between">
+					<input type="text" bind:value={ld.name} placeholder="Leap day name" class="flex-1 {indexClass} font-medium" />
+					<button onclick={() => leapDays = leapDays.filter((_, index_) => index_ !== index)} class="text-faint ml-2 text-sm hover:text-error">×</button>
 				</div>
-				<div class="grid grid-cols-2 gap-2 md:grid-cols-4">
+
+				<div class="grid grid-cols-2 gap-3 md:grid-cols-4">
 					<div>
-						<label class={labelClass}>After month</label>
-						<select bind:value={ld.month_index} class="w-full {inputClass}">
-							{#each months as m, mi}
+						<span class="text-xs font-medium text-secondary block mb-1">Insert after</span>
+						<select bind:value={ld.month_index} class="w-full {indexClass}">
+							{#each months as m, mi (mi)}
 								<option value={mi}>{m.name || `Month ${mi + 1}`}</option>
 							{/each}
 						</select>
 					</div>
 					<div>
-						<label class={labelClass}>After day</label>
-						<input type="number" bind:value={ld.after_day} min={0} class="w-full {inputClass}" />
+						<span class="text-xs font-medium text-secondary block mb-1">After day #</span>
+						<input type="number" bind:value={ld.after_day} min={0} class="w-full {indexClass}" />
 					</div>
 					<div>
-						<label class={labelClass}>Every N years</label>
-						<input type="number" bind:value={ld.interval} min={1} class="w-full {inputClass}" />
+						<span class="text-xs font-medium text-secondary block mb-1">Every N years</span>
+						<input type="number" bind:value={ld.interval} min={1} class="w-full {indexClass}" />
 					</div>
 					<div>
-						<label class={labelClass}>Year offset</label>
-						<input type="number" bind:value={ld.offset} class="w-full {inputClass}" />
+						<span class="text-xs font-medium text-secondary block mb-1">Year offset</span>
+						<input type="number" bind:value={ld.offset} class="w-full {indexClass}" />
 					</div>
 				</div>
-				<div class="grid grid-cols-2 gap-2">
-					<div>
-						<label class={labelClass}>Except years divisible by <span class="text-faint font-normal">(comma-separated)</span></label>
-						<input type="text" bind:value={ld.ignore} placeholder="e.g. 100" class="w-full {inputClass}" />
-					</div>
-					<div>
-						<label class={labelClass}>But include years divisible by <span class="text-faint font-normal">(overrides exceptions)</span></label>
-						<input type="text" bind:value={ld.exclusive} placeholder="e.g. 400" class="w-full {inputClass}" />
-					</div>
-				</div>
-				<label class="flex items-center gap-2 text-xs text-secondary">
-					<input type="checkbox" bind:checked={ld.intercalary} class="rounded-sm" />
-					Intercalary (doesn't advance weekday cycle)
-				</label>
-			</div>
-		{/each}
-		<p class="text-[11px] text-faint leading-snug">
-			Example — Gregorian leap year: interval = 4, except 100, but include 400.
-			The day is inserted after the specified day of the specified month.
-		</p>
-	</section>
 
-	<!-- Weekdays -->
-	<section class="bg-surface rounded-lg border border-border p-4 space-y-3">
-		<div class="flex items-center justify-between">
-			<h2 class="text-sm font-semibold text-heading">Weekdays</h2>
-			<button onclick={() => weekdays = [...weekdays, { name: '', abbreviation: '' }]} class="text-xs text-link hover:underline">+ Add</button>
-		</div>
-		{#each weekdays as day, index}
-			<div class="flex gap-2 items-center">
-				<input type="text" bind:value={day.name} placeholder="Name" class="flex-1 {inputClass}" />
-				<input type="text" bind:value={day.abbreviation} placeholder="Abbr" class="w-20 {inputClass}" />
-				<button onclick={() => weekdays = weekdays.filter((_, index_) => index_ !== index)} class="text-error text-xs">×</button>
+				<div class="grid grid-cols-2 gap-3">
+					<div>
+						<span class="text-xs font-medium text-secondary block mb-1">Skip years divisible by</span>
+						<input type="text" bind:value={ld.ignore} placeholder="e.g. 100" class="w-full {indexClass}" />
+					</div>
+					<div>
+						<span class="text-xs font-medium text-secondary block mb-1">But keep years divisible by</span>
+						<input type="text" bind:value={ld.exclusive} placeholder="e.g. 400" class="w-full {indexClass}" />
+					</div>
+				</div>
+
+				<label class="flex items-center gap-2 text-xs text-secondary cursor-pointer">
+					<input type="checkbox" bind:checked={ld.intercalary} class="rounded-sm accent-accent" />
+					Intercalary — this day doesn't advance the weekday cycle
+				</label>
 			</div>
 		{/each}
 	</section>
 
 	<!-- Eras -->
-	<section class="bg-surface rounded-lg border border-border p-4 space-y-3">
-		<div class="flex items-center justify-between">
-			<h2 class="text-sm font-semibold text-heading">Eras</h2>
-			<button onclick={() => eras = [...eras, { name: '', start_year: 1, end_year: '', format: '{{year}} {{era_name}}', reverse_numbering: false }]} class="text-xs text-link hover:underline">+ Add</button>
+	<section class="bg-surface rounded-lg border border-border p-5 space-y-3">
+		<div class="flex items-center justify-between border-b border-border-subtle pb-2">
+			<div>
+				<h2 class="text-sm font-semibold text-heading">Eras</h2>
+				<p class="text-xs text-faint">Named periods of time (e.g. BC/AD, First Age/Second Age)</p>
+			</div>
+			<button onclick={() => eras = [...eras, { name: '', start_year: 1, end_year: '', format: '{{year}} {{era_name}}', reverse_numbering: false }]} class="text-xs text-link font-medium hover:underline">+ Add era</button>
 		</div>
-		{#each eras as era, index}
-			<div class="flex gap-2 items-center flex-wrap">
-				<input type="text" bind:value={era.name} placeholder="Name" class="flex-1 min-w-[120px] {inputClass}" />
-				<input type="number" bind:value={era.start_year} class="w-20 {inputClass}" title="Start year" />
-				<input type="text" bind:value={era.end_year} placeholder="End" class="w-20 {inputClass}" title="End year (blank = current)" />
-				<input type="text" bind:value={era.format} placeholder="Format" class="w-40 {inputClass}" title={'e.g. {{year}} {{era_name}}'} />
-				<label class="flex items-center gap-1 text-xs text-faint">
-					<input type="checkbox" bind:checked={era.reverse_numbering} class="rounded-sm" /> Reverse
-				</label>
-				<button onclick={() => eras = eras.filter((_, index_) => index_ !== index)} class="text-error text-xs">×</button>
+		{#if eras.length === 0}
+			<p class="text-sm text-faint text-center py-4">No eras defined. Years will display as plain numbers.</p>
+		{/if}
+		{#each eras as era, index (index)}
+			<div class="border border-border-subtle rounded-lg p-4 space-y-3 bg-page">
+				<div class="flex items-center justify-between">
+					<input type="text" bind:value={era.name} placeholder="Era name (e.g. FA, AD)" class="flex-1 {indexClass} font-medium" />
+					<button onclick={() => eras = eras.filter((_, index_) => index_ !== index)} class="text-faint ml-2 text-sm hover:text-error">×</button>
+				</div>
+				<div class="grid grid-cols-2 gap-3 md:grid-cols-4">
+					<div>
+						<span class="text-xs font-medium text-secondary block mb-1">Starts at year</span>
+						<input type="number" bind:value={era.start_year} class="w-full {indexClass}" />
+					</div>
+					<div>
+						<span class="text-xs font-medium text-secondary block mb-1">Ends at year</span>
+						<input type="text" bind:value={era.end_year} placeholder="Open-ended" class="w-full {indexClass}" />
+					</div>
+					<div>
+						<div class="flex items-center gap-1 mb-1">
+							<span class="text-xs font-medium text-secondary">Display format</span>
+							<Tooltip content={'Use {{year}} and {{era_name}} as placeholders. E.g. \'{{year}} {{era_name}}\' → \'42 AD\''} side="top">
+								<span class="text-faint text-xs cursor-help">ⓘ</span>
+							</Tooltip>
+						</div>
+						<input type="text" bind:value={era.format} placeholder={'{{year}} {{era_name}}'} class="w-full {indexClass}" />
+					</div>
+					<label class="flex items-center gap-2 text-xs text-secondary self-end cursor-pointer">
+						<input type="checkbox" bind:checked={era.reverse_numbering} class="rounded-sm accent-accent" />
+						Count backwards
+					</label>
+				</div>
 			</div>
 		{/each}
 	</section>
 
 	<!-- Moons -->
-	<section class="bg-surface rounded-lg border border-border p-4 space-y-3">
-		<div class="flex items-center justify-between">
-			<h2 class="text-sm font-semibold text-heading">Moons</h2>
-			<button onclick={() => moons = [...moons, { name: '', cycle: 29.5, offset: 0, face_color: '#ffffff', shadow_color: '#1c1917' }]} class="text-xs text-link hover:underline">+ Add</button>
+	<section class="bg-surface rounded-lg border border-border p-5 space-y-3">
+		<div class="flex items-center justify-between border-b border-border-subtle pb-2">
+			<div>
+				<h2 class="text-sm font-semibold text-heading">Moons</h2>
+				<p class="text-xs text-faint">Celestial bodies with orbital cycles. Phase is calculated automatically.</p>
+			</div>
+			<button onclick={() => moons = [...moons, { name: '', cycle: 29.5, offset: 0, face_color: '#ffffff', shadow_color: '#1c1917' }]} class="text-xs text-link font-medium hover:underline">+ Add moon</button>
 		</div>
-		{#each moons as moon, index}
-			<div class="flex gap-2 items-center">
-				<input type="text" bind:value={moon.name} placeholder="Name" class="flex-1 {inputClass}" />
-				<input type="number" bind:value={moon.cycle} step="0.1" class="w-20 {inputClass}" title="Orbital period (days)" />
-				<input type="number" bind:value={moon.offset} class="w-16 {inputClass}" title="Phase offset" />
-				<input type="color" bind:value={moon.face_color} class="size-8 rounded-sm border border-border cursor-pointer" title="Lit color" />
-				<input type="color" bind:value={moon.shadow_color} class="size-8 rounded-sm border border-border cursor-pointer" title="Shadow color" />
-				<button onclick={() => moons = moons.filter((_, index_) => index_ !== index)} class="text-error text-xs">×</button>
+		{#if moons.length === 0}
+			<p class="text-sm text-faint text-center py-4">No moons. Enable "Show moon phases" above to display them.</p>
+		{/if}
+		{#each moons as moon, index (index)}
+			<div class="flex gap-3 items-center group border border-border-subtle rounded-lg p-3 bg-page">
+				<div class="flex gap-1 shrink-0">
+					<input type="color" bind:value={moon.face_color} class="size-7 rounded-sm border border-border cursor-pointer" title="Lit color" />
+					<input type="color" bind:value={moon.shadow_color} class="size-7 rounded-sm border border-border cursor-pointer" title="Shadow color" />
+				</div>
+				<input type="text" bind:value={moon.name} placeholder="Moon name" class="flex-1 {indexClass}" />
+				<div class="flex items-center gap-1">
+					<input type="number" bind:value={moon.cycle} step="0.01" class="w-20 {indexClass} text-center" />
+					<span class="text-[10px] text-faint whitespace-nowrap">day cycle</span>
+				</div>
+				<div class="flex items-center gap-1">
+					<input type="number" bind:value={moon.offset} class="w-16 {indexClass} text-center" />
+					<span class="text-[10px] text-faint">offset</span>
+				</div>
+				<button onclick={() => moons = moons.filter((_, index_) => index_ !== index)} class="text-faint opacity-0 transition-opacity group-hover:opacity-100 hover:text-error">×</button>
 			</div>
 		{/each}
 	</section>
 
 	<!-- Seasons -->
-	<section class="bg-surface rounded-lg border border-border p-4 space-y-3">
-		<div class="flex items-center justify-between">
-			<h2 class="text-sm font-semibold text-heading">Seasons</h2>
-			<button onclick={() => seasons = [...seasons, { name: '', kind: 'custom', timing_type: 'dated', month: 0, day: 1, duration: 90, color: '#888888' }]} class="text-xs text-link hover:underline">+ Add</button>
+	<section class="bg-surface rounded-lg border border-border p-5 space-y-3">
+		<div class="flex items-center justify-between border-b border-border-subtle pb-2">
+			<div>
+				<h2 class="text-sm font-semibold text-heading">Seasons</h2>
+				<p class="text-xs text-faint">Define when seasons start — by date or by rolling duration.</p>
+			</div>
+			<button onclick={() => seasons = [...seasons, { name: '', kind: 'custom', timing_type: 'dated', month: 0, day: 1, duration: 90, color: '#888888' }]} class="text-xs text-link font-medium hover:underline">+ Add season</button>
 		</div>
-		{#each seasons as season, index}
-			<div class="flex gap-2 items-center flex-wrap">
-				<input type="text" bind:value={season.name} placeholder="Name" class="flex-1 min-w-[100px] {inputClass}" />
-				<select bind:value={season.kind} class="w-24 {inputClass}">
-					<option value="spring">Spring</option>
-					<option value="summer">Summer</option>
-					<option value="autumn">Autumn</option>
-					<option value="winter">Winter</option>
-					<option value="custom">Custom</option>
-				</select>
-				<select bind:value={season.timing_type} class="w-24 {inputClass}">
-					<option value="dated">Dated</option>
-					<option value="periodic">Periodic</option>
-				</select>
-				{#if season.timing_type === 'dated'}
-					<input type="number" bind:value={season.month} class="w-16 {inputClass}" title="Month (0-indexed)" />
-					<input type="number" bind:value={season.day} class="w-16 {inputClass}" title="Day" />
-				{:else}
-					<input type="number" bind:value={season.duration} class="w-20 {inputClass}" title="Duration (days)" />
-				{/if}
-				<input type="color" bind:value={season.color} class="size-8 rounded-sm border border-border cursor-pointer" />
-				<button onclick={() => seasons = seasons.filter((_, index_) => index_ !== index)} class="text-error text-xs">×</button>
+		{#if seasons.length === 0}
+			<p class="text-sm text-faint text-center py-4">No seasons defined.</p>
+		{/if}
+		{#each seasons as season, index (index)}
+			<div class="border border-border-subtle rounded-lg p-4 space-y-3 bg-page">
+				<div class="flex items-center gap-3">
+					<input type="color" bind:value={season.color} class="size-7 rounded-sm border border-border cursor-pointer shrink-0" />
+					<input type="text" bind:value={season.name} placeholder="Season name" class="flex-1 {indexClass} font-medium" />
+					<select bind:value={season.kind} class="w-24 {indexClass}">
+						<option value="spring">Spring</option>
+						<option value="summer">Summer</option>
+						<option value="autumn">Autumn</option>
+						<option value="winter">Winter</option>
+						<option value="custom">Custom</option>
+					</select>
+					<button onclick={() => seasons = seasons.filter((_, index_) => index_ !== index)} class="text-faint text-sm hover:text-error">×</button>
+				</div>
+				<div class="flex items-center gap-3">
+					<select bind:value={season.timing_type} class="w-28 {indexClass}">
+						<option value="dated">Starts on date</option>
+						<option value="periodic">Rolling duration</option>
+					</select>
+					{#if season.timing_type === 'dated'}
+						<div class="flex items-center gap-1">
+							<span class="text-xs text-secondary">Month</span>
+							<select bind:value={season.month} class="w-32 {indexClass}">
+								{#each months as m, mi (mi)}
+									<option value={mi}>{m.name || `Month ${mi + 1}`}</option>
+								{/each}
+							</select>
+						</div>
+						<div class="flex items-center gap-1">
+							<span class="text-xs text-secondary">Day</span>
+							<input type="number" bind:value={season.day} min={1} class="w-14 {indexClass} text-center" />
+						</div>
+					{:else}
+						<div class="flex items-center gap-1">
+							<span class="text-xs text-secondary">Lasts</span>
+							<input type="number" bind:value={season.duration} min={1} class="w-16 {indexClass} text-center" />
+							<span class="text-xs text-faint">days</span>
+						</div>
+					{/if}
+				</div>
 			</div>
 		{/each}
 	</section>
