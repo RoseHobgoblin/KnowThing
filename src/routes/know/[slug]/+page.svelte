@@ -89,6 +89,7 @@ import CategoryBar from '$lib/components/CategoryBar.svelte'
 	<div class="bg-surface shadow-sm border border-border overflow-hidden">
 		<!-- Page header -->
 		<div class="px-4 pt-4 md:px-6">
+			<div class="text-[10px] font-semibold text-faint uppercase tracking-wider mb-1">Knowbook</div>
 			<div class="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
 				<h1 class="text-2xl font-bold text-heading md:text-3xl">{data.title}</h1>
 				<div class="flex gap-3 text-sm md:gap-4">
