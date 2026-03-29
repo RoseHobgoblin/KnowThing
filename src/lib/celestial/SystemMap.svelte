@@ -118,7 +118,7 @@
 
 <svg
 	viewBox="0 0 {SIZE} {SIZE}"
-	class="w-full max-w-2xl mx-auto"
+	class="w-full max-w-2xl mx-auto bg-page"
 	role="img"
 	aria-label="System map of {systemName}"
 	onmouseleave={() => hovered = null}
