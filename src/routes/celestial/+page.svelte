@@ -134,11 +134,7 @@
 					<div class="flex items-center justify-between px-4 py-3 bg-raised border-b border-border-subtle">
 						<div class="flex items-center gap-2">
 							<span class="text-accent text-lg">☉</span>
-							{#if system.pageSlug}
-								<a href="/know/{system.pageSlug}" class="text-heading font-bold text-lg hover:text-link transition-colors">{system.name}</a>
-							{:else}
-								<span class="text-heading font-bold text-lg">{system.name}</span>
-							{/if}
+							<a href="/celestial/{system.slug}" class="text-heading font-bold text-lg hover:text-link transition-colors">{system.name}</a>
 							<span class="text-xs text-faint">{system.systemType} · {system.starCount} {system.starCount === 1 ? 'star' : 'stars'} · {system.planetCount} {system.planetCount === 1 ? 'planet' : 'planets'}</span>
 						</div>
 						{#if isAdmin}
@@ -166,18 +162,14 @@
 							<div class="flex items-center justify-between px-4 py-2.5">
 								<div class="flex items-center gap-2 ml-2">
 									<span class="text-secondary">★</span>
-									{#if star.pageSlug}
-										<a href="/know/{star.pageSlug}" class="text-heading font-semibold hover:text-link transition-colors">{star.name}</a>
-									{:else}
-										<span class="text-heading font-semibold">{star.name}</span>
-									{/if}
+									<a href="/celestial/{system.slug}/{star.slug}" class="text-heading font-semibold hover:text-link transition-colors">{star.name}</a>
 									{#if star.spectralType}
 										<span class="text-xs text-faint">({star.spectralType})</span>
 									{/if}
 								</div>
 								{#if isAdmin}
 									<div class="flex items-center gap-3 text-xs">
-										<a href="/celestial/{star.slug}" class="text-link transition-colors hover:text-link-hover">Edit</a>
+										<a href="/celestial/{system.slug}/{star.slug}" class="text-link transition-colors hover:text-link-hover">Edit</a>
 										<button onclick={() => deleteItem('star', star.slug, star.name)} class="text-error transition-colors hover:text-error-hover">×</button>
 									</div>
 								{/if}
@@ -188,11 +180,7 @@
 								<div class="flex items-center justify-between px-4 py-1.5 ml-8">
 									<div class="flex items-center gap-2">
 										<span class="text-dim text-xs">●</span>
-										{#if planet.pageSlug}
-											<a href="/know/{planet.pageSlug}" class="text-body text-sm hover:text-link transition-colors">{planet.name}</a>
-										{:else}
-											<span class="text-body text-sm">{planet.name}</span>
-										{/if}
+										<a href="/celestial/{system.slug}/{planet.slug}" class="text-body text-sm hover:text-link transition-colors">{planet.name}</a>
 										<span class="text-xs text-faint">({planet.bodyType})</span>
 										{#if planet.moonCount > 0}
 											<span class="text-xs text-dim">· {planet.moonCount} {planet.moonCount === 1 ? 'moon' : 'moons'}</span>
@@ -200,7 +188,7 @@
 									</div>
 									{#if isAdmin}
 										<div class="flex items-center gap-3 text-xs">
-											<a href="/celestial/{planet.slug}" class="text-link transition-colors hover:text-link-hover">Edit</a>
+											<a href="/celestial/{system.slug}/{planet.slug}" class="text-link transition-colors hover:text-link-hover">Edit</a>
 											<button onclick={() => deleteItem('body', planet.slug, planet.name)} class="text-error transition-colors hover:text-error-hover">×</button>
 										</div>
 									{/if}
@@ -209,15 +197,11 @@
 									<div class="flex items-center justify-between px-4 py-1 ml-14">
 										<div class="flex items-center gap-2">
 											<span class="text-faint text-[10px]">○</span>
-											{#if moon.pageSlug}
-												<a href="/know/{moon.pageSlug}" class="text-xs text-secondary hover:text-link transition-colors">{moon.name}</a>
-											{:else}
-												<span class="text-xs text-secondary">{moon.name}</span>
-											{/if}
+											<a href="/celestial/{system.slug}/{moon.slug}" class="text-xs text-secondary hover:text-link transition-colors">{moon.name}</a>
 										</div>
 										{#if isAdmin}
 											<div class="flex items-center gap-3 text-xs">
-												<a href="/celestial/{moon.slug}" class="text-link transition-colors hover:text-link-hover">Edit</a>
+												<a href="/celestial/{system.slug}/{moon.slug}" class="text-link transition-colors hover:text-link-hover">Edit</a>
 												<button onclick={() => deleteItem('body', moon.slug, moon.name)} class="text-xs text-error transition-colors hover:text-error-hover">×</button>
 											</div>
 										{/if}

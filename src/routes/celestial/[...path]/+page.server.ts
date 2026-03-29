@@ -8,21 +8,25 @@ import { parseWikitext } from '$lib/parser/index.js'
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const isAdmin = locals.user?.role === 'admin'
 
+	// Extract slug from path — last segment (e.g. "sunly/therne" → "therne", "sunly" → "sunly")
+	const pathSegments = params.path.split('/')
+	const slug = pathSegments.at(-1)!
+
 	// Try systems first, then stars, then planetary bodies
-	const [system] = await db.select().from(starSystems).where(eq(starSystems.slug, params.slug))
+	const [system] = await db.select().from(starSystems).where(eq(starSystems.slug, slug))
 	if (system) {
 		const content = await getContent(system.contentRecordId)
 		return { kind: 'system' as const, body: system, isAdmin, ...content }
 	}
 
-	const [star] = await db.select().from(stars).where(eq(stars.slug, params.slug))
+	const [star] = await db.select().from(stars).where(eq(stars.slug, slug))
 	if (star) {
 		const allSystems = await db.select({ id: starSystems.id, name: starSystems.name }).from(starSystems).orderBy(starSystems.name)
 		const content = await getContent(star.contentRecordId)
 		return { kind: 'star' as const, body: star, allSystems, isAdmin, ...content }
 	}
 
-	const [planet] = await db.select().from(planetaryBodies).where(eq(planetaryBodies.slug, params.slug))
+	const [planet] = await db.select().from(planetaryBodies).where(eq(planetaryBodies.slug, slug))
 	if (planet) {
 		const allStars = await db.select({ id: stars.id, name: stars.name, slug: stars.slug }).from(stars).orderBy(stars.name)
 		const siblings = planet.starId
