@@ -124,7 +124,7 @@ import CategoryBar from '$lib/components/CategoryBar.svelte'
 			<CategoryBar categories={data.categories} />
 
 			{#if data.updatedAt}
-				<div class="mt-6 pt-4 border-t border-border-subtle text-xs text-faint">
+				<div class="clear-both mt-6 pt-4 border-t border-border-subtle text-xs text-faint">
 					Last edited {new Date(data.updatedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
 				</div>
 			{/if}
