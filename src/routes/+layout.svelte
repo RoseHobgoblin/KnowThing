@@ -6,19 +6,21 @@
 
 	let { children, data }: { children: any, data: LayoutData } = $props()
 	let mobileMenuOpen = $state(false)
+
+	const sc = $derived(data.siteConfig)
+	const navClass = 'px-3 py-2.5 text-secondary rounded-t-md transition-colors font-medium hover:text-link hover:bg-accent-subtle'
+	const navSmallClass = 'px-3 py-2.5 text-dim rounded-t-md transition-colors text-xs hover:text-link hover:bg-accent-subtle'
+	const mobileNavClass = 'block px-3 py-2 text-secondary rounded-md text-sm font-medium hover:bg-accent-subtle hover:text-link'
+	const mobileNavSmallClass = 'block px-3 py-2 text-dim rounded-md text-sm hover:bg-accent-subtle hover:text-link'
 </script>
 
-<div class="h-screen flex flex-col bg-page overflow-hidden">
-	<!-- Amber accent strip -->
+<div class="h-screen flex flex-col bg-page overflow-hidden" dir={sc?.textDirection ?? 'ltr'}>
+	<!-- Accent strip -->
 	<div class="h-1 bg-accent-subtle0 shrink-0"></div>
 
 	<!-- Header -->
-	<header class="
-		bg-surface border-b border-border px-4 py-3 flex items-center justify-between shrink-0
-		md:px-6
-	">
+	<header class="bg-surface border-b border-border px-4 py-3 flex items-center justify-between shrink-0 md:px-6">
 		<div class="flex items-center gap-3">
-			<!-- Mobile hamburger -->
 			<button
 				onclick={() => mobileMenuOpen = !mobileMenuOpen}
 				class="text-secondary p-1 md:hidden hover:text-link"
@@ -33,12 +35,22 @@
 				</svg>
 			</button>
 
-			<a href="/" class="text-xl font-bold text-heading tracking-tight transition-colors hover:text-link">
-				Know<span class="text-accent">Thing</span>
-			</a>
+			{#if sc?.logoUrl}
+				<a href="/">
+					<img src={sc.logoUrl} alt={sc.siteName} class="h-8" />
+				</a>
+			{:else}
+				<a href="/" class="text-xl font-bold text-heading tracking-tight transition-colors hover:text-link">
+					{@const parts = (sc?.siteName ?? 'KnowThing').split(/(?=[A-Z])/)}
+					{#if parts.length >= 2}
+						{parts[0]}<span class="text-accent">{parts.slice(1).join('')}</span>
+					{:else}
+						{sc?.siteName ?? 'KnowThing'}
+					{/if}
+				</a>
+			{/if}
 		</div>
 
-		<!-- Search — hidden on mobile, shown in mobile menu instead -->
 		<div class="hidden flex-1 max-w-md mx-8 md:block">
 			<SearchBar />
 		</div>
@@ -60,113 +72,54 @@
 		</nav>
 	</header>
 
-	<!-- Desktop horizontal navigation -->
+	<!-- Desktop navigation -->
 	<nav class="hidden bg-surface border-b border-border px-6 shadow-sm shrink-0 md:block">
 		<div class="max-w-4xl mx-auto flex items-center gap-1 text-sm">
-			<a href="/" class="
-				px-3 py-2.5 text-secondary rounded-t-md transition-colors font-medium
-				hover:text-link hover:bg-accent-subtle
-			">
-				Main Page
-			</a>
-			<a href="/know/create" class="
-				px-3 py-2.5 text-secondary rounded-t-md transition-colors font-medium
-				hover:text-link hover:bg-accent-subtle
-			">
-				Create
-			</a>
-			<a href="/calendar" class="
-				px-3 py-2.5 text-secondary rounded-t-md transition-colors font-medium
-				hover:text-link hover:bg-accent-subtle
-			">
-				Calendar
-			</a>
-			<a href="/wordbook" class="
-				px-3 py-2.5 text-secondary rounded-t-md transition-colors font-medium
-				hover:text-link hover:bg-accent-subtle
-			">
-				Wordbook
-			</a>
-			<a href="/search" class="
-				px-3 py-2.5 text-secondary rounded-t-md transition-colors font-medium
-				hover:text-link hover:bg-accent-subtle
-			">
-				Search
-			</a>
+			<a href="/" class={navClass}>{sc?.navWikiLabel ?? 'Main Page'}</a>
+			<a href="/know/create" class={navClass}>{sc?.navCreateLabel ?? 'Create'}</a>
+			{#if sc?.calendarEnabled !== false}
+				<a href="/calendar" class={navClass}>{sc?.navCalendarLabel ?? 'Calendar'}</a>
+			{/if}
+			{#if sc?.wordbookEnabled !== false}
+				<a href="/wordbook" class={navClass}>{sc?.navWordbookLabel ?? 'Wordbook'}</a>
+			{/if}
+			<a href="/search" class={navClass}>{sc?.navSearchLabel ?? 'Search'}</a>
 
 			<div class="h-4 w-px bg-border mx-1"></div>
 
-			<a href="/special/random" class="
-				px-3 py-2.5 text-dim rounded-t-md transition-colors text-xs
-				hover:text-link hover:bg-accent-subtle
-			">
-				Random
-			</a>
-			<a href="/special/categories" class="
-				px-3 py-2.5 text-dim rounded-t-md transition-colors text-xs
-				hover:text-link hover:bg-accent-subtle
-			">
-				Categories
-			</a>
-			<a href="/special/stats" class="
-				px-3 py-2.5 text-dim rounded-t-md transition-colors text-xs
-				hover:text-link hover:bg-accent-subtle
-			">
-				Stats
-			</a>
+			<a href="/special/random" class={navSmallClass}>Random</a>
+			<a href="/special/categories" class={navSmallClass}>Categories</a>
+			<a href="/special/stats" class={navSmallClass}>Stats</a>
 
 			{#if data.user}
 				<div class="h-4 w-px bg-border mx-1"></div>
-				<a href="/dashboard" class="
-					px-3 py-2.5 text-link rounded-t-md transition-colors text-xs font-medium
-					hover:text-link-hover hover:bg-accent-subtle
-				">
+				<a href="/dashboard" class="px-3 py-2.5 text-link rounded-t-md transition-colors text-xs font-medium hover:text-link-hover hover:bg-accent-subtle">
 					Dashboard
 				</a>
 			{/if}
 		</div>
 	</nav>
 
-	<!-- Mobile menu dropdown -->
+	<!-- Mobile menu -->
 	{#if mobileMenuOpen}
 		<div class="bg-surface border-b border-border shadow-sm shrink-0 md:hidden">
 			<div class="px-4 py-3">
 				<SearchBar />
 			</div>
 			<nav class="px-2 pb-3 space-y-0.5">
-				<a href="/" onclick={() => mobileMenuOpen = false} class="
-					block px-3 py-2 text-secondary rounded-md text-sm font-medium
-					hover:bg-accent-subtle hover:text-link
-				">Main Page</a>
-				<a href="/know/create" onclick={() => mobileMenuOpen = false} class="
-					block px-3 py-2 text-secondary rounded-md text-sm font-medium
-					hover:bg-accent-subtle hover:text-link
-				">Create</a>
-				<a href="/calendar" onclick={() => mobileMenuOpen = false} class="
-					block px-3 py-2 text-secondary rounded-md text-sm font-medium
-					hover:bg-accent-subtle hover:text-link
-				">Calendar</a>
-				<a href="/wordbook" onclick={() => mobileMenuOpen = false} class="
-					block px-3 py-2 text-secondary rounded-md text-sm font-medium
-					hover:bg-accent-subtle hover:text-link
-				">Wordbook</a>
-				<a href="/search" onclick={() => mobileMenuOpen = false} class="
-					block px-3 py-2 text-secondary rounded-md text-sm font-medium
-					hover:bg-accent-subtle hover:text-link
-				">Search</a>
+				<a href="/" onclick={() => mobileMenuOpen = false} class={mobileNavClass}>{sc?.navWikiLabel ?? 'Main Page'}</a>
+				<a href="/know/create" onclick={() => mobileMenuOpen = false} class={mobileNavClass}>{sc?.navCreateLabel ?? 'Create'}</a>
+				{#if sc?.calendarEnabled !== false}
+					<a href="/calendar" onclick={() => mobileMenuOpen = false} class={mobileNavClass}>{sc?.navCalendarLabel ?? 'Calendar'}</a>
+				{/if}
+				{#if sc?.wordbookEnabled !== false}
+					<a href="/wordbook" onclick={() => mobileMenuOpen = false} class={mobileNavClass}>{sc?.navWordbookLabel ?? 'Wordbook'}</a>
+				{/if}
+				<a href="/search" onclick={() => mobileMenuOpen = false} class={mobileNavClass}>{sc?.navSearchLabel ?? 'Search'}</a>
 				<div class="border-t border-border-subtle my-1"></div>
-				<a href="/special/random" onclick={() => mobileMenuOpen = false} class="
-					block px-3 py-2 text-dim rounded-md text-sm
-					hover:bg-accent-subtle hover:text-link
-				">Random</a>
-				<a href="/special/categories" onclick={() => mobileMenuOpen = false} class="
-					block px-3 py-2 text-dim rounded-md text-sm
-					hover:bg-accent-subtle hover:text-link
-				">Categories</a>
-				<a href="/special/stats" onclick={() => mobileMenuOpen = false} class="
-					block px-3 py-2 text-dim rounded-md text-sm
-					hover:bg-accent-subtle hover:text-link
-				">Stats</a>
+				<a href="/special/random" onclick={() => mobileMenuOpen = false} class={mobileNavSmallClass}>Random</a>
+				<a href="/special/categories" onclick={() => mobileMenuOpen = false} class={mobileNavSmallClass}>Categories</a>
+				<a href="/special/stats" onclick={() => mobileMenuOpen = false} class={mobileNavSmallClass}>Stats</a>
 				{#if data.user}
 					<div class="border-t border-border-subtle my-1"></div>
 					<a href="/dashboard" onclick={() => mobileMenuOpen = false} class="block px-3 py-2 text-link rounded-md text-sm font-medium hover:bg-accent-subtle">Dashboard</a>
@@ -175,7 +128,7 @@
 		</div>
 	{/if}
 
-	<!-- Scrollable content area -->
+	<!-- Content -->
 	<main class="flex-1 overflow-y-auto">
 		<div class="max-w-4xl mx-auto w-full px-4 py-6 md:px-6 md:py-8">
 			{@render children()}
@@ -183,7 +136,11 @@
 
 		<footer class="border-t border-border bg-surface p-4 md:px-6">
 			<div class="max-w-4xl mx-auto text-xs text-faint text-center">
-				KnowThing — A collaborative encyclopedia
+				{#if sc?.footerText}
+					{sc.footerText}
+				{:else}
+					{sc?.siteName ?? 'KnowThing'} — {sc?.siteTagline ?? 'A collaborative encyclopedia'}
+				{/if}
 			</div>
 		</footer>
 	</main>

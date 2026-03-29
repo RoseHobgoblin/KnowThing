@@ -55,6 +55,12 @@
 					">
 						Users
 					</a>
+					<a href="/dashboard/settings" class="
+						block px-2 py-1.5 rounded-md text-secondary transition-colors
+						hover:bg-accent-subtle hover:text-link
+					">
+						Site Settings
+					</a>
 					<a href="/dashboard/export" class="
 						block px-2 py-1.5 rounded-md text-secondary transition-colors
 						hover:bg-accent-subtle hover:text-link

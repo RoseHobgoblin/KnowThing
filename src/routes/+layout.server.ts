@@ -4,11 +4,13 @@ import { pages, calendars } from '$lib/server/db/schema.js'
 import { eq } from 'drizzle-orm'
 import { resolveDisplay } from '$lib/calendar/date-math.js'
 import type { CalendarConfig, ResolvedDate, StaticCalendarData } from '$lib/calendar/types.js'
+import { getSiteConfig } from '$lib/server/settings.js'
 
 export const load: LayoutServerLoad = async ({ locals }) => {
-	const [allPages, primaryCalendarRows] = await Promise.all([
+	const [allPages, primaryCalendarRows, siteConfig] = await Promise.all([
 		db.select({ slug: pages.slug, title: pages.title }).from(pages),
 		db.select().from(calendars).where(eq(calendars.isPrimary, true)).limit(1),
+		getSiteConfig(),
 	])
 
 	let calendarDate: ResolvedDate | null = null
@@ -39,5 +41,6 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		user: locals.user,
 		existingPages: allPages.map(p => p.slug),
 		calendarDate,
+		siteConfig,
 	}
 }
