@@ -166,6 +166,7 @@
 			fill={resolveColor(primaryStar.color, '#FFE088')}
 			class="cursor-pointer"
 			onmouseenter={() => handleHover({ ...primaryStar, isStar: true, orbitAu: 0, ecc: 0 }, { x: CENTER, y: CENTER - 16 })}
+			onmouseleave={() => hovered = null}
 			onclick={() => handleClick(primaryStar)}
 		/>
 		<text
@@ -190,6 +191,7 @@
 			fill={resolveColor(body.color, body.isStar ? '#FFE088' : 'var(--color-secondary)')}
 			class="cursor-pointer"
 			onmouseenter={() => handleHover(body, { x: pos.x, y: pos.y })}
+			onmouseleave={() => hovered = null}
 			onclick={() => handleClick(body)}
 		/>
 
