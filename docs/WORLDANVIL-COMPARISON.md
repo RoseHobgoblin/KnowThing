@@ -8,15 +8,16 @@
 
 | | WorldAnvil | KnowThing |
 |---|---|---|
-| Article system | 26 typed templates (Character, Settlement, Species, etc.) with dedicated fields per type | Single wikitext format, any structure via markup. 9 infobox types auto-detected |
+| Article system | 26 typed templates (Character, Settlement, Species, etc.) with dedicated fields per type | Single wikitext format, any structure via markup. 12 infobox types auto-detected |
 | Markup | BBCode (legacy) + new visual editor (buggy, breaks formatting) | MediaWiki-style wikitext with 35+ node types, parser functions, magic words |
 | Templates | Twig-based (Grandmaster+ to create custom) | Built-in + DB-stored templates with `{{{param}}}` substitution, recursive expansion |
 | Revision history | Yes | Yes, with diffs and edit summaries |
 | Categories | Yes | Yes, `[[Category:Name]]` syntax |
 | Internal links | Yes (article mentions) | Yes, `[[Page\|Display]]` + backlink tracking |
-| Infoboxes | Per-template-type structured fields | 9 types: country, former_country, language, settlement, royalty, officeholder, person, religion, generic |
+| Infoboxes | Per-template-type structured fields | 12 types: country, former_country, language, settlement, royalty, officeholder, person, religion, system, star, planet, generic |
 | Custom article types | Grandmaster+ (HTML/CSS/Twig) | Not needed — wikitext is freeform |
-| **Edge** | **WA for beginners (forms)** | **KT for power users (markup flexibility)** |
+| Structured data | Each template type is a silo — cross-referencing between types is manual | Every domain entity has a `pageSlug` — structured data and wiki prose coexist on one page |
+| **Edge** | **WA for beginners (forms)** | **KT for power users — markup flexibility + unified data model** |
 
 ---
 
@@ -34,7 +35,7 @@
 | Language families | Text field | Parent-child tree with visual LanguageTree component, proto/language/historical types |
 | Script/writing system | Text field | CarveCraft planned (custom glyphs, PUA assignment, font generation) — not built yet |
 | Word search | Basic dictionary search | Multi-strategy: exact > form > prefix > fuzzy > FTS, with filters |
-| **Edge** | **Neither — WA is shallow, KT is deeper but incomplete** | **KT wins on inflections, etymology, dialects. WA wins on existing (VulgarLang integration)** |
+| **Edge** | **KT wins clearly** | **Inflections, etymology, dialects, families, homographs — all built. WA's only edge is VulgarLang integration** |
 
 ---
 
@@ -71,6 +72,23 @@
 
 ---
 
+## CELESTIAL / ASTRONOMY
+
+| | WorldAnvil | KnowThing |
+|---|---|---|
+| Star systems | No structured support — use generic article | Full domain: single/binary/trinary systems with typed hierarchy |
+| Stars | Text fields in a generic template | Structured data: spectral type, mass, radius, luminosity, temperature, age, color |
+| Orbital mechanics | None | Semi-major axis, eccentricity, periastron/apastron, orbital period — computed from real values |
+| Planets/moons | Text fields | Full schema: body type, density, surface gravity, escape velocity, atmosphere, composition, axial tilt, albedo |
+| Companion stars | Not supported | Parent-child star relationships with orbital parameters |
+| Moon nesting | Not supported | Recursive parent hierarchy with circular reference prevention |
+| System visualization | None | Interactive SVG system map: elliptical orbits, eccentricity modeling, hover tooltips, clickable navigation |
+| Sidebar navigation | None | Hierarchical tree: system > stars > planets > moons with body type icons |
+| Wiki integration | Separate article, no data link | `pageSlug` on every entity — structured infobox + freeform prose on one page, edit mode with live preview |
+| **Edge** | **KT wins completely — WA has nothing in this domain** |
+
+---
+
 ## TIMELINES / CHRONICLES
 
 | | WorldAnvil | KnowThing |
@@ -86,11 +104,11 @@
 
 | | WorldAnvil | KnowThing |
 |---|---|---|
-| Character template | Dedicated with portrait, biography, personality fields | No dedicated type — use wiki article + person infobox |
+| Character template | Dedicated with portrait, biography, personality fields | Wiki article + person/royalty/officeholder infoboxes with structured fields |
 | Family trees | Visual graph, auto-relationship detection (Master+). Limited to 4 generations | Not built |
 | Diplomacy webs | Org-to-org visual relationship graph (Master+) | Not built |
 | Knowledge graph | Not built (character-to-character webs requested, low priority) | Planned: typed relations between any pages (capital-of, spoken-in, ruled, etc.) |
-| **Edge** | **WA wins on what exists. KT's knowledge graph vision is more general but unbuilt** |
+| **Edge** | **WA wins on visualization (family trees, diplomacy webs). KT's knowledge graph vision is more general but unbuilt** |
 
 ---
 
@@ -213,12 +231,13 @@
 
 | Domain | WA | KT | Notes |
 |---|---|---|---|
-| Wiki/Articles | ★★★★ | ★★★★ | Different approaches, both solid |
-| Linguistics | ★★ | ★★★★ | KT's inflections/etymology/dialects are genuinely superior |
+| Wiki/Articles | ★★★★ | ★★★★★ | 12 infobox types, recursive templates, unified data model |
+| Linguistics | ★★ | ★★★★★ | Inflections, etymology, dialects, families, homographs — all built |
+| Celestial/Astronomy | ☆ | ★★★★ | Interactive system maps, orbital mechanics, spectral classification — WA has nothing |
 | Maps | ★★★★ | ☆ | KT has nothing built |
 | Calendar | ★★★ | ★★★★★ | KT is deeper, WA's is stalled |
 | Timelines | ★★★★ | ☆ | KT has nothing built |
-| Characters/Relations | ★★★ | ★ | KT has basic infoboxes only |
+| Characters/Relations | ★★★ | ★★ | KT has person/royalty/officeholder infoboxes, knowledge graph planned |
 | RPG Tools | ★★★★★ | ☆ | Not KT's fight |
 | Novel Writing | ★★★ | ☆ | Not KT's fight |
 | Media | ★★★ | ★★★★ | KT's processing pipeline is better |
@@ -233,13 +252,16 @@
 
 **WorldAnvil is wide. KnowThing is deep where it matters.**
 
+WA needs three features across three siloed templates to do what KT does on one page. KT's architecture is **data-first with wiki as the universal glue** — every domain entity has a `pageSlug`, so structured infoboxes and freeform prose coexist on a single page. WA can't retrofit this without rebuilding from scratch.
+
 KT should not chase WA on RPG tools, novel writing, social features, or community. Those require network effects and years of accumulated users.
 
 KT wins on:
-1. **Linguistics depth** — inflections, etymology, dialects are genuinely superior
-2. **Calendar sophistication** — deeper system, WA's is stalled
-3. **Data ownership** — self-hosted, no paywalls, no storage limits
-4. **Performance** — SvelteKit SSR vs WA's notoriously slow pages
-5. **Structured data philosophy** — data that renders as documents, not documents pretending to be data
+1. **Unified data model** — one page per entity, structured data + wiki prose, not 26 siloed templates
+2. **Linguistics depth** — inflections, etymology, dialects, families, homographs — all built and working
+3. **Celestial mechanics** — interactive system maps, orbital parameters, spectral classification — a domain WA doesn't touch
+4. **Calendar sophistication** — deeper system, WA's is stalled
+5. **Data ownership** — self-hosted, no paywalls, no storage limits
+6. **Performance** — SvelteKit SSR vs WA's notoriously slow pages
 
 The path: finish the linguistics pipeline (phonology, CarveCraft), build the knowledge graph, then expand outward.

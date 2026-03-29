@@ -6,6 +6,7 @@ import { eq, sql } from 'drizzle-orm'
 import { parseWikitext } from '$lib/parser/index.js'
 import { requireAuth } from '$lib/server/auth.js'
 import { updateContentEffects } from '$lib/server/content-effects.js'
+import { resolveStructuredData } from '$lib/server/structured-data.js'
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const pathSegments = params.path.split('/')
@@ -42,7 +43,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			WHERE s.system_id = ${system.id}
 			ORDER BY pb.semi_major_axis_au NULLS LAST, pb.name
 		`)
-		return { kind: 'system' as const, body: system, isEditMode, systemStars, systemBodies, ...content }
+		const infoboxFields = await resolveStructuredData('system', system.slug)
+		return { kind: 'system' as const, body: system, isEditMode, systemStars, systemBodies, infoboxFields: infoboxFields ? Object.fromEntries(infoboxFields) : null, ...content }
 	}
 
 	const [star] = await db.select().from(stars).where(sql`LOWER(${stars.slug}) = LOWER(${slug}) OR LOWER(${stars.pageSlug}) = LOWER(${slug})`)
@@ -59,7 +61,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 		const allSystems = await db.select({ id: starSystems.id, name: starSystems.name }).from(starSystems).orderBy(starSystems.name)
 		const content = await getContent(star.contentRecordId)
-		return { kind: 'star' as const, body: star, allSystems, isEditMode, ...content }
+		const infoboxFields = await resolveStructuredData('star', star.slug)
+		return { kind: 'star' as const, body: star, allSystems, isEditMode, infoboxFields: infoboxFields ? Object.fromEntries(infoboxFields) : null, ...content }
 	}
 
 	const [planet] = await db.select().from(planetaryBodies).where(sql`LOWER(${planetaryBodies.slug}) = LOWER(${slug}) OR LOWER(${planetaryBodies.pageSlug}) = LOWER(${slug})`)
@@ -84,7 +87,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 				.where(eq(planetaryBodies.starId, planet.starId))
 			: []
 		const content = await getContent(planet.contentRecordId)
-		return { kind: 'planet' as const, body: planet, allStars, siblings, isEditMode, ...content }
+		const infoboxFields = await resolveStructuredData('planet', planet.slug)
+		return { kind: 'planet' as const, body: planet, allStars, siblings, isEditMode, infoboxFields: infoboxFields ? Object.fromEntries(infoboxFields) : null, ...content }
 	}
 
 	error(404, 'Celestial body not found')

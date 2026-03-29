@@ -1,11 +1,11 @@
 <script lang="ts">
 	import type { WikiNode } from '$lib/parser/types.js'
-	import { getWikiContext } from '../context.js'
+	import { getKnowContext } from '../context.js'
 	import { get } from 'svelte/store'
 
 	let { content }: { content: WikiNode[] } = $props()
 
-	const ctx = getWikiContext()
+	const ctx = getKnowContext()
 
 	// Register this footnote and get its index
 	const footnotes = get(ctx.footnotes)

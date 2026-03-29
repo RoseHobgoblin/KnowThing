@@ -1,10 +1,10 @@
 <script lang="ts">
 	import type { ImageOption } from '$lib/parser/types.js'
-	import { getWikiContext } from '../context.js'
+	import { getKnowContext } from '../context.js'
 
 	let { filename, options }: { filename: string, options: ImageOption[] } = $props()
 
-	const ctx = getWikiContext()
+	const ctx = getKnowContext()
 	const baseUrl = $derived(`${ctx.mediaBaseUrl}/${encodeURIComponent(filename)}`)
 
 	const isThumb = $derived(options.some(o => o.type === 'thumb'))

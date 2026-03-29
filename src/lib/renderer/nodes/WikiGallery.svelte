@@ -1,10 +1,10 @@
 <script lang="ts">
 	import type { GalleryItem } from '$lib/parser/types.js'
-	import { getWikiContext } from '../context.js'
+	import { getKnowContext } from '../context.js'
 
 	let { items }: { items: GalleryItem[] } = $props()
 
-	const ctx = getWikiContext()
+	const ctx = getKnowContext()
 </script>
 
 <div class="know-gallery flex flex-wrap gap-3 my-4">

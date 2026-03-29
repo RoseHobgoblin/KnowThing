@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { getWikiContext } from '../context.js'
+	import { getKnowContext } from '../context.js'
 	import WikiNodeComponent from '../WikiNode.svelte'
 
-	const ctx = getWikiContext()
+	const ctx = getKnowContext()
 	let footnotes = $derived.by(() => {
 		let value: { index: number, content: import('$lib/parser/types.js').WikiNode[] }[] = []
 		ctx.footnotes.subscribe(v => (value = v))()

@@ -62,63 +62,11 @@
 
 	const strippedAst = $derived(ast ? stripInfoboxes(ast) : null)
 
-	// Build FieldMaps from structured data for infobox rendering
-	function buildFields(body: any, fieldDefs: [string, string[]][]): Map<string, string> {
-		const fields = new Map<string, string>()
-		for (const [key, aliases] of fieldDefs) {
-			for (const alias of aliases) {
-				const value = body[alias]
-				if (value != null && value !== '') {
-					fields.set(key, String(value))
-					break
-				}
-			}
-		}
-		const extra = body.extra as Record<string, unknown> | undefined
-		if (extra) {
-			for (const [k, v] of Object.entries(extra)) {
-				if (v != null && v !== '') fields.set(k, String(v))
-			}
-		}
-		return fields
-	}
-
-	const starFieldDefs: [string, string[]][] = [
-		['name', ['name']], ['spectral_type', ['spectralType', 'spectral_type']],
-		['mass', ['mass']], ['radius', ['radius']], ['luminosity', ['luminosity']],
-		['luminosity_visual', ['luminosityVisual', 'luminosity_visual']],
-		['temperature', ['temperature']], ['age', ['age']], ['color', ['color']],
-		['orbital_period', ['orbitalPeriod', 'orbital_period']],
-		['orbital_semimajor', ['semiMajorAxis', 'semi_major_axis']],
-		['orbital_eccentricity', ['eccentricity']],
-		['periastron', ['periastron']], ['apastron', ['apastron']],
-		['apparent_magnitude', ['apparentMagnitude', 'apparent_magnitude']],
-		['angular_diameter', ['angularDiameter', 'angular_diameter']],
-		['companion', ['companion']],
-	]
-
-	const planetFieldDefs: [string, string[]][] = [
-		['name', ['name']], ['body_type', ['bodyType', 'body_type']],
-		['mass', ['mass']], ['radius', ['radius']], ['density', ['density']],
-		['surface_gravity', ['surfaceGravity', 'surface_gravity']],
-		['escape_velocity', ['escapeVelocity', 'escape_velocity']],
-		['temperature', ['temperature']], ['age', ['age']],
-		['composition', ['composition']], ['atmosphere', ['atmosphere']],
-		['surface_pressure', ['surfacePressure', 'surface_pressure']],
-		['orbital_period', ['orbitalPeriod', 'orbital_period']],
-		['semi_major_axis', ['semiMajorAxis', 'semi_major_axis']],
-		['eccentricity', ['eccentricity']],
-		['rotation_period', ['rotationPeriod', 'rotation_period']],
-		['axial_tilt', ['axialTilt', 'axial_tilt']],
-		['apparent_magnitude', ['apparentMagnitude', 'apparent_magnitude']],
-		['angular_diameter', ['angularDiameter', 'angular_diameter']],
-		['albedo', ['albedo']], ['satellites', ['satellites']],
-	]
-
+	// Infobox fields from server — resolved via structured-data.ts (same mapper as from=slug)
 	const infoboxFields = $derived(
-		kind === 'star' ? buildFields(raw, starFieldDefs) :
-		kind === 'planet' ? buildFields(raw, planetFieldDefs) :
-		new Map([['name', raw.name ?? ''], ['system_type', raw.systemType ?? raw.system_type ?? '']]),
+		data.infoboxFields
+			? new Map(Object.entries(data.infoboxFields))
+			: new Map([['name', raw.name ?? '']]),
 	)
 </script>
 

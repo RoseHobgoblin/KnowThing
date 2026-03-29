@@ -32,9 +32,6 @@ export interface KnowRenderContext {
 	systemMaps: Record<string, { systemName: string, stars: any[], bodies: any[] }> | null
 }
 
-/** @deprecated Use KnowRenderContext */
-export type WikiRenderContext = KnowRenderContext
-
 export interface FootnoteEntry {
 	index: number
 	content: WikiNode[]
@@ -60,15 +57,9 @@ export function createKnowContext(overrides: Partial<KnowRenderContext> = {}): K
 	return ctx
 }
 
-/** @deprecated Use createKnowContext */
-export const createWikiContext = createKnowContext
-
 export function getKnowContext(): KnowRenderContext {
 	return getContext<KnowRenderContext>(KNOW_CONTEXT_KEY)
 }
-
-/** @deprecated Use getKnowContext */
-export const getWikiContext = getKnowContext
 
 /** Alias used by WikiTemplate dispatch chain */
 export const getRenderContext = getKnowContext

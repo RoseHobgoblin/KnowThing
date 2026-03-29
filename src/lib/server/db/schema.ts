@@ -124,50 +124,6 @@ export const contentMediaUsage = pgTable(
 )
 
 // ============================================================================
-// Pages & Revisions (legacy — being replaced by content_records)
-// ============================================================================
-
-export const pages = pgTable(
-	'pages',
-	{
-		id: serial('id').primaryKey(),
-		slug: text('slug').unique().notNull(),
-		title: text('title').notNull(),
-		content: text('content').notNull().default(''),
-		plainText: text('plain_text').notNull().default(''), // stripped markup for FTS
-		parsedAst: jsonb('parsed_ast'),
-		sizeBytes: integer('size_bytes').notNull().default(0),
-		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-	},
-	table => [
-		index('idx_pages_slug').on(table.slug),
-		index('idx_pages_updated').on(table.updatedAt),
-	],
-)
-
-export const revisions = pgTable(
-	'revisions',
-	{
-		id: serial('id').primaryKey(),
-		pageId: integer('page_id')
-			.references(() => pages.id, { onDelete: 'cascade' })
-			.notNull(),
-		pageSlug: text('page_slug').notNull(),
-		title: text('title').notNull(),
-		content: text('content').notNull(),
-		sizeBytes: integer('size_bytes').notNull().default(0),
-		editSummary: text('edit_summary').default(''),
-		userId: integer('user_id').references(() => users.id),
-		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-	},
-	table => [
-		index('idx_revisions_page').on(table.pageSlug),
-		index('idx_revisions_date').on(table.createdAt),
-	],
-)
-
-// ============================================================================
 // Templates (DB-stored simple templates for the hybrid system)
 // ============================================================================
 
@@ -200,34 +156,6 @@ export const siteSettings = pgTable('site_settings', {
 	key: text('key').primaryKey(),
 	value: text('value').notNull(),
 })
-
-// ============================================================================
-// Link & Category tracking
-// ============================================================================
-
-export const links = pgTable(
-	'links',
-	{
-		sourceSlug: text('source_slug').notNull(),
-		targetSlug: text('target_slug').notNull(),
-	},
-	table => [
-		primaryKey({ columns: [table.sourceSlug, table.targetSlug] }),
-		index('idx_links_target').on(table.targetSlug),
-	],
-)
-
-export const categories = pgTable(
-	'categories',
-	{
-		pageSlug: text('page_slug').notNull(),
-		category: text('category').notNull(),
-	},
-	table => [
-		primaryKey({ columns: [table.pageSlug, table.category] }),
-		index('idx_categories_cat').on(table.category),
-	],
-)
 
 // ============================================================================
 // Media
@@ -274,15 +202,6 @@ export const mediaCategories = pgTable(
 		primaryKey({ columns: [table.filename, table.category] }),
 		index('idx_media_categories_cat').on(table.category),
 	],
-)
-
-export const mediaUsage = pgTable(
-	'media_usage',
-	{
-		pageSlug: text('page_slug').notNull(),
-		filename: text('filename').notNull(),
-	},
-	table => [primaryKey({ columns: [table.pageSlug, table.filename] })],
 )
 
 // ============================================================================
