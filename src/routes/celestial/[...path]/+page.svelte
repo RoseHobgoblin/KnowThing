@@ -7,6 +7,7 @@
 	import InfoboxPlanet from '$lib/infoboxes/InfoboxPlanet.svelte'
 	import InfoboxSystem from '$lib/infoboxes/InfoboxSystem.svelte'
 	import SystemMap from '$lib/celestial/SystemMap.svelte'
+	import SystemSidebar from '$lib/celestial/SystemSidebar.svelte'
 	import PencilSimple from 'phosphor-svelte/lib/PencilSimple'
 	import Editor from '$lib/components/Editor.svelte'
 	import LivePreview from '$lib/components/LivePreview.svelte'
@@ -191,30 +192,67 @@
 
 		<!-- Article body -->
 		<div class="px-4 pt-3 pb-4 md:px-6 md:pb-5">
-			<article class="know-article">
-				{#if kind === 'system'}
-					<InfoboxSystem fields={infoboxFields} />
-					{#if data.systemStars && data.systemStars.length > 0}
-						<div class="my-4">
+			{#if kind === 'system'}
+				<!-- System: two-column layout -->
+				<div class="grid grid-cols-1 gap-4 md:grid-cols-[1fr_280px]">
+					<!-- Map -->
+					<div>
+						{#if data.systemStars && data.systemStars.length > 0}
 							<SystemMap
 								systemName={raw.name}
 								stars={data.systemStars}
 								bodies={data.systemBodies ?? []}
 							/>
-						</div>
-					{/if}
-				{:else if kind === 'star'}
-					<InfoboxStar fields={infoboxFields} />
-				{:else}
-					<InfoboxPlanet fields={infoboxFields} />
-				{/if}
+						{:else}
+							<div class="flex items-center justify-center h-64 text-dim border border-border-subtle">
+								No stars registered in this system.
+							</div>
+						{/if}
+					</div>
 
+					<!-- Sidebar -->
+					<div class="border-l border-border-subtle pl-4 hidden md:block">
+						<SystemSidebar
+							system={raw}
+							stars={data.systemStars ?? []}
+							bodies={data.systemBodies ?? []}
+							systemSlug={raw.slug}
+						/>
+					</div>
+
+					<!-- Mobile sidebar (no border, below map) -->
+					<div class="md:hidden">
+						<SystemSidebar
+							system={raw}
+							stars={data.systemStars ?? []}
+							bodies={data.systemBodies ?? []}
+							systemSlug={raw.slug}
+						/>
+					</div>
+				</div>
+
+				<!-- Prose below the two-column section -->
 				{#if strippedAst}
-					<WikiNodeComponent node={strippedAst} />
-				{:else if !data.wikiContent}
-					<p class="text-dim italic mt-4">No article content yet.</p>
+					<article class="know-article mt-4">
+						<WikiNodeComponent node={strippedAst} />
+					</article>
 				{/if}
-			</article>
+			{:else}
+				<!-- Star/Planet: standard infobox + prose layout -->
+				<article class="know-article">
+					{#if kind === 'star'}
+						<InfoboxStar fields={infoboxFields} />
+					{:else}
+						<InfoboxPlanet fields={infoboxFields} />
+					{/if}
+
+					{#if strippedAst}
+						<WikiNodeComponent node={strippedAst} />
+					{:else if !data.wikiContent}
+						<p class="text-dim italic mt-4">No article content yet.</p>
+					{/if}
+				</article>
+			{/if}
 		</div>
 	</div>
 {/if}

@@ -11,32 +11,11 @@
 		moonCount?: number
 		parentStarId?: number | null
 	}
-
-	/** Map descriptive color names to hex values */
-	const COLOR_MAP: Record<string, string> = {
-		'yellow-white': '#FFF8DC',
-		'yellow': '#FFD700',
-		'white': '#F0F0F0',
-		'blue-white': '#CAE1FF',
-		'blue': '#6B8BCD',
-		'orange': '#E8820C',
-		'orange-red': '#CC4400',
-		'deep orange-red': '#B33000',
-		'red': '#CC3333',
-		'pale yellow': '#FAFAD2',
-	}
-
-	function resolveColor(color: string | null | undefined, fallback: string): string {
-		if (!color) return fallback
-		// Already a hex/rgb/css value
-		if (color.startsWith('#') || color.startsWith('rgb') || color.startsWith('var')) return color
-		// Try lookup
-		return COLOR_MAP[color.toLowerCase()] ?? fallback
-	}
 </script>
 
 <script lang="ts">
 	import { goto } from '$app/navigation'
+	import { resolveColor } from './colors.js'
 
 	let {
 		systemName,
