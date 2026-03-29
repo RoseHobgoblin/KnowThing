@@ -8,10 +8,13 @@
 	import EtymologySection from '$lib/components/wordbook/EtymologySection.svelte'
 	import InflectionTable from '$lib/components/wordbook/InflectionTable.svelte'
 	import InflectionEditor from '$lib/components/wordbook/InflectionEditor.svelte'
+	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
+	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import { PARTS_OF_SPEECH, POS_COLORS } from '$lib/components/wordbook/constants.js'
 	import InlineMarkup from '$lib/renderer/InlineMarkup.svelte'
 
 	let { data }: { data: PageData } = $props()
+	let confirmDialog: ReturnType<typeof ConfirmDialog>
 
 	const layoutData = $derived($page.data)
 	const isAuthenticated = $derived(!!layoutData.user)
@@ -46,34 +49,46 @@
 			if (res.ok) {
 				newPos = ''; newDef = ''; newUsage = ''; newTranslation = ''
 				addingSenseFor = null
+				pushSuccess('Definition added')
 				invalidateAll()
 			} else {
 				const data = await res.json()
 				senseError = data.error || 'Failed to add definition'
+				pushError(senseError)
 			}
 		} catch {
 			senseError = 'Network error'
+			pushError('Network error')
 		} finally {
 			submittingSense = false
 		}
 	}
 
 	async function deleteSense(entryId: number, defId: number) {
-		if (!confirm('Remove this definition?')) return
-		await fetch(`/api/wordbook/${entryId}/definitions/${defId}`, { method: 'DELETE' })
-		invalidateAll()
+		const ok = await confirmDialog.confirm('Remove definition', 'Remove this definition?', 'Remove', 'Cancel')
+		if (!ok) return
+		const res = await fetch(`/api/wordbook/${entryId}/definitions/${defId}`, { method: 'DELETE' })
+		if (res.ok) {
+			pushSuccess('Definition removed')
+			invalidateAll()
+		} else {
+			pushError('Failed to remove definition')
+		}
 	}
 
 	async function deleteEntry(entryId: number) {
-		if (!confirm(`Delete this entry entirely? This cannot be undone.`)) return
+		const ok = await confirmDialog.confirm('Delete entry', 'Delete this entry entirely? This cannot be undone.', 'Delete', 'Cancel')
+		if (!ok) return
 		const res = await fetch(`/api/wordbook/${entryId}`, { method: 'DELETE' })
 		if (res.ok) {
-			// If there are other homographs, stay on the page
+			pushSuccess('Entry deleted')
 			if (data.homographs.length > 1) {
 				invalidateAll()
 			} else {
 				goto(`/wordbook/${data.language.slug}`)
 			}
+		} else {
+			pushError('Failed to delete entry')
 		}
 	}
 
@@ -269,3 +284,5 @@
 		</div>
 	{/each}
 </div>
+
+<ConfirmDialog bind:this={confirmDialog} />

@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation'
+	import { pushSuccess, pushError } from '$lib/notifications.svelte'
+	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import { generateCellKeys, cellKeyLabel } from '$lib/wordbook/cell-keys.js'
 
 	let {
@@ -29,6 +31,8 @@
 			? availableClasses.filter(c => c.partOfSpeech === partOfSpeech)
 			: availableClasses
 	)
+
+	let confirmDialog: ReturnType<typeof ConfirmDialog>
 
 	let editing = $state(false)
 	let selectedClassId = $state<number | null>(null)
@@ -72,23 +76,31 @@
 				throw new Error(data.error || 'Failed to save')
 			}
 
+			pushSuccess('Inflection saved')
 			editing = false
 			invalidateAll()
 		} catch (error_: any) {
 			error = error_.message
+			pushError(error_.message)
 		} finally {
 			saving = false
 		}
 	}
 
 	async function removeInflection() {
-		if (!confirm('Remove inflection data for this entry?')) return
+		const ok = await confirmDialog.confirm('Remove inflection', 'Remove inflection data for this entry?', 'Remove', 'Cancel')
+		if (!ok) return
 		saving = true
-		await fetch(`/api/wordbook/${entryId}/inflection`, {
+		const res = await fetch(`/api/wordbook/${entryId}/inflection`, {
 			method: 'PUT',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ classId: null, stem: null, overrides: {} }),
 		})
+		if (res.ok) {
+			pushSuccess('Inflection removed')
+		} else {
+			pushError('Failed to remove inflection')
+		}
 		editing = false
 		saving = false
 		invalidateAll()
@@ -206,3 +218,5 @@
 		Edit inflection
 	</button>
 {/if}
+
+<ConfirmDialog bind:this={confirmDialog} />

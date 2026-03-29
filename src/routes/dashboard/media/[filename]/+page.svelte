@@ -3,14 +3,16 @@
 	import { page } from '$app/stores'
 	import { invalidateAll } from '$app/navigation'
 	import { goto } from '$app/navigation'
+	import { pushSuccess, pushError } from '$lib/notifications.svelte'
+	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 
 	let { data }: { data: PageData } = $props()
 
 	let description = $state(data.file.description || '')
 	let categoriesInput = $state(data.categories.join(', '))
 	let saving = $state(false)
-	let saveMessage = $state('')
 	let copied = $state(false)
+	let confirmDialog: ReturnType<typeof ConfirmDialog>
 
 	const layoutData = $derived($page.data)
 	const isAdmin = $derived(layoutData.user?.role === 'admin')
@@ -24,7 +26,6 @@
 
 	async function saveDetails() {
 		saving = true
-		saveMessage = ''
 		try {
 			const res = await fetch(`/api/media/${encodeURIComponent(data.file.filename)}`, {
 				method: 'PUT',
@@ -35,9 +36,10 @@
 				}),
 			})
 			if (res.ok) {
-				saveMessage = 'Saved'
+				pushSuccess('Description saved')
 				invalidateAll()
-				setTimeout(() => saveMessage = '', 2000)
+			} else {
+				pushError('Failed to save description')
 			}
 		} finally {
 			saving = false
@@ -45,9 +47,15 @@
 	}
 
 	async function deleteFile() {
-		if (!confirm(`Delete "${data.file.filename}"? This cannot be undone.${data.usage.length > 0 ? ` Warning: used in ${data.usage.length} page(s).` : ''}`)) return
+		const ok = await confirmDialog.confirm('Delete file', `Delete "${data.file.filename}"? This cannot be undone.${data.usage.length > 0 ? ` Warning: used in ${data.usage.length} page(s).` : ''}`, 'Delete', 'Cancel')
+		if (!ok) return
 		const res = await fetch(`/api/media/${encodeURIComponent(data.file.filename)}`, { method: 'DELETE' })
-		if (res.ok) goto('/dashboard/media')
+		if (res.ok) {
+			pushSuccess('File deleted')
+			goto('/dashboard/media')
+		} else {
+			pushError('Failed to delete file')
+		}
 	}
 
 	function copyWikitext() {
@@ -137,9 +145,6 @@
 						">
 							{saving ? 'Saving...' : 'Save'}
 						</button>
-						{#if saveMessage}
-							<span class="text-sm text-green-600">{saveMessage}</span>
-						{/if}
 					</div>
 				</div>
 			</div>
@@ -257,3 +262,5 @@
 		</div>
 	</div>
 </div>
+
+<ConfirmDialog bind:this={confirmDialog} />

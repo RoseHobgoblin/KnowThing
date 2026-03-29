@@ -1,4 +1,8 @@
 <script lang="ts">
+	import Input from '$lib/components/ui/Input.svelte'
+	import Select from '$lib/components/ui/Select.svelte'
+	import Label from '$lib/components/ui/Label.svelte'
+
 	let {
 		initial = {},
 		existingLanguages = [],
@@ -36,6 +40,24 @@
 	let languageType = $state(initial.languageType || 'language')
 	let submitting = $state(false)
 	let error = $state('')
+
+	// String wrapper for Select component (which works with string values)
+	let parentLanguageIdStr = $derived(parentLanguageId === null ? '' : String(parentLanguageId))
+
+	function setParentLanguageId(v: string) {
+		parentLanguageId = v === '' ? null : Number(v)
+	}
+
+	const parentLanguageItems = $derived([
+		{ value: '', label: 'None (root language)' },
+		...existingLanguages.map(lang => ({ value: String(lang.id), label: lang.name })),
+	])
+
+	const languageTypeItems = [
+		{ value: 'language', label: 'Language' },
+		{ value: 'proto', label: 'Proto / Reconstructed' },
+		{ value: 'historical', label: 'Historical' },
+	]
 
 	// Auto-generate slug from name (only when creating)
 	function updateSlug() {
@@ -76,8 +98,7 @@
 		}
 	}
 
-	const inputClass = 'w-full px-3 py-2 border border-border-strong rounded-lg text-sm bg-surface text-heading focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent-border'
-	const labelClass = 'block text-sm font-medium text-secondary mb-1'
+	const textareaClass = 'flex w-full min-w-0 px-3 py-2 rounded-md text-sm text-body bg-surface border border-border-strong outline-none transition-colors placeholder:text-faint hover:border-border focus:ring-2 focus:ring-accent focus:border-accent-border disabled:pointer-events-none disabled:opacity-50'
 </script>
 
 <form onsubmit={handleSubmit} class="space-y-4">
@@ -86,71 +107,56 @@
 	{/if}
 
 	<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-		<div>
-			<label for="name" class={labelClass}>Name <span class="text-red-500">*</span></label>
-			<input id="name" type="text" bind:value={name} oninput={updateSlug} required class={inputClass} placeholder="Oncheran" />
-		</div>
+		<Input label="Name" bind:value={name} oninput={updateSlug} required placeholder="Oncheran" />
 		{#if !isEditing}
-			<div>
-				<label for="slug" class={labelClass}>Slug <span class="text-red-500">*</span></label>
-				<input id="slug" type="text" bind:value={slug} required class={inputClass} placeholder="oncheran" />
-			</div>
+			<Input label="Slug" bind:value={slug} required placeholder="oncheran" />
 		{/if}
+		<Input label="Native Name" bind:value={nativeName} placeholder="Ontsserako" />
+		<Select
+			label="Parent Language"
+			type="single"
+			value={parentLanguageIdStr}
+			onValueChange={setParentLanguageId}
+			items={parentLanguageItems}
+			placeholder="None (root language)"
+		/>
+		<Select
+			label="Type"
+			type="single"
+			bind:value={languageType}
+			items={languageTypeItems}
+			placeholder="Language"
+		/>
 		<div>
-			<label for="native" class={labelClass}>Native Name</label>
-			<input id="native" type="text" bind:value={nativeName} class={inputClass} placeholder="Ontsserako" />
-		</div>
-		<div>
-			<label for="parent" class={labelClass}>Parent Language</label>
-			<select id="parent" bind:value={parentLanguageId} class={inputClass}>
-				<option value={null}>None (root language)</option>
-				{#each existingLanguages as lang}
-					<option value={lang.id}>{lang.name}</option>
-				{/each}
-			</select>
-		</div>
-		<div>
-			<label for="type" class={labelClass}>Type</label>
-			<select id="type" bind:value={languageType} class={inputClass}>
-				<option value="language">Language</option>
-				<option value="proto">Proto / Reconstructed</option>
-				<option value="historical">Historical</option>
-			</select>
-		</div>
-		<div>
-			<label for="family" class={labelClass}>
+			<Label>
 				Family
 				{#if languageType === 'proto'}
 					<span class="text-red-500">*</span>
 				{:else}
 					<span class="text-xs text-faint">(inherits from parent)</span>
 				{/if}
-			</label>
-			<input id="family" type="text" bind:value={family} class={inputClass}
+			</Label>
+			<Input
+				bind:value={family}
 				required={languageType === 'proto'}
-				placeholder={languageType === 'proto' ? 'e.g. Mirish' : 'Leave blank to inherit'} />
+				placeholder={languageType === 'proto' ? 'e.g. Mirish' : 'Leave blank to inherit'}
+			/>
 		</div>
+		<Input label="Script" bind:value={script} placeholder="Latin" />
 		<div>
-			<label for="script" class={labelClass}>Script</label>
-			<input id="script" type="text" bind:value={script} class={inputClass} placeholder="Latin" />
-		</div>
-		<div>
-			<label for="color" class={labelClass}>Accent Color</label>
-			<div class="flex gap-2 items-center">
+			<Label>Accent Color</Label>
+			<div class="flex gap-2 items-center mt-1">
 				<input id="color" type="color" bind:value={color} class="size-10 rounded-sm border border-border-strong cursor-pointer" />
-				<input type="text" bind:value={color} class={inputClass} placeholder="#d97706" />
+				<Input bind:value={color} placeholder="#d97706" />
 			</div>
 		</div>
 	</div>
 
-	<div>
-		<label for="pageSlug" class={labelClass}>Wiki Article <span class="text-xs text-faint">(slug)</span></label>
-		<input id="pageSlug" type="text" bind:value={pageSlug} class={inputClass} placeholder="oncheran_language" />
-	</div>
+	<Input label="Wiki Article" bind:value={pageSlug} placeholder="oncheran_language" />
 
 	<div>
-		<label for="desc" class={labelClass}>Description</label>
-		<textarea id="desc" bind:value={description} rows={3} class={inputClass} placeholder="A brief description of this language..."></textarea>
+		<Label for="desc">Description</Label>
+		<textarea id="desc" bind:value={description} rows={3} class={textareaClass} placeholder="A brief description of this language..."></textarea>
 	</div>
 
 	<div class="pt-2">

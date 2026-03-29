@@ -1,6 +1,7 @@
 <script lang="ts">
 	import '../app.css'
 	import SearchBar from '$lib/components/SearchBar.svelte'
+	import Notifications from '$lib/components/ui/Notifications.svelte'
 	import type { LayoutData } from './$types.js'
 
 	let { children, data }: { children: any, data: LayoutData } = $props()
@@ -187,3 +188,5 @@
 		</footer>
 	</main>
 </div>
+
+<Notifications />

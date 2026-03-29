@@ -1,8 +1,8 @@
 <script lang="ts">
 	import type { PageData } from './$types.js'
-	import { goto } from '$app/navigation'
 	import CalendarWidget from '$lib/calendar/CalendarWidget.svelte'
 	import type { CalendarConfig } from '$lib/calendar/types.js'
+	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 
 	let { data }: { data: PageData } = $props()
 
@@ -84,14 +84,10 @@
 		},
 	})
 
-	let showPreview = $state(true)
-
 	let saving = $state(false)
-	let saveMessage = $state('')
 
 	async function save() {
 		saving = true
-		saveMessage = ''
 
 		const staticData = {
 			first_week_day: firstWeekDay,
@@ -126,8 +122,9 @@
 		})
 
 		if (res.ok) {
-			saveMessage = 'Saved'
-			setTimeout(() => saveMessage = '', 2000)
+			pushSuccess('Calendar saved')
+		} else {
+			pushError('Failed to save calendar')
 		}
 		saving = false
 	}
@@ -140,26 +137,44 @@
 	<title>Edit {data.calendar.name} — Dashboard — KnowThing</title>
 </svelte:head>
 
-<div class="flex gap-6 items-start">
-<!-- Editor column -->
-<div class="flex-1 min-w-0 space-y-6">
+<div class="space-y-6">
 	<div class="flex items-center justify-between">
 		<div>
 			<a href="/dashboard/calendar" class="text-sm text-faint hover:text-link">← Calendars</a>
 			<h1 class="text-xl font-bold text-heading">{name}</h1>
 		</div>
 		<div class="flex items-center gap-3">
-			{#if saveMessage}
-				<span class="text-sm text-success">{saveMessage}</span>
-			{/if}
 			<button onclick={save} disabled={saving} class="
 				px-4 py-1.5 bg-accent text-surface text-sm rounded-md font-medium transition-colors
-				hover:bg-accent-hover disabled:opacity-50
+				hover:bg-accent-hover
+				disabled:opacity-50
 			">
 				{saving ? 'Saving...' : 'Save'}
 			</button>
 		</div>
 	</div>
+
+	<!-- Live Preview -->
+	<details class="bg-surface rounded-lg border border-border" open>
+		<summary class="
+			px-4 py-3 cursor-pointer text-sm font-semibold text-heading select-none transition-colors
+			rounded-lg
+			hover:bg-raised
+		">
+			Live Preview
+		</summary>
+		<div class="px-4 pb-4">
+			{#if previewConfig.static_data.months.length > 0 && previewConfig.static_data.weekdays.length > 0}
+				<div class="max-w-md mx-auto">
+					{#key JSON.stringify(previewConfig.static_data)}
+						<CalendarWidget config={previewConfig} />
+					{/key}
+				</div>
+			{:else}
+				<p class="text-sm text-faint text-center py-4">Add months and weekdays to see a preview.</p>
+			{/if}
+		</div>
+	</details>
 
 	<!-- General -->
 	<section class="bg-surface rounded-lg border border-border p-4 space-y-3">
@@ -214,7 +229,7 @@
 					<option value="regular">Regular</option>
 					<option value="intercalary">Intercalary</option>
 				</select>
-				<button onclick={() => months = months.filter((_, idx) => idx !== index)} class="text-error text-xs">×</button>
+				<button onclick={() => months = months.filter((_, index_) => index_ !== index)} class="text-error text-xs">×</button>
 			</div>
 		{/each}
 	</section>
@@ -232,7 +247,7 @@
 			<div class="border border-border-subtle rounded-md p-3 space-y-2">
 				<div class="flex gap-2 items-center">
 					<input type="text" bind:value={ld.name} placeholder="Name (e.g. Leap Day)" class="flex-1 {inputClass}" />
-					<button onclick={() => leapDays = leapDays.filter((_, idx) => idx !== index)} class="text-error text-xs">×</button>
+					<button onclick={() => leapDays = leapDays.filter((_, index_) => index_ !== index)} class="text-error text-xs">×</button>
 				</div>
 				<div class="grid grid-cols-2 gap-2 md:grid-cols-4">
 					<div>
@@ -288,7 +303,7 @@
 			<div class="flex gap-2 items-center">
 				<input type="text" bind:value={day.name} placeholder="Name" class="flex-1 {inputClass}" />
 				<input type="text" bind:value={day.abbreviation} placeholder="Abbr" class="w-20 {inputClass}" />
-				<button onclick={() => weekdays = weekdays.filter((_, idx) => idx !== index)} class="text-error text-xs">×</button>
+				<button onclick={() => weekdays = weekdays.filter((_, index_) => index_ !== index)} class="text-error text-xs">×</button>
 			</div>
 		{/each}
 	</section>
@@ -308,7 +323,7 @@
 				<label class="flex items-center gap-1 text-xs text-faint">
 					<input type="checkbox" bind:checked={era.reverse_numbering} class="rounded-sm" /> Reverse
 				</label>
-				<button onclick={() => eras = eras.filter((_, idx) => idx !== index)} class="text-error text-xs">×</button>
+				<button onclick={() => eras = eras.filter((_, index_) => index_ !== index)} class="text-error text-xs">×</button>
 			</div>
 		{/each}
 	</section>
@@ -326,7 +341,7 @@
 				<input type="number" bind:value={moon.offset} class="w-16 {inputClass}" title="Phase offset" />
 				<input type="color" bind:value={moon.face_color} class="size-8 rounded-sm border border-border cursor-pointer" title="Lit color" />
 				<input type="color" bind:value={moon.shadow_color} class="size-8 rounded-sm border border-border cursor-pointer" title="Shadow color" />
-				<button onclick={() => moons = moons.filter((_, idx) => idx !== index)} class="text-error text-xs">×</button>
+				<button onclick={() => moons = moons.filter((_, index_) => index_ !== index)} class="text-error text-xs">×</button>
 			</div>
 		{/each}
 	</section>
@@ -358,32 +373,8 @@
 					<input type="number" bind:value={season.duration} class="w-20 {inputClass}" title="Duration (days)" />
 				{/if}
 				<input type="color" bind:value={season.color} class="size-8 rounded-sm border border-border cursor-pointer" />
-				<button onclick={() => seasons = seasons.filter((_, idx) => idx !== index)} class="text-error text-xs">×</button>
+				<button onclick={() => seasons = seasons.filter((_, index_) => index_ !== index)} class="text-error text-xs">×</button>
 			</div>
 		{/each}
 	</section>
-</div>
-
-<!-- Preview sidebar -->
-<div class="hidden w-96 shrink-0 lg:block">
-	<div class="sticky top-4 space-y-3">
-		<div class="flex items-center justify-between">
-			<h2 class="text-sm font-semibold text-heading">Live Preview</h2>
-			<button onclick={() => showPreview = !showPreview} class="text-xs text-link hover:underline">
-				{showPreview ? 'Hide' : 'Show'}
-			</button>
-		</div>
-		{#if showPreview}
-			{#if previewConfig.static_data.months.length > 0 && previewConfig.static_data.weekdays.length > 0}
-				{#key JSON.stringify(previewConfig.static_data)}
-					<CalendarWidget config={previewConfig} />
-				{/key}
-			{:else}
-				<div class="bg-surface border border-border rounded-lg p-4 text-sm text-faint text-center">
-					Add months and weekdays to see a preview.
-				</div>
-			{/if}
-		{/if}
-	</div>
-</div>
 </div>

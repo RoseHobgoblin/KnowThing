@@ -51,10 +51,14 @@
 		"@fontsource/inter": "^5.2.8",
 		"@sveltejs/adapter-node": "^5.5.4",
 		"bcrypt": "^6.0.0",
+		"bits-ui": "^2.16.4",
+		"clsx": "^2.1.1",
 		"codemirror": "^6.0.2",
 		"diff": "^8.0.3",
 		"drizzle-orm": "^0.45.1",
 		"postgres": "^3.4.8",
-		"sharp": "^0.34.5"
+		"sharp": "^0.34.5",
+		"tailwind-merge": "^3.5.0",
+		"zod": "^4.3.6"
 	}
 }

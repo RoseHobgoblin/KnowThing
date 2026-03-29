@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { PageData } from './$types.js'
 	import { goto } from '$app/navigation'
+	import { pushSuccess } from '$lib/notifications.svelte'
 	import LanguageForm from '$lib/components/wordbook/LanguageForm.svelte'
 
 	let { data }: { data: PageData } = $props()
@@ -15,6 +16,7 @@
 			const error = await res.json()
 			throw new Error(error.error || 'Failed to update language')
 		}
+		pushSuccess('Language updated')
 		goto(`/wordbook/${data.language.slug}`)
 	}
 </script>

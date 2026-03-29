@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { PageData } from './$types.js'
 	import { goto } from '$app/navigation'
+	import { pushSuccess } from '$lib/notifications.svelte'
 	import EntryForm from '$lib/components/wordbook/EntryForm.svelte'
 
 	let { data }: { data: PageData } = $props()
@@ -40,6 +41,7 @@
 			}
 		}
 
+		pushSuccess('Word updated')
 		const lang = data.languages.find(l => l.id === formData.languageId)
 		if (lang) {
 			goto(`/wordbook/${lang.slug}/${encodeURIComponent(String(formData.word))}`)

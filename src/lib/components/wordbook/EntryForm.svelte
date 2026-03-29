@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { PARTS_OF_SPEECH } from './constants.js'
+	import Input from '$lib/components/ui/Input.svelte'
+	import Select from '$lib/components/ui/Select.svelte'
 
 	let {
 		languages = [],
@@ -29,7 +31,8 @@
 	} = $props()
 
 	let word = $state(initial.word || '')
-	let languageId = $state(initial.languageId || 0)
+	let languageIdStr = $state(initial.languageId ? String(initial.languageId) : '')
+	let languageId = $derived(Number(languageIdStr) || 0)
 	let pronunciation = $state(initial.pronunciation || '')
 	let etymology = $state(initial.etymology || '')
 	let notes = $state(initial.notes || '')
@@ -91,6 +94,14 @@
 
 	const partsOfSpeech = PARTS_OF_SPEECH
 
+	const languageItems = $derived(languages.map(lang => ({ value: String(lang.id), label: lang.name })))
+	const posItems = $derived(partsOfSpeech.map(pos => ({ value: pos, label: pos })))
+	const etymRelationItems = [
+		{ value: 'derived_from', label: 'Derived from' },
+		{ value: 'loan_from', label: 'Borrowed from' },
+		{ value: 'compound_of', label: 'Compound of' },
+	]
+
 	async function handleSubmit(e: SubmitEvent) {
 		e.preventDefault()
 		if (!word.trim() || !languageId) {
@@ -130,7 +141,7 @@
 		}
 	}
 
-	const inputClass = 'w-full px-3 py-2 border border-border-strong rounded-lg text-sm bg-surface text-heading focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent-border'
+	const textareaClass = 'w-full px-3 py-2 rounded-md text-sm text-body bg-surface border border-border-strong outline-none transition-colors placeholder:text-faint hover:border-border focus:ring-2 focus:ring-accent focus:border-accent-border'
 	const labelClass = 'block text-sm font-medium text-secondary mb-1'
 </script>
 
@@ -141,27 +152,10 @@
 
 	<!-- Headword fields -->
 	<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-		<div>
-			<label for="word" class={labelClass}>Word <span class="text-red-500">*</span></label>
-			<input id="word" type="text" bind:value={word} required class={inputClass} placeholder="kıraŧar" />
-		</div>
-		<div>
-			<label for="language" class={labelClass}>Language <span class="text-red-500">*</span></label>
-			<select id="language" bind:value={languageId} required class={inputClass}>
-				<option value={0} disabled>Select language...</option>
-				{#each languages as lang}
-					<option value={lang.id}>{lang.name}</option>
-				{/each}
-			</select>
-		</div>
-		<div>
-			<label for="pronunciation" class={labelClass}>Pronunciation (IPA)</label>
-			<input id="pronunciation" type="text" bind:value={pronunciation} class={inputClass} placeholder="/kɪ.ra.θar/" />
-		</div>
-		<div>
-			<label for="tags" class={labelClass}>Tags <span class="text-xs text-faint">(comma-separated)</span></label>
-			<input id="tags" type="text" bind:value={tagsInput} class={inputClass} placeholder="religion, astronomy" />
-		</div>
+		<Input label="Word" bind:value={word} required placeholder="kıraŧar" />
+		<Select label="Language" bind:value={languageIdStr} type="single" items={languageItems} required placeholder="Select language..." />
+		<Input label="Pronunciation (IPA)" bind:value={pronunciation} placeholder="/kɪ.ra.θar/" />
+		<Input label="Tags" bind:value={tagsInput} placeholder="religion, astronomy" />
 	</div>
 
 	<!-- Definitions -->
@@ -180,24 +174,12 @@
 					</div>
 				{/if}
 				<div class="grid grid-cols-1 gap-3 mb-2 md:grid-cols-4">
-					<div>
-						<select bind:value={def.partOfSpeech} class="
-							w-full px-2 py-1.5 border border-border-strong rounded-lg text-sm bg-surface
-							focus:outline-none focus:ring-2 focus:ring-accent
-						">
-							<option value="">Part of speech</option>
-							{#each partsOfSpeech as pos}
-								<option value={pos}>{pos}</option>
-							{/each}
-						</select>
-					</div>
-					<div class="md:col-span-3">
-						<input type="text" bind:value={def.definition} placeholder="Definition text..." required={index === 0} class={inputClass} />
-					</div>
+					<Select bind:value={def.partOfSpeech} type="single" items={posItems} placeholder="Part of speech" size="sm" />
+					<Input bind:value={def.definition} placeholder="Definition text..." required={index === 0} containerClass="md:col-span-3" />
 				</div>
 				<div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-					<input type="text" bind:value={def.usageExample} placeholder="Usage example (in the language)" class={inputClass} />
-					<input type="text" bind:value={def.usageTranslation} placeholder="Translation" class={inputClass} />
+					<Input bind:value={def.usageExample} placeholder="Usage example (in the language)" />
+					<Input bind:value={def.usageTranslation} placeholder="Translation" />
 				</div>
 			</div>
 		{/each}
@@ -205,20 +187,13 @@
 
 	<!-- Etymology, wiki link, notes -->
 	<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-		<div>
-			<label for="etymology" class={labelClass}>Etymology Notes</label>
-			<input id="etymology" type="text" bind:value={etymology} class={inputClass} placeholder="Narrative etymology notes..." />
-		</div>
-		<div>
-			<label for="pageSlug" class={labelClass}>Wiki Article <span class="text-xs text-faint">(slug)</span></label>
-			<input id="pageSlug" type="text" bind:value={pageSlug} class={inputClass} placeholder="kıraŧar" />
-		</div>
+		<Input label="Etymology Notes" bind:value={etymology} placeholder="Narrative etymology notes..." />
+		<Input label="Wiki Article" bind:value={pageSlug} placeholder="kıraŧar" />
 	</div>
 
 	{#if notes !== undefined}
 		<div>
-			<label for="notes" class={labelClass}>Editorial Notes</label>
-			<input id="notes" type="text" bind:value={notes} class={inputClass} placeholder="Needs verification..." />
+			<Input label="Editorial Notes" bind:value={notes} placeholder="Needs verification..." />
 		</div>
 	{/if}
 
@@ -233,14 +208,7 @@
 		{/if}
 		{#each etymRows as row, index}
 			<div class="flex gap-2 items-start mb-2">
-				<select bind:value={row.relationType} class="
-					px-2 py-1.5 border border-border-strong rounded-lg text-xs bg-surface
-					focus:outline-none focus:ring-2 focus:ring-accent
-				">
-					<option value="derived_from">Derived from</option>
-					<option value="loan_from">Borrowed from</option>
-					<option value="compound_of">Compound of</option>
-				</select>
+				<Select bind:value={row.relationType} type="single" items={etymRelationItems} size="sm" />
 				<div class="relative flex-1">
 					<input
 						type="text"
@@ -250,8 +218,8 @@
 						onblur={() => setTimeout(() => row.showDropdown = false, 200)}
 						placeholder="Search for a word..."
 						class="
-							w-full px-3 py-1.5 border border-border-strong rounded-lg text-sm bg-surface
-							focus:outline-none focus:ring-2 focus:ring-accent
+							w-full px-3 py-1.5 rounded-md text-sm text-body bg-surface border border-border-strong outline-none transition-colors
+							placeholder:text-faint hover:border-border focus:ring-2 focus:ring-accent focus:border-accent-border
 							{row.targetId ? 'border-green-300 bg-green-50' : ''}"
 					/>
 					{#if row.showDropdown}

@@ -1,16 +1,22 @@
 <script lang="ts">
 	import type { PageData } from './$types.js'
 	import { invalidateAll } from '$app/navigation'
+	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 
 	let { data }: { data: PageData } = $props()
 
 	async function setRole(userId: number, role: string) {
-		await fetch(`/api/users/${userId}/role`, {
+		const res = await fetch(`/api/users/${userId}/role`, {
 			method: 'PUT',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ role }),
 		})
-		invalidateAll()
+		if (res.ok) {
+			pushSuccess('Role updated')
+			invalidateAll()
+		} else {
+			pushError('Failed to update role')
+		}
 	}
 </script>
 

@@ -4,15 +4,24 @@
 	import { createKnowContext } from '$lib/renderer/context.js'
 	import TableOfContents from '$lib/components/TableOfContents.svelte'
 	import CategoryBar from '$lib/components/CategoryBar.svelte'
+	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
+	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import { page } from '$app/stores'
 	import { goto } from '$app/navigation'
 
 	let { data }: { data: PageData } = $props()
+	let confirmDialog: ReturnType<typeof ConfirmDialog>
 
 	async function deletePage() {
-		if (!confirm(`Delete "${data.title}"? This cannot be undone.`)) return
+		const ok = await confirmDialog.confirm('Delete page', `Delete "${data.title}"? This cannot be undone.`, 'Delete', 'Cancel')
+		if (!ok) return
 		const res = await fetch(`/api/pages/${data.slug}`, { method: 'DELETE' })
-		if (res.ok) goto('/')
+		if (res.ok) {
+			pushSuccess(`"${data.title}" deleted`)
+			goto('/')
+		} else {
+			pushError('Failed to delete page')
+		}
 	}
 
 	const layoutData = $derived($page.data)
@@ -105,3 +114,5 @@
 	</div>
 {/if}
 {/key}
+
+<ConfirmDialog bind:this={confirmDialog} />

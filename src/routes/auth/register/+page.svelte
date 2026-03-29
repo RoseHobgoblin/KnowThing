@@ -1,7 +1,13 @@
 <script lang="ts">
 	import type { ActionData } from './$types.js'
+	import Input from '$lib/components/ui/Input.svelte'
+	import { pushError } from '$lib/notifications.svelte'
 
 	let { form }: { form: ActionData } = $props()
+
+	$effect(() => {
+		if (form?.error) pushError(form.error)
+	})
 </script>
 
 <div class="max-w-md mx-auto mt-20 p-6">
@@ -14,48 +20,30 @@
 	{/if}
 
 	<form method="POST" class="space-y-4">
-		<div>
-			<label for="username" class="block text-sm font-medium mb-1">Username</label>
-			<input
-				id="username"
-				name="username"
-				type="text"
-				required
-				minlength="3"
-				value={form?.username ?? ''}
-				class="
-					w-full border border-border-strong rounded-sm px-3 py-2 text-sm
-					focus:outline-none focus:ring-2 focus:ring-accent
-				"
-			/>
-		</div>
-		<div>
-			<label for="password" class="block text-sm font-medium mb-1">Password</label>
-			<input
-				id="password"
-				name="password"
-				type="password"
-				required
-				minlength="8"
-				class="
-					w-full border border-border-strong rounded-sm px-3 py-2 text-sm
-					focus:outline-none focus:ring-2 focus:ring-accent
-				"
-			/>
-		</div>
-		<div>
-			<label for="confirm" class="block text-sm font-medium mb-1">Confirm password</label>
-			<input
-				id="confirm"
-				name="confirm"
-				type="password"
-				required
-				class="
-					w-full border border-border-strong rounded-sm px-3 py-2 text-sm
-					focus:outline-none focus:ring-2 focus:ring-accent
-				"
-			/>
-		</div>
+		<Input
+			label="Username"
+			name="username"
+			type="text"
+			required
+			minlength={3}
+			value={form?.username ?? ''}
+			autocomplete="username"
+		/>
+		<Input
+			label="Password"
+			name="password"
+			type="password"
+			required
+			minlength={8}
+			autocomplete="new-password"
+		/>
+		<Input
+			label="Confirm password"
+			name="confirm"
+			type="password"
+			required
+			autocomplete="new-password"
+		/>
 		<button
 			type="submit"
 			class="

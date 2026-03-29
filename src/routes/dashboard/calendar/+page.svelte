@@ -1,6 +1,8 @@
 <script lang="ts">
 	import type { PageData } from './$types.js'
 	import { goto, invalidateAll } from '$app/navigation'
+	import { pushSuccess, pushError } from '$lib/notifications.svelte'
+	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 
 	let { data }: { data: PageData } = $props()
 
@@ -9,6 +11,7 @@
 	let newDesc = $state('')
 	let newPrimary = $state(false)
 	let submitting = $state(false)
+	let confirmDialog: ReturnType<typeof ConfirmDialog>
 
 	async function createCalendar(e: SubmitEvent) {
 		e.preventDefault()
@@ -49,15 +52,24 @@
 
 		if (res.ok) {
 			const cal = await res.json()
+			pushSuccess('Calendar created')
 			goto(`/dashboard/calendar/${cal.id}`)
+		} else {
+			pushError('Failed to create calendar')
 		}
 		submitting = false
 	}
 
 	async function deleteCalendar(id: number, name: string) {
-		if (!confirm(`Delete calendar "${name}"? This cannot be undone.`)) return
-		await fetch(`/api/calendar/${id}`, { method: 'DELETE' })
-		invalidateAll()
+		const ok = await confirmDialog.confirm('Delete calendar', `Delete calendar "${name}"? This cannot be undone.`, 'Delete', 'Cancel')
+		if (!ok) return
+		const res = await fetch(`/api/calendar/${id}`, { method: 'DELETE' })
+		if (res.ok) {
+			pushSuccess('Calendar deleted')
+			invalidateAll()
+		} else {
+			pushError('Failed to delete calendar')
+		}
 	}
 </script>
 
@@ -128,3 +140,5 @@
 		</div>
 	{/if}
 </div>
+
+<ConfirmDialog bind:this={confirmDialog} />

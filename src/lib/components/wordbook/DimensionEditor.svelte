@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation'
+	import { pushSuccess, pushError } from '$lib/notifications.svelte'
+	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import { PARTS_OF_SPEECH } from './constants.js'
 	import { generateCellKeys, cellKeyLabel } from '$lib/wordbook/cell-keys.js'
 
@@ -35,6 +37,8 @@
 		return generateCellKeys(dims.map(d => ({ values: d.dimValues, sortOrder: d.sortOrder })))
 	}
 
+	let confirmDialog: ReturnType<typeof ConfirmDialog>
+
 	let showHelp = $state(false)
 
 	// Add dimension form
@@ -60,16 +64,25 @@
 			}),
 		})
 		if (res.ok) {
+			pushSuccess('Dimension created')
 			newDimName = ''; newDimValues = ''; showAddDim = false
 			invalidateAll()
+		} else {
+			pushError('Failed to create dimension')
 		}
 		addingDim = false
 	}
 
 	async function deleteDimension(dimId: number) {
-		if (!confirm('Remove this dimension? This will affect all paradigm rules using it.')) return
-		await fetch(`/api/languages/${languageSlug}/inflections/dimensions/${dimId}`, { method: 'DELETE' })
-		invalidateAll()
+		const ok = await confirmDialog.confirm('Remove dimension', 'Remove this dimension? This will affect all paradigm rules using it.', 'Remove', 'Cancel')
+		if (!ok) return
+		const res = await fetch(`/api/languages/${languageSlug}/inflections/dimensions/${dimId}`, { method: 'DELETE' })
+		if (res.ok) {
+			pushSuccess('Dimension removed')
+			invalidateAll()
+		} else {
+			pushError('Failed to remove dimension')
+		}
 	}
 
 	// Add class form
@@ -93,16 +106,25 @@
 			}),
 		})
 		if (res.ok) {
+			pushSuccess('Paradigm class created')
 			newClassName = ''; newClassDesc = ''; showAddClass = false
 			invalidateAll()
+		} else {
+			pushError('Failed to create paradigm class')
 		}
 		addingClass = false
 	}
 
 	async function deleteClass(classId: number) {
-		if (!confirm('Delete this paradigm class and all its rules?')) return
-		await fetch(`/api/languages/${languageSlug}/inflections/classes/${classId}`, { method: 'DELETE' })
-		invalidateAll()
+		const ok = await confirmDialog.confirm('Delete paradigm class', 'Delete this paradigm class and all its rules?', 'Delete', 'Cancel')
+		if (!ok) return
+		const res = await fetch(`/api/languages/${languageSlug}/inflections/classes/${classId}`, { method: 'DELETE' })
+		if (res.ok) {
+			pushSuccess('Paradigm class deleted')
+			invalidateAll()
+		} else {
+			pushError('Failed to delete paradigm class')
+		}
 	}
 
 	// Rules editor state
@@ -142,11 +164,16 @@
 		if (editingClassId === null) return
 		savingRules = true
 		const nonEmpty = editingRules.filter(r => r.pattern.trim())
-		await fetch(`/api/languages/${languageSlug}/inflections/classes/${editingClassId}`, {
+		const res = await fetch(`/api/languages/${languageSlug}/inflections/classes/${editingClassId}`, {
 			method: 'PUT',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ rules: nonEmpty }),
 		})
+		if (res.ok) {
+			pushSuccess('Rules saved')
+		} else {
+			pushError('Failed to save rules')
+		}
 		savingRules = false
 		editingClassId = null
 		invalidateAll()
@@ -355,3 +382,5 @@
 		<p class="text-xs text-faint">No inflection dimensions defined yet. Add dimensions to enable declension/conjugation tables.</p>
 	{/if}
 </div>
+
+<ConfirmDialog bind:this={confirmDialog} />

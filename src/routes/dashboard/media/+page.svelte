@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
+	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 
 	type MediaFile = {
 		id: number
@@ -76,13 +77,14 @@
 			const res = await fetch('/api/media', { method: 'POST', body: formData })
 			if (res.ok) {
 				uploadProgress = ''
+				pushSuccess(`Uploaded ${file.name}`)
 				loadFiles()
 			} else {
 				const error = await res.json()
-				uploadError = error.error || 'Upload failed'
+				pushError(error.error || 'Upload failed')
 			}
 		} catch {
-			uploadError = 'Upload failed'
+			pushError('Upload failed')
 		} finally {
 			uploading = false
 		}

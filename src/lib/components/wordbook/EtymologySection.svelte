@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation'
+	import { pushSuccess, pushError } from '$lib/notifications.svelte'
+	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import LanguageBadge from './LanguageBadge.svelte'
 
 	type RelatedEntry = {
@@ -70,13 +72,21 @@
 		isAuthenticated,
 	)
 
+	let confirmDialog: ReturnType<typeof ConfirmDialog>
+
 	// ── Delete relation ──
 	let deleting = $state<number | null>(null)
 	async function deleteRelation(relationId: number) {
-		if (!confirm('Remove this etymological relation?')) return
+		const ok = await confirmDialog.confirm('Remove relation', 'Remove this etymological relation?', 'Remove', 'Cancel')
+		if (!ok) return
 		deleting = relationId
 		const res = await fetch(`/api/wordbook/${entryId}/relations/${relationId}`, { method: 'DELETE' })
-		if (res.ok) invalidateAll()
+		if (res.ok) {
+			pushSuccess('Relation removed')
+			invalidateAll()
+		} else {
+			pushError('Failed to remove relation')
+		}
 		deleting = null
 	}
 
@@ -147,10 +157,11 @@
 				body: JSON.stringify({ targetId: tgtId, relationType, notes: notes.trim() || undefined }),
 			})
 			if (!res.ok) { const error = await res.json(); throw new Error(error.error || 'Failed') }
+			pushSuccess('Relation added')
 			resetForm()
 			showForm = false
 			invalidateAll()
-		} catch (error: any) { formError = error.message } finally { submitting = false }
+		} catch (error: any) { formError = error.message; pushError(error.message) } finally { submitting = false }
 	}
 </script>
 
@@ -388,3 +399,5 @@
 		{/if}
 	</div>
 {/if}
+
+<ConfirmDialog bind:this={confirmDialog} />

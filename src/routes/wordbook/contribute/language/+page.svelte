@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { PageData } from './$types.js'
 	import { goto } from '$app/navigation'
+	import { pushSuccess } from '$lib/notifications.svelte'
 	import LanguageForm from '$lib/components/wordbook/LanguageForm.svelte'
 
 	let { data }: { data: PageData } = $props()
@@ -16,6 +17,7 @@
 			throw new Error(error.error || 'Failed to create language')
 		}
 		const lang = await res.json()
+		pushSuccess('Language created')
 		goto(`/wordbook/${lang.slug}`)
 	}
 </script>
