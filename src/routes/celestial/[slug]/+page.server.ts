@@ -1,16 +1,22 @@
 import { error } from '@sveltejs/kit'
 import type { PageServerLoad } from './$types.js'
 import { db } from '$lib/server/db/index.js'
-import { stars, planetaryBodies } from '$lib/server/db/schema.js'
+import { starSystems, stars, planetaryBodies } from '$lib/server/db/schema.js'
 import { eq } from 'drizzle-orm'
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const isAdmin = locals.user?.role === 'admin'
 
-	// Try stars first, then planetary bodies
+	// Try systems first, then stars, then planetary bodies
+	const [system] = await db.select().from(starSystems).where(eq(starSystems.slug, params.slug))
+	if (system) {
+		return { kind: 'system' as const, body: system, isAdmin }
+	}
+
 	const [star] = await db.select().from(stars).where(eq(stars.slug, params.slug))
 	if (star) {
-		return { kind: 'star' as const, body: star, isAdmin }
+		const allSystems = await db.select({ id: starSystems.id, name: starSystems.name }).from(starSystems).orderBy(starSystems.name)
+		return { kind: 'star' as const, body: star, allSystems, isAdmin }
 	}
 
 	const [planet] = await db.select().from(planetaryBodies).where(eq(planetaryBodies.slug, params.slug))

@@ -5,7 +5,9 @@
 
 	let { data }: { data: PageData } = $props()
 
-	const isStar = data.kind === 'star'
+	const kind = data.kind
+	const isStar = kind === 'star'
+	const isSystem = kind === 'system'
 	const isAdmin = data.isAdmin
 	const raw = data.body as any
 
@@ -14,7 +16,11 @@
 	let pageSlug = $state(raw.pageSlug ?? '')
 	let description = $state(raw.description ?? '')
 
+	// System fields
+	let systemType = $state(raw.systemType ?? raw.system_type ?? 'single')
+
 	// Star fields
+	let systemId = $state(raw.systemId ?? raw.system_id ?? null)
 	let spectralType = $state(raw.spectralType ?? raw.spectral_type ?? '')
 	let mass = $state(raw.mass ?? '')
 	let radius = $state(raw.radius ?? '')
@@ -69,39 +75,43 @@
 			let extra = {}
 			try { extra = JSON.parse(extraJson) } catch { /* keep empty */ }
 
-			const endpoint = isStar
-				? `/api/stars/${raw.slug}`
-				: `/api/planetary-bodies/${raw.slug}`
+			const endpoint = isSystem
+				? `/api/star-systems/${raw.slug}`
+				: isStar
+					? `/api/stars/${raw.slug}`
+					: `/api/planetary-bodies/${raw.slug}`
 
-			const payload = isStar
-				? {
-					name, pageSlug: pageSlug || null, description,
-					spectralType: spectralType || null, mass: mass || null, radius: radius || null,
-					luminosity: luminosity || null, luminosityVisual: luminosityVisual || null,
-					temperature: temperature || null, age: age || null, color: color || null,
-					orbitalPeriod: orbitalPeriod || null, semiMajorAxis: semiMajorAxis || null,
-					semiMajorAxisAu: parseNum(semiMajorAxisAu), eccentricity: parseNum(eccentricity),
-					periastron: periastron || null, apastron: apastron || null,
-					apparentMagnitude: apparentMagnitude || null, angularDiameter: angularDiameter || null,
-					companion: companion || null, extra,
-				}
-				: {
-					name, bodyType, starId, parentId: parentId || null,
-					pageSlug: pageSlug || null, description,
-					mass: mass || null, radius: radius || null, density: density || null,
-					surfaceGravity: surfaceGravity || null, escapeVelocity: escapeVelocity || null,
-					temperature: temperature || null, age: age || null,
-					composition: composition || null, atmosphere: atmosphere || null,
-					surfacePressure: surfacePressure || null,
-					orbitalPeriod: orbitalPeriod || null, orbitalPeriodDays: parseNum(orbitalPeriodDays),
-					semiMajorAxis: semiMajorAxis || null, semiMajorAxisAu: parseNum(semiMajorAxisAu),
-					eccentricity: parseNum(eccentricity), inclination: parseNum(inclination),
-					rotationPeriod: rotationPeriod || null, rotationPeriodS: parseNum(rotationPeriodS),
-					axialTilt: parseNum(axialTilt),
-					apparentMagnitude: apparentMagnitude || null, angularDiameter: angularDiameter || null,
-					albedo: albedo || null,
-					satellites: parseNum(satellites), hasRings, extra,
-				}
+			const payload = isSystem
+				? { name, pageSlug: pageSlug || null, description, systemType, extra }
+				: isStar
+					? {
+						name, pageSlug: pageSlug || null, description, systemId,
+						spectralType: spectralType || null, mass: mass || null, radius: radius || null,
+						luminosity: luminosity || null, luminosityVisual: luminosityVisual || null,
+						temperature: temperature || null, age: age || null, color: color || null,
+						orbitalPeriod: orbitalPeriod || null, semiMajorAxis: semiMajorAxis || null,
+						semiMajorAxisAu: parseNum(semiMajorAxisAu), eccentricity: parseNum(eccentricity),
+						periastron: periastron || null, apastron: apastron || null,
+						apparentMagnitude: apparentMagnitude || null, angularDiameter: angularDiameter || null,
+						companion: companion || null, extra,
+					}
+					: {
+						name, bodyType, starId, parentId: parentId || null,
+						pageSlug: pageSlug || null, description,
+						mass: mass || null, radius: radius || null, density: density || null,
+						surfaceGravity: surfaceGravity || null, escapeVelocity: escapeVelocity || null,
+						temperature: temperature || null, age: age || null,
+						composition: composition || null, atmosphere: atmosphere || null,
+						surfacePressure: surfacePressure || null,
+						orbitalPeriod: orbitalPeriod || null, orbitalPeriodDays: parseNum(orbitalPeriodDays),
+						semiMajorAxis: semiMajorAxis || null, semiMajorAxisAu: parseNum(semiMajorAxisAu),
+						eccentricity: parseNum(eccentricity), inclination: parseNum(inclination),
+						rotationPeriod: rotationPeriod || null, rotationPeriodS: parseNum(rotationPeriodS),
+						axialTilt: parseNum(axialTilt),
+						apparentMagnitude: apparentMagnitude || null, angularDiameter: angularDiameter || null,
+						albedo: albedo || null,
+						satellites: parseNum(satellites), hasRings, extra,
+					}
 
 			const res = await fetch(endpoint, {
 				method: 'PUT',
@@ -126,7 +136,7 @@
 		<div>
 			<a href="/celestial" class="text-xs text-faint hover:text-link">← Back to registry</a>
 			<h1 class="text-xl font-bold text-heading">{name || 'Untitled'}</h1>
-			<p class="text-xs text-faint mt-0.5">{isStar ? 'Star' : bodyType} · {raw.slug}</p>
+			<p class="text-xs text-faint mt-0.5">{isSystem ? 'Star system' : isStar ? 'Star' : bodyType} · {raw.slug}</p>
 		</div>
 		{#if isAdmin}
 			<button onclick={save} disabled={saving} class="px-5 py-2 bg-accent text-surface text-sm font-medium transition-colors hover:bg-accent-hover disabled:opacity-50">
@@ -145,7 +155,37 @@
 		<Input label="Description" bind:value={description} placeholder="Short description" />
 	</section>
 
-	{#if isStar}
+	{#if isSystem}
+		<!-- System properties -->
+		<section class="bg-surface border border-border p-5 space-y-4">
+			<h2 class="text-sm font-semibold text-heading border-b border-border-subtle pb-2">System Properties</h2>
+			<div>
+				<span class="text-xs font-medium text-secondary block mb-1">System type</span>
+				<select bind:value={systemType} class="px-2 py-2 text-sm border border-border-strong bg-surface text-body outline-none transition-colors hover:border-border focus:ring-2 focus:ring-accent">
+					<option value="single">Single</option>
+					<option value="binary">Binary</option>
+					<option value="trinary">Trinary</option>
+					<option value="multiple">Multiple</option>
+				</select>
+			</div>
+		</section>
+	{:else if isStar}
+		<!-- System membership -->
+		{#if 'allSystems' in data}
+			<section class="bg-surface border border-border p-5 space-y-4">
+				<h2 class="text-sm font-semibold text-heading border-b border-border-subtle pb-2">System</h2>
+				<div>
+					<span class="text-xs font-medium text-secondary block mb-1">Star system</span>
+					<select bind:value={systemId} class="px-2 py-2 text-sm border border-border-strong bg-surface text-body outline-none transition-colors hover:border-border focus:ring-2 focus:ring-accent">
+						<option value={null}>None</option>
+						{#each data.allSystems as sys (sys.id)}
+							<option value={sys.id}>{sys.name}</option>
+						{/each}
+					</select>
+				</div>
+			</section>
+		{/if}
+
 		<!-- Stellar properties -->
 		<section class="bg-surface border border-border p-5 space-y-4">
 			<h2 class="text-sm font-semibold text-heading border-b border-border-subtle pb-2">Stellar Properties</h2>

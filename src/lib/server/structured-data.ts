@@ -1,6 +1,6 @@
 import { db } from './db/index.js'
-import { stars, planetaryBodies } from './db/schema.js'
-import { eq } from 'drizzle-orm'
+import { stars, planetaryBodies, starSystems } from './db/schema.js'
+import { eq, sql } from 'drizzle-orm'
 import type { FieldMap } from '$lib/infoboxes/types.js'
 
 /**
@@ -72,6 +72,58 @@ const DOMAIN_RESOLVERS: Record<string, (slug: string) => Promise<FieldMap | null
 DOMAIN_RESOLVERS['moon'] = DOMAIN_RESOLVERS['planet']
 DOMAIN_RESOLVERS['celestial'] = DOMAIN_RESOLVERS['planet']
 DOMAIN_RESOLVERS['celestial body'] = DOMAIN_RESOLVERS['planet']
+
+// Star systems — auto-computed from child stars and planets
+DOMAIN_RESOLVERS['system'] = async (slug) => {
+	const [system] = await db.select().from(starSystems).where(eq(starSystems.slug, slug))
+	if (!system) return null
+
+	// Fetch stars in this system
+	const systemStars = await db.execute(sql`
+		SELECT name, spectral_type, slug, page_slug
+		FROM stars WHERE system_id = ${system.id}
+		ORDER BY parent_star_id NULLS FIRST, name
+	`)
+
+	// Count planets
+	const [counts] = await db.execute(sql`
+		SELECT
+			(SELECT COUNT(*) FROM planetary_bodies pb JOIN stars s ON s.id = pb.star_id WHERE s.system_id = ${system.id} AND pb.body_type = 'planet')::int AS planets,
+			(SELECT COUNT(*) FROM planetary_bodies pb JOIN stars s ON s.id = pb.star_id WHERE s.system_id = ${system.id} AND pb.body_type = 'moon')::int AS moons,
+			(SELECT COUNT(*) FROM planetary_bodies pb JOIN stars s ON s.id = pb.star_id WHERE s.system_id = ${system.id} AND pb.body_type = 'dwarf_planet')::int AS dwarf_planets
+	`)
+
+	const fields = new Map<string, string>()
+	fields.set('name', system.name)
+	fields.set('system_type', system.systemType ?? 'single')
+
+	// Stars list
+	const starNames = (systemStars as any[]).map((s: any) => {
+		const link = s.page_slug ? `[[${s.page_slug}|${s.name}]]` : s.name
+		return s.spectral_type ? `${link} (${s.spectral_type})` : link
+	})
+	fields.set('stars', starNames.join(', '))
+	fields.set('star_count', String(systemStars.length))
+
+	const c = counts as any
+	if (c?.planets) fields.set('planets', String(c.planets))
+	if (c?.moons) fields.set('moons', String(c.moons))
+	if (c?.dwarf_planets) fields.set('dwarf_planets', String(c.dwarf_planets))
+
+	if (system.description) fields.set('description', system.description)
+
+	// Merge extra
+	const extra = system.extra as Record<string, unknown> | undefined
+	if (extra) {
+		for (const [k, v] of Object.entries(extra)) {
+			if (v != null && v !== '') fields.set(k, String(v))
+		}
+	}
+
+	return fields
+}
+DOMAIN_RESOLVERS['star system'] = DOMAIN_RESOLVERS['system']
+DOMAIN_RESOLVERS['planetary system'] = DOMAIN_RESOLVERS['system']
 
 /**
  * Resolve a `from=slug` reference for a given infobox type.

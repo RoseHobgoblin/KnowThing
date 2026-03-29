@@ -88,6 +88,11 @@ const KEYWORD_MAP: Record<string, InfoboxType> = {
 	'stellar': 'star',
 	'sun': 'star',
 
+	// Star system
+	'system': 'system',
+	'star system': 'system',
+	'planetary system': 'system',
+
 	// Planet / celestial body
 	'planet': 'planet',
 	'moon': 'planet',

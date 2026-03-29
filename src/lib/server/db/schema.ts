@@ -341,6 +341,24 @@ export const lexiconRelations = pgTable(
 // Celestial Bodies
 // ============================================================================
 
+export const starSystems = pgTable(
+	'star_systems',
+	{
+		id: serial('id').primaryKey(),
+		name: text('name').notNull(),
+		slug: text('slug').unique().notNull(),
+		pageSlug: text('page_slug'),
+		systemType: text('system_type').default('single'),
+		description: text('description').default(''),
+		extra: jsonb('extra').default({}),
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+	},
+	table => [
+		index('idx_star_systems_slug').on(table.slug),
+	],
+)
+
 export const stars = pgTable(
 	'stars',
 	{
@@ -370,6 +388,7 @@ export const stars = pgTable(
 
 		companion: text('companion'),
 		parentStarId: integer('parent_star_id'),
+		systemId: integer('system_id').references(() => starSystems.id, { onDelete: 'set null' }),
 
 		extra: jsonb('extra').default({}),
 		description: text('description').default(''),

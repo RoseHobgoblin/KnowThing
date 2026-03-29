@@ -1,5 +1,16 @@
 import { z } from 'zod'
 
+export const createSystemSchema = z.object({
+	name: z.string().min(1),
+	slug: z.string().min(1),
+	pageSlug: z.string().nullish(),
+	systemType: z.enum(['single', 'binary', 'trinary', 'multiple']).default('single'),
+	description: z.string().optional(),
+	extra: z.record(z.unknown()).optional(),
+})
+
+export const updateSystemSchema = createSystemSchema.partial()
+
 export const createStarSchema = z.object({
 	name: z.string().min(1),
 	slug: z.string().min(1),
@@ -26,6 +37,7 @@ export const createStarSchema = z.object({
 
 	companion: z.string().nullish(),
 	parentStarId: z.number().int().nullish(),
+	systemId: z.number().int().nullish(),
 
 	extra: z.record(z.unknown()).optional(),
 	description: z.string().optional(),

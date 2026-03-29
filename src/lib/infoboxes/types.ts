@@ -15,6 +15,7 @@ export type InfoboxType =
 	| 'religion'
 	| 'star'
 	| 'planet'
+	| 'system'
 	| 'generic'
 
 /** Map of normalized field name -> value, built from TemplateArg[] */

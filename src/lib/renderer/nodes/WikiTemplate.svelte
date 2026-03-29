@@ -18,6 +18,7 @@
 	import InfoboxReligion from '$lib/infoboxes/InfoboxReligion.svelte'
 	import InfoboxStar from '$lib/infoboxes/InfoboxStar.svelte'
 	import InfoboxPlanet from '$lib/infoboxes/InfoboxPlanet.svelte'
+	import InfoboxSystem from '$lib/infoboxes/InfoboxSystem.svelte'
 	import InfoboxGeneric from '$lib/infoboxes/InfoboxGeneric.svelte'
 
 	const INFOBOX_COMPONENTS: Record<string, typeof InfoboxGeneric> = {
@@ -31,6 +32,7 @@
 		religion: InfoboxReligion,
 		star: InfoboxStar,
 		planet: InfoboxPlanet,
+		system: InfoboxSystem,
 	}
 
 	let { name, args }: { name: string, args: TemplateArg[] } = $props()
