@@ -8,7 +8,7 @@ import { getSiteConfig } from '$lib/server/settings.js'
 
 export const load: LayoutServerLoad = async ({ locals }) => {
 	const [allContent, primaryCalendarRows, siteConfig] = await Promise.all([
-		db.select({ domain: contentRecords.domain, slug: contentRecords.slug }).from(contentRecords),
+		db.select({ domain: contentRecords.domain, slug: contentRecords.slug, parentPath: contentRecords.parentPath }).from(contentRecords),
 		db.select().from(calendars).where(eq(calendars.isPrimary, true)).limit(1),
 		getSiteConfig(),
 	])
@@ -70,7 +70,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		isAdmin: locals.user?.role === 'admin' || locals.user?.role === 'owner' || false,
 		isEditor: locals.user?.role === 'editor' || locals.user?.role === 'admin' || locals.user?.role === 'owner' || false,
 		existingPages: allContent.filter(c => c.domain === 'know').map(c => c.slug.toLowerCase()),
-		existingContent: allContent.map(c => ({ domain: c.domain, slug: c.slug.toLowerCase() })),
+		existingContent: allContent.map(c => ({ domain: c.domain, slug: c.slug.toLowerCase(), parentPath: c.parentPath })),
 		calendarDate,
 		siteConfig,
 	}

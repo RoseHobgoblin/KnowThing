@@ -2,7 +2,7 @@ import { fail, redirect } from '@sveltejs/kit'
 import type { Actions, PageServerLoad } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { contentRecords, contentRevisions } from '$lib/server/db/schema.js'
-import { eq } from 'drizzle-orm'
+import { eq, and, sql, ne } from 'drizzle-orm'
 import { requireAuth } from '$lib/server/auth.js'
 import { updateContentEffects } from '$lib/server/content-effects.js'
 import { slugify } from '$lib/renderer/context.js'
@@ -26,6 +26,21 @@ export const actions: Actions = {
 		}
 
 		const slug = slugify(title)
+
+		// Block creation if slug collides with another domain (celestial, calendar)
+		const [collision] = await db
+			.select({ domain: contentRecords.domain })
+			.from(contentRecords)
+			.where(and(
+				sql`LOWER(${contentRecords.slug}) = LOWER(${slug})`,
+				ne(contentRecords.domain, 'know'),
+			))
+			.limit(1)
+
+		if (collision) {
+			return fail(409, { error: `A ${collision.domain} entry with this name already exists. Use [[${collision.domain}:${title}]] to link to it.`, title, content })
+		}
+
 		const sizeBytes = new TextEncoder().encode(content).length
 
 		try {

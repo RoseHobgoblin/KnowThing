@@ -55,6 +55,7 @@ import CategoryBar from '$lib/components/CategoryBar.svelte'
 	createKnowContext({
 		existingPages: new Set(layoutData.existingPages || []),
 		existingContent,
+		existingContentEntries: layoutData.existingContent || null,
 		mediaBaseUrl: '/api/media',
 		pageBaseUrl: '/know',
 		calendarDate: layoutData.calendarDate ?? null,

@@ -16,6 +16,8 @@ export interface KnowRenderContext {
 	existingPages: Set<string>
 	/** All existing content across domains for cross-domain red-link detection */
 	existingContent: Map<string, Set<string>>
+	/** Full content entries with parentPath for URL resolution */
+	existingContentEntries: { domain: string, slug: string, parentPath?: string | null }[] | null
 	/** Resolve a simple (DB-stored) template — returns expanded AST or null */
 	templateResolver: ((name: string, args: TemplateArg[]) => WikiNode[] | null) | null
 	/** Current page name (for magic words like {{PAGENAME}}) */
@@ -44,6 +46,7 @@ export function createKnowContext(overrides: Partial<KnowRenderContext> = {}): K
 		footnotes: writable([]),
 		existingPages: new Set(),
 		existingContent: new Map(),
+		existingContentEntries: null,
 		templateResolver: null,
 		pageName: '',
 		namespace: '',

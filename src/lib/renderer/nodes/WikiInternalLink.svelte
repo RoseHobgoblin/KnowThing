@@ -8,8 +8,42 @@
 
 	const ctx = getKnowContext()
 	const slug = $derived(slugify(target))
-	const href = $derived(`${ctx.pageBaseUrl}/${slug}`)
-	const exists = $derived(ctx.existingPages.has(slug.toLowerCase()))
+
+	// Check know domain first, then fall through to celestial/calendar (NOT wordbook)
+	const resolved = $derived.by(() => {
+		const lowerSlug = slug.toLowerCase()
+
+		// Check know domain
+		if (ctx.existingPages.has(lowerSlug)) {
+			return { href: `${ctx.pageBaseUrl}/${slug}`, exists: true }
+		}
+
+		// Fall through to other domains (not wordbook — use [[wb:]] for that)
+		const fallbackDomains = ['celestial', 'calendar']
+		const contentMap = ctx.existingContent
+		if (contentMap) {
+			for (const domain of fallbackDomains) {
+				const domainSlugs = contentMap.get(domain)
+				if (domainSlugs?.has(lowerSlug)) {
+					// Found in another domain — build the URL
+					// Need parentPath for hierarchical URLs
+					const entry = ctx.existingContentEntries?.find(
+						e => e.domain === domain && e.slug === lowerSlug
+					)
+					if (entry?.parentPath) {
+						return { href: `/${domain}/${entry.parentPath}/${entry.slug}`, exists: true }
+					}
+					return { href: `/${domain}/${lowerSlug}`, exists: true }
+				}
+			}
+		}
+
+		// Not found anywhere
+		return { href: `${ctx.pageBaseUrl}/${slug}`, exists: false }
+	})
+
+	const href = $derived(resolved.href)
+	const exists = $derived(resolved.exists)
 
 	let showPreview = $state(false)
 	let previewX = $state(0)
