@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { PageData } from './$types.js'
 	import { page } from '$app/stores'
+	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import AlphabetNav from '$lib/components/wordbook/AlphabetNav.svelte'
 	import WordEntry from '$lib/components/wordbook/WordEntry.svelte'
 	import DimensionEditor from '$lib/components/wordbook/DimensionEditor.svelte'
@@ -22,45 +23,36 @@
 	}
 
 	const grouped = $derived(groupByLetter(data.entries))
+
+	// Build breadcrumbs from ancestry chain
+	const breadcrumbs = $derived([
+		{ label: 'Wordbook', href: '/wordbook' },
+		...data.ancestryChain.slice(0, -1).map((a: any) => ({ label: a.name, href: `/wordbook/${a.slug}` })),
+		{ label: data.language.name },
+	])
 </script>
 
 <svelte:head>
 	<title>{data.language.name} — Wordbook — KnowThing</title>
 </svelte:head>
 
-<div class="space-y-6">
-	<!-- Ancestry breadcrumb -->
-	{#if data.ancestryChain.length > 1}
-		<nav class="flex items-center gap-1 text-sm text-dim flex-wrap">
-			{#each data.ancestryChain as ancestor, index}
-				{#if index > 0}<span class="text-faint">›</span>{/if}
-				{#if ancestor.id === data.language.id}
-					<span class="text-secondary font-medium">{ancestor.name}</span>
-				{:else}
-					<a href="/wordbook/{ancestor.slug}" class="hover:text-link">{ancestor.name}</a>
-				{/if}
-			{/each}
-		</nav>
-	{/if}
+<ArticleShell
+	{breadcrumbs}
+	title={data.language.name}
+>
+	{#snippet actions()}
+		<a href="/wordbook/contribute?language={data.language.slug}" class="text-sm text-link hover:text-link-hover hover:underline">+ Add word</a>
+		<a href="/wordbook/contribute/language/{data.language.slug}" class="text-sm text-faint hover:text-link hover:underline">Edit language</a>
+	{/snippet}
 
-	<!-- Language header -->
-	<div>
-		<div class="flex items-start justify-between mb-1">
-			<div class="flex items-baseline gap-3">
-				<h1 class="text-3xl font-bold text-heading">{data.language.name}</h1>
-				{#if data.language.nativeName}
-					<span class="text-lg text-faint italic">{data.language.nativeName}</span>
-				{/if}
-			</div>
-			<div class="flex gap-3 shrink-0">
-				<a href="/wordbook/contribute?language={data.language.slug}" class="text-sm text-link hover:text-link-hover hover:underline">+ Add word</a>
-				<a href="/wordbook/contribute/language/{data.language.slug}" class="text-sm text-faint hover:text-link hover:underline">Edit language</a>
-			</div>
-		</div>
-
-		<div class="flex items-center gap-3 text-sm text-dim mb-3">
+	{#snippet badges()}
+		<div class="flex items-center gap-3 text-sm text-dim mt-1">
+			{#if data.language.nativeName}
+				<span class="italic">{data.language.nativeName}</span>
+				<span class="text-faint">·</span>
+			{/if}
 			{#if data.language.family}
-				<span>{data.language.family} family</span>
+				<span>{data.language.family}</span>
 			{/if}
 			{#if data.language.script}
 				<span class="text-faint">·</span>
@@ -69,21 +61,21 @@
 			<span class="text-faint">·</span>
 			<span style="color: {data.language.color};" class="font-medium">{Number(data.language.wordCount)} words</span>
 		</div>
+	{/snippet}
 
-		{#if data.language.description}
-			<p class="text-secondary leading-relaxed">{data.language.description}</p>
-		{/if}
+	{#if data.language.description}
+		<p class="text-secondary leading-relaxed mb-4">{data.language.description}</p>
+	{/if}
 
-		{#if data.language.pageSlug}
-			<a href="/know/{data.language.pageSlug}" class="inline-block mt-2 text-sm text-link hover:text-link-hover hover:underline">
-				Read the full article →
-			</a>
-		{/if}
-	</div>
+	{#if data.language.pageSlug}
+		<a href="/know/{data.language.pageSlug}" class="inline-block mb-4 text-sm text-link hover:text-link-hover hover:underline">
+			Read the full article →
+		</a>
+	{/if}
 
 	<!-- Child languages -->
 	{#if data.children.length > 0}
-		<div class="bg-surface border border-border p-4">
+		<div class="bg-raised border border-border-subtle p-4 mb-4">
 			<h3 class="text-sm font-semibold text-body mb-2">Descendant languages</h3>
 			<div class="flex flex-wrap gap-2">
 				{#each data.children as child}
@@ -108,7 +100,7 @@
 
 	<!-- Dialects -->
 	{#if data.dialects.length > 0}
-		<div class="bg-surface border border-border p-4">
+		<div class="bg-raised border border-border-subtle p-4 mb-4">
 			<h3 class="text-sm font-semibold text-body mb-2">Dialects</h3>
 			<div class="space-y-1">
 				{#each data.dialects as dialect}
@@ -123,7 +115,7 @@
 		</div>
 	{/if}
 
-	<!-- Inflection system (editor+ only) -->
+	<!-- Inflection system -->
 	{#if data.inflectionDimensions.length > 0 || isAuthenticated}
 		<DimensionEditor
 			languageSlug={data.language.slug}
@@ -133,7 +125,7 @@
 	{/if}
 
 	<!-- Alphabet nav -->
-	<div class="border-y border-border bg-surface px-2">
+	<div class="border border-border-subtle bg-raised px-2 mb-4">
 		<AlphabetNav
 			activeLetters={data.activeLetters}
 			currentLetter={data.currentLetter}
@@ -144,9 +136,9 @@
 	<!-- Entries -->
 	{#if data.entries.length > 0}
 		{#each grouped as [letter, entries]}
-			<section>
+			<section class="mb-4">
 				<h2 class="text-xl font-bold text-faint mb-2 pl-1" id="letter-{letter}">{letter}</h2>
-				<div class="bg-surface border border-border divide-y divide-border-subtle">
+				<div class="bg-raised border border-border-subtle divide-y divide-border-subtle">
 					{#each entries as entry}
 						<WordEntry {entry} showLanguage={false} />
 					{/each}
@@ -165,4 +157,4 @@
 			{/if}
 		</div>
 	{/if}
-</div>
+</ArticleShell>

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types.js'
+	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import WordbookSearch from '$lib/components/wordbook/WordbookSearch.svelte'
 	import LanguageCard from '$lib/components/wordbook/LanguageCard.svelte'
 	import WordEntry from '$lib/components/wordbook/WordEntry.svelte'
@@ -11,24 +12,25 @@
 	<title>Wordbook — KnowThing</title>
 </svelte:head>
 
-<div class="space-y-8">
-	<!-- Hero -->
-	<div class="text-center py-6">
-		<h1 class="text-3xl font-bold text-heading mb-2">Wordbook</h1>
-		<p class="text-dim mb-6">
-			{data.totalWords} {data.totalWords === 1 ? 'word' : 'words'} across {data.languages.length} {data.languages.length === 1 ? 'language' : 'languages'}
-		</p>
-		<div class="max-w-2xl mx-auto">
-			<WordbookSearch languages={data.languages} large />
-		</div>
-		<div class="flex justify-center gap-3 mt-4">
-			<a href="/wordbook/contribute" class="text-sm text-link hover:text-link-hover hover:underline">+ Add word</a>
-		</div>
+<ArticleShell
+	breadcrumbs={[{ label: 'Wordbook' }]}
+	title="Wordbook"
+>
+	<p class="text-dim mb-4">
+		{data.totalWords} {data.totalWords === 1 ? 'word' : 'words'} across {data.languages.length} {data.languages.length === 1 ? 'language' : 'languages'}
+	</p>
+
+	<div class="max-w-2xl mb-4">
+		<WordbookSearch languages={data.languages} large />
+	</div>
+
+	<div class="mb-6">
+		<a href="/wordbook/contribute" class="text-sm text-link hover:text-link-hover hover:underline">+ Add word</a>
 	</div>
 
 	<!-- Languages -->
 	{#if data.languages.length > 0}
-		<section>
+		<section class="mb-6">
 			<div class="flex items-center justify-between mb-3">
 				<h2 class="text-lg font-semibold text-body">Languages</h2>
 				<a href="/wordbook/contribute/language" class="text-sm text-link hover:text-link-hover hover:underline">+ Add language</a>
@@ -60,11 +62,11 @@
 	{#if data.recent.length > 0}
 		<section>
 			<h2 class="text-lg font-semibold text-body mb-3">Recently Added</h2>
-			<div class="bg-surface border border-border divide-y divide-border-subtle">
+			<div class="bg-raised border border-border-subtle divide-y divide-border-subtle">
 				{#each data.recent as entry}
 					<WordEntry {entry} />
 				{/each}
 			</div>
 		</section>
 	{/if}
-</div>
+</ArticleShell>

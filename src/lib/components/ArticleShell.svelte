@@ -26,19 +26,16 @@
 	<div class="px-4 pt-4 md:px-6">
 		{#if breadcrumbs.length > 0}
 			<div class="text-[10px] font-semibold uppercase tracking-wider mb-1">
+				<a href="/" class="text-link transition-colors hover:text-link-hover">/</a>
 				{#each parentCrumbs as crumb, i (i)}
-					{#if i > 0}
-						<span class="text-faint"> / </span>
-					{/if}
+					<span class="text-faint"> / </span>
 					{#if crumb.href}
 						<a href={crumb.href} class="text-link transition-colors hover:text-link-hover">{crumb.label}</a>
 					{:else}
 						<span class="text-faint">{crumb.label}</span>
 					{/if}
 				{/each}
-				{#if parentCrumbs.length > 0}
-					<span class="text-faint"> / </span>
-				{/if}
+				<span class="text-faint"> / </span>
 				<span class="text-accent">{currentCrumb?.label ?? title}</span>
 			</div>
 		{/if}

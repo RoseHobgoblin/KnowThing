@@ -2,6 +2,7 @@
 	import CalendarWidget from '$lib/calendar/CalendarWidget.svelte'
 	import { resolveDisplay } from '$lib/calendar/date-math.js'
 	import type { CalendarConfig } from '$lib/calendar/types.js'
+	import ArticleShell from '$lib/components/ArticleShell.svelte'
 
 	let { data } = $props()
 
@@ -16,9 +17,10 @@
 	<title>Calendar — KnowThing</title>
 </svelte:head>
 
-<div class="max-w-4xl mx-auto px-4 py-6">
-	<h1 class="text-2xl font-bold text-body mb-6">World Calendar</h1>
-
+<ArticleShell
+	breadcrumbs={[{ label: 'Calendar' }]}
+	title="Calendar"
+>
 	{#if data.calendars.length === 0}
 		<div class="bg-accent-subtle border border-accent-border p-6 text-center">
 			<p class="text-accent-text font-medium">No calendars configured yet.</p>
@@ -57,7 +59,7 @@
 				/>
 
 				<!-- Current date info -->
-				<div class="bg-page border border-border-strong p-4">
+				<div class="bg-raised border border-border-subtle p-4">
 					<h2 class="font-bold text-body mb-3">Current Date</h2>
 					<div class="space-y-2 text-sm">
 						<div class="flex justify-between">
@@ -126,4 +128,4 @@
 			</div>
 		{/if}
 	{/if}
-</div>
+</ArticleShell>
