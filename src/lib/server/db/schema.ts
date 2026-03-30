@@ -145,7 +145,8 @@ export const calendars = pgTable('calendars', {
 	name: text('name').unique().notNull(),
 	description: text('description').default(''),
 	isPrimary: boolean('is_primary').default(false).notNull(),
-	staticData: jsonb('static_data').notNull(), // months, weekdays, leap days, moons, eras, seasons
+	staticData: jsonb('static_data').notNull(),
+	planetId: integer('planet_id').references(() => planetaryBodies.id, { onDelete: 'set null' }),
 })
 
 // ============================================================================
@@ -401,6 +402,7 @@ export const stars = pgTable(
 		parentStarId: integer('parent_star_id'),
 		systemId: integer('system_id').references(() => starSystems.id, { onDelete: 'set null' }),
 		contentRecordId: integer('content_record_id').references(() => contentRecords.id, { onDelete: 'set null' }),
+		epochPhase: doublePrecision('epoch_phase').default(0),
 
 		extra: jsonb('extra').default({}),
 		description: text('description').default(''),
@@ -453,6 +455,7 @@ export const planetaryBodies = pgTable(
 
 		satellites: integer('satellites'),
 		hasRings: boolean('has_rings').default(false),
+		epochPhase: doublePrecision('epoch_phase').default(0),
 
 		extra: jsonb('extra').default({}),
 		description: text('description').default(''),

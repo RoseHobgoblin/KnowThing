@@ -31,6 +31,13 @@ export interface StaticCalendarData {
 	/** Length of one calendar day in real seconds. Default: 86400 (24 Earth-hours).
 	 *  Use 72000 for a 20-hour day, 43200 for a 12-hour day, etc. */
 	day_length_seconds?: number
+	/** Injected from celestial data when the calendar has a planet_id.
+	 *  Provides orbital mechanics for lunisolar intercalation and derived physics. */
+	planet?: {
+		orbital_period_days: number
+		rotation_period_s: number
+		moons: { id: number, orbital_period_days: number, epoch_phase: number }[]
+	}
 }
 
 export interface Weekday {
@@ -42,16 +49,23 @@ export interface Month {
 	name: string
 	/** Days in a normal (non-leap) year */
 	length: number
-	/** "regular" or "intercalary" */
+	/** "regular", "intercalary", or "lunisolar_leap" */
 	month_type: MonthType
 	/** For intercalary months: appears every N years */
 	interval?: number
 	/** For intercalary months: offset from interval cycle */
 	offset?: number
+	/** For lunisolar_leap months: rules for computing insertion position */
+	lunisolar?: {
+		/** Number of equal divisions of the solar year (24 for Chinese, 12 for Hindu) */
+		solar_divisions: number
+		/** Index into the moons array — which moon drives the lunar month cycle */
+		moon_index: number
+	}
 	short_name?: string
 }
 
-export type MonthType = 'regular' | 'intercalary'
+export type MonthType = 'regular' | 'intercalary' | 'lunisolar_leap'
 
 export interface LeapDay {
 	name: string
@@ -81,6 +95,8 @@ export interface Moon {
 	face_color: string
 	/** Hex color for shadow portion */
 	shadow_color: string
+	/** Links to planetary_bodies.id — when set, cycle/offset are derived from the celestial body */
+	celestial_id?: number
 }
 
 export interface Era {

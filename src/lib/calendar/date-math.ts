@@ -3,12 +3,82 @@ import type {
 	StaticCalendarData,
 	CalendarDate,
 	LeapDay,
+	Month,
 	Moon,
 	Era,
 	Season,
 	ResolvedDate,
 	MoonPhase,
 } from './types.js'
+
+// ============================================================================
+// Year layout — the ordered list of months for a given year
+// ============================================================================
+
+export interface MonthLayout {
+	/** Original month definition */
+	month: Month
+	/** Original index in data.months (for leap day matching) */
+	sourceIndex: number
+	/** Whether this is an inserted lunisolar leap month */
+	isLeapMonth: boolean
+	/** Display name (may differ from month.name for leap months) */
+	displayName: string
+}
+
+/** Cache for computed year layouts */
+const layoutCache = new Map<string, Map<number, MonthLayout[]>>()
+
+/**
+ * Compute the ordered month sequence for a given year.
+ * For non-lunisolar calendars, returns the static month list.
+ * For lunisolar calendars, computes leap month insertion.
+ */
+export function computeYearLayout(data: StaticCalendarData, year: number): MonthLayout[] {
+	// Check cache — key by data identity (use months length + first month name as cheap key)
+	const cacheKey = `${data.months.length}:${data.months[0]?.name ?? ''}:${data.first_week_day}`
+	let yearCache = layoutCache.get(cacheKey)
+	if (!yearCache) {
+		yearCache = new Map()
+		layoutCache.set(cacheKey, yearCache)
+	}
+	const cached = yearCache.get(year)
+	if (cached) return cached
+
+	const hasLunisolar = data.months.some(m => m.month_type === 'lunisolar_leap')
+
+	let layout: MonthLayout[]
+
+	if (!hasLunisolar) {
+		// Non-lunisolar: static month list
+		layout = data.months.map((month, i) => ({
+			month,
+			sourceIndex: i,
+			isLeapMonth: false,
+			displayName: month.name,
+		}))
+	} else {
+		// Lunisolar: compute leap month insertion (Step 4 will implement this)
+		layout = computeLunisolarLayout(data, year)
+	}
+
+	yearCache.set(year, layout)
+	return layout
+}
+
+/** Placeholder for lunisolar layout computation — Step 4 will implement the real algorithm */
+function computeLunisolarLayout(data: StaticCalendarData, year: number): MonthLayout[] {
+	// For now, return the regular months without the lunisolar_leap template
+	// Step 4 replaces this with the actual solar term / lunar month alignment algorithm
+	return data.months
+		.filter(m => m.month_type !== 'lunisolar_leap')
+		.map((month, i) => ({
+			month,
+			sourceIndex: i,
+			isLeapMonth: false,
+			displayName: month.name,
+		}))
+}
 
 // ============================================================================
 // Leap day logic
@@ -40,12 +110,20 @@ export function leapDayApplies(ld: LeapDay, year: number): boolean {
 // Days in month/year
 // ============================================================================
 
-/** Get total days in a month (including any leap days) */
+/** Get total days in a layout month (including any leap days) */
 export function daysInMonth(data: StaticCalendarData, year: number, monthIndex: number): number {
-	const month = data.months[monthIndex]
-	if (!month) return 0
+	const layout = computeYearLayout(data, year)
+	return daysInLayoutMonth(data, year, layout, monthIndex)
+}
 
-	// Intercalary months only appear on certain years
+/** Internal: compute days for a month in the computed layout */
+function daysInLayoutMonth(data: StaticCalendarData, year: number, layout: MonthLayout[], layoutIndex: number): number {
+	const entry = layout[layoutIndex]
+	if (!entry) return 0
+
+	const month = entry.month
+
+	// Intercalary months only appear on certain years (non-lunisolar)
 	if (month.month_type === 'intercalary') {
 		const interval = month.interval ?? 1
 		const offset = month.offset ?? 0
@@ -54,9 +132,9 @@ export function daysInMonth(data: StaticCalendarData, year: number, monthIndex: 
 
 	let days = month.length
 
-	// Add leap days that belong to this month
+	// Add leap days that belong to this month's source index
 	for (const ld of data.leap_days) {
-		if (ld.month_index === monthIndex && leapDayApplies(ld, year)) {
+		if (ld.month_index === entry.sourceIndex && leapDayApplies(ld, year)) {
 			days += 1
 		}
 	}
@@ -66,9 +144,10 @@ export function daysInMonth(data: StaticCalendarData, year: number, monthIndex: 
 
 /** Get total days in a year */
 export function daysInYear(data: StaticCalendarData, year: number): number {
+	const layout = computeYearLayout(data, year)
 	let total = 0
-	for (let index = 0; index < data.months.length; index++) {
-		total += daysInMonth(data, year, index)
+	for (let index = 0; index < layout.length; index++) {
+		total += daysInLayoutMonth(data, year, layout, index)
 	}
 	return total
 }
@@ -87,15 +166,15 @@ export function absoluteDay(data: StaticCalendarData, date: CalendarDate): numbe
 			abs += daysInYear(data, y)
 		}
 	} else {
-		// Years before year 1 (negative/zero years)
 		for (let y = date.year; y < 1; y++) {
 			abs -= daysInYear(data, y)
 		}
 	}
 
 	// Sum all prior months in the current year (month is 1-indexed)
+	const layout = computeYearLayout(data, date.year)
 	for (let m = 0; m < date.month - 1; m++) {
-		abs += daysInMonth(data, date.year, m)
+		abs += daysInLayoutMonth(data, date.year, layout, m)
 	}
 
 	// Add days (1-indexed, so subtract 1)
@@ -123,13 +202,13 @@ export function dateFromAbsolute(data: StaticCalendarData, abs: number): Calenda
 			year--
 			remaining += daysInYear(data, year)
 		}
-		// Now remaining >= 0, year is correct
 	}
 
-	// Find month
+	// Find month using layout
+	const layout = computeYearLayout(data, year)
 	let month = 1
-	for (let m = 0; m < data.months.length; m++) {
-		const mDays = daysInMonth(data, year, m)
+	for (let m = 0; m < layout.length; m++) {
+		const mDays = daysInLayoutMonth(data, year, layout, m)
 		if (mDays === 0) {
 			month++
 			continue
@@ -318,7 +397,8 @@ export function resolveDisplay(config: CalendarConfig, date?: CalendarDate): Res
 	const data = config.static_data
 
 	const monthIndex = d.month - 1
-	const monthName = data.months[monthIndex]?.name ?? `Month ${d.month}`
+	const layout = computeYearLayout(data, d.year)
+	const monthName = layout[monthIndex]?.displayName ?? data.months[monthIndex]?.name ?? `Month ${d.month}`
 	const weekdayName = dayOfWeekName(data, d)
 	const era = eraForYear(data, d.year)
 	const season = seasonForDate(data, d)
@@ -365,7 +445,8 @@ export function getMonthGrid(
 	const data = config.static_data
 	const totalDays = daysInMonth(data, year, monthIndex)
 	const weekdays = data.weekdays.map(w => w.abbreviation ?? w.name.slice(0, 2))
-	const monthName = data.months[monthIndex]?.name ?? ''
+	const layout = computeYearLayout(data, year)
+	const monthName = layout[monthIndex]?.displayName ?? data.months[monthIndex]?.name ?? ''
 
 	// What weekday does day 1 fall on?
 	const startWeekday = dayOfWeek(data, { year, month: monthIndex + 1, day: 1 })
