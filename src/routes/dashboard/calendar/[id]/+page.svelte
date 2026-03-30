@@ -18,11 +18,14 @@
 	let name = $state(data.calendar.name)
 	let description = $state(data.calendar.description || '')
 	let isPrimary = $state(data.calendar.isPrimary)
+	let planetId = $state<number | null>(data.calendar.planetId ?? null)
 	let epochOffset = $state(sd.epoch_offset ?? 0)
 	let firstWeekDay = $state(sd.first_week_day ?? 0)
 	let yearOffset = $state(sd.year_offset ?? 0)
 	let dayLengthSeconds = $state(sd.day_length_seconds ?? 86_400)
 	let displayMoons = $state(sd.display_moons ?? false)
+
+	const linkedPlanet = $derived((data.planets as any[])?.find((p: any) => p.id === planetId))
 
 	let months = $state<Array<{ _id: number, name: string, length: number, month_type: string, short_name: string }>>(
 		(sd.months || []).map((m: any) => ({ _id: uid(), name: m.name, length: m.length, month_type: m.month_type || 'regular', short_name: m.short_name || '' })),
@@ -85,7 +88,7 @@
 		const response = await fetch(`/api/calendar/${data.calendar.id}`, {
 			method: 'PUT',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ name, description, isPrimary, staticData: buildStaticData() }),
+			body: JSON.stringify({ name, description, isPrimary, planetId, staticData: buildStaticData() }),
 		})
 		if (response.ok) pushSuccess('Calendar saved')
 		else pushError('Failed to save calendar')
@@ -155,6 +158,42 @@
 				<input type="checkbox" bind:checked={displayMoons} class="accent-accent" />
 				Show moon phases
 			</label>
+		</div>
+	</section>
+
+	<!-- Planet Link -->
+	<section class="bg-surface border border-border p-5 space-y-4">
+		<div>
+			<h2 class="text-sm font-semibold text-heading">Planet Link</h2>
+			<p class="text-xs text-faint mt-0.5">Link this calendar to a planet for derived physics (day length, moon cycles).</p>
+		</div>
+		<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+			<div>
+				<span class="text-xs font-medium text-secondary block mb-1">Planet</span>
+				<select bind:value={planetId} class="w-full px-2 py-2 text-sm border border-border-strong bg-surface text-body outline-none transition-colors hover:border-border focus:ring-2 focus:ring-accent">
+					<option value={null}>None (manual configuration)</option>
+					{#each data.planets as planet (planet.id)}
+						<option value={planet.id}>{planet.systemName ? `${planet.systemName} / ` : ''}{planet.name}</option>
+					{/each}
+				</select>
+			</div>
+			{#if linkedPlanet}
+				<div class="space-y-1 text-xs text-secondary bg-raised p-3">
+					<div class="font-medium text-heading text-sm mb-1">Derived from {linkedPlanet.name}</div>
+					{#if linkedPlanet.rotationPeriodS}
+						<div>Day length: <span class="text-body font-medium">{Math.round((linkedPlanet.rotationPeriodS / 3600) * 100) / 100}h</span> ({linkedPlanet.rotationPeriodS}s)</div>
+					{/if}
+					{#if linkedPlanet.orbitalPeriodDays}
+						<div>Orbital year: <span class="text-body font-medium">{linkedPlanet.orbitalPeriodDays} days</span></div>
+						{@const calendarYear = months.reduce((sum, m) => sum + m.length, 0)}
+						<div>Calendar year: <span class="text-body font-medium">{calendarYear} days</span>
+							{#if Math.abs(calendarYear - linkedPlanet.orbitalPeriodDays) > 0.01}
+								<span class="text-accent ml-1">({(linkedPlanet.orbitalPeriodDays - calendarYear) > 0 ? '+' : ''}{(linkedPlanet.orbitalPeriodDays - calendarYear).toFixed(2)} drift/year)</span>
+							{/if}
+						</div>
+					{/if}
+				</div>
+			{/if}
 		</div>
 	</section>
 

@@ -11,6 +11,7 @@ const updateCalendarSchema = z.object({
 	name: z.string().optional(),
 	description: z.string().optional(),
 	isPrimary: z.boolean().optional(),
+	planetId: z.number().int().nullable().optional(),
 	staticData: staticDataSchema.optional(),
 })
 
@@ -41,7 +42,7 @@ export const PUT: RequestHandler = async (event) => {
 		return json({ error: parsed.error.issues[0].message }, { status: 400 })
 	}
 
-	const { name, description, isPrimary, staticData } = parsed.data
+	const { name, description, isPrimary, planetId, staticData } = parsed.data
 
 	// If setting as primary, unset others
 	if (isPrimary) {
@@ -54,6 +55,7 @@ export const PUT: RequestHandler = async (event) => {
 			...(name && { name: name.trim() }),
 			...(description !== undefined && { description: description?.trim() || '' }),
 			...(isPrimary !== undefined && { isPrimary }),
+			...(planetId !== undefined && { planetId }),
 			...(staticData && { staticData }),
 		})
 		.where(eq(calendars.id, id))

@@ -1,7 +1,7 @@
 import type { PageServerLoad } from './$types.js'
 import { db } from '$lib/server/db/index.js'
-import { calendars } from '$lib/server/db/schema.js'
-import { eq } from 'drizzle-orm'
+import { calendars, planetaryBodies, stars, starSystems } from '$lib/server/db/schema.js'
+import { eq, sql } from 'drizzle-orm'
 import { redirect, error } from '@sveltejs/kit'
 
 export const load: PageServerLoad = async ({ locals, params }) => {
@@ -14,5 +14,19 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	const [cal] = await db.select().from(calendars).where(eq(calendars.id, id))
 	if (!cal) error(404, 'Calendar not found')
 
-	return { calendar: cal }
+	// Load planets for the planet link dropdown
+	const planets = await db.execute(sql`
+		SELECT pb.id, pb.name, pb.slug,
+			pb.orbital_period_days AS "orbitalPeriodDays",
+			pb.rotation_period_s AS "rotationPeriodS",
+			s.name AS "starName",
+			ss.name AS "systemName"
+		FROM planetary_bodies pb
+		LEFT JOIN stars s ON s.id = pb.star_id
+		LEFT JOIN star_systems ss ON ss.id = s.system_id
+		WHERE pb.body_type = 'planet'
+		ORDER BY ss.name, s.name, pb.name
+	`)
+
+	return { calendar: cal, planets }
 }

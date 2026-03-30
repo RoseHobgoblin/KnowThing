@@ -25,11 +25,12 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	if (system) {
 		if (system.slug !== slug && !isEditMode) redirect(301, `/celestial/${system.slug}`)
 		const content = await getContent(system.contentRecordId)
-		// Fetch stars + bodies for system map
+		// Fetch stars + bodies for system map (include orbital data)
 		const systemStars = await db.execute(sql`
 			SELECT id, name, slug, spectral_type AS "spectralType", color,
 				page_slug AS "pageSlug", semi_major_axis_au AS "semiMajorAxisAu",
-				eccentricity, parent_star_id AS "parentStarId"
+				eccentricity, parent_star_id AS "parentStarId",
+				epoch_phase AS "epochPhase"
 			FROM stars WHERE system_id = ${system.id}
 			ORDER BY parent_star_id NULLS FIRST, name
 		`)
@@ -37,14 +38,28 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			SELECT pb.id, pb.name, pb.slug, pb.body_type AS "bodyType",
 				pb.page_slug AS "pageSlug", pb.semi_major_axis_au AS "semiMajorAxisAu",
 				pb.eccentricity, pb.star_id AS "starId", pb.parent_id AS "parentId",
+				pb.orbital_period_days AS "orbitalPeriodDays",
+				pb.epoch_phase AS "epochPhase",
 				(SELECT COUNT(*) FROM planetary_bodies m WHERE m.parent_id = pb.id)::int AS "moonCount"
 			FROM planetary_bodies pb
 			JOIN stars s ON s.id = pb.star_id
 			WHERE s.system_id = ${system.id}
 			ORDER BY pb.semi_major_axis_au NULLS LAST, pb.name
 		`)
+		// Load calendars relevant to this system (linked to bodies here, plus universal)
+		const systemCalendars = await db.execute(sql`
+			SELECT c.id, c.name, c.static_data AS "staticData", c.planet_id AS "planetId"
+			FROM calendars c
+			WHERE c.planet_id IN (
+				SELECT pb.id FROM planetary_bodies pb
+				JOIN stars s ON s.id = pb.star_id
+				WHERE s.system_id = ${system.id}
+			)
+			OR c.planet_id IS NULL
+			ORDER BY c.name
+		`)
 		const infoboxFields = await resolveStructuredData('system', system.slug)
-		return { kind: 'system' as const, body: system, isEditMode, systemStars, systemBodies, infoboxFields: infoboxFields ? Object.fromEntries(infoboxFields) : null, ...content }
+		return { kind: 'system' as const, body: system, isEditMode, systemStars, systemBodies, systemCalendars, infoboxFields: infoboxFields ? Object.fromEntries(infoboxFields) : null, ...content }
 	}
 
 	const [star] = await db.select().from(stars).where(sql`LOWER(${stars.slug}) = LOWER(${slug}) OR LOWER(${stars.pageSlug}) = LOWER(${slug})`)

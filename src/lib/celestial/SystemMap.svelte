@@ -13,21 +13,28 @@
 		spectralType?: string | null
 		starId?: number | null
 		parentId?: number | null
+		orbitalPeriodDays?: number | null
+		epochPhase?: number | null
 	}
 </script>
 
 <script lang="ts">
 	import { goto } from '$app/navigation'
 	import { resolveColor } from './colors.js'
+	import { orbitalAngle } from './orbit.js'
 
 	let {
 		systemName,
 		stars,
 		bodies,
+		currentAbsoluteDay,
 	}: {
 		systemName: string
 		stars: MapBody[]
 		bodies: MapBody[]
+		/** When set, positions bodies at their actual orbital position for this day.
+		 *  When null/undefined, spreads bodies evenly for visual clarity. */
+		currentAbsoluteDay?: number | null
 	} = $props()
 
 	let hovered = $state<(MapBody & { isStar: boolean, spectralType?: string | null }) | null>(null)
@@ -82,13 +89,21 @@
 	}
 
 	// Position each body on its orbit
-	function bodyPosition(body: { orbitAu: number, ecc: number }, index: number, total: number) {
+	function bodyPosition(body: MapBody & { orbitAu: number, ecc: number }, index: number, total: number) {
 		const a = auToPixels(body.orbitAu)
 		const b = a * Math.sqrt(1 - body.ecc * body.ecc)
 		const offset = a * body.ecc
 
-		// Spread bodies around the orbit — deterministic angle from index
-		const angle = (index / Math.max(total, 1)) * Math.PI * 2 - Math.PI / 2
+		let angle: number
+		if (currentAbsoluteDay != null && body.orbitAu > 0) {
+			// Use real orbital position based on the current date
+			const periodDays = body.orbitalPeriodDays ?? (body.orbitAu * 365.25) // rough fallback
+			const phase = body.epochPhase ?? 0
+			angle = orbitalAngle(periodDays, phase, currentAbsoluteDay)
+		} else {
+			// No date context — spread evenly for visual clarity
+			angle = (index / Math.max(total, 1)) * Math.PI * 2 - Math.PI / 2
+		}
 
 		return {
 			x: CENTER - offset + a * Math.cos(angle),

@@ -8,6 +8,7 @@
 	import InfoboxSystem from '$lib/infoboxes/InfoboxSystem.svelte'
 	import SystemMap from '$lib/celestial/SystemMap.svelte'
 	import SystemSidebar from '$lib/celestial/SystemSidebar.svelte'
+	import DateScrubber from '$lib/celestial/DateScrubber.svelte'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import PencilSimple from 'phosphor-svelte/lib/PencilSimple'
 	import Editor from '$lib/components/Editor.svelte'
@@ -28,6 +29,26 @@
 		mediaBaseUrl: '/api/media',
 		pageBaseUrl: '/know',
 		calendarDate: layoutData.calendarDate ?? null,
+	})
+
+	// System map time state — default to "now" via primary calendar
+	let currentAbsoluteDay = $state(Math.floor(Date.now() / 86_400_000))
+
+	// Build calendar configs for the date scrubber
+	const systemCalendarConfigs = $derived.by(() => {
+		if (!data.systemCalendars) return []
+		return (data.systemCalendars as any[]).map((c: any) => ({
+			id: c.id,
+			name: c.name,
+			description: '',
+			primary: false,
+			static_data: {
+				first_week_day: 0, weekdays: [], months: [], leap_days: [],
+				moons: [], eras: [], seasons: [], display_moons: false,
+				year_offset: 0, epoch_offset: 0,
+				...(c.staticData as Record<string, unknown>),
+			},
+		}))
 	})
 
 	// Edit mode state
@@ -155,7 +176,14 @@
 								systemName={raw.name}
 								stars={data.systemStars}
 								bodies={data.systemBodies ?? []}
+								{currentAbsoluteDay}
 							/>
+							{#if systemCalendarConfigs.length > 0}
+								<DateScrubber
+									calendars={systemCalendarConfigs}
+									bind:currentAbsoluteDay
+								/>
+							{/if}
 						{:else}
 							<div class="flex items-center justify-center h-64 text-dim border border-border-subtle">
 								No stars registered in this system.
