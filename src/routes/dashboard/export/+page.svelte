@@ -1,6 +1,8 @@
 <script lang="ts">
 	import type { PageData, ActionData } from './$types.js'
 
+	import Button from '$lib/components/ui/Button.svelte'
+
 	let { data, form }: { data: PageData, form: ActionData } = $props()
 
 	function downloadExport() {
@@ -30,14 +32,8 @@
 	</p>
 
 	<form method="POST">
-		<button
-			type="submit"
-			class="
-				px-5 py-2.5 bg-accent text-surface font-medium transition-colors
-				hover:bg-accent-hover
-			"
-		>
+		<Button type="submit" size="lg">
 			Download Export
-		</button>
+		</Button>
 	</form>
 </div>

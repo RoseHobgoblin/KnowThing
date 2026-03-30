@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { PageData } from './$types.js'
 	import Input from '$lib/components/ui/Input.svelte'
+	import Button from '$lib/components/ui/Button.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
@@ -100,13 +101,13 @@
 				bind:value={confirmPassword}
 				autocomplete="new-password"
 			/>
-			<button
+			<Button
 				onclick={handleChangePassword}
-				disabled={changingPassword || !currentPassword || !newPassword || !confirmPassword}
-				class="px-4 py-2 bg-accent text-surface text-sm font-medium transition-colors hover:bg-accent-hover disabled:opacity-50"
+				disabled={!currentPassword || !newPassword || !confirmPassword}
+				loading={changingPassword}
 			>
 				{changingPassword ? 'Changing...' : 'Change Password'}
-			</button>
+			</Button>
 		</div>
 	</section>
 
@@ -115,12 +116,9 @@
 		<section class="border-t border-border-subtle pt-6">
 			<h2 class="text-sm font-semibold text-error mb-2">Danger Zone</h2>
 			<p class="text-xs text-dim mb-3">Permanently delete your account. This cannot be undone.</p>
-			<button
-				onclick={handleDeleteAccount}
-				class="px-4 py-2 bg-error text-white text-sm font-medium transition-opacity hover:opacity-90"
-			>
+			<Button variant="danger" onclick={handleDeleteAccount}>
 				Delete Account
-			</button>
+			</Button>
 		</section>
 	{/if}
 </ArticleShell>

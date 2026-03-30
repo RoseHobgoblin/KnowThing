@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { ActionData, PageData } from './$types.js'
 	import Input from '$lib/components/ui/Input.svelte'
+	import Button from '$lib/components/ui/Button.svelte'
 	import { pushError } from '$lib/notifications.svelte'
 
 	let { form, data }: { form: ActionData, data: PageData } = $props()
@@ -59,15 +60,9 @@
 				autocomplete="off"
 			/>
 		{/if}
-		<button
-			type="submit"
-			class="
-				w-full bg-accent text-surface py-2 font-medium transition-colors
-				hover:bg-accent-hover
-			"
-		>
+		<Button type="submit" class="w-full">
 			Register
-		</button>
+		</Button>
 	</form>
 
 	<p class="mt-4 text-sm text-secondary">

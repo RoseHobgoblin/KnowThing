@@ -3,6 +3,7 @@
 	import { invalidateAll } from '$app/navigation'
 	import { page } from '$app/stores'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
+	import Button from '$lib/components/ui/Button.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 
 	let { data }: { data: PageData } = $props()
@@ -128,9 +129,9 @@
 					{/each}
 				</select>
 			</div>
-			<button onclick={generateCode} disabled={generating} class="px-4 py-2 bg-accent text-surface text-sm font-medium transition-colors hover:bg-accent-hover disabled:opacity-50">
+			<Button onclick={generateCode} loading={generating}>
 				{generating ? 'Generating...' : 'Generate Code'}
-			</button>
+			</Button>
 		</div>
 
 		{#if generatedCode}

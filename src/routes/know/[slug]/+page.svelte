@@ -3,6 +3,7 @@
 	import WikiNodeComponent from '$lib/renderer/WikiNode.svelte'
 	import { createKnowContext } from '$lib/renderer/context.js'
 import CategoryBar from '$lib/components/CategoryBar.svelte'
+	import Button from '$lib/components/ui/Button.svelte'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
@@ -76,15 +77,9 @@ import CategoryBar from '$lib/components/CategoryBar.svelte'
 		<p class="text-dim mb-6">
 			This article doesn't exist yet.
 		</p>
-		<a
-			href="/know/create?title={encodeURIComponent(data.title)}&slug={data.slug}"
-			class="
-				inline-block px-5 py-2.5 bg-accent text-surface font-medium transition-colors
-				hover:bg-accent-hover
-			"
-		>
+		<Button href="/know/create?title={encodeURIComponent(data.title)}&slug={data.slug}" size="lg">
 			Create this page
-		</a>
+		</Button>
 	</div>
 {:else if data.ast}
 	<ArticleShell

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { PageData } from './$types.js'
 	import Input from '$lib/components/ui/Input.svelte'
+	import Button from '$lib/components/ui/Button.svelte'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
@@ -253,7 +254,7 @@
 				<h2 class="text-sm font-semibold text-heading">Add System</h2>
 				<div class="flex gap-3 items-end">
 					<Input label="Name" bind:value={newSystemName} placeholder="e.g. Sunly system" containerClass="flex-1" />
-					<button onclick={createSystem} disabled={creating || !newSystemName.trim()} class="px-4 py-2 bg-accent text-surface text-sm font-medium transition-colors hover:bg-accent-hover disabled:opacity-50">Add</button>
+					<Button onclick={createSystem} disabled={!newSystemName.trim()} loading={creating}>Add</Button>
 				</div>
 			</section>
 
@@ -270,7 +271,7 @@
 							{/each}
 						</select>
 					</div>
-					<button onclick={createStar} disabled={creating || !newStarName.trim()} class="px-4 py-2 bg-accent text-surface text-sm font-medium transition-colors hover:bg-accent-hover disabled:opacity-50">Add</button>
+					<Button onclick={createStar} disabled={!newStarName.trim()} loading={creating}>Add</Button>
 				</div>
 			</section>
 
@@ -296,7 +297,7 @@
 							{/each}
 						</select>
 					</div>
-					<button onclick={createBody} disabled={creating || !newBodyName.trim()} class="px-4 py-2 bg-accent text-surface text-sm font-medium transition-colors hover:bg-accent-hover disabled:opacity-50">Add</button>
+					<Button onclick={createBody} disabled={!newBodyName.trim()} loading={creating}>Add</Button>
 				</div>
 			</section>
 		</div>

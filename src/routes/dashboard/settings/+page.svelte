@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { PageData } from './$types.js'
 	import Input from '$lib/components/ui/Input.svelte'
+	import Button from '$lib/components/ui/Button.svelte'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import { invalidateAll } from '$app/navigation'
 
@@ -64,12 +65,9 @@
 <div class="space-y-6">
 	<div class="flex items-center justify-between">
 		<h1 class="text-xl font-bold text-heading">Site Settings</h1>
-		<button onclick={save} disabled={saving} class="
-			px-5 py-2 bg-accent text-surface text-sm font-medium transition-colors
-			hover:bg-accent-hover disabled:opacity-50
-		">
+		<Button onclick={save} loading={saving}>
 			{saving ? 'Saving...' : 'Save changes'}
-		</button>
+		</Button>
 	</div>
 
 	<!-- Identity -->
