@@ -66,18 +66,145 @@ export function computeYearLayout(data: StaticCalendarData, year: number): Month
 	return layout
 }
 
-/** Placeholder for lunisolar layout computation — Step 4 will implement the real algorithm */
+/**
+ * Compute lunisolar year layout — determines if/where a leap month is inserted.
+ *
+ * Algorithm (models Chinese/Hindu lunisolar calendars):
+ * 1. Compute the absolute day of this year's start
+ * 2. Divide the solar year into N equal segments ("solar terms" / "solar months")
+ * 3. Compute new moon dates within this year from the reference moon's cycle
+ * 4. A lunar month "contains" a major solar term if a term boundary falls within it
+ * 5. If there are more lunar months than regular calendar months in this year,
+ *    the first lunar month that does NOT contain a major solar term is the leap month
+ * 6. The leap month is inserted after the preceding regular month
+ */
 function computeLunisolarLayout(data: StaticCalendarData, year: number): MonthLayout[] {
-	// For now, return the regular months without the lunisolar_leap template
-	// Step 4 replaces this with the actual solar term / lunar month alignment algorithm
-	return data.months
-		.filter(m => m.month_type !== 'lunisolar_leap')
-		.map((month, i) => ({
-			month,
-			sourceIndex: i,
+	// Find the lunisolar_leap month template
+	const leapTemplate = data.months.find(m => m.month_type === 'lunisolar_leap')
+	if (!leapTemplate?.lunisolar) {
+		// No lunisolar config — return regular months without the template
+		return data.months
+			.filter(m => m.month_type !== 'lunisolar_leap')
+			.map((month, i) => ({ month, sourceIndex: i, isLeapMonth: false, displayName: month.name }))
+	}
+
+	const { solar_divisions, moon_index } = leapTemplate.lunisolar
+	const regularMonths = data.months.filter(m => m.month_type !== 'lunisolar_leap')
+
+	// Get orbital data — either from planet link or from moon config
+	const moon = data.moons[moon_index]
+	if (!moon) {
+		return regularMonths.map((month, i) => ({ month, sourceIndex: i, isLeapMonth: false, displayName: month.name }))
+	}
+
+	const lunarCycle = data.planet?.moons.find(m => m.id === moon.celestial_id)?.orbital_period_days ?? moon.cycle
+	const solarYear = data.planet?.orbital_period_days ?? regularMonths.reduce((sum, m) => sum + m.length, 0)
+
+	if (lunarCycle <= 0 || solarYear <= 0 || solar_divisions <= 0) {
+		return regularMonths.map((month, i) => ({ month, sourceIndex: i, isLeapMonth: false, displayName: month.name }))
+	}
+
+	// Solar term length in days
+	const solarTermLength = solarYear / solar_divisions
+
+	// How many lunar months fit in this solar year?
+	const lunarMonthsInYear = Math.round(solarYear / lunarCycle)
+
+	// A leap year has more lunar months than regular months
+	// Use the Metonic-like cycle: check if this year needs a leap month
+	// Accumulated drift: after N years, the lunar months lag behind solar terms
+	const totalLunarDays = lunarCycle * regularMonths.length
+	const drift = (solarYear - totalLunarDays) * year // accumulated drift at this year
+
+	// Simplified: a leap month occurs when the accumulated excess lunar months
+	// crosses a threshold. This gives ~7 leap months per 19-year cycle for Earth.
+	const excessPerYear = solarYear / lunarCycle - regularMonths.length
+	const accumulatedExcess = excessPerYear * year
+	const isLeapYear = Math.floor(accumulatedExcess) !== Math.floor(accumulatedExcess - excessPerYear)
+
+	if (!isLeapYear) {
+		return regularMonths.map((month, i) => ({ month, sourceIndex: i, isLeapMonth: false, displayName: month.name }))
+	}
+
+	// Determine WHERE the leap month goes.
+	// Compute the solar term boundaries as fractions of the year (0 to 1).
+	// For "major" solar terms (every other one in Chinese system, or every one in Hindu):
+	// Use solar_divisions directly — each division is a major boundary.
+	// The leap month is the first lunar month that doesn't span a major boundary.
+
+	// Compute start day of each lunar month in the year (relative to year start, in days)
+	// Use moon phase at year start to find the first new moon
+	const yearStartAbs = absoluteDayForYearStart(data, year, regularMonths)
+	const moonPhaseAtYearStart = ((yearStartAbs - moon.offset) / lunarCycle) % 1
+	const daysToFirstNewMoon = ((1 - moonPhaseAtYearStart) % 1) * lunarCycle
+
+	// Generate new moon positions for this year (enough to cover all months + potential leap)
+	const newMoons: number[] = []
+	let nm = daysToFirstNewMoon
+	while (nm < solarYear + lunarCycle) {
+		newMoons.push(nm)
+		nm += lunarCycle
+	}
+
+	// Solar term boundaries (major terms only)
+	const solarTerms: number[] = []
+	for (let i = 1; i <= solar_divisions; i++) {
+		solarTerms.push(i * solarTermLength)
+	}
+
+	// For each lunar month interval [newMoons[i], newMoons[i+1]),
+	// check if it contains a major solar term boundary
+	let leapAfterMonth = -1
+	let lunarIdx = 0
+	for (let i = 0; i < newMoons.length - 1 && lunarIdx < regularMonths.length + 1; i++) {
+		const monthStart = newMoons[i]
+		const monthEnd = newMoons[i + 1]
+
+		// Does this lunar month contain a major solar term?
+		const containsTerm = solarTerms.some(t => t > monthStart && t <= monthEnd)
+
+		if (!containsTerm && leapAfterMonth === -1) {
+			// This is the leap month — it comes after the previous regular month
+			leapAfterMonth = Math.max(0, lunarIdx - 1)
+			// Don't increment lunarIdx — this month is the inserted leap
+		} else {
+			lunarIdx++
+		}
+	}
+
+	// Fallback: if no gap found, insert after the last month
+	if (leapAfterMonth === -1) leapAfterMonth = regularMonths.length - 1
+
+	// Build the layout with the leap month inserted
+	const layout: MonthLayout[] = []
+	for (let i = 0; i < regularMonths.length; i++) {
+		layout.push({
+			month: regularMonths[i],
+			sourceIndex: data.months.indexOf(regularMonths[i]),
 			isLeapMonth: false,
-			displayName: month.name,
-		}))
+			displayName: regularMonths[i].name,
+		})
+
+		if (i === leapAfterMonth) {
+			layout.push({
+				month: { ...leapTemplate, length: Math.round(lunarCycle) },
+				sourceIndex: data.months.indexOf(leapTemplate),
+				isLeapMonth: true,
+				displayName: leapTemplate.name.replace('{{month}}', regularMonths[i].name),
+			})
+		}
+	}
+
+	return layout
+}
+
+/** Helper: compute absolute day of year start without full absoluteDay (avoids circular dependency) */
+function absoluteDayForYearStart(data: StaticCalendarData, year: number, regularMonths: import('./types.js').Month[]): number {
+	let abs = 0
+	const avgYearDays = regularMonths.reduce((sum, m) => sum + m.length, 0)
+	// Rough approximation for epoch-relative positioning — sufficient for phase calculation
+	abs = (year - 1) * avgYearDays
+	return abs
 }
 
 // ============================================================================

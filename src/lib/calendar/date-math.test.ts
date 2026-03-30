@@ -15,6 +15,7 @@ import {
 	phaseName,
 	resolveDisplay,
 	getMonthGrid,
+	computeYearLayout,
 } from './date-math.js'
 
 // ── Test calendar: modeled after "Calendar of Amalur" ───────────────────
@@ -347,5 +348,127 @@ describe('variable day length', () => {
 		const ts = absoluteDayToUnix(10, 0, 72_000)
 		expect(ts).toBe(10 * 72_000_000)
 		expect(unixToAbsoluteDay(ts, 0, 72_000)).toBe(10)
+	})
+})
+
+// ── Lunisolar calendar ──────────────────────────────────────────────────
+
+describe('lunisolar intercalation', () => {
+	// A Chinese-like lunisolar calendar on an Earth-like planet
+	const LUNISOLAR_DATA: StaticCalendarData = {
+		first_week_day: 0,
+		weekdays: [
+			{ name: 'Day1' }, { name: 'Day2' }, { name: 'Day3' },
+			{ name: 'Day4' }, { name: 'Day5' }, { name: 'Day6' }, { name: 'Day7' },
+		],
+		months: [
+			{ name: 'Month 1', length: 30, month_type: 'regular' },
+			{ name: 'Month 2', length: 29, month_type: 'regular' },
+			{ name: 'Month 3', length: 30, month_type: 'regular' },
+			{ name: 'Month 4', length: 29, month_type: 'regular' },
+			{ name: 'Month 5', length: 30, month_type: 'regular' },
+			{ name: 'Month 6', length: 29, month_type: 'regular' },
+			{ name: 'Month 7', length: 30, month_type: 'regular' },
+			{ name: 'Month 8', length: 29, month_type: 'regular' },
+			{ name: 'Month 9', length: 30, month_type: 'regular' },
+			{ name: 'Month 10', length: 29, month_type: 'regular' },
+			{ name: 'Month 11', length: 30, month_type: 'regular' },
+			{ name: 'Month 12', length: 29, month_type: 'regular' },
+			// The lunisolar leap month template
+			{
+				name: 'Leap {{month}}',
+				length: 29,
+				month_type: 'lunisolar_leap',
+				lunisolar: { solar_divisions: 24, moon_index: 0 },
+			},
+		],
+		leap_days: [],
+		moons: [
+			{ name: 'Moon', cycle: 29.5306, offset: 0, face_color: '#fff', shadow_color: '#000' },
+		],
+		eras: [],
+		seasons: [],
+		display_moons: true,
+		year_offset: 0,
+		epoch_offset: 0,
+		// Planet data: Earth-like orbital period
+		planet: {
+			orbital_period_days: 365.2422,
+			rotation_period_s: 86400,
+			moons: [{ id: 1, orbital_period_days: 29.5306, epoch_phase: 0 }],
+		},
+	}
+
+	it('regular year has 12 months', () => {
+		const layout = computeYearLayout(LUNISOLAR_DATA, 1)
+		// Year 1 may or may not be a leap year, but check that non-leap years have 12
+		const nonLeapLayouts: number[] = []
+		for (let y = 1; y <= 19; y++) {
+			const l = computeYearLayout(LUNISOLAR_DATA, y)
+			nonLeapLayouts.push(l.length)
+		}
+		// Over 19 years, ~7 should have 13 months and ~12 should have 12
+		const leapYears = nonLeapLayouts.filter(n => n === 13).length
+		const normalYears = nonLeapLayouts.filter(n => n === 12).length
+		expect(leapYears).toBeGreaterThanOrEqual(6)
+		expect(leapYears).toBeLessThanOrEqual(8)
+		expect(normalYears + leapYears).toBe(19)
+	})
+
+	it('leap year has 13 months', () => {
+		// Find a leap year in the first 19
+		let leapYear = -1
+		for (let y = 1; y <= 19; y++) {
+			if (computeYearLayout(LUNISOLAR_DATA, y).length === 13) {
+				leapYear = y
+				break
+			}
+		}
+		expect(leapYear).toBeGreaterThan(0)
+
+		const layout = computeYearLayout(LUNISOLAR_DATA, leapYear)
+		expect(layout.length).toBe(13)
+
+		// Exactly one month should be a leap month
+		const leapMonths = layout.filter(m => m.isLeapMonth)
+		expect(leapMonths.length).toBe(1)
+		expect(leapMonths[0].displayName).toContain('Leap')
+	})
+
+	it('leap month has approximately one lunar cycle of days', () => {
+		for (let y = 1; y <= 19; y++) {
+			const layout = computeYearLayout(LUNISOLAR_DATA, y)
+			const leap = layout.find(m => m.isLeapMonth)
+			if (leap) {
+				// Leap month should be ~29-30 days (one lunar cycle)
+				expect(leap.month.length).toBeGreaterThanOrEqual(29)
+				expect(leap.month.length).toBeLessThanOrEqual(30)
+			}
+		}
+	})
+
+	it('absoluteDay and dateFromAbsolute round-trip in lunisolar calendar', () => {
+		const dates: CalendarDate[] = [
+			{ year: 1, month: 1, day: 1 },
+			{ year: 1, month: 6, day: 15 },
+			{ year: 3, month: 1, day: 1 },
+			{ year: 10, month: 12, day: 29 },
+		]
+		for (const date of dates) {
+			const abs = absoluteDay(LUNISOLAR_DATA, date)
+			const restored = dateFromAbsolute(LUNISOLAR_DATA, abs)
+			expect(restored).toEqual(date)
+		}
+	})
+
+	it('daysInYear is consistent with month layout', () => {
+		for (let y = 1; y <= 19; y++) {
+			const layout = computeYearLayout(LUNISOLAR_DATA, y)
+			let sum = 0
+			for (let m = 0; m < layout.length; m++) {
+				sum += daysInMonth(LUNISOLAR_DATA, y, m)
+			}
+			expect(sum).toBe(daysInYear(LUNISOLAR_DATA, y))
+		}
 	})
 })
