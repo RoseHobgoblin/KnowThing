@@ -120,6 +120,7 @@ export const contentMediaUsage = pgTable(
 	},
 	table => [
 		primaryKey({ columns: [table.contentRecordId, table.filename] }),
+		index('idx_cmu_filename').on(table.filename),
 	],
 )
 
@@ -145,7 +146,6 @@ export const calendars = pgTable('calendars', {
 	description: text('description').default(''),
 	isPrimary: boolean('is_primary').default(false).notNull(),
 	staticData: jsonb('static_data').notNull(), // months, weekdays, leap days, moons, eras, seasons
-	calendarDate: jsonb('calendar_date'), // deprecated — computed from Date.now() + epoch_offset
 })
 
 // ============================================================================

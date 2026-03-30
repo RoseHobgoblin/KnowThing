@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
-import { media, mediaHistory } from '$lib/server/db/schema.js'
+import { media, mediaHistory, contentMediaUsage } from '$lib/server/db/schema.js'
 import { desc, sql, eq, asc } from 'drizzle-orm'
 import { requireAuth } from '$lib/server/auth.js'
 import { writeFile, mkdir } from 'node:fs/promises'
@@ -24,6 +24,15 @@ export const GET: RequestHandler = async ({ url }) => {
 	const limit = Math.min(Number.parseInt(url.searchParams.get('limit') || '50'), 200)
 	const offset = Number.parseInt(url.searchParams.get('offset') || '0')
 
+	const usageCounts = db
+		.select({
+			filename: contentMediaUsage.filename,
+			count: sql<number>`count(*)::int`.as('count'),
+		})
+		.from(contentMediaUsage)
+		.groupBy(contentMediaUsage.filename)
+		.as('usage_counts')
+
 	let query = db
 		.select({
 			id: media.id,
@@ -38,9 +47,10 @@ export const GET: RequestHandler = async ({ url }) => {
 			hasThumb300: media.hasThumb300,
 			hasThumb600: media.hasThumb600,
 			uploadedAt: media.uploadedAt,
-			usageCount: sql<number>`(SELECT COUNT(*) FROM content_media_usage WHERE filename = ${media.filename})::int`.as('usage_count'),
+			usageCount: sql<number>`COALESCE(${usageCounts.count}, 0)`.as('usage_count'),
 		})
 		.from(media)
+		.leftJoin(usageCounts, eq(media.filename, usageCounts.filename))
 		.$dynamic()
 
 	if (q) {

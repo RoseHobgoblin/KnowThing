@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit'
 import { z } from 'zod'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
-import { lexicon, lexiconRelations, definitions, languages } from '$lib/server/db/schema.js'
+import { lexicon, lexiconRelations, definitions, languages, inflectedForms } from '$lib/server/db/schema.js'
 import { requireAuth } from '$lib/server/auth.js'
 import { eq, sql, asc, desc, and } from 'drizzle-orm'
 
@@ -54,6 +54,28 @@ export const GET: RequestHandler = async ({ url }) => {
 	}
 
 	if (q) {
+		// Pre-fetch entry IDs from expensive sources (avoids per-row EXISTS subqueries)
+		const [defMatches, inflMatches] = await Promise.all([
+			db.selectDistinct({ entryId: definitions.entryId })
+				.from(definitions)
+				.where(sql`search_vector @@ plainto_tsquery('english', ${q})`),
+			db.selectDistinct({ entryId: inflectedForms.entryId })
+				.from(inflectedForms)
+				.where(sql`LOWER(${inflectedForms.form}) = LOWER(${q})`),
+		])
+
+		const defIds = new Set(defMatches.map(r => r.entryId))
+		const inflIds = new Set(inflMatches.map(r => r.entryId))
+		const allExtraIds = [...new Set([...defIds, ...inflIds])]
+
+		const extraIdFilter = allExtraIds.length > 0
+			? sql`OR ${lexicon.id} IN (${sql.join(allExtraIds.map(id => sql`${id}`), sql`, `)})`
+			: sql``
+
+		const inflRelevanceCheck = inflIds.size > 0
+			? sql`${lexicon.id} IN (${sql.join([...inflIds].map(id => sql`${id}`), sql`, `)})`
+			: sql`false`
+
 		const results = await db
 			.select({
 				id: lexicon.id,
@@ -63,13 +85,12 @@ export const GET: RequestHandler = async ({ url }) => {
 				languageName: languages.name,
 				languageSlug: languages.slug,
 				languageColor: languages.color,
-				// First definition for preview
 				definition: sql<string>`(SELECT definition FROM definitions WHERE entry_id = ${lexicon.id} ORDER BY sense_number LIMIT 1)`.as('definition'),
 				partOfSpeech: sql<string>`(SELECT part_of_speech FROM definitions WHERE entry_id = ${lexicon.id} ORDER BY sense_number LIMIT 1)`.as('part_of_speech'),
 				relevance: sql<number>`
 					CASE
 						WHEN LOWER(${lexicon.word}) = LOWER(${q}) THEN 5
-						WHEN EXISTS (SELECT 1 FROM inflected_forms f WHERE f.entry_id = ${lexicon.id} AND LOWER(f.form) = LOWER(${q})) THEN 4
+						WHEN ${inflRelevanceCheck} THEN 4
 						WHEN LOWER(${lexicon.word}) LIKE LOWER(${q + '%'}) THEN 3
 						WHEN ${lexicon.word} % ${q} THEN 2
 						ELSE 1
@@ -80,16 +101,13 @@ export const GET: RequestHandler = async ({ url }) => {
 			.innerJoin(languages, eq(lexicon.languageId, languages.id))
 			.where(
 				and(
-					sql`
-						(
-												LOWER(${lexicon.word}) = LOWER(${q})
-												OR LOWER(${lexicon.word}) LIKE LOWER(${q + '%'})
-												OR ${lexicon.word} % ${q}
-												OR lexicon.search_vector @@ plainto_tsquery('english', ${q})
-												OR EXISTS (SELECT 1 FROM definitions d WHERE d.entry_id = ${lexicon.id} AND d.search_vector @@ plainto_tsquery('english', ${q}))
-												OR EXISTS (SELECT 1 FROM inflected_forms f WHERE f.entry_id = ${lexicon.id} AND LOWER(f.form) = LOWER(${q}))
-											)
-					`,
+					sql`(
+						LOWER(${lexicon.word}) = LOWER(${q})
+						OR LOWER(${lexicon.word}) LIKE LOWER(${q + '%'})
+						OR ${lexicon.word} % ${q}
+						OR lexicon.search_vector @@ plainto_tsquery('english', ${q})
+						${extraIdFilter}
+					)`,
 					...(conditions.length > 0 ? conditions : []),
 				),
 			)

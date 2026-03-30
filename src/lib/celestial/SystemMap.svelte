@@ -127,9 +127,16 @@
 	onmouseleave={() => hovered = null}
 >
 	<defs>
+		<!-- Inner glow around the star -->
 		<radialGradient id={glowId}>
-			<stop offset="0%" stop-color="var(--color-accent)" stop-opacity="0.25" />
-			<stop offset="50%" stop-color="var(--color-accent)" stop-opacity="0.04" />
+			<stop offset="0%" stop-color="var(--color-accent)" stop-opacity="0.4" />
+			<stop offset="30%" stop-color="var(--color-accent)" stop-opacity="0.15" />
+			<stop offset="100%" stop-color="var(--color-accent)" stop-opacity="0" />
+		</radialGradient>
+		<!-- Wide ambient light that fills the system -->
+		<radialGradient id="{glowId}-ambient">
+			<stop offset="0%" stop-color="var(--color-accent)" stop-opacity="0.06" />
+			<stop offset="40%" stop-color="var(--color-accent)" stop-opacity="0.02" />
 			<stop offset="100%" stop-color="var(--color-accent)" stop-opacity="0" />
 		</radialGradient>
 	</defs>
@@ -146,15 +153,16 @@
 			ry={b}
 			fill="none"
 			stroke={hovered?.id === body.id ? 'var(--color-accent)' : 'color-mix(in srgb, var(--color-accent-light) 15%, transparent)'}
-			stroke-width={hovered?.id === body.id ? 1 : 0.5}
+			stroke-width={hovered?.id === body.id ? 1.5 : 1}
 			stroke-dasharray={body.isStar ? '4 3' : 'none'}
 			class="transition-colors"
 		/>
 	{/each}
 
-	<!-- Star glow -->
+	<!-- Star light — ambient illumination across the system -->
 	{#if primaryStar}
-		<circle cx={CENTER} cy={CENTER} r={35} fill="url(#{glowId})" />
+		<circle cx={CENTER} cy={CENTER} r={CENTER * 0.85} fill="url(#{glowId}-ambient)" />
+		<circle cx={CENTER} cy={CENTER} r={50} fill="url(#{glowId})" />
 	{/if}
 
 	<!-- Primary star -->

@@ -47,17 +47,18 @@ export const load: PageServerLoad = async () => {
 			.orderBy(desc(contentRecords.updatedAt))
 			.limit(1),
 
-		// Random word with definition
+		// Random word with definition — single query, random offset instead of full-table sort
 		db
 			.select({
 				word: lexicon.word,
 				languageName: languages.name,
 				languageSlug: languages.slug,
 				pronunciation: lexicon.pronunciation,
+				definition: sql<string>`(SELECT definition FROM definitions WHERE entry_id = ${lexicon.id} ORDER BY sense_number LIMIT 1)`,
 			})
 			.from(lexicon)
 			.innerJoin(languages, eq(lexicon.languageId, languages.id))
-			.orderBy(sql`RANDOM()`)
+			.offset(sql`floor(random() * greatest((SELECT count(*) FROM lexicon), 1))::int`)
 			.limit(1),
 
 		// Primary calendar
@@ -124,17 +125,6 @@ export const load: PageServerLoad = async () => {
 		}
 	}
 
-	// Get first definition for random word
-	let randomWordDef = ''
-	if (randomWord[0]) {
-		const [def] = await db
-			.select({ definition: sql<string>`definition` })
-			.from(sql`definitions`)
-			.where(sql`entry_id = (SELECT id FROM lexicon WHERE word = ${randomWord[0].word} AND language_id = (SELECT id FROM languages WHERE slug = ${randomWord[0].languageSlug}) LIMIT 1)`)
-			.limit(1)
-		randomWordDef = def?.definition ?? ''
-	}
-
 	return {
 		stats: {
 			articles: articleCount[0]?.value ?? 0,
@@ -149,10 +139,7 @@ export const load: PageServerLoad = async () => {
 			title: featuredArticle[0].title,
 			summary: featuredSummary,
 		} : null,
-		randomWord: randomWord[0] ? {
-			...randomWord[0],
-			definition: randomWordDef,
-		} : null,
+		randomWord: randomWord[0] ?? null,
 		calendarInfo,
 	}
 }
