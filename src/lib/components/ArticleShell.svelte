@@ -26,7 +26,7 @@
 	<div class="px-4 pt-4 md:px-6">
 		{#if breadcrumbs.length > 0}
 			<div class="text-[10px] font-semibold uppercase tracking-wider mb-1">
-				<a href="/" class="text-link transition-colors hover:text-link-hover">/</a>
+				<a href="/" class="text-link transition-colors hover:text-link-hover">Main Page</a>
 				{#each parentCrumbs as crumb, i (i)}
 					<span class="text-faint"> / </span>
 					{#if crumb.href}

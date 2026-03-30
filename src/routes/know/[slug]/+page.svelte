@@ -87,7 +87,7 @@ import CategoryBar from '$lib/components/CategoryBar.svelte'
 	</div>
 {:else if data.ast}
 	<ArticleShell
-		breadcrumbs={[{ label: 'Knowbook', href: '/' }, { label: data.title }]}
+		breadcrumbs={[{ label: data.title }]}
 		title={data.title}
 	>
 		{#snippet actions()}
