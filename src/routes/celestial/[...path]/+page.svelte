@@ -8,7 +8,6 @@
 	import InfoboxSystem from '$lib/infoboxes/InfoboxSystem.svelte'
 	import SystemMap from '$lib/celestial/SystemMap.svelte'
 	import SystemSidebar from '$lib/celestial/SystemSidebar.svelte'
-	import DateScrubber from '$lib/celestial/DateScrubber.svelte'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import PencilSimple from 'phosphor-svelte/lib/PencilSimple'
 	import Editor from '$lib/components/Editor.svelte'
@@ -178,12 +177,6 @@
 								bodies={data.systemBodies ?? []}
 								{currentAbsoluteDay}
 							/>
-							{#if systemCalendarConfigs.length > 0}
-								<DateScrubber
-									calendars={systemCalendarConfigs}
-									bind:currentAbsoluteDay
-								/>
-							{/if}
 						{:else}
 							<div class="flex items-center justify-center h-64 text-dim border border-border-subtle">
 								No stars registered in this system.
@@ -198,6 +191,8 @@
 							stars={data.systemStars ?? []}
 							bodies={data.systemBodies ?? []}
 							systemSlug={raw.slug}
+							calendars={systemCalendarConfigs}
+							bind:currentAbsoluteDay
 						/>
 					</div>
 
@@ -208,6 +203,8 @@
 							stars={data.systemStars ?? []}
 							bodies={data.systemBodies ?? []}
 							systemSlug={raw.slug}
+							calendars={systemCalendarConfigs}
+							bind:currentAbsoluteDay
 						/>
 					</div>
 				</div>

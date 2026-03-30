@@ -1,6 +1,9 @@
 <script lang="ts">
 	import type { MapBody } from './SystemMap.svelte'
+	import type { CalendarConfig } from '$lib/calendar/types.js'
 	import { resolveColor } from './colors.js'
+	import { resolveDisplay, absoluteDay, dateFromAbsolute } from '$lib/calendar/date-math.js'
+	import CalendarWidget from '$lib/calendar/CalendarWidget.svelte'
 	import Star from 'phosphor-svelte/lib/Star'
 	import Planet from 'phosphor-svelte/lib/Planet'
 	import Moon from 'phosphor-svelte/lib/Moon'
@@ -13,12 +16,21 @@
 		stars,
 		bodies,
 		systemSlug,
+		calendars = [],
+		currentAbsoluteDay = $bindable(0),
 	}: {
 		system: { name: string, systemType?: string | null, system_type?: string | null }
 		stars: MapBody[]
 		bodies: MapBody[]
 		systemSlug: string
+		calendars?: (CalendarConfig & { id: number })[]
+		currentAbsoluteDay?: number
 	} = $props()
+
+	let selectedCalendarId = $state(calendars[0]?.id ?? 0)
+	const selectedCalendar = $derived(calendars.find(c => c.id === selectedCalendarId) ?? calendars[0])
+	const currentDate = $derived(selectedCalendar ? dateFromAbsolute(selectedCalendar.static_data, currentAbsoluteDay) : null)
+	const resolved = $derived(selectedCalendar && currentDate ? resolveDisplay(selectedCalendar, currentDate) : null)
 
 	const systemType = $derived(system.systemType ?? system.system_type ?? 'single')
 	const primaryStar = $derived(stars.find(s => !s.parentStarId) ?? stars[0])
@@ -127,4 +139,37 @@
 			{/each}
 		</div>
 	</div>
+
+	<!-- Calendar / Time -->
+	{#if calendars.length > 0 && selectedCalendar}
+		<div>
+			<div class="text-[10px] font-semibold text-faint uppercase tracking-wider border-b border-border-subtle pb-1 mb-2">
+				Viewing
+				{#if calendars.length > 1}
+					<select
+						bind:value={selectedCalendarId}
+						class="ml-1 text-[10px] bg-transparent text-link border-none outline-none cursor-pointer"
+					>
+						{#each calendars as cal (cal.id)}
+							<option value={cal.id}>{cal.name}</option>
+						{/each}
+					</select>
+				{:else}
+					<span class="text-secondary ml-1">{selectedCalendar.name}</span>
+				{/if}
+			</div>
+
+			{#if resolved}
+				<div class="text-body font-medium text-center mb-2">
+					{resolved.day} {resolved.month_name}, {resolved.year_display}
+				</div>
+			{/if}
+
+			<CalendarWidget
+				config={selectedCalendar}
+				year={currentDate?.year}
+				monthIndex={currentDate ? currentDate.month - 1 : undefined}
+			/>
+		</div>
+	{/if}
 </div>
