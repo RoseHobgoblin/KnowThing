@@ -17,6 +17,8 @@
 		validate?: ZodType
 		validateImmediately?: boolean
 		size?: 'sm' | 'md'
+		/** When true, the bound value is coerced to/from number */
+		numeric?: boolean
 	}
 
 	let {
@@ -33,6 +35,7 @@
 		validate,
 		validateImmediately = false,
 		size = 'md',
+		numeric = false,
 		...rest
 	}: Props = $props()
 
@@ -44,6 +47,26 @@
 	$effect(() => {
 		if (validateImmediately) hasInteracted = true
 	})
+
+	// Numeric coercion: internal string value syncs with external number value
+	let internalValue = $state(numeric ? String(value ?? '') : value)
+
+	$effect(() => {
+		if (numeric) {
+			internalValue = value != null ? String(value) : ''
+		} else {
+			internalValue = value
+		}
+	})
+
+	function onValueChange(newValue: string) {
+		if (numeric) {
+			const num = Number(newValue)
+			value = Number.isNaN(num) ? null : num
+		} else {
+			value = newValue
+		}
+	}
 
 	const type = $derived(rest.type)
 	const errorText = $derived(getZodValidationError(validate, value))
@@ -57,11 +80,12 @@
 	const itemSize = { sm: 'h-8 text-xs py-1.5 px-2.5', md: 'h-9 text-sm py-2 px-3' } as const
 
 	const selectedLabels = $derived.by(() => {
+		const compareValue = numeric ? String(value ?? '') : value
 		if (type === 'single') {
-			const found = items.find(item => item.value === value)?.label
+			const found = items.find(item => item.value === compareValue)?.label
 			if (found) return [found]
 		} else {
-			const labels = items.filter(item => value?.includes(item.value)).map(item => item.label)
+			const labels = items.filter(item => compareValue?.includes(item.value)).map(item => item.label)
 			if (labels.length > 1 && labels.reduce((a, l) => a + l.length, 0) > 40) return [`${labels.length} selected`]
 			return labels
 		}
@@ -80,7 +104,12 @@
 	{/if}
 
 	<div class="relative">
-		<Select.Root bind:value={value as never} bind:open onOpenChange={() => { hasInteracted = true }} {...rest}>
+		<Select.Root
+			value={internalValue as never}
+			onValueChange={(v) => { hasInteracted = true; onValueChange(v) }}
+			bind:open
+			{...rest}
+		>
 			<Select.Trigger
 				{id}
 				class={cn(
