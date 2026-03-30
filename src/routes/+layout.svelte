@@ -87,7 +87,7 @@
 		<div class="px-3 py-3 border-t border-border-subtle text-xs">
 			{#if data.user}
 				<div class="flex items-center justify-between">
-					<span class="text-dim truncate">{data.user.username}</span>
+					<a href="/auth/account" class="text-dim truncate transition-colors hover:text-link">{data.user.username}</a>
 					<form method="POST" action="/auth/logout">
 						<button type="submit" class="text-secondary transition-colors hover:text-link flex items-center gap-1.5"><SignOut size={14} weight="fill" />Log out</button>
 					</form>
@@ -173,7 +173,7 @@
 				<div class="px-3 py-3 border-t border-border-subtle text-xs">
 					{#if data.user}
 						<div class="flex items-center justify-between">
-							<span class="text-dim truncate">{data.user.username}</span>
+							<a href="/auth/account" onclick={navClick} class="text-dim truncate transition-colors hover:text-link">{data.user.username}</a>
 							<form method="POST" action="/auth/logout">
 								<button type="submit" class="text-secondary transition-colors hover:text-link flex items-center gap-1.5" onclick={navClick}><SignOut size={14} weight="fill" />Log out</button>
 							</form>
