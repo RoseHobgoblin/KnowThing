@@ -127,18 +127,26 @@
 	onmouseleave={() => hovered = null}
 >
 	<defs>
-		<!-- Inner glow around the star -->
-		<radialGradient id={glowId}>
-			<stop offset="0%" stop-color="var(--color-accent)" stop-opacity="0.4" />
-			<stop offset="30%" stop-color="var(--color-accent)" stop-opacity="0.15" />
-			<stop offset="100%" stop-color="var(--color-accent)" stop-opacity="0" />
+		<!-- Primary star glow -->
+		<radialGradient id="{glowId}-inner">
+			<stop offset="0%" stop-color={resolveColor(primaryStar?.color, '#FFE088')} stop-opacity="0.4" />
+			<stop offset="30%" stop-color={resolveColor(primaryStar?.color, '#FFE088')} stop-opacity="0.15" />
+			<stop offset="100%" stop-color={resolveColor(primaryStar?.color, '#FFE088')} stop-opacity="0" />
 		</radialGradient>
-		<!-- Wide ambient light that fills the system -->
 		<radialGradient id="{glowId}-ambient">
-			<stop offset="0%" stop-color="var(--color-accent)" stop-opacity="0.06" />
-			<stop offset="40%" stop-color="var(--color-accent)" stop-opacity="0.02" />
-			<stop offset="100%" stop-color="var(--color-accent)" stop-opacity="0" />
+			<stop offset="0%" stop-color={resolveColor(primaryStar?.color, '#FFE088')} stop-opacity="0.06" />
+			<stop offset="40%" stop-color={resolveColor(primaryStar?.color, '#FFE088')} stop-opacity="0.02" />
+			<stop offset="100%" stop-color={resolveColor(primaryStar?.color, '#FFE088')} stop-opacity="0" />
 		</radialGradient>
+		<!-- Companion star glows -->
+		{#each companionStars as cStar, i (cStar.id)}
+			{@const cColor = resolveColor(cStar.color, '#FFE088')}
+			<radialGradient id="{glowId}-comp-{i}">
+				<stop offset="0%" stop-color={cColor} stop-opacity="0.3" />
+				<stop offset="30%" stop-color={cColor} stop-opacity="0.1" />
+				<stop offset="100%" stop-color={cColor} stop-opacity="0" />
+			</radialGradient>
+		{/each}
 	</defs>
 
 	<!-- Orbital paths -->
@@ -162,7 +170,7 @@
 	<!-- Star light — ambient illumination across the system -->
 	{#if primaryStar}
 		<circle cx={CENTER} cy={CENTER} r={CENTER * 0.85} fill="url(#{glowId}-ambient)" />
-		<circle cx={CENTER} cy={CENTER} r={50} fill="url(#{glowId})" />
+		<circle cx={CENTER} cy={CENTER} r={50} fill="url(#{glowId}-inner)" />
 	{/if}
 
 	<!-- Primary star -->
@@ -191,6 +199,14 @@
 	{#each orbitingBodies as body, i}
 		{@const pos = bodyPosition(body, i, orbitingBodies.length)}
 		{@const r = bodyRadius(body)}
+
+		<!-- Companion star glow -->
+		{#if body.isStar}
+			{@const compIdx = companionStars.findIndex(s => s.id === body.id)}
+			{#if compIdx >= 0}
+				<circle cx={pos.x} cy={pos.y} r={30} fill="url(#{glowId}-comp-{compIdx})" />
+			{/if}
+		{/if}
 
 		<circle
 			cx={pos.x}
