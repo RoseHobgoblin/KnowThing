@@ -3,6 +3,8 @@
 	import { page } from '$app/stores'
 	import { invalidateAll } from '$app/navigation'
 	import { goto } from '$app/navigation'
+	import ArticleShell from '$lib/components/ArticleShell.svelte'
+	import Input from '$lib/components/ui/Input.svelte'
 	import LanguageBadge from '$lib/components/wordbook/LanguageBadge.svelte'
 	import TagPill from '$lib/components/wordbook/TagPill.svelte'
 	import EtymologySection from '$lib/components/wordbook/EtymologySection.svelte'
@@ -12,6 +14,8 @@
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import { PARTS_OF_SPEECH, POS_COLORS } from '$lib/components/wordbook/constants.js'
 	import InlineMarkup from '$lib/renderer/InlineMarkup.svelte'
+	import PencilSimple from 'phosphor-svelte/lib/PencilSimple'
+	import Trash from 'phosphor-svelte/lib/Trash'
 
 	let { data }: { data: PageData } = $props()
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
@@ -20,17 +24,16 @@
 	const isAuthenticated = $derived(!!layoutData.user)
 	const isAdmin = $derived(layoutData.isAdmin)
 
-	// Add sense form state (per homograph)
+	// Add sense form state
 	let addingSenseFor = $state<number | null>(null)
 	let newPos = $state('')
 	let newDef = $state('')
 	let newUsage = $state('')
 	let newTranslation = $state('')
 	let submittingSense = $state(false)
-
 	let senseError = $state('')
 
-	async function addSense(entryId: number, e: SubmitEvent) {
+	async function addSense(entryId: number, e: Event) {
 		e.preventDefault()
 		if (!newDef.trim()) return
 		submittingSense = true
@@ -40,75 +43,83 @@
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					partOfSpeech: newPos || undefined,
+					partOfSpeech: newPos || null,
 					definition: newDef.trim(),
-					usageExample: newUsage.trim() || undefined,
-					usageTranslation: newTranslation.trim() || undefined,
+					usageExample: newUsage.trim() || null,
+					usageTranslation: newTranslation.trim() || null,
 				}),
 			})
 			if (res.ok) {
+				pushSuccess('Definition added')
 				newPos = ''; newDef = ''; newUsage = ''; newTranslation = ''
 				addingSenseFor = null
-				pushSuccess('Definition added')
 				invalidateAll()
 			} else {
-				const data = await res.json()
-				senseError = data.error || 'Failed to add definition'
+				const err = await res.json().catch(() => null)
+				senseError = err?.error || 'Failed to add definition'
 				pushError(senseError)
 			}
-		} catch {
-			senseError = 'Network error'
-			pushError('Network error')
 		} finally {
 			submittingSense = false
 		}
 	}
 
 	async function deleteSense(entryId: number, defId: number) {
-		const ok = await confirmDialog.confirm('Remove definition', 'Remove this definition?', 'Remove', 'Cancel')
+		const ok = await confirmDialog.confirm('Delete definition', 'Delete this definition?', 'Delete', 'Cancel')
 		if (!ok) return
 		const res = await fetch(`/api/wordbook/${entryId}/definitions/${defId}`, { method: 'DELETE' })
 		if (res.ok) {
-			pushSuccess('Definition removed')
+			pushSuccess('Definition deleted')
 			invalidateAll()
 		} else {
-			pushError('Failed to remove definition')
+			pushError('Failed to delete definition')
 		}
 	}
 
 	async function deleteEntry(entryId: number) {
-		const ok = await confirmDialog.confirm('Delete entry', 'Delete this entry entirely? This cannot be undone.', 'Delete', 'Cancel')
+		const ok = await confirmDialog.confirm('Delete word', `Delete "${data.word}"? This cannot be undone.`, 'Delete', 'Cancel')
 		if (!ok) return
 		const res = await fetch(`/api/wordbook/${entryId}`, { method: 'DELETE' })
 		if (res.ok) {
-			pushSuccess('Entry deleted')
-			if (data.homographs.length > 1) {
-				invalidateAll()
-			} else {
-				goto(`/wordbook/${data.language.slug}`)
-			}
+			pushSuccess(`"${data.word}" deleted`)
+			goto(`/wordbook/${data.language.slug}`)
 		} else {
-			pushError('Failed to delete entry')
+			pushError('Failed to delete word')
 		}
 	}
 
 	const posColors = POS_COLORS
-	const inputClass = 'w-full px-3 py-1.5 border border-border-strong text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent'
 </script>
 
 <svelte:head>
 	<title>{data.word} ({data.language.name}) — Wordbook — KnowThing</title>
 </svelte:head>
 
-<div class="space-y-6">
-	<!-- Breadcrumb -->
-	<nav class="text-sm text-dim">
-		<a href="/wordbook" class="hover:text-link">Wordbook</a>
-		<span class="mx-1">›</span>
-		<a href="/wordbook/{data.language.slug}" class="hover:text-link">{data.language.name}</a>
-		<span class="mx-1">›</span>
-		<span class="text-secondary">{data.word}</span>
-	</nav>
+<ArticleShell
+	breadcrumbs={[
+		{ label: 'Wordbook', href: '/wordbook' },
+		{ label: data.language.name, href: `/wordbook/${data.language.slug}` },
+		{ label: data.word },
+	]}
+	title={data.word}
+>
+	{#snippet actions()}
+		{#if isAuthenticated && data.homographs[0]}
+			<a href="/wordbook/contribute/{data.homographs[0].entry.id}" class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover"><PencilSimple size={14} weight="fill" />Edit</a>
+			{#if isAdmin}
+				<button onclick={() => deleteEntry(data.homographs[0].entry.id)} class="text-error transition-colors flex items-center gap-1 hover:text-error-hover"><Trash size={14} weight="fill" />Delete</button>
+			{/if}
+		{/if}
+	{/snippet}
+
+	{#snippet badges()}
+		<div class="flex items-center gap-2 mt-1">
+			<LanguageBadge name={data.language.name} slug={data.language.slug} color={data.language.color} />
+			{#if data.homographs[0]?.entry.pronunciation}
+				<span class="text-faint font-mono text-sm">{data.homographs[0].entry.pronunciation}</span>
+			{/if}
+		</div>
+	{/snippet}
 
 	{#each data.homographs as hom, homIndex}
 		{@const entry = hom.entry}
@@ -117,35 +128,17 @@
 		{@const relations = hom.relations}
 
 		<!-- Headword card -->
-		<article class="bg-surface border border-border overflow-hidden">
-			<div class="p-6">
-				<!-- Header -->
-				<div class="flex items-start justify-between mb-1">
-					<div class="flex items-baseline gap-3 flex-wrap">
-						<h2 class="text-3xl font-serif font-bold text-heading">
-							{data.word}{#if data.isMultipleHomographs}<sup class="text-base text-faint ml-0.5">{entry.homographNumber}</sup>{/if}
-						</h2>
-						{#if homIndex === 0}
-							<LanguageBadge name={data.language.name} slug={data.language.slug} color={data.language.color} />
-						{/if}
-					</div>
-					{#if isAuthenticated}
-						<div class="flex gap-3 text-sm shrink-0">
-							<a href="/wordbook/contribute/{entry.id}" class="text-link font-medium hover:text-link-hover">Edit</a>
-							{#if isAdmin}
-								<button onclick={() => deleteEntry(entry.id)} class="text-error text-xs hover:text-error-hover">Delete</button>
-							{/if}
-						</div>
-					{/if}
-				</div>
-
-				{#if entry.pronunciation}
-					<p class="text-faint font-mono text-sm">{entry.pronunciation}</p>
+		<div class="bg-raised border border-border-subtle overflow-hidden mb-4 {homIndex > 0 ? 'mt-6' : ''}">
+			<div class="p-4">
+				{#if data.isMultipleHomographs}
+					<h2 class="text-lg font-bold text-heading mb-2">
+						{data.word}<sup class="text-sm text-faint ml-0.5">{entry.homographNumber}</sup>
+					</h2>
 				{/if}
 
 				<!-- Dialect variants -->
 				{#if variants.length > 0}
-					<div class="mb-4 space-y-0.5">
+					<div class="mb-3 space-y-0.5">
 						{#each variants as variant}
 							<div class="flex items-baseline gap-2 text-sm">
 								<span class="text-dim min-w-24 text-xs font-medium">{variant.dialectName}:</span>
@@ -155,9 +148,6 @@
 								{#if variant.spelling}
 									<span class="text-secondary italic">"{variant.spelling}"</span>
 								{/if}
-								{#if variant.notes}
-									<span class="text-faint text-xs">({variant.notes})</span>
-								{/if}
 							</div>
 						{/each}
 					</div>
@@ -166,7 +156,7 @@
 				<!-- Definitions -->
 				<div class="divide-y divide-border-subtle">
 					{#each defs as def, index}
-						<div class="py-4 group first:pt-0">
+						<div class="py-3 group first:pt-0">
 							<div class="flex items-baseline gap-2 mb-1">
 								{#if defs.length > 1}
 									<span class="text-xs font-bold text-faint">{index + 1}.</span>
@@ -175,16 +165,12 @@
 									<span class="px-1.5 py-0.5 text-[10px] font-medium {posColors[def.partOfSpeech] || 'bg-raised text-secondary'}">{def.partOfSpeech}</span>
 								{/if}
 								{#if isAuthenticated && defs.length > 1}
-									<button onclick={() => deleteSense(entry.id, def.id)} class="
-										text-error text-xs opacity-0 transition-opacity ml-auto
-										hover:text-error-hover
-										group-hover:opacity-100
-									">Remove</button>
+									<button onclick={() => deleteSense(entry.id, def.id)} class="text-error text-xs opacity-0 transition-opacity ml-auto hover:text-error-hover group-hover:opacity-100">×</button>
 								{/if}
 							</div>
-							<p class="text-body leading-relaxed"><InlineMarkup text={def.definition} /></p>
+							<p class="text-body"><InlineMarkup text={def.definition} /></p>
 							{#if def.usageExample}
-								<div class="mt-2 pl-3 border-l-2 border-accent-border">
+								<div class="mt-2 pl-3 border-l-2 border-border-subtle">
 									<p class="text-sm italic text-secondary">{def.usageExample}</p>
 									{#if def.usageTranslation}
 										<p class="text-sm text-dim mt-0.5">{def.usageTranslation}</p>
@@ -198,32 +184,25 @@
 				<!-- Add sense -->
 				{#if isAuthenticated}
 					{#if addingSenseFor === entry.id}
-						<form onsubmit={e => addSense(entry.id, e)} class="mt-4 p-3 bg-page border border-border space-y-2">
+						<form onsubmit={e => addSense(entry.id, e)} class="mt-3 p-3 bg-page border border-border-subtle space-y-2">
 							{#if senseError}
 								<div class="p-2 bg-error-bg border border-error-border text-error text-xs">{senseError}</div>
 							{/if}
 							<div class="flex gap-2">
-								<select bind:value={newPos} class="
-									px-2 py-1.5 border border-border-strong text-xs bg-surface
-									focus:ring-2 focus:ring-accent
-								">
+								<select bind:value={newPos} class="px-2 py-1.5 border border-border-strong text-xs bg-surface focus:ring-2 focus:ring-accent">
 									<option value="">Part of speech</option>
 									{#each PARTS_OF_SPEECH as pos}
 										<option value={pos}>{pos}</option>
 									{/each}
 								</select>
-								<input type="text" bind:value={newDef} placeholder="Definition..." required class="flex-1 {inputClass}" />
+								<Input bind:value={newDef} placeholder="Definition..." required containerClass="flex-1" />
 							</div>
 							<div class="flex gap-2">
-								<input type="text" bind:value={newUsage} placeholder="Usage example" class="flex-1 {inputClass}" />
-								<input type="text" bind:value={newTranslation} placeholder="Translation" class="flex-1 {inputClass}" />
+								<Input bind:value={newUsage} placeholder="Usage example" containerClass="flex-1" />
+								<Input bind:value={newTranslation} placeholder="Translation" containerClass="flex-1" />
 							</div>
 							<div class="flex gap-2">
-								<button type="submit" disabled={submittingSense} class="
-									px-3 py-1 bg-accent text-surface text-sm
-									hover:bg-accent-hover
-									disabled:opacity-50
-								">Add</button>
+								<button type="submit" disabled={submittingSense} class="px-3 py-1.5 bg-accent text-surface text-sm hover:bg-accent-hover disabled:opacity-50">Add</button>
 								<button type="button" onclick={() => addingSenseFor = null} class="text-xs text-faint hover:text-secondary">Cancel</button>
 							</div>
 						</form>
@@ -253,7 +232,7 @@
 
 				<!-- Tags -->
 				{#if entry.tags && entry.tags.length > 0}
-					<div class="flex flex-wrap gap-1.5 mt-4 pt-4 border-t border-border-subtle">
+					<div class="flex flex-wrap gap-1.5 mt-4 pt-3 border-t border-border-subtle">
 						{#each entry.tags as tag}
 							<TagPill {tag} language={data.language.slug} />
 						{/each}
@@ -262,27 +241,29 @@
 
 				<!-- Wiki link -->
 				{#if entry.pageSlug}
-					<div class="mt-3">
+					<div class="mt-3 pt-3 border-t border-border-subtle">
 						<a href="/know/{entry.pageSlug}" class="text-sm text-link hover:text-link-hover hover:underline">
 							See also: {entry.pageSlug.replaceAll('_', ' ')} →
 						</a>
 					</div>
 				{/if}
 			</div>
-		</article>
-
-		<!-- Etymology & Relations (per homograph) -->
-		<div class="bg-surface border border-border p-6">
-			<EtymologySection
-				entryId={entry.id}
-				direct={relations.direct}
-				cognates={relations.cognates}
-				etymologyChain={relations.etymologyChain}
-				narrativeEtymology={entry.etymology || ''}
-				{isAuthenticated}
-			/>
 		</div>
+
+		<!-- Etymology -->
+		{#if relations.direct || relations.cognates?.length || relations.etymologyChain?.length || entry.etymology}
+			<div class="bg-raised border border-border-subtle p-4 mb-4">
+				<EtymologySection
+					entryId={entry.id}
+					direct={relations.direct}
+					cognates={relations.cognates}
+					etymologyChain={relations.etymologyChain}
+					narrativeEtymology={entry.etymology || ''}
+					{isAuthenticated}
+				/>
+			</div>
+		{/if}
 	{/each}
-</div>
+</ArticleShell>
 
 <ConfirmDialog bind:this={confirmDialog} />

@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation'
 	import { pushSuccess } from '$lib/notifications.svelte'
 	import EntryForm from '$lib/components/wordbook/EntryForm.svelte'
+	import ArticleShell from '$lib/components/ArticleShell.svelte'
 
 	let { data }: { data: PageData } = $props()
 
@@ -33,16 +34,13 @@
 	<title>Add Word — Wordbook — KnowThing</title>
 </svelte:head>
 
-<div class="space-y-6">
-	<div class="flex items-center justify-between">
-		<div>
-			<h1 class="text-2xl font-bold text-heading mb-1">Add a Word</h1>
-			<p class="text-sm text-dim">
-				<a href="/wordbook" class="text-link hover:underline">← Back to Wordbook</a>
-			</p>
-		</div>
-		<a href="/wordbook/contribute/language" class="text-sm text-link hover:underline">+ New language</a>
-	</div>
+<ArticleShell
+	breadcrumbs={[{ label: 'Wordbook', href: '/wordbook' }, { label: 'Add Word' }]}
+	title="Add a Word"
+>
+	{#snippet actions()}
+		<a href="/wordbook/contribute/language" class="text-link hover:underline">+ New language</a>
+	{/snippet}
 
 	{#if data.languages.length === 0}
 		<div class="p-6 bg-accent-subtle border border-accent-border text-center">
@@ -50,13 +48,11 @@
 			<a href="/wordbook/contribute/language" class="text-link font-medium hover:underline">Create a language first →</a>
 		</div>
 	{:else}
-		<div class="bg-surface border border-border p-6">
-			<EntryForm
-				languages={data.languages}
-				initial={data.preselectedLanguageId ? { languageId: data.preselectedLanguageId } : {}}
-				onsubmit={handleSubmit}
-				submitLabel="Add Entry"
-			/>
-		</div>
+		<EntryForm
+			languages={data.languages}
+			initial={data.preselectedLanguageId ? { languageId: data.preselectedLanguageId } : {}}
+			onsubmit={handleSubmit}
+			submitLabel="Add Entry"
+		/>
 	{/if}
-</div>
+</ArticleShell>
