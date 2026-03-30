@@ -1,7 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit'
 import { z } from 'zod'
 import type { Actions, PageServerLoad } from './$types.js'
-import { verifyCredentials, createSession, setSessionCookie } from '$lib/server/auth.js'
+import { verifyCredentials, createSession, setSessionCookie, checkLoginThrottle, recordLoginAttempt } from '$lib/server/auth.js'
 
 const loginSchema = z.object({
 	username: z.string().min(1, 'Username is required'),
@@ -24,14 +24,25 @@ export const actions: Actions = {
 		}
 		const { username, password } = parsed.data
 
+		// Check throttle
+		const allowed = await checkLoginThrottle(username)
+		if (!allowed) {
+			return fail(429, { error: 'Too many login attempts. Try again in 15 minutes.', username })
+		}
+
+		const ip = event.getClientAddress()
 		const user = await verifyCredentials(username, password)
+
 		if (!user) {
+			await recordLoginAttempt(username, ip, false)
 			return fail(401, { error: 'Invalid username or password', username })
 		}
 
+		await recordLoginAttempt(username, ip, true)
 		const token = await createSession(user.id)
 		setSessionCookie(event, token)
 
-		throw redirect(302, '/')
+		const redirectTo = event.url.searchParams.get('redirect') || '/'
+		throw redirect(302, redirectTo)
 	},
 }

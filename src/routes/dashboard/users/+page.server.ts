@@ -1,12 +1,13 @@
 import type { PageServerLoad } from './$types.js'
 import { db } from '$lib/server/db/index.js'
-import { users } from '$lib/server/db/schema.js'
-import { asc } from 'drizzle-orm'
+import { users, registrationCodes } from '$lib/server/db/schema.js'
+import { asc, desc, sql } from 'drizzle-orm'
 import { redirect, error } from '@sveltejs/kit'
+import { hasRole } from '$lib/server/auth.js'
 
 export const load: PageServerLoad = async ({ locals }) => {
 	if (!locals.user) redirect(302, '/auth/login')
-	if (locals.user.role !== 'admin') error(403, 'Admin access required')
+	if (!hasRole(locals.user.role, 'admin')) error(403, 'Admin access required')
 
 	const allUsers = await db
 		.select({
@@ -18,5 +19,11 @@ export const load: PageServerLoad = async ({ locals }) => {
 		.from(users)
 		.orderBy(asc(users.username))
 
-	return { users: allUsers }
+	const codes = await db
+		.select()
+		.from(registrationCodes)
+		.orderBy(desc(registrationCodes.createdAt))
+		.limit(20)
+
+	return { users: allUsers, codes }
 }

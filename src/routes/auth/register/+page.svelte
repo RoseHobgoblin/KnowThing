@@ -1,9 +1,9 @@
 <script lang="ts">
-	import type { ActionData } from './$types.js'
+	import type { ActionData, PageData } from './$types.js'
 	import Input from '$lib/components/ui/Input.svelte'
 	import { pushError } from '$lib/notifications.svelte'
 
-	let { form }: { form: ActionData } = $props()
+	let { form, data }: { form: ActionData, data: PageData } = $props()
 
 	$effect(() => {
 		if (form?.error) pushError(form.error)
@@ -11,7 +11,12 @@
 </script>
 
 <div class="max-w-md mx-auto mt-20 p-6">
-	<h1 class="text-2xl font-bold mb-6">Create account</h1>
+	<h1 class="text-2xl font-bold mb-2">Create account</h1>
+	{#if !data.requireCode}
+		<p class="text-sm text-accent mb-6">First user — you'll be the site owner.</p>
+	{:else}
+		<p class="text-sm text-dim mb-6">You need a registration code to create an account.</p>
+	{/if}
 
 	{#if form?.error}
 		<div class="bg-error-bg border border-error-border text-error-text px-4 py-2 mb-4 text-sm">
@@ -44,6 +49,16 @@
 			required
 			autocomplete="new-password"
 		/>
+		{#if data.requireCode}
+			<Input
+				label="Registration code"
+				name="code"
+				type="text"
+				required
+				placeholder="Enter your invite code"
+				autocomplete="off"
+			/>
+		{/if}
 		<button
 			type="submit"
 			class="

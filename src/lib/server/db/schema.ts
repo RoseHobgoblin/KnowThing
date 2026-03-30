@@ -19,7 +19,7 @@ export const users = pgTable('users', {
 	id: serial('id').primaryKey(),
 	username: text('username').unique().notNull(),
 	passwordHash: text('password_hash').notNull(),
-	role: text('role').notNull().default('editor'), // 'admin' | 'editor'
+	role: text('role').notNull().default('editor'), // 'owner' | 'admin' | 'editor' | 'viewer'
 	createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 })
 
@@ -31,6 +31,31 @@ export const sessions = pgTable('sessions', {
 	token: text('token').unique().notNull(),
 	expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
 })
+
+export const registrationCodes = pgTable('registration_codes', {
+	id: serial('id').primaryKey(),
+	code: text('code').unique().notNull(),
+	createdBy: integer('created_by').references(() => users.id),
+	usedBy: integer('used_by').references(() => users.id),
+	role: text('role').notNull().default('editor'),
+	usedAt: timestamp('used_at', { withTimezone: true }),
+	expiresAt: timestamp('expires_at', { withTimezone: true }),
+	createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
+export const loginAttempts = pgTable(
+	'login_attempts',
+	{
+		id: serial('id').primaryKey(),
+		username: text('username').notNull(),
+		ipAddress: text('ip_address'),
+		success: boolean('success').notNull().default(false),
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+	},
+	table => [
+		index('idx_login_attempts_username').on(table.username, table.createdAt),
+	],
+)
 
 // ============================================================================
 // Unified Content Records

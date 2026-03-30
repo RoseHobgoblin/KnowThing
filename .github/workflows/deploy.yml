@@ -18,6 +18,8 @@ jobs:
           script: |
             cd ~/KnowThing
             git pull origin main
+            # Ensure DOMAIN is set for Caddy HTTPS
+            grep -q '^DOMAIN=' .env 2>/dev/null || echo 'DOMAIN=knowthing.al' >> .env
             docker compose -f docker-compose.prod.yml build --no-cache app
             docker compose -f docker-compose.prod.yml up -d
             docker image prune -f
