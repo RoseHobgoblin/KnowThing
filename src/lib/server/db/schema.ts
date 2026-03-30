@@ -168,10 +168,12 @@ export const templates = pgTable('templates', {
 export const calendars = pgTable('calendars', {
 	id: serial('id').primaryKey(),
 	name: text('name').unique().notNull(),
+	slug: text('slug').unique().notNull(),
 	description: text('description').default(''),
 	isPrimary: boolean('is_primary').default(false).notNull(),
 	staticData: jsonb('static_data').notNull(),
 	planetId: integer('planet_id').references(() => planetaryBodies.id, { onDelete: 'set null' }),
+	contentRecordId: integer('content_record_id').references(() => contentRecords.id, { onDelete: 'set null' }),
 })
 
 // ============================================================================

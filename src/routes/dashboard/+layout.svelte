@@ -4,7 +4,6 @@
 	import { page } from '$app/stores'
 	import Wrench from 'phosphor-svelte/lib/Wrench'
 	import Users from 'phosphor-svelte/lib/Users'
-	import CalendarBlank from 'phosphor-svelte/lib/CalendarBlank'
 	import Image from 'phosphor-svelte/lib/Image'
 	import Export from 'phosphor-svelte/lib/Export'
 	import ClockCounterClockwise from 'phosphor-svelte/lib/ClockCounterClockwise'
@@ -36,7 +35,6 @@
 			<span class="border-l border-border-subtle mx-1"></span>
 			<a href="/dashboard/settings" class="{linkClass} {isActive('/dashboard/settings') ? activeClass : inactiveClass}"><Wrench size={14} weight="fill" />Settings</a>
 			<a href="/dashboard/users" class="{linkClass} {isActive('/dashboard/users') ? activeClass : inactiveClass}"><Users size={14} weight="fill" />Users</a>
-			<a href="/dashboard/calendar" class="{linkClass} {isActive('/dashboard/calendar') ? activeClass : inactiveClass}"><CalendarBlank size={14} weight="fill" />Calendars</a>
 			<a href="/dashboard/export" class="{linkClass} {isActive('/dashboard/export') ? activeClass : inactiveClass}"><Export size={14} weight="fill" />Export</a>
 		{/if}
 	</nav>

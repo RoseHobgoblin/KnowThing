@@ -3,7 +3,7 @@ import { z } from 'zod'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { calendars } from '$lib/server/db/schema.js'
-import { requireAuth } from '$lib/server/auth.js'
+import { requireRole } from '$lib/server/auth.js'
 import { eq } from 'drizzle-orm'
 import { staticDataSchema } from '$lib/calendar/schema.js'
 
@@ -67,15 +67,23 @@ export const PUT: RequestHandler = async (event) => {
 
 /** DELETE /api/calendar/:id */
 export const DELETE: RequestHandler = async (event) => {
-	const user = requireAuth(event)
-	if (user.role !== 'admin') {
-		return json({ error: 'Admin access required' }, { status: 403 })
-	}
+	requireRole(event, 'admin')
 
 	const id = Number.parseInt(event.params.id)
 	if (isNaN(id)) return json({ error: 'Invalid ID' }, { status: 400 })
 
-	const [deleted] = await db.delete(calendars).where(eq(calendars.id, id)).returning()
-	if (!deleted) return json({ error: 'Calendar not found' }, { status: 404 })
+	// Load calendar to get content record ID
+	const [cal] = await db.select().from(calendars).where(eq(calendars.id, id))
+	if (!cal) return json({ error: 'Calendar not found' }, { status: 404 })
+
+	// Clean up content record
+	if (cal.contentRecordId) {
+		const { deleteContentEffects } = await import('$lib/server/content-effects.js')
+		await deleteContentEffects(cal.contentRecordId)
+		const { contentRecords } = await import('$lib/server/db/schema.js')
+		await db.delete(contentRecords).where(eq(contentRecords.id, cal.contentRecordId))
+	}
+
+	await db.delete(calendars).where(eq(calendars.id, id))
 	return json({ success: true })
 }
