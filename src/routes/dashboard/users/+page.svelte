@@ -4,6 +4,7 @@
 	import { page } from '$app/stores'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import Button from '$lib/components/ui/Button.svelte'
+	import Select from '$lib/components/ui/Select.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 
 	let { data }: { data: PageData } = $props()
@@ -96,15 +97,13 @@
 						{#if user.role === 'owner'}
 							<span class="text-xs text-faint">Owner</span>
 						{:else}
-							<select
+							<Select
+								type="single"
 								value={user.role}
-								onchange={(e) => setRole(user.id, (e.target as HTMLSelectElement).value)}
-								class="px-2 py-1 border border-border-strong text-xs bg-surface text-body focus:outline-none focus:ring-2 focus:ring-accent"
-							>
-								{#each roleOptions as role}
-									<option value={role}>{role}</option>
-								{/each}
-							</select>
+								onValueChange={(v: string) => { if (v !== user.role) setRole(user.id, v) }}
+								items={roleOptions.map(r => ({ value: r, label: r }))}
+								size="sm"
+							/>
 							{#if user.id !== currentUser?.id}
 								<button onclick={() => removeUser(user.id, user.username)} class="text-xs text-error transition-colors hover:text-error-hover">Delete</button>
 							{/if}
@@ -121,14 +120,12 @@
 		<p class="text-xs text-faint">Generate invite codes for new users. Each code can be used once.</p>
 
 		<div class="flex gap-3 items-end">
-			<div>
-				<span class="text-xs font-medium text-secondary block mb-1">Role</span>
-				<select bind:value={codeRole} class="px-2 py-2 text-sm border border-border-strong bg-surface text-body outline-none focus:ring-2 focus:ring-accent">
-					{#each roleOptions as role}
-						<option value={role}>{role}</option>
-					{/each}
-				</select>
-			</div>
+			<Select
+				type="single"
+				label="Role"
+				bind:value={codeRole}
+				items={roleOptions.map(r => ({ value: r, label: r }))}
+			/>
 			<Button onclick={generateCode} loading={generating}>
 				{generating ? 'Generating...' : 'Generate Code'}
 			</Button>

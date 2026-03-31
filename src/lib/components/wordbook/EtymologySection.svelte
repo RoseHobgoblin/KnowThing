@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
+	import Select from '$lib/components/ui/Select.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
+	import Input from '$lib/components/ui/Input.svelte'
 	import LanguageBadge from './LanguageBadge.svelte'
 
 	type RelatedEntry = {
@@ -215,14 +217,12 @@
 			{/if}
 
 			<div class="flex gap-3 flex-wrap">
-				<select bind:value={relationType} class="
-					px-3 py-1.5 border border-border-strong text-sm bg-surface
-					focus:outline-none focus:ring-2 focus:ring-accent
-				">
-					{#each typeOptions as opt}
-						<option value={opt.value}>{opt.label}</option>
-					{/each}
-				</select>
+				<Select
+					type="single"
+					bind:value={relationType}
+					items={typeOptions.map(opt => ({ value: opt.value, label: opt.label }))}
+					size="sm"
+				/>
 
 				<div class="relative flex-1 min-w-[200px]">
 					<input
@@ -254,7 +254,7 @@
 				<p class="text-xs text-faint -mt-1">{currentHelp}</p>
 			{/if}
 
-			<input type="text" bind:value={notes} placeholder="Notes (optional)" class="w-full px-3 py-1.5 border border-border-strong text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent" />
+			<Input bind:value={notes} placeholder="Notes (optional)" containerClass="w-full" />
 
 			<button type="submit" disabled={submitting || !targetId} class="px-4 py-1.5 bg-accent text-surface text-sm font-medium transition-colors hover:bg-accent-hover disabled:opacity-50">
 				{submitting ? 'Adding...' : 'Add'}

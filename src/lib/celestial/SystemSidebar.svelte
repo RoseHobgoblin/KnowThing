@@ -3,6 +3,7 @@
 	import type { CalendarConfig } from '$lib/calendar/types.js'
 	import { resolveColor } from './colors.js'
 	import { resolveDisplay, absoluteDay, dateFromAbsolute } from '$lib/calendar/date-math.js'
+	import Select from '$lib/components/ui/Select.svelte'
 	import CalendarWidget from '$lib/calendar/CalendarWidget.svelte'
 	import Star from 'phosphor-svelte/lib/Star'
 	import Planet from 'phosphor-svelte/lib/Planet'
@@ -146,14 +147,14 @@
 			<div class="text-[10px] font-semibold text-faint uppercase tracking-wider border-b border-border-subtle pb-1 mb-2">
 				Viewing
 				{#if calendars.length > 1}
-					<select
+					<Select
+						type="single"
+						numeric
 						bind:value={selectedCalendarId}
-						class="ml-1 text-[10px] bg-transparent text-link border-none outline-none cursor-pointer"
-					>
-						{#each calendars as cal (cal.id)}
-							<option value={cal.id}>{cal.name}</option>
-						{/each}
-					</select>
+						items={calendars.map(cal => ({ value: String(cal.id), label: cal.name }))}
+						size="sm"
+						containerClass="ml-1 inline-block"
+					/>
 				{:else}
 					<span class="text-secondary ml-1">{selectedCalendar.name}</span>
 				{/if}

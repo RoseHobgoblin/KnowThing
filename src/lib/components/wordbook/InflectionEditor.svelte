@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
+	import Select from '$lib/components/ui/Select.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
+	import Input from '$lib/components/ui/Input.svelte'
 	import { generateCellKeys, cellKeyLabel } from '$lib/wordbook/cell-keys.js'
 
 	let {
@@ -134,12 +136,14 @@
 			<div class="flex-1 min-w-[200px]">
 				<label class="block text-xs font-medium text-secondary mb-1">Paradigm Class</label>
 				{#if filteredClasses.length > 0}
-					<select bind:value={selectedClassId} class="w-full {inputClass}">
-						<option value={null}>Manual (no class)</option>
-						{#each filteredClasses as cls}
-							<option value={cls.id}>{cls.name}</option>
-						{/each}
-					</select>
+					<Select
+						type="single"
+						numeric
+						bind:value={selectedClassId}
+						placeholder="Manual (no class)"
+						items={filteredClasses.map(cls => ({ value: String(cls.id), label: cls.name }))}
+						containerClass="w-full"
+					/>
 					<p class="text-[10px] text-faint mt-1">Select a class to auto-generate forms from its rules.</p>
 				{:else}
 					<div class="p-2 bg-warning-bg border border-warning-border text-xs text-body">
@@ -163,7 +167,7 @@
 			<!-- Stem -->
 			<div class="flex-1 min-w-[150px]">
 				<label class="block text-xs font-medium text-secondary mb-1">Stem</label>
-				<input type="text" bind:value={stem} class="w-full {inputClass}" placeholder="e.g. tsid" />
+				<Input bind:value={stem} containerClass="w-full" placeholder="e.g. tsid" />
 				<p class="text-[10px] text-faint mt-1">The base form that rules transform. Usually the word minus its ending.</p>
 			</div>
 		</div>

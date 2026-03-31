@@ -10,6 +10,7 @@
 	import EtymologySection from '$lib/components/wordbook/EtymologySection.svelte'
 	import InflectionTable from '$lib/components/wordbook/InflectionTable.svelte'
 	import InflectionEditor from '$lib/components/wordbook/InflectionEditor.svelte'
+	import Select from '$lib/components/ui/Select.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import { PARTS_OF_SPEECH, POS_COLORS } from '$lib/components/wordbook/constants.js'
@@ -189,12 +190,13 @@
 								<div class="p-2 bg-error-bg border border-error-border text-error text-xs">{senseError}</div>
 							{/if}
 							<div class="flex gap-2">
-								<select bind:value={newPos} class="px-2 py-1.5 border border-border-strong text-xs bg-surface focus:ring-2 focus:ring-accent">
-									<option value="">Part of speech</option>
-									{#each PARTS_OF_SPEECH as pos}
-										<option value={pos}>{pos}</option>
-									{/each}
-								</select>
+								<Select
+									type="single"
+									bind:value={newPos}
+									placeholder="Part of speech"
+									size="sm"
+									items={PARTS_OF_SPEECH.map(pos => ({ value: pos, label: pos }))}
+								/>
 								<Input bind:value={newDef} placeholder="Definition..." required containerClass="flex-1" />
 							</div>
 							<div class="flex gap-2">

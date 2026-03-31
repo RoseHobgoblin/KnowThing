@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { CalendarConfig } from '$lib/calendar/types.js'
+	import Select from '$lib/components/ui/Select.svelte'
 	import { resolveDisplay, daysInYear, absoluteDay, dateFromAbsolute } from '$lib/calendar/date-math.js'
 
 	let {
@@ -49,14 +50,13 @@
 	<div class="flex items-center gap-2">
 		<!-- Calendar selector -->
 		{#if calendars.length > 1}
-			<select
+			<Select
+				type="single"
+				numeric
 				bind:value={selectedCalendarId}
-				class="px-1.5 py-1 text-xs border border-border-strong bg-surface text-body outline-none"
-			>
-				{#each calendars as cal (cal.id)}
-					<option value={cal.id}>{cal.name}</option>
-				{/each}
-			</select>
+				items={calendars.map(cal => ({ value: String(cal.id), label: cal.name }))}
+				size="sm"
+			/>
 		{:else if calendars.length === 1}
 			<span class="text-faint">{calendars[0].name}</span>
 		{/if}

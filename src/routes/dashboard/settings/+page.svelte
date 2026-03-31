@@ -2,6 +2,7 @@
 	import type { PageData } from './$types.js'
 	import Input from '$lib/components/ui/Input.svelte'
 	import Button from '$lib/components/ui/Button.svelte'
+	import Checkbox from '$lib/components/ui/Checkbox.svelte'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import { invalidateAll } from '$app/navigation'
 
@@ -106,20 +107,12 @@
 			<p class="text-xs text-faint mt-0.5">Toggle site features on or off.</p>
 		</div>
 		<div class="flex flex-col gap-3">
-			<label class="flex items-center gap-3 cursor-pointer">
-				<input type="checkbox" bind:checked={wordbookEnabled} class="accent-accent" />
-				<div>
-					<span class="text-sm font-medium text-body">Wordbook</span>
-					<p class="text-xs text-faint">Multilingual dictionary and linguistic database</p>
-				</div>
-			</label>
-			<label class="flex items-center gap-3 cursor-pointer">
-				<input type="checkbox" bind:checked={calendarEnabled} class="accent-accent" />
-				<div>
-					<span class="text-sm font-medium text-body">Calendar</span>
-					<p class="text-xs text-faint">Custom calendar system with moons, eras, and seasons</p>
-				</div>
-			</label>
+			<Checkbox bind:value={wordbookEnabled} label="Wordbook">
+				Multilingual dictionary and linguistic database
+			</Checkbox>
+			<Checkbox bind:value={calendarEnabled} label="Calendar">
+				Custom calendar system with moons, eras, and seasons
+			</Checkbox>
 		</div>
 	</section>
 

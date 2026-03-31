@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { PageData } from './$types.js'
 	import Input from '$lib/components/ui/Input.svelte'
+	import Select from '$lib/components/ui/Select.svelte'
 	import Button from '$lib/components/ui/Button.svelte'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
@@ -262,15 +263,14 @@
 				<h2 class="text-sm font-semibold text-heading">Add Star</h2>
 				<div class="flex gap-3 items-end">
 					<Input label="Name" bind:value={newStarName} placeholder="e.g. The Sun" containerClass="flex-1" />
-					<div>
-						<span class="text-xs font-medium text-secondary block mb-1">System</span>
-						<select bind:value={newStarSystemId} class="px-2 py-2 text-sm border border-border-strong bg-surface text-body outline-none transition-colors hover:border-border focus:ring-2 focus:ring-accent">
-							<option value={null}>None</option>
-							{#each data.systems as sys (sys.id)}
-								<option value={sys.id}>{sys.name}</option>
-							{/each}
-						</select>
-					</div>
+					<Select
+						type="single"
+						label="System"
+						numeric
+						bind:value={newStarSystemId}
+						placeholder="None"
+						items={(data.systems as any[]).map(sys => ({ value: String(sys.id), label: sys.name as string }))}
+					/>
 					<Button onclick={createStar} disabled={!newStarName.trim()} loading={creating}>Add</Button>
 				</div>
 			</section>
@@ -279,24 +279,25 @@
 				<h2 class="text-sm font-semibold text-heading">Add Body</h2>
 				<div class="flex gap-3 items-end flex-wrap">
 					<Input label="Name" bind:value={newBodyName} placeholder="e.g. Earth" containerClass="flex-1 min-w-40" />
-					<div>
-						<span class="text-xs font-medium text-secondary block mb-1">Type</span>
-						<select bind:value={newBodyType} class="px-2 py-2 text-sm border border-border-strong bg-surface text-body outline-none transition-colors hover:border-border focus:ring-2 focus:ring-accent">
-							<option value="planet">Planet</option>
-							<option value="moon">Moon</option>
-							<option value="dwarf_planet">Dwarf planet</option>
-							<option value="asteroid">Asteroid</option>
-						</select>
-					</div>
-					<div>
-						<span class="text-xs font-medium text-secondary block mb-1">Star</span>
-						<select bind:value={newBodyStarId} class="px-2 py-2 text-sm border border-border-strong bg-surface text-body outline-none transition-colors hover:border-border focus:ring-2 focus:ring-accent">
-							<option value={null}>None</option>
-							{#each data.stars as star (star.id)}
-								<option value={star.id}>{star.name}</option>
-							{/each}
-						</select>
-					</div>
+					<Select
+						type="single"
+						label="Type"
+						bind:value={newBodyType}
+						items={[
+							{ value: 'planet', label: 'Planet' },
+							{ value: 'moon', label: 'Moon' },
+							{ value: 'dwarf_planet', label: 'Dwarf planet' },
+							{ value: 'asteroid', label: 'Asteroid' },
+						]}
+					/>
+					<Select
+						type="single"
+						label="Star"
+						numeric
+						bind:value={newBodyStarId}
+						placeholder="None"
+						items={data.stars.map((star: any) => ({ value: String(star.id), label: star.name }))}
+					/>
 					<Button onclick={createBody} disabled={!newBodyName.trim()} loading={creating}>Add</Button>
 				</div>
 			</section>

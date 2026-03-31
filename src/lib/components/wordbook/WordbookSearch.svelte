@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation'
+	import Select from '$lib/components/ui/Select.svelte'
 
 	let { languages = [], large = false }: {
 		languages?: Array<{ name: string, slug: string }>
@@ -38,18 +39,13 @@
 			"
 		/>
 		{#if languages.length > 0}
-			<select
+			<Select
+				type="single"
 				bind:value={selectedLanguage}
-				class="px-3 {large ? 'py-3' : 'py-2'}
-					border border-border-strong text-sm bg-surface text-secondary
-					focus:outline-none focus:ring-2 focus:ring-accent
-				"
-			>
-				<option value="">All languages</option>
-				{#each languages as lang}
-					<option value={lang.slug}>{lang.name}</option>
-				{/each}
-			</select>
+				placeholder="All languages"
+				items={languages.map(lang => ({ value: lang.slug, label: lang.name }))}
+				size={large ? 'md' : 'sm'}
+			/>
 		{/if}
 	</div>
 	<button

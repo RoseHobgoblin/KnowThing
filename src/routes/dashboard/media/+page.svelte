@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
+	import Select from '$lib/components/ui/Select.svelte'
+	import Checkbox from '$lib/components/ui/Checkbox.svelte'
 
 	type MediaFile = {
 		id: number
@@ -119,6 +121,14 @@
 
 	const totalPages = $derived(Math.ceil(total / perPage))
 
+	let sortByInitialized = false
+	$effect(() => {
+		sortBy  // subscribe to sortBy changes
+		if (!sortByInitialized) { sortByInitialized = true; return }
+		currentPage = 0
+		loadFiles()
+	})
+
 	onMount(loadFiles)
 </script>
 
@@ -178,25 +188,19 @@
 			"
 		/>
 
-		<select
+		<Select
+			type="single"
 			bind:value={sortBy}
-			onchange={() => { currentPage = 0; loadFiles() }}
-			class="
-				px-3 py-2 border border-border-strong text-sm bg-surface
-				focus:outline-none focus:ring-2 focus:ring-accent
-			"
-		>
-			<option value="newest">Newest</option>
-			<option value="oldest">Oldest</option>
-			<option value="name">Name</option>
-			<option value="size">Largest</option>
-			<option value="usage">Most used</option>
-		</select>
+			items={[
+				{ value: 'newest', label: 'Newest' },
+				{ value: 'oldest', label: 'Oldest' },
+				{ value: 'name', label: 'Name' },
+				{ value: 'size', label: 'Largest' },
+				{ value: 'usage', label: 'Most used' },
+			]}
+		/>
 
-		<label class="flex items-center gap-1.5 text-sm text-secondary">
-			<input type="checkbox" bind:checked={showUnused} onchange={() => { currentPage = 0; loadFiles() }} class="border-border-strong text-accent focus:ring-accent" />
-			Unused only
-		</label>
+		<Checkbox bind:value={showUnused} label="Unused only" onclick={() => { currentPage = 0; loadFiles() }} />
 
 		<div class="flex border border-border-strong overflow-hidden">
 			<button

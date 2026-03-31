@@ -14,6 +14,7 @@
 	import Editor from '$lib/components/Editor.svelte'
 	import LivePreview from '$lib/components/LivePreview.svelte'
 	import Tooltip from '$lib/components/ui/Tooltip.svelte'
+	import Checkbox from '$lib/components/ui/Checkbox.svelte'
 	import GearSix from 'phosphor-svelte/lib/GearSix'
 	import CalendarBlank from 'phosphor-svelte/lib/CalendarBlank'
 	import Star from 'phosphor-svelte/lib/Star'
@@ -341,10 +342,7 @@
 					</div>
 				</div>
 				<div class="flex gap-6">
-					<label class="flex items-center gap-2 text-sm text-secondary cursor-pointer">
-						<input type="checkbox" bind:checked={displayMoons} class="accent-accent" />
-						Show moon phases
-					</label>
+					<Checkbox bind:value={displayMoons} label="Show moon phases" />
 				</div>
 			</section>
 
@@ -408,7 +406,7 @@
 								<Input type="number" bind:value={month.length} min={1} containerClass="w-14" class="text-center" />
 								<span class="text-[10px] text-faint">days</span>
 							</div>
-							<Select bind:value={month.month_type} items={[{ value: 'regular', label: 'Regular' }, { value: 'intercalary', label: 'Intercalary' }]} containerClass="w-28" size="sm" />
+							<Select type="single" bind:value={month.month_type} items={[{ value: 'regular', label: 'Regular' }, { value: 'intercalary', label: 'Intercalary' }]} containerClass="w-28" size="sm" />
 							<button type="button" onclick={() => months = months.filter((_, i) => i !== index)} class="text-faint opacity-0 transition-opacity group-hover:opacity-100 hover:text-error">x</button>
 						</div>
 					{/each}
@@ -466,14 +464,14 @@
 						</div>
 
 						<div class="grid grid-cols-2 gap-3 md:grid-cols-4">
-							<div>
-								<span class="text-xs font-medium text-secondary block mb-1">Insert after</span>
-								<select bind:value={ld.month_index} class="w-full px-2 py-2 text-sm border border-border-strong bg-surface text-body outline-none transition-colors hover:border-border focus:ring-2 focus:ring-accent">
-									{#each months as m, mi (mi)}
-										<option value={mi}>{m.name || `Month ${mi + 1}`}</option>
-									{/each}
-								</select>
-							</div>
+							<Select
+								type="single"
+								label="Insert after"
+								numeric
+								bind:value={ld.month_index}
+								items={months.map((m, mi) => ({ value: String(mi), label: m.name || `Month ${mi + 1}` }))}
+								containerClass="w-full"
+							/>
 							<Input type="number" label="After day #" bind:value={ld.after_day} min={0} />
 							<Input type="number" label="Every N years" bind:value={ld.interval} min={1} />
 							<Input type="number" label="Year offset" bind:value={ld.offset} />
@@ -484,10 +482,7 @@
 							<Input label="But keep years divisible by" bind:value={ld.exclusive} placeholder="e.g. 400" />
 						</div>
 
-						<label class="flex items-center gap-2 text-xs text-secondary cursor-pointer">
-							<input type="checkbox" bind:checked={ld.intercalary} class="accent-accent" />
-							Intercalary — this day doesn't advance the weekday cycle
-						</label>
+						<Checkbox bind:value={ld.intercalary} label="Intercalary — this day doesn't advance the weekday cycle" />
 					</div>
 				{/each}
 			</section>
@@ -522,10 +517,7 @@
 								</div>
 								<Input bind:value={era.format} placeholder={'{{year}} {{era_name}}'} />
 							</div>
-							<label class="flex items-center gap-2 text-xs text-secondary self-end cursor-pointer">
-								<input type="checkbox" bind:checked={era.reverse_numbering} class="accent-accent" />
-								Count backwards
-							</label>
+							<Checkbox bind:value={era.reverse_numbering} label="Count backwards" class="self-end" />
 						</div>
 					</div>
 				{/each}
@@ -581,6 +573,7 @@
 							<input type="color" bind:value={season.color} class="size-7 border border-border cursor-pointer shrink-0" />
 							<Input bind:value={season.name} placeholder="Season name" containerClass="flex-1" class="font-medium" />
 							<Select
+								type="single"
 								bind:value={season.kind}
 								items={[{ value: 'spring', label: 'Spring' }, { value: 'summer', label: 'Summer' }, { value: 'autumn', label: 'Autumn' }, { value: 'winter', label: 'Winter' }, { value: 'custom', label: 'Custom' }]}
 								containerClass="w-24"
@@ -590,20 +583,22 @@
 						</div>
 						<div class="flex items-center gap-3">
 							<Select
+								type="single"
 								bind:value={season.timing_type}
 								items={[{ value: 'dated', label: 'Starts on date' }, { value: 'periodic', label: 'Rolling duration' }]}
 								containerClass="w-36"
 								size="sm"
 							/>
 							{#if season.timing_type === 'dated'}
-								<div class="flex items-center gap-1">
-									<span class="text-xs text-secondary">Month</span>
-									<select bind:value={season.month} class="px-2 py-1.5 text-sm border border-border-strong bg-surface text-body outline-none transition-colors hover:border-border focus:ring-2 focus:ring-accent w-32">
-										{#each months as m, mi (mi)}
-											<option value={mi}>{m.name || `Month ${mi + 1}`}</option>
-										{/each}
-									</select>
-								</div>
+								<Select
+									type="single"
+									label="Month"
+									numeric
+									bind:value={season.month}
+									items={months.map((m, mi) => ({ value: String(mi), label: m.name || `Month ${mi + 1}` }))}
+									containerClass="w-32"
+									size="sm"
+								/>
 								<div class="flex items-center gap-1">
 									<span class="text-xs text-secondary">Day</span>
 									<Input type="number" bind:value={season.day} min={1} containerClass="w-14" class="text-center" />

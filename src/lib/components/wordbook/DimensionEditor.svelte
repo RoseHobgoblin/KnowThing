@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
+	import Select from '$lib/components/ui/Select.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
+	import Input from '$lib/components/ui/Input.svelte'
 	import { PARTS_OF_SPEECH } from './constants.js'
 	import { generateCellKeys, cellKeyLabel } from '$lib/wordbook/cell-keys.js'
 
@@ -215,15 +217,16 @@
 		<form onsubmit={addDimension} class="p-3 bg-page border border-border mb-3 space-y-2">
 			<div class="text-xs font-medium text-dim mb-1">New dimension</div>
 			<div class="flex gap-2 flex-wrap">
-				<select bind:value={newDimPos} class={inputClass}>
-					{#each PARTS_OF_SPEECH as pos}
-						<option value={pos}>{pos}</option>
-					{/each}
-				</select>
-				<input type="text" bind:value={newDimName} placeholder="Name (e.g. Case)" required class="flex-1 min-w-[120px] {inputClass}" />
-				<input type="number" bind:value={newDimSort} class="w-16 {inputClass}" title="Sort order (0=rows, 1=columns)" />
+				<Select
+					type="single"
+					bind:value={newDimPos}
+					items={PARTS_OF_SPEECH.map(pos => ({ value: pos, label: pos }))}
+					size="sm"
+				/>
+				<Input bind:value={newDimName} placeholder="Name (e.g. Case)" required containerClass="flex-1 min-w-[120px]" />
+				<Input type="number" bind:value={newDimSort} containerClass="w-16" title="Sort order (0=rows, 1=columns)" />
 			</div>
-			<input type="text" bind:value={newDimValues} placeholder="Values, comma-separated (e.g. nominative, accusative, genitive, dative)" required class="w-full {inputClass}" />
+			<Input bind:value={newDimValues} placeholder="Values, comma-separated (e.g. nominative, accusative, genitive, dative)" required containerClass="w-full" />
 			<div class="flex gap-2">
 				<button type="submit" disabled={addingDim} class="
 					px-3 py-1 bg-accent text-surface text-xs
@@ -240,14 +243,15 @@
 		<form onsubmit={addClass} class="p-3 bg-page border border-border mb-3 space-y-2">
 			<div class="text-xs font-medium text-dim mb-1">New paradigm class</div>
 			<div class="flex gap-2 flex-wrap">
-				<select bind:value={newClassPos} class={inputClass}>
-					{#each PARTS_OF_SPEECH as pos}
-						<option value={pos}>{pos}</option>
-					{/each}
-				</select>
-				<input type="text" bind:value={newClassName} placeholder="Name (e.g. Class 1 Regular)" required class="flex-1 min-w-[150px] {inputClass}" />
+				<Select
+					type="single"
+					bind:value={newClassPos}
+					items={PARTS_OF_SPEECH.map(pos => ({ value: pos, label: pos }))}
+					size="sm"
+				/>
+				<Input bind:value={newClassName} placeholder="Name (e.g. Class 1 Regular)" required containerClass="flex-1 min-w-[150px]" />
 			</div>
-			<input type="text" bind:value={newClassDesc} placeholder="Description (optional)" class="w-full {inputClass}" />
+			<Input bind:value={newClassDesc} placeholder="Description (optional)" containerClass="w-full" />
 			<div class="flex gap-2">
 				<button type="submit" disabled={addingClass} class="
 					px-3 py-1 bg-accent text-surface text-xs
@@ -310,9 +314,7 @@
 											{:else}
 												<div class="flex items-center gap-2 mb-3">
 													<span class="text-xs text-dim">Preview stem:</span>
-													<input type="text" bind:value={previewStem} class="
-														w-32 px-2 py-1 border border-border-strong text-sm bg-surface font-mono
-													" />
+													<Input bind:value={previewStem} containerClass="w-32" class="font-mono" />
 												</div>
 
 												<div class="overflow-x-auto">
@@ -329,14 +331,11 @@
 																<tr class="border-b border-border-subtle">
 																	<td class="py-1.5 pr-3 text-xs text-secondary font-mono whitespace-nowrap">{cellKeyLabel(rule.cellKey)}</td>
 																	<td class="py-1.5 pr-3">
-																		<input
-																			type="text"
+																		<Input
 																			bind:value={editingRules[index].pattern}
 																			placeholder={'{stem}n'}
-																			class="
-																				w-full px-2 py-1 border border-border-strong text-sm bg-surface
-																				font-mono
-																			"
+																			containerClass="w-full"
+																			class="font-mono"
 																		/>
 																	</td>
 																	<td class="py-1.5 text-xs font-mono text-faint">{previewForm(rule.pattern)}</td>
