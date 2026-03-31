@@ -106,10 +106,6 @@
 
 	{#if ast}
 		<section class="space-y-3">
-			<div>
-				<h3 class="text-sm font-semibold text-heading">Article Content</h3>
-				<p class="text-xs text-faint">Reference prose and documentation for this calendar.</p>
-			</div>
 			<article class="know-article">
 				<WikiNodeComponent node={ast} />
 			</article>
