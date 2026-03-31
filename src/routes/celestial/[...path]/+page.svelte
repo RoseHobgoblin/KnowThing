@@ -59,17 +59,8 @@
 	const viewPath = $derived($page.url.pathname.replace(/\/edit$/, ''))
 	const editPath = $derived(viewPath + '/edit')
 
-	// Breadcrumb: derive parent path segments from URL
-	const pathSegments = $derived.by(() => {
-		const parts = viewPath.replace('/celestial/', '').split('/').filter(Boolean)
-		// Last segment is the current page, everything before is parent
-		const parents = parts.slice(0, -1)
-		return parents.map((slug, i) => ({
-			slug,
-			label: slug.replaceAll('-', ' '),
-			href: '/celestial/' + parts.slice(0, i + 1).join('/'),
-		}))
-	})
+	// Breadcrumb parents resolved server-side from DB (proper names, not URL slugs)
+	const parentCrumbs = $derived((data as any).parentCrumbs ?? [] as { label: string, href: string }[])
 
 	// Strip infobox templates from the AST — the celestial page renders its own infobox from structured data
 	function stripInfoboxes(node: import('$lib/parser/types.js').WikiNode): import('$lib/parser/types.js').WikiNode | null {
@@ -152,7 +143,7 @@
 {:else}
 	<!-- VIEW MODE -->
 	<ArticleShell
-		breadcrumbs={celestialPathBreadcrumbs(pathSegments, raw.name)}
+		breadcrumbs={celestialPathBreadcrumbs(parentCrumbs, raw.name)}
 		title={raw.name}
 	>
 		{#snippet actions()}

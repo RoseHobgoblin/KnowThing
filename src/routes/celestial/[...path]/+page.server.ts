@@ -59,41 +59,50 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			ORDER BY c.name
 		`)
 		const infoboxFields = await resolveStructuredData('system', system.slug)
-		return { kind: 'system' as const, body: system, isEditMode, systemStars, systemBodies, systemCalendars, infoboxFields: infoboxFields ? Object.fromEntries(infoboxFields) : null, ...content }
+		return { kind: 'system' as const, body: system, isEditMode, systemStars, systemBodies, systemCalendars, infoboxFields: infoboxFields ? Object.fromEntries(infoboxFields) : null, parentCrumbs: [] as { label: string, href: string }[], ...content }
 	}
 
 	const [star] = await db.select().from(stars).where(sql`LOWER(${stars.slug}) = LOWER(${slug}) OR LOWER(${stars.pageSlug}) = LOWER(${slug})`)
 	if (star) {
 		// Resolve canonical system slug from DB
-		let canonicalSystemSlug: string | null = null
+		let parentSystem: { name: string, slug: string } | null = null
 		if (star.systemId) {
-			const [sys] = await db.select({ slug: starSystems.slug }).from(starSystems).where(eq(starSystems.id, star.systemId))
-			canonicalSystemSlug = sys?.slug ?? null
+			const [sys] = await db.select({ slug: starSystems.slug, name: starSystems.name }).from(starSystems).where(eq(starSystems.id, star.systemId))
+			parentSystem = sys ?? null
 		}
-		const canonicalPath = canonicalSystemSlug ? `/celestial/${canonicalSystemSlug}/${star.slug}` : `/celestial/${star.slug}`
+		const canonicalPath = parentSystem ? `/celestial/${parentSystem.slug}/${star.slug}` : `/celestial/${star.slug}`
 		const inputPath = `/celestial/${pathSegments.join('/')}`
 		if (canonicalPath !== inputPath && !isEditMode) redirect(301, canonicalPath)
 
 		const allSystems = await db.select({ id: starSystems.id, name: starSystems.name }).from(starSystems).orderBy(starSystems.name)
 		const content = await getContent(star.contentRecordId)
+		const parentCrumbs: { label: string, href: string }[] = []
+		if (parentSystem) {
+			parentCrumbs.push({ label: parentSystem.name, href: `/celestial/${parentSystem.slug}` })
+		}
 		const infoboxFields = await resolveStructuredData('star', star.slug)
-		return { kind: 'star' as const, body: star, allSystems, isEditMode, infoboxFields: infoboxFields ? Object.fromEntries(infoboxFields) : null, ...content }
+		return { kind: 'star' as const, body: star, allSystems, isEditMode, parentCrumbs, infoboxFields: infoboxFields ? Object.fromEntries(infoboxFields) : null, ...content }
 	}
 
 	const [planet] = await db.select().from(planetaryBodies).where(sql`LOWER(${planetaryBodies.slug}) = LOWER(${slug}) OR LOWER(${planetaryBodies.pageSlug}) = LOWER(${slug})`)
 	if (planet) {
-		// Resolve canonical system slug from the planet's star
-		let canonicalSystemSlug: string | null = null
+		// Resolve canonical path and breadcrumb parents from hierarchy
+		let parentSystem: { name: string, slug: string } | null = null
 		if (planet.starId) {
 			const [parentStar] = await db.select({ systemId: stars.systemId }).from(stars).where(eq(stars.id, planet.starId))
 			if (parentStar?.systemId) {
-				const [sys] = await db.select({ slug: starSystems.slug }).from(starSystems).where(eq(starSystems.id, parentStar.systemId))
-				canonicalSystemSlug = sys?.slug ?? null
+				const [sys] = await db.select({ slug: starSystems.slug, name: starSystems.name }).from(starSystems).where(eq(starSystems.id, parentStar.systemId))
+				parentSystem = sys ?? null
 			}
 		}
-		const canonicalPath = canonicalSystemSlug ? `/celestial/${canonicalSystemSlug}/${planet.slug}` : `/celestial/${planet.slug}`
+		const canonicalPath = parentSystem ? `/celestial/${parentSystem.slug}/${planet.slug}` : `/celestial/${planet.slug}`
 		const inputPath = `/celestial/${pathSegments.join('/')}`
 		if (canonicalPath !== inputPath && !isEditMode) redirect(301, canonicalPath)
+
+		const parentCrumbs: { label: string, href: string }[] = []
+		if (parentSystem) {
+			parentCrumbs.push({ label: parentSystem.name, href: `/celestial/${parentSystem.slug}` })
+		}
 
 		const allStars = await db.select({ id: stars.id, name: stars.name, slug: stars.slug }).from(stars).orderBy(stars.name)
 		const siblings = planet.starId
@@ -103,7 +112,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			: []
 		const content = await getContent(planet.contentRecordId)
 		const infoboxFields = await resolveStructuredData('planet', planet.slug)
-		return { kind: 'planet' as const, body: planet, allStars, siblings, isEditMode, infoboxFields: infoboxFields ? Object.fromEntries(infoboxFields) : null, ...content }
+		return { kind: 'planet' as const, body: planet, allStars, siblings, isEditMode, parentCrumbs, infoboxFields: infoboxFields ? Object.fromEntries(infoboxFields) : null, ...content }
 	}
 
 	error(404, 'Celestial body not found')

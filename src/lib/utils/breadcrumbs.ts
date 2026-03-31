@@ -107,7 +107,7 @@ export function celestialPathBreadcrumbs(
 	name: string,
 ): Breadcrumb[] {
 	return [
-		{ label: 'Celestial', href: '/celestial' },
+		{ label: 'Celestial Registry', href: '/celestial' },
 		...pathSegments,
 		{ label: name },
 	]
