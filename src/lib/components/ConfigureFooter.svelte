@@ -3,6 +3,7 @@
 	import LivePreview from '$lib/components/LivePreview.svelte'
 	import Input from '$lib/components/ui/Input.svelte'
 	import Button from '$lib/components/ui/Button.svelte'
+	import SaveStatusBadge from '$lib/components/editor/SaveStatusBadge.svelte'
 
 	let {
 		initialContent = '',
@@ -10,6 +11,9 @@
 		editSummary = $bindable(''),
 		cancelHref,
 		saving = false,
+		dirty = false,
+		error = '',
+		savedAt = null,
 		onsave,
 		submitType = 'button',
 		summaryName,
@@ -19,6 +23,9 @@
 		editSummary?: string
 		cancelHref: string
 		saving?: boolean
+		dirty?: boolean
+		error?: string
+		savedAt?: Date | null
 		onsave?: () => void
 		/** Set to 'submit' for native form submission (CalendarConfigure) */
 		submitType?: 'button' | 'submit'
@@ -55,9 +62,12 @@
 <!-- Submit -->
 <div class="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:gap-3">
 	<Input bind:value={editSummary} name={summaryName} placeholder="Edit summary (optional)" containerClass="flex-1" />
-	<div class="flex gap-2">
+	<div class="flex items-center gap-2 self-start sm:self-auto">
+		<SaveStatusBadge {dirty} {saving} {error} {savedAt} />
+	</div>
+	<div class="flex gap-2 sm:ml-auto">
 		{#if submitType === 'submit'}
-			<Button type="submit">Save</Button>
+			<Button type="submit" disabled={saving}>Save</Button>
 		{:else}
 			<Button onclick={onsave} loading={saving} disabled={saving}>Save</Button>
 		{/if}

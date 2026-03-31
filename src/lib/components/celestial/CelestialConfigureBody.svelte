@@ -7,6 +7,8 @@
 	import { celestialConfigureBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import { goto } from '$app/navigation'
+	import UnsavedChangesGuard from '$lib/components/editor/UnsavedChangesGuard.svelte'
+	import SaveStatusBadge from '$lib/components/editor/SaveStatusBadge.svelte'
 
 	let {
 		body,
@@ -78,6 +80,48 @@
 
 	// ── Save state ──────────────────────────────────────────
 	let saving = $state(false)
+	let saveError = $state('')
+	let savedAt = $state<Date | null>(null)
+	const initialSnapshot = JSON.stringify({
+		bodyType: body.bodyType ?? 'planet',
+		starId: body.starId ? String(body.starId) : '',
+		parentId: body.parentId ? String(body.parentId) : '',
+		description: body.description ?? '',
+		mass: body.mass ?? '',
+		radius: body.radius ?? '',
+		density: body.density ?? '',
+		surfaceGravity: body.surfaceGravity ?? '',
+		escapeVelocity: body.escapeVelocity ?? '',
+		temperature: body.temperature ?? '',
+		age: body.age ?? '',
+		composition: body.composition ?? '',
+		atmosphere: body.atmosphere ?? '',
+		surfacePressure: body.surfacePressure ?? '',
+		orbitalPeriod: body.orbitalPeriod ?? '',
+		orbitalPeriodDays: body.orbitalPeriodDays ?? null,
+		semiMajorAxis: body.semiMajorAxis ?? '',
+		semiMajorAxisAu: body.semiMajorAxisAu ?? null,
+		eccentricity: body.eccentricity ?? null,
+		inclination: body.inclination ?? null,
+		epochPhase: body.epochPhase ?? null,
+		rotationPeriod: body.rotationPeriod ?? '',
+		rotationPeriodS: body.rotationPeriodS ?? null,
+		axialTilt: body.axialTilt ?? null,
+		apparentMagnitude: body.apparentMagnitude ?? '',
+		angularDiameter: body.angularDiameter ?? '',
+		albedo: body.albedo ?? '',
+		satellites: body.satellites ?? null,
+		hasRings: body.hasRings ?? false,
+		content: wikiContent ?? '',
+	})
+	const currentSnapshot = $derived(JSON.stringify({
+		bodyType, starId: starIdStr, parentId: parentIdStr, description, mass, radius, density,
+		surfaceGravity, escapeVelocity, temperature, age, composition, atmosphere, surfacePressure,
+		orbitalPeriod, orbitalPeriodDays, semiMajorAxis, semiMajorAxisAu, eccentricity, inclination,
+		epochPhase, rotationPeriod, rotationPeriodS, axialTilt, apparentMagnitude, angularDiameter,
+		albedo, satellites, hasRings, content,
+	}))
+	const isDirty = $derived(currentSnapshot !== initialSnapshot || editSummary.trim().length > 0)
 
 	const bodyTypeItems = [
 		{ value: 'planet', label: 'Planet' },
@@ -101,6 +145,7 @@
 
 	async function save() {
 		saving = true
+		saveError = ''
 		try {
 			const res = await fetch(`/api/planetary-bodies/${body.slug}`, {
 				method: 'PUT',
@@ -139,7 +184,8 @@
 			})
 			if (!res.ok) {
 				const data = await res.json().catch(() => ({}))
-				pushError(data.error || 'Failed to save properties')
+				saveError = data.error || 'Failed to save properties'
+				pushError(saveError)
 				return
 			}
 
@@ -151,9 +197,11 @@
 				await fetch(window.location.pathname, { method: 'POST', body: formData })
 			}
 
+			savedAt = new Date()
 			pushSuccess('Body saved')
 			goto(viewPath)
 		} catch {
+			saveError = 'Failed to save'
 			pushError('Failed to save')
 		} finally {
 			saving = false
@@ -165,7 +213,15 @@
 	breadcrumbs={celestialConfigureBreadcrumbs(parentCrumbs, { name: body.name, slug: body.slug })}
 	title="Configure {body.name}"
 >
+	<UnsavedChangesGuard when={isDirty && !saving} />
 	<div class="space-y-6">
+		<div class="flex items-center justify-between gap-3 bg-surface border border-border px-4 py-3">
+			<div>
+				<h2 class="text-sm font-semibold text-heading">Configure Record</h2>
+				<p class="text-xs text-faint">Structured body properties and article content are managed here.</p>
+			</div>
+			<SaveStatusBadge dirty={isDirty} {saving} error={saveError} {savedAt} />
+		</div>
 		<!-- Identity -->
 		<section class="bg-raised border border-border-subtle p-5 space-y-4">
 			<h2 class="text-sm font-semibold text-heading border-b border-border-subtle pb-2">Identity</h2>
@@ -246,6 +302,9 @@
 			bind:editSummary
 			cancelHref={viewPath}
 			{saving}
+			dirty={isDirty}
+			error={saveError}
+			{savedAt}
 			onsave={save}
 		/>
 	</div>

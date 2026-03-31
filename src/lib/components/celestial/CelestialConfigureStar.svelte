@@ -6,6 +6,8 @@
 	import { celestialConfigureBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import { goto } from '$app/navigation'
+	import UnsavedChangesGuard from '$lib/components/editor/UnsavedChangesGuard.svelte'
+	import SaveStatusBadge from '$lib/components/editor/SaveStatusBadge.svelte'
 
 	let {
 		star,
@@ -56,6 +58,37 @@
 
 	// ── Save state ──────────────────────────────────────────
 	let saving = $state(false)
+	let saveError = $state('')
+	let savedAt = $state<Date | null>(null)
+	const initialSnapshot = JSON.stringify({
+		spectralType: star.spectralType ?? '',
+		mass: star.mass ?? '',
+		radius: star.radius ?? '',
+		luminosity: star.luminosity ?? '',
+		luminosityVisual: star.luminosityVisual ?? '',
+		temperature: star.temperature ?? '',
+		age: star.age ?? '',
+		color: star.color ?? '',
+		orbitalPeriod: star.orbitalPeriod ?? '',
+		semiMajorAxis: star.semiMajorAxis ?? '',
+		semiMajorAxisAu: star.semiMajorAxisAu ?? null,
+		eccentricity: star.eccentricity ?? null,
+		epochPhase: star.epochPhase ?? null,
+		periastron: star.periastron ?? '',
+		apastron: star.apastron ?? '',
+		apparentMagnitude: star.apparentMagnitude ?? '',
+		angularDiameter: star.angularDiameter ?? '',
+		companion: star.companion ?? '',
+		systemId: star.systemId ? String(star.systemId) : '',
+		description: star.description ?? '',
+		content: wikiContent ?? '',
+	})
+	const currentSnapshot = $derived(JSON.stringify({
+		spectralType, mass, radius, luminosity, luminosityVisual, temperature, age, color,
+		orbitalPeriod, semiMajorAxis, semiMajorAxisAu, eccentricity, epochPhase, periastron, apastron,
+		apparentMagnitude, angularDiameter, companion, systemId: systemIdStr, description, content,
+	}))
+	const isDirty = $derived(currentSnapshot !== initialSnapshot || editSummary.trim().length > 0)
 
 	const systemItems = $derived([
 		{ value: '', label: 'None' },
@@ -64,6 +97,7 @@
 
 	async function save() {
 		saving = true
+		saveError = ''
 		try {
 			// 1. Save structured data via PUT
 			const res = await fetch(`/api/stars/${star.slug}`, {
@@ -93,7 +127,8 @@
 			})
 			if (!res.ok) {
 				const body = await res.json().catch(() => ({}))
-				pushError(body.error || 'Failed to save properties')
+				saveError = body.error || 'Failed to save properties'
+				pushError(saveError)
 				return
 			}
 
@@ -106,9 +141,11 @@
 				await fetch(window.location.pathname, { method: 'POST', body: formData })
 			}
 
+			savedAt = new Date()
 			pushSuccess('Star saved')
 			goto(viewPath)
 		} catch {
+			saveError = 'Failed to save'
 			pushError('Failed to save')
 		} finally {
 			saving = false
@@ -120,7 +157,15 @@
 	breadcrumbs={celestialConfigureBreadcrumbs(parentCrumbs, { name: star.name, slug: star.slug })}
 	title="Configure {star.name}"
 >
+	<UnsavedChangesGuard when={isDirty && !saving} />
 	<div class="space-y-6">
+		<div class="flex items-center justify-between gap-3 bg-surface border border-border px-4 py-3">
+			<div>
+				<h2 class="text-sm font-semibold text-heading">Configure Record</h2>
+				<p class="text-xs text-faint">Structured star properties and article content are managed here.</p>
+			</div>
+			<SaveStatusBadge dirty={isDirty} {saving} error={saveError} {savedAt} />
+		</div>
 		<!-- Identity -->
 		<section class="bg-raised border border-border-subtle p-5 space-y-4">
 			<h2 class="text-sm font-semibold text-heading border-b border-border-subtle pb-2">Identity</h2>
@@ -177,6 +222,9 @@
 			bind:editSummary
 			cancelHref={viewPath}
 			{saving}
+			dirty={isDirty}
+			error={saveError}
+			{savedAt}
 			onsave={save}
 		/>
 	</div>

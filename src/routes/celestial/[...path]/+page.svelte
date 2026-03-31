@@ -16,6 +16,8 @@
 	import GearSix from 'phosphor-svelte/lib/GearSix'
 	import Editor from '$lib/components/Editor.svelte'
 	import LivePreview from '$lib/components/LivePreview.svelte'
+	import SaveStatusBadge from '$lib/components/editor/SaveStatusBadge.svelte'
+	import UnsavedChangesGuard from '$lib/components/editor/UnsavedChangesGuard.svelte'
 
 	let { data }: { data: PageData } = $props()
 
@@ -58,6 +60,8 @@
 	// Edit mode state
 	let content = $state(data.wikiContent ?? '')
 	let showPreview = $state(true)
+	let editSummary = $state('')
+	let saving = $state(false)
 
 	// Build the current path without /edit or /configure for cancel link
 	const viewPath = $derived($page.url.pathname.replace(/\/(edit|configure)$/, ''))
@@ -85,6 +89,7 @@
 			? new Map(Object.entries(data.infoboxFields))
 			: new Map([['name', raw.name ?? '']]),
 	)
+	const isDirty = $derived(content !== (data.wikiContent ?? '') || editSummary.trim().length > 0)
 </script>
 
 <svelte:head>
@@ -111,9 +116,11 @@
 {:else if isEditMode}
 	<!-- EDIT MODE -->
 	<div>
-		<form method="POST" class="flex flex-col h-[calc(100vh-5rem)]">
+		<UnsavedChangesGuard when={isDirty && !saving} />
+		<form method="POST" class="flex flex-col h-[calc(100vh-5rem)]" onsubmit={() => (saving = true)}>
 			<input type="hidden" name="content" value={content} />
 			<input type="hidden" name="contentRecordId" value={data.contentRecordId ?? ''} />
+			<input type="hidden" name="summary" value={editSummary} />
 
 			<!-- Top bar -->
 			<div class="flex items-center justify-between px-6 py-2 bg-surface border-b border-border">
@@ -121,6 +128,7 @@
 					Editing: <span class="text-heading">{raw.name}</span>
 				</h1>
 				<div class="flex items-center gap-2">
+					<SaveStatusBadge dirty={isDirty} {saving} />
 					<button
 						type="button"
 						onclick={() => (showPreview = !showPreview)}
@@ -150,8 +158,8 @@
 			<!-- Bottom bar -->
 			<div class="flex flex-col items-stretch gap-2 px-6 py-2.5 bg-surface border-t border-border sm:flex-row sm:items-center sm:gap-3">
 				<input
-					name="summary"
 					type="text"
+					bind:value={editSummary}
 					placeholder="Edit summary (optional)"
 					class="flex-1 border border-border px-3 py-2 text-sm bg-page text-body focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent-border"
 				/>

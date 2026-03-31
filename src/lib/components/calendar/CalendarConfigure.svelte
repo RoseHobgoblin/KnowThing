@@ -18,6 +18,8 @@
 	import CalendarWidget from '$lib/calendar/CalendarWidget.svelte'
 	import ConfigureFooter from '$lib/components/ConfigureFooter.svelte'
 	import { calendarConfigureBreadcrumbs } from '$lib/utils/breadcrumbs.js'
+	import UnsavedChangesGuard from '$lib/components/editor/UnsavedChangesGuard.svelte'
+	import SaveStatusBadge from '$lib/components/editor/SaveStatusBadge.svelte'
 
 	let {
 		calendar,
@@ -100,6 +102,9 @@
 
 	// Capture initial content for editor — intentionally not reactive
 	let content = $state(wikiContent ?? '')
+	let editSummary = $state('')
+	let saving = $state(false)
+	const initialStaticData = JSON.stringify(config.static_data)
 
 	// ── Derived ─────────────────────────────────────────────
 	const previewConfig = $derived<CalendarConfig>({
@@ -165,17 +170,28 @@
 
 	const totalDaysInYear = $derived(months.reduce((sum, m) => sum + m.length, 0))
 	const dayLengthHours = $derived(Math.round((dayLengthSeconds / 3600) * 100) / 100)
+	const currentStaticData = $derived(JSON.stringify(previewConfig.static_data))
+	const isDirty = $derived(currentStaticData !== initialStaticData || content !== (wikiContent ?? '') || editSummary.trim().length > 0)
 </script>
 
 <ArticleShell
 	breadcrumbs={calendarConfigureBreadcrumbs(calendar)}
 	title="Configure {calendar.name}"
 >
-	<form method="POST" class="space-y-6">
+	<UnsavedChangesGuard when={isDirty && !saving} />
+	<form method="POST" class="space-y-6" onsubmit={() => (saving = true)}>
 		<input type="hidden" name="calendarId" value={calendar.id} />
 		<input type="hidden" name="contentRecordId" value={contentRecordId ?? ''} />
 		<input type="hidden" name="staticData" value={JSON.stringify(previewConfig.static_data)} />
 		<input type="hidden" name="content" value={content} />
+
+		<div class="flex items-center justify-between gap-3 bg-surface border border-border px-4 py-3">
+			<div>
+				<h2 class="text-sm font-semibold text-heading">Configure Record</h2>
+				<p class="text-xs text-faint">Structured calendar settings and article content are saved together on this screen.</p>
+			</div>
+			<SaveStatusBadge dirty={isDirty} {saving} />
+		</div>
 
 		<!-- Preview -->
 		<details class="bg-raised border border-border-subtle">
@@ -383,7 +399,10 @@
 		<ConfigureFooter
 			initialContent={wikiContent ?? ''}
 			bind:content
+			bind:editSummary
 			cancelHref="/calendar/{calendar.slug}"
+			{saving}
+			dirty={isDirty}
 			submitType="submit"
 			summaryName="summary"
 		/>
