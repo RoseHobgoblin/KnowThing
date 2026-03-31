@@ -1,7 +1,7 @@
 <script lang="ts">
 	import WikiNodeComponent from '$lib/renderer/WikiNode.svelte'
 	import { createKnowContext, type KnowRenderContext } from '$lib/renderer/context.js'
-	import { SvelteMap, SvelteSet } from 'svelte/reactivity'
+	import { SvelteMap } from 'svelte/reactivity'
 	import CategoryBar from '$lib/components/CategoryBar.svelte'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import Badge from '$lib/components/ui/Badge.svelte'
@@ -22,6 +22,7 @@
 		wordbookMatch,
 		structuredData: rawStructuredData,
 		systemMaps,
+		resolvedLinks: rawResolvedLinks,
 		ondeletepage,
 	}: {
 		title: string
@@ -32,6 +33,7 @@
 		wordbookMatch: { word: string, languageSlug: string, languageName: string } | null
 		structuredData: Record<string, Record<string, string>> | null
 		systemMaps: Record<string, unknown> | null
+		resolvedLinks: Record<string, { href: string, exists: boolean }> | null
 		ondeletepage: () => void
 	} = $props()
 
@@ -48,20 +50,8 @@
 		return map
 	}
 
-	function buildExistingContent(items: { domain: string, slug: string }[]) {
-		const map = new SvelteMap<string, SvelteSet<string>>()
-		for (const { domain, slug: s } of items) {
-			if (!map.has(domain)) map.set(domain, new SvelteSet())
-			map.get(domain)!.add(s)
-		}
-		return map
-	}
-
-	const contentItems = $page.data.existingContent || []
 	createKnowContext({
-		existingPages: new SvelteSet($page.data.existingPages || []),
-		existingContent: buildExistingContent(contentItems),
-		existingContentEntries: contentItems,
+		resolvedLinks: new SvelteMap(Object.entries(rawResolvedLinks ?? {})),
 		mediaBaseUrl: '/api/media',
 		pageBaseUrl: '/know',
 		calendarDate: $page.data.calendarDate ?? null,

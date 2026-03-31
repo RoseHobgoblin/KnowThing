@@ -35,7 +35,6 @@
 	const layoutData = $derived($page.data)
 
 	createKnowContext({
-		existingPages: new Set(layoutData.existingPages || []),
 		mediaBaseUrl: '/api/media',
 		pageBaseUrl: '/know',
 		calendarDate: layoutData.calendarDate ?? null,

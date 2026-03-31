@@ -11,10 +11,12 @@
 	let debounceTimer: ReturnType<typeof setTimeout>
 	let closeTimer: ReturnType<typeof setTimeout> | undefined
 	let inputEl: HTMLInputElement | undefined = $state()
+	let abortController: AbortController | null = null
 
 	onDestroy(() => {
 		clearTimeout(debounceTimer)
 		clearTimeout(closeTimer)
+		abortController?.abort()
 	})
 
 	function onInput() {
@@ -30,16 +32,20 @@
 
 	async function doSearch() {
 		if (!query.trim()) return
+		abortController?.abort()
+		abortController = new AbortController()
 		try {
-			const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&limit=8`)
+			const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&limit=8`, {
+				signal: abortController.signal,
+			})
 			if (res.ok) {
 				const payload = await res.json()
 				results = payload.results ?? []
 				showResults = true
 				selectedIndex = -1
 			}
-		} catch {
-			// ignore
+		} catch (e) {
+			if (e instanceof DOMException && e.name === 'AbortError') return
 		}
 	}
 

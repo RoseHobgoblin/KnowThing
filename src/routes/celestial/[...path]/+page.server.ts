@@ -8,6 +8,7 @@ import { hasRole } from '$lib/server/auth.js'
 import { requireEditor } from '$lib/server/guards.js'
 import { updateContentEffects } from '$lib/server/content-effects.js'
 import { resolveStructuredData } from '$lib/server/structured-data.js'
+import { getResolvedLinks, serializeResolvedLinks } from '$lib/server/resolved-links.js'
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const pathSegments = params.path.split('/')
@@ -172,18 +173,19 @@ export const actions: Actions = {
 	},
 }
 
-/** Fetch wikitext content and parsed AST from the content record */
+/** Fetch wikitext content, parsed AST, and resolved links from the content record */
 async function getContent(contentRecordId: number | null) {
-	if (!contentRecordId) return { wikiContent: '', ast: null, contentRecordId: null }
+	if (!contentRecordId) return { wikiContent: '', ast: null, contentRecordId: null, resolvedLinks: {} as Record<string, { href: string, exists: boolean }> }
 
 	const [record] = await db
 		.select({ id: contentRecords.id, content: contentRecords.content, parsedAst: contentRecords.parsedAst })
 		.from(contentRecords)
 		.where(eq(contentRecords.id, contentRecordId))
 
-	if (!record) return { wikiContent: '', ast: null, contentRecordId: null }
+	if (!record) return { wikiContent: '', ast: null, contentRecordId: null, resolvedLinks: {} as Record<string, { href: string, exists: boolean }> }
 
 	const ast = (record.parsedAst as import('$lib/parser/types.js').WikiNode) ?? (record.content ? parseWikitext(record.content) : null)
+	const links = await getResolvedLinks(record.id)
 
-	return { wikiContent: record.content, ast, contentRecordId: record.id }
+	return { wikiContent: record.content, ast, contentRecordId: record.id, resolvedLinks: serializeResolvedLinks(links) }
 }

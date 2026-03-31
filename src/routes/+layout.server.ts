@@ -1,6 +1,6 @@
 import type { LayoutServerLoad } from './$types.js'
 import { db } from '$lib/server/db/index.js'
-import { contentRecords, calendars, planetaryBodies } from '$lib/server/db/schema.js'
+import { calendars, planetaryBodies } from '$lib/server/db/schema.js'
 import { eq, sql } from 'drizzle-orm'
 import { resolveDisplay } from '$lib/calendar/date-math.js'
 import type { CalendarConfig, ResolvedDate, StaticCalendarData } from '$lib/calendar/types.js'
@@ -24,8 +24,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		canGenerateInviteCodes: user ? hasRole(user.role, 'admin') : false,
 	}
 
-	const [allContent, primaryCalendarRows, siteConfig] = await Promise.all([
-		db.select({ domain: contentRecords.domain, slug: contentRecords.slug, parentPath: contentRecords.parentPath }).from(contentRecords),
+	const [primaryCalendarRows, siteConfig] = await Promise.all([
 		db.select().from(calendars).where(eq(calendars.isPrimary, true)).limit(1),
 		getSiteConfig(),
 	])
@@ -87,8 +86,6 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		isAdmin: permissions.canManageSettings,
 		isEditor: permissions.canEditContent,
 		permissions,
-		existingPages: allContent.filter(c => c.domain === 'know').map(c => c.slug.toLowerCase()),
-		existingContent: allContent.map(c => ({ domain: c.domain, slug: c.slug.toLowerCase(), parentPath: c.parentPath })),
 		calendarDate,
 		siteConfig,
 	}

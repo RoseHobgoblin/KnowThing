@@ -2,7 +2,7 @@ import { error } from '@sveltejs/kit'
 import { and, eq, ne, sql } from 'drizzle-orm'
 import { db } from '$lib/server/db/index.js'
 import { contentLinks, contentRecords, contentRevisions } from '$lib/server/db/schema.js'
-import { updateContentEffects } from '$lib/server/content-effects.js'
+import { updateContentEffects, backfillLinkTargets } from '$lib/server/content-effects.js'
 import { slugify } from '$lib/renderer/context.js'
 
 export interface CreateKnowPageInput {
@@ -115,6 +115,9 @@ export async function createKnowPage(input: CreateKnowPageInput) {
 			editSummary: 'Page created',
 			userId: input.userId,
 		})
+
+		// Backfill any existing red links pointing at this new page
+		await backfillLinkTargets(tx, record.id, 'know', slug)
 
 		return updated
 	})

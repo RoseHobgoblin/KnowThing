@@ -7,12 +7,16 @@
 
 	const ctx = getKnowContext()
 
-	// Build the href; for domains with parent_path structure,
-	// we'd need a lookup. For now, use /{domain}/{target}
-	const href = $derived.by(() => `/${node.domain}/${encodeURIComponent(node.target)}`)
+	const resolved = $derived.by(() => {
+		const key = `${node.domain}:${node.target.toLowerCase()}`
+		const link = ctx.resolvedLinks.get(key)
+		if (link) return link
+		// Not in resolved map — deterministic href, assume missing
+		return { href: `/${node.domain}/${encodeURIComponent(node.target)}`, exists: false }
+	})
 
-	// Check existence for red-link detection
-	const exists = $derived.by(() => ctx.existingContent?.get(node.domain)?.has(node.target.toLowerCase()) ?? false)
+	const href = $derived(resolved.href)
+	const exists = $derived(resolved.exists)
 </script>
 
 <a

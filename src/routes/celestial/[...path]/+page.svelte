@@ -43,7 +43,7 @@
 	})
 
 	createKnowContext({
-		existingPages: new Set(layoutData.existingPages || []),
+		resolvedLinks: new Map(Object.entries(data.resolvedLinks ?? {})),
 		mediaBaseUrl: '/api/media',
 		pageBaseUrl: '/know',
 		calendarDate: layoutData.calendarDate ?? null,

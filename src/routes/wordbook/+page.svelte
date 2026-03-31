@@ -12,7 +12,6 @@
 	const wbName = $derived($page.data.siteConfig?.wordbookName ?? 'Wordbook')
 
 	createKnowContext({
-		existingPages: new Set($page.data.existingPages || []),
 		mediaBaseUrl: '/api/media',
 		pageBaseUrl: '/know',
 		calendarDate: $page.data.calendarDate ?? null,

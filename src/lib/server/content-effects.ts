@@ -5,7 +5,7 @@ import { parseWikitext, extractLinksFromAst, extractDomainLinksFromAst, extractC
 import { slugify } from '$lib/renderer/context.js'
 import type { WikiNode } from '$lib/parser/types.js'
 
-type ContentEffectsDatabase = Pick<typeof db, 'delete' | 'insert' | 'select'>
+type ContentEffectsDatabase = Pick<typeof db, 'delete' | 'insert' | 'select' | 'update'>
 
 /**
  * After saving content, update derived tables: links, categories, media_usage.
@@ -45,14 +45,27 @@ export async function updateContentEffects(
 		).onConflictDoNothing()
 	}
 
-	// Store cross-domain links
+	// Store cross-domain links, resolving targetId where possible
 	if (domainLinks.length > 0) {
+		const domainSlugPairs = domainLinks.map(({ domain, target }) => ({ domain, slug: slugify(target) }))
+
+		// Batch-resolve targets across domains
+		const domainTargetRecords = await database
+			.select({ id: contentRecords.id, domain: contentRecords.domain, slug: contentRecords.slug })
+			.from(contentRecords)
+			.where(sql`(${sql.join(
+				domainSlugPairs.map(p => sql`(${contentRecords.domain} = ${p.domain} AND LOWER(${contentRecords.slug}) = LOWER(${p.slug}))`),
+				sql` OR `,
+			)})`)
+
+		const domainSlugToId = new Map(domainTargetRecords.map(r => [`${r.domain}:${r.slug.toLowerCase()}`, r.id]))
+
 		await database.insert(contentLinks).values(
-			domainLinks.map(({ domain, target }) => ({
+			domainSlugPairs.map(({ domain, slug: targetSlug }) => ({
 				sourceId: contentRecordId,
 				targetDomain: domain,
-				targetSlug: slugify(target),
-				targetId: null, // resolved lazily
+				targetSlug,
+				targetId: domainSlugToId.get(`${domain}:${targetSlug.toLowerCase()}`) ?? null,
 			})),
 		).onConflictDoNothing()
 	}
@@ -83,4 +96,27 @@ export async function deleteContentEffects(contentRecordId: number): Promise<voi
 	await db.delete(contentLinks).where(eq(contentLinks.sourceId, contentRecordId))
 	await db.delete(contentCategories).where(eq(contentCategories.contentRecordId, contentRecordId))
 	await db.delete(contentMediaUsage).where(eq(contentMediaUsage.contentRecordId, contentRecordId))
+}
+
+/**
+ * When a new content record is created, backfill targetId on any existing
+ * content_links rows that point at this record's domain+slug but had
+ * targetId = NULL (i.e. red links that should now become blue).
+ */
+export async function backfillLinkTargets(
+	database: ContentEffectsDatabase,
+	recordId: number,
+	domain: string,
+	slug: string,
+): Promise<void> {
+	await database
+		.update(contentLinks)
+		.set({ targetId: recordId })
+		.where(
+			and(
+				eq(contentLinks.targetDomain, domain),
+				sql`LOWER(${contentLinks.targetSlug}) = LOWER(${slug})`,
+				sql`${contentLinks.targetId} IS NULL`,
+			),
+		)
 }

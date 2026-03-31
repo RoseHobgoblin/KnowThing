@@ -3,9 +3,14 @@
 	import WikiNode from '$lib/renderer/WikiNode.svelte'
 	import { createKnowContext } from '$lib/renderer/context.js'
 
-	// Set up wiki render context
+	// Set up wiki render context with hardcoded test links
 	createKnowContext({
-		existingPages: new Set(['onchera', 'amalur', 'oncheran_language', 'batzar_nagusia']),
+		resolvedLinks: new Map([
+			['know:onchera', { href: '/know/onchera', exists: true }],
+			['know:amalur', { href: '/know/amalur', exists: true }],
+			['know:oncheran_language', { href: '/know/oncheran_language', exists: true }],
+			['know:batzar_nagusia', { href: '/know/batzar_nagusia', exists: true }],
+		]),
 		mediaBaseUrl: '/api/media',
 		pageBaseUrl: '/know',
 	})

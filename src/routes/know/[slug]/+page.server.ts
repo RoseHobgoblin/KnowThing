@@ -5,6 +5,7 @@ import { contentRecords, lexicon, languages } from '$lib/server/db/schema.js'
 import { eq, and, sql } from 'drizzle-orm'
 import { parseWikitext, extractCategoriesFromAst, extractInfoboxFromRefs, extractSystemMapRefs } from '$lib/parser/index.js'
 import { resolveAllStructuredData, resolveAllSystemMaps } from '$lib/server/structured-data.js'
+import { getResolvedLinks, serializeResolvedLinks } from '$lib/server/resolved-links.js'
 
 export const load: PageServerLoad = async ({ params }) => {
 	// Case-insensitive lookup within the 'know' domain
@@ -51,6 +52,9 @@ export const load: PageServerLoad = async ({ params }) => {
 	const ast = (record.parsedAst as import('$lib/parser/types.js').WikiNode) ?? parseWikitext(record.content)
 	const cats = extractCategoriesFromAst(ast)
 
+	// Fetch per-page resolved links for red/blue link detection
+	const resolvedLinks = await getResolvedLinks(record.id)
+
 	// Pre-fetch structured data for any from=slug infobox references
 	const fromRefs = extractInfoboxFromRefs(ast)
 	let structuredData: Record<string, Record<string, string>> | null = null
@@ -94,5 +98,6 @@ export const load: PageServerLoad = async ({ params }) => {
 		wordbookMatch: wordbookMatches[0] || null,
 		structuredData,
 		systemMaps,
+		resolvedLinks: serializeResolvedLinks(resolvedLinks),
 	}
 }

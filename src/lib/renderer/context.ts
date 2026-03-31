@@ -5,6 +5,11 @@ import type { ResolvedDate } from '$lib/calendar/types.js'
 
 const KNOW_CONTEXT_KEY = 'know-render-context'
 
+export interface ResolvedLink {
+	href: string
+	exists: boolean
+}
+
 export interface KnowRenderContext {
 	/** Base URL for media files, e.g. '/api/media' */
 	mediaBaseUrl: string
@@ -12,12 +17,8 @@ export interface KnowRenderContext {
 	pageBaseUrl: string
 	/** Footnotes collected by WikiReference, consumed by WikiReferenceList */
 	footnotes: Writable<FootnoteEntry[]>
-	/** Set of existing page slugs for red-link detection (know domain) */
-	existingPages: Set<string>
-	/** All existing content across domains for cross-domain red-link detection */
-	existingContent: Map<string, Set<string>>
-	/** Full content entries with parentPath for URL resolution */
-	existingContentEntries: { domain: string, slug: string, parentPath?: string | null }[] | null
+	/** Per-page resolved link map keyed by "domain:slug" */
+	resolvedLinks: Map<string, ResolvedLink>
 	/** Resolve a simple (DB-stored) template — returns expanded AST or null */
 	templateResolver: ((name: string, args: TemplateArg[]) => WikiNode[] | null) | null
 	/** Current page name (for magic words like {{PAGENAME}}) */
@@ -44,9 +45,7 @@ export function createKnowContext(overrides: Partial<KnowRenderContext> = {}): K
 		mediaBaseUrl: '/api/media',
 		pageBaseUrl: '/know',
 		footnotes: writable([]),
-		existingPages: new Set(),
-		existingContent: new Map(),
-		existingContentEntries: null,
+		resolvedLinks: new Map(),
 		templateResolver: null,
 		pageName: '',
 		namespace: '',

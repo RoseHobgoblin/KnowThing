@@ -47,6 +47,7 @@
 			wordbookMatch={data.wordbookMatch}
 			structuredData={data.structuredData ?? null}
 			systemMaps={data.systemMaps ?? null}
+			resolvedLinks={data.resolvedLinks ?? null}
 			ondeletepage={deletePage}
 		/>
 	{/if}
