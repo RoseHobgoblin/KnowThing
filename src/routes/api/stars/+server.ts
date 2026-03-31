@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
-import { stars, planetaryBodies } from '$lib/server/db/schema.js'
+import { stars, planetaryBodies, starSystems } from '$lib/server/db/schema.js'
 import { requireRole } from '$lib/server/auth.js'
 import { eq, sql } from 'drizzle-orm'
 import { createStarSchema } from '$lib/celestial/schema.js'
@@ -30,6 +30,20 @@ export const POST: RequestHandler = async (event) => {
 	}
 
 	const data = parsed.data
+
+	if (data.systemId != null) {
+		const [system] = await db.select({ id: starSystems.id }).from(starSystems).where(eq(starSystems.id, data.systemId))
+		if (!system) {
+			return json({ error: 'Star system not found' }, { status: 400 })
+		}
+	}
+
+	if (data.parentStarId != null) {
+		const [parentStar] = await db.select({ id: stars.id }).from(stars).where(eq(stars.id, data.parentStarId))
+		if (!parentStar) {
+			return json({ error: 'Parent star not found' }, { status: 400 })
+		}
+	}
 
 	// Check slug uniqueness
 	const [existing] = await db.select({ id: stars.id }).from(stars).where(eq(stars.slug, data.slug))
@@ -61,6 +75,8 @@ export const POST: RequestHandler = async (event) => {
 			angularDiameter: data.angularDiameter?.trim() || null,
 			companion: data.companion?.trim() || null,
 			parentStarId: data.parentStarId ?? null,
+			systemId: data.systemId ?? null,
+			epochPhase: data.epochPhase ?? null,
 			extra: data.extra ?? {},
 			description: data.description?.trim() || '',
 		})

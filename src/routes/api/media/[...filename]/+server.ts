@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { env } from '$env/dynamic/private'
-import { requireEditorUser } from '$lib/server/auth.js'
+import { requireRole } from '$lib/server/auth.js'
 import { db } from '$lib/server/db/index.js'
 import { media } from '$lib/server/db/schema.js'
 import { deleteMediaFile, updateMediaMetadata } from '$lib/server/services/media.js'
@@ -63,7 +63,7 @@ export const GET: RequestHandler = async ({ params, url }) => {
 
 /** PUT /api/media/:filename — update description, categories */
 export const PUT: RequestHandler = async (event) => {
-	const user = requireEditorUser(event)
+	const user = requireRole(event, 'editor')
 	const filename = event.params.filename
 	const body = await event.request.json()
 	const { description, categories } = body as { description?: string, categories?: string[] }
@@ -80,7 +80,7 @@ export const PUT: RequestHandler = async (event) => {
 
 /** DELETE /api/media/:filename */
 export const DELETE: RequestHandler = async (event) => {
-	const user = requireEditorUser(event)
+	const user = requireRole(event, 'editor')
 
 	try {
 		return json(await deleteMediaFile(user.id, event.params.filename))

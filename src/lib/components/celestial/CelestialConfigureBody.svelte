@@ -14,6 +14,8 @@
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import { page } from '$app/stores'
 	import { normalizePermissions } from '$lib/permissions.js'
+	import { updatePlanetaryBodySchema } from '$lib/celestial/schema.js'
+	import { summarizeZodIssues } from '$lib/utils.js'
 
 	type CelestialCrumb = { label: string, href: string }
 	type BodyType = 'planet' | 'moon' | 'dwarf_planet' | 'asteroid' | 'ring_system'
@@ -227,11 +229,40 @@
 	let stablePermissions = $state(normalizePermissions($page.data.permissions))
 	const permissions = $derived(stablePermissions)
 	const validationIssues = $derived.by(() => {
-		const issues: string[] = []
-		if (semiMajorAxisAu !== null && semiMajorAxisAu < 0) issues.push('Semi-major axis must be zero or greater.')
-		if (eccentricity !== null && (eccentricity < 0 || eccentricity > 1)) issues.push('Eccentricity must be between 0 and 1.')
-		if (satellites !== null && satellites < 0) issues.push('Satellite count cannot be negative.')
-		return issues
+		const parsed = updatePlanetaryBodySchema.safeParse({
+			bodyType,
+			starId: starIdStr ? Number(starIdStr) : null,
+			parentId: parentIdStr ? Number(parentIdStr) : null,
+			description,
+			mass: mass || null,
+			radius: radius || null,
+			density: density || null,
+			surfaceGravity: surfaceGravity || null,
+			escapeVelocity: escapeVelocity || null,
+			temperature: temperature || null,
+			age: age || null,
+			composition: composition || null,
+			atmosphere: atmosphere || null,
+			surfacePressure: surfacePressure || null,
+			orbitalPeriod: orbitalPeriod || null,
+			orbitalPeriodDays,
+			semiMajorAxis: semiMajorAxis || null,
+			semiMajorAxisAu,
+			eccentricity,
+			inclination,
+			epochPhase,
+			rotationPeriod: rotationPeriod || null,
+			rotationPeriodS,
+			axialTilt,
+			apparentMagnitude: apparentMagnitude || null,
+			angularDiameter: angularDiameter || null,
+			albedo: albedo || null,
+			satellites,
+			hasRings,
+		})
+
+		if (parsed.success) return []
+		return summarizeZodIssues(parsed.error)
 	})
 
 	const bodyTypeItems: Array<{ value: BodyType, label: string }> = [
@@ -471,7 +502,7 @@
 				<Input label="Semi-major Axis (AU)" type="number" bind:value={semiMajorAxisAu} step="any" placeholder="1.0" error={semiMajorAxisAu !== null && semiMajorAxisAu < 0 ? 'Must be 0 or greater' : ''} />
 				<Input label="Eccentricity" type="number" bind:value={eccentricity} step="any" min={0} max={1} placeholder="0.0167" error={eccentricity !== null && (eccentricity < 0 || eccentricity > 1) ? 'Use a value from 0 to 1' : ''} />
 				<Input label="Inclination (deg)" type="number" bind:value={inclination} step="any" placeholder="0.0" />
-				<Input label="Epoch Phase" type="number" bind:value={epochPhase} step="any" placeholder="0.0" />
+				<Input label="Epoch Phase" type="number" bind:value={epochPhase} step="any" min={0} max={1} placeholder="0.0" error={epochPhase !== null && (epochPhase < 0 || epochPhase > 1) ? 'Use a value from 0 to 1' : ''} />
 			</div>
 		</section>
 

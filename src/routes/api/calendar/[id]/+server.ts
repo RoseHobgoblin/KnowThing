@@ -3,7 +3,7 @@ import { z } from 'zod'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { calendars } from '$lib/server/db/schema.js'
-import { requireAdminUser } from '$lib/server/auth.js'
+import { requireRole } from '$lib/server/auth.js'
 import { eq } from 'drizzle-orm'
 import { staticDataSchema } from '$lib/calendar/schema.js'
 
@@ -28,7 +28,7 @@ export const GET: RequestHandler = async ({ params }) => {
 
 /** PUT /api/calendar/:id — update calendar config */
 export const PUT: RequestHandler = async (event) => {
-	requireAdminUser(event)
+	requireRole(event, 'admin')
 
 	const id = Number.parseInt(event.params.id)
 	if (isNaN(id)) return json({ error: 'Invalid ID' }, { status: 400 })
@@ -64,7 +64,7 @@ export const PUT: RequestHandler = async (event) => {
 
 /** DELETE /api/calendar/:id */
 export const DELETE: RequestHandler = async (event) => {
-	requireAdminUser(event)
+	requireRole(event, 'admin')
 
 	const id = Number.parseInt(event.params.id)
 	if (isNaN(id)) return json({ error: 'Invalid ID' }, { status: 400 })

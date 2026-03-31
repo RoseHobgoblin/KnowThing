@@ -43,12 +43,38 @@ export const PUT: RequestHandler = async (event) => {
 	const data = parsed.data
 
 	// Get current body for circular ref check
-	const [current] = await db.select({ id: planetaryBodies.id }).from(planetaryBodies).where(eq(planetaryBodies.slug, event.params.slug))
+	const [current] = await db
+		.select({ id: planetaryBodies.id, starId: planetaryBodies.starId })
+		.from(planetaryBodies)
+		.where(eq(planetaryBodies.slug, event.params.slug))
 	if (!current) return json({ error: 'Body not found' }, { status: 404 })
 
 	// Circular reference prevention
 	if (data.parentId != null && await isDescendant(current.id, data.parentId)) {
 		return json({ error: 'Cannot set parent to self or a descendant' }, { status: 400 })
+	}
+
+	if (data.starId != null) {
+		const [star] = await db.select({ id: stars.id }).from(stars).where(eq(stars.id, data.starId))
+		if (!star) {
+			return json({ error: 'Parent star not found' }, { status: 400 })
+		}
+	}
+
+	if (data.parentId != null) {
+		const [parentBody] = await db
+			.select({ id: planetaryBodies.id, starId: planetaryBodies.starId })
+			.from(planetaryBodies)
+			.where(eq(planetaryBodies.id, data.parentId))
+
+		if (!parentBody) {
+			return json({ error: 'Parent body not found' }, { status: 400 })
+		}
+
+		const nextStarId = data.starId !== undefined ? data.starId : current.starId
+		if (nextStarId != null && parentBody.starId != null && parentBody.starId !== nextStarId) {
+			return json({ error: 'Parent body belongs to a different star' }, { status: 400 })
+		}
 	}
 
 	const setClause: Record<string, unknown> = { updatedAt: new Date() }
@@ -74,6 +100,7 @@ export const PUT: RequestHandler = async (event) => {
 	if (data.semiMajorAxisAu !== undefined) setClause.semiMajorAxisAu = data.semiMajorAxisAu ?? null
 	if (data.eccentricity !== undefined) setClause.eccentricity = data.eccentricity ?? null
 	if (data.inclination !== undefined) setClause.inclination = data.inclination ?? null
+	if (data.epochPhase !== undefined) setClause.epochPhase = data.epochPhase ?? null
 	if (data.rotationPeriod !== undefined) setClause.rotationPeriod = data.rotationPeriod?.trim() || null
 	if (data.rotationPeriodS !== undefined) setClause.rotationPeriodS = data.rotationPeriodS ?? null
 	if (data.axialTilt !== undefined) setClause.axialTilt = data.axialTilt ?? null

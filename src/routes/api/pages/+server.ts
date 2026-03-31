@@ -4,7 +4,7 @@ import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { contentRecords } from '$lib/server/db/schema.js'
 import { desc, eq } from 'drizzle-orm'
-import { requireEditorUser } from '$lib/server/auth.js'
+import { requireRole } from '$lib/server/auth.js'
 import { createKnowPage } from '$lib/server/services/content.js'
 
 const createPageSchema = z.object({
@@ -30,7 +30,7 @@ export const GET: RequestHandler = async () => {
 
 /** POST /api/pages — create a new page */
 export const POST: RequestHandler = async (event) => {
-	const user = requireEditorUser(event)
+	const user = requireRole(event, 'editor')
 	const body = await event.request.json()
 	const parsed = createPageSchema.safeParse(body)
 	if (!parsed.success) {

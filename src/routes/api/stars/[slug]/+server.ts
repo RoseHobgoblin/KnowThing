@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
-import { stars } from '$lib/server/db/schema.js'
+import { stars, starSystems } from '$lib/server/db/schema.js'
 import { requireRole } from '$lib/server/auth.js'
 import { eq, sql } from 'drizzle-orm'
 import { updateStarSchema } from '$lib/celestial/schema.js'
@@ -34,6 +34,29 @@ export const PUT: RequestHandler = async (event) => {
 	}
 
 	const data = parsed.data
+	const [current] = await db.select({ id: stars.id }).from(stars).where(eq(stars.slug, event.params.slug))
+	if (!current) {
+		return json({ error: 'Star not found' }, { status: 404 })
+	}
+
+	if (data.systemId != null) {
+		const [system] = await db.select({ id: starSystems.id }).from(starSystems).where(eq(starSystems.id, data.systemId))
+		if (!system) {
+			return json({ error: 'Star system not found' }, { status: 400 })
+		}
+	}
+
+	if (data.parentStarId != null) {
+		if (data.parentStarId === current.id) {
+			return json({ error: 'A star cannot orbit itself' }, { status: 400 })
+		}
+
+		const [parentStar] = await db.select({ id: stars.id }).from(stars).where(eq(stars.id, data.parentStarId))
+		if (!parentStar) {
+			return json({ error: 'Parent star not found' }, { status: 400 })
+		}
+	}
+
 	const setClause: Record<string, unknown> = { updatedAt: new Date() }
 
 	if (data.name !== undefined) setClause.name = data.name.trim()
@@ -57,6 +80,7 @@ export const PUT: RequestHandler = async (event) => {
 	if (data.companion !== undefined) setClause.companion = data.companion?.trim() || null
 	if (data.parentStarId !== undefined) setClause.parentStarId = data.parentStarId ?? null
 	if (data.systemId !== undefined) setClause.systemId = data.systemId ?? null
+	if (data.epochPhase !== undefined) setClause.epochPhase = data.epochPhase ?? null
 	if (data.extra !== undefined) setClause.extra = data.extra ?? {}
 	if (data.description !== undefined) setClause.description = data.description?.trim() || ''
 

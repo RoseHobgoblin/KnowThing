@@ -9,6 +9,8 @@ import { requireEditor } from '$lib/server/guards.js'
 import { updateContentEffects } from '$lib/server/content-effects.js'
 import type { CalendarConfig, StaticCalendarData } from '$lib/calendar/types.js'
 import { resolveDisplay } from '$lib/calendar/date-math.js'
+import { parseStaticCalendarDataJson } from '$lib/calendar/schema.js'
+import { summarizeZodIssues } from '$lib/utils.js'
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const pathSegments = (params.path || '').split('/').filter(Boolean)
@@ -92,12 +94,15 @@ export const actions: Actions = {
 		const [cal] = await db.select().from(calendars).where(eq(calendars.id, calendarId))
 		if (!cal) return fail(404, { error: 'Calendar not found' })
 
-		try {
-			const staticData = JSON.parse(staticDataJson)
-			await db.update(calendars).set({ staticData }).where(eq(calendars.id, calendarId))
-		} catch {
-			return fail(400, { error: 'Calendar configuration is invalid' })
+		const parsedStaticData = parseStaticCalendarDataJson(staticDataJson)
+		if (!parsedStaticData.success) {
+			return fail(400, {
+				error: 'Calendar configuration is invalid',
+				validationIssues: summarizeZodIssues(parsedStaticData.error),
+			})
 		}
+
+		await db.update(calendars).set({ staticData: parsedStaticData.data }).where(eq(calendars.id, calendarId))
 
 		try {
 			if (contentRecordId) {

@@ -1,5 +1,5 @@
-import { countContentSearchResults, searchContent } from '$lib/server/services/search.js'
-import { countWordbookSearch, searchWordbook } from '$lib/server/services/wordbook-search.js'
+import { countPageSearchResults, searchPagesRaw } from './pages.js'
+import { countWordbookSearchResults, searchWordbookEntries } from './wordbook.js'
 import { searchMediaUnified } from './media.js'
 import type { UnifiedSearchParams, UnifiedSearchResponse, UnifiedSearchResult } from './types.js'
 
@@ -17,7 +17,7 @@ export async function searchUnified(params: UnifiedSearchParams): Promise<Unifie
 		case 'pages': {
 			const [pageResults, total] = await Promise.all([
 				searchPages(params),
-				countContentSearchResults(params.q),
+				countPageSearchResults(params.q),
 			])
 			return {
 				query: params,
@@ -29,7 +29,7 @@ export async function searchUnified(params: UnifiedSearchParams): Promise<Unifie
 		case 'wordbook': {
 			const [wordResults, total] = await Promise.all([
 				searchWords(params),
-				countWordbookSearch({
+				countWordbookSearchResults({
 					query: params.q,
 					language: params.filters.language,
 					tag: params.filters.tag,
@@ -55,8 +55,8 @@ export async function searchUnified(params: UnifiedSearchParams): Promise<Unifie
 		default: {
 			const fetchLimit = Math.max(params.offset + params.limit, 24)
 			const [pagesTotal, wordsTotal, mediaResults, pageResults, wordResults] = await Promise.all([
-				countContentSearchResults(params.q),
-				countWordbookSearch({
+				countPageSearchResults(params.q),
+				countWordbookSearchResults({
 					query: params.q,
 					language: params.filters.language,
 					tag: params.filters.tag,
@@ -85,7 +85,7 @@ export async function searchUnified(params: UnifiedSearchParams): Promise<Unifie
 }
 
 async function searchPages(params: UnifiedSearchParams): Promise<UnifiedSearchResult[]> {
-	const results = await searchContent(params.q, {
+	const results = await searchPagesRaw(params.q, {
 		limit: params.limit,
 		offset: params.offset,
 		headlineMaxWords: 40,
@@ -108,7 +108,7 @@ async function searchPages(params: UnifiedSearchParams): Promise<UnifiedSearchRe
 }
 
 async function searchWords(params: UnifiedSearchParams): Promise<UnifiedSearchResult[]> {
-	const results = await searchWordbook({
+	const results = await searchWordbookEntries({
 		query: params.q,
 		language: params.filters.language,
 		tag: params.filters.tag,

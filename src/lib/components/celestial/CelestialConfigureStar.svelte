@@ -13,6 +13,8 @@
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import { page } from '$app/stores'
 	import { normalizePermissions } from '$lib/permissions.js'
+	import { updateStarSchema } from '$lib/celestial/schema.js'
+	import { summarizeZodIssues } from '$lib/utils.js'
 
 	type CelestialCrumb = { label: string, href: string }
 	type CelestialSystemOption = { id: number, name: string }
@@ -173,11 +175,31 @@
 	let stablePermissions = $state(normalizePermissions($page.data.permissions))
 	const permissions = $derived(stablePermissions)
 	const validationIssues = $derived.by(() => {
-		const issues: string[] = []
-		if (semiMajorAxisAu !== null && semiMajorAxisAu < 0) issues.push('Semi-major axis must be zero or greater.')
-		if (eccentricity !== null && (eccentricity < 0 || eccentricity > 1)) issues.push('Eccentricity must be between 0 and 1.')
-		if (epochPhase !== null && (epochPhase < 0 || epochPhase > 1)) issues.push('Epoch phase must be between 0 and 1.')
-		return issues
+		const parsed = updateStarSchema.safeParse({
+			spectralType: spectralType || null,
+			mass: mass || null,
+			radius: radius || null,
+			luminosity: luminosity || null,
+			luminosityVisual: luminosityVisual || null,
+			temperature: temperature || null,
+			age: age || null,
+			color: color || null,
+			orbitalPeriod: orbitalPeriod || null,
+			semiMajorAxis: semiMajorAxis || null,
+			semiMajorAxisAu,
+			eccentricity,
+			epochPhase,
+			periastron: periastron || null,
+			apastron: apastron || null,
+			apparentMagnitude: apparentMagnitude || null,
+			angularDiameter: angularDiameter || null,
+			companion: companion || null,
+			systemId: systemIdStr ? Number(systemIdStr) : null,
+			description,
+		})
+
+		if (parsed.success) return []
+		return summarizeZodIssues(parsed.error)
 	})
 
 	const systemItems = $derived<Array<{ value: string, label: string }>>([
@@ -242,6 +264,7 @@
 					semiMajorAxis: semiMajorAxis || null,
 					semiMajorAxisAu,
 					eccentricity,
+					epochPhase,
 					periastron: periastron || null,
 					apastron: apastron || null,
 					apparentMagnitude: apparentMagnitude || null,
@@ -371,7 +394,7 @@
 				<Input label="Semi-major Axis" bind:value={semiMajorAxis} placeholder="23.4 AU" />
 				<Input label="Semi-major Axis (AU)" type="number" bind:value={semiMajorAxisAu} step="any" placeholder="23.4" error={semiMajorAxisAu !== null && semiMajorAxisAu < 0 ? 'Must be 0 or greater' : ''} />
 				<Input label="Eccentricity" type="number" bind:value={eccentricity} step="any" min={0} max={1} placeholder="0.0" error={eccentricity !== null && (eccentricity < 0 || eccentricity > 1) ? 'Use a value from 0 to 1' : ''} />
-				<Input label="Epoch Phase" type="number" bind:value={epochPhase} step="any" placeholder="0.0" error={epochPhase !== null && (epochPhase < 0 || epochPhase > 1) ? 'Use a value from 0 to 1' : ''} />
+				<Input label="Epoch Phase" type="number" bind:value={epochPhase} step="any" min={0} max={1} placeholder="0.0" error={epochPhase !== null && (epochPhase < 0 || epochPhase > 1) ? 'Use a value from 0 to 1' : ''} />
 				<Input label="Periastron" bind:value={periastron} placeholder="Closest approach" />
 				<Input label="Apastron" bind:value={apastron} placeholder="Furthest distance" />
 			</div>

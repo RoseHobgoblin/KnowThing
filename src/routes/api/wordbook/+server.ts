@@ -1,9 +1,9 @@
 import { isHttpError, json } from '@sveltejs/kit'
 import { z } from 'zod'
 import type { RequestHandler } from './$types.js'
-import { requireEditorUser } from '$lib/server/auth.js'
+import { requireRole } from '$lib/server/auth.js'
 import { createWordbookEntry } from '$lib/server/services/wordbook.js'
-import { searchWordbook } from '$lib/server/services/wordbook-search.js'
+import { searchWordbookEntries } from '$lib/server/services/search/wordbook.js'
 
 const createWordSchema = z.object({
 	word: z.string().min(1, 'Word is required'),
@@ -37,12 +37,12 @@ export const GET: RequestHandler = async ({ url }) => {
 	const limit = Math.min(Number.parseInt(url.searchParams.get('limit') || '50'), 200)
 	const offset = Number.parseInt(url.searchParams.get('offset') || '0')
 
-	return json(await searchWordbook({ query: q, language, tag, letter, pos, limit, offset }))
+	return json(await searchWordbookEntries({ query: q, language, tag, letter, pos, limit, offset }))
 }
 
 /** POST /api/wordbook — create entry with definitions */
 export const POST: RequestHandler = async (event) => {
-	const user = requireEditorUser(event)
+	const user = requireRole(event, 'editor')
 	const body = await event.request.json()
 	const parsed = createWordSchema.safeParse(body)
 	if (!parsed.success) {

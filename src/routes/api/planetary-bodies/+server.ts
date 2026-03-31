@@ -5,7 +5,6 @@ import { planetaryBodies, stars } from '$lib/server/db/schema.js'
 import { requireRole } from '$lib/server/auth.js'
 import { eq, sql } from 'drizzle-orm'
 import { createPlanetaryBodySchema } from '$lib/celestial/schema.js'
-import { isDescendant } from '$lib/server/celestial/tree.js'
 
 /** GET /api/planetary-bodies?star=slug — list bodies, optionally filtered by star */
 export const GET: RequestHandler = async ({ url }) => {
@@ -49,11 +48,25 @@ export const POST: RequestHandler = async (event) => {
 		return json({ error: 'A body with this slug already exists' }, { status: 409 })
 	}
 
-	// Circular reference check for moons
+	if (data.starId != null) {
+		const [star] = await db.select({ id: stars.id }).from(stars).where(eq(stars.id, data.starId))
+		if (!star) {
+			return json({ error: 'Parent star not found' }, { status: 400 })
+		}
+	}
+
 	if (data.parentId != null) {
-		const [parentBody] = await db.select({ id: planetaryBodies.id }).from(planetaryBodies).where(eq(planetaryBodies.id, data.parentId))
+		const [parentBody] = await db
+			.select({ id: planetaryBodies.id, starId: planetaryBodies.starId })
+			.from(planetaryBodies)
+			.where(eq(planetaryBodies.id, data.parentId))
+
 		if (!parentBody) {
 			return json({ error: 'Parent body not found' }, { status: 400 })
+		}
+
+		if (data.starId != null && parentBody.starId != null && parentBody.starId !== data.starId) {
+			return json({ error: 'Parent body belongs to a different star' }, { status: 400 })
 		}
 	}
 
@@ -82,6 +95,7 @@ export const POST: RequestHandler = async (event) => {
 			semiMajorAxisAu: data.semiMajorAxisAu ?? null,
 			eccentricity: data.eccentricity ?? null,
 			inclination: data.inclination ?? null,
+			epochPhase: data.epochPhase ?? null,
 			rotationPeriod: data.rotationPeriod?.trim() || null,
 			rotationPeriodS: data.rotationPeriodS ?? null,
 			axialTilt: data.axialTilt ?? null,

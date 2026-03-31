@@ -8,7 +8,7 @@ export interface ContentSearchOptions {
 	headlineMinWords: number
 }
 
-export async function searchContent(
+export async function searchPagesRaw(
 	query: string,
 	options: ContentSearchOptions,
 ): Promise<Array<{
@@ -47,7 +47,7 @@ export async function searchContent(
 	`)
 }
 
-export async function countContentSearchResults(query: string): Promise<number> {
+export async function countPageSearchResults(query: string): Promise<number> {
 	const [{ count }] = await db.execute<{ count: number }>(sql`
 		SELECT COUNT(*)::int AS count
 		FROM content_records

@@ -1,6 +1,6 @@
 import { isHttpError, json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
-import { requireAuthenticatedUser, clearSessionCookie } from '$lib/server/auth.js'
+import { requireAuth, clearSessionCookie } from '$lib/server/auth.js'
 import { z } from 'zod'
 import { changeOwnPassword, deleteOwnAccount } from '$lib/server/services/auth.js'
 
@@ -11,7 +11,7 @@ const changePasswordSchema = z.object({
 
 /** PUT /api/account — change password */
 export const PUT: RequestHandler = async (event) => {
-	const user = requireAuthenticatedUser(event)
+	const user = requireAuth(event)
 
 	const body = await event.request.json()
 	const parsed = changePasswordSchema.safeParse(body)
@@ -37,7 +37,7 @@ export const PUT: RequestHandler = async (event) => {
 
 /** DELETE /api/account — delete own account */
 export const DELETE: RequestHandler = async (event) => {
-	const user = requireAuthenticatedUser(event)
+	const user = requireAuth(event)
 
 	try {
 		await deleteOwnAccount(user)

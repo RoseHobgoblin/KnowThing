@@ -2,7 +2,7 @@ import { redirect } from '@sveltejs/kit'
 import type { RequestEvent } from '@sveltejs/kit'
 import { type AuthUser, hasRole } from './auth.js'
 
-export function requireAuthenticatedPage(event: RequestEvent): AuthUser {
+function requirePageUser(event: RequestEvent): AuthUser {
 	const user = event.locals.user
 	if (!user) {
 		throw redirect(302, `/auth/login?redirect=${encodeURIComponent(event.url.pathname)}`)
@@ -10,8 +10,8 @@ export function requireAuthenticatedPage(event: RequestEvent): AuthUser {
 	return user
 }
 
-export function requirePageRole(event: RequestEvent, minimumRole: 'editor' | 'admin' | 'owner'): AuthUser {
-	const user = requireAuthenticatedPage(event)
+function requirePageRole(event: RequestEvent, minimumRole: 'editor' | 'admin' | 'owner'): AuthUser {
+	const user = requirePageUser(event)
 	const allowed = minimumRole === 'owner'
 		? user.role === 'owner'
 		: hasRole(user.role, minimumRole)

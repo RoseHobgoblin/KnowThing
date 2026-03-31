@@ -1,6 +1,6 @@
 import { isHttpError, json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
-import { requireEditorUser } from '$lib/server/auth.js'
+import { requireRole } from '$lib/server/auth.js'
 import { uploadMediaFile } from '$lib/server/services/media.js'
 import { listMedia } from '$lib/server/services/search/media.js'
 import { parseUnifiedSearchParams } from '$lib/server/services/search/query.js'
@@ -22,7 +22,7 @@ export const GET: RequestHandler = async ({ url }) => {
 
 /** POST /api/media — upload file with processing */
 export const POST: RequestHandler = async (event) => {
-	const user = requireEditorUser(event)
+	const user = requireRole(event, 'editor')
 	const formData = await event.request.formData()
 	const file = formData.get('file')
 

@@ -26,6 +26,7 @@
 		wikiContent={data.wikiContent}
 		contentRecordId={data.contentRecordId}
 		formError={form?.error ?? ''}
+		formValidationIssues={form?.validationIssues ?? []}
 	/>
 {:else}
 	<CalendarDetail calendar={data.calendar} config={data.config} resolved={data.resolved} wikiContent={data.wikiContent} ast={data.ast} />

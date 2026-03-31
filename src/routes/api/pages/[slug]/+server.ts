@@ -4,7 +4,7 @@ import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { contentRecords } from '$lib/server/db/schema.js'
 import { eq, and } from 'drizzle-orm'
-import { requireEditorUser } from '$lib/server/auth.js'
+import { requireRole } from '$lib/server/auth.js'
 import { deleteContentEffects } from '$lib/server/content-effects.js'
 import { updateKnowPage } from '$lib/server/services/content.js'
 
@@ -28,7 +28,7 @@ export const GET: RequestHandler = async ({ params }) => {
 
 /** PUT /api/pages/:slug — update page */
 export const PUT: RequestHandler = async (event) => {
-	const user = requireEditorUser(event)
+	const user = requireRole(event, 'editor')
 	const { slug } = event.params
 	const body = await event.request.json()
 	const parsed = updatePageSchema.safeParse(body)
@@ -50,7 +50,7 @@ export const PUT: RequestHandler = async (event) => {
 
 /** DELETE /api/pages/:slug */
 export const DELETE: RequestHandler = async (event) => {
-	requireEditorUser(event)
+	requireRole(event, 'editor')
 	const { slug } = event.params
 
 	const [existing] = await db

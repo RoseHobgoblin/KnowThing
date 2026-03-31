@@ -28,6 +28,8 @@
 	import { goto } from '$app/navigation'
 	import { pushError, pushSuccess } from '$lib/notifications.svelte'
 	import { normalizePermissions } from '$lib/permissions.js'
+	import { staticDataSchema } from '$lib/calendar/schema.js'
+	import { summarizeZodIssues } from '$lib/utils.js'
 
 	type DraftMonth = {
 		_id: number
@@ -181,12 +183,14 @@
 		wikiContent,
 		contentRecordId,
 		formError = '',
+		formValidationIssues = [],
 	}: {
 		calendar: { id: number, slug: string, name: string, description: string | null }
 		config: CalendarConfig
 		wikiContent: string
 		contentRecordId: number | null
 		formError?: string
+		formValidationIssues?: string[]
 	} = $props()
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
 
@@ -292,19 +296,11 @@
 	let stablePermissions = $state(normalizePermissions($page.data.permissions))
 	const permissions = $derived(stablePermissions)
 	const validationIssues = $derived.by(() => {
-		const issues: string[] = []
-		if (months.length === 0) issues.push('Add at least one month.')
-		if (weekdays.length === 0) issues.push('Add at least one weekday.')
-		if (dayLengthSeconds < 1) issues.push('Day length must be at least one second.')
-		if (firstWeekDay < 0 || firstWeekDay >= weekdays.length) issues.push('First weekday must point to an existing weekday.')
-		if (months.some(month => !month.name.trim())) issues.push('Every month needs a name.')
-		if (months.some(month => month.length < 1)) issues.push('Every month must be at least one day long.')
-		if (weekdays.some(day => !day.name.trim())) issues.push('Every weekday needs a name.')
-		if (leapDays.some(day => !day.name.trim())) issues.push('Every leap day needs a name.')
-		if (seasons.some(season => !season.name.trim())) issues.push('Every season needs a name.')
-		if (seasons.some(season => season.timing_type === 'periodic' && season.duration < 1)) issues.push('Rolling seasons must last at least one day.')
-		return [...new Set(issues)]
+		const parsed = staticDataSchema.safeParse(previewConfig.static_data)
+		if (parsed.success) return []
+		return summarizeZodIssues(parsed.error)
 	})
+	const allValidationIssues = $derived([...new Set([...validationIssues, ...formValidationIssues])])
 	const activeError = $derived(localError || formError)
 
 	$effect(() => {
@@ -332,7 +328,7 @@
 
 	function handleSubmit(event: SubmitEvent) {
 		localError = ''
-		if (validationIssues.length > 0) {
+		if (allValidationIssues.length > 0) {
 			event.preventDefault()
 			localError = 'Review the calendar sections below before saving.'
 		}
@@ -393,11 +389,11 @@
 			<FormNotice title="Calendar changes were not saved" message={activeError} />
 		{/if}
 
-		{#if validationIssues.length > 0}
+		{#if allValidationIssues.length > 0}
 			<FormNotice
 				tone="warning"
 				title="Calendar draft needs attention"
-				messages={validationIssues}
+				messages={allValidationIssues}
 			/>
 		{/if}
 
