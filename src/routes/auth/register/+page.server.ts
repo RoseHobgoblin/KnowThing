@@ -1,10 +1,10 @@
-import { fail, redirect } from '@sveltejs/kit'
+import { fail, isHttpError, redirect } from '@sveltejs/kit'
 import { z } from 'zod'
 import type { Actions, PageServerLoad } from './$types.js'
-import { createUser, createSession, setSessionCookie, consumeRegistrationCode, deleteUser } from '$lib/server/auth.js'
+import { setSessionCookie } from '$lib/server/auth.js'
 import { db } from '$lib/server/db/index.js'
 import { users } from '$lib/server/db/schema.js'
-import { eq } from 'drizzle-orm'
+import { registerUser } from '$lib/server/services/auth.js'
 
 const registerSchema = z.object({
 	username: z.string().min(3, 'Username must be at least 3 characters'),
@@ -39,35 +39,13 @@ export const actions: Actions = {
 			return fail(400, { error: 'Passwords do not match', username })
 		}
 
-		const existing = await db.select({ id: users.id }).from(users).limit(1)
-		const isFirstUser = existing.length === 0
-
 		try {
-			if (isFirstUser) {
-				const user = await createUser(username, password, 'owner')
-				const token = await createSession(user.id)
-				setSessionCookie(event, token)
-			} else {
-				if (!code) {
-					return fail(400, { error: 'Registration code is required', username })
-				}
-
-				const user = await createUser(username, password, 'editor')
-				const grantedRole = await consumeRegistrationCode(code, user.id)
-
-				if (!grantedRole) {
-					await deleteUser(user.id)
-					return fail(400, { error: 'Invalid or expired registration code', username })
-				}
-
-				if (grantedRole !== 'editor') {
-					await db.update(users).set({ role: grantedRole }).where(eq(users.id, user.id))
-				}
-
-				const token = await createSession(user.id)
-				setSessionCookie(event, token)
-			}
+			const result = await registerUser({ username, password, code })
+			setSessionCookie(event, result.token)
 		} catch (error: unknown) {
+			if (isHttpError(error)) {
+				return fail(error.status, { error: error.body?.message ?? error.message, username })
+			}
 			const message = error instanceof Error ? error.message : 'Unknown error'
 			if (message.includes('unique') || message.includes('duplicate')) {
 				return fail(409, { error: 'Username already taken', username })

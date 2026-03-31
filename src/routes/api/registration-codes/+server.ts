@@ -1,7 +1,8 @@
-import { json } from '@sveltejs/kit'
+import { isHttpError, json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
-import { requireRole, generateRegistrationCode } from '$lib/server/auth.js'
+import { requireRole } from '$lib/server/auth.js'
 import { z } from 'zod'
+import { createRegistrationCode } from '$lib/server/services/auth.js'
 
 const createCodeSchema = z.object({
 	role: z.enum(['viewer', 'editor', 'admin']).default('editor'),
@@ -18,12 +19,18 @@ export const POST: RequestHandler = async (event) => {
 		return json({ error: parsed.error.issues[0].message }, { status: 400 })
 	}
 
-	// Only owners can create admin codes
-	if (parsed.data.role === 'admin' && user.role !== 'owner') {
-		return json({ error: 'Only the owner can create admin invite codes' }, { status: 403 })
+	try {
+		const code = await createRegistrationCode({
+			createdBy: user.id,
+			role: parsed.data.role,
+			expiresInHours: parsed.data.expiresInHours,
+			creatorRole: user.role,
+		})
+		return json({ code }, { status: 201 })
+	} catch (err: unknown) {
+		if (isHttpError(err)) {
+			return json({ error: err.body?.message ?? err.message }, { status: err.status })
+		}
+		throw err
 	}
-
-	const code = await generateRegistrationCode(user.id, parsed.data.role, parsed.data.expiresInHours)
-
-	return json({ code }, { status: 201 })
 }
