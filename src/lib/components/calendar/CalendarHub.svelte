@@ -2,6 +2,8 @@
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import Button from '$lib/components/ui/Button.svelte'
 	import Input from '$lib/components/ui/Input.svelte'
+	import Select from '$lib/components/ui/Select.svelte'
+	import { calendarPresets } from '$lib/calendar/presets.js'
 	import CalendarWidget from '$lib/calendar/CalendarWidget.svelte'
 	import { resolveDisplay } from '$lib/calendar/date-math.js'
 	import type { CalendarConfig } from '$lib/calendar/types.js'
@@ -22,24 +24,39 @@
 	const isAdmin = $derived($page.data.isAdmin)
 
 	let newCalendarName = $state('')
+	let selectedPreset = $state('')
 	let creating = $state(false)
+
+	const presetItems = [
+		{ value: '', label: 'Blank' },
+		...calendarPresets.map(p => ({ value: p.label, label: `${p.label} — ${p.description}` })),
+	]
+
+	$effect(() => {
+		const preset = calendarPresets.find(p => p.label === selectedPreset)
+		if (preset && !newCalendarName.trim()) {
+			newCalendarName = preset.name
+		}
+	})
 
 	async function createCalendar() {
 		if (!newCalendarName.trim()) return
 		creating = true
+		const preset = calendarPresets.find(p => p.label === selectedPreset)
+		const staticData = preset?.staticData ?? {
+			first_week_day: 0,
+			weekdays: [{ name: 'Monday' }, { name: 'Tuesday' }, { name: 'Wednesday' }, { name: 'Thursday' }, { name: 'Friday' }, { name: 'Saturday' }, { name: 'Sunday' }],
+			months: [{ name: 'Month 1', length: 30, month_type: 'regular' }],
+			leap_days: [], moons: [], eras: [], seasons: [],
+			display_moons: false, year_offset: 0, epoch_offset: 0,
+		}
 		try {
 			const res = await fetch('/api/calendar', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					name: newCalendarName.trim(),
-					staticData: {
-						first_week_day: 0,
-						weekdays: [{ name: 'Monday' }, { name: 'Tuesday' }, { name: 'Wednesday' }, { name: 'Thursday' }, { name: 'Friday' }, { name: 'Saturday' }, { name: 'Sunday' }],
-						months: [{ name: 'Month 1', length: 30, month_type: 'regular' }],
-						leap_days: [], moons: [], eras: [], seasons: [],
-						display_moons: false, year_offset: 0, epoch_offset: 0,
-					},
+					staticData,
 				}),
 			})
 			if (res.ok) {
@@ -115,6 +132,7 @@
 	{#if isAdmin}
 		<div class="mt-8 border border-border-subtle bg-raised p-5 space-y-3">
 			<h2 class="text-sm font-semibold text-heading">New Calendar</h2>
+			<Select type="single" label="Start from preset" bind:value={selectedPreset} items={presetItems} />
 			<div class="flex gap-2 items-end">
 				<Input bind:value={newCalendarName} placeholder="Calendar name" containerClass="flex-1" />
 				<Button onclick={createCalendar} loading={creating} disabled={!newCalendarName.trim()}>

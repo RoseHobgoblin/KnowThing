@@ -9,11 +9,15 @@
 	import { invalidateAll } from '$app/navigation'
 	import { page } from '$app/stores'
 	import { urlSlugify } from '$lib/utils/slugify.js'
+	import { celestialPresets } from '$lib/celestial/presets.js'
+	import type { CelestialPreset, BodyPreset } from '$lib/celestial/presets.js'
 	import { celestialBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import SunDim from 'phosphor-svelte/lib/SunDim'
-	import Star from 'phosphor-svelte/lib/Star'
+	import StarIcon from 'phosphor-svelte/lib/Star'
 	import Planet from 'phosphor-svelte/lib/Planet'
 	import Moon from 'phosphor-svelte/lib/Moon'
+	import GearSix from 'phosphor-svelte/lib/GearSix'
+	import PencilSimple from 'phosphor-svelte/lib/PencilSimple'
 	import X from 'phosphor-svelte/lib/X'
 
 	let { data }: { data: PageData } = $props()
@@ -111,10 +115,88 @@
 		} finally { creating = false }
 	}
 
+	let creatingPreset = $state(false)
+	let presetProgress = $state('')
+
+	async function createFromPreset(preset: CelestialPreset) {
+		creatingPreset = true
+		presetProgress = 'Creating system...'
+		try {
+			// 1. Create system
+			const sysRes = await fetch('/api/star-systems', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ name: preset.system.name, slug: slugify(preset.system.name), systemType: preset.system.systemType }),
+			})
+			if (!sysRes.ok) { pushError('Failed to create system'); return }
+			const sys = await sysRes.json()
+
+			// 2. Create stars
+			for (const starPreset of preset.stars) {
+				presetProgress = `Creating star: ${starPreset.name}...`
+				const starRes = await fetch('/api/stars', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						name: starPreset.name, slug: slugify(starPreset.name), systemId: sys.id,
+						spectralType: starPreset.spectralType, mass: starPreset.mass, radius: starPreset.radius,
+						luminosity: starPreset.luminosity, temperature: starPreset.temperature,
+						age: starPreset.age, color: starPreset.color, apparentMagnitude: starPreset.apparentMagnitude,
+					}),
+				})
+				if (!starRes.ok) { pushError(`Failed to create star: ${starPreset.name}`); continue }
+				const star = await starRes.json()
+
+				// 3. Create bodies under this star
+				for (const bodyPreset of starPreset.bodies) {
+					presetProgress = `Creating ${bodyPreset.bodyType}: ${bodyPreset.name}...`
+					const planetId = await createPresetBody(bodyPreset, star.id, null)
+
+					// 4. Create moons under this body
+					if (planetId && bodyPreset.moons) {
+						for (const moonPreset of bodyPreset.moons) {
+							presetProgress = `Creating moon: ${moonPreset.name}...`
+							await createPresetBody(moonPreset, star.id, planetId)
+						}
+					}
+				}
+			}
+
+			pushSuccess(`Created "${preset.system.name}" with all bodies`)
+			invalidateAll()
+		} catch {
+			pushError('Failed to create preset')
+		} finally {
+			creatingPreset = false
+			presetProgress = ''
+		}
+	}
+
+	async function createPresetBody(body: BodyPreset, starId: number, parentId: number | null): Promise<number | null> {
+		const response = await fetch('/api/planetary-bodies', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				name: body.name, slug: slugify(body.name), bodyType: body.bodyType, starId, parentId,
+				mass: body.mass, radius: body.radius, density: body.density,
+				surfaceGravity: body.surfaceGravity, temperature: body.temperature,
+				atmosphere: body.atmosphere || null, composition: body.composition,
+				orbitalPeriod: body.orbitalPeriod, orbitalPeriodDays: body.orbitalPeriodDays,
+				semiMajorAxisAu: body.semiMajorAxisAu, eccentricity: body.eccentricity,
+				inclination: body.inclination, rotationPeriod: body.rotationPeriod,
+				rotationPeriodS: body.rotationPeriodS, axialTilt: body.axialTilt,
+				satellites: body.satellites, hasRings: body.hasRings,
+			}),
+		})
+		if (!response.ok) { pushError(`Failed to create: ${body.name}`); return null }
+		const created = await response.json()
+		return created.id
+	}
+
 	async function deleteItem(type: string, slug: string, name: string) {
 		const ok = await confirmDialog.confirm('Delete', `Delete "${name}"?`, 'Delete', 'Cancel')
 		if (!ok) return
-		const endpoint = type === 'system' ? `/api/star-systems/${slug}` : type === 'star' ? `/api/stars/${slug}` : `/api/planetary-bodies/${slug}`
+		const endpoint = type === 'system' ? `/api/star-systems/${slug}` : (type === 'star' ? `/api/stars/${slug}` : `/api/planetary-bodies/${slug}`)
 		const res = await fetch(endpoint, { method: 'DELETE' })
 		if (res.ok) {
 			pushSuccess(`"${name}" deleted`)
@@ -144,12 +226,12 @@
 					<div class="flex items-center justify-between px-4 py-3 bg-raised border-b border-border-subtle">
 						<div class="flex items-center gap-2">
 							<SunDim size={20} weight="fill" class="text-accent" />
-							<a href="/celestial/{system.slug}" class="text-heading font-bold text-lg hover:text-link transition-colors">{system.name}</a>
+							<a href="/celestial/{system.slug}" class="text-heading font-bold text-lg transition-colors hover:text-link">{system.name}</a>
 							<span class="text-xs text-faint">{system.systemType} · {system.starCount} {system.starCount === 1 ? 'star' : 'stars'} · {system.planetCount} {system.planetCount === 1 ? 'planet' : 'planets'}</span>
 						</div>
 						{#if isAdmin}
 							<div class="flex items-center gap-3 text-xs">
-								<a href="/celestial/{system.slug}" class="text-link transition-colors hover:text-link-hover">Edit</a>
+								<a href="/celestial/{system.slug}/edit" class="text-link transition-colors flex items-center gap-1 hover:text-link-hover"><PencilSimple size={12} weight="fill" />Edit</a>
 								<button onclick={() => deleteItem('system', system.slug, system.name)} class="text-error transition-colors hover:text-error-hover">Delete</button>
 							</div>
 						{/if}
@@ -160,15 +242,15 @@
 						<div class="border-b border-border-subtle last:border-0">
 							<div class="flex items-center justify-between px-4 py-2.5">
 								<div class="flex items-center gap-2 ml-2">
-									<Star size={14} weight="fill" class="text-secondary" />
-									<a href="/celestial/{system.slug}/{star.slug}" class="text-heading font-semibold hover:text-link transition-colors">{star.name}</a>
+									<StarIcon size={14} weight="fill" class="text-secondary" />
+									<a href="/celestial/{system.slug}/{star.slug}" class="text-heading font-semibold transition-colors hover:text-link">{star.name}</a>
 									{#if star.spectralType}
 										<span class="text-xs text-faint">({star.spectralType})</span>
 									{/if}
 								</div>
 								{#if isAdmin}
 									<div class="flex items-center gap-3 text-xs">
-										<a href="/celestial/{system.slug}/{star.slug}" class="text-link transition-colors hover:text-link-hover">Edit</a>
+										<a href="/celestial/{system.slug}/{star.slug}/configure" class="text-link transition-colors flex items-center gap-1 hover:text-link-hover"><GearSix size={12} weight="fill" />Configure</a>
 										<button onclick={() => deleteItem('star', star.slug, star.name)} class="text-error transition-colors hover:text-error-hover" aria-label="Delete {star.name}"><X size={12} weight="bold" /></button>
 									</div>
 								{/if}
@@ -179,7 +261,7 @@
 								<div class="flex items-center justify-between px-4 py-1.5 ml-8">
 									<div class="flex items-center gap-2">
 										<Planet size={12} class="text-dim" />
-										<a href="/celestial/{system.slug}/{planet.slug}" class="text-body text-sm hover:text-link transition-colors">{planet.name}</a>
+										<a href="/celestial/{system.slug}/{planet.slug}" class="text-body text-sm transition-colors hover:text-link">{planet.name}</a>
 										<span class="text-xs text-faint">({planet.bodyType})</span>
 										{#if planet.moonCount > 0}
 											<span class="text-xs text-dim">· {planet.moonCount} {planet.moonCount === 1 ? 'moon' : 'moons'}</span>
@@ -187,7 +269,7 @@
 									</div>
 									{#if isAdmin}
 										<div class="flex items-center gap-3 text-xs">
-											<a href="/celestial/{system.slug}/{planet.slug}" class="text-link transition-colors hover:text-link-hover">Edit</a>
+											<a href="/celestial/{system.slug}/{planet.slug}/configure" class="text-link transition-colors flex items-center gap-1 hover:text-link-hover"><GearSix size={12} weight="fill" />Configure</a>
 											<button onclick={() => deleteItem('body', planet.slug, planet.name)} class="text-error transition-colors hover:text-error-hover" aria-label="Delete {planet.name}"><X size={12} weight="bold" /></button>
 										</div>
 									{/if}
@@ -196,12 +278,12 @@
 									<div class="flex items-center justify-between px-4 py-1 ml-14">
 										<div class="flex items-center gap-2">
 											<Moon size={10} class="text-faint" />
-											<a href="/celestial/{system.slug}/{moon.slug}" class="text-xs text-secondary hover:text-link transition-colors">{moon.name}</a>
+											<a href="/celestial/{system.slug}/{moon.slug}" class="text-xs text-secondary transition-colors hover:text-link">{moon.name}</a>
 										</div>
 										{#if isAdmin}
 											<div class="flex items-center gap-3 text-xs">
-												<a href="/celestial/{system.slug}/{moon.slug}" class="text-link transition-colors hover:text-link-hover">Edit</a>
-												<button onclick={() => deleteItem('body', moon.slug, moon.name)} class="text-xs text-error transition-colors hover:text-error-hover" aria-label="Delete {moon.name}"><X size={12} weight="bold" /></button>
+												<a href="/celestial/{system.slug}/{moon.slug}/configure" class="text-link transition-colors flex items-center gap-1 hover:text-link-hover"><GearSix size={12} weight="fill" />Configure</a>
+												<button onclick={() => deleteItem('body', moon.slug, moon.name)} class="text-error transition-colors hover:text-error-hover" aria-label="Delete {moon.name}"><X size={12} weight="bold" /></button>
 											</div>
 										{/if}
 									</div>
@@ -219,14 +301,14 @@
 					{#each orphanStars() as star (star.id)}
 						<div class="flex items-center justify-between py-1.5 mt-1">
 							<div class="flex items-center gap-2">
-								<Star size={14} weight="fill" class="text-secondary" />
+								<StarIcon size={14} weight="fill" class="text-secondary" />
 								<span class="text-body">{star.name}</span>
 								{#if star.spectralType}
 									<span class="text-xs text-faint">({star.spectralType})</span>
 								{/if}
 							</div>
 							{#if isAdmin}
-								<a href="/celestial/{star.slug}" class="text-xs text-link">Edit</a>
+								<a href="/celestial/{star.slug}/configure" class="text-xs text-link flex items-center gap-1 transition-colors hover:text-link-hover"><GearSix size={12} weight="fill" />Configure</a>
 							{/if}
 						</div>
 					{/each}
@@ -245,7 +327,7 @@
 								<span class="text-xs text-faint">({body.bodyType})</span>
 							</div>
 							{#if isAdmin}
-								<a href="/celestial/{body.slug}" class="text-xs text-link">Edit</a>
+								<a href="/celestial/{body.slug}/configure" class="text-xs text-link flex items-center gap-1 transition-colors hover:text-link-hover"><GearSix size={12} weight="fill" />Configure</a>
 							{/if}
 						</div>
 					{/each}
@@ -257,6 +339,22 @@
 	<!-- Admin: create forms -->
 	{#if isAdmin}
 		<div class="mt-8 space-y-4">
+			<!-- Presets -->
+			<section class="bg-surface border border-border p-5 space-y-3">
+				<h2 class="text-sm font-semibold text-heading">Create from Preset</h2>
+				<p class="text-xs text-faint">Populate an entire system with real-world data. Creates the system, stars, planets, and moons in one go.</p>
+				<div class="flex flex-wrap gap-2">
+					{#each celestialPresets as preset}
+						<Button onclick={() => createFromPreset(preset)} loading={creatingPreset} disabled={creatingPreset}>
+							{preset.label}
+						</Button>
+					{/each}
+				</div>
+				{#if presetProgress}
+					<p class="text-xs text-secondary">{presetProgress}</p>
+				{/if}
+			</section>
+
 			<section class="bg-surface border border-border p-5 space-y-3">
 				<h2 class="text-sm font-semibold text-heading">Add System</h2>
 				<div class="flex gap-3 items-end">
