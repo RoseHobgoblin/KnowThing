@@ -8,7 +8,6 @@
 	import { normalizePermissions } from '$lib/permissions.js'
 	import InfoboxStar from '$lib/infoboxes/InfoboxStar.svelte'
 	import InfoboxPlanet from '$lib/infoboxes/InfoboxPlanet.svelte'
-	import InfoboxSystem from '$lib/infoboxes/InfoboxSystem.svelte'
 	import SystemMap from '$lib/celestial/SystemMap.svelte'
 	import SystemSidebar from '$lib/celestial/SystemSidebar.svelte'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
@@ -21,7 +20,6 @@
 	import LivePreview from '$lib/components/LivePreview.svelte'
 	import SaveStatusBadge from '$lib/components/editor/SaveStatusBadge.svelte'
 	import UnsavedChangesGuard from '$lib/components/editor/UnsavedChangesGuard.svelte'
-	import RecordModeBanner from '$lib/components/editor/RecordModeBanner.svelte'
 	import FormNotice from '$lib/components/editor/FormNotice.svelte'
 	import StickyActionBar from '$lib/components/editor/StickyActionBar.svelte'
 
@@ -142,12 +140,6 @@
 			<input type="hidden" name="contentRecordId" value={data.contentRecordId ?? ''} />
 			<input type="hidden" name="summary" value={editSummary} />
 
-			<RecordModeBanner
-				modeLabel="Edit Article"
-				title="Celestial Article Editor"
-				description="Edit reference prose here. Structured celestial properties belong in Configure Record."
-			/>
-
 			{#if saveError}
 				<div class="px-6 pt-4">
 					<FormNotice title="Article changes were not saved" message={saveError} />
@@ -227,28 +219,6 @@
 				<span class="text-faint text-sm">View only. Editor role required for celestial changes.</span>
 			{/if}
 		{/snippet}
-			<RecordModeBanner
-				modeLabel="View Record"
-				title="Celestial Detail"
-				description={kind === 'system'
-					? 'This page shows the system map and linked celestial records. Use Configure or Edit to change structured data or article prose.'
-					: 'This page shows structured celestial data alongside article prose. Use Configure for system data and Edit for article content.'}
-			>
-				{#snippet actions()}
-					{#if permissions.canEditContent || permissions.canConfigureCelestial}
-						{#if kind !== 'system' && permissions.canConfigureCelestial}
-							<a href={configurePath} class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover">
-								<GearSix size={14} weight="fill" />Configure Record
-							</a>
-						{/if}
-						{#if permissions.canEditContent}
-							<a href={editPath} class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover">
-								<PencilSimple size={14} weight="fill" />Edit Article
-							</a>
-						{/if}
-					{/if}
-				{/snippet}
-			</RecordModeBanner>
 			{#if kind === 'system'}
 				<!-- System: two-column layout -->
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-[1fr_280px]">
