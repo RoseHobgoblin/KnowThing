@@ -135,15 +135,16 @@
 			const query = linkMatch.text.slice(2) // strip [[
 			if (query.length < 1) return null
 			try {
-				const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&limit=8`)
+				const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&scope=pages&limit=8`)
 				if (!res.ok) return null
-				const results = await res.json()
+				const payload = await res.json()
+				const results = payload.results ?? []
 				return {
 					from: linkMatch.from + 2,
 					options: results.map((r: any) => ({
-						label: r.title || r.slug,
-						detail: r.domain === 'know' ? '' : r.domain,
-						apply: r.slug,
+						label: r.title,
+						detail: Array.isArray(r.meta) ? r.meta.join(' · ') : '',
+						apply: r.title,
 					})),
 				}
 			} catch {

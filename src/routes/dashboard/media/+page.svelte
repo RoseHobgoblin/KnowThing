@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
+	import { goto } from '$app/navigation'
 	import { page } from '$app/stores'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
@@ -122,6 +123,13 @@
 	}
 
 	const totalPages = $derived(Math.ceil(total / perPage))
+	const unifiedSearchHref = $derived.by(() => {
+		const params = new URLSearchParams()
+		params.set('scope', 'media')
+		if (searchQuery.trim()) params.set('q', searchQuery.trim())
+		if (showUnused) params.set('unused', 'true')
+		return `/search?${params.toString()}`
+	})
 
 	let sortByInitialized = false
 	$effect(() => {
@@ -140,8 +148,14 @@
 
 <div class="space-y-4">
 	<div class="flex items-center justify-between">
-		<h1 class="text-xl font-bold text-heading">Media Library</h1>
-		<span class="text-sm text-dim">{total} files</span>
+		<div>
+			<h1 class="text-xl font-bold text-heading">Media Library</h1>
+			<p class="text-sm text-dim">Browse and manage uploaded files. Use unified search for cross-domain search behavior.</p>
+		</div>
+		<div class="flex items-center gap-3">
+			<a href={unifiedSearchHref} class="text-sm text-link hover:text-link-hover">Open in search</a>
+			<span class="text-sm text-dim">{total} files</span>
+		</div>
 	</div>
 
 	<!-- Drop zone + Upload -->
@@ -220,6 +234,14 @@
 				class="px-2.5 py-1.5 text-xs {viewMode === 'list' ? 'bg-accent text-surface' : 'bg-surface text-secondary hover:bg-page'}"
 			>List</button>
 		</div>
+
+		<button
+			type="button"
+			onclick={() => goto(unifiedSearchHref)}
+			class="px-3 py-2 text-xs border border-border text-secondary hover:bg-page"
+		>
+			Search View
+		</button>
 	</div>
 
 	<!-- File grid/list -->

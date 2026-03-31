@@ -12,8 +12,7 @@ export interface WordbookSearchParams {
 	offset?: number
 }
 
-export async function searchWordbook(params: WordbookSearchParams) {
-	const q = params.query?.trim()
+function buildWordbookConditions(params: WordbookSearchParams) {
 	const conditions = []
 
 	if (params.language) {
@@ -30,6 +29,13 @@ export async function searchWordbook(params: WordbookSearchParams) {
 			sql`EXISTS (SELECT 1 FROM definitions d WHERE d.entry_id = ${lexicon.id} AND d.part_of_speech = ${params.pos})`,
 		)
 	}
+
+	return conditions
+}
+
+export async function searchWordbook(params: WordbookSearchParams) {
+	const q = params.query?.trim()
+	const conditions = buildWordbookConditions(params)
 
 	if (q) {
 		const [definitionMatches, inflectionMatches] = await Promise.all([
@@ -111,4 +117,54 @@ export async function searchWordbook(params: WordbookSearchParams) {
 		.orderBy(asc(lexicon.word))
 		.limit(params.limit)
 		.offset(params.offset ?? 0)
+}
+
+export async function countWordbookSearch(params: Omit<WordbookSearchParams, 'limit' | 'offset'>) {
+	const q = params.query?.trim()
+	const conditions = buildWordbookConditions({ ...params, limit: 1 })
+
+	if (q) {
+		const [definitionMatches, inflectionMatches] = await Promise.all([
+			db.selectDistinct({ entryId: definitions.entryId })
+				.from(definitions)
+				.where(sql`search_vector @@ websearch_to_tsquery('english', ${q})`),
+			db.selectDistinct({ entryId: inflectedForms.entryId })
+				.from(inflectedForms)
+				.where(sql`LOWER(${inflectedForms.form}) = LOWER(${q})`),
+		])
+
+		const definitionIds = new Set(definitionMatches.map(row => row.entryId))
+		const inflectionIds = new Set(inflectionMatches.map(row => row.entryId))
+		const extraIds = [...new Set([...definitionIds, ...inflectionIds])]
+		const extraIdFilter = extraIds.length > 0
+			? sql`OR ${lexicon.id} IN (${sql.join(extraIds.map(id => sql`${id}`), sql`, `)})`
+			: sql``
+
+		const [{ count }] = await db
+			.select({ count: sql<number>`COUNT(*)::int` })
+			.from(lexicon)
+			.innerJoin(languages, eq(lexicon.languageId, languages.id))
+			.where(
+				and(
+					sql`(
+						LOWER(${lexicon.word}) = LOWER(${q})
+						OR LOWER(${lexicon.word}) LIKE LOWER(${q + '%'})
+						OR ${lexicon.word} % ${q}
+						OR lexicon.search_vector @@ websearch_to_tsquery('english', ${q})
+						${extraIdFilter}
+					)`,
+					...(conditions.length > 0 ? conditions : []),
+				),
+			)
+
+		return Number(count ?? 0)
+	}
+
+	const [{ count }] = await db
+		.select({ count: sql<number>`COUNT(*)::int` })
+		.from(lexicon)
+		.innerJoin(languages, eq(lexicon.languageId, languages.id))
+		.where(conditions.length > 0 ? and(...conditions) : undefined)
+
+	return Number(count ?? 0)
 }

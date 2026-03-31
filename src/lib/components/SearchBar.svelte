@@ -4,7 +4,8 @@
 	import { sanitizeSnippet } from '$lib/utils.js'
 
 	let query = $state('')
-	let results = $state<{ slug: string, title: string, snippet: string }[]>([])
+	type SearchResult = { href: string, title: string, snippet: string, badge: string }
+	let results = $state<SearchResult[]>([])
 	let showResults = $state(false)
 	let selectedIndex = $state(-1)
 	let debounceTimer: ReturnType<typeof setTimeout>
@@ -32,7 +33,8 @@
 		try {
 			const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&limit=8`)
 			if (res.ok) {
-				results = await res.json()
+				const payload = await res.json()
+				results = payload.results ?? []
 				showResults = true
 				selectedIndex = -1
 			}
@@ -41,13 +43,13 @@
 		}
 	}
 
-	function navigate(slug: string) {
+	function navigate(href: string) {
 		query = ''
 		results = []
 		showResults = false
 		selectedIndex = -1
 		inputEl?.blur()
-		goto(`/know/${slug}`)
+		goto(href)
 	}
 
 	function onKeydown(event: KeyboardEvent) {
@@ -80,7 +82,7 @@
 			case 'Enter': {
 				event.preventDefault()
 				if (selectedIndex >= 0 && selectedIndex < results.length) {
-					navigate(results[selectedIndex].slug)
+					navigate(results[selectedIndex].href)
 				} else if (query.trim()) {
 					const searchQuery = query
 					query = ''
@@ -102,7 +104,13 @@
 
 	function onSubmit(event: Event) {
 		event.preventDefault()
-		// Handled by onKeydown Enter
+		if (!query.trim()) return
+		const searchQuery = query
+		query = ''
+		results = []
+		showResults = false
+		inputEl?.blur()
+		goto(`/search?q=${encodeURIComponent(searchQuery)}&scope=all`)
 	}
 
 	function close() {
@@ -124,7 +132,7 @@
 		onkeydown={onKeydown}
 		onfocusin={() => results.length > 0 && (showResults = true)}
 		onfocusout={close}
-		placeholder="Search..."
+		placeholder="Search pages, wordbook, media..."
 		role="combobox"
 		aria-expanded={showResults && results.length > 0}
 		aria-autocomplete="list"
@@ -146,19 +154,28 @@
 			{#each results as r, i}
 				<a
 					id="search-result-{i}"
-					href="/know/{r.slug}"
-					onclick={(e) => { e.preventDefault(); navigate(r.slug) }}
+					href={r.href}
+					onclick={(e) => { e.preventDefault(); navigate(r.href) }}
 					class="block px-3 py-2.5 border-b border-border-subtle transition-colors
 						{i === selectedIndex ? 'bg-accent-subtle' : 'hover:bg-accent-subtle'}"
 					role="option"
 					aria-selected={i === selectedIndex}
 				>
-					<div class="font-medium text-sm text-heading">{r.title}</div>
+					<div class="flex items-center gap-2">
+						<div class="font-medium text-sm text-heading">{r.title}</div>
+						<span class="text-[10px] uppercase tracking-wide text-faint">{r.badge}</span>
+					</div>
 					{#if r.snippet}
 						<div class="text-xs text-dim mt-0.5">{@html sanitizeSnippet(r.snippet)}</div>
 					{/if}
 				</a>
 			{/each}
+			<button
+				type="submit"
+				class="w-full px-3 py-2 text-left text-xs text-link border-t border-border-subtle hover:bg-accent-subtle"
+			>
+				View all results
+			</button>
 		</div>
 	{/if}
 </form>

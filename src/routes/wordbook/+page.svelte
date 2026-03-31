@@ -1,7 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types.js'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
-	import WordbookSearch from '$lib/components/wordbook/WordbookSearch.svelte'
 	import LanguageCard from '$lib/components/wordbook/LanguageCard.svelte'
 	import WordEntry from '$lib/components/wordbook/WordEntry.svelte'
 	import { wordbookBreadcrumbs } from '$lib/utils/breadcrumbs.js'
@@ -32,9 +31,34 @@
 		{data.totalWords} {data.totalWords === 1 ? 'word' : 'words'} across {data.languages.length} {data.languages.length === 1 ? 'language' : 'languages'}
 	</p>
 
-	<div class="max-w-2xl mb-4">
-		<WordbookSearch languages={data.languages} large />
-	</div>
+	<form action="/search" method="GET" class="max-w-2xl mb-4 flex gap-2 flex-col sm:flex-row">
+		<input type="hidden" name="scope" value="wordbook" />
+		<div class="flex-1 flex gap-2">
+			<input
+				type="text"
+				name="q"
+				placeholder="Search words, definitions, etymology..."
+				class="flex-1 px-4 py-3 text-lg border border-border-strong bg-surface text-heading focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent-border placeholder:text-faint"
+			/>
+			{#if data.languages.length > 0}
+				<select
+					name="language"
+					class="px-3 py-3 border border-border-strong bg-surface text-sm text-body focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent-border"
+				>
+					<option value="">All languages</option>
+					{#each data.languages as language (language.slug)}
+						<option value={language.slug}>{language.name}</option>
+					{/each}
+				</select>
+			{/if}
+		</div>
+		<button
+			type="submit"
+			class="px-6 py-3 bg-accent text-surface font-medium transition-colors text-sm hover:bg-accent-hover"
+		>
+			Search
+		</button>
+	</form>
 
 	<div class="mb-6">
 		<a href="/wordbook/contribute" class="text-sm text-link hover:text-link-hover hover:underline">+ Add word</a>

@@ -1,16 +1,12 @@
 import type { PageServerLoad } from './$types.js'
-import { searchContent } from '$lib/server/services/search.js'
+import { parseUnifiedSearchParams } from '$lib/server/services/search/query.js'
+import { searchUnified } from '$lib/server/services/search/index.js'
+import { loadSearchFilterOptions } from '$lib/server/services/search/options.js'
 
 export const load: PageServerLoad = async ({ url }) => {
-	const q = url.searchParams.get('q')?.trim() || ''
-
-	if (!q) return { query: '', results: [] }
-
-	const results = await searchContent(q, {
-		limit: 50,
-		headlineMaxWords: 50,
-		headlineMinWords: 25,
-	})
-
-	return { query: q, results }
+	const [search, filterOptions] = await Promise.all([
+		searchUnified(parseUnifiedSearchParams(url, { scope: 'all', limit: 50, offset: 0 })),
+		loadSearchFilterOptions(),
+	])
+	return { ...search, filterOptions }
 }

@@ -99,7 +99,7 @@
 	</nav>
 
 	<!-- Mobile/tablet: floating toggle button + dropdown -->
-	<div class="xl:hidden mb-4">
+	<div class="mb-4·xl:hidden">
 		<button
 			onclick={() => tocOpen = !tocOpen}
 			class="

@@ -1,21 +1,10 @@
 import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
-import { searchContent } from '$lib/server/services/search.js'
+import { parseUnifiedSearchParams } from '$lib/server/services/search/query.js'
+import { searchUnified } from '$lib/server/services/search/index.js'
 
-/** GET /api/search?q=...&limit=20 — full-text search across all content */
+/** GET /api/search?q=...&scope=all|pages|wordbook|media — unified search */
 export const GET: RequestHandler = async ({ url }) => {
-	const q = url.searchParams.get('q')?.trim()
-	const limit = Math.min(Number.parseInt(url.searchParams.get('limit') || '20'), 100)
-
-	if (!q) {
-		return json([])
-	}
-
-	const result = await searchContent(q, {
-		limit,
-		headlineMaxWords: 40,
-		headlineMinWords: 20,
-	})
-
-	return json(result)
+	const params = parseUnifiedSearchParams(url, { scope: 'all', limit: 20, offset: 0 })
+	return json(await searchUnified(params))
 }
