@@ -15,6 +15,7 @@
 	import { normalizePermissions } from '$lib/permissions.js'
 	import { updateStarSchema } from '$lib/celestial/schema.js'
 	import { summarizeZodIssues } from '$lib/utils.js'
+	import { getStarPresets, type StarPreset } from '$lib/celestial/presets.js'
 
 	type CelestialCrumb = { label: string, href: string }
 	type CelestialSystemOption = { id: number, name: string }
@@ -143,6 +144,25 @@
 
 	let content = $state(initialDraft.content)
 	let editSummary = $state('')
+
+	// Preset population
+	const starPresets = getStarPresets()
+	const presetItems = [
+		{ value: '', label: 'Choose a star...' },
+		...[...starPresets.keys()].map(name => ({ value: name, label: name })),
+	]
+	let selectedPreset = $state('')
+
+	function applyPreset(preset: StarPreset) {
+		spectralType = preset.spectralType
+		mass = preset.mass
+		radius = preset.radius
+		luminosity = preset.luminosity
+		temperature = preset.temperature
+		age = preset.age
+		color = preset.color
+		apparentMagnitude = preset.apparentMagnitude
+	}
 
 	let saving = $state(false)
 	let saveError = $state('')
@@ -334,6 +354,23 @@
 			</div>
 			<SaveStatusBadge dirty={isDirty} {saving} error={saveError} {savedAt} />
 		</div>
+		<section class="bg-accent-subtle/30 border border-accent-border/50 p-4 flex flex-col gap-2 sm:flex-row sm:items-end">
+			<div class="flex-1">
+				<Select label="Populate from real-world data" type="single" bind:value={selectedPreset} items={presetItems} />
+			</div>
+			<button
+				type="button"
+				disabled={!selectedPreset}
+				onclick={() => {
+					const preset = starPresets.get(selectedPreset)
+					if (preset) applyPreset(preset)
+				}}
+				class="px-4 py-2 text-sm border border-accent-border text-accent hover:bg-accent-subtle disabled:opacity-40 disabled:cursor-not-allowed"
+			>
+				Apply
+			</button>
+		</section>
+
 		{#if saveError}
 			<FormNotice title="Star changes were not saved" message={saveError} />
 		{/if}

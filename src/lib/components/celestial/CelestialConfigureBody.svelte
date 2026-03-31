@@ -16,6 +16,7 @@
 	import { normalizePermissions } from '$lib/permissions.js'
 	import { updatePlanetaryBodySchema } from '$lib/celestial/schema.js'
 	import { summarizeZodIssues } from '$lib/utils.js'
+	import { getBodyPresets, type BodyPreset } from '$lib/celestial/presets.js'
 
 	type CelestialCrumb = { label: string, href: string }
 	type BodyType = 'planet' | 'moon' | 'dwarf_planet' | 'asteroid' | 'ring_system'
@@ -188,6 +189,35 @@
 
 	let content = $state(initialDraft.content)
 	let editSummary = $state('')
+
+	// Preset population
+	const bodyPresets = getBodyPresets()
+	const presetItems = [
+		{ value: '', label: 'Choose a body...' },
+		...[...bodyPresets.keys()].map(name => ({ value: name, label: name })),
+	]
+	let selectedPreset = $state('')
+
+	function applyPreset(preset: BodyPreset) {
+		bodyType = preset.bodyType
+		mass = preset.mass
+		radius = preset.radius
+		density = preset.density
+		surfaceGravity = preset.surfaceGravity
+		temperature = preset.temperature
+		composition = preset.composition
+		atmosphere = preset.atmosphere
+		orbitalPeriod = preset.orbitalPeriod
+		orbitalPeriodDays = preset.orbitalPeriodDays
+		semiMajorAxisAu = preset.semiMajorAxisAu
+		eccentricity = preset.eccentricity
+		inclination = preset.inclination
+		rotationPeriod = preset.rotationPeriod
+		rotationPeriodS = preset.rotationPeriodS
+		axialTilt = preset.axialTilt
+		satellites = preset.satellites
+		hasRings = preset.hasRings
+	}
 
 	let saving = $state(false)
 	let saveError = $state('')
@@ -430,6 +460,23 @@
 			</div>
 			<SaveStatusBadge dirty={isDirty} {saving} error={saveError} {savedAt} />
 		</div>
+		<section class="bg-accent-subtle/30 border border-accent-border/50 p-4 flex flex-col gap-2 sm:flex-row sm:items-end">
+			<div class="flex-1">
+				<Select label="Populate from real-world data" type="single" bind:value={selectedPreset} items={presetItems} />
+			</div>
+			<button
+				type="button"
+				disabled={!selectedPreset}
+				onclick={() => {
+					const preset = bodyPresets.get(selectedPreset)
+					if (preset) applyPreset(preset)
+				}}
+				class="px-4 py-2 text-sm border border-accent-border text-accent hover:bg-accent-subtle disabled:opacity-40 disabled:cursor-not-allowed"
+			>
+				Apply
+			</button>
+		</section>
+
 		{#if saveError}
 			<FormNotice title="Body changes were not saved" message={saveError} />
 		{/if}

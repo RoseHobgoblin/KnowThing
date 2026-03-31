@@ -44,6 +44,41 @@ export interface BodyPreset {
 	moons?: BodyPreset[]
 }
 
+/**
+ * Flat lookup of individual star presets by name (e.g. "The Sun").
+ * Built from the nested celestialPresets structure for use on configure pages.
+ */
+export function getStarPresets(): Map<string, StarPreset> {
+	const map = new Map<string, StarPreset>()
+	for (const preset of celestialPresets) {
+		for (const star of preset.stars) {
+			map.set(star.name, star)
+		}
+	}
+	return map
+}
+
+/**
+ * Flat lookup of individual body presets by name (e.g. "Earth", "Luna").
+ * Includes planets and moons from all system presets.
+ */
+export function getBodyPresets(): Map<string, BodyPreset> {
+	const map = new Map<string, BodyPreset>()
+	for (const preset of celestialPresets) {
+		for (const star of preset.stars) {
+			for (const body of star.bodies) {
+				map.set(body.name, body)
+				if (body.moons) {
+					for (const moon of body.moons) {
+						map.set(moon.name, moon)
+					}
+				}
+			}
+		}
+	}
+	return map
+}
+
 export const celestialPresets: CelestialPreset[] = [
 	{
 		label: 'Solar System',
