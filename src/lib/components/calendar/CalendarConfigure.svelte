@@ -9,7 +9,8 @@
 </script>
 
 <script lang="ts">
-	import type { CalendarConfig, StaticCalendarData } from '$lib/calendar/types.js'
+	import { untrack } from 'svelte'
+	import type { CalendarConfig, MonthType, SeasonKind, StaticCalendarData } from '$lib/calendar/types.js'
 	import { enhance } from '$app/forms'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import Input from '$lib/components/ui/Input.svelte'
@@ -26,6 +27,153 @@
 	import { page } from '$app/stores'
 	import { goto } from '$app/navigation'
 	import { pushError, pushSuccess } from '$lib/notifications.svelte'
+	import { normalizePermissions } from '$lib/permissions.js'
+
+	type DraftMonth = {
+		_id: number
+		name: string
+		length: number
+		month_type: MonthType
+		short_name: string
+	}
+
+	type DraftWeekday = {
+		_id: number
+		name: string
+		abbreviation: string
+	}
+
+	type DraftEra = {
+		_id: number
+		name: string
+		start_year: number
+		end_year: string
+		format: string
+		reverse_numbering: boolean
+	}
+
+	type DraftMoon = {
+		_id: number
+		name: string
+		cycle: number
+		offset: number
+		face_color: string
+		shadow_color: string
+	}
+
+	type DraftSeason = {
+		_id: number
+		name: string
+		kind: SeasonKind
+		timing_type: 'dated' | 'periodic'
+		month_str: string
+		day: number
+		duration: number
+		color: string
+	}
+
+	type DraftLeapDay = {
+		_id: number
+		name: string
+		month_index_str: string
+		after_day: number
+		interval: number
+		offset: number
+		intercalary: boolean
+		ignore: string
+		exclusive: string
+	}
+
+	function draftMonths(staticData: StaticCalendarData): DraftMonth[] {
+		return staticData.months.map(month => ({
+			_id: uid(),
+			name: month.name,
+			length: month.length,
+			month_type: month.month_type || 'regular',
+			short_name: month.short_name || '',
+		}))
+	}
+
+	function draftWeekdays(staticData: StaticCalendarData): DraftWeekday[] {
+		return staticData.weekdays.map(weekday => ({
+			_id: uid(),
+			name: weekday.name,
+			abbreviation: weekday.abbreviation || '',
+		}))
+	}
+
+	function draftEras(staticData: StaticCalendarData): DraftEra[] {
+		return staticData.eras.map(era => ({
+			_id: uid(),
+			name: era.name,
+			start_year: era.start_year,
+			end_year: era.end_year?.toString() ?? '',
+			format: era.format || '{{year}} {{era_name}}',
+			reverse_numbering: era.reverse_numbering,
+		}))
+	}
+
+	function draftMoons(staticData: StaticCalendarData): DraftMoon[] {
+		return staticData.moons.map(moon => ({
+			_id: uid(),
+			name: moon.name,
+			cycle: moon.cycle,
+			offset: moon.offset,
+			face_color: moon.face_color,
+			shadow_color: moon.shadow_color,
+		}))
+	}
+
+	function draftSeasons(staticData: StaticCalendarData): DraftSeason[] {
+		return staticData.seasons.map(season => ({
+			_id: uid(),
+			name: season.name,
+			kind: season.kind || 'custom',
+			timing_type: season.timing?.type || 'dated',
+			month_str: season.timing && 'month' in season.timing ? String(season.timing.month) : '0',
+			day: season.timing && 'day' in season.timing ? season.timing.day : 1,
+			duration: season.timing && 'duration' in season.timing ? season.timing.duration : 90,
+			color: season.color || '#888888',
+		}))
+	}
+
+	function draftLeapDays(staticData: StaticCalendarData): DraftLeapDay[] {
+		return staticData.leap_days.map(day => ({
+			_id: uid(),
+			name: day.name,
+			month_index_str: String(day.month_index),
+			after_day: day.after_day,
+			interval: day.interval,
+			offset: day.offset,
+			intercalary: day.intercalary,
+			ignore: day.ignore.join(', '),
+			exclusive: day.exclusive.join(', '),
+		}))
+	}
+
+	function emptyMonth(): DraftMonth {
+		return { _id: uid(), name: '', length: 30, month_type: 'regular', short_name: '' }
+	}
+
+	function emptyWeekday(): DraftWeekday {
+		return { _id: uid(), name: '', abbreviation: '' }
+	}
+
+	function emptyLeapDay(): DraftLeapDay {
+		return { _id: uid(), name: '', month_index_str: '0', after_day: 0, interval: 4, ignore: '', exclusive: '', intercalary: false, offset: 0 }
+	}
+
+	function emptyEra(): DraftEra {
+		return { _id: uid(), name: '', start_year: 1, end_year: '', format: '{{year}} {{era_name}}', reverse_numbering: false }
+	}
+
+	function emptyMoon(): DraftMoon {
+		return { _id: uid(), name: '', cycle: 29.5, offset: 0, face_color: '#ffffff', shadow_color: '#1c1917' }
+	}
+
+	function emptySeason(): DraftSeason {
+		return { _id: uid(), name: '', kind: 'custom', timing_type: 'dated', month_str: '0', day: 1, duration: 90, color: '#888888' }
+	}
 
 	let {
 		calendar,
@@ -43,7 +191,9 @@
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
 
 	// Snapshot initial config for form state — intentionally not reactive
-	const sd = config.static_data
+	const initialConfig = $state.snapshot(untrack(() => config))
+	const initialWikiContent = untrack(() => wikiContent ?? '')
+	const sd = initialConfig.static_data
 
 	// ── Form state (scalars) ────────────────────────────────
 	let epochOffset = $state(sd.epoch_offset)
@@ -54,67 +204,24 @@
 
 	// ── Form state (lists) ──────────────────────────────────
 	// Each item gets a stable _id for {#each} keying.
-	let months = $state(sd.months.map(m => ({
-		_id: uid(),
-		name: m.name,
-		length: m.length,
-		month_type: m.month_type || 'regular',
-		short_name: m.short_name || '',
-	})))
+	let months = $state<DraftMonth[]>(draftMonths(sd))
 
-	let weekdays = $state(sd.weekdays.map(w => ({
-		_id: uid(),
-		name: w.name,
-		abbreviation: w.abbreviation || '',
-	})))
+	let weekdays = $state<DraftWeekday[]>(draftWeekdays(sd))
 
-	let eras = $state(sd.eras.map(era => ({
-		_id: uid(),
-		name: era.name,
-		start_year: era.start_year,
-		end_year: era.end_year?.toString() ?? '',
-		format: era.format || '{{year}} {{era_name}}',
-		reverse_numbering: era.reverse_numbering,
-	})))
+	let eras = $state<DraftEra[]>(draftEras(sd))
 
-	let moons = $state(sd.moons.map(m => ({
-		_id: uid(),
-		name: m.name,
-		cycle: m.cycle,
-		offset: m.offset,
-		face_color: m.face_color,
-		shadow_color: m.shadow_color,
-	})))
+	let moons = $state<DraftMoon[]>(draftMoons(sd))
 
-	let seasons = $state(sd.seasons.map(s => ({
-		_id: uid(),
-		name: s.name,
-		kind: s.kind || 'custom',
-		timing_type: s.timing?.type || 'dated',
-		month: s.timing && 'month' in s.timing ? s.timing.month : 0,
-		day: s.timing && 'day' in s.timing ? s.timing.day : 1,
-		duration: s.timing && 'duration' in s.timing ? s.timing.duration : 90,
-		color: s.color || '#888888',
-	})))
+	let seasons = $state<DraftSeason[]>(draftSeasons(sd))
 
-	let leapDays = $state(sd.leap_days.map(ld => ({
-		_id: uid(),
-		name: ld.name,
-		month_index: ld.month_index,
-		after_day: ld.after_day,
-		interval: ld.interval,
-		offset: ld.offset,
-		intercalary: ld.intercalary,
-		ignore: ld.ignore.join(', '),
-		exclusive: ld.exclusive.join(', '),
-	})))
+	let leapDays = $state<DraftLeapDay[]>(draftLeapDays(sd))
 
 	// Capture initial content for editor — intentionally not reactive
-	let content = $state(wikiContent ?? '')
+	let content = $state(initialWikiContent)
 	let editSummary = $state('')
 	let saving = $state(false)
 	let localError = $state('')
-	const initialStaticData = JSON.stringify(config.static_data)
+	const initialStaticData = JSON.stringify(initialConfig.static_data)
 
 	// ── Derived ─────────────────────────────────────────────
 	const previewConfig = $derived<CalendarConfig>({
@@ -136,13 +243,13 @@
 			months: months.map(m => ({
 				name: m.name,
 				length: m.length,
-				month_type: m.month_type as 'regular' | 'intercalary',
+				month_type: m.month_type,
 				short_name: m.short_name || undefined,
 			})),
 
 			leap_days: leapDays.map(ld => ({
 				name: ld.name,
-				month_index: ld.month_index,
+				month_index: Number(ld.month_index_str) || 0,
 				after_day: ld.after_day,
 				interval: ld.interval,
 				offset: ld.offset,
@@ -169,10 +276,10 @@
 
 			seasons: seasons.map(s => ({
 				name: s.name,
-				kind: s.kind as any,
+				kind: s.kind,
 				color: s.color,
 				timing: s.timing_type === 'dated'
-					? { type: 'dated' as const, month: s.month, day: s.day }
+					? { type: 'dated' as const, month: Number(s.month_str) || 0, day: s.day }
 					: { type: 'periodic' as const, duration: s.duration },
 			})),
 		},
@@ -181,8 +288,9 @@
 	const totalDaysInYear = $derived(months.reduce((sum, m) => sum + m.length, 0))
 	const dayLengthHours = $derived(Math.round((dayLengthSeconds / 3600) * 100) / 100)
 	const currentStaticData = $derived(JSON.stringify(previewConfig.static_data))
-	const isDirty = $derived(currentStaticData !== initialStaticData || content !== (wikiContent ?? '') || editSummary.trim().length > 0)
-	const permissions = $derived($page.data.permissions)
+	const isDirty = $derived(currentStaticData !== initialStaticData || content !== initialWikiContent || editSummary.trim().length > 0)
+	let stablePermissions = $state(normalizePermissions($page.data.permissions))
+	const permissions = $derived(stablePermissions)
 	const validationIssues = $derived.by(() => {
 		const issues: string[] = []
 		if (months.length === 0) issues.push('Add at least one month.')
@@ -199,62 +307,25 @@
 	})
 	const activeError = $derived(localError || formError)
 
+	$effect(() => {
+		if ($page.data.permissions !== undefined) {
+			stablePermissions = normalizePermissions($page.data.permissions)
+		}
+	})
+
 	function resetDraft() {
 		epochOffset = sd.epoch_offset
 		firstWeekDay = sd.first_week_day
 		yearOffset = sd.year_offset
 		dayLengthSeconds = sd.day_length_seconds ?? 86_400
 		displayMoons = sd.display_moons
-		months = sd.months.map(m => ({
-			_id: uid(),
-			name: m.name,
-			length: m.length,
-			month_type: m.month_type || 'regular',
-			short_name: m.short_name || '',
-		}))
-		weekdays = sd.weekdays.map(w => ({
-			_id: uid(),
-			name: w.name,
-			abbreviation: w.abbreviation || '',
-		}))
-		eras = sd.eras.map(era => ({
-			_id: uid(),
-			name: era.name,
-			start_year: era.start_year,
-			end_year: era.end_year?.toString() ?? '',
-			format: era.format || '{{year}} {{era_name}}',
-			reverse_numbering: era.reverse_numbering,
-		}))
-		moons = sd.moons.map(m => ({
-			_id: uid(),
-			name: m.name,
-			cycle: m.cycle,
-			offset: m.offset,
-			face_color: m.face_color,
-			shadow_color: m.shadow_color,
-		}))
-		seasons = sd.seasons.map(s => ({
-			_id: uid(),
-			name: s.name,
-			kind: s.kind || 'custom',
-			timing_type: s.timing?.type || 'dated',
-			month: s.timing && 'month' in s.timing ? s.timing.month : 0,
-			day: s.timing && 'day' in s.timing ? s.timing.day : 1,
-			duration: s.timing && 'duration' in s.timing ? s.timing.duration : 90,
-			color: s.color || '#888888',
-		}))
-		leapDays = sd.leap_days.map(ld => ({
-			_id: uid(),
-			name: ld.name,
-			month_index: ld.month_index,
-			after_day: ld.after_day,
-			interval: ld.interval,
-			offset: ld.offset,
-			intercalary: ld.intercalary,
-			ignore: ld.ignore.join(', '),
-			exclusive: ld.exclusive.join(', '),
-		}))
-		content = wikiContent ?? ''
+		months = draftMonths(sd)
+		weekdays = draftWeekdays(sd)
+		eras = draftEras(sd)
+		moons = draftMoons(sd)
+		seasons = draftSeasons(sd)
+		leapDays = draftLeapDays(sd)
+		content = initialWikiContent
 		editSummary = ''
 		localError = ''
 	}
@@ -393,7 +464,7 @@
 		<section class="bg-raised border border-border-subtle p-5 space-y-3">
 			<div class="flex items-center justify-between border-b border-border-subtle pb-2">
 				<div><h2 class="text-sm font-semibold text-heading">Months</h2><p class="text-xs text-faint">{months.length} months · {totalDaysInYear} days total</p></div>
-				<button type="button" onclick={() => months = [...months, { _id: uid(), name: '', length: 30, month_type: 'regular', short_name: '' }]} class="text-xs text-link font-medium hover:underline">+ Add month</button>
+				<button type="button" onclick={() => months = [...months, emptyMonth()]} class="text-xs text-link font-medium hover:underline">+ Add month</button>
 			</div>
 			{#each months as month, index (month._id)}
 				<div class="flex gap-2 items-center group">
@@ -404,7 +475,7 @@
 						<Input type="number" bind:value={month.length} min={1} containerClass="w-14" class="text-center" error={month.length < 1 ? 'Min 1' : ''} />
 						<span class="text-[10px] text-faint">days</span>
 					</div>
-					<Select type="single" bind:value={month.month_type} items={[{ value: 'regular', label: 'Regular' }, { value: 'intercalary', label: 'Intercalary' }]} containerClass="w-28" size="sm" />
+					<Select type="single" bind:value={month.month_type} items={[{ value: 'regular', label: 'Regular' }, { value: 'intercalary', label: 'Intercalary' }, { value: 'lunisolar_leap', label: 'Lunisolar Leap' }]} containerClass="w-32" size="sm" />
 					<button type="button" onclick={() => months = months.filter((_, i) => i !== index)} class="text-faint opacity-0 transition-opacity group-hover:opacity-100 hover:text-error">×</button>
 				</div>
 			{/each}
@@ -414,7 +485,7 @@
 		<section class="bg-raised border border-border-subtle p-5 space-y-3">
 			<div class="flex items-center justify-between border-b border-border-subtle pb-2">
 				<div><h2 class="text-sm font-semibold text-heading">Weekdays</h2><p class="text-xs text-faint">{weekdays.length}-day week</p></div>
-				<button type="button" onclick={() => weekdays = [...weekdays, { _id: uid(), name: '', abbreviation: '' }]} class="text-xs text-link font-medium hover:underline">+ Add weekday</button>
+				<button type="button" onclick={() => weekdays = [...weekdays, emptyWeekday()]} class="text-xs text-link font-medium hover:underline">+ Add weekday</button>
 			</div>
 			<div class="flex items-center gap-1 mb-1">
 				<span class="text-xs font-medium text-secondary">First weekday of Year 1, Day 1</span>
@@ -435,7 +506,7 @@
 		<section class="bg-raised border border-border-subtle p-5 space-y-3">
 			<div class="flex items-center justify-between border-b border-border-subtle pb-2">
 				<h2 class="text-sm font-semibold text-heading">Leap Days</h2>
-				<button type="button" onclick={() => leapDays = [...leapDays, { _id: uid(), name: '', month_index: 0, after_day: 0, interval: 4, ignore: '', exclusive: '', intercalary: false, offset: 0 }]} class="text-xs text-link font-medium hover:underline">+ Add leap day</button>
+				<button type="button" onclick={() => leapDays = [...leapDays, emptyLeapDay()]} class="text-xs text-link font-medium hover:underline">+ Add leap day</button>
 			</div>
 			{#each leapDays as ld, index (ld._id)}
 				<div class="border border-border-subtle p-4 space-y-3 bg-page">
@@ -444,7 +515,7 @@
 						<button type="button" onclick={() => leapDays = leapDays.filter((_, i) => i !== index)} class="text-faint ml-2 text-sm hover:text-error">×</button>
 					</div>
 					<div class="grid grid-cols-2 gap-3 md:grid-cols-4">
-						<Select type="single" label="Insert after" numeric bind:value={ld.month_index} items={months.map((m, mi) => ({ value: String(mi), label: m.name || `Month ${mi + 1}` }))} />
+						<Select type="single" label="Insert after" bind:value={ld.month_index_str} items={months.map((m, mi) => ({ value: String(mi), label: m.name || `Month ${mi + 1}` }))} />
 						<Input type="number" label="After day #" bind:value={ld.after_day} min={0} />
 						<Input type="number" label="Every N years" bind:value={ld.interval} min={1} />
 						<Input type="number" label="Year offset" bind:value={ld.offset} />
@@ -462,7 +533,7 @@
 		<section class="bg-raised border border-border-subtle p-5 space-y-3">
 			<div class="flex items-center justify-between border-b border-border-subtle pb-2">
 				<div><h2 class="text-sm font-semibold text-heading">Eras</h2><p class="text-xs text-faint">Named periods of time</p></div>
-				<button type="button" onclick={() => eras = [...eras, { _id: uid(), name: '', start_year: 1, end_year: '', format: '{{year}} {{era_name}}', reverse_numbering: false }]} class="text-xs text-link font-medium hover:underline">+ Add era</button>
+				<button type="button" onclick={() => eras = [...eras, emptyEra()]} class="text-xs text-link font-medium hover:underline">+ Add era</button>
 			</div>
 			{#each eras as era, index (era._id)}
 				<div class="border border-border-subtle p-4 space-y-3 bg-page">
@@ -484,7 +555,7 @@
 		<section class="bg-raised border border-border-subtle p-5 space-y-3">
 			<div class="flex items-center justify-between border-b border-border-subtle pb-2">
 				<div><h2 class="text-sm font-semibold text-heading">Moons</h2><p class="text-xs text-faint">Phase calculated automatically from cycle length.</p></div>
-				<button type="button" onclick={() => moons = [...moons, { _id: uid(), name: '', cycle: 29.5, offset: 0, face_color: '#ffffff', shadow_color: '#1c1917' }]} class="text-xs text-link font-medium hover:underline">+ Add moon</button>
+				<button type="button" onclick={() => moons = [...moons, emptyMoon()]} class="text-xs text-link font-medium hover:underline">+ Add moon</button>
 			</div>
 			{#each moons as moon, index (moon._id)}
 				<div class="flex gap-3 items-center group border border-border-subtle p-3 bg-page">
@@ -510,7 +581,7 @@
 		<section class="bg-raised border border-border-subtle p-5 space-y-3">
 			<div class="flex items-center justify-between border-b border-border-subtle pb-2">
 				<div><h2 class="text-sm font-semibold text-heading">Seasons</h2><p class="text-xs text-faint">By date or rolling duration.</p></div>
-				<button type="button" onclick={() => seasons = [...seasons, { _id: uid(), name: '', kind: 'custom', timing_type: 'dated', month: 0, day: 1, duration: 90, color: '#888888' }]} class="text-xs text-link font-medium hover:underline">+ Add season</button>
+				<button type="button" onclick={() => seasons = [...seasons, emptySeason()]} class="text-xs text-link font-medium hover:underline">+ Add season</button>
 			</div>
 			{#each seasons as season, index (season._id)}
 				<div class="border border-border-subtle p-4 space-y-3 bg-page">
@@ -523,7 +594,7 @@
 					<div class="flex items-center gap-3">
 						<Select type="single" bind:value={season.timing_type} items={[{ value: 'dated', label: 'Starts on date' }, { value: 'periodic', label: 'Rolling duration' }]} containerClass="w-36" size="sm" />
 						{#if season.timing_type === 'dated'}
-							<Select type="single" numeric bind:value={season.month} items={months.map((m, mi) => ({ value: String(mi), label: m.name || `Month ${mi + 1}` }))} containerClass="w-32" size="sm" />
+							<Select type="single" bind:value={season.month_str} items={months.map((m, mi) => ({ value: String(mi), label: m.name || `Month ${mi + 1}` }))} containerClass="w-32" size="sm" />
 							<Input type="number" bind:value={season.day} min={1} containerClass="w-14" class="text-center" />
 						{:else}
 							<div class="flex items-center gap-1">

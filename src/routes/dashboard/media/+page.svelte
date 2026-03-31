@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte'
 	import { goto } from '$app/navigation'
 	import { page } from '$app/stores'
+	import { normalizePermissions } from '$lib/permissions.js'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
 	import Checkbox from '$lib/components/ui/Checkbox.svelte'
@@ -34,7 +35,14 @@
 	let uploadProgress = $state('')
 	let uploadError = $state('')
 	let dragOver = $state(false)
-	const permissions = $derived($page.data.permissions)
+	let stablePermissions = $state(normalizePermissions($page.data.permissions))
+	const permissions = $derived(stablePermissions)
+
+	$effect(() => {
+		if ($page.data.permissions !== undefined) {
+			stablePermissions = normalizePermissions($page.data.permissions)
+		}
+	})
 
 	function formatBytes(bytes: number | null): string {
 		if (!bytes) return '—'

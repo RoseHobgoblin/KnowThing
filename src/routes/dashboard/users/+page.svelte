@@ -2,6 +2,7 @@
 	import type { PageData } from './$types.js'
 	import { invalidateAll } from '$app/navigation'
 	import { page } from '$app/stores'
+	import { normalizePermissions } from '$lib/permissions.js'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import Button from '$lib/components/ui/Button.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
@@ -11,7 +12,14 @@
 	let { data }: { data: PageData } = $props()
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
 
-	const permissions = $derived($page.data.permissions)
+	let stablePermissions = $state(normalizePermissions($page.data.permissions))
+	const permissions = $derived(stablePermissions)
+
+	$effect(() => {
+		if ($page.data.permissions !== undefined) {
+			stablePermissions = normalizePermissions($page.data.permissions)
+		}
+	})
 	const currentUser = $derived($page.data.user)
 	const isOwner = $derived(currentUser?.role === 'owner')
 

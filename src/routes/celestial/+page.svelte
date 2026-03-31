@@ -8,6 +8,7 @@
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import { invalidateAll } from '$app/navigation'
 	import { page } from '$app/stores'
+	import { normalizePermissions } from '$lib/permissions.js'
 	import { urlSlugify } from '$lib/utils/slugify.js'
 	import { celestialPresets } from '$lib/celestial/presets.js'
 	import type { CelestialPreset, BodyPreset } from '$lib/celestial/presets.js'
@@ -60,7 +61,14 @@
 		moonCount: number
 	}
 
-	const permissions = $derived($page.data.permissions)
+	let stablePermissions = $state(normalizePermissions($page.data.permissions))
+	const permissions = $derived(stablePermissions)
+
+	$effect(() => {
+		if ($page.data.permissions !== undefined) {
+			stablePermissions = normalizePermissions($page.data.permissions)
+		}
+	})
 	const systems = $derived(data.systems as RegistrySystem[])
 	const stars = $derived(data.stars as RegistryStar[])
 	const bodies = $derived(data.bodies as RegistryBody[])

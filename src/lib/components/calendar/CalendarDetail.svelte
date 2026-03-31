@@ -6,6 +6,7 @@
 	import WikiNodeComponent from '$lib/renderer/WikiNode.svelte'
 	import { createKnowContext } from '$lib/renderer/context.js'
 	import { page } from '$app/stores'
+	import { normalizePermissions } from '$lib/permissions.js'
 	import GearSixIcon from 'phosphor-svelte/lib/GearSix'
 	import { calendarDetailBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import RecordModeBanner from '$lib/components/editor/RecordModeBanner.svelte'
@@ -24,7 +25,14 @@
 		ast: WikiNode | null
 	} = $props()
 
-	const permissions = $derived($page.data.permissions)
+	let stablePermissions = $state(normalizePermissions($page.data.permissions))
+	const permissions = $derived(stablePermissions)
+
+	$effect(() => {
+		if ($page.data.permissions !== undefined) {
+			stablePermissions = normalizePermissions($page.data.permissions)
+		}
+	})
 	const layoutData = $derived($page.data)
 
 	createKnowContext({

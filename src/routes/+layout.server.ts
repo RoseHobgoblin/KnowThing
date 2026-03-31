@@ -6,10 +6,11 @@ import { resolveDisplay } from '$lib/calendar/date-math.js'
 import type { CalendarConfig, ResolvedDate, StaticCalendarData } from '$lib/calendar/types.js'
 import { getSiteConfig } from '$lib/server/settings.js'
 import { hasRole } from '$lib/server/auth.js'
+import type { AppPermissions } from '$lib/permissions.js'
 
 export const load: LayoutServerLoad = async ({ locals }) => {
 	const user = locals.user
-	const permissions = {
+	const permissions: AppPermissions = {
 		isAuthenticated: !!user,
 		canEditContent: user ? hasRole(user.role, 'editor') : false,
 		canCreatePages: user ? hasRole(user.role, 'editor') : false,

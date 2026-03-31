@@ -2,6 +2,7 @@
 	import '../app.css'
 	import { Tooltip } from 'bits-ui'
 	import { page } from '$app/stores'
+	import { normalizePermissions } from '$lib/permissions.js'
 	import SearchBar from '$lib/components/SearchBar.svelte'
 	import Notifications from '$lib/components/ui/Notifications.svelte'
 	import type { LayoutData } from './$types.js'
@@ -19,11 +20,18 @@
 
 	let { children, data }: { children: any, data: LayoutData } = $props()
 	let sidebarOpen = $state(false)
+	let stablePermissions = $state(normalizePermissions(data.permissions))
 
 	const sc = $derived(data.siteConfig)
-	const permissions = $derived(data.permissions)
+	const permissions = $derived(stablePermissions)
 	const siteNameParts = $derived((sc?.siteName ?? 'KnowThing').split(/(?=[A-Z])/))
 	const currentPath = $derived($page.url.pathname)
+
+	$effect(() => {
+		if (data.permissions !== undefined) {
+			stablePermissions = normalizePermissions(data.permissions)
+		}
+	})
 
 	function isActive(href: string): boolean {
 		if (href === '/') return currentPath === '/'
@@ -73,7 +81,7 @@
 			<a href="/special/categories" class="{linkClass} {isActive('/special/categories') ? activeClass : inactiveClass}"><Tag size={16} weight="fill" />Categories</a>
 			<a href="/special/random" class="{linkClass} {inactiveClass}"><Shuffle size={16} weight="fill" />Random</a>
 
-			{#if data.user}
+			{#if permissions.isAuthenticated}
 				<div class="my-2 border-t border-border-subtle"></div>
 				{#if permissions.canCreatePages}
 					<a href="/know/create" class="{linkClass} {isActive('/know/create') ? activeClass : inactiveClass}"><PlusCircle size={16} weight="fill" />{sc?.navCreateLabel ?? 'New Page'}</a>
@@ -163,7 +171,7 @@
 					<a href="/special/categories" onclick={navClick} class="{linkClass} {isActive('/special/categories') ? activeClass : inactiveClass}"><Tag size={16} weight="fill" />Categories</a>
 					<a href="/special/random" onclick={navClick} class="{linkClass} {inactiveClass}"><Shuffle size={16} weight="fill" />Random</a>
 
-					{#if data.user}
+					{#if permissions.isAuthenticated}
 						<div class="my-2 border-t border-border-subtle"></div>
 						{#if permissions.canCreatePages}
 							<a href="/know/create" onclick={navClick} class="{linkClass} {isActive('/know/create') ? activeClass : inactiveClass}"><PlusCircle size={16} weight="fill" />{sc?.navCreateLabel ?? 'New Page'}</a>

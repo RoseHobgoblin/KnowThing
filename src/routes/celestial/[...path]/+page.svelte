@@ -5,6 +5,7 @@
 	import WikiNodeComponent from '$lib/renderer/WikiNode.svelte'
 	import { createKnowContext } from '$lib/renderer/context.js'
 	import { page } from '$app/stores'
+	import { normalizePermissions } from '$lib/permissions.js'
 	import InfoboxStar from '$lib/infoboxes/InfoboxStar.svelte'
 	import InfoboxPlanet from '$lib/infoboxes/InfoboxPlanet.svelte'
 	import InfoboxSystem from '$lib/infoboxes/InfoboxSystem.svelte'
@@ -28,13 +29,20 @@
 
 	const initialWikiContent = untrack(() => data.wikiContent ?? '')
 	const kind = $derived(data.kind)
-	const permissions = $derived($page.data.permissions)
+	let stablePermissions = $state(normalizePermissions($page.data.permissions))
+	const permissions = $derived(stablePermissions)
 	const isEditMode = $derived(data.isEditMode)
 	const isConfigureMode = $derived(data.isConfigureMode)
 	const raw = $derived(data.body as any)
 	const ast = $derived(data.ast as import('$lib/parser/types.js').WikiNode | null)
 
 	const layoutData = $derived($page.data)
+
+	$effect(() => {
+		if ($page.data.permissions !== undefined) {
+			stablePermissions = normalizePermissions($page.data.permissions)
+		}
+	})
 
 	createKnowContext({
 		existingPages: new Set(layoutData.existingPages || []),

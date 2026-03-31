@@ -3,6 +3,7 @@
 	import type { PageData } from './$types.js'
 	import { page } from '$app/stores'
 	import { invalidateAll, goto } from '$app/navigation'
+	import { normalizePermissions } from '$lib/permissions.js'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import UnsavedChangesGuard from '$lib/components/editor/UnsavedChangesGuard.svelte'
@@ -25,13 +26,20 @@
 	let savedAt = $state<Date | null>(null)
 	let copied = $state(false)
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
+	let stablePermissions = $state(normalizePermissions(data.permissions))
 
 	const layoutData = $derived($page.data)
-	const permissions = $derived(layoutData.permissions)
+	const permissions = $derived(stablePermissions)
 	const canManageMedia = $derived(permissions.canManageMedia)
 	const currentSnapshot = $derived(JSON.stringify({ description, categoriesInput }))
 	let savedSnapshot = $state(JSON.stringify(initialDetails))
 	const isDirty = $derived(currentSnapshot !== savedSnapshot)
+
+	$effect(() => {
+		if (layoutData.permissions !== undefined) {
+			stablePermissions = normalizePermissions(layoutData.permissions)
+		}
+	})
 
 	function formatBytes(bytes: number | null): string {
 		if (!bytes) return '-'

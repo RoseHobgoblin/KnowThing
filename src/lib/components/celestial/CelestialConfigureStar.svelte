@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import Input from '$lib/components/ui/Input.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
@@ -11,6 +12,84 @@
 	import FormNotice from '$lib/components/editor/FormNotice.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import { page } from '$app/stores'
+	import { normalizePermissions } from '$lib/permissions.js'
+
+	type CelestialCrumb = { label: string, href: string }
+	type CelestialSystemOption = { id: number, name: string }
+	type StarRecord = {
+		name: string
+		slug: string
+		spectralType?: string | null
+		mass?: string | null
+		radius?: string | null
+		luminosity?: string | null
+		luminosityVisual?: string | null
+		temperature?: string | null
+		age?: string | null
+		color?: string | null
+		orbitalPeriod?: string | null
+		semiMajorAxis?: string | null
+		semiMajorAxisAu?: number | null
+		eccentricity?: number | null
+		epochPhase?: number | null
+		periastron?: string | null
+		apastron?: string | null
+		apparentMagnitude?: string | null
+		angularDiameter?: string | null
+		companion?: string | null
+		systemId?: number | null
+		description?: string | null
+	}
+
+	type StarDraftSnapshot = {
+		spectralType: string
+		mass: string
+		radius: string
+		luminosity: string
+		luminosityVisual: string
+		temperature: string
+		age: string
+		color: string
+		orbitalPeriod: string
+		semiMajorAxis: string
+		semiMajorAxisAu: number | null
+		eccentricity: number | null
+		epochPhase: number | null
+		periastron: string
+		apastron: string
+		apparentMagnitude: string
+		angularDiameter: string
+		companion: string
+		systemIdStr: string
+		description: string
+		content: string
+	}
+
+	function buildInitialStarDraft(starRecord: StarRecord, articleContent: string): StarDraftSnapshot {
+		return {
+			spectralType: starRecord.spectralType ?? '',
+			mass: starRecord.mass ?? '',
+			radius: starRecord.radius ?? '',
+			luminosity: starRecord.luminosity ?? '',
+			luminosityVisual: starRecord.luminosityVisual ?? '',
+			temperature: starRecord.temperature ?? '',
+			age: starRecord.age ?? '',
+			color: starRecord.color ?? '',
+			orbitalPeriod: starRecord.orbitalPeriod ?? '',
+			semiMajorAxis: starRecord.semiMajorAxis ?? '',
+			semiMajorAxisAu: starRecord.semiMajorAxisAu ?? null,
+			eccentricity: starRecord.eccentricity ?? null,
+			epochPhase: starRecord.epochPhase ?? null,
+			periastron: starRecord.periastron ?? '',
+			apastron: starRecord.apastron ?? '',
+			apparentMagnitude: starRecord.apparentMagnitude ?? '',
+			angularDiameter: starRecord.angularDiameter ?? '',
+			companion: starRecord.companion ?? '',
+			systemIdStr: starRecord.systemId ? String(starRecord.systemId) : '',
+			description: starRecord.description ?? '',
+			content: articleContent,
+		}
+	}
 
 	let {
 		star,
@@ -19,81 +98,80 @@
 		contentRecordId,
 		parentCrumbs,
 	}: {
-		star: Record<string, any>
-		allSystems: { id: number, name: string }[]
+		star: StarRecord
+		allSystems: CelestialSystemOption[]
 		wikiContent: string
 		contentRecordId: number | null
-		parentCrumbs: { label: string, href: string }[]
+		parentCrumbs: CelestialCrumb[]
 	} = $props()
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
 
-	const viewPath = parentCrumbs.length > 0
-		? `${parentCrumbs.at(-1)!.href}/${star.slug}`
-		: `/celestial/${star.slug}`
+	const initialStar = $state.snapshot(untrack(() => star))
+	const initialParentCrumbs = $state.snapshot(untrack(() => parentCrumbs))
+	const initialWikiContent = untrack(() => wikiContent ?? '')
+	const initialDraft = buildInitialStarDraft(initialStar, initialWikiContent)
 
-	// ── Form state (scalars) ────────────────────────────────
-	let spectralType = $state(star.spectralType ?? '')
-	let mass = $state(star.mass ?? '')
-	let radius = $state(star.radius ?? '')
-	let luminosity = $state(star.luminosity ?? '')
-	let luminosityVisual = $state(star.luminosityVisual ?? '')
-	let temperature = $state(star.temperature ?? '')
-	let age = $state(star.age ?? '')
-	let color = $state(star.color ?? '')
+	const viewPath = $derived.by(() => initialParentCrumbs.length > 0
+		? `${initialParentCrumbs.at(-1)!.href}/${initialStar.slug}`
+		: `/celestial/${initialStar.slug}`)
 
-	let orbitalPeriod = $state(star.orbitalPeriod ?? '')
-	let semiMajorAxis = $state(star.semiMajorAxis ?? '')
-	let semiMajorAxisAu = $state<number | null>(star.semiMajorAxisAu ?? null)
-	let eccentricity = $state<number | null>(star.eccentricity ?? null)
-	let epochPhase = $state<number | null>(star.epochPhase ?? null)
-	let periastron = $state(star.periastron ?? '')
-	let apastron = $state(star.apastron ?? '')
+	let spectralType = $state(initialDraft.spectralType)
+	let mass = $state(initialDraft.mass)
+	let radius = $state(initialDraft.radius)
+	let luminosity = $state(initialDraft.luminosity)
+	let luminosityVisual = $state(initialDraft.luminosityVisual)
+	let temperature = $state(initialDraft.temperature)
+	let age = $state(initialDraft.age)
+	let color = $state(initialDraft.color)
 
-	let apparentMagnitude = $state(star.apparentMagnitude ?? '')
-	let angularDiameter = $state(star.angularDiameter ?? '')
-	let companion = $state(star.companion ?? '')
+	let orbitalPeriod = $state(initialDraft.orbitalPeriod)
+	let semiMajorAxis = $state(initialDraft.semiMajorAxis)
+	let semiMajorAxisAu = $state<number | null>(initialDraft.semiMajorAxisAu)
+	let eccentricity = $state<number | null>(initialDraft.eccentricity)
+	let epochPhase = $state<number | null>(initialDraft.epochPhase)
+	let periastron = $state(initialDraft.periastron)
+	let apastron = $state(initialDraft.apastron)
 
-	let systemIdStr = $state(star.systemId ? String(star.systemId) : '')
-	let description = $state(star.description ?? '')
+	let apparentMagnitude = $state(initialDraft.apparentMagnitude)
+	let angularDiameter = $state(initialDraft.angularDiameter)
+	let companion = $state(initialDraft.companion)
 
-	// ── Wiki content ────────────────────────────────────────
-	let content = $state(wikiContent ?? '')
+	let systemIdStr = $state(initialDraft.systemIdStr)
+	let description = $state(initialDraft.description)
+
+	let content = $state(initialDraft.content)
 	let editSummary = $state('')
 
-	// ── Save state ──────────────────────────────────────────
 	let saving = $state(false)
 	let saveError = $state('')
 	let savedAt = $state<Date | null>(null)
-	const initialSnapshot = JSON.stringify({
-		spectralType: star.spectralType ?? '',
-		mass: star.mass ?? '',
-		radius: star.radius ?? '',
-		luminosity: star.luminosity ?? '',
-		luminosityVisual: star.luminosityVisual ?? '',
-		temperature: star.temperature ?? '',
-		age: star.age ?? '',
-		color: star.color ?? '',
-		orbitalPeriod: star.orbitalPeriod ?? '',
-		semiMajorAxis: star.semiMajorAxis ?? '',
-		semiMajorAxisAu: star.semiMajorAxisAu ?? null,
-		eccentricity: star.eccentricity ?? null,
-		epochPhase: star.epochPhase ?? null,
-		periastron: star.periastron ?? '',
-		apastron: star.apastron ?? '',
-		apparentMagnitude: star.apparentMagnitude ?? '',
-		angularDiameter: star.angularDiameter ?? '',
-		companion: star.companion ?? '',
-		systemId: star.systemId ? String(star.systemId) : '',
-		description: star.description ?? '',
-		content: wikiContent ?? '',
-	})
+	const initialSnapshot = JSON.stringify(initialDraft)
 	const currentSnapshot = $derived(JSON.stringify({
-		spectralType, mass, radius, luminosity, luminosityVisual, temperature, age, color,
-		orbitalPeriod, semiMajorAxis, semiMajorAxisAu, eccentricity, epochPhase, periastron, apastron,
-		apparentMagnitude, angularDiameter, companion, systemId: systemIdStr, description, content,
+		spectralType,
+		mass,
+		radius,
+		luminosity,
+		luminosityVisual,
+		temperature,
+		age,
+		color,
+		orbitalPeriod,
+		semiMajorAxis,
+		semiMajorAxisAu,
+		eccentricity,
+		epochPhase,
+		periastron,
+		apastron,
+		apparentMagnitude,
+		angularDiameter,
+		companion,
+		systemIdStr,
+		description,
+		content,
 	}))
 	const isDirty = $derived(currentSnapshot !== initialSnapshot || editSummary.trim().length > 0)
-	const permissions = $derived($page.data.permissions)
+	let stablePermissions = $state(normalizePermissions($page.data.permissions))
+	const permissions = $derived(stablePermissions)
 	const validationIssues = $derived.by(() => {
 		const issues: string[] = []
 		if (semiMajorAxisAu !== null && semiMajorAxisAu < 0) issues.push('Semi-major axis must be zero or greater.')
@@ -102,33 +180,39 @@
 		return issues
 	})
 
-	const systemItems = $derived([
+	const systemItems = $derived<Array<{ value: string, label: string }>>([
 		{ value: '', label: 'None' },
-		...allSystems.map(s => ({ value: String(s.id), label: s.name })),
+		...allSystems.map(system => ({ value: String(system.id), label: system.name })),
 	])
 
+	$effect(() => {
+		if ($page.data.permissions !== undefined) {
+			stablePermissions = normalizePermissions($page.data.permissions)
+		}
+	})
+
 	function resetDraft() {
-		spectralType = star.spectralType ?? ''
-		mass = star.mass ?? ''
-		radius = star.radius ?? ''
-		luminosity = star.luminosity ?? ''
-		luminosityVisual = star.luminosityVisual ?? ''
-		temperature = star.temperature ?? ''
-		age = star.age ?? ''
-		color = star.color ?? ''
-		orbitalPeriod = star.orbitalPeriod ?? ''
-		semiMajorAxis = star.semiMajorAxis ?? ''
-		semiMajorAxisAu = star.semiMajorAxisAu ?? null
-		eccentricity = star.eccentricity ?? null
-		epochPhase = star.epochPhase ?? null
-		periastron = star.periastron ?? ''
-		apastron = star.apastron ?? ''
-		apparentMagnitude = star.apparentMagnitude ?? ''
-		angularDiameter = star.angularDiameter ?? ''
-		companion = star.companion ?? ''
-		systemIdStr = star.systemId ? String(star.systemId) : ''
-		description = star.description ?? ''
-		content = wikiContent ?? ''
+		spectralType = initialDraft.spectralType
+		mass = initialDraft.mass
+		radius = initialDraft.radius
+		luminosity = initialDraft.luminosity
+		luminosityVisual = initialDraft.luminosityVisual
+		temperature = initialDraft.temperature
+		age = initialDraft.age
+		color = initialDraft.color
+		orbitalPeriod = initialDraft.orbitalPeriod
+		semiMajorAxis = initialDraft.semiMajorAxis
+		semiMajorAxisAu = initialDraft.semiMajorAxisAu
+		eccentricity = initialDraft.eccentricity
+		epochPhase = initialDraft.epochPhase
+		periastron = initialDraft.periastron
+		apastron = initialDraft.apastron
+		apparentMagnitude = initialDraft.apparentMagnitude
+		angularDiameter = initialDraft.angularDiameter
+		companion = initialDraft.companion
+		systemIdStr = initialDraft.systemIdStr
+		description = initialDraft.description
+		content = initialDraft.content
 		editSummary = ''
 		saveError = ''
 	}
@@ -142,8 +226,7 @@
 		saving = true
 		saveError = ''
 		try {
-			// 1. Save structured data via PUT
-			const res = await fetch(`/api/stars/${star.slug}`, {
+			const res = await fetch(`/api/stars/${initialStar.slug}`, {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -175,8 +258,7 @@
 				return
 			}
 
-			// 2. Save wiki content via form action POST
-			if (contentRecordId && content !== wikiContent) {
+			if (contentRecordId && content !== initialWikiContent) {
 				const formData = new FormData()
 				formData.set('contentRecordId', String(contentRecordId))
 				formData.set('content', content)
@@ -198,13 +280,13 @@
 	async function deleteStar() {
 		const ok = await confirmDialog.confirm(
 			'Delete star',
-			`Delete "${star.name}"? This cannot be undone and may affect child records.`,
+			`Delete "${initialStar.name}"? This cannot be undone and may affect child records.`,
 			'Delete Star',
 			'Cancel',
 		)
 		if (!ok) return
 
-		const response = await fetch(`/api/stars/${star.slug}`, { method: 'DELETE' })
+		const response = await fetch(`/api/stars/${initialStar.slug}`, { method: 'DELETE' })
 		if (!response.ok) {
 			const body = await response.json().catch(() => ({}))
 			pushError(body.error || 'Failed to delete star')
@@ -212,13 +294,13 @@
 		}
 
 		pushSuccess('Star deleted')
-		goto(parentCrumbs.at(-1)?.href ?? '/celestial')
+		goto(initialParentCrumbs.at(-1)?.href ?? '/celestial')
 	}
 </script>
 
 <ArticleShell
-	breadcrumbs={celestialConfigureBreadcrumbs(parentCrumbs, { name: star.name, slug: star.slug })}
-	title="Configure {star.name}"
+	breadcrumbs={celestialConfigureBreadcrumbs(initialParentCrumbs, { name: initialStar.name, slug: initialStar.slug })}
+	title="Configure {initialStar.name}"
 >
 	<UnsavedChangesGuard when={isDirty && !saving} />
 	<div class="space-y-6">
@@ -248,7 +330,7 @@
 				</div>
 				<div>
 					<div class="text-xs font-medium text-secondary">Orbit Summary</div>
-					<div class="text-sm text-body">{semiMajorAxisAu ?? '—'} AU, e={eccentricity ?? '—'}</div>
+					<div class="text-sm text-body">{semiMajorAxisAu ?? '-'} AU, e={eccentricity ?? '-'}</div>
 				</div>
 				<div>
 					<div class="text-xs font-medium text-secondary">Article State</div>
@@ -256,35 +338,33 @@
 				</div>
 			</div>
 		</section>
-		<!-- Identity -->
+
 		<section class="bg-raised border border-border-subtle p-5 space-y-4">
 			<h2 class="text-sm font-semibold text-heading border-b border-border-subtle pb-2">Identity</h2>
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-				<div><span class="text-xs font-medium text-secondary block mb-1">Name</span><p class="text-sm text-body">{star.name}</p></div>
+				<div><span class="text-xs font-medium text-secondary block mb-1">Name</span><p class="text-sm text-body">{initialStar.name}</p></div>
 				<Select label="System" type="single" bind:value={systemIdStr} items={systemItems} />
 				<Input label="Color" bind:value={color} placeholder="Yellow-white" />
 			</div>
 			<Input label="Description" bind:value={description} placeholder="Brief description..." />
 		</section>
 
-		<!-- Stellar Properties -->
 		<section class="bg-raised border border-border-subtle p-5 space-y-4">
 			<h2 class="text-sm font-semibold text-heading border-b border-border-subtle pb-2">Stellar Properties</h2>
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
 				<Input label="Spectral Type" bind:value={spectralType} placeholder="G2V" />
-				<Input label="Mass" bind:value={mass} placeholder="1.0 M☉" />
-				<Input label="Radius" bind:value={radius} placeholder="1.0 R☉" />
-				<Input label="Luminosity" bind:value={luminosity} placeholder="1.0 L☉" />
-				<Input label="Visual Luminosity" bind:value={luminosityVisual} placeholder="1.0 L☉ (visual)" />
+				<Input label="Mass" bind:value={mass} placeholder="1.0 solar masses" />
+				<Input label="Radius" bind:value={radius} placeholder="1.0 solar radii" />
+				<Input label="Luminosity" bind:value={luminosity} placeholder="1.0 solar luminosities" />
+				<Input label="Visual Luminosity" bind:value={luminosityVisual} placeholder="1.0 solar luminosities (visual)" />
 				<Input label="Temperature" bind:value={temperature} placeholder="5,778 K" />
 				<Input label="Age" bind:value={age} placeholder="~4.6 billion years" />
 			</div>
 		</section>
 
-		<!-- Orbital Parameters (for binaries) -->
 		<section class="bg-raised border border-border-subtle p-5 space-y-4">
 			<h2 class="text-sm font-semibold text-heading border-b border-border-subtle pb-2">Orbital Parameters</h2>
-			<p class="text-xs text-faint">For binary/multiple star systems. Leave blank for single stars.</p>
+			<p class="text-xs text-faint">For binary or multiple star systems. Leave blank for single stars.</p>
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
 				<Input label="Companion" bind:value={companion} placeholder="Binary partner name" />
 				<Input label="Orbital Period" bind:value={orbitalPeriod} placeholder="79.91 years" />
@@ -297,7 +377,6 @@
 			</div>
 		</section>
 
-		<!-- Observation -->
 		<section class="bg-raised border border-border-subtle p-5 space-y-4">
 			<h2 class="text-sm font-semibold text-heading border-b border-border-subtle pb-2">Observation</h2>
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -307,7 +386,7 @@
 		</section>
 
 		<ConfigureFooter
-			initialContent={wikiContent ?? ''}
+			initialContent={initialWikiContent}
 			bind:content
 			bind:editSummary
 			cancelHref={viewPath}

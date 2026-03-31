@@ -8,6 +8,7 @@
 	import { resolveDisplay } from '$lib/calendar/date-math.js'
 	import type { CalendarConfig } from '$lib/calendar/types.js'
 	import { page } from '$app/stores'
+	import { normalizePermissions } from '$lib/permissions.js'
 	import { invalidateAll, goto } from '$app/navigation'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import StarIcon from 'phosphor-svelte/lib/Star'
@@ -21,7 +22,14 @@
 		primary: (any & { config: CalendarConfig }) | null
 	} = $props()
 
-	const permissions = $derived($page.data.permissions)
+	let stablePermissions = $state(normalizePermissions($page.data.permissions))
+	const permissions = $derived(stablePermissions)
+
+	$effect(() => {
+		if ($page.data.permissions !== undefined) {
+			stablePermissions = normalizePermissions($page.data.permissions)
+		}
+	})
 
 	let newCalendarName = $state('')
 	let selectedPreset = $state('')

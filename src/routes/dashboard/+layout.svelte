@@ -2,6 +2,7 @@
 	import type { Snippet } from 'svelte'
 	import type { LayoutData } from './$types.js'
 	import { page } from '$app/stores'
+	import { normalizePermissions } from '$lib/permissions.js'
 	import Wrench from 'phosphor-svelte/lib/Wrench'
 	import Users from 'phosphor-svelte/lib/Users'
 	import Image from 'phosphor-svelte/lib/Image'
@@ -11,9 +12,16 @@
 	import LinkBreak from 'phosphor-svelte/lib/LinkBreak'
 
 	let { children, data }: { children: Snippet, data: LayoutData } = $props()
+	let stablePermissions = $state(normalizePermissions(data.permissions))
 
 	const currentPath = $derived($page.url.pathname)
-	const permissions = $derived($page.data.permissions)
+	const permissions = $derived(stablePermissions)
+
+	$effect(() => {
+		if (data.permissions !== undefined) {
+			stablePermissions = normalizePermissions(data.permissions)
+		}
+	})
 
 	const linkClass = 'flex items-center gap-2 px-3 py-1.5 text-xs transition-colors'
 	const activeClass = 'text-accent font-medium bg-raised'
