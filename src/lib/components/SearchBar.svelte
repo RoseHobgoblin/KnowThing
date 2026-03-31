@@ -1,12 +1,20 @@
 <script lang="ts">
 	import { goto } from '$app/navigation'
+	import { onDestroy } from 'svelte'
+	import { sanitizeSnippet } from '$lib/utils.js'
 
 	let query = $state('')
 	let results = $state<{ slug: string, title: string, snippet: string }[]>([])
 	let showResults = $state(false)
 	let selectedIndex = $state(-1)
 	let debounceTimer: ReturnType<typeof setTimeout>
+	let closeTimer: ReturnType<typeof setTimeout> | undefined
 	let inputEl: HTMLInputElement | undefined = $state()
+
+	onDestroy(() => {
+		clearTimeout(debounceTimer)
+		clearTimeout(closeTimer)
+	})
 
 	function onInput() {
 		clearTimeout(debounceTimer)
@@ -98,7 +106,7 @@
 	}
 
 	function close() {
-		setTimeout(() => {
+		closeTimer = setTimeout(() => {
 			showResults = false
 			selectedIndex = -1
 		}, 200)
@@ -147,7 +155,7 @@
 				>
 					<div class="font-medium text-sm text-heading">{r.title}</div>
 					{#if r.snippet}
-						<div class="text-xs text-dim mt-0.5">{@html r.snippet}</div>
+						<div class="text-xs text-dim mt-0.5">{@html sanitizeSnippet(r.snippet)}</div>
 					{/if}
 				</a>
 			{/each}

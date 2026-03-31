@@ -1,11 +1,13 @@
 <script lang="ts">
 	import type { ActionData, PageData } from './$types.js'
+	import { enhance } from '$app/forms'
 	import Editor from '$lib/components/Editor.svelte'
 	import LivePreview from '$lib/components/LivePreview.svelte'
 
 	let { form, data }: { form: ActionData, data: PageData } = $props()
 	let content = $state(form?.content ?? '')
 	let showPreview = $state(true)
+	let submitting = $state(false)
 </script>
 
 <svelte:head>
@@ -20,7 +22,7 @@
 	</div>
 {/if}
 
-<form method="POST" class="flex flex-col" style="height: calc(100vh - 220px);">
+<form method="POST" use:enhance={() => { submitting = true; return async ({ update }) => { submitting = false; await update() } }} class="flex flex-col" style="height: calc(100vh - 220px);">
 	<input type="hidden" name="content" value={content} />
 
 	<div class="flex items-center gap-4 mb-3">
@@ -62,12 +64,13 @@
 	<div class="mt-3 pt-3 border-t border-border">
 		<button
 			type="submit"
+			disabled={submitting}
 			class="
 				bg-accent text-surface px-4 py-1.5 font-medium transition-colors text-sm
-				hover:bg-accent-hover
+				hover:bg-accent-hover disabled:opacity-50
 			"
 		>
-			Create page
+			{submitting ? 'Creating...' : 'Create page'}
 		</button>
 	</div>
 </form>

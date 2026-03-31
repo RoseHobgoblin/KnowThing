@@ -11,14 +11,12 @@
 <script lang="ts">
 	import type { CalendarConfig, StaticCalendarData } from '$lib/calendar/types.js'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
-	import Button from '$lib/components/ui/Button.svelte'
 	import Input from '$lib/components/ui/Input.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
 	import Checkbox from '$lib/components/ui/Checkbox.svelte'
 	import Tooltip from '$lib/components/ui/Tooltip.svelte'
 	import CalendarWidget from '$lib/calendar/CalendarWidget.svelte'
-	import Editor from '$lib/components/Editor.svelte'
-	import LivePreview from '$lib/components/LivePreview.svelte'
+	import ConfigureFooter from '$lib/components/ConfigureFooter.svelte'
 	import { calendarConfigureBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 
 	let {
@@ -101,9 +99,7 @@
 	})))
 
 	// Capture initial content for editor — intentionally not reactive
-	const initialContent = wikiContent ?? ''
-	let content = $state(initialContent)
-	let showPreview = $state(true)
+	let content = $state(wikiContent ?? '')
 
 	// ── Derived ─────────────────────────────────────────────
 	const previewConfig = $derived<CalendarConfig>({
@@ -384,36 +380,12 @@
 			{/each}
 		</section>
 
-		<!-- Wiki Content -->
-		<section class="bg-raised border border-border-subtle p-5 space-y-4">
-			<div class="flex items-center justify-between">
-				<h2 class="text-sm font-semibold text-heading">Article Content</h2>
-				<button type="button" onclick={() => showPreview = !showPreview} class="px-3 py-1 border border-border text-xs text-secondary hover:bg-surface {showPreview ? 'bg-accent-subtle border-accent-border text-accent' : ''}">
-					{showPreview ? 'Hide preview' : 'Show preview'}
-				</button>
-			</div>
-			<div class="flex flex-col min-h-0 md:flex-row gap-4">
-				<div class="flex-1 min-h-[300px] border border-border">
-					<Editor value={wikiContent ?? ''} onchange={v => (content = v)} />
-				</div>
-				{#if showPreview}
-					<div class="flex-1 min-h-[300px] border border-border bg-surface flex flex-col">
-						<div class="bg-page px-4 py-1.5 text-xs font-medium text-faint border-b border-border-subtle uppercase tracking-wide">Preview</div>
-						<div class="flex-1 overflow-y-auto px-4 py-4">
-							<LivePreview {content} />
-						</div>
-					</div>
-				{/if}
-			</div>
-		</section>
-
-		<!-- Submit -->
-		<div class="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:gap-3">
-			<Input name="summary" placeholder="Edit summary (optional)" containerClass="flex-1" />
-			<div class="flex gap-2">
-				<Button type="submit">Save</Button>
-				<Button variant="secondary" href="/calendar/{calendar.slug}">Cancel</Button>
-			</div>
-		</div>
+		<ConfigureFooter
+			initialContent={wikiContent ?? ''}
+			bind:content
+			cancelHref="/calendar/{calendar.slug}"
+			submitType="submit"
+			summaryName="summary"
+		/>
 	</form>
 </ArticleShell>

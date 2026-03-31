@@ -2,7 +2,7 @@
 	import type { TemplateArg } from '$lib/parser/types.js'
 	import { resolveMagicWord, resolveParserFunction } from '$lib/parser/magic-words.js'
 	import { resolveCalendarMagicWord } from '$lib/calendar/magic-words.js'
-	import { getRenderContext } from '$lib/renderer/context.js'
+	import { getKnowContext } from '$lib/renderer/context.js'
 	import { detectInfoboxType } from '$lib/infoboxes/detect.js'
 	import { buildFieldMap } from '$lib/infoboxes/types.js'
 	import type { InfoboxType, FieldMap } from '$lib/infoboxes/types.js'
@@ -38,7 +38,7 @@
 
 	let { name, args }: { name: string, args: TemplateArg[] } = $props()
 
-	const ctx = getRenderContext()
+	const ctx = getKnowContext()
 	const normalizedName = name.trim()
 	const lowerName = normalizedName.toLowerCase()
 

@@ -27,7 +27,7 @@
 
 		if (!_c.trim()) {
 			ast = null
-			return
+			return () => clearTimeout(debounceTimer)
 		}
 
 		loading = true
@@ -48,6 +48,8 @@
 				loading = false
 			}
 		}, 300)
+
+		return () => clearTimeout(debounceTimer)
 	})
 </script>
 

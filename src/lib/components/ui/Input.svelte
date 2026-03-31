@@ -57,6 +57,7 @@
 	let passwordVisible = $state(false)
 	let inputRef = $state<HTMLInputElement>()
 	let justCopied = $state(false)
+	let copyTimer: ReturnType<typeof setTimeout> | undefined
 
 	$effect(() => {
 		if (validateImmediately) hasInteracted = true
@@ -129,7 +130,8 @@
 		try {
 			await navigator.clipboard.writeText(String(value))
 			justCopied = true
-			setTimeout(() => justCopied = false, 1500)
+			clearTimeout(copyTimer)
+			copyTimer = setTimeout(() => justCopied = false, 1500)
 		} catch { /* clipboard can fail */ }
 	}
 </script>

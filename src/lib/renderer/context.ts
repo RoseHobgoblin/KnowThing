@@ -64,8 +64,5 @@ export function getKnowContext(): KnowRenderContext {
 	return getContext<KnowRenderContext>(KNOW_CONTEXT_KEY)
 }
 
-/** Alias used by WikiTemplate dispatch chain */
-export const getRenderContext = getKnowContext
-
-// Re-export for backward compatibility — callers import slugify from here
+// Re-export — callers import slugify from here
 export { wikiSlugify as slugify } from '$lib/utils/slugify.js'

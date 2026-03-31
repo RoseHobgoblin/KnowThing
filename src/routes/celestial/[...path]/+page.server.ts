@@ -10,13 +10,15 @@ import { resolveStructuredData } from '$lib/server/structured-data.js'
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const pathSegments = params.path.split('/')
-	const isEditMode = pathSegments.at(-1) === 'edit'
-	if (isEditMode) pathSegments.pop()
+	const lastSeg = pathSegments.at(-1)
+	const isEditMode = lastSeg === 'edit'
+	const isConfigureMode = lastSeg === 'configure'
+	if (isEditMode || isConfigureMode) pathSegments.pop()
 
 	const slug = pathSegments.at(-1)!
 
-	// Require auth for edit mode
-	if (isEditMode && !locals.user) {
+	// Require auth for edit/configure mode
+	if ((isEditMode || isConfigureMode) && !locals.user) {
 		redirect(302, `/auth/login?redirect=${encodeURIComponent(`/celestial/${params.path}`)}`)
 	}
 
@@ -59,7 +61,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			ORDER BY c.name
 		`)
 		const infoboxFields = await resolveStructuredData('system', system.slug)
-		return { kind: 'system' as const, body: system, isEditMode, systemStars, systemBodies, systemCalendars, infoboxFields: infoboxFields ? Object.fromEntries(infoboxFields) : null, parentCrumbs: [] as { label: string, href: string }[], ...content }
+		return { kind: 'system' as const, body: system, isEditMode, isConfigureMode, systemStars, systemBodies, systemCalendars, infoboxFields: infoboxFields ? Object.fromEntries(infoboxFields) : null, parentCrumbs: [] as { label: string, href: string }[], ...content }
 	}
 
 	const [star] = await db.select().from(stars).where(sql`LOWER(${stars.slug}) = LOWER(${slug}) OR LOWER(${stars.pageSlug}) = LOWER(${slug})`)
@@ -81,7 +83,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			parentCrumbs.push({ label: parentSystem.name, href: `/celestial/${parentSystem.slug}` })
 		}
 		const infoboxFields = await resolveStructuredData('star', star.slug)
-		return { kind: 'star' as const, body: star, allSystems, isEditMode, parentCrumbs, infoboxFields: infoboxFields ? Object.fromEntries(infoboxFields) : null, ...content }
+		return { kind: 'star' as const, body: star, allSystems, isEditMode, isConfigureMode, parentCrumbs, infoboxFields: infoboxFields ? Object.fromEntries(infoboxFields) : null, ...content }
 	}
 
 	const [planet] = await db.select().from(planetaryBodies).where(sql`LOWER(${planetaryBodies.slug}) = LOWER(${slug}) OR LOWER(${planetaryBodies.pageSlug}) = LOWER(${slug})`)
@@ -112,7 +114,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			: []
 		const content = await getContent(planet.contentRecordId)
 		const infoboxFields = await resolveStructuredData('planet', planet.slug)
-		return { kind: 'planet' as const, body: planet, allStars, siblings, isEditMode, parentCrumbs, infoboxFields: infoboxFields ? Object.fromEntries(infoboxFields) : null, ...content }
+		return { kind: 'planet' as const, body: planet, allStars, siblings, isEditMode, isConfigureMode, parentCrumbs, infoboxFields: infoboxFields ? Object.fromEntries(infoboxFields) : null, ...content }
 	}
 
 	error(404, 'Celestial body not found')
@@ -154,7 +156,7 @@ export const actions: Actions = {
 		})
 
 		// Redirect back to the view page (strip /edit from the path)
-		const viewPath = event.url.pathname.replace(/\/edit$/, '')
+		const viewPath = event.url.pathname.replace(/\/(edit|configure)$/, '')
 		redirect(302, viewPath)
 	},
 }

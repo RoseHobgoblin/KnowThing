@@ -9,8 +9,11 @@
 	import SystemMap from '$lib/celestial/SystemMap.svelte'
 	import SystemSidebar from '$lib/celestial/SystemSidebar.svelte'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
+	import CelestialConfigureStar from '$lib/components/celestial/CelestialConfigureStar.svelte'
+	import CelestialConfigureBody from '$lib/components/celestial/CelestialConfigureBody.svelte'
 	import { celestialPathBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import PencilSimple from 'phosphor-svelte/lib/PencilSimple'
+	import GearSix from 'phosphor-svelte/lib/GearSix'
 	import Editor from '$lib/components/Editor.svelte'
 	import LivePreview from '$lib/components/LivePreview.svelte'
 
@@ -19,6 +22,7 @@
 	const kind = data.kind
 	const isAdmin = $derived($page.data.isAdmin)
 	const isEditMode = data.isEditMode
+	const isConfigureMode = data.isConfigureMode
 	const raw = data.body as any
 	const ast = data.ast as import('$lib/parser/types.js').WikiNode | null
 
@@ -55,9 +59,10 @@
 	let content = $state(data.wikiContent ?? '')
 	let showPreview = $state(true)
 
-	// Build the current path without /edit for cancel link
-	const viewPath = $derived($page.url.pathname.replace(/\/edit$/, ''))
+	// Build the current path without /edit or /configure for cancel link
+	const viewPath = $derived($page.url.pathname.replace(/\/(edit|configure)$/, ''))
 	const editPath = $derived(viewPath + '/edit')
+	const configurePath = $derived(viewPath + '/configure')
 
 	// Breadcrumb parents resolved server-side from DB (proper names, not URL slugs)
 	const parentCrumbs = $derived((data as any).parentCrumbs ?? [] as { label: string, href: string }[])
@@ -86,7 +91,24 @@
 	<title>{isEditMode ? 'Editing ' : ''}{raw.name} — Celestial — KnowThing</title>
 </svelte:head>
 
-{#if isEditMode}
+{#if isConfigureMode && kind === 'star'}
+	<CelestialConfigureStar
+		star={raw}
+		allSystems={(data as any).allSystems ?? []}
+		wikiContent={data.wikiContent ?? ''}
+		contentRecordId={data.contentRecordId ?? null}
+		{parentCrumbs}
+	/>
+{:else if isConfigureMode && kind === 'planet'}
+	<CelestialConfigureBody
+		body={raw}
+		allStars={(data as any).allStars ?? []}
+		siblings={(data as any).siblings ?? []}
+		wikiContent={data.wikiContent ?? ''}
+		contentRecordId={data.contentRecordId ?? null}
+		{parentCrumbs}
+	/>
+{:else if isEditMode}
 	<!-- EDIT MODE -->
 	<div>
 		<form method="POST" class="flex flex-col h-[calc(100vh-5rem)]">
@@ -148,6 +170,11 @@
 	>
 		{#snippet actions()}
 			{#if isAdmin}
+				{#if kind !== 'system'}
+					<a href={configurePath} class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover">
+						<GearSix size={14} weight="fill" />Configure
+					</a>
+				{/if}
 				<a href={editPath} class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover">
 					<PencilSimple size={14} weight="fill" />Edit
 				</a>

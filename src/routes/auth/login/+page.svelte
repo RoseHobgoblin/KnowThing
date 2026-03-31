@@ -1,10 +1,12 @@
 <script lang="ts">
 	import type { ActionData } from './$types.js'
+	import { enhance } from '$app/forms'
 	import Input from '$lib/components/ui/Input.svelte'
 	import Button from '$lib/components/ui/Button.svelte'
 	import { pushError } from '$lib/notifications.svelte'
 
 	let { form }: { form: ActionData } = $props()
+	let submitting = $state(false)
 
 	$effect(() => {
 		if (form?.error) pushError(form.error)
@@ -20,7 +22,7 @@
 		</div>
 	{/if}
 
-	<form method="POST" class="space-y-4">
+	<form method="POST" use:enhance={() => { submitting = true; return async ({ update }) => { submitting = false; await update() } }} class="space-y-4">
 		<Input
 			label="Username"
 			name="username"
@@ -36,8 +38,8 @@
 			required
 			autocomplete="current-password"
 		/>
-		<Button type="submit" class="w-full">
-			Log in
+		<Button type="submit" class="w-full" loading={submitting} disabled={submitting}>
+			{submitting ? 'Logging in...' : 'Log in'}
 		</Button>
 	</form>
 

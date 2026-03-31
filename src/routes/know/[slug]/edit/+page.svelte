@@ -1,12 +1,13 @@
 <script lang="ts">
 	import type { ActionData, PageData } from './$types.js'
+	import { enhance } from '$app/forms'
 	import Editor from '$lib/components/Editor.svelte'
 	import LivePreview from '$lib/components/LivePreview.svelte'
 
 	let { form, data }: { form: ActionData, data: PageData } = $props()
 	let content = $state(data.content)
 	let showPreview = $state(true)
-	let editorRef: Editor
+	let submitting = $state(false)
 </script>
 
 <svelte:head>
@@ -14,7 +15,7 @@
 </svelte:head>
 
 <div>
-	<form method="POST" class="flex flex-col h-[calc(100vh-5rem)]">
+	<form method="POST" use:enhance={() => { submitting = true; return async ({ update }) => { submitting = false; await update() } }} class="flex flex-col h-[calc(100vh-5rem)]">
 		<input type="hidden" name="content" value={content} />
 
 		<!-- Top bar -->
@@ -37,7 +38,7 @@
 		<div class="flex-1 flex flex-col min-h-0 md:flex-row">
 			<!-- Editor pane -->
 			<div class="flex-1 min-h-0 min-w-0 overflow-hidden {showPreview ? 'h-1/2 md:h-auto' : ''}">
-				<Editor value={data.content} onchange={v => (content = v)} bind:this={editorRef} />
+				<Editor value={data.content} onchange={v => (content = v)} />
 			</div>
 
 			<!-- Preview pane -->
@@ -74,13 +75,14 @@
 			<div class="flex gap-2">
 				<button
 					type="submit"
+					disabled={submitting}
 					class="
 						flex-1 bg-accent text-accent-text px-5 py-2 font-medium transition-colors text-sm
 						sm:flex-none
-						hover:bg-accent-hover
+						hover:bg-accent-hover disabled:opacity-50
 					"
 				>
-					Save
+					{submitting ? 'Saving...' : 'Save'}
 				</button>
 				<a
 					href="/know/{data.slug}"

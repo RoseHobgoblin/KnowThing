@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte'
 	import { PARTS_OF_SPEECH } from './constants.js'
 	import Input from '$lib/components/ui/Input.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
@@ -67,6 +68,10 @@
 	type EtymRow = { relationType: string, targetId: number | null, query: string, results: Array<{ id: number, word: string, definition: string, languageName: string, languageSlug: string }>, showDropdown: boolean }
 	let etymRows = $state<EtymRow[]>([])
 	let searchTimeouts = new Map<number, ReturnType<typeof setTimeout>>()
+
+	onDestroy(() => {
+		for (const timer of searchTimeouts.values()) clearTimeout(timer)
+	})
 
 	function addEtymRow() {
 		etymRows = [...etymRows, { relationType: 'derived_from', targetId: null, query: '', results: [], showDropdown: false }]

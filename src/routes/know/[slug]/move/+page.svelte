@@ -1,7 +1,9 @@
 <script lang="ts">
 	import type { PageData, ActionData } from './$types.js'
+	import { enhance } from '$app/forms'
 
 	let { data, form }: { data: PageData, form: ActionData } = $props()
+	let submitting = $state(false)
 </script>
 
 <svelte:head>
@@ -20,7 +22,7 @@
 		</div>
 	{/if}
 
-	<form method="POST" class="space-y-4">
+	<form method="POST" use:enhance={() => { submitting = true; return async ({ update }) => { submitting = false; await update() } }} class="space-y-4">
 		<div>
 			<label for="title" class="block text-sm font-medium text-secondary mb-1">New title</label>
 			<input
@@ -57,12 +59,13 @@
 		<div class="flex gap-3 pt-2">
 			<button
 				type="submit"
+				disabled={submitting}
 				class="
 					px-5 py-2 bg-accent text-surface text-sm font-medium transition-colors
-					hover:bg-accent-hover
+					hover:bg-accent-hover disabled:opacity-50
 				"
 			>
-				Move Page
+				{submitting ? 'Moving...' : 'Move Page'}
 			</button>
 			<a
 				href="/know/{data.slug}"

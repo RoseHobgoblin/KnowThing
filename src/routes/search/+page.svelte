@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types.js'
+	import { sanitizeSnippet } from '$lib/utils.js'
 
 	let { data }: { data: PageData } = $props()
 
@@ -46,7 +47,7 @@
 					{/if}
 				</div>
 				{#if r.snippet}
-					<p class="text-sm text-secondary mt-0.5">{@html r.snippet}</p>
+					<p class="text-sm text-secondary mt-0.5">{@html sanitizeSnippet(String(r.snippet))}</p>
 				{/if}
 			</div>
 		{/each}

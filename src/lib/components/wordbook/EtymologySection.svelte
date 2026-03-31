@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte'
 	import { invalidateAll } from '$app/navigation'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
@@ -104,6 +105,10 @@
 	let searchResults = $state<Array<{ id: number, word: string, definition: string, languageName: string, languageSlug: string }>>([])
 	let showDropdown = $state(false)
 	let searchTimeout: ReturnType<typeof setTimeout> | null = null
+
+	onDestroy(() => {
+		if (searchTimeout) clearTimeout(searchTimeout)
+	})
 
 	const typeOptions = $derived.by(() => {
 		if (direction === 'from') {

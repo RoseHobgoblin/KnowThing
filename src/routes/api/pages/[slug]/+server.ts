@@ -4,7 +4,7 @@ import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { contentRecords, contentRevisions } from '$lib/server/db/schema.js'
 import { eq, and } from 'drizzle-orm'
-import { requireAuth } from '$lib/server/auth.js'
+import { requireAuth, requireRole } from '$lib/server/auth.js'
 import { updateContentEffects, deleteContentEffects } from '$lib/server/content-effects.js'
 
 const updatePageSchema = z.object({
@@ -74,7 +74,7 @@ export const PUT: RequestHandler = async (event) => {
 
 /** DELETE /api/pages/:slug */
 export const DELETE: RequestHandler = async (event) => {
-	requireAuth(event)
+	requireRole(event, 'editor')
 	const { slug } = event.params
 
 	const [existing] = await db

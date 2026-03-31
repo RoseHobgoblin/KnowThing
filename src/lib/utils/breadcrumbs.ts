@@ -113,6 +113,21 @@ export function celestialPathBreadcrumbs(
 	]
 }
 
+export function celestialConfigureBreadcrumbs(
+	parentCrumbs: { label: string, href: string }[],
+	body: { name: string, slug: string },
+): Breadcrumb[] {
+	const viewHref = parentCrumbs.length > 0
+		? `${parentCrumbs.at(-1)!.href}/${body.slug}`
+		: `/celestial/${body.slug}`
+	return [
+		{ label: 'Celestial Registry', href: '/celestial' },
+		...parentCrumbs,
+		{ label: body.name, href: viewHref },
+		{ label: 'Configure' },
+	]
+}
+
 // ── Calendar ───────────────────────────────────────────────────────────
 
 export function calendarBreadcrumbs(): Breadcrumb[] {
