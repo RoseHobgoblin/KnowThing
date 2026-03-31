@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte'
 	import type { ActionData, PageData } from './$types.js'
 	import { enhance } from '$app/forms'
 	import WikiNodeComponent from '$lib/renderer/WikiNode.svelte'
@@ -25,12 +26,13 @@
 
 	let { data, form }: { data: PageData, form: ActionData } = $props()
 
-	const kind = data.kind
+	const initialWikiContent = untrack(() => data.wikiContent ?? '')
+	const kind = $derived(data.kind)
 	const permissions = $derived($page.data.permissions)
-	const isEditMode = data.isEditMode
-	const isConfigureMode = data.isConfigureMode
-	const raw = data.body as any
-	const ast = data.ast as import('$lib/parser/types.js').WikiNode | null
+	const isEditMode = $derived(data.isEditMode)
+	const isConfigureMode = $derived(data.isConfigureMode)
+	const raw = $derived(data.body as any)
+	const ast = $derived(data.ast as import('$lib/parser/types.js').WikiNode | null)
 
 	const layoutData = $derived($page.data)
 
@@ -62,7 +64,7 @@
 	})
 
 	// Edit mode state
-	let content = $state(data.wikiContent ?? '')
+	let content = $state(initialWikiContent)
 	let showPreview = $state(true)
 	let editSummary = $state('')
 	let saving = $state(false)
@@ -73,7 +75,7 @@
 	const configurePath = $derived(viewPath + '/configure')
 
 	// Breadcrumb parents resolved server-side from DB (proper names, not URL slugs)
-	const parentCrumbs = $derived((data as any).parentCrumbs ?? [] as { label: string, href: string }[])
+	const parentCrumbs = $derived(((data as any).parentCrumbs ?? []) as { label: string, href: string }[])
 
 	// Strip infobox templates from the AST — the celestial page renders its own infobox from structured data
 	function stripInfoboxes(node: import('$lib/parser/types.js').WikiNode): import('$lib/parser/types.js').WikiNode | null {
@@ -88,16 +90,16 @@
 	const strippedAst = $derived(ast ? stripInfoboxes(ast) : null)
 
 	// Infobox fields from server — resolved via structured-data.ts (same mapper as from=slug)
-	const infoboxFields = $derived(
+	const infoboxFields = $derived.by(() =>
 		data.infoboxFields
 			? new Map(Object.entries(data.infoboxFields))
 			: new Map([['name', raw.name ?? '']]),
 	)
-	const isDirty = $derived(content !== (data.wikiContent ?? '') || editSummary.trim().length > 0)
+	const isDirty = $derived(content !== initialWikiContent || editSummary.trim().length > 0)
 	const saveError = $derived(form?.error ?? '')
 
 	function resetArticleDraft() {
-		content = data.wikiContent ?? ''
+		content = initialWikiContent
 		editSummary = ''
 	}
 </script>

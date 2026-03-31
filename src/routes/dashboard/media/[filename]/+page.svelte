@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte'
 	import type { PageData } from './$types.js'
 	import { page } from '$app/stores'
 	import { invalidateAll, goto } from '$app/navigation'
@@ -10,9 +11,15 @@
 	import RecordModeBanner from '$lib/components/editor/RecordModeBanner.svelte'
 
 	let { data }: { data: PageData } = $props()
+	const initialFile = $state.snapshot(untrack(() => data.file))
+	const initialCategories = $state.snapshot(untrack(() => data.categories))
+	const initialDetails = {
+		description: initialFile.description || '',
+		categoriesInput: initialCategories.join(', '),
+	}
 
-	let description = $state(data.file.description || '')
-	let categoriesInput = $state(data.categories.join(', '))
+	let description = $state(initialDetails.description)
+	let categoriesInput = $state(initialDetails.categoriesInput)
 	let saving = $state(false)
 	let saveError = $state('')
 	let savedAt = $state<Date | null>(null)
@@ -23,7 +30,7 @@
 	const permissions = $derived(layoutData.permissions)
 	const canManageMedia = $derived(permissions.canManageMedia)
 	const currentSnapshot = $derived(JSON.stringify({ description, categoriesInput }))
-	let savedSnapshot = $state(JSON.stringify({ description: data.file.description || '', categoriesInput: data.categories.join(', ') }))
+	let savedSnapshot = $state(JSON.stringify(initialDetails))
 	const isDirty = $derived(currentSnapshot !== savedSnapshot)
 
 	function formatBytes(bytes: number | null): string {
@@ -34,8 +41,8 @@
 	}
 
 	function resetDraft() {
-		description = data.file.description || ''
-		categoriesInput = data.categories.join(', ')
+		description = initialDetails.description
+		categoriesInput = initialDetails.categoriesInput
 		saveError = ''
 	}
 

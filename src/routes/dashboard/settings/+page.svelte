@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte'
 	import type { PageData } from './$types.js'
 	import Input from '$lib/components/ui/Input.svelte'
 	import Checkbox from '$lib/components/ui/Checkbox.svelte'
@@ -10,7 +11,7 @@
 	import { invalidateAll } from '$app/navigation'
 
 	let { data }: { data: PageData } = $props()
-	const initialSettings = { ...data.settings }
+	const initialSettings = $state.snapshot(untrack(() => data.settings))
 
 	let siteName = $state(initialSettings.site_name ?? 'KnowThing')
 	let siteTagline = $state(initialSettings.site_tagline ?? 'A collaborative encyclopedia')

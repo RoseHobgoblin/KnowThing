@@ -4,7 +4,7 @@
 
 	let { node }: { node: WordbookLinkNode } = $props()
 
-	const href = `/wordbook/${encodeURIComponent(node.language)}/${encodeURIComponent(node.word)}`
+	const href = $derived.by(() => `/wordbook/${encodeURIComponent(node.language)}/${encodeURIComponent(node.word)}`)
 </script>
 
 <a {href} class="text-link hover:text-link-hover underline decoration-transparent hover:decoration-current transition-colors" title="Wordbook: {node.word} ({node.language})">

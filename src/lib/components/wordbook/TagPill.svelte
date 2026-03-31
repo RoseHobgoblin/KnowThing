@@ -1,8 +1,8 @@
 <script lang="ts">
 	let { tag, language = '' }: { tag: string, language?: string } = $props()
-	const href = language
+	const href = $derived.by(() => language
 		? `/search?scope=wordbook&tag=${encodeURIComponent(tag)}&language=${encodeURIComponent(language)}`
-		: `/search?scope=wordbook&tag=${encodeURIComponent(tag)}`
+		: `/search?scope=wordbook&tag=${encodeURIComponent(tag)}`)
 </script>
 
 <a

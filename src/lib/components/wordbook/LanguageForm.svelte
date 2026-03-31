@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte'
 	import Input from '$lib/components/ui/Input.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
 	import Label from '$lib/components/ui/Label.svelte'
@@ -29,17 +30,18 @@
 		onsubmit: (data: Record<string, unknown>) => Promise<void>
 		submitLabel?: string
 	} = $props()
+	const initialSnapshot = $state.snapshot(untrack(() => initial))
 	const initialValues = {
-		name: initial.name || '',
-		slug: initial.slug || '',
-		nativeName: initial.nativeName || '',
-		script: initial.script || 'Latin',
-		family: initial.family || '',
-		color: initial.color || 'var(--color-accent)',
-		description: initial.description || '',
-		pageSlug: initial.pageSlug || '',
-		parentLanguageId: initial.parentLanguageId ?? null,
-		languageType: initial.languageType || 'language',
+		name: initialSnapshot.name || '',
+		slug: initialSnapshot.slug || '',
+		nativeName: initialSnapshot.nativeName || '',
+		script: initialSnapshot.script || 'Latin',
+		family: initialSnapshot.family || '',
+		color: initialSnapshot.color || 'var(--color-accent)',
+		description: initialSnapshot.description || '',
+		pageSlug: initialSnapshot.pageSlug || '',
+		parentLanguageId: initialSnapshot.parentLanguageId ?? null,
+		languageType: initialSnapshot.languageType || 'language',
 	}
 
 	const isEditing = !!initialValues.name
@@ -69,8 +71,8 @@
 		parentLanguageId,
 		languageType,
 	}))
-	const initialSnapshot = JSON.stringify(initialValues)
-	const isDirty = $derived(currentSnapshot !== initialSnapshot)
+	const savedSnapshot = JSON.stringify(initialValues)
+	const isDirty = $derived(currentSnapshot !== savedSnapshot)
 
 	let parentLanguageIdStr = $derived(parentLanguageId === null ? '' : String(parentLanguageId))
 

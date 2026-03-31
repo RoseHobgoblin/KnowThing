@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy } from 'svelte'
+	import { onDestroy, untrack } from 'svelte'
 	import { PARTS_OF_SPEECH } from './constants.js'
 	import Input from '$lib/components/ui/Input.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
@@ -33,17 +33,19 @@
 		submitLabel?: string
 		onsubmit: (data: Record<string, unknown>) => Promise<void>
 	} = $props()
+	const initialEntry = $state.snapshot(untrack(() => initial))
+	const initialDefinitionRows = $state.snapshot(untrack(() => initialDefinitions))
 	const initialValues = {
-		word: initial.word || '',
-		languageIdStr: initial.languageId ? String(initial.languageId) : '',
-		pronunciation: initial.pronunciation || '',
-		etymology: initial.etymology || '',
-		notes: initial.notes || '',
-		pageSlug: initial.pageSlug || '',
-		tagsInput: initial.tags?.join(', ') || '',
+		word: initialEntry.word || '',
+		languageIdStr: initialEntry.languageId ? String(initialEntry.languageId) : '',
+		pronunciation: initialEntry.pronunciation || '',
+		etymology: initialEntry.etymology || '',
+		notes: initialEntry.notes || '',
+		pageSlug: initialEntry.pageSlug || '',
+		tagsInput: initialEntry.tags?.join(', ') || '',
 	}
-	const initialDefRows = initialDefinitions.length > 0
-		? initialDefinitions.map(d => ({
+	const initialDefRows = initialDefinitionRows.length > 0
+		? initialDefinitionRows.map(d => ({
 			partOfSpeech: d.partOfSpeech || '',
 			definition: d.definition || '',
 			usageExample: d.usageExample || '',
