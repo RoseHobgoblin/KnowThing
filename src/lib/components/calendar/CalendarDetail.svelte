@@ -6,7 +6,7 @@
 	import WikiNodeComponent from '$lib/renderer/WikiNode.svelte'
 	import { createKnowContext } from '$lib/renderer/context.js'
 	import { page } from '$app/stores'
-	import GearSix from 'phosphor-svelte/lib/GearSix'
+	import GearSixIcon from 'phosphor-svelte/lib/GearSix'
 	import { calendarDetailBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 
 	let {
@@ -41,7 +41,7 @@
 	{#snippet actions()}
 		{#if isAdmin}
 			<a href="/calendar/{calendar.slug}/configure" class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover">
-				<GearSix size={14} weight="fill" />Configure
+				<GearSixIcon size={14} weight="fill" />Configure
 			</a>
 		{/if}
 	{/snippet}

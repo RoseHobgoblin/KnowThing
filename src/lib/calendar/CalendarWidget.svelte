@@ -203,9 +203,9 @@
 	})
 </script>
 
-<div class="calendar-widget bg-page border border-border-strong shadow-sm" class:max-w-md={viewMode === 'month'}>
+<div class="calendar-widget bg-surface border border-border-strong shadow-sm overflow-hidden" class:max-w-md={viewMode === 'month'}>
 	<!-- Header -->
-	<div class="flex items-center justify-between px-4 py-3 bg-border border-b border-border-strong">
+	<div class="flex items-center justify-between px-4 py-3 bg-raised border-b border-border-strong">
 		{#if viewMode === 'month'}
 			<button onclick={previousMonth} class="text-secondary px-2 py-1 transition-colors hover:text-heading hover:bg-raised">&larr;</button>
 		{:else}
@@ -226,7 +226,7 @@
 				</form>
 			{:else}
 				{#if viewMode === 'month'}
-					<div class="font-bold text-body">{grid.monthName}</div>
+					<div class="font-bold text-heading">{grid.monthName}</div>
 				{/if}
 				<!-- svelte-ignore a11y_click_events_have_key_events -->
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -248,11 +248,11 @@
 	</div>
 
 	<!-- View mode tabs -->
-	<div class="flex border-b border-border text-xs">
+	<div class="flex border-b border-border-strong text-xs bg-raised">
 		{#each [['month', 'Month'], ['year', 'Year'], ['seasons', 'Seasons']] as [mode, label]}
 			<button
 				onclick={() => viewMode = mode as ViewMode}
-				class="flex-1 py-1.5 text-center transition-colors {viewMode === mode ? 'text-link font-semibold border-b-2 border-accent' : 'text-secondary hover:text-body'}"
+				class="flex-1 py-2 text-center transition-colors {viewMode === mode ? 'text-accent font-semibold border-b-2 border-accent bg-surface' : 'text-secondary hover:text-body hover:bg-surface'}"
 			>{label}</button>
 		{/each}
 	</div>
@@ -262,7 +262,7 @@
 		<!-- Weekday headers -->
 		<div class="grid gap-px bg-border" style="grid-template-columns: repeat({grid.weekdays.length}, 1fr)">
 			{#each grid.weekdays as wd}
-				<div class="text-center text-xs font-semibold text-secondary bg-raised py-1.5">{wd}</div>
+				<div class="text-center text-[11px] font-semibold text-dim bg-raised py-2 uppercase tracking-wider">{wd}</div>
 			{/each}
 		</div>
 
@@ -270,16 +270,16 @@
 		<div class="grid gap-px bg-border" style="grid-template-columns: repeat({grid.weekdays.length}, 1fr)">
 			{#each grid.days as day}
 				{#if day === null}
-					<div class="bg-page min-h-10"></div>
+					<div class="bg-page min-h-11"></div>
 				{:else}
 					{@const isToday = isCurrentMonth && day === resolved.day}
 					{@const moons = getMoonPhases(day)}
 					{@const seasonColor = getSeasonColor(day, viewMonth)}
 					<div
-						class="bg-surface min-h-10 p-1 text-sm relative {isToday ? 'ring-2 ring-accent font-bold' : 'hover:bg-page'}"
+						class="bg-surface min-h-11 p-1.5 text-sm relative transition-colors {isToday ? 'ring-2 ring-inset ring-accent font-bold bg-accent-subtle' : 'hover:bg-raised'}"
 						style={seasonColor ? `border-left: 3px solid ${seasonColor}` : ''}
 					>
-						<span class="text-body">{day}</span>
+						<span class="{isToday ? 'text-accent' : 'text-body'}">{day}</span>
 						{#if moons.length > 0}
 							<div class="flex gap-0.5 mt-0.5">
 								{#each moons as moon}
@@ -366,9 +366,9 @@
 	{/if}
 
 	<!-- Footer -->
-	<div class="px-4 py-2 border-t border-border flex items-center justify-between text-xs text-secondary">
+	<div class="px-4 py-2.5 border-t border-border-strong bg-raised flex items-center justify-between text-xs text-secondary">
 		<span>{resolved.season_name}</span>
-		<button onclick={goToToday} class="text-link hover:underline">Today</button>
-		<span>{config.name}</span>
+		<button onclick={goToToday} class="text-link font-medium transition-colors hover:text-link-hover">Today</button>
+		<span class="text-dim">{config.name}</span>
 	</div>
 </div>

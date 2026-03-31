@@ -8,7 +8,7 @@
 	import { page } from '$app/stores'
 	import { invalidateAll, goto } from '$app/navigation'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
-	import Star from 'phosphor-svelte/lib/Star'
+	import StarIcon from 'phosphor-svelte/lib/Star'
 	import { calendarBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 
 	let {
@@ -65,34 +65,41 @@
 <ArticleShell breadcrumbs={calendarBreadcrumbs()} title="Calendar">
 	{#if primary}
 		{@const resolved = resolveDisplay(primary.config)}
-		<div class="grid grid-cols-1 gap-6 md:grid-cols-2 mb-6">
-			<div class="max-w-md">
+		<div class="grid grid-cols-1 gap-6 mb-8 lg:grid-cols-[minmax(0,28rem)_1fr]">
+			<div>
 				<CalendarWidget config={primary.config} />
 			</div>
-			<div class="bg-raised border border-border-subtle p-4 space-y-2">
-				<h3 class="text-sm font-semibold text-heading">{primary.name}</h3>
-				<p class="text-sm text-body">
+			<div class="bg-raised border border-border-subtle p-5 flex flex-col justify-center space-y-3">
+				<h3 class="text-base font-semibold text-heading font-heading">{primary.name}</h3>
+				<p class="text-lg text-body font-medium">
 					{resolved.day_of_week_name}, {resolved.day} {resolved.month_name}, {resolved.year_display}
 				</p>
-				{#if resolved.era_name}
-					<p class="text-xs text-secondary">Era: {resolved.era_name}</p>
-				{/if}
-				{#if resolved.season_name}
-					<p class="text-xs text-secondary">Season: {resolved.season_name}</p>
-				{/if}
-				<a href="/calendar/{primary.slug}" class="inline-block mt-2 text-xs text-link hover:text-link-hover hover:underline">View full page →</a>
+				<div class="flex flex-wrap gap-x-4 gap-y-1">
+					{#if resolved.era_name}
+						<p class="text-sm text-secondary">Era: <span class="text-body">{resolved.era_name}</span></p>
+					{/if}
+					{#if resolved.season_name}
+						<p class="text-sm text-secondary">Season: <span class="text-body">{resolved.season_name}</span></p>
+					{/if}
+				</div>
+				<a href="/calendar/{primary.slug}" class="inline-block mt-1 text-sm text-link font-medium transition-colors hover:text-link-hover">View full page →</a>
 			</div>
 		</div>
 	{/if}
 
 	{#if calendars.length > 0}
-		<div class="space-y-2">
+		<h2 class="text-sm font-semibold text-heading uppercase tracking-wider mb-3">All Calendars</h2>
+		<div class="space-y-1.5">
 			{#each calendars as cal (cal.id)}
-				<a href="/calendar/{cal.slug}" class="flex items-center justify-between px-4 py-3 bg-raised border border-border-subtle transition-colors hover:border-border">
+				<a href="/calendar/{cal.slug}" class="
+					flex items-center justify-between px-4 py-3 bg-raised border border-border-subtle
+					transition-colors group
+					hover:border-border hover:bg-surface
+				">
 					<div class="flex items-center gap-2">
-						<span class="text-body font-medium">{cal.name}</span>
+						<span class="text-body font-medium transition-colors group-hover:text-heading">{cal.name}</span>
 						{#if cal.isPrimary}
-							<Star size={12} weight="fill" class="text-accent" />
+							<StarIcon size={12} weight="fill" class="text-accent" />
 						{/if}
 					</div>
 					{#if cal.description}

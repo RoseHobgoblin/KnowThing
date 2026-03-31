@@ -1,6 +1,11 @@
 <script module lang="ts">
 	let _nextId = 0
 	function uid() { return ++_nextId }
+
+	function parseIntList(csv: string): number[] {
+		if (!csv) return []
+		return csv.split(',').map(s => Number.parseInt(s.trim())).filter(n => !Number.isNaN(n))
+	}
 </script>
 
 <script lang="ts">
@@ -28,43 +33,72 @@
 		contentRecordId: number | null
 	} = $props()
 
-	// Capture initial config for form state — intentionally not reactive
-	const sd: Record<string, any> = config.static_data
+	// Snapshot initial config for form state — intentionally not reactive
+	const sd = config.static_data
 
-	// ── Form state ──────────────────────────────────────────
-	let epochOffset = $state(sd.epoch_offset ?? 0)
-	let firstWeekDay = $state(sd.first_week_day ?? 0)
-	let yearOffset = $state(sd.year_offset ?? 0)
+	// ── Form state (scalars) ────────────────────────────────
+	let epochOffset = $state(sd.epoch_offset)
+	let firstWeekDay = $state(sd.first_week_day)
+	let yearOffset = $state(sd.year_offset)
 	let dayLengthSeconds = $state(sd.day_length_seconds ?? 86_400)
-	let displayMoons = $state(sd.display_moons ?? false)
+	let displayMoons = $state(sd.display_moons)
 
-	let months = $state(
-		(sd.months ?? []).map((m: any) => ({ _id: uid(), name: m.name, length: m.length, month_type: m.month_type || 'regular', short_name: m.short_name || '' })),
-	)
-	let weekdays = $state(
-		(sd.weekdays ?? []).map((w: any) => ({ _id: uid(), name: w.name, abbreviation: w.abbreviation || '' })),
-	)
-	let eras = $state(
-		(sd.eras ?? []).map((e: any) => ({ _id: uid(), name: e.name, start_year: e.start_year, end_year: e.end_year?.toString() ?? '', format: e.format || '{{year}} {{era_name}}', reverse_numbering: e.reverse_numbering ?? false })),
-	)
-	let moons = $state(
-		(sd.moons ?? []).map((m: any) => ({ _id: uid(), name: m.name, cycle: m.cycle, offset: m.offset, face_color: m.face_color || '#ffffff', shadow_color: m.shadow_color || '#000000' })),
-	)
-	let seasons = $state(
-		(sd.seasons ?? []).map((s: any) => ({
-			_id: uid(), name: s.name, kind: s.kind || 'custom',
-			timing_type: s.timing?.type || 'dated',
-			month: s.timing?.month ?? 0, day: s.timing?.day ?? 1,
-			duration: s.timing?.duration ?? 90, color: s.color || '#888888',
-		})),
-	)
-	let leapDays = $state(
-		(sd.leap_days ?? []).map((ld: any) => ({
-			_id: uid(), name: ld.name || '', month_index: ld.month_index ?? 0, after_day: ld.after_day ?? 0,
-			interval: ld.interval ?? 4, ignore: (ld.ignore || []).join(', '),
-			exclusive: (ld.exclusive || []).join(', '), intercalary: ld.intercalary ?? false, offset: ld.offset ?? 0,
-		})),
-	)
+	// ── Form state (lists) ──────────────────────────────────
+	// Each item gets a stable _id for {#each} keying.
+	let months = $state(sd.months.map(m => ({
+		_id: uid(),
+		name: m.name,
+		length: m.length,
+		month_type: m.month_type || 'regular',
+		short_name: m.short_name || '',
+	})))
+
+	let weekdays = $state(sd.weekdays.map(w => ({
+		_id: uid(),
+		name: w.name,
+		abbreviation: w.abbreviation || '',
+	})))
+
+	let eras = $state(sd.eras.map(era => ({
+		_id: uid(),
+		name: era.name,
+		start_year: era.start_year,
+		end_year: era.end_year?.toString() ?? '',
+		format: era.format || '{{year}} {{era_name}}',
+		reverse_numbering: era.reverse_numbering,
+	})))
+
+	let moons = $state(sd.moons.map(m => ({
+		_id: uid(),
+		name: m.name,
+		cycle: m.cycle,
+		offset: m.offset,
+		face_color: m.face_color,
+		shadow_color: m.shadow_color,
+	})))
+
+	let seasons = $state(sd.seasons.map(s => ({
+		_id: uid(),
+		name: s.name,
+		kind: s.kind || 'custom',
+		timing_type: s.timing?.type || 'dated',
+		month: s.timing && 'month' in s.timing ? s.timing.month : 0,
+		day: s.timing && 'day' in s.timing ? s.timing.day : 1,
+		duration: s.timing && 'duration' in s.timing ? s.timing.duration : 90,
+		color: s.color || '#888888',
+	})))
+
+	let leapDays = $state(sd.leap_days.map(ld => ({
+		_id: uid(),
+		name: ld.name,
+		month_index: ld.month_index,
+		after_day: ld.after_day,
+		interval: ld.interval,
+		offset: ld.offset,
+		intercalary: ld.intercalary,
+		ignore: ld.ignore.join(', '),
+		exclusive: ld.exclusive.join(', '),
+	})))
 
 	// Capture initial content for editor — intentionally not reactive
 	const initialContent = wikiContent ?? ''
@@ -78,21 +112,58 @@
 		primary: false,
 		static_data: {
 			first_week_day: firstWeekDay,
-			weekdays: weekdays.map(w => ({ name: w.name, abbreviation: w.abbreviation || undefined })),
-			months: months.map(m => ({ name: m.name, length: m.length, month_type: m.month_type as 'regular' | 'intercalary', short_name: m.short_name || undefined })),
+			display_moons: displayMoons,
+			year_offset: yearOffset,
+			epoch_offset: epochOffset,
+			day_length_seconds: dayLengthSeconds,
+
+			weekdays: weekdays.map(w => ({
+				name: w.name,
+				abbreviation: w.abbreviation || undefined,
+			})),
+
+			months: months.map(m => ({
+				name: m.name,
+				length: m.length,
+				month_type: m.month_type as 'regular' | 'intercalary',
+				short_name: m.short_name || undefined,
+			})),
+
 			leap_days: leapDays.map(ld => ({
-				name: ld.name, month_index: ld.month_index, after_day: ld.after_day, interval: ld.interval,
-				ignore: ld.ignore ? ld.ignore.split(',').map((s: string) => Number.parseInt(s.trim())).filter((n: number) => !Number.isNaN(n)) : [],
-				exclusive: ld.exclusive ? ld.exclusive.split(',').map((s: string) => Number.parseInt(s.trim())).filter((n: number) => !Number.isNaN(n)) : [],
-				intercalary: ld.intercalary, offset: ld.offset,
+				name: ld.name,
+				month_index: ld.month_index,
+				after_day: ld.after_day,
+				interval: ld.interval,
+				offset: ld.offset,
+				intercalary: ld.intercalary,
+				ignore: parseIntList(ld.ignore),
+				exclusive: parseIntList(ld.exclusive),
 			})),
-			moons: moons.map(m => ({ name: m.name, cycle: m.cycle, offset: m.offset, face_color: m.face_color, shadow_color: m.shadow_color })),
-			eras: eras.map(e => ({ name: e.name, start_year: e.start_year, end_year: e.end_year ? Number.parseInt(e.end_year) : null, format: e.format, reverse_numbering: e.reverse_numbering })),
+
+			moons: moons.map(m => ({
+				name: m.name,
+				cycle: m.cycle,
+				offset: m.offset,
+				face_color: m.face_color,
+				shadow_color: m.shadow_color,
+			})),
+
+			eras: eras.map(e => ({
+				name: e.name,
+				start_year: e.start_year,
+				end_year: e.end_year ? Number.parseInt(e.end_year) : null,
+				format: e.format,
+				reverse_numbering: e.reverse_numbering,
+			})),
+
 			seasons: seasons.map(s => ({
-				name: s.name, kind: s.kind as any, color: s.color,
-				timing: s.timing_type === 'dated' ? { type: 'dated' as const, month: s.month, day: s.day } : { type: 'periodic' as const, duration: s.duration },
+				name: s.name,
+				kind: s.kind as any,
+				color: s.color,
+				timing: s.timing_type === 'dated'
+					? { type: 'dated' as const, month: s.month, day: s.day }
+					: { type: 'periodic' as const, duration: s.duration },
 			})),
-			display_moons: displayMoons, year_offset: yearOffset, epoch_offset: epochOffset, day_length_seconds: dayLengthSeconds,
 		},
 	})
 
