@@ -4,8 +4,12 @@
 	import { pushSuccess } from '$lib/notifications.svelte'
 	import EntryForm from '$lib/components/wordbook/EntryForm.svelte'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
+	import { wordbookEditBreadcrumbs } from '$lib/utils/breadcrumbs.js'
+	import { page } from '$app/stores'
 
 	let { data }: { data: PageData } = $props()
+
+	const wbName = $derived($page.data.siteConfig?.wordbookName ?? 'Wordbook')
 
 	async function handleSubmit(formData: Record<string, unknown>) {
 		const res = await fetch(`/api/wordbook/${data.entry.id}`, {
@@ -55,7 +59,7 @@
 </svelte:head>
 
 <ArticleShell
-	breadcrumbs={[{ label: 'Wordbook', href: '/wordbook' }, { label: data.entry.word }, { label: 'Edit' }]}
+	breadcrumbs={wordbookEditBreadcrumbs(wbName, data.entry.word)}
 	title="Edit: {data.entry.word}"
 >
 	<EntryForm

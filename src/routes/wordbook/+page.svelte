@@ -4,17 +4,21 @@
 	import WordbookSearch from '$lib/components/wordbook/WordbookSearch.svelte'
 	import LanguageCard from '$lib/components/wordbook/LanguageCard.svelte'
 	import WordEntry from '$lib/components/wordbook/WordEntry.svelte'
+	import { wordbookBreadcrumbs } from '$lib/utils/breadcrumbs.js'
+	import { page } from '$app/stores'
 
 	let { data }: { data: PageData } = $props()
+
+	const wbName = $derived($page.data.siteConfig?.wordbookName ?? 'Wordbook')
 </script>
 
 <svelte:head>
-	<title>Wordbook — KnowThing</title>
+	<title>{wbName} — KnowThing</title>
 </svelte:head>
 
 <ArticleShell
-	breadcrumbs={[{ label: 'Wordbook' }]}
-	title="Wordbook"
+	breadcrumbs={wordbookBreadcrumbs(wbName)}
+	title={wbName}
 >
 	<p class="text-dim mb-4">
 		{data.totalWords} {data.totalWords === 1 ? 'word' : 'words'} across {data.languages.length} {data.languages.length === 1 ? 'language' : 'languages'}

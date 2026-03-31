@@ -5,6 +5,7 @@
 import CategoryBar from '$lib/components/CategoryBar.svelte'
 	import Button from '$lib/components/ui/Button.svelte'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
+	import { knowBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import { page } from '$app/stores'
@@ -83,7 +84,7 @@ import CategoryBar from '$lib/components/CategoryBar.svelte'
 	</div>
 {:else if data.ast}
 	<ArticleShell
-		breadcrumbs={[{ label: data.title }]}
+		breadcrumbs={knowBreadcrumbs(data.title)}
 		title={data.title}
 	>
 		{#snippet actions()}

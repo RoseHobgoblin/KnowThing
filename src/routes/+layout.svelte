@@ -76,7 +76,7 @@
 				<div class="my-2 border-t border-border-subtle"></div>
 				<a href="/know/create" class="{linkClass} {isActive('/know/create') ? activeClass : inactiveClass}"><PlusCircle size={16} weight="fill" />{sc?.navCreateLabel ?? 'New Page'}</a>
 				<a href="/dashboard/recent" class="{linkClass} {isActive('/dashboard/recent') ? activeClass : inactiveClass}"><ClockCounterClockwise size={16} weight="fill" />Recent Changes</a>
-				{#if data.user.role === 'admin'}
+				{#if data.user.role === 'admin' || data.user.role === 'owner'}
 					<div class="my-2 border-t border-border-subtle"></div>
 					<a href="/dashboard/settings" class="{linkClass} {isActive('/dashboard') ? activeClass : inactiveClass}"><GearSix size={16} weight="fill" />Settings</a>
 				{/if}
@@ -164,7 +164,7 @@
 						<div class="my-2 border-t border-border-subtle"></div>
 						<a href="/know/create" onclick={navClick} class="{linkClass} {isActive('/know/create') ? activeClass : inactiveClass}"><PlusCircle size={16} weight="fill" />{sc?.navCreateLabel ?? 'New Page'}</a>
 						<a href="/dashboard/recent" onclick={navClick} class="{linkClass} {isActive('/dashboard/recent') ? activeClass : inactiveClass}"><ClockCounterClockwise size={16} weight="fill" />Recent Changes</a>
-						{#if data.user.role === 'admin'}
+						{#if data.user.role === 'admin' || data.user.role === 'owner'}
 							<div class="my-2 border-t border-border-subtle"></div>
 							<a href="/dashboard/settings" onclick={navClick} class="{linkClass} {isActive('/dashboard') ? activeClass : inactiveClass}"><GearSix size={16} weight="fill" />Settings</a>
 						{/if}

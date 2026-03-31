@@ -10,6 +10,7 @@
 
 	const layoutData = $derived($page.data)
 	const isAuthenticated = $derived(!!layoutData.user)
+	const wbName = $derived(layoutData.siteConfig?.wordbookName ?? 'Wordbook')
 
 	// Group entries by first letter
 	function groupByLetter(entries: typeof data.entries) {
@@ -26,7 +27,7 @@
 
 	// Build breadcrumbs from ancestry chain
 	const breadcrumbs = $derived([
-		{ label: 'Wordbook', href: '/wordbook' },
+		{ label: wbName, href: '/wordbook' },
 		...data.ancestryChain.slice(0, -1).map((a: any) => ({ label: a.name, href: `/wordbook/${a.slug}` })),
 		{ label: data.language.name },
 	])

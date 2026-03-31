@@ -4,8 +4,12 @@
 	import { pushSuccess } from '$lib/notifications.svelte'
 	import LanguageForm from '$lib/components/wordbook/LanguageForm.svelte'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
+	import { wordbookAddLanguageBreadcrumbs } from '$lib/utils/breadcrumbs.js'
+	import { page } from '$app/stores'
 
 	let { data }: { data: PageData } = $props()
+
+	const wbName = $derived($page.data.siteConfig?.wordbookName ?? 'Wordbook')
 
 	async function handleSubmit(formData: Record<string, unknown>) {
 		const res = await fetch('/api/languages', {
@@ -28,7 +32,7 @@
 </svelte:head>
 
 <ArticleShell
-	breadcrumbs={[{ label: 'Wordbook', href: '/wordbook' }, { label: 'Add Language' }]}
+	breadcrumbs={wordbookAddLanguageBreadcrumbs(wbName)}
 	title="Add a Language"
 >
 	<LanguageForm

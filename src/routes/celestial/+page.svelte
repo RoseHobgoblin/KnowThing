@@ -9,6 +9,12 @@
 	import { invalidateAll } from '$app/navigation'
 	import { page } from '$app/stores'
 	import { urlSlugify } from '$lib/utils/slugify.js'
+	import { celestialBreadcrumbs } from '$lib/utils/breadcrumbs.js'
+	import SunDim from 'phosphor-svelte/lib/SunDim'
+	import Star from 'phosphor-svelte/lib/Star'
+	import Planet from 'phosphor-svelte/lib/Planet'
+	import Moon from 'phosphor-svelte/lib/Moon'
+	import X from 'phosphor-svelte/lib/X'
 
 	let { data }: { data: PageData } = $props()
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
@@ -122,7 +128,7 @@
 </svelte:head>
 
 <ArticleShell
-	breadcrumbs={[{ label: 'Celestial Registry' }]}
+	breadcrumbs={celestialBreadcrumbs()}
 	title="Celestial Registry"
 >
 
@@ -137,7 +143,7 @@
 					<!-- System header -->
 					<div class="flex items-center justify-between px-4 py-3 bg-raised border-b border-border-subtle">
 						<div class="flex items-center gap-2">
-							<span class="text-accent text-lg">☉</span>
+							<SunDim size={20} weight="fill" class="text-accent" />
 							<a href="/celestial/{system.slug}" class="text-heading font-bold text-lg hover:text-link transition-colors">{system.name}</a>
 							<span class="text-xs text-faint">{system.systemType} · {system.starCount} {system.starCount === 1 ? 'star' : 'stars'} · {system.planetCount} {system.planetCount === 1 ? 'planet' : 'planets'}</span>
 						</div>
@@ -154,7 +160,7 @@
 						<div class="border-b border-border-subtle last:border-0">
 							<div class="flex items-center justify-between px-4 py-2.5">
 								<div class="flex items-center gap-2 ml-2">
-									<span class="text-secondary">★</span>
+									<Star size={14} weight="fill" class="text-secondary" />
 									<a href="/celestial/{system.slug}/{star.slug}" class="text-heading font-semibold hover:text-link transition-colors">{star.name}</a>
 									{#if star.spectralType}
 										<span class="text-xs text-faint">({star.spectralType})</span>
@@ -163,7 +169,7 @@
 								{#if isAdmin}
 									<div class="flex items-center gap-3 text-xs">
 										<a href="/celestial/{system.slug}/{star.slug}" class="text-link transition-colors hover:text-link-hover">Edit</a>
-										<button onclick={() => deleteItem('star', star.slug, star.name)} class="text-error transition-colors hover:text-error-hover">×</button>
+										<button onclick={() => deleteItem('star', star.slug, star.name)} class="text-error transition-colors hover:text-error-hover" aria-label="Delete {star.name}"><X size={12} weight="bold" /></button>
 									</div>
 								{/if}
 							</div>
@@ -172,7 +178,7 @@
 							{#each bodiesForStar(star.id) as planet (planet.id)}
 								<div class="flex items-center justify-between px-4 py-1.5 ml-8">
 									<div class="flex items-center gap-2">
-										<span class="text-dim text-xs">●</span>
+										<Planet size={12} class="text-dim" />
 										<a href="/celestial/{system.slug}/{planet.slug}" class="text-body text-sm hover:text-link transition-colors">{planet.name}</a>
 										<span class="text-xs text-faint">({planet.bodyType})</span>
 										{#if planet.moonCount > 0}
@@ -182,20 +188,20 @@
 									{#if isAdmin}
 										<div class="flex items-center gap-3 text-xs">
 											<a href="/celestial/{system.slug}/{planet.slug}" class="text-link transition-colors hover:text-link-hover">Edit</a>
-											<button onclick={() => deleteItem('body', planet.slug, planet.name)} class="text-error transition-colors hover:text-error-hover">×</button>
+											<button onclick={() => deleteItem('body', planet.slug, planet.name)} class="text-error transition-colors hover:text-error-hover" aria-label="Delete {planet.name}"><X size={12} weight="bold" /></button>
 										</div>
 									{/if}
 								</div>
 								{#each moonsForBody(planet.id) as moon (moon.id)}
 									<div class="flex items-center justify-between px-4 py-1 ml-14">
 										<div class="flex items-center gap-2">
-											<span class="text-faint text-[10px]">○</span>
+											<Moon size={10} class="text-faint" />
 											<a href="/celestial/{system.slug}/{moon.slug}" class="text-xs text-secondary hover:text-link transition-colors">{moon.name}</a>
 										</div>
 										{#if isAdmin}
 											<div class="flex items-center gap-3 text-xs">
 												<a href="/celestial/{system.slug}/{moon.slug}" class="text-link transition-colors hover:text-link-hover">Edit</a>
-												<button onclick={() => deleteItem('body', moon.slug, moon.name)} class="text-xs text-error transition-colors hover:text-error-hover">×</button>
+												<button onclick={() => deleteItem('body', moon.slug, moon.name)} class="text-xs text-error transition-colors hover:text-error-hover" aria-label="Delete {moon.name}"><X size={12} weight="bold" /></button>
 											</div>
 										{/if}
 									</div>
@@ -213,7 +219,7 @@
 					{#each orphanStars() as star (star.id)}
 						<div class="flex items-center justify-between py-1.5 mt-1">
 							<div class="flex items-center gap-2">
-								<span class="text-secondary">★</span>
+								<Star size={14} weight="fill" class="text-secondary" />
 								<span class="text-body">{star.name}</span>
 								{#if star.spectralType}
 									<span class="text-xs text-faint">({star.spectralType})</span>
@@ -234,7 +240,7 @@
 					{#each orphanBodies() as body (body.id)}
 						<div class="flex items-center justify-between py-1.5 mt-1">
 							<div class="flex items-center gap-2">
-								<span class="text-dim">●</span>
+								<Planet size={12} class="text-dim" />
 								<span class="text-body">{body.name}</span>
 								<span class="text-xs text-faint">({body.bodyType})</span>
 							</div>

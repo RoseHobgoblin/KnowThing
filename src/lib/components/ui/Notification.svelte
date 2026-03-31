@@ -1,6 +1,10 @@
 <script lang="ts">
 	import { expireNotification, type NotificationType } from '$lib/notifications.svelte.ts'
 	import { cn } from '$lib/utils'
+	import Info from 'phosphor-svelte/lib/Info'
+	import CheckCircle from 'phosphor-svelte/lib/CheckCircle'
+	import WarningCircle from 'phosphor-svelte/lib/WarningCircle'
+	import SpinnerGap from 'phosphor-svelte/lib/SpinnerGap'
 
 	const { notification }: { notification: NotificationType } = $props()
 
@@ -9,8 +13,6 @@
 		success: { icon: 'text-success', bar: 'bg-success' },
 		error: { icon: 'text-error-hover', bar: 'bg-error' },
 	}
-
-	const icons = { info: 'ℹ', success: '✓', error: '!' }
 
 	const variant = $derived(notification.type ?? 'info')
 
@@ -28,9 +30,13 @@
 >
 	<div class={cn('size-7 flex items-center justify-center bg-raised shrink-0 text-sm font-bold', colors[variant].icon)}>
 		{#if notification.loading}
-			<span class="animate-spin">⟳</span>
+			<SpinnerGap size={16} weight="bold" class="animate-spin" />
+		{:else if variant === 'success'}
+			<CheckCircle size={16} weight="fill" />
+		{:else if variant === 'error'}
+			<WarningCircle size={16} weight="fill" />
 		{:else}
-			{icons[variant]}
+			<Info size={16} weight="fill" />
 		{/if}
 	</div>
 

@@ -5,6 +5,11 @@
 	import { useId } from 'bits-ui'
 	import Label from './Label.svelte'
 	import type { ZodType } from 'zod'
+	import Check from 'phosphor-svelte/lib/Check'
+	import Copy from 'phosphor-svelte/lib/Copy'
+	import X from 'phosphor-svelte/lib/X'
+	import Eye from 'phosphor-svelte/lib/Eye'
+	import EyeSlash from 'phosphor-svelte/lib/EyeSlash'
 
 	type Props = SvelteHTMLElements['input'] & {
 		label?: string
@@ -166,16 +171,26 @@
 
 		<div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
 			{#if copyable}
-				<button type="button" class="text-faint transition-colors hover:text-secondary text-xs" onclick={onCopy}>
-					{justCopied ? '✓' : '⧉'}
+				<button type="button" class="text-faint transition-colors hover:text-secondary" onclick={onCopy} aria-label="Copy to clipboard">
+					{#if justCopied}
+						<Check size={14} weight="bold" />
+					{:else}
+						<Copy size={14} />
+					{/if}
 				</button>
 			{/if}
 			{#if clearable && value}
-				<button type="button" class="text-faint transition-colors hover:text-secondary" onclick={onClear}>×</button>
+				<button type="button" class="text-faint transition-colors hover:text-secondary" onclick={onClear} aria-label="Clear">
+					<X size={14} weight="bold" />
+				</button>
 			{/if}
 			{#if type === 'password'}
-				<button type="button" class="text-faint transition-colors hover:text-secondary text-xs" onclick={() => passwordVisible = !passwordVisible}>
-					{passwordVisible ? '◉' : '◎'}
+				<button type="button" class="text-faint transition-colors hover:text-secondary" onclick={() => passwordVisible = !passwordVisible} aria-label={passwordVisible ? 'Hide password' : 'Show password'}>
+					{#if passwordVisible}
+						<Eye size={14} />
+					{:else}
+						<EyeSlash size={14} />
+					{/if}
 				</button>
 			{/if}
 		</div>

@@ -4,6 +4,7 @@
 	import { cn } from '$lib/utils'
 	import { pushDialog, popDialog, getOverlayZ, getContentZ, isTopmost } from '$lib/context/DialogStack.svelte'
 	import { onDestroy } from 'svelte'
+	import X from 'phosphor-svelte/lib/X'
 
 	export type DialogProps = DialogRootProps & {
 		title?: string
@@ -84,9 +85,9 @@
 			{#if !unclosable}
 				<Dialog.Close class="
 					absolute top-3 right-3 z-10 cursor-pointer text-faint transition-colors
-					hover:text-heading text-lg leading-none px-1
+					hover:text-heading leading-none px-1
 				">
-					&times;
+					<X size={16} weight="bold" />
 				</Dialog.Close>
 			{/if}
 

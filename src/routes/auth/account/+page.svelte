@@ -4,6 +4,7 @@
 	import Button from '$lib/components/ui/Button.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
+	import { accountBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import { goto } from '$app/navigation'
 
@@ -64,7 +65,7 @@
 </svelte:head>
 
 <ArticleShell
-	breadcrumbs={[{ label: 'Account' }]}
+	breadcrumbs={accountBreadcrumbs()}
 	title="Account"
 >
 	<!-- Info -->

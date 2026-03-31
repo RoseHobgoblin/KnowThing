@@ -7,6 +7,7 @@
 	import { createKnowContext } from '$lib/renderer/context.js'
 	import { page } from '$app/stores'
 	import GearSix from 'phosphor-svelte/lib/GearSix'
+	import { calendarDetailBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 
 	let {
 		calendar,
@@ -34,7 +35,7 @@
 </script>
 
 <ArticleShell
-	breadcrumbs={[{ label: 'Calendar', href: '/calendar' }, { label: calendar.name }]}
+	breadcrumbs={calendarDetailBreadcrumbs(calendar.name)}
 	title={calendar.name}
 >
 	{#snippet actions()}

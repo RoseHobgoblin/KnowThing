@@ -48,18 +48,22 @@ export const load: PageServerLoad = async () => {
 			.limit(1),
 
 		// Random word with definition — single query, random offset instead of full-table sort
-		db
-			.select({
-				word: lexicon.word,
-				languageName: languages.name,
-				languageSlug: languages.slug,
-				pronunciation: lexicon.pronunciation,
-				definition: sql<string>`(SELECT definition FROM definitions WHERE entry_id = ${lexicon.id} ORDER BY sense_number LIMIT 1)`,
-			})
-			.from(lexicon)
-			.innerJoin(languages, eq(lexicon.languageId, languages.id))
-			.offset(sql`floor(random() * greatest((SELECT count(*) FROM lexicon), 1))::int`)
-			.limit(1),
+		db.select({ value: count() }).from(lexicon).then(async ([{ value: total }]) => {
+			if (total === 0) return []
+			const randomOffset = Math.floor(Math.random() * total)
+			return db
+				.select({
+					word: lexicon.word,
+					languageName: languages.name,
+					languageSlug: languages.slug,
+					pronunciation: lexicon.pronunciation,
+					definition: sql<string>`(SELECT definition FROM definitions WHERE entry_id = ${lexicon.id} ORDER BY sense_number LIMIT 1)`,
+				})
+				.from(lexicon)
+				.innerJoin(languages, eq(lexicon.languageId, languages.id))
+				.offset(randomOffset)
+				.limit(1)
+		}),
 
 		// Primary calendar
 		db.select().from(calendars).where(eq(calendars.isPrimary, true)).limit(1),

@@ -4,17 +4,21 @@
 	import WordbookSearch from '$lib/components/wordbook/WordbookSearch.svelte'
 	import WordEntry from '$lib/components/wordbook/WordEntry.svelte'
 	import TagPill from '$lib/components/wordbook/TagPill.svelte'
+	import { wordbookSearchBreadcrumbs } from '$lib/utils/breadcrumbs.js'
+	import { page } from '$app/stores'
 
 	let { data }: { data: PageData } = $props()
+
+	const wbName = $derived($page.data.siteConfig?.wordbookName ?? 'Wordbook')
 </script>
 
 <svelte:head>
-	<title>{data.query ? `"${data.query}" — ` : ''}Wordbook Search — KnowThing</title>
+	<title>{data.query ? `"${data.query}" — ` : ''}{wbName} Search — KnowThing</title>
 </svelte:head>
 
 <ArticleShell
-	breadcrumbs={[{ label: 'Wordbook', href: '/wordbook' }, { label: 'Search' }]}
-	title="Search the Wordbook"
+	breadcrumbs={wordbookSearchBreadcrumbs(wbName)}
+	title="Search the {wbName}"
 >
 	<div class="mb-4">
 		<WordbookSearch languages={data.languages} />

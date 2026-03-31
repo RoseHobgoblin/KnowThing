@@ -9,6 +9,7 @@
 	import SystemMap from '$lib/celestial/SystemMap.svelte'
 	import SystemSidebar from '$lib/celestial/SystemSidebar.svelte'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
+	import { celestialPathBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import PencilSimple from 'phosphor-svelte/lib/PencilSimple'
 	import Editor from '$lib/components/Editor.svelte'
 	import LivePreview from '$lib/components/LivePreview.svelte'
@@ -151,11 +152,7 @@
 {:else}
 	<!-- VIEW MODE -->
 	<ArticleShell
-		breadcrumbs={[
-			{ label: 'Celestial', href: '/celestial' },
-			...pathSegments.map(s => ({ label: s.label, href: s.href })),
-			{ label: raw.name },
-		]}
+		breadcrumbs={celestialPathBreadcrumbs(pathSegments, raw.name)}
 		title={raw.name}
 	>
 		{#snippet actions()}

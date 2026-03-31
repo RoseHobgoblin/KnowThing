@@ -9,6 +9,7 @@
 	import { invalidateAll, goto } from '$app/navigation'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import Star from 'phosphor-svelte/lib/Star'
+	import { calendarBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 
 	let {
 		calendars,
@@ -61,7 +62,7 @@
 	<title>Calendar — KnowThing</title>
 </svelte:head>
 
-<ArticleShell breadcrumbs={[{ label: 'Calendar' }]} title="Calendar">
+<ArticleShell breadcrumbs={calendarBreadcrumbs()} title="Calendar">
 	{#if primary}
 		{@const resolved = resolveDisplay(primary.config)}
 		<div class="grid grid-cols-1 gap-6 md:grid-cols-2 mb-6">

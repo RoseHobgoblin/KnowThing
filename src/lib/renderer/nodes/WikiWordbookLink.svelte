@@ -7,7 +7,7 @@
 	const href = `/wordbook/${encodeURIComponent(node.language)}/${encodeURIComponent(node.word)}`
 </script>
 
-<a {href} class="text-link hover:text-link-hover hover:underline" title="Wordbook: {node.word} ({node.language})">
+<a {href} class="text-link hover:text-link-hover underline decoration-transparent hover:decoration-current transition-colors" title="Wordbook: {node.word} ({node.language})">
 	{#if node.display}
 		{#each node.display as child}
 			<WikiNode node={child} />

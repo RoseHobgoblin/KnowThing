@@ -14,6 +14,7 @@
 	import CalendarWidget from '$lib/calendar/CalendarWidget.svelte'
 	import Editor from '$lib/components/Editor.svelte'
 	import LivePreview from '$lib/components/LivePreview.svelte'
+	import { calendarConfigureBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 
 	let {
 		calendar,
@@ -100,11 +101,7 @@
 </script>
 
 <ArticleShell
-	breadcrumbs={[
-		{ label: 'Calendar', href: '/calendar' },
-		{ label: calendar.name, href: `/calendar/${calendar.slug}` },
-		{ label: 'Configure' },
-	]}
+	breadcrumbs={calendarConfigureBreadcrumbs(calendar)}
 	title="Configure {calendar.name}"
 >
 	<form method="POST" class="space-y-6">

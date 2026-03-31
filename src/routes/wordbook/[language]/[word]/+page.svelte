@@ -17,6 +17,7 @@
 	import InlineMarkup from '$lib/renderer/InlineMarkup.svelte'
 	import PencilSimple from 'phosphor-svelte/lib/PencilSimple'
 	import Trash from 'phosphor-svelte/lib/Trash'
+	import { wordbookWordBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 
 	let { data }: { data: PageData } = $props()
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
@@ -24,6 +25,7 @@
 	const layoutData = $derived($page.data)
 	const isAuthenticated = $derived(!!layoutData.user)
 	const isAdmin = $derived(layoutData.isAdmin)
+	const wbName = $derived(layoutData.siteConfig?.wordbookName ?? 'Wordbook')
 
 	// Add sense form state
 	let addingSenseFor = $state<number | null>(null)
@@ -97,11 +99,7 @@
 </svelte:head>
 
 <ArticleShell
-	breadcrumbs={[
-		{ label: 'Wordbook', href: '/wordbook' },
-		{ label: data.language.name, href: `/wordbook/${data.language.slug}` },
-		{ label: data.word },
-	]}
+	breadcrumbs={wordbookWordBreadcrumbs(wbName, data.language, data.word)}
 	title={data.word}
 >
 	{#snippet actions()}

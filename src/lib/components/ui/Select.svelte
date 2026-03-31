@@ -3,6 +3,9 @@
 	import { cn, getZodValidationError } from '$lib/utils'
 	import Label from './Label.svelte'
 	import type { ZodType } from 'zod'
+	import CaretDown from 'phosphor-svelte/lib/CaretDown'
+	import CaretUp from 'phosphor-svelte/lib/CaretUp'
+	import Check from 'phosphor-svelte/lib/Check'
 
 	type Props = WithoutChildren<Select.RootProps> & {
 		id?: string
@@ -129,7 +132,7 @@
 				{:else}
 					<span class="text-faint">{placeholder}</span>
 				{/if}
-				<span class={cn('ml-auto text-secondary transition-transform duration-200', open && 'rotate-180')}>▾</span>
+				<span class={cn('ml-auto text-secondary transition-transform duration-200', open && 'rotate-180')}><CaretDown size={12} weight="bold" /></span>
 			</Select.Trigger>
 			<Select.Portal>
 				<Select.Content
@@ -141,7 +144,7 @@
 						data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95
 					"
 				>
-					<Select.ScrollUpButton class="flex w-full items-center justify-center text-secondary text-xs py-1">▴</Select.ScrollUpButton>
+					<Select.ScrollUpButton class="flex w-full items-center justify-center text-secondary py-1"><CaretUp size={12} weight="bold" /></Select.ScrollUpButton>
 					<Select.Viewport class="overflow-hidden">
 						{#each items as { value: itemValue, label: itemLabel, disabled } (itemValue)}
 							<Select.Item
@@ -157,14 +160,14 @@
 							>
 								{#snippet children({ selected })}
 									{#if type === 'multiple'}
-										<span class={cn('text-sm', selected ? 'text-accent' : 'text-transparent')}>✓</span>
+										<span class={cn(selected ? 'text-accent' : 'text-transparent')}><Check size={14} weight="bold" /></span>
 									{/if}
 									{itemLabel}
 								{/snippet}
 							</Select.Item>
 						{/each}
 					</Select.Viewport>
-					<Select.ScrollDownButton class="flex w-full items-center justify-center text-secondary text-xs py-1">▾</Select.ScrollDownButton>
+					<Select.ScrollDownButton class="flex w-full items-center justify-center text-secondary py-1"><CaretDown size={12} weight="bold" /></Select.ScrollDownButton>
 				</Select.Content>
 			</Select.Portal>
 		</Select.Root>

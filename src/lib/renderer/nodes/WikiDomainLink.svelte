@@ -17,6 +17,6 @@
 
 <a
 	{href}
-	class="{exists ? 'text-link hover:text-link-hover' : 'text-link-missing'} hover:underline"
+	class="{exists ? 'text-link hover:text-link-hover' : 'text-link-missing'} underline decoration-transparent hover:decoration-current transition-colors"
 	title="{node.domain}: {node.target}"
 >{#if node.display}{#each node.display as child}<WikiNodeComponent node={child} />{/each}{:else}{node.target}{/if}</a>
