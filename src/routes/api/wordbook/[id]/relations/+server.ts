@@ -1,12 +1,11 @@
-import { json } from '@sveltejs/kit'
+import { isHttpError, json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
-import { lexicon, lexiconRelations, languages } from '$lib/server/db/schema.js'
-import { requireAuth } from '$lib/server/auth.js'
+import { lexicon } from '$lib/server/db/schema.js'
+import { requireRole } from '$lib/server/auth.js'
 import { eq } from 'drizzle-orm'
 import { getDirectRelations, computeCognates, getEtymologyChain } from '$lib/server/wordbook/etymology.js'
-
-const VALID_TYPES = ['derived_from', 'loan_from', 'compound_of']
+import { addEntryRelation } from '$lib/server/services/wordbook.js'
 
 /** GET /api/wordbook/:id/relations — full relations + computed cognates */
 export const GET: RequestHandler = async ({ params }) => {
@@ -34,7 +33,7 @@ export const GET: RequestHandler = async ({ params }) => {
 
 /** POST /api/wordbook/:id/relations — add a relation */
 export const POST: RequestHandler = async (event) => {
-	requireAuth(event)
+	requireRole(event, 'editor')
 
 	const id = Number.parseInt(event.params.id)
 	if (isNaN(id)) return json({ error: 'Invalid ID' }, { status: 400 })
@@ -46,33 +45,13 @@ export const POST: RequestHandler = async (event) => {
 		notes?: string
 	}
 
-	if (!targetId || !relationType) {
-		return json({ error: 'targetId and relationType are required' }, { status: 400 })
+	try {
+		const relation = await addEntryRelation(id, { targetId, relationType, notes })
+		return json(relation, { status: 201 })
+	} catch (err: unknown) {
+		if (isHttpError(err)) {
+			return json({ error: err.body?.message ?? err.message }, { status: err.status })
+		}
+		throw err
 	}
-
-	if (!VALID_TYPES.includes(relationType)) {
-		return json({ error: `Invalid relation type. Must be one of: ${VALID_TYPES.join(', ')}` }, { status: 400 })
-	}
-
-	if (targetId === id) {
-		return json({ error: 'Cannot relate an entry to itself' }, { status: 400 })
-	}
-
-	// Verify target exists
-	const [target] = await db.select({ id: lexicon.id }).from(lexicon).where(eq(lexicon.id, targetId))
-	if (!target) {
-		return json({ error: 'Target entry not found' }, { status: 404 })
-	}
-
-	const [relation] = await db
-		.insert(lexiconRelations)
-		.values({
-			sourceId: id,
-			targetId,
-			relationType,
-			notes: notes?.trim() || null,
-		})
-		.returning()
-
-	return json(relation, { status: 201 })
 }

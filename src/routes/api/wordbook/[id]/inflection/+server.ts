@@ -1,10 +1,8 @@
-import { json } from '@sveltejs/kit'
+import { isHttpError, json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
-import { db } from '$lib/server/db/index.js'
-import { lexicon, lexiconInflections } from '$lib/server/db/schema.js'
-import { requireAuth } from '$lib/server/auth.js'
-import { eq } from 'drizzle-orm'
-import { getInflectionTable, rebuildInflectedForms } from '$lib/server/wordbook/inflection.js'
+import { requireRole } from '$lib/server/auth.js'
+import { getInflectionTable } from '$lib/server/wordbook/inflection.js'
+import { updateEntryInflection } from '$lib/server/services/wordbook.js'
 
 /** GET /api/wordbook/:id/inflection — get inflection table */
 export const GET: RequestHandler = async ({ params }) => {
@@ -17,12 +15,9 @@ export const GET: RequestHandler = async ({ params }) => {
 
 /** PUT /api/wordbook/:id/inflection — set class + stem + overrides */
 export const PUT: RequestHandler = async (event) => {
-	requireAuth(event)
+	requireRole(event, 'editor')
 	const entryId = Number.parseInt(event.params.id)
 	if (isNaN(entryId)) return json({ error: 'Invalid ID' }, { status: 400 })
-
-	const [entry] = await db.select({ id: lexicon.id }).from(lexicon).where(eq(lexicon.id, entryId))
-	if (!entry) return json({ error: 'Entry not found' }, { status: 404 })
 
 	const body = await event.request.json()
 	const { classId, stem, overrides } = body as {
@@ -31,27 +26,13 @@ export const PUT: RequestHandler = async (event) => {
 		overrides?: Record<string, string>
 	}
 
-	// Upsert inflection record
-	const [existing] = await db.select().from(lexiconInflections).where(eq(lexiconInflections.entryId, entryId))
-
-	if (existing) {
-		await db.update(lexiconInflections).set({
-			...(classId !== undefined && { classId: classId || null }),
-			...(stem !== undefined && { stem: stem?.trim() || null }),
-			...(overrides !== undefined && { overrides }),
-		}).where(eq(lexiconInflections.entryId, entryId))
-	} else {
-		await db.insert(lexiconInflections).values({
-			entryId,
-			classId: classId || null,
-			stem: stem?.trim() || null,
-			overrides: overrides || {},
-		})
+	try {
+		const table = await updateEntryInflection(entryId, { classId, stem, overrides })
+		return json(table)
+	} catch (err: unknown) {
+		if (isHttpError(err)) {
+			return json({ error: err.body?.message ?? err.message }, { status: err.status })
+		}
+		throw err
 	}
-
-	// Rebuild search index
-	await rebuildInflectedForms(entryId)
-
-	const table = await getInflectionTable(entryId)
-	return json(table)
 }

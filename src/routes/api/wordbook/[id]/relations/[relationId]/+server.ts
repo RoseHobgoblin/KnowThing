@@ -1,25 +1,23 @@
-import { json } from '@sveltejs/kit'
+import { isHttpError, json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
-import { db } from '$lib/server/db/index.js'
-import { lexiconRelations } from '$lib/server/db/schema.js'
-import { requireAuth } from '$lib/server/auth.js'
-import { eq } from 'drizzle-orm'
+import { requireRole } from '$lib/server/auth.js'
+import { deleteEntryRelation } from '$lib/server/services/wordbook.js'
 
 /** DELETE /api/wordbook/:id/relations/:relationId */
 export const DELETE: RequestHandler = async (event) => {
-	requireAuth(event)
+	requireRole(event, 'editor')
 
+	const entryId = Number.parseInt(event.params.id)
 	const relationId = Number.parseInt(event.params.relationId)
-	if (isNaN(relationId)) return json({ error: 'Invalid relation ID' }, { status: 400 })
+	if (isNaN(entryId) || isNaN(relationId)) return json({ error: 'Invalid relation ID' }, { status: 400 })
 
-	const [deleted] = await db
-		.delete(lexiconRelations)
-		.where(eq(lexiconRelations.id, relationId))
-		.returning()
-
-	if (!deleted) {
-		return json({ error: 'Relation not found' }, { status: 404 })
+	try {
+		await deleteEntryRelation(entryId, relationId)
+		return json({ success: true })
+	} catch (err: unknown) {
+		if (isHttpError(err)) {
+			return json({ error: err.body?.message ?? err.message }, { status: err.status })
+		}
+		throw err
 	}
-
-	return json({ success: true })
 }

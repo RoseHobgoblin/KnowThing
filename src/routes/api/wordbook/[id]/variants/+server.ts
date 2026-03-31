@@ -1,9 +1,10 @@
-import { json } from '@sveltejs/kit'
+import { isHttpError, json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
-import { lexicon, lexiconVariants, languageDialects } from '$lib/server/db/schema.js'
-import { requireAuth } from '$lib/server/auth.js'
-import { eq, and } from 'drizzle-orm'
+import { lexiconVariants, languageDialects } from '$lib/server/db/schema.js'
+import { requireRole } from '$lib/server/auth.js'
+import { eq } from 'drizzle-orm'
+import { addEntryVariant } from '$lib/server/services/wordbook.js'
 
 /** GET /api/wordbook/:id/variants */
 export const GET: RequestHandler = async ({ params }) => {
@@ -30,13 +31,10 @@ export const GET: RequestHandler = async ({ params }) => {
 
 /** POST /api/wordbook/:id/variants */
 export const POST: RequestHandler = async (event) => {
-	requireAuth(event)
+	requireRole(event, 'editor')
 
 	const entryId = Number.parseInt(event.params.id)
 	if (isNaN(entryId)) return json({ error: 'Invalid ID' }, { status: 400 })
-
-	const [entry] = await db.select({ id: lexicon.id }).from(lexicon).where(eq(lexicon.id, entryId))
-	if (!entry) return json({ error: 'Entry not found' }, { status: 404 })
 
 	const body = await event.request.json()
 	const { dialectId, pronunciation, spelling, notes } = body as {
@@ -51,25 +49,13 @@ export const POST: RequestHandler = async (event) => {
 		return json({ error: 'At least pronunciation or spelling is required' }, { status: 400 })
 	}
 
-	// Check for existing variant for this dialect
-	const [existingVariant] = await db
-		.select({ id: lexiconVariants.id })
-		.from(lexiconVariants)
-		.where(and(eq(lexiconVariants.entryId, entryId), eq(lexiconVariants.dialectId, dialectId)))
-	if (existingVariant) {
-		return json({ error: 'A variant for this dialect already exists. Edit it instead.' }, { status: 409 })
+	try {
+		const variant = await addEntryVariant(entryId, { dialectId, pronunciation, spelling, notes })
+		return json(variant, { status: 201 })
+	} catch (err: unknown) {
+		if (isHttpError(err)) {
+			return json({ error: err.body?.message ?? err.message }, { status: err.status })
+		}
+		throw err
 	}
-
-	const [variant] = await db
-		.insert(lexiconVariants)
-		.values({
-			entryId,
-			dialectId,
-			pronunciation: pronunciation?.trim() || null,
-			spelling: spelling?.trim() || null,
-			notes: notes?.trim() || null,
-		})
-		.returning()
-
-	return json(variant, { status: 201 })
 }

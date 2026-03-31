@@ -1,10 +1,11 @@
-import { json } from '@sveltejs/kit'
+import { isHttpError, json } from '@sveltejs/kit'
 import { z } from 'zod'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
-import { lexicon, definitions, lexiconRevisions, languages } from '$lib/server/db/schema.js'
-import { requireAuth } from '$lib/server/auth.js'
+import { lexicon, definitions, languages } from '$lib/server/db/schema.js'
+import { requireRole } from '$lib/server/auth.js'
 import { eq, asc } from 'drizzle-orm'
+import { updateWordbookEntry } from '$lib/server/services/wordbook.js'
 
 const updateWordSchema = z.object({
 	word: z.string().optional(),
@@ -54,20 +55,9 @@ export const GET: RequestHandler = async ({ params }) => {
 
 /** PUT /api/wordbook/:id — update headword fields only */
 export const PUT: RequestHandler = async (event) => {
-	const user = requireAuth(event)
+	const user = requireRole(event, 'editor')
 	const id = Number.parseInt(event.params.id)
 	if (isNaN(id)) return json({ error: 'Invalid ID' }, { status: 400 })
-
-	// Snapshot before changes
-	const [current] = await db.select().from(lexicon).where(eq(lexicon.id, id))
-	if (!current) return json({ error: 'Entry not found' }, { status: 404 })
-	const currentDefs = await db.select().from(definitions).where(eq(definitions.entryId, id)).orderBy(asc(definitions.senseNumber))
-	await db.insert(lexiconRevisions).values({
-		entryId: id,
-		snapshot: { ...current, definitions: currentDefs },
-		editSummary: 'Headword updated',
-		userId: user.id,
-	})
 
 	const body = await event.request.json()
 	const parsed = updateWordSchema.safeParse(body)
@@ -75,37 +65,20 @@ export const PUT: RequestHandler = async (event) => {
 		return json({ error: parsed.error.issues[0].message }, { status: 400 })
 	}
 
-	const { word, languageId, pronunciation, etymology, notes, pageSlug, tags } = parsed.data
-
-	// Normalize tags
-	const normalizedTags = tags
-		? tags.map(t => t.trim().toLowerCase()).filter((t, index, a) => t && a.indexOf(t) === index)
-		: undefined
-
-	const [updated] = await db
-		.update(lexicon)
-		.set({
-			...(word && { word: word.trim() }),
-			...(languageId && { languageId }),
-			...(pronunciation !== undefined && { pronunciation: pronunciation?.trim() || null }),
-			...(etymology !== undefined && { etymology: etymology?.trim() || null }),
-			...(notes !== undefined && { notes: notes?.trim() || null }),
-			...(pageSlug !== undefined && { pageSlug: pageSlug?.trim() || null }),
-			...(normalizedTags && { tags: normalizedTags }),
-			updatedAt: new Date(),
-		})
-		.where(eq(lexicon.id, id))
-		.returning()
-
-	return json(updated)
+	try {
+		const updated = await updateWordbookEntry(id, parsed.data, user.id)
+		return json(updated)
+	} catch (err: unknown) {
+		if (isHttpError(err)) {
+			return json({ error: err.body?.message ?? err.message }, { status: err.status })
+		}
+		throw err
+	}
 }
 
 /** DELETE /api/wordbook/:id — delete entire entry */
 export const DELETE: RequestHandler = async (event) => {
-	const user = requireAuth(event)
-	if (user.role !== 'admin') {
-		return json({ error: 'Admin access required' }, { status: 403 })
-	}
+	requireRole(event, 'admin')
 
 	const id = Number.parseInt(event.params.id)
 	if (isNaN(id)) return json({ error: 'Invalid ID' }, { status: 400 })

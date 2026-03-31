@@ -1,10 +1,11 @@
-import { json } from '@sveltejs/kit'
+import { isHttpError, json } from '@sveltejs/kit'
 import { z } from 'zod'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
-import { lexicon, lexiconRelations, definitions, languages, inflectedForms } from '$lib/server/db/schema.js'
-import { requireAuth } from '$lib/server/auth.js'
-import { eq, sql, asc, desc, and } from 'drizzle-orm'
+import { lexicon, definitions, languages, inflectedForms } from '$lib/server/db/schema.js'
+import { requireRole } from '$lib/server/auth.js'
+import { eq, sql, asc, and } from 'drizzle-orm'
+import { createWordbookEntry } from '$lib/server/services/wordbook.js'
 
 const createWordSchema = z.object({
 	word: z.string().min(1, 'Word is required'),
@@ -143,109 +144,20 @@ export const GET: RequestHandler = async ({ url }) => {
 
 /** POST /api/wordbook — create entry with definitions */
 export const POST: RequestHandler = async (event) => {
-	requireAuth(event)
+	const user = requireRole(event, 'editor')
 	const body = await event.request.json()
 	const parsed = createWordSchema.safeParse(body)
 	if (!parsed.success) {
 		return json({ error: parsed.error.issues[0].message }, { status: 400 })
 	}
 
-	const {
-		word,
-		languageId,
-		pronunciation,
-		etymology,
-		notes,
-		pageSlug,
-		tags,
-		defs,
-		relations,
-	} = parsed.data
-
-	const defsList: Array<{ partOfSpeech?: string, definition: string, usageExample?: string, usageTranslation?: string }> =
-		defs && defs.length > 0 ? defs : [{ definition: parsed.data.definition || '' }]
-	if (!defsList[0]?.definition?.trim()) {
-		return json({ error: 'At least one definition is required' }, { status: 400 })
+	try {
+		const entry = await createWordbookEntry({ ...parsed.data, userId: user.id })
+		return json(entry, { status: 201 })
+	} catch (err: unknown) {
+		if (isHttpError(err)) {
+			return json({ error: err.body?.message ?? err.message }, { status: err.status })
+		}
+		throw err
 	}
-
-	// Normalize tags
-	const normalizedTags = (tags || []).map((t: string) => t.trim().toLowerCase()).filter((t: string, index: number, a: string[]) => t && a.indexOf(t) === index)
-
-	// Check for existing word in same language — auto-assign homograph number
-	const existing = await db
-		.select({ id: lexicon.id, homographNumber: lexicon.homographNumber, word: lexicon.word })
-		.from(lexicon)
-		.innerJoin(languages, eq(lexicon.languageId, languages.id))
-		.where(and(sql`LOWER(${lexicon.word}) = LOWER(${word.trim()})`, eq(lexicon.languageId, languageId)))
-
-	let homographNumber = 1
-	if (existing.length > 0) {
-		// If there's already an entry, check if user intended a homograph
-		const isHomograph = parsed.data.isHomograph === true
-		if (!isHomograph) {
-			const lang = await db.select({ name: languages.name, slug: languages.slug }).from(languages).where(eq(languages.id, languageId))
-			return json({
-				error: `"${word.trim()}" already exists in ${lang[0]?.name || 'this language'}. Add a definition to the existing entry, or set isHomograph: true to create a separate homograph.`,
-				existingId: existing[0].id,
-				existingSlug: lang[0]?.slug,
-			}, { status: 409 })
-		}
-		homographNumber = existing.length > 0
-			? Math.max(...existing.map(e => e.homographNumber)) + 1
-			: 1
-	}
-
-	// All inserts in a single transaction — no orphaned entries on partial failure
-	const entry = await db.transaction(async (tx) => {
-		const [newEntry] = await tx
-			.insert(lexicon)
-			.values({
-				word: word.trim(),
-				languageId,
-				pronunciation: pronunciation?.trim() || null,
-				etymology: etymology?.trim() || null,
-				notes: notes?.trim() || null,
-				pageSlug: pageSlug?.trim() || null,
-				tags: normalizedTags,
-				homographNumber,
-			})
-			.returning()
-
-		// Insert definitions
-		for (let index = 0; index < defsList.length; index++) {
-			const d = defsList[index]
-			if (d.definition?.trim()) {
-				await tx.insert(definitions).values({
-					entryId: newEntry.id,
-					senseNumber: index + 1,
-					partOfSpeech: d.partOfSpeech?.trim() || null,
-					definition: d.definition.trim(),
-					usageExample: d.usageExample?.trim() || null,
-					usageTranslation: d.usageTranslation?.trim() || null,
-				})
-			}
-		}
-
-		// Refresh search vector INSIDE transaction (after definitions exist)
-		await tx.update(lexicon).set({ updatedAt: new Date() }).where(eq(lexicon.id, newEntry.id))
-
-		// Insert etymology relations if provided
-		if (relations && relations.length > 0) {
-			const validTypes = new Set(['derived_from', 'loan_from', 'compound_of'])
-			const validRelations = relations.filter((r: { targetId: number, relationType: string }) => r.targetId && validTypes.has(r.relationType))
-			if (validRelations.length > 0) {
-				await tx.insert(lexiconRelations).values(
-					validRelations.map((r: { targetId: number, relationType: string }) => ({
-						sourceId: newEntry.id,
-						targetId: r.targetId,
-						relationType: r.relationType,
-					})),
-				).onConflictDoNothing()
-			}
-		}
-
-		return newEntry
-	})
-
-	return json(entry, { status: 201 })
 }

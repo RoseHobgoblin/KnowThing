@@ -1,18 +1,23 @@
-import { json } from '@sveltejs/kit'
+import { isHttpError, json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
-import { db } from '$lib/server/db/index.js'
-import { lexiconVariants } from '$lib/server/db/schema.js'
-import { requireAuth } from '$lib/server/auth.js'
-import { eq } from 'drizzle-orm'
+import { requireRole } from '$lib/server/auth.js'
+import { deleteEntryVariant } from '$lib/server/services/wordbook.js'
 
 /** DELETE /api/wordbook/:id/variants/:variantId */
 export const DELETE: RequestHandler = async (event) => {
-	requireAuth(event)
+	requireRole(event, 'editor')
 
+	const entryId = Number.parseInt(event.params.id)
 	const variantId = Number.parseInt(event.params.variantId)
-	if (isNaN(variantId)) return json({ error: 'Invalid variant ID' }, { status: 400 })
+	if (isNaN(entryId) || isNaN(variantId)) return json({ error: 'Invalid variant ID' }, { status: 400 })
 
-	const [deleted] = await db.delete(lexiconVariants).where(eq(lexiconVariants.id, variantId)).returning()
-	if (!deleted) return json({ error: 'Variant not found' }, { status: 404 })
-	return json({ success: true })
+	try {
+		await deleteEntryVariant(entryId, variantId)
+		return json({ success: true })
+	} catch (err: unknown) {
+		if (isHttpError(err)) {
+			return json({ error: err.body?.message ?? err.message }, { status: err.status })
+		}
+		throw err
+	}
 }
