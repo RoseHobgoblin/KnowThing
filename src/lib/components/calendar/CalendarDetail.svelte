@@ -15,7 +15,7 @@
 		wikiContent,
 		ast,
 	}: {
-		calendar: { id: number, slug: string, name: string, description: string }
+		calendar: { id: number, slug: string, name: string, description: string | null }
 		config: CalendarConfig
 		resolved: ResolvedDate | null
 		wikiContent: string

@@ -21,7 +21,7 @@
 		wikiContent,
 		contentRecordId,
 	}: {
-		calendar: { id: number, slug: string, name: string, description: string }
+		calendar: { id: number, slug: string, name: string, description: string | null }
 		config: CalendarConfig
 		wikiContent: string
 		contentRecordId: number | null
