@@ -1,12 +1,11 @@
-import { json } from '@sveltejs/kit'
+import { isHttpError, json } from '@sveltejs/kit'
 import { z } from 'zod'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
-import { contentRecords, contentRevisions } from '$lib/server/db/schema.js'
+import { contentRecords } from '$lib/server/db/schema.js'
 import { desc, eq } from 'drizzle-orm'
-import { requireAuth } from '$lib/server/auth.js'
-import { updateContentEffects } from '$lib/server/content-effects.js'
-import { slugify } from '$lib/renderer/context.js'
+import { requireRole } from '$lib/server/auth.js'
+import { createKnowPage } from '$lib/server/services/content.js'
 
 const createPageSchema = z.object({
 	title: z.string().min(1, 'Title is required'),
@@ -31,7 +30,7 @@ export const GET: RequestHandler = async () => {
 
 /** POST /api/pages — create a new page */
 export const POST: RequestHandler = async (event) => {
-	const user = requireAuth(event)
+	const user = requireRole(event, 'editor')
 	const body = await event.request.json()
 	const parsed = createPageSchema.safeParse(body)
 	if (!parsed.success) {
@@ -39,29 +38,18 @@ export const POST: RequestHandler = async (event) => {
 	}
 	const { title, content } = parsed.data
 
-	const slug = (body as Record<string, unknown>).slug as string || slugify(title)
-	const sizeBytes = new TextEncoder().encode(content || '').length
-
-	const [record] = await db
-		.insert(contentRecords)
-		.values({ domain: 'know', slug, title: title.trim(), content: content || '', plainText: '', sizeBytes })
-		.returning()
-
-	const { plainText, ast } = await updateContentEffects(record.id, content || '')
-
-	await db
-		.update(contentRecords)
-		.set({ plainText, parsedAst: ast })
-		.where(eq(contentRecords.id, record.id))
-
-	await db.insert(contentRevisions).values({
-		contentRecordId: record.id,
-		title: record.title,
-		content: record.content,
-		sizeBytes,
-		editSummary: 'Page created',
-		userId: user.id,
-	})
-
-	return json(record, { status: 201 })
+	try {
+		const record = await createKnowPage({
+			title,
+			content: content || '',
+			slug: (body as Record<string, unknown>).slug as string | undefined,
+			userId: user.id,
+		})
+		return json(record, { status: 201 })
+	} catch (error: unknown) {
+		if (isHttpError(error)) {
+			return json({ error: error.body?.message ?? error.message }, { status: error.status })
+		}
+		throw error
+	}
 }

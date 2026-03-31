@@ -5,11 +5,14 @@ import { parseWikitext, extractLinksFromAst, extractDomainLinksFromAst, extractC
 import { slugify } from '$lib/renderer/context.js'
 import type { WikiNode } from '$lib/parser/types.js'
 
+type ContentEffectsDatabase = Pick<typeof db, 'delete' | 'insert' | 'select'>
+
 /**
  * After saving content, update derived tables: links, categories, media_usage.
  * Returns the plain_text for FTS indexing and the parsed AST for caching.
  */
 export async function updateContentEffects(
+	database: ContentEffectsDatabase,
 	contentRecordId: number,
 	content: string,
 	sourceDomain: string = 'know',
@@ -22,17 +25,17 @@ export async function updateContentEffects(
 	const plainText = stripMarkup(content)
 
 	// Update links
-	await db.delete(contentLinks).where(eq(contentLinks.sourceId, contentRecordId))
+	await database.delete(contentLinks).where(eq(contentLinks.sourceId, contentRecordId))
 	if (linkTargets.length > 0) {
 		// Resolve target IDs where possible (for blue/red link detection)
-		const targetRecords = await db
+		const targetRecords = await database
 			.select({ id: contentRecords.id, slug: contentRecords.slug })
 			.from(contentRecords)
 			.where(sql`LOWER(${contentRecords.slug}) IN (${sql.join(linkTargets.map(t => sql`LOWER(${t})`), sql`, `)})`)
 
 		const slugToId = new Map(targetRecords.map(r => [r.slug.toLowerCase(), r.id]))
 
-		await db.insert(contentLinks).values(
+		await database.insert(contentLinks).values(
 			linkTargets.map(target => ({
 				sourceId: contentRecordId,
 				targetDomain: sourceDomain,
@@ -44,7 +47,7 @@ export async function updateContentEffects(
 
 	// Store cross-domain links
 	if (domainLinks.length > 0) {
-		await db.insert(contentLinks).values(
+		await database.insert(contentLinks).values(
 			domainLinks.map(({ domain, target }) => ({
 				sourceId: contentRecordId,
 				targetDomain: domain,
@@ -55,17 +58,17 @@ export async function updateContentEffects(
 	}
 
 	// Update categories
-	await db.delete(contentCategories).where(eq(contentCategories.contentRecordId, contentRecordId))
+	await database.delete(contentCategories).where(eq(contentCategories.contentRecordId, contentRecordId))
 	if (cats.length > 0) {
-		await db.insert(contentCategories).values(
+		await database.insert(contentCategories).values(
 			cats.map(category => ({ contentRecordId, category })),
 		).onConflictDoNothing()
 	}
 
 	// Update media usage
-	await db.delete(contentMediaUsage).where(eq(contentMediaUsage.contentRecordId, contentRecordId))
+	await database.delete(contentMediaUsage).where(eq(contentMediaUsage.contentRecordId, contentRecordId))
 	if (images.length > 0) {
-		await db.insert(contentMediaUsage).values(
+		await database.insert(contentMediaUsage).values(
 			images.map(filename => ({ contentRecordId, filename })),
 		).onConflictDoNothing()
 	}

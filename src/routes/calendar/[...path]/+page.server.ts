@@ -101,7 +101,7 @@ export const actions: Actions = {
 		// Save prose content
 		if (contentRecordId) {
 			const sizeBytes = new TextEncoder().encode(content).length
-			const { plainText, ast } = await updateContentEffects(contentRecordId, content)
+			const { plainText, ast } = await updateContentEffects(db, contentRecordId, content)
 
 			await db
 				.update(contentRecords)

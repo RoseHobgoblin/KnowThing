@@ -2,10 +2,10 @@ import { error, json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { media, mediaHistory, mediaCategories } from '$lib/server/db/schema.js'
-import { eq, sql } from 'drizzle-orm'
-import { requireAuth } from '$lib/server/auth.js'
+import { eq } from 'drizzle-orm'
+import { requireRole } from '$lib/server/auth.js'
 import { readFile, unlink } from 'node:fs/promises'
-import { join, dirname } from 'node:path'
+import join from 'node:path'
 import { env } from '$env/dynamic/private'
 
 const UPLOAD_DIR = env.UPLOAD_DIR || './uploads'
@@ -65,7 +65,7 @@ export const GET: RequestHandler = async ({ params, url }) => {
 
 /** PUT /api/media/:filename — update description, categories */
 export const PUT: RequestHandler = async (event) => {
-	const user = requireAuth(event)
+	const user = requireRole(event, 'editor')
 	const filename = event.params.filename
 	const body = await event.request.json()
 	const { description, categories } = body as {
@@ -106,7 +106,7 @@ export const PUT: RequestHandler = async (event) => {
 
 /** DELETE /api/media/:filename */
 export const DELETE: RequestHandler = async (event) => {
-	const user = requireAuth(event)
+	const user = requireRole(event, 'editor')
 	const filename = event.params.filename
 
 	const [record] = await db

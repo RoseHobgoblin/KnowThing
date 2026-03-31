@@ -139,7 +139,7 @@ export const actions: Actions = {
 		if (!existing) error(404, 'Content record not found')
 
 		const sizeBytes = new TextEncoder().encode(content).length
-		const { plainText, ast } = await updateContentEffects(contentRecordId, content)
+		const { plainText, ast } = await updateContentEffects(db, contentRecordId, content)
 
 		await db
 			.update(contentRecords)

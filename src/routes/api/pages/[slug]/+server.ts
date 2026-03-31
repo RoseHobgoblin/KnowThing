@@ -2,10 +2,11 @@ import { json, error } from '@sveltejs/kit'
 import { z } from 'zod'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
-import { contentRecords, contentRevisions } from '$lib/server/db/schema.js'
+import { contentRecords } from '$lib/server/db/schema.js'
 import { eq, and } from 'drizzle-orm'
-import { requireAuth, requireRole } from '$lib/server/auth.js'
-import { updateContentEffects, deleteContentEffects } from '$lib/server/content-effects.js'
+import { requireRole } from '$lib/server/auth.js'
+import { deleteContentEffects } from '$lib/server/content-effects.js'
+import { updateKnowPage } from '$lib/server/services/content.js'
 
 const updatePageSchema = z.object({
 	content: z.string(),
@@ -27,7 +28,7 @@ export const GET: RequestHandler = async ({ params }) => {
 
 /** PUT /api/pages/:slug — update page */
 export const PUT: RequestHandler = async (event) => {
-	const user = requireAuth(event)
+	const user = requireRole(event, 'editor')
 	const { slug } = event.params
 	const body = await event.request.json()
 	const parsed = updatePageSchema.safeParse(body)
@@ -36,36 +37,11 @@ export const PUT: RequestHandler = async (event) => {
 	}
 	const { title, content, editSummary } = parsed.data
 
-	const [existing] = await db
-		.select()
-		.from(contentRecords)
-		.where(and(eq(contentRecords.domain, 'know'), eq(contentRecords.slug, slug)))
-		.limit(1)
-
-	if (!existing) throw error(404, 'Page not found')
-
-	const sizeBytes = new TextEncoder().encode(content).length
-	const { plainText, ast } = await updateContentEffects(existing.id, content)
-
-	const [updated] = await db
-		.update(contentRecords)
-		.set({
-			title: title?.trim() || existing.title,
-			content,
-			plainText,
-			parsedAst: ast,
-			sizeBytes,
-			updatedAt: new Date(),
-		})
-		.where(eq(contentRecords.id, existing.id))
-		.returning()
-
-	await db.insert(contentRevisions).values({
-		contentRecordId: existing.id,
-		title: updated.title,
+	const updated = await updateKnowPage({
+		slug,
+		title,
 		content,
-		sizeBytes,
-		editSummary: editSummary || '',
+		editSummary,
 		userId: user.id,
 	})
 
