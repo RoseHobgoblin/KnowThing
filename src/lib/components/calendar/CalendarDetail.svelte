@@ -8,6 +8,7 @@
 	import { page } from '$app/stores'
 	import GearSixIcon from 'phosphor-svelte/lib/GearSix'
 	import { calendarDetailBreadcrumbs } from '$lib/utils/breadcrumbs.js'
+	import RecordModeBanner from '$lib/components/editor/RecordModeBanner.svelte'
 
 	let {
 		calendar,
@@ -47,6 +48,20 @@
 			<span class="text-faint text-sm">View only. Editor role required to configure calendars.</span>
 		{/if}
 	{/snippet}
+
+	<RecordModeBanner
+		modeLabel="View Record"
+		title="Calendar Detail"
+		description="This page shows the live calendar output and article content. Use Configure to change structural rules, moons, eras, or formatting behavior."
+	>
+		{#snippet actions()}
+			{#if permissions.canConfigureCalendar}
+				<a href="/calendar/{calendar.slug}/configure" class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover">
+					<GearSixIcon size={14} weight="fill" />Configure Record
+				</a>
+			{/if}
+		{/snippet}
+	</RecordModeBanner>
 
 	<div class="max-w-md mx-auto mb-6">
 		{#key JSON.stringify(config.static_data)}
@@ -98,10 +113,18 @@
 	</details>
 
 	{#if ast}
-		<article class="know-article">
-			<WikiNodeComponent node={ast} />
-		</article>
+		<section class="space-y-3">
+			<div>
+				<h3 class="text-sm font-semibold text-heading">Article Content</h3>
+				<p class="text-xs text-faint">Reference prose and documentation for this calendar.</p>
+			</div>
+			<article class="know-article">
+				<WikiNodeComponent node={ast} />
+			</article>
+		</section>
 	{:else if !wikiContent}
-		<p class="text-dim italic mt-4">No article content yet.</p>
+		<div class="border border-border-subtle bg-raised p-4">
+			<p class="text-dim italic">No article content yet.</p>
+		</div>
 	{/if}
 </ArticleShell>

@@ -9,6 +9,9 @@
 	import { goto } from '$app/navigation'
 	import UnsavedChangesGuard from '$lib/components/editor/UnsavedChangesGuard.svelte'
 	import SaveStatusBadge from '$lib/components/editor/SaveStatusBadge.svelte'
+	import FormNotice from '$lib/components/editor/FormNotice.svelte'
+	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
+	import { page } from '$app/stores'
 
 	let {
 		body,
@@ -25,6 +28,7 @@
 		contentRecordId: number | null
 		parentCrumbs: { label: string, href: string }[]
 	} = $props()
+	let confirmDialog: ReturnType<typeof ConfirmDialog>
 
 	const viewPath = parentCrumbs.length > 0
 		? `${parentCrumbs.at(-1)!.href}/${body.slug}`
@@ -122,6 +126,14 @@
 		albedo, satellites, hasRings, content,
 	}))
 	const isDirty = $derived(currentSnapshot !== initialSnapshot || editSummary.trim().length > 0)
+	const permissions = $derived($page.data.permissions)
+	const validationIssues = $derived.by(() => {
+		const issues: string[] = []
+		if (semiMajorAxisAu !== null && semiMajorAxisAu < 0) issues.push('Semi-major axis must be zero or greater.')
+		if (eccentricity !== null && (eccentricity < 0 || eccentricity > 1)) issues.push('Eccentricity must be between 0 and 1.')
+		if (satellites !== null && satellites < 0) issues.push('Satellite count cannot be negative.')
+		return issues
+	})
 
 	const bodyTypeItems = [
 		{ value: 'planet', label: 'Planet' },
@@ -143,7 +155,47 @@
 			.map(s => ({ value: String(s.id), label: s.name })),
 	])
 
+	function resetDraft() {
+		bodyType = body.bodyType ?? 'planet'
+		starIdStr = body.starId ? String(body.starId) : ''
+		parentIdStr = body.parentId ? String(body.parentId) : ''
+		description = body.description ?? ''
+		mass = body.mass ?? ''
+		radius = body.radius ?? ''
+		density = body.density ?? ''
+		surfaceGravity = body.surfaceGravity ?? ''
+		escapeVelocity = body.escapeVelocity ?? ''
+		temperature = body.temperature ?? ''
+		age = body.age ?? ''
+		composition = body.composition ?? ''
+		atmosphere = body.atmosphere ?? ''
+		surfacePressure = body.surfacePressure ?? ''
+		orbitalPeriod = body.orbitalPeriod ?? ''
+		orbitalPeriodDays = body.orbitalPeriodDays ?? null
+		semiMajorAxis = body.semiMajorAxis ?? ''
+		semiMajorAxisAu = body.semiMajorAxisAu ?? null
+		eccentricity = body.eccentricity ?? null
+		inclination = body.inclination ?? null
+		epochPhase = body.epochPhase ?? null
+		rotationPeriod = body.rotationPeriod ?? ''
+		rotationPeriodS = body.rotationPeriodS ?? null
+		axialTilt = body.axialTilt ?? null
+		apparentMagnitude = body.apparentMagnitude ?? ''
+		angularDiameter = body.angularDiameter ?? ''
+		albedo = body.albedo ?? ''
+		satellites = body.satellites ?? null
+		hasRings = body.hasRings ?? false
+		content = wikiContent ?? ''
+		editSummary = ''
+		saveError = ''
+	}
+
 	async function save() {
+		if (validationIssues.length > 0) {
+			saveError = 'Review the orbital fields below before saving.'
+			return
+		}
+
 		saving = true
 		saveError = ''
 		try {
@@ -207,6 +259,26 @@
 			saving = false
 		}
 	}
+
+	async function deleteBody() {
+		const ok = await confirmDialog.confirm(
+			'Delete celestial body',
+			`Delete "${body.name}"? This cannot be undone.`,
+			'Delete Body',
+			'Cancel',
+		)
+		if (!ok) return
+
+		const response = await fetch(`/api/planetary-bodies/${body.slug}`, { method: 'DELETE' })
+		if (!response.ok) {
+			const payload = await response.json().catch(() => ({}))
+			pushError(payload.error || 'Failed to delete body')
+			return
+		}
+
+		pushSuccess('Body deleted')
+		goto(parentCrumbs.at(-1)?.href ?? '/celestial')
+	}
 </script>
 
 <ArticleShell
@@ -222,6 +294,33 @@
 			</div>
 			<SaveStatusBadge dirty={isDirty} {saving} error={saveError} {savedAt} />
 		</div>
+		{#if saveError}
+			<FormNotice title="Body changes were not saved" message={saveError} />
+		{/if}
+		{#if validationIssues.length > 0}
+			<FormNotice tone="warning" title="Body draft needs attention" messages={validationIssues} />
+		{/if}
+		<section class="bg-page border border-border-subtle p-5">
+			<h2 class="text-sm font-semibold text-heading border-b border-border-subtle pb-2">Current Summary</h2>
+			<div class="grid grid-cols-1 gap-4 pt-3 md:grid-cols-4">
+				<div>
+					<div class="text-xs font-medium text-secondary">Classification</div>
+					<div class="text-sm text-body">{bodyType}</div>
+				</div>
+				<div>
+					<div class="text-xs font-medium text-secondary">Parent Star</div>
+					<div class="text-sm text-body">{starItems.find(item => item.value === starIdStr)?.label || 'Unassigned'}</div>
+				</div>
+				<div>
+					<div class="text-xs font-medium text-secondary">Orbit Summary</div>
+					<div class="text-sm text-body">{semiMajorAxisAu ?? '—'} AU, e={eccentricity ?? '—'}</div>
+				</div>
+				<div>
+					<div class="text-xs font-medium text-secondary">Article State</div>
+					<div class="text-sm text-body">{content.trim() ? 'Article content present' : 'No article content yet'}</div>
+				</div>
+			</div>
+		</section>
 		<!-- Identity -->
 		<section class="bg-raised border border-border-subtle p-5 space-y-4">
 			<h2 class="text-sm font-semibold text-heading border-b border-border-subtle pb-2">Identity</h2>
@@ -267,8 +366,8 @@
 				<Input label="Orbital Period" bind:value={orbitalPeriod} placeholder="365.25 days" />
 				<Input label="Orbital Period (days)" type="number" bind:value={orbitalPeriodDays} step="any" placeholder="365.25" />
 				<Input label="Semi-major Axis" bind:value={semiMajorAxis} placeholder="1.496 × 10⁸ km" />
-				<Input label="Semi-major Axis (AU)" type="number" bind:value={semiMajorAxisAu} step="any" placeholder="1.0" />
-				<Input label="Eccentricity" type="number" bind:value={eccentricity} step="any" min={0} max={1} placeholder="0.0167" />
+				<Input label="Semi-major Axis (AU)" type="number" bind:value={semiMajorAxisAu} step="any" placeholder="1.0" error={semiMajorAxisAu !== null && semiMajorAxisAu < 0 ? 'Must be 0 or greater' : ''} />
+				<Input label="Eccentricity" type="number" bind:value={eccentricity} step="any" min={0} max={1} placeholder="0.0167" error={eccentricity !== null && (eccentricity < 0 || eccentricity > 1) ? 'Use a value from 0 to 1' : ''} />
 				<Input label="Inclination (°)" type="number" bind:value={inclination} step="any" placeholder="0.0" />
 				<Input label="Epoch Phase" type="number" bind:value={epochPhase} step="any" placeholder="0.0" />
 			</div>
@@ -291,7 +390,7 @@
 				<Input label="Apparent Magnitude" bind:value={apparentMagnitude} placeholder="-3.86" />
 				<Input label="Angular Diameter" bind:value={angularDiameter} placeholder="3.5 arcsec" />
 				<Input label="Albedo" bind:value={albedo} placeholder="0.306" />
-				<Input label="Satellites" type="number" bind:value={satellites} min={0} placeholder="1" />
+				<Input label="Satellites" type="number" bind:value={satellites} min={0} placeholder="1" error={satellites !== null && satellites < 0 ? 'Cannot be negative' : ''} />
 				<Checkbox bind:value={hasRings} label="Has rings" />
 			</div>
 		</section>
@@ -306,6 +405,27 @@
 			error={saveError}
 			{savedAt}
 			onsave={save}
+			ondiscard={resetDraft}
 		/>
+
+		{#if permissions.canManageSettings}
+			<section class="border border-error-border bg-error-subtle/40 p-5 space-y-3">
+				<div>
+					<h2 class="text-sm font-semibold text-error">Danger Zone</h2>
+					<p class="text-xs text-faint mt-1">Delete this celestial body record. This cannot be undone.</p>
+				</div>
+				<div>
+					<button
+						type="button"
+						onclick={deleteBody}
+						class="px-4 py-2 text-sm border border-error-border text-error hover:bg-error-subtle"
+					>
+						Delete Body
+					</button>
+				</div>
+			</section>
+		{/if}
 	</div>
 </ArticleShell>
+
+<ConfirmDialog bind:this={confirmDialog} />

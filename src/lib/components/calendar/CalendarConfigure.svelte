@@ -10,6 +10,7 @@
 
 <script lang="ts">
 	import type { CalendarConfig, StaticCalendarData } from '$lib/calendar/types.js'
+	import { enhance } from '$app/forms'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import Input from '$lib/components/ui/Input.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
@@ -20,18 +21,26 @@
 	import { calendarConfigureBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import UnsavedChangesGuard from '$lib/components/editor/UnsavedChangesGuard.svelte'
 	import SaveStatusBadge from '$lib/components/editor/SaveStatusBadge.svelte'
+	import FormNotice from '$lib/components/editor/FormNotice.svelte'
+	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
+	import { page } from '$app/stores'
+	import { goto } from '$app/navigation'
+	import { pushError, pushSuccess } from '$lib/notifications.svelte'
 
 	let {
 		calendar,
 		config,
 		wikiContent,
 		contentRecordId,
+		formError = '',
 	}: {
 		calendar: { id: number, slug: string, name: string, description: string | null }
 		config: CalendarConfig
 		wikiContent: string
 		contentRecordId: number | null
+		formError?: string
 	} = $props()
+	let confirmDialog: ReturnType<typeof ConfirmDialog>
 
 	// Snapshot initial config for form state — intentionally not reactive
 	const sd = config.static_data
@@ -104,6 +113,7 @@
 	let content = $state(wikiContent ?? '')
 	let editSummary = $state('')
 	let saving = $state(false)
+	let localError = $state('')
 	const initialStaticData = JSON.stringify(config.static_data)
 
 	// ── Derived ─────────────────────────────────────────────
@@ -172,6 +182,110 @@
 	const dayLengthHours = $derived(Math.round((dayLengthSeconds / 3600) * 100) / 100)
 	const currentStaticData = $derived(JSON.stringify(previewConfig.static_data))
 	const isDirty = $derived(currentStaticData !== initialStaticData || content !== (wikiContent ?? '') || editSummary.trim().length > 0)
+	const permissions = $derived($page.data.permissions)
+	const validationIssues = $derived.by(() => {
+		const issues: string[] = []
+		if (months.length === 0) issues.push('Add at least one month.')
+		if (weekdays.length === 0) issues.push('Add at least one weekday.')
+		if (dayLengthSeconds < 1) issues.push('Day length must be at least one second.')
+		if (firstWeekDay < 0 || firstWeekDay >= weekdays.length) issues.push('First weekday must point to an existing weekday.')
+		if (months.some(month => !month.name.trim())) issues.push('Every month needs a name.')
+		if (months.some(month => month.length < 1)) issues.push('Every month must be at least one day long.')
+		if (weekdays.some(day => !day.name.trim())) issues.push('Every weekday needs a name.')
+		if (leapDays.some(day => !day.name.trim())) issues.push('Every leap day needs a name.')
+		if (seasons.some(season => !season.name.trim())) issues.push('Every season needs a name.')
+		if (seasons.some(season => season.timing_type === 'periodic' && season.duration < 1)) issues.push('Rolling seasons must last at least one day.')
+		return [...new Set(issues)]
+	})
+	const activeError = $derived(localError || formError)
+
+	function resetDraft() {
+		epochOffset = sd.epoch_offset
+		firstWeekDay = sd.first_week_day
+		yearOffset = sd.year_offset
+		dayLengthSeconds = sd.day_length_seconds ?? 86_400
+		displayMoons = sd.display_moons
+		months = sd.months.map(m => ({
+			_id: uid(),
+			name: m.name,
+			length: m.length,
+			month_type: m.month_type || 'regular',
+			short_name: m.short_name || '',
+		}))
+		weekdays = sd.weekdays.map(w => ({
+			_id: uid(),
+			name: w.name,
+			abbreviation: w.abbreviation || '',
+		}))
+		eras = sd.eras.map(era => ({
+			_id: uid(),
+			name: era.name,
+			start_year: era.start_year,
+			end_year: era.end_year?.toString() ?? '',
+			format: era.format || '{{year}} {{era_name}}',
+			reverse_numbering: era.reverse_numbering,
+		}))
+		moons = sd.moons.map(m => ({
+			_id: uid(),
+			name: m.name,
+			cycle: m.cycle,
+			offset: m.offset,
+			face_color: m.face_color,
+			shadow_color: m.shadow_color,
+		}))
+		seasons = sd.seasons.map(s => ({
+			_id: uid(),
+			name: s.name,
+			kind: s.kind || 'custom',
+			timing_type: s.timing?.type || 'dated',
+			month: s.timing && 'month' in s.timing ? s.timing.month : 0,
+			day: s.timing && 'day' in s.timing ? s.timing.day : 1,
+			duration: s.timing && 'duration' in s.timing ? s.timing.duration : 90,
+			color: s.color || '#888888',
+		}))
+		leapDays = sd.leap_days.map(ld => ({
+			_id: uid(),
+			name: ld.name,
+			month_index: ld.month_index,
+			after_day: ld.after_day,
+			interval: ld.interval,
+			offset: ld.offset,
+			intercalary: ld.intercalary,
+			ignore: ld.ignore.join(', '),
+			exclusive: ld.exclusive.join(', '),
+		}))
+		content = wikiContent ?? ''
+		editSummary = ''
+		localError = ''
+	}
+
+	function handleSubmit(event: SubmitEvent) {
+		localError = ''
+		if (validationIssues.length > 0) {
+			event.preventDefault()
+			localError = 'Review the calendar sections below before saving.'
+		}
+	}
+
+	async function deleteCalendar() {
+		const ok = await confirmDialog.confirm(
+			'Delete calendar',
+			`Delete "${calendar.name}" and its linked article content? This cannot be undone.`,
+			'Delete Calendar',
+			'Cancel',
+		)
+		if (!ok) return
+
+		const response = await fetch(`/api/calendar/${calendar.id}`, { method: 'DELETE' })
+		if (!response.ok) {
+			const body = await response.json().catch(() => ({}))
+			pushError(body.error || 'Failed to delete calendar')
+			return
+		}
+
+		pushSuccess('Calendar deleted')
+		goto('/calendar')
+	}
 </script>
 
 <ArticleShell
@@ -179,7 +293,18 @@
 	title="Configure {calendar.name}"
 >
 	<UnsavedChangesGuard when={isDirty && !saving} />
-	<form method="POST" class="space-y-6" onsubmit={() => (saving = true)}>
+	<form
+		method="POST"
+		onsubmit={handleSubmit}
+		use:enhance={() => {
+			saving = true
+			return async ({ update }) => {
+				await update()
+				saving = false
+			}
+		}}
+		class="space-y-6"
+	>
 		<input type="hidden" name="calendarId" value={calendar.id} />
 		<input type="hidden" name="contentRecordId" value={contentRecordId ?? ''} />
 		<input type="hidden" name="staticData" value={JSON.stringify(previewConfig.static_data)} />
@@ -190,8 +315,20 @@
 				<h2 class="text-sm font-semibold text-heading">Configure Record</h2>
 				<p class="text-xs text-faint">Structured calendar settings and article content are saved together on this screen.</p>
 			</div>
-			<SaveStatusBadge dirty={isDirty} {saving} />
+			<SaveStatusBadge dirty={isDirty} {saving} error={activeError} />
 		</div>
+
+		{#if activeError}
+			<FormNotice title="Calendar changes were not saved" message={activeError} />
+		{/if}
+
+		{#if validationIssues.length > 0}
+			<FormNotice
+				tone="warning"
+				title="Calendar draft needs attention"
+				messages={validationIssues}
+			/>
+		{/if}
 
 		<!-- Preview -->
 		<details class="bg-raised border border-border-subtle">
@@ -236,7 +373,11 @@
 						<Tooltip content="Real-world seconds per calendar day. Earth = 86400." side="top"><span class="text-faint text-xs cursor-help">i</span></Tooltip>
 					</div>
 					<Input type="number" bind:value={dayLengthSeconds} min={1} />
+					{#if dayLengthSeconds < 1}
+						<p class="text-[10px] text-error mt-1">Day length must be at least one second.</p>
+					{:else}
 					<p class="text-[10px] text-faint mt-1">{dayLengthHours} hours</p>
+					{/if}
 				</div>
 				<div>
 					<div class="flex items-center gap-1 mb-1">
@@ -257,10 +398,10 @@
 			{#each months as month, index (month._id)}
 				<div class="flex gap-2 items-center group">
 					<span class="text-[10px] text-faint w-5 text-right shrink-0">{index + 1}</span>
-					<Input bind:value={month.name} placeholder="Month name" containerClass="flex-1" />
+					<Input bind:value={month.name} placeholder="Month name" containerClass="flex-1" error={!month.name.trim() ? 'Required' : ''} />
 					<Input bind:value={month.short_name} placeholder="Abbr" containerClass="w-14" />
 					<div class="flex items-center gap-1">
-						<Input type="number" bind:value={month.length} min={1} containerClass="w-14" class="text-center" />
+						<Input type="number" bind:value={month.length} min={1} containerClass="w-14" class="text-center" error={month.length < 1 ? 'Min 1' : ''} />
 						<span class="text-[10px] text-faint">days</span>
 					</div>
 					<Select type="single" bind:value={month.month_type} items={[{ value: 'regular', label: 'Regular' }, { value: 'intercalary', label: 'Intercalary' }]} containerClass="w-28" size="sm" />
@@ -277,13 +418,13 @@
 			</div>
 			<div class="flex items-center gap-1 mb-1">
 				<span class="text-xs font-medium text-secondary">First weekday of Year 1, Day 1</span>
-				<Input type="number" bind:value={firstWeekDay} min={0} max={weekdays.length - 1} containerClass="w-14 ml-2" class="text-center" />
+				<Input type="number" bind:value={firstWeekDay} min={0} max={weekdays.length - 1} containerClass="w-14 ml-2" class="text-center" error={firstWeekDay < 0 || firstWeekDay >= weekdays.length ? 'Invalid' : ''} />
 				{#if weekdays[firstWeekDay]}<span class="text-xs text-faint">({weekdays[firstWeekDay].name || '...'})</span>{/if}
 			</div>
 			{#each weekdays as day, index (day._id)}
 				<div class="flex gap-2 items-center group">
 					<span class="text-[10px] text-faint w-5 text-right shrink-0">{index}</span>
-					<Input bind:value={day.name} placeholder="Weekday name" containerClass="flex-1" />
+					<Input bind:value={day.name} placeholder="Weekday name" containerClass="flex-1" error={!day.name.trim() ? 'Required' : ''} />
 					<Input bind:value={day.abbreviation} placeholder="Abbr" containerClass="w-16" />
 					<button type="button" onclick={() => weekdays = weekdays.filter((_, i) => i !== index)} class="text-faint opacity-0 transition-opacity group-hover:opacity-100 hover:text-error">×</button>
 				</div>
@@ -299,7 +440,7 @@
 			{#each leapDays as ld, index (ld._id)}
 				<div class="border border-border-subtle p-4 space-y-3 bg-page">
 					<div class="flex items-center justify-between">
-						<Input bind:value={ld.name} placeholder="Leap day name" containerClass="flex-1" class="font-medium" />
+						<Input bind:value={ld.name} placeholder="Leap day name" containerClass="flex-1" class="font-medium" error={!ld.name.trim() ? 'Required' : ''} />
 						<button type="button" onclick={() => leapDays = leapDays.filter((_, i) => i !== index)} class="text-faint ml-2 text-sm hover:text-error">×</button>
 					</div>
 					<div class="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -326,7 +467,7 @@
 			{#each eras as era, index (era._id)}
 				<div class="border border-border-subtle p-4 space-y-3 bg-page">
 					<div class="flex items-center justify-between">
-						<Input bind:value={era.name} placeholder="Era name (e.g. FA, AD)" containerClass="flex-1" class="font-medium" />
+						<Input bind:value={era.name} placeholder="Era name (e.g. FA, AD)" containerClass="flex-1" class="font-medium" error={!era.name.trim() ? 'Required' : ''} />
 						<button type="button" onclick={() => eras = eras.filter((_, i) => i !== index)} class="text-faint ml-2 text-sm hover:text-error">×</button>
 					</div>
 					<div class="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -351,7 +492,7 @@
 						<input type="color" bind:value={moon.face_color} class="size-7 border border-border cursor-pointer" title="Lit color" />
 						<input type="color" bind:value={moon.shadow_color} class="size-7 border border-border cursor-pointer" title="Shadow color" />
 					</div>
-					<Input bind:value={moon.name} placeholder="Moon name" containerClass="flex-1" />
+					<Input bind:value={moon.name} placeholder="Moon name" containerClass="flex-1" error={!moon.name.trim() ? 'Required' : ''} />
 					<div class="flex items-center gap-1">
 						<Input type="number" bind:value={moon.cycle} step="0.01" containerClass="w-20" class="text-center" />
 						<span class="text-[10px] text-faint whitespace-nowrap">day cycle</span>
@@ -375,7 +516,7 @@
 				<div class="border border-border-subtle p-4 space-y-3 bg-page">
 					<div class="flex items-center gap-3">
 						<input type="color" bind:value={season.color} class="size-7 border border-border cursor-pointer shrink-0" />
-						<Input bind:value={season.name} placeholder="Season name" containerClass="flex-1" class="font-medium" />
+						<Input bind:value={season.name} placeholder="Season name" containerClass="flex-1" class="font-medium" error={!season.name.trim() ? 'Required' : ''} />
 						<Select type="single" bind:value={season.kind} items={[{ value: 'spring', label: 'Spring' }, { value: 'summer', label: 'Summer' }, { value: 'autumn', label: 'Autumn' }, { value: 'winter', label: 'Winter' }, { value: 'custom', label: 'Custom' }]} containerClass="w-24" size="sm" />
 						<button type="button" onclick={() => seasons = seasons.filter((_, i) => i !== index)} class="text-faint text-sm hover:text-error">×</button>
 					</div>
@@ -387,7 +528,7 @@
 						{:else}
 							<div class="flex items-center gap-1">
 								<span class="text-xs text-secondary">Lasts</span>
-								<Input type="number" bind:value={season.duration} min={1} containerClass="w-16" class="text-center" />
+								<Input type="number" bind:value={season.duration} min={1} containerClass="w-16" class="text-center" error={season.duration < 1 ? 'Min 1' : ''} />
 								<span class="text-xs text-faint">days</span>
 							</div>
 						{/if}
@@ -403,8 +544,30 @@
 			cancelHref="/calendar/{calendar.slug}"
 			{saving}
 			dirty={isDirty}
+			error={activeError}
+			ondiscard={resetDraft}
 			submitType="submit"
 			summaryName="summary"
 		/>
+
+		{#if permissions.canManageSettings}
+			<section class="border border-error-border bg-error-subtle/40 p-5 space-y-3">
+				<div>
+					<h2 class="text-sm font-semibold text-error">Danger Zone</h2>
+					<p class="text-xs text-faint mt-1">Delete this calendar and its linked article content. This cannot be undone.</p>
+				</div>
+				<div>
+					<button
+						type="button"
+						onclick={deleteCalendar}
+						class="px-4 py-2 text-sm border border-error-border text-error hover:bg-error-subtle"
+					>
+						Delete Calendar
+					</button>
+				</div>
+			</section>
+		{/if}
 	</form>
 </ArticleShell>
+
+<ConfirmDialog bind:this={confirmDialog} />

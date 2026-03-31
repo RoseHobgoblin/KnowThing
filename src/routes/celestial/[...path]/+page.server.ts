@@ -1,4 +1,4 @@
-import { error, redirect } from '@sveltejs/kit'
+import { error, fail, redirect } from '@sveltejs/kit'
 import type { Actions, PageServerLoad } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { starSystems, stars, planetaryBodies, contentRecords, contentRevisions } from '$lib/server/db/schema.js'
@@ -136,31 +136,35 @@ export const actions: Actions = {
 		const content = formData.get('content')?.toString() || ''
 		const editSummary = formData.get('summary')?.toString() || ''
 
-		if (!contentRecordId) throw error(400, 'Missing content record ID')
+		if (!contentRecordId) return fail(400, { error: 'Missing content record ID' })
 
 		const [existing] = await db
 			.select()
 			.from(contentRecords)
 			.where(eq(contentRecords.id, contentRecordId))
 
-		if (!existing) throw error(404, 'Content record not found')
+		if (!existing) return fail(404, { error: 'Content record not found' })
 
-		const sizeBytes = new TextEncoder().encode(content).length
-		const { plainText, ast } = await updateContentEffects(db, contentRecordId, content)
+		try {
+			const sizeBytes = new TextEncoder().encode(content).length
+			const { plainText, ast } = await updateContentEffects(db, contentRecordId, content)
 
-		await db
-			.update(contentRecords)
-			.set({ content, plainText, parsedAst: ast, sizeBytes, updatedAt: new Date() })
-			.where(eq(contentRecords.id, contentRecordId))
+			await db
+				.update(contentRecords)
+				.set({ content, plainText, parsedAst: ast, sizeBytes, updatedAt: new Date() })
+				.where(eq(contentRecords.id, contentRecordId))
 
-		await db.insert(contentRevisions).values({
-			contentRecordId,
-			title: existing.title,
-			content,
-			sizeBytes,
-			editSummary,
-			userId: user.id,
-		})
+			await db.insert(contentRevisions).values({
+				contentRecordId,
+				title: existing.title,
+				content,
+				sizeBytes,
+				editSummary,
+				userId: user.id,
+			})
+		} catch {
+			return fail(500, { error: 'Failed to save article changes' })
+		}
 
 		// Redirect back to the view page (strip /edit from the path)
 		const viewPath = event.url.pathname.replace(/\/(edit|configure)$/, '')

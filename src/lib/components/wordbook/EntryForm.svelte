@@ -3,6 +3,9 @@
 	import { PARTS_OF_SPEECH } from './constants.js'
 	import Input from '$lib/components/ui/Input.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
+	import UnsavedChangesGuard from '$lib/components/editor/UnsavedChangesGuard.svelte'
+	import StickyActionBar from '$lib/components/editor/StickyActionBar.svelte'
+	import FormNotice from '$lib/components/editor/FormNotice.svelte'
 
 	let {
 		languages = [],
@@ -30,30 +33,54 @@
 		submitLabel?: string
 		onsubmit: (data: Record<string, unknown>) => Promise<void>
 	} = $props()
+	const initialValues = {
+		word: initial.word || '',
+		languageIdStr: initial.languageId ? String(initial.languageId) : '',
+		pronunciation: initial.pronunciation || '',
+		etymology: initial.etymology || '',
+		notes: initial.notes || '',
+		pageSlug: initial.pageSlug || '',
+		tagsInput: initial.tags?.join(', ') || '',
+	}
+	const initialDefRows = initialDefinitions.length > 0
+		? initialDefinitions.map(d => ({
+			partOfSpeech: d.partOfSpeech || '',
+			definition: d.definition || '',
+			usageExample: d.usageExample || '',
+			usageTranslation: d.usageTranslation || '',
+		}))
+		: [{ partOfSpeech: '', definition: '', usageExample: '', usageTranslation: '' }]
 
-	let word = $state(initial.word || '')
-	let languageIdStr = $state(initial.languageId ? String(initial.languageId) : '')
+	type DefRow = { partOfSpeech: string, definition: string, usageExample: string, usageTranslation: string }
+	type EtymRow = { relationType: string, targetId: number | null, query: string, results: Array<{ id: number, word: string, definition: string, languageName: string, languageSlug: string }>, showDropdown: boolean }
+
+	let word = $state(initialValues.word)
+	let languageIdStr = $state(initialValues.languageIdStr)
 	let languageId = $derived(Number(languageIdStr) || 0)
-	let pronunciation = $state(initial.pronunciation || '')
-	let etymology = $state(initial.etymology || '')
-	let notes = $state(initial.notes || '')
-	let pageSlug = $state(initial.pageSlug || '')
-	let tagsInput = $state(initial.tags?.join(', ') || '')
+	let pronunciation = $state(initialValues.pronunciation)
+	let etymology = $state(initialValues.etymology)
+	let notes = $state(initialValues.notes)
+	let pageSlug = $state(initialValues.pageSlug)
+	let tagsInput = $state(initialValues.tagsInput)
 	let submitting = $state(false)
 	let error = $state('')
 
-	// Definitions
-	type DefRow = { partOfSpeech: string, definition: string, usageExample: string, usageTranslation: string }
-	let defs = $state<DefRow[]>(
-		initialDefinitions.length > 0
-			? initialDefinitions.map(d => ({
-				partOfSpeech: d.partOfSpeech || '',
-				definition: d.definition || '',
-				usageExample: d.usageExample || '',
-				usageTranslation: d.usageTranslation || '',
-			}))
-			: [{ partOfSpeech: '', definition: '', usageExample: '', usageTranslation: '' }],
-	)
+	let defs = $state<DefRow[]>(initialDefRows)
+
+	let etymRows = $state<EtymRow[]>([])
+	let searchTimeouts = new Map<number, ReturnType<typeof setTimeout>>()
+
+	const currentSnapshot = $derived(JSON.stringify({ word, languageIdStr, pronunciation, etymology, notes, pageSlug, tagsInput, defs, etymRows }))
+	const initialSnapshot = JSON.stringify({
+		...initialValues,
+		defs: initialDefRows,
+		etymRows: [],
+	})
+	const isDirty = $derived(currentSnapshot !== initialSnapshot)
+
+	onDestroy(() => {
+		for (const timer of searchTimeouts.values()) clearTimeout(timer)
+	})
 
 	function addDefinition() {
 		defs = [...defs, { partOfSpeech: '', definition: '', usageExample: '', usageTranslation: '' }]
@@ -64,32 +91,33 @@
 		defs = defs.filter((_, index_) => index_ !== index)
 	}
 
-	// Quick etymology relations
-	type EtymRow = { relationType: string, targetId: number | null, query: string, results: Array<{ id: number, word: string, definition: string, languageName: string, languageSlug: string }>, showDropdown: boolean }
-	let etymRows = $state<EtymRow[]>([])
-	let searchTimeouts = new Map<number, ReturnType<typeof setTimeout>>()
-
-	onDestroy(() => {
-		for (const timer of searchTimeouts.values()) clearTimeout(timer)
-	})
-
 	function addEtymRow() {
 		etymRows = [...etymRows, { relationType: 'derived_from', targetId: null, query: '', results: [], showDropdown: false }]
 	}
+
 	function removeEtymRow(index: number) {
 		etymRows = etymRows.filter((_, index_) => index_ !== index)
 	}
+
 	function handleEtymSearch(index: number) {
 		const row = etymRows[index]
 		row.targetId = null
 		const existing = searchTimeouts.get(index)
 		if (existing) clearTimeout(existing)
-		if (row.query.trim().length < 2) { row.results = []; row.showDropdown = false; return }
+		if (row.query.trim().length < 2) {
+			row.results = []
+			row.showDropdown = false
+			return
+		}
 		searchTimeouts.set(index, setTimeout(async () => {
 			const res = await fetch(`/api/wordbook?q=${encodeURIComponent(row.query.trim())}&limit=8`)
-			if (res.ok) { row.results = await res.json(); row.showDropdown = row.results.length > 0 }
+			if (res.ok) {
+				row.results = await res.json()
+				row.showDropdown = row.results.length > 0
+			}
 		}, 300))
 	}
+
 	function selectEtymTarget(index: number, r: EtymRow['results'][0]) {
 		const row = etymRows[index]
 		row.targetId = r.id
@@ -97,10 +125,21 @@
 		row.showDropdown = false
 	}
 
-	const partsOfSpeech = PARTS_OF_SPEECH
+	function resetForm() {
+		word = initialValues.word
+		languageIdStr = initialValues.languageIdStr
+		pronunciation = initialValues.pronunciation
+		etymology = initialValues.etymology
+		notes = initialValues.notes
+		pageSlug = initialValues.pageSlug
+		tagsInput = initialValues.tagsInput
+		defs = initialDefRows
+		etymRows = []
+		error = ''
+	}
 
 	const languageItems = $derived(languages.map(lang => ({ value: String(lang.id), label: lang.name })))
-	const posItems = $derived(partsOfSpeech.map(pos => ({ value: pos, label: pos })))
+	const posItems = $derived(PARTS_OF_SPEECH.map(pos => ({ value: pos, label: pos })))
 	const etymRelationItems = [
 		{ value: 'derived_from', label: 'Derived from' },
 		{ value: 'loan_from', label: 'Borrowed from' },
@@ -135,9 +174,7 @@
 					usageExample: d.usageExample.trim() || undefined,
 					usageTranslation: d.usageTranslation.trim() || undefined,
 				})),
-				relations: etymRows
-					.filter(r => r.targetId)
-					.map(r => ({ targetId: r.targetId, relationType: r.relationType })),
+				relations: etymRows.filter(r => r.targetId).map(r => ({ targetId: r.targetId, relationType: r.relationType })),
 			})
 		} catch (error_: any) {
 			error = error_.message || 'Failed to save'
@@ -151,22 +188,22 @@
 </script>
 
 <form onsubmit={handleSubmit} class="space-y-5">
+	<UnsavedChangesGuard when={isDirty && !submitting} />
+
 	{#if error}
-		<div class="p-3 bg-error-bg border border-error-border text-error-text text-sm">{error}</div>
+		<FormNotice title="Wordbook entry was not saved" message={error} />
 	{/if}
 
-	<!-- Headword fields -->
 	<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-		<Input label="Word" bind:value={word} required placeholder="kıraŧar" />
+		<Input label="Word" bind:value={word} required placeholder="kirathar" error={!word.trim() && error ? 'Word is required' : ''} />
 		<Select label="Language" bind:value={languageIdStr} type="single" items={languageItems} required placeholder="Select language..." />
-		<Input label="Pronunciation (IPA)" bind:value={pronunciation} placeholder="/kɪ.ra.θar/" />
+		<Input label="Pronunciation (IPA)" bind:value={pronunciation} placeholder="/ki.ra.thar/" />
 		<Input label="Tags" bind:value={tagsInput} placeholder="religion, astronomy" />
 	</div>
 
-	<!-- Definitions -->
 	<div>
 		<div class="flex items-center justify-between mb-2">
-			<label class={labelClass}>Definitions <span class="text-error">*</span></label>
+			<div class={labelClass}>Definitions <span class="text-error">*</span></div>
 			<button type="button" onclick={addDefinition} class="text-xs text-link hover:text-link-hover hover:underline">+ Add definition</button>
 		</div>
 
@@ -180,7 +217,7 @@
 				{/if}
 				<div class="grid grid-cols-1 gap-3 mb-2 md:grid-cols-4">
 					<Select bind:value={def.partOfSpeech} type="single" items={posItems} placeholder="Part of speech" size="sm" />
-					<Input bind:value={def.definition} placeholder="Definition text..." required={index === 0} containerClass="md:col-span-3" />
+					<Input bind:value={def.definition} placeholder="Definition text..." required={index === 0} containerClass="md:col-span-3" error={!def.definition.trim() && error ? 'Definition required' : ''} />
 				</div>
 				<div class="grid grid-cols-1 gap-3 md:grid-cols-2">
 					<Input bind:value={def.usageExample} placeholder="Usage example (in the language)" />
@@ -190,26 +227,22 @@
 		{/each}
 	</div>
 
-	<!-- Etymology, wiki link, notes -->
 	<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 		<Input label="Etymology Notes" bind:value={etymology} placeholder="Narrative etymology notes..." />
-		<Input label="Wiki Article" bind:value={pageSlug} placeholder="kıraŧar" />
+		<Input label="Wiki Article" bind:value={pageSlug} placeholder="kirathar" />
 	</div>
 
-	{#if notes !== undefined}
-		<div>
-			<Input label="Editorial Notes" bind:value={notes} placeholder="Needs verification..." />
-		</div>
-	{/if}
+	<div>
+		<Input label="Editorial Notes" bind:value={notes} placeholder="Needs verification..." />
+	</div>
 
-	<!-- Quick Etymology Links -->
 	<div>
 		<div class="flex items-center justify-between mb-2">
-			<label class={labelClass}>Etymology Links</label>
+			<div class={labelClass}>Etymology Links</div>
 			<button type="button" onclick={addEtymRow} class="text-xs text-link hover:text-link-hover hover:underline">+ Add source word</button>
 		</div>
 		{#if etymRows.length === 0}
-			<p class="text-xs text-faint">Click "+ Add source word" to link derivations, loans, or compounds. You can also add these on the word's page later.</p>
+			<p class="text-xs text-faint">Click "+ Add source word" to link derivations, loans, or compounds.</p>
 		{/if}
 		{#each etymRows as row, index}
 			<div class="flex gap-2 items-start mb-2">
@@ -222,22 +255,12 @@
 						onfocus={() => { if (row.results.length > 0) row.showDropdown = true }}
 						onblur={() => setTimeout(() => row.showDropdown = false, 200)}
 						placeholder="Search for a word..."
-						class="
-							w-full px-3 py-1.5 text-sm text-body bg-surface border border-border-strong outline-none transition-colors
-							placeholder:text-faint hover:border-border focus:ring-2 focus:ring-accent focus:border-accent-border
-							{row.targetId ? 'border-success-border bg-success-bg' : ''}"
+						class="w-full px-3 py-1.5 text-sm text-body bg-surface border border-border-strong outline-none transition-colors placeholder:text-faint hover:border-border focus:ring-2 focus:ring-accent focus:border-accent-border {row.targetId ? 'border-success-border bg-success-bg' : ''}"
 					/>
 					{#if row.showDropdown}
-						<div class="
-							absolute z-10 top-full inset-x-0 mt-1 bg-surface border border-border shadow-lg
-							max-h-40 overflow-y-auto
-						">
+						<div class="absolute z-10 top-full inset-x-0 mt-1 bg-surface border border-border shadow-lg max-h-40 overflow-y-auto">
 							{#each row.results as result}
-								<button type="button" onclick={() => selectEtymTarget(index, result)} class="
-									w-full text-left px-3 py-1.5 text-sm border-b border-border-subtle
-									hover:bg-accent-subtle
-									last:border-0
-								">
+								<button type="button" onclick={() => selectEtymTarget(index, result)} class="w-full text-left px-3 py-1.5 text-sm border-b border-border-subtle hover:bg-accent-subtle last:border-0">
 									<span class="font-medium">{result.word}</span>
 									<span class="text-faint text-xs ml-1">({result.languageName})</span>
 								</button>
@@ -245,18 +268,17 @@
 						</div>
 					{/if}
 				</div>
-				<button type="button" onclick={() => removeEtymRow(index)} class="text-error text-sm p-1 hover:text-error-hover">×</button>
+				<button type="button" onclick={() => removeEtymRow(index)} class="text-error text-sm p-1 hover:text-error-hover">x</button>
 			</div>
 		{/each}
 	</div>
 
-	<div class="pt-2">
-		<button type="submit" disabled={submitting} class="
-			px-6 py-2.5 bg-accent text-surface font-medium transition-colors
-			hover:bg-accent-hover
-			disabled:opacity-50
-		">
-			{submitting ? 'Saving...' : submitLabel}
-		</button>
-	</div>
+	<StickyActionBar
+		dirty={isDirty}
+		saving={submitting}
+		error={error}
+		saveType="submit"
+		ondiscard={resetForm}
+		saveLabel={submitLabel}
+	/>
 </form>

@@ -1,5 +1,6 @@
 <script lang="ts">
-	import type { PageData } from './$types.js'
+	import type { ActionData, PageData } from './$types.js'
+	import { enhance } from '$app/forms'
 	import WikiNodeComponent from '$lib/renderer/WikiNode.svelte'
 	import { createKnowContext } from '$lib/renderer/context.js'
 	import { page } from '$app/stores'
@@ -18,8 +19,11 @@
 	import LivePreview from '$lib/components/LivePreview.svelte'
 	import SaveStatusBadge from '$lib/components/editor/SaveStatusBadge.svelte'
 	import UnsavedChangesGuard from '$lib/components/editor/UnsavedChangesGuard.svelte'
+	import RecordModeBanner from '$lib/components/editor/RecordModeBanner.svelte'
+	import FormNotice from '$lib/components/editor/FormNotice.svelte'
+	import StickyActionBar from '$lib/components/editor/StickyActionBar.svelte'
 
-	let { data }: { data: PageData } = $props()
+	let { data, form }: { data: PageData, form: ActionData } = $props()
 
 	const kind = data.kind
 	const permissions = $derived($page.data.permissions)
@@ -90,6 +94,12 @@
 			: new Map([['name', raw.name ?? '']]),
 	)
 	const isDirty = $derived(content !== (data.wikiContent ?? '') || editSummary.trim().length > 0)
+	const saveError = $derived(form?.error ?? '')
+
+	function resetArticleDraft() {
+		content = data.wikiContent ?? ''
+		editSummary = ''
+	}
 </script>
 
 <svelte:head>
@@ -117,10 +127,22 @@
 	<!-- EDIT MODE -->
 	<div>
 		<UnsavedChangesGuard when={isDirty && !saving} />
-		<form method="POST" class="flex flex-col h-[calc(100vh-5rem)]" onsubmit={() => (saving = true)}>
+		<form method="POST" use:enhance={() => { saving = true; return async ({ update }) => { saving = false; await update() } }} class="flex flex-col h-[calc(100vh-5rem)]">
 			<input type="hidden" name="content" value={content} />
 			<input type="hidden" name="contentRecordId" value={data.contentRecordId ?? ''} />
 			<input type="hidden" name="summary" value={editSummary} />
+
+			<RecordModeBanner
+				modeLabel="Edit Article"
+				title="Celestial Article Editor"
+				description="Edit reference prose here. Structured celestial properties belong in Configure Record."
+			/>
+
+			{#if saveError}
+				<div class="px-6 pt-4">
+					<FormNotice title="Article changes were not saved" message={saveError} />
+				</div>
+			{/if}
 
 			<!-- Top bar -->
 			<div class="flex items-center justify-between px-6 py-2 bg-surface border-b border-border">
@@ -128,7 +150,7 @@
 					Editing: <span class="text-heading">{raw.name}</span>
 				</h1>
 				<div class="flex items-center gap-2">
-					<SaveStatusBadge dirty={isDirty} {saving} />
+					<SaveStatusBadge dirty={isDirty} {saving} error={saveError} />
 					<button
 						type="button"
 						onclick={() => (showPreview = !showPreview)}
@@ -155,18 +177,21 @@
 				{/if}
 			</div>
 
-			<!-- Bottom bar -->
-			<div class="flex flex-col items-stretch gap-2 px-6 py-2.5 bg-surface border-t border-border sm:flex-row sm:items-center sm:gap-3">
+			<div class="space-y-3 border-t border-border bg-surface px-6 py-3">
 				<input
 					type="text"
 					bind:value={editSummary}
 					placeholder="Edit summary (optional)"
-					class="flex-1 border border-border px-3 py-2 text-sm bg-page text-body focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent-border"
+					class="w-full border border-border px-3 py-2 text-sm bg-page text-body focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent-border"
 				/>
-				<div class="flex gap-2">
-					<button type="submit" class="flex-1 bg-accent text-accent-text px-5 py-2 font-medium transition-colors text-sm sm:flex-none hover:bg-accent-hover">Save</button>
-					<a href={viewPath} class="flex-1 text-center px-5 py-2 border border-border text-secondary text-sm sm:flex-none hover:bg-raised">Cancel</a>
-				</div>
+				<StickyActionBar
+					dirty={isDirty}
+					{saving}
+					error={saveError}
+					saveType="submit"
+					ondiscard={resetArticleDraft}
+					cancelHref={viewPath}
+				/>
 			</div>
 		</form>
 	</div>
@@ -192,6 +217,28 @@
 				<span class="text-faint text-sm">View only. Editor role required for celestial changes.</span>
 			{/if}
 		{/snippet}
+			<RecordModeBanner
+				modeLabel="View Record"
+				title="Celestial Detail"
+				description={kind === 'system'
+					? 'This page shows the system map and linked celestial records. Use Configure or Edit to change structured data or article prose.'
+					: 'This page shows structured celestial data alongside article prose. Use Configure for system data and Edit for article content.'}
+			>
+				{#snippet actions()}
+					{#if permissions.canEditContent || permissions.canConfigureCelestial}
+						{#if kind !== 'system' && permissions.canConfigureCelestial}
+							<a href={configurePath} class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover">
+								<GearSix size={14} weight="fill" />Configure Record
+							</a>
+						{/if}
+						{#if permissions.canEditContent}
+							<a href={editPath} class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover">
+								<PencilSimple size={14} weight="fill" />Edit Article
+							</a>
+						{/if}
+					{/if}
+				{/snippet}
+			</RecordModeBanner>
 			{#if kind === 'system'}
 				<!-- System: two-column layout -->
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-[1fr_280px]">
@@ -238,13 +285,23 @@
 
 				<!-- Prose below the two-column section -->
 				{#if strippedAst}
-					<article class="know-article mt-4">
-						<WikiNodeComponent node={strippedAst} />
-					</article>
+					<section class="space-y-3 mt-4">
+						<div>
+							<h3 class="text-sm font-semibold text-heading">Article Content</h3>
+							<p class="text-xs text-faint">Reference prose and documentation for this system.</p>
+						</div>
+						<article class="know-article">
+							<WikiNodeComponent node={strippedAst} />
+						</article>
+					</section>
+				{:else if !data.wikiContent}
+					<div class="border border-border-subtle bg-raised p-4 mt-4">
+						<p class="text-dim italic">No article content yet.</p>
+					</div>
 				{/if}
 			{:else}
 				<!-- Star/Planet: standard infobox + prose layout -->
-				<article class="know-article">
+				<div class="space-y-4">
 					{#if kind === 'star'}
 						<InfoboxStar fields={infoboxFields} />
 					{:else}
@@ -252,11 +309,21 @@
 					{/if}
 
 					{#if strippedAst}
-						<WikiNodeComponent node={strippedAst} />
+						<section class="space-y-3">
+							<div>
+								<h3 class="text-sm font-semibold text-heading">Article Content</h3>
+								<p class="text-xs text-faint">Reference prose and documentation for this {kind}.</p>
+							</div>
+							<article class="know-article">
+								<WikiNodeComponent node={strippedAst} />
+							</article>
+						</section>
 					{:else if !data.wikiContent}
-						<p class="text-dim italic mt-4">No article content yet.</p>
+						<div class="border border-border-subtle bg-raised p-4">
+							<p class="text-dim italic">No article content yet.</p>
+						</div>
 					{/if}
-				</article>
+				</div>
 			{/if}
 	</ArticleShell>
 {/if}

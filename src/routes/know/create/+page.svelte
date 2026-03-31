@@ -3,42 +3,54 @@
 	import { enhance } from '$app/forms'
 	import Editor from '$lib/components/Editor.svelte'
 	import LivePreview from '$lib/components/LivePreview.svelte'
+	import Input from '$lib/components/ui/Input.svelte'
+	import SaveStatusBadge from '$lib/components/editor/SaveStatusBadge.svelte'
+	import UnsavedChangesGuard from '$lib/components/editor/UnsavedChangesGuard.svelte'
+	import RecordModeBanner from '$lib/components/editor/RecordModeBanner.svelte'
+	import FormNotice from '$lib/components/editor/FormNotice.svelte'
 
 	let { form, data }: { form: ActionData, data: PageData } = $props()
 	let content = $state(form?.content ?? '')
 	let showPreview = $state(true)
 	let submitting = $state(false)
+	let title = $state(form?.title ?? data.suggestedTitle)
+	const isDirty = $derived(content.trim().length > 0 || title.trim().length > 0)
+	const titleError = $derived(form?.error && !title.trim() ? form.error : '')
+	const formError = $derived(titleError ? '' : (form?.error ?? ''))
 </script>
 
 <svelte:head>
 	<title>Create page - KnowThing</title>
 </svelte:head>
 
-<h1 class="text-xl font-bold mb-3">Create new page</h1>
+<RecordModeBanner
+	modeLabel="Create Article"
+	title="New Wiki Article"
+	description="Create a new article page here. Structured record configuration lives in domain-specific configure screens."
+/>
 
-{#if form?.error}
-	<div class="bg-error-bg border border-error-border text-error-text px-4 py-2 mb-3 text-sm">
-		{form.error}
+{#if formError}
+	<div class="mb-3">
+		<FormNotice title="Article was not created" message={formError} />
 	</div>
 {/if}
 
+<UnsavedChangesGuard when={isDirty && !submitting} />
 <form method="POST" use:enhance={() => { submitting = true; return async ({ update }) => { submitting = false; await update() } }} class="flex flex-col" style="height: calc(100vh - 220px);">
 	<input type="hidden" name="content" value={content} />
 
 	<div class="flex items-center gap-4 mb-3">
 		<div class="flex-1">
-			<input
+			<Input
 				name="title"
 				type="text"
 				required
 				placeholder="Page title"
-				value={form?.title ?? data.suggestedTitle}
-				class="
-					w-full border border-border-strong px-3 py-1.5 text-sm
-					focus:outline-none focus:ring-2 focus:ring-accent
-				"
+				bind:value={title}
+				error={titleError}
 			/>
 		</div>
+		<SaveStatusBadge dirty={isDirty} saving={submitting} error={formError || titleError} />
 		<button
 			onclick={() => (showPreview = !showPreview)}
 			type="button"

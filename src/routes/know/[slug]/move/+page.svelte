@@ -1,57 +1,79 @@
 <script lang="ts">
 	import type { PageData, ActionData } from './$types.js'
 	import { enhance } from '$app/forms'
+	import Input from '$lib/components/ui/Input.svelte'
+	import SaveStatusBadge from '$lib/components/editor/SaveStatusBadge.svelte'
+	import UnsavedChangesGuard from '$lib/components/editor/UnsavedChangesGuard.svelte'
+	import RecordModeBanner from '$lib/components/editor/RecordModeBanner.svelte'
+	import FormNotice from '$lib/components/editor/FormNotice.svelte'
 
 	let { data, form }: { data: PageData, form: ActionData } = $props()
 	let submitting = $state(false)
+	let title = $state(form?.title ?? data.title)
+	let slug = $state(form?.slug ?? data.slug)
+	const isDirty = $derived(title !== data.title || slug !== data.slug)
+	const titleError = $derived(form?.error === 'Title is required' ? form.error : '')
+	const slugError = $derived(form?.error === 'Slug is required' ? form.error : '')
+	const formError = $derived(
+		form?.error && form.error !== titleError && form.error !== slugError ? form.error : '',
+	)
 </script>
 
 <svelte:head>
-	<title>Move: {data.title} — KnowThing</title>
+	<title>Move: {data.title} - KnowThing</title>
 </svelte:head>
 
 <div class="bg-surface shadow-sm border border-border p-6 max-w-lg">
-	<h1 class="text-xl font-bold text-heading mb-1">Move / Rename Page</h1>
-	<p class="text-sm text-dim mb-6">
-		Moving <a href="/know/{data.slug}" class="text-link hover:underline">{data.title}</a>
-	</p>
+	<RecordModeBanner
+		modeLabel="Move Article"
+		title="Rename or relocate article"
+		description="Change the article title and canonical slug here. Content stays the same; this only updates the record identity."
+	/>
 
-	{#if form?.error}
-		<div class="bg-error-bg border border-error-border p-3 mb-4 text-sm text-error-text">
-			{form.error}
+	{#if formError}
+		<div class="mt-4">
+			<FormNotice title="Article move was not saved" message={formError} />
 		</div>
 	{/if}
 
-	<form method="POST" use:enhance={() => { submitting = true; return async ({ update }) => { submitting = false; await update() } }} class="space-y-4">
-		<div>
-			<label for="title" class="block text-sm font-medium text-secondary mb-1">New title</label>
-			<input
-				type="text"
-				id="title"
-				name="title"
-				value={data.title}
-				required
-				class="
-					w-full border border-border px-3 py-2 text-sm
-					focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent-border
-				"
-			/>
+	<UnsavedChangesGuard when={isDirty && !submitting} />
+	<form
+		method="POST"
+		use:enhance={() => {
+			submitting = true
+			return async ({ update }) => {
+				submitting = false
+				await update()
+			}
+		}}
+		class="space-y-4"
+	>
+		<div class="flex items-center justify-between gap-3 pt-4">
+			<p class="text-sm text-dim">
+				Moving <a href="/know/{data.slug}" class="text-link hover:underline">{data.title}</a>
+			</p>
+			<SaveStatusBadge dirty={isDirty} saving={submitting} error={formError || titleError || slugError} />
 		</div>
+
+		<Input
+			label="New title"
+			name="title"
+			required
+			bind:value={title}
+			error={titleError}
+		/>
 
 		<div>
 			<label for="slug" class="block text-sm font-medium text-secondary mb-1">New URL slug</label>
 			<div class="flex items-center gap-1 text-sm text-faint">
 				<span>/know/</span>
-				<input
-					type="text"
+				<Input
 					id="slug"
 					name="slug"
-					value={data.slug}
 					required
-					class="
-						flex-1 border border-border px-3 py-2 text-sm
-						focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent-border
-					"
+					bind:value={slug}
+					containerClass="flex-1"
+					error={slugError}
 				/>
 			</div>
 		</div>

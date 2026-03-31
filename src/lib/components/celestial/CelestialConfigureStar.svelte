@@ -8,6 +8,9 @@
 	import { goto } from '$app/navigation'
 	import UnsavedChangesGuard from '$lib/components/editor/UnsavedChangesGuard.svelte'
 	import SaveStatusBadge from '$lib/components/editor/SaveStatusBadge.svelte'
+	import FormNotice from '$lib/components/editor/FormNotice.svelte'
+	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
+	import { page } from '$app/stores'
 
 	let {
 		star,
@@ -22,6 +25,7 @@
 		contentRecordId: number | null
 		parentCrumbs: { label: string, href: string }[]
 	} = $props()
+	let confirmDialog: ReturnType<typeof ConfirmDialog>
 
 	const viewPath = parentCrumbs.length > 0
 		? `${parentCrumbs.at(-1)!.href}/${star.slug}`
@@ -89,13 +93,52 @@
 		apparentMagnitude, angularDiameter, companion, systemId: systemIdStr, description, content,
 	}))
 	const isDirty = $derived(currentSnapshot !== initialSnapshot || editSummary.trim().length > 0)
+	const permissions = $derived($page.data.permissions)
+	const validationIssues = $derived.by(() => {
+		const issues: string[] = []
+		if (semiMajorAxisAu !== null && semiMajorAxisAu < 0) issues.push('Semi-major axis must be zero or greater.')
+		if (eccentricity !== null && (eccentricity < 0 || eccentricity > 1)) issues.push('Eccentricity must be between 0 and 1.')
+		if (epochPhase !== null && (epochPhase < 0 || epochPhase > 1)) issues.push('Epoch phase must be between 0 and 1.')
+		return issues
+	})
 
 	const systemItems = $derived([
 		{ value: '', label: 'None' },
 		...allSystems.map(s => ({ value: String(s.id), label: s.name })),
 	])
 
+	function resetDraft() {
+		spectralType = star.spectralType ?? ''
+		mass = star.mass ?? ''
+		radius = star.radius ?? ''
+		luminosity = star.luminosity ?? ''
+		luminosityVisual = star.luminosityVisual ?? ''
+		temperature = star.temperature ?? ''
+		age = star.age ?? ''
+		color = star.color ?? ''
+		orbitalPeriod = star.orbitalPeriod ?? ''
+		semiMajorAxis = star.semiMajorAxis ?? ''
+		semiMajorAxisAu = star.semiMajorAxisAu ?? null
+		eccentricity = star.eccentricity ?? null
+		epochPhase = star.epochPhase ?? null
+		periastron = star.periastron ?? ''
+		apastron = star.apastron ?? ''
+		apparentMagnitude = star.apparentMagnitude ?? ''
+		angularDiameter = star.angularDiameter ?? ''
+		companion = star.companion ?? ''
+		systemIdStr = star.systemId ? String(star.systemId) : ''
+		description = star.description ?? ''
+		content = wikiContent ?? ''
+		editSummary = ''
+		saveError = ''
+	}
+
 	async function save() {
+		if (validationIssues.length > 0) {
+			saveError = 'Review the orbital fields below before saving.'
+			return
+		}
+
 		saving = true
 		saveError = ''
 		try {
@@ -151,6 +194,26 @@
 			saving = false
 		}
 	}
+
+	async function deleteStar() {
+		const ok = await confirmDialog.confirm(
+			'Delete star',
+			`Delete "${star.name}"? This cannot be undone and may affect child records.`,
+			'Delete Star',
+			'Cancel',
+		)
+		if (!ok) return
+
+		const response = await fetch(`/api/stars/${star.slug}`, { method: 'DELETE' })
+		if (!response.ok) {
+			const body = await response.json().catch(() => ({}))
+			pushError(body.error || 'Failed to delete star')
+			return
+		}
+
+		pushSuccess('Star deleted')
+		goto(parentCrumbs.at(-1)?.href ?? '/celestial')
+	}
 </script>
 
 <ArticleShell
@@ -166,6 +229,33 @@
 			</div>
 			<SaveStatusBadge dirty={isDirty} {saving} error={saveError} {savedAt} />
 		</div>
+		{#if saveError}
+			<FormNotice title="Star changes were not saved" message={saveError} />
+		{/if}
+		{#if validationIssues.length > 0}
+			<FormNotice tone="warning" title="Star draft needs attention" messages={validationIssues} />
+		{/if}
+		<section class="bg-page border border-border-subtle p-5">
+			<h2 class="text-sm font-semibold text-heading border-b border-border-subtle pb-2">Current Summary</h2>
+			<div class="grid grid-cols-1 gap-4 pt-3 md:grid-cols-4">
+				<div>
+					<div class="text-xs font-medium text-secondary">System</div>
+					<div class="text-sm text-body">{systemItems.find(item => item.value === systemIdStr)?.label || 'Standalone'}</div>
+				</div>
+				<div>
+					<div class="text-xs font-medium text-secondary">Classification</div>
+					<div class="text-sm text-body">{spectralType || 'Unspecified star'}</div>
+				</div>
+				<div>
+					<div class="text-xs font-medium text-secondary">Orbit Summary</div>
+					<div class="text-sm text-body">{semiMajorAxisAu ?? '—'} AU, e={eccentricity ?? '—'}</div>
+				</div>
+				<div>
+					<div class="text-xs font-medium text-secondary">Article State</div>
+					<div class="text-sm text-body">{content.trim() ? 'Article content present' : 'No article content yet'}</div>
+				</div>
+			</div>
+		</section>
 		<!-- Identity -->
 		<section class="bg-raised border border-border-subtle p-5 space-y-4">
 			<h2 class="text-sm font-semibold text-heading border-b border-border-subtle pb-2">Identity</h2>
@@ -199,9 +289,9 @@
 				<Input label="Companion" bind:value={companion} placeholder="Binary partner name" />
 				<Input label="Orbital Period" bind:value={orbitalPeriod} placeholder="79.91 years" />
 				<Input label="Semi-major Axis" bind:value={semiMajorAxis} placeholder="23.4 AU" />
-				<Input label="Semi-major Axis (AU)" type="number" bind:value={semiMajorAxisAu} step="any" placeholder="23.4" />
-				<Input label="Eccentricity" type="number" bind:value={eccentricity} step="any" min={0} max={1} placeholder="0.0" />
-				<Input label="Epoch Phase" type="number" bind:value={epochPhase} step="any" placeholder="0.0" />
+				<Input label="Semi-major Axis (AU)" type="number" bind:value={semiMajorAxisAu} step="any" placeholder="23.4" error={semiMajorAxisAu !== null && semiMajorAxisAu < 0 ? 'Must be 0 or greater' : ''} />
+				<Input label="Eccentricity" type="number" bind:value={eccentricity} step="any" min={0} max={1} placeholder="0.0" error={eccentricity !== null && (eccentricity < 0 || eccentricity > 1) ? 'Use a value from 0 to 1' : ''} />
+				<Input label="Epoch Phase" type="number" bind:value={epochPhase} step="any" placeholder="0.0" error={epochPhase !== null && (epochPhase < 0 || epochPhase > 1) ? 'Use a value from 0 to 1' : ''} />
 				<Input label="Periastron" bind:value={periastron} placeholder="Closest approach" />
 				<Input label="Apastron" bind:value={apastron} placeholder="Furthest distance" />
 			</div>
@@ -226,6 +316,27 @@
 			error={saveError}
 			{savedAt}
 			onsave={save}
+			ondiscard={resetDraft}
 		/>
+
+		{#if permissions.canManageSettings}
+			<section class="border border-error-border bg-error-subtle/40 p-5 space-y-3">
+				<div>
+					<h2 class="text-sm font-semibold text-error">Danger Zone</h2>
+					<p class="text-xs text-faint mt-1">Delete this star record. Child records that depend on it may also be affected.</p>
+				</div>
+				<div>
+					<button
+						type="button"
+						onclick={deleteStar}
+						class="px-4 py-2 text-sm border border-error-border text-error hover:bg-error-subtle"
+					>
+						Delete Star
+					</button>
+				</div>
+			</section>
+		{/if}
 	</div>
 </ArticleShell>
+
+<ConfirmDialog bind:this={confirmDialog} />

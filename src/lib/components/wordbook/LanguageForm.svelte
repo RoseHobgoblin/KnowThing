@@ -2,6 +2,9 @@
 	import Input from '$lib/components/ui/Input.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
 	import Label from '$lib/components/ui/Label.svelte'
+	import UnsavedChangesGuard from '$lib/components/editor/UnsavedChangesGuard.svelte'
+	import StickyActionBar from '$lib/components/editor/StickyActionBar.svelte'
+	import FormNotice from '$lib/components/editor/FormNotice.svelte'
 	import { urlSlugify } from '$lib/utils/slugify.js'
 
 	let {
@@ -26,23 +29,49 @@
 		onsubmit: (data: Record<string, unknown>) => Promise<void>
 		submitLabel?: string
 	} = $props()
+	const initialValues = {
+		name: initial.name || '',
+		slug: initial.slug || '',
+		nativeName: initial.nativeName || '',
+		script: initial.script || 'Latin',
+		family: initial.family || '',
+		color: initial.color || 'var(--color-accent)',
+		description: initial.description || '',
+		pageSlug: initial.pageSlug || '',
+		parentLanguageId: initial.parentLanguageId ?? null,
+		languageType: initial.languageType || 'language',
+	}
 
-	const isEditing = !!initial.name
+	const isEditing = !!initialValues.name
 
-	let name = $state(initial.name || '')
-	let slug = $state(initial.slug || '')
-	let nativeName = $state(initial.nativeName || '')
-	let script = $state(initial.script || 'Latin')
-	let family = $state(initial.family || '')
-	let color = $state(initial.color || 'var(--color-accent)')
-	let description = $state(initial.description || '')
-	let pageSlug = $state(initial.pageSlug || '')
-	let parentLanguageId = $state<number | null>(initial.parentLanguageId ?? null)
-	let languageType = $state(initial.languageType || 'language')
+	let name = $state(initialValues.name)
+	let slug = $state(initialValues.slug)
+	let nativeName = $state(initialValues.nativeName)
+	let script = $state(initialValues.script)
+	let family = $state(initialValues.family)
+	let color = $state(initialValues.color)
+	let description = $state(initialValues.description)
+	let pageSlug = $state(initialValues.pageSlug)
+	let parentLanguageId = $state<number | null>(initialValues.parentLanguageId)
+	let languageType = $state(initialValues.languageType)
 	let submitting = $state(false)
 	let error = $state('')
 
-	// String wrapper for Select component (which works with string values)
+	const currentSnapshot = $derived(JSON.stringify({
+		name,
+		slug,
+		nativeName,
+		script,
+		family,
+		color,
+		description,
+		pageSlug,
+		parentLanguageId,
+		languageType,
+	}))
+	const initialSnapshot = JSON.stringify(initialValues)
+	const isDirty = $derived(currentSnapshot !== initialSnapshot)
+
 	let parentLanguageIdStr = $derived(parentLanguageId === null ? '' : String(parentLanguageId))
 
 	function setParentLanguageId(v: string) {
@@ -60,7 +89,8 @@
 		{ value: 'historical', label: 'Historical' },
 	]
 
-	// Auto-generate slug from name (only when creating)
+	const slugify = urlSlugify
+
 	function updateSlug() {
 		if (isEditing) return
 		if (!slug || slug === slugify(name.slice(0, -1))) {
@@ -68,12 +98,30 @@
 		}
 	}
 
-	const slugify = urlSlugify
+	function resetForm() {
+		name = initialValues.name
+		slug = initialValues.slug
+		nativeName = initialValues.nativeName
+		script = initialValues.script
+		family = initialValues.family
+		color = initialValues.color
+		description = initialValues.description
+		pageSlug = initialValues.pageSlug
+		parentLanguageId = initialValues.parentLanguageId
+		languageType = initialValues.languageType
+		error = ''
+	}
 
 	async function handleSubmit(e: SubmitEvent) {
 		e.preventDefault()
-		if (!name.trim()) { error = 'Name is required'; return }
-		if (!isEditing && !slug.trim()) { error = 'Slug is required'; return }
+		if (!name.trim()) {
+			error = 'Name is required'
+			return
+		}
+		if (!isEditing && !slug.trim()) {
+			error = 'Slug is required'
+			return
+		}
 
 		error = ''
 		submitting = true
@@ -91,7 +139,7 @@
 				languageType,
 			})
 		} catch (error_: any) {
-			error = error_.message
+			error = error_.message || 'Failed to save language'
 		} finally {
 			submitting = false
 		}
@@ -101,14 +149,16 @@
 </script>
 
 <form onsubmit={handleSubmit} class="space-y-4">
+	<UnsavedChangesGuard when={isDirty && !submitting} />
+
 	{#if error}
-		<div class="p-3 bg-error-bg border border-error-border text-error text-sm">{error}</div>
+		<FormNotice title="Language changes were not saved" message={error} />
 	{/if}
 
 	<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-		<Input label="Name" bind:value={name} oninput={updateSlug} required placeholder="Oncheran" />
+		<Input label="Name" bind:value={name} oninput={updateSlug} required placeholder="Oncheran" error={!name.trim() && error ? 'Name is required' : ''} />
 		{#if !isEditing}
-			<Input label="Slug" bind:value={slug} required placeholder="oncheran" />
+			<Input label="Slug" bind:value={slug} required placeholder="oncheran" error={!slug.trim() && error ? 'Slug is required' : ''} />
 		{/if}
 		<Input label="Native Name" bind:value={nativeName} placeholder="Ontsserako" />
 		<Select
@@ -158,12 +208,12 @@
 		<textarea id="desc" bind:value={description} rows={3} class={textareaClass} placeholder="A brief description of this language..."></textarea>
 	</div>
 
-	<div class="pt-2">
-		<button type="submit" disabled={submitting} class="
-			px-6 py-2.5 bg-accent text-surface font-medium transition-colors
-			hover:bg-accent-hover disabled:opacity-50
-		">
-			{submitting ? 'Saving...' : submitLabel}
-		</button>
-	</div>
+	<StickyActionBar
+		dirty={isDirty}
+		saving={submitting}
+		error={error}
+		saveType="submit"
+		ondiscard={resetForm}
+		saveLabel={submitLabel}
+	/>
 </form>

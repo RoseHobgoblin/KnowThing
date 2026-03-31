@@ -29,14 +29,14 @@ export const actions: Actions = {
 		const newTitle = (formData.get('title') as string)?.trim()
 		const newSlug = (formData.get('slug') as string)?.trim() || slugify(newTitle || '')
 
-		if (!newTitle) return fail(400, { error: 'Title is required' })
-		if (!newSlug) return fail(400, { error: 'Slug is required' })
+		if (!newTitle) return fail(400, { error: 'Title is required', title: newTitle ?? '', slug: newSlug })
+		if (!newSlug) return fail(400, { error: 'Slug is required', title: newTitle, slug: newSlug ?? '' })
 
 		try {
 			await moveKnowPage({ slug: oldSlug, newTitle, newSlug, userId: user.id })
 		} catch (error_: unknown) {
 			if (isHttpError(error_) && error_.status === 409) {
-				return fail(409, { error: error_.body?.message ?? error_.message })
+				return fail(409, { error: error_.body?.message ?? error_.message, title: newTitle, slug: newSlug })
 			}
 			throw error_
 		}

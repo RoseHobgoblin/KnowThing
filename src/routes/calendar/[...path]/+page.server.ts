@@ -1,4 +1,4 @@
-import { error, redirect } from '@sveltejs/kit'
+import { error, fail, redirect } from '@sveltejs/kit'
 import type { Actions, PageServerLoad } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { calendars, contentRecords, contentRevisions } from '$lib/server/db/schema.js'
@@ -13,7 +13,6 @@ import { resolveDisplay } from '$lib/calendar/date-math.js'
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const pathSegments = (params.path || '').split('/').filter(Boolean)
 
-	// Empty path → hub mode
 	if (pathSegments.length === 0) {
 		const allCalendars = await db
 			.select()
@@ -30,7 +29,6 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		return { mode: 'hub' as const, calendars: configs, primary }
 	}
 
-	// Detect configure mode
 	const isConfigure = pathSegments.at(-1) === 'configure'
 	if (isConfigure) pathSegments.pop()
 
@@ -45,17 +43,14 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		}
 	}
 
-	// Load calendar by slug
 	const [cal] = await db.select().from(calendars).where(sql`LOWER(${calendars.slug}) = LOWER(${slug})`)
 	if (!cal) throw error(404, 'Calendar not found')
 
-	// Canonical redirect
 	if (cal.slug !== slug && !isConfigure) throw redirect(301, `/calendar/${cal.slug}`)
 
 	const config = buildCalendarConfig(cal)
 	const resolved = resolveDisplay(config)
 
-	// Load wiki content
 	let wikiContent = ''
 	let ast = null
 	let contentRecordId: number | null = null
@@ -82,7 +77,6 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	}
 }
 
-/** Save action for configure mode */
 export const actions: Actions = {
 	default: async (event) => {
 		const user = requireEditor(event)
@@ -93,35 +87,39 @@ export const actions: Actions = {
 		const staticDataJson = formData.get('staticData')?.toString() || '{}'
 		const editSummary = formData.get('summary')?.toString() || ''
 
-		if (!calendarId) throw error(400, 'Missing calendar ID')
+		if (!calendarId) return fail(400, { error: 'Missing calendar ID' })
 
 		const [cal] = await db.select().from(calendars).where(eq(calendars.id, calendarId))
-		if (!cal) throw error(404, 'Calendar not found')
+		if (!cal) return fail(404, { error: 'Calendar not found' })
 
-		// Save static data
 		try {
 			const staticData = JSON.parse(staticDataJson)
 			await db.update(calendars).set({ staticData }).where(eq(calendars.id, calendarId))
-		} catch { /* ignore bad JSON — keep existing config */ }
+		} catch {
+			return fail(400, { error: 'Calendar configuration is invalid' })
+		}
 
-		// Save prose content
-		if (contentRecordId) {
-			const sizeBytes = new TextEncoder().encode(content).length
-			const { plainText, ast } = await updateContentEffects(db, contentRecordId, content)
+		try {
+			if (contentRecordId) {
+				const sizeBytes = new TextEncoder().encode(content).length
+				const { plainText, ast } = await updateContentEffects(db, contentRecordId, content)
 
-			await db
-				.update(contentRecords)
-				.set({ content, plainText, parsedAst: ast, sizeBytes, updatedAt: new Date() })
-				.where(eq(contentRecords.id, contentRecordId))
+				await db
+					.update(contentRecords)
+					.set({ content, plainText, parsedAst: ast, sizeBytes, updatedAt: new Date() })
+					.where(eq(contentRecords.id, contentRecordId))
 
-			await db.insert(contentRevisions).values({
-				contentRecordId,
-				title: cal.name,
-				content,
-				sizeBytes,
-				editSummary,
-				userId: user.id,
-			})
+				await db.insert(contentRevisions).values({
+					contentRecordId,
+					title: cal.name,
+					content,
+					sizeBytes,
+					editSummary,
+					userId: user.id,
+				})
+			}
+		} catch {
+			return fail(500, { error: 'Failed to save calendar changes' })
 		}
 
 		throw redirect(302, `/calendar/${cal.slug}`)

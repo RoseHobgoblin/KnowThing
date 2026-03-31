@@ -1,4 +1,4 @@
-import { error, redirect } from '@sveltejs/kit'
+import { error, fail, redirect } from '@sveltejs/kit'
 import type { Actions, PageServerLoad } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { contentRecords } from '$lib/server/db/schema.js'
@@ -25,7 +25,12 @@ export const actions: Actions = {
 		const formData = await event.request.formData()
 		const content = formData.get('content')?.toString() || ''
 		const editSummary = formData.get('summary')?.toString() || ''
-		await updateKnowPage({ slug, content, editSummary, userId: user.id })
+
+		try {
+			await updateKnowPage({ slug, content, editSummary, userId: user.id })
+		} catch {
+			return fail(500, { error: 'Failed to save article changes' })
+		}
 
 		throw redirect(302, `/know/${slug}`)
 	},

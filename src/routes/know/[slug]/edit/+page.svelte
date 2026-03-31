@@ -3,11 +3,18 @@
 	import { enhance } from '$app/forms'
 	import Editor from '$lib/components/Editor.svelte'
 	import LivePreview from '$lib/components/LivePreview.svelte'
+	import SaveStatusBadge from '$lib/components/editor/SaveStatusBadge.svelte'
+	import UnsavedChangesGuard from '$lib/components/editor/UnsavedChangesGuard.svelte'
+	import RecordModeBanner from '$lib/components/editor/RecordModeBanner.svelte'
+	import FormNotice from '$lib/components/editor/FormNotice.svelte'
 
 	let { form, data }: { form: ActionData, data: PageData } = $props()
 	let content = $state(data.content)
 	let showPreview = $state(true)
 	let submitting = $state(false)
+	let editSummary = $state('')
+	const isDirty = $derived(content !== data.content || editSummary.trim().length > 0)
+	const saveError = $derived(form?.error ?? '')
 </script>
 
 <svelte:head>
@@ -15,8 +22,22 @@
 </svelte:head>
 
 <div>
+	<UnsavedChangesGuard when={isDirty && !submitting} />
 	<form method="POST" use:enhance={() => { submitting = true; return async ({ update }) => { submitting = false; await update() } }} class="flex flex-col h-[calc(100vh-5rem)]">
 		<input type="hidden" name="content" value={content} />
+		<input type="hidden" name="summary" value={editSummary} />
+
+		<RecordModeBanner
+			modeLabel="Edit Article"
+			title="Wiki Article Editor"
+			description="Edit article prose and wiki markup here. Structured record changes belong in configure screens."
+		/>
+
+		{#if saveError}
+			<div class="px-6 pt-4">
+				<FormNotice title="Article changes were not saved" message={saveError} />
+			</div>
+		{/if}
 
 		<!-- Top bar -->
 		<div class="flex items-center justify-between px-6 py-2 bg-surface border-b border-border">
@@ -24,6 +45,7 @@
 				Editing: <span class="text-heading">{data.title}</span>
 			</h1>
 			<div class="flex items-center gap-2">
+				<SaveStatusBadge dirty={isDirty} saving={submitting} error={saveError} />
 				<button
 					type="button"
 					onclick={() => (showPreview = !showPreview)}
@@ -64,8 +86,8 @@
 			sm:flex-row sm:items-center sm:gap-3
 		">
 			<input
-				name="summary"
 				type="text"
+				bind:value={editSummary}
 				placeholder="Edit summary (optional)"
 				class="
 					flex-1 border border-border px-3 py-2 text-sm bg-page text-body

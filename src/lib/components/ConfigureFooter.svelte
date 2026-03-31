@@ -2,8 +2,7 @@
 	import Editor from '$lib/components/Editor.svelte'
 	import LivePreview from '$lib/components/LivePreview.svelte'
 	import Input from '$lib/components/ui/Input.svelte'
-	import Button from '$lib/components/ui/Button.svelte'
-	import SaveStatusBadge from '$lib/components/editor/SaveStatusBadge.svelte'
+	import StickyActionBar from '$lib/components/editor/StickyActionBar.svelte'
 
 	let {
 		initialContent = '',
@@ -15,6 +14,7 @@
 		error = '',
 		savedAt = null,
 		onsave,
+		ondiscard,
 		submitType = 'button',
 		summaryName,
 	}: {
@@ -27,6 +27,7 @@
 		error?: string
 		savedAt?: Date | null
 		onsave?: () => void
+		ondiscard?: () => void
 		/** Set to 'submit' for native form submission (CalendarConfigure) */
 		submitType?: 'button' | 'submit'
 		/** Set a name attribute on the summary input for native form submission */
@@ -60,17 +61,18 @@
 </section>
 
 <!-- Submit -->
-<div class="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:gap-3">
-	<Input bind:value={editSummary} name={summaryName} placeholder="Edit summary (optional)" containerClass="flex-1" />
-	<div class="flex items-center gap-2 self-start sm:self-auto">
-		<SaveStatusBadge {dirty} {saving} {error} {savedAt} />
+<div class="space-y-3">
+	<div class="rounded-sm border border-border bg-page px-4 py-3">
+		<Input bind:value={editSummary} name={summaryName} placeholder="Edit summary (optional)" />
 	</div>
-	<div class="flex gap-2 sm:ml-auto">
-		{#if submitType === 'submit'}
-			<Button type="submit" disabled={saving}>Save</Button>
-		{:else}
-			<Button onclick={onsave} loading={saving} disabled={saving}>Save</Button>
-		{/if}
-		<Button variant="secondary" href={cancelHref}>Cancel</Button>
-	</div>
+	<StickyActionBar
+		{dirty}
+		{saving}
+		{error}
+		{savedAt}
+		saveType={submitType}
+		onsave={onsave}
+		ondiscard={ondiscard}
+		cancelHref={cancelHref}
+	/>
 </div>

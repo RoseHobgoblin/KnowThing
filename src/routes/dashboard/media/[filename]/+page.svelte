@@ -1,32 +1,47 @@
 <script lang="ts">
 	import type { PageData } from './$types.js'
 	import { page } from '$app/stores'
-	import { invalidateAll } from '$app/navigation'
-	import { goto } from '$app/navigation'
+	import { invalidateAll, goto } from '$app/navigation'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
+	import UnsavedChangesGuard from '$lib/components/editor/UnsavedChangesGuard.svelte'
+	import StickyActionBar from '$lib/components/editor/StickyActionBar.svelte'
+	import FormNotice from '$lib/components/editor/FormNotice.svelte'
+	import RecordModeBanner from '$lib/components/editor/RecordModeBanner.svelte'
 
 	let { data }: { data: PageData } = $props()
 
 	let description = $state(data.file.description || '')
 	let categoriesInput = $state(data.categories.join(', '))
 	let saving = $state(false)
+	let saveError = $state('')
+	let savedAt = $state<Date | null>(null)
 	let copied = $state(false)
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
 
 	const layoutData = $derived($page.data)
 	const permissions = $derived(layoutData.permissions)
 	const canManageMedia = $derived(permissions.canManageMedia)
+	const currentSnapshot = $derived(JSON.stringify({ description, categoriesInput }))
+	let savedSnapshot = $state(JSON.stringify({ description: data.file.description || '', categoriesInput: data.categories.join(', ') }))
+	const isDirty = $derived(currentSnapshot !== savedSnapshot)
 
 	function formatBytes(bytes: number | null): string {
-		if (!bytes) return '—'
+		if (!bytes) return '-'
 		if (bytes < 1024) return `${bytes} B`
 		if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`
 		return `${(bytes / 1048576).toFixed(1)} MB`
 	}
 
+	function resetDraft() {
+		description = data.file.description || ''
+		categoriesInput = data.categories.join(', ')
+		saveError = ''
+	}
+
 	async function saveDetails() {
 		saving = true
+		saveError = ''
 		try {
 			const res = await fetch(`/api/media/${encodeURIComponent(data.file.filename)}`, {
 				method: 'PUT',
@@ -37,10 +52,14 @@
 				}),
 			})
 			if (res.ok) {
-				pushSuccess('Description saved')
+				savedSnapshot = currentSnapshot
+				savedAt = new Date()
+				pushSuccess('File details saved')
 				invalidateAll()
 			} else {
-				pushError('Failed to save description')
+				const body = await res.json().catch(() => ({}))
+				saveError = body.error || 'Failed to save file details'
+				pushError(saveError)
 			}
 		} finally {
 			saving = false
@@ -48,40 +67,46 @@
 	}
 
 	async function deleteFile() {
-		const ok = await confirmDialog.confirm('Delete file', `Delete "${data.file.filename}"? This cannot be undone.${data.usage.length > 0 ? ` Warning: used in ${data.usage.length} page(s).` : ''}`, 'Delete', 'Cancel')
+		const ok = await confirmDialog.confirm(
+			'Delete file',
+			`Delete "${data.file.filename}"? This cannot be undone.${data.usage.length > 0 ? ` Warning: used in ${data.usage.length} page(s).` : ''}`,
+			'Delete file',
+			'Cancel',
+		)
 		if (!ok) return
 		const res = await fetch(`/api/media/${encodeURIComponent(data.file.filename)}`, { method: 'DELETE' })
 		if (res.ok) {
 			pushSuccess('File deleted')
 			goto('/dashboard/media')
 		} else {
-			pushError('Failed to delete file')
+			const body = await res.json().catch(() => ({}))
+			pushError(body.error || 'Failed to delete file')
 		}
 	}
 
 	function copyWikitext() {
 		navigator.clipboard.writeText(`[[File:${data.file.filename}|thumb|Caption]]`)
 		copied = true
-		setTimeout(() => copied = false, 2000)
+		setTimeout(() => (copied = false), 2000)
 	}
 </script>
 
 <svelte:head>
-	<title>{data.file.filename} — Media — KnowThing</title>
+	<title>{data.file.filename} - Media - KnowThing</title>
 </svelte:head>
 
+<UnsavedChangesGuard when={isDirty && !saving} />
+
 <div class="space-y-6">
-	<!-- Breadcrumb -->
 	<nav class="text-sm text-dim">
 		<a href="/dashboard" class="hover:text-link">Dashboard</a>
-		<span class="mx-1">›</span>
+		<span class="mx-1">></span>
 		<a href="/dashboard/media" class="hover:text-link">Media</a>
-		<span class="mx-1">›</span>
+		<span class="mx-1">></span>
 		<span class="text-secondary">{data.file.filename}</span>
 	</nav>
 
 	<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-		<!-- Image preview -->
 		<div class="lg:col-span-2">
 			<div class="bg-surface border border-border overflow-hidden">
 				<div class="bg-raised p-4 flex items-center justify-center min-h-[300px]">
@@ -92,7 +117,6 @@
 					/>
 				</div>
 
-				<!-- Thumbnails -->
 				{#if data.file.hasThumb150 || data.file.hasThumb300 || data.file.hasThumb600}
 					<div class="px-4 py-3 border-t border-border-subtle">
 						<div class="text-xs font-medium text-dim mb-2">Thumbnails</div>
@@ -120,44 +144,46 @@
 				{/if}
 			</div>
 
-			<!-- Description & Categories -->
-			<div class="bg-surface border border-border p-4 mt-4">
-				<h3 class="text-sm font-semibold text-body mb-3">Details</h3>
+			<div class="bg-surface border border-border p-4 mt-4 space-y-4">
+				<RecordModeBanner
+					modeLabel="Configure Media"
+					title="File Details"
+					description="Edit metadata, categories, and usage-facing details for this file."
+				/>
+
+				{#if saveError}
+					<FormNotice title="Media details were not saved" message={saveError} />
+				{/if}
+
 				<div class="space-y-3">
 					<div>
 						<label for="desc" class="block text-xs font-medium text-secondary mb-1">Description</label>
-						<textarea id="desc" bind:value={description} rows={3} class="
-							w-full px-3 py-2 border border-border-strong text-sm
-							focus:outline-none focus:ring-2 focus:ring-accent
-						" placeholder="Describe this file..."></textarea>
+						<textarea
+							id="desc"
+							bind:value={description}
+							rows={3}
+							class="w-full px-3 py-2 border border-border-strong text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+							placeholder="Describe this file..."
+						></textarea>
 					</div>
 					<div>
 						<label for="cats" class="block text-xs font-medium text-secondary mb-1">Categories <span class="text-faint">(comma-separated)</span></label>
-						<input id="cats" type="text" bind:value={categoriesInput} class="
-							w-full px-3 py-2 border border-border-strong text-sm
-							focus:outline-none focus:ring-2 focus:ring-accent
-						" placeholder="flags, maps, portraits" />
+						<input
+							id="cats"
+							type="text"
+							bind:value={categoriesInput}
+							class="w-full px-3 py-2 border border-border-strong text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+							placeholder="flags, maps, portraits"
+						/>
 					</div>
-					{#if canManageMedia}
-						<div class="flex items-center gap-3">
-							<button onclick={saveDetails} disabled={saving} class="
-								px-4 py-1.5 bg-accent text-surface text-sm transition-colors
-								hover:bg-accent-hover
-								disabled:opacity-50
-							">
-								{saving ? 'Saving...' : 'Save'}
-							</button>
-						</div>
-					{:else}
+					{#if !canManageMedia}
 						<p class="text-xs text-faint">Editor role required to change file details.</p>
 					{/if}
 				</div>
 			</div>
 		</div>
 
-		<!-- Sidebar -->
 		<div class="space-y-4">
-			<!-- Metadata -->
 			<div class="bg-surface border border-border p-4">
 				<h3 class="text-sm font-semibold text-body mb-3">File Info</h3>
 				<dl class="text-sm space-y-2">
@@ -182,7 +208,7 @@
 					{#if data.file.width && data.file.height}
 						<div class="flex justify-between">
 							<dt class="text-dim">Dimensions</dt>
-							<dd class="text-body">{data.file.width} × {data.file.height}</dd>
+							<dd class="text-body">{data.file.width} x {data.file.height}</dd>
 						</div>
 					{/if}
 					<div class="flex justify-between">
@@ -195,33 +221,20 @@
 							<dd class="text-body">{data.uploaderName}</dd>
 						</div>
 					{/if}
-					{#if data.file.hash}
-						<div class="flex justify-between">
-							<dt class="text-dim">Hash</dt>
-							<dd class="text-secondary font-mono text-[10px] truncate max-w-[120px]" title={data.file.hash}>{data.file.hash.slice(0, 12)}…</dd>
-						</div>
-					{/if}
 				</dl>
 			</div>
 
-			<!-- Actions -->
 			<div class="bg-surface border border-border p-4">
 				<h3 class="text-sm font-semibold text-body mb-3">Actions</h3>
 				<div class="space-y-2">
-					<button onclick={copyWikitext} class="
-						w-full text-left px-3 py-2 text-sm text-link transition-colors
-						hover:bg-accent-subtle
-					">
+					<button onclick={copyWikitext} class="w-full text-left px-3 py-2 text-sm text-link transition-colors hover:bg-accent-subtle">
 						{copied ? 'Copied!' : 'Copy wikitext'}
 					</button>
 					<a href="/api/media/{data.file.filename}" target="_blank" class="block px-3 py-2 text-sm text-secondary transition-colors hover:bg-page">
-						View full size ↗
+						View full size ->
 					</a>
 					{#if canManageMedia}
-						<button onclick={deleteFile} class="
-							w-full text-left px-3 py-2 text-sm text-error transition-colors
-							hover:bg-error-bg
-						">
+						<button onclick={deleteFile} class="w-full text-left px-3 py-2 text-sm text-error transition-colors hover:bg-error-bg">
 							Delete file{data.usage.length > 0 ? ` (used in ${data.usage.length} pages)` : ''}
 						</button>
 					{:else if permissions.isAuthenticated}
@@ -230,44 +243,32 @@
 				</div>
 			</div>
 
-			<!-- Usage -->
 			<div class="bg-surface border border-border p-4">
 				<h3 class="text-sm font-semibold text-body mb-3">Used in {data.usage.length} {data.usage.length === 1 ? 'page' : 'pages'}</h3>
 				{#if data.usage.length > 0}
 					<ul class="text-sm space-y-1">
 						{#each data.usage as slug}
-							<li>
-								<a href="/know/{slug}" class="text-link hover:text-link-hover hover:underline">{slug.replaceAll('_', ' ')}</a>
-							</li>
+							<li><a href="/know/{slug}" class="text-link hover:text-link-hover hover:underline">{slug.replaceAll('_', ' ')}</a></li>
 						{/each}
 					</ul>
 				{:else}
 					<p class="text-sm text-faint">Not used in any pages.</p>
 				{/if}
 			</div>
-
-			<!-- History -->
-			{#if data.history.length > 0}
-				<div class="bg-surface border border-border p-4">
-					<h3 class="text-sm font-semibold text-body mb-3">History</h3>
-					<div class="space-y-2">
-						{#each data.history as entry}
-							<div class="text-xs text-dim">
-								<span class="font-medium text-secondary">{entry.username || 'Unknown'}</span>
-								{entry.action === 'upload' ? 'uploaded' : entry.action === 'reupload' ? 'reuploaded' : entry.action === 'describe' ? 'updated description' : entry.action}
-								<span class="text-faint">
-									{new Date(entry.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-								</span>
-								{#if entry.details}
-									<div class="text-faint mt-0.5">{entry.details}</div>
-								{/if}
-							</div>
-						{/each}
-					</div>
-				</div>
-			{/if}
 		</div>
 	</div>
+
+	{#if canManageMedia}
+		<StickyActionBar
+			dirty={isDirty}
+			{saving}
+			error={saveError}
+			{savedAt}
+			onsave={saveDetails}
+			ondiscard={resetDraft}
+			saveLabel="Save details"
+		/>
+	{/if}
 </div>
 
 <ConfirmDialog bind:this={confirmDialog} />
