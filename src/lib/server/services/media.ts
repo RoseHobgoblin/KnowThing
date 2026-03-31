@@ -48,6 +48,13 @@ export async function uploadMediaFile(userId: number, file: File) {
 
 	const originalFilename = file.name
 	const filename = file.name.replaceAll(/[^\p{L}\p{N}_.-]/gu, '_')
+	const existingFile = await getMediaRecord(filename)
+	if (existingFile) {
+		throw error(
+			409,
+			`A file stored as "${filename}" already exists after filename normalization. Rename the file and upload again.`,
+		)
+	}
 
 	await mkdir(UPLOAD_DIR, { recursive: true })
 	await mkdir(THUMB_DIR, { recursive: true })
@@ -87,7 +94,6 @@ export async function uploadMediaFile(userId: number, file: File) {
 		}
 	}
 
-	const existingFile = await getMediaRecord(filename)
 	const [record] = await db
 		.insert(media)
 		.values({
@@ -105,29 +111,12 @@ export async function uploadMediaFile(userId: number, file: File) {
 			hasThumb300,
 			hasThumb600,
 		})
-		.onConflictDoUpdate({
-			target: media.filename,
-			set: {
-				filepath,
-				mimeType: file.type,
-				sizeBytes: buffer.length,
-				width,
-				height,
-				hash,
-				uploadedBy: userId,
-				originalFilename,
-				hasThumb150,
-				hasThumb300,
-				hasThumb600,
-				uploadedAt: new Date(),
-			},
-		})
 		.returning()
 
 	await db.insert(mediaHistory).values({
 		filename,
 		userId,
-		action: existingFile ? 'reupload' : 'upload',
+		action: 'upload',
 		details: `${file.type}, ${(buffer.length / 1024).toFixed(0)}KB${width ? `, ${width}x${height}` : ''}`,
 	})
 

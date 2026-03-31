@@ -3,9 +3,13 @@ import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { contentRecords, contentRevisions } from '$lib/server/db/schema.js'
 import { eq, and } from 'drizzle-orm'
+import { requireRole } from '$lib/server/auth.js'
 
 /** GET /api/pages/:slug/history/:revisionId — get specific revision */
-export const GET: RequestHandler = async ({ params }) => {
+export const GET: RequestHandler = async (event) => {
+	requireRole(event, 'editor')
+	const { params } = event
+
 	const id = Number.parseInt(params.revisionId)
 	if (isNaN(id)) throw error(400, 'Invalid revision ID')
 

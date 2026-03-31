@@ -3,9 +3,12 @@ import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { contentRecords, contentRevisions, users } from '$lib/server/db/schema.js'
 import { eq, and, desc } from 'drizzle-orm'
+import { requireRole } from '$lib/server/auth.js'
 
 /** GET /api/pages/:slug/history — revision list */
-export const GET: RequestHandler = async ({ params }) => {
+export const GET: RequestHandler = async (event) => {
+	requireRole(event, 'editor')
+	const { params } = event
 	const [record] = await db
 		.select({ id: contentRecords.id })
 		.from(contentRecords)

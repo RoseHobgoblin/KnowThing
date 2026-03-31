@@ -4,7 +4,7 @@ import { db } from '$lib/server/db/index.js'
 import { planetaryBodies, stars } from '$lib/server/db/schema.js'
 import { requireRole } from '$lib/server/auth.js'
 import { eq, sql } from 'drizzle-orm'
-import { updatePlanetaryBodySchema } from '$lib/celestial/schema.js'
+import { createPlanetaryBodySchema, updatePlanetaryBodySchema } from '$lib/celestial/schema.js'
 import { isDescendant } from '$lib/server/celestial/tree.js'
 
 /** GET /api/planetary-bodies/:slug */
@@ -44,10 +44,15 @@ export const PUT: RequestHandler = async (event) => {
 
 	// Get current body for circular ref check
 	const [current] = await db
-		.select({ id: planetaryBodies.id, starId: planetaryBodies.starId })
+		.select()
 		.from(planetaryBodies)
 		.where(eq(planetaryBodies.slug, event.params.slug))
 	if (!current) return json({ error: 'Body not found' }, { status: 404 })
+
+	const merged = createPlanetaryBodySchema.safeParse({ ...current, ...data })
+	if (!merged.success) {
+		return json({ error: merged.error.issues[0].message }, { status: 400 })
+	}
 
 	// Circular reference prevention
 	if (data.parentId != null && await isDescendant(current.id, data.parentId)) {

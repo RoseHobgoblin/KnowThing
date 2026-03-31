@@ -4,7 +4,7 @@ import { db } from '$lib/server/db/index.js'
 import { stars, starSystems } from '$lib/server/db/schema.js'
 import { requireRole } from '$lib/server/auth.js'
 import { eq, sql } from 'drizzle-orm'
-import { updateStarSchema } from '$lib/celestial/schema.js'
+import { createStarSchema, updateStarSchema } from '$lib/celestial/schema.js'
 
 /** GET /api/stars/:slug */
 export const GET: RequestHandler = async ({ params }) => {
@@ -34,9 +34,14 @@ export const PUT: RequestHandler = async (event) => {
 	}
 
 	const data = parsed.data
-	const [current] = await db.select({ id: stars.id }).from(stars).where(eq(stars.slug, event.params.slug))
+	const [current] = await db.select().from(stars).where(eq(stars.slug, event.params.slug))
 	if (!current) {
 		return json({ error: 'Star not found' }, { status: 404 })
+	}
+
+	const merged = createStarSchema.safeParse({ ...current, ...data })
+	if (!merged.success) {
+		return json({ error: merged.error.issues[0].message }, { status: 400 })
 	}
 
 	if (data.systemId != null) {

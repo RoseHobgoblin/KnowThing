@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 const nullableUnitIntervalSchema = z.number().min(0).max(1).nullish()
 
-export const createSystemSchema = z.object({
+const systemSchema = z.object({
 	name: z.string().min(1),
 	slug: z.string().min(1),
 	pageSlug: z.string().nullish(),
@@ -11,9 +11,10 @@ export const createSystemSchema = z.object({
 	extra: z.record(z.string(), z.unknown()).optional(),
 })
 
-export const updateSystemSchema = createSystemSchema.partial()
+export const createSystemSchema = systemSchema
+export const updateSystemSchema = systemSchema.partial()
 
-export const createStarSchema = z.object({
+const starSchema = z.object({
 	name: z.string().min(1),
 	slug: z.string().min(1),
 	pageSlug: z.string().nullish(),
@@ -44,7 +45,9 @@ export const createStarSchema = z.object({
 
 	extra: z.record(z.string(), z.unknown()).optional(),
 	description: z.string().optional(),
-}).superRefine((data, ctx) => {
+})
+
+function validateStarState(data: Partial<z.infer<typeof starSchema>>, ctx: z.RefinementCtx) {
 	const hasOrbitalData = data.companion != null
 		|| data.orbitalPeriod != null
 		|| data.semiMajorAxis != null
@@ -69,36 +72,12 @@ export const createStarSchema = z.object({
 			message: 'Companion stars must belong to a system',
 		})
 	}
-})
+}
 
-export const updateStarSchema = createStarSchema.partial().superRefine((data, ctx) => {
-	const hasOrbitalData = data.companion != null
-		|| data.orbitalPeriod != null
-		|| data.semiMajorAxis != null
-		|| data.semiMajorAxisAu != null
-		|| data.eccentricity != null
-		|| data.epochPhase != null
-		|| data.periastron != null
-		|| data.apastron != null
+export const createStarSchema = starSchema.superRefine(validateStarState)
+export const updateStarSchema = starSchema.partial().superRefine(validateStarState)
 
-	if (hasOrbitalData && data.systemId === null) {
-		ctx.addIssue({
-			code: z.ZodIssueCode.custom,
-			path: ['systemId'],
-			message: 'Stars with orbital data must belong to a system',
-		})
-	}
-
-	if (data.parentStarId != null && data.systemId === null) {
-		ctx.addIssue({
-			code: z.ZodIssueCode.custom,
-			path: ['systemId'],
-			message: 'Companion stars must belong to a system',
-		})
-	}
-})
-
-export const createPlanetaryBodySchema = z.object({
+const planetaryBodySchema = z.object({
 	name: z.string().min(1),
 	slug: z.string().min(1),
 	bodyType: z.enum(['planet', 'moon', 'dwarf_planet', 'asteroid', 'ring_system']).default('planet'),
@@ -139,7 +118,9 @@ export const createPlanetaryBodySchema = z.object({
 
 	extra: z.record(z.string(), z.unknown()).optional(),
 	description: z.string().optional(),
-}).superRefine((data, ctx) => {
+})
+
+function validatePlanetaryBodyState(data: Partial<z.infer<typeof planetaryBodySchema>>, ctx: z.RefinementCtx) {
 	if ((data.bodyType === 'moon' || data.bodyType === 'ring_system') && data.parentId == null) {
 		ctx.addIssue({
 			code: z.ZodIssueCode.custom,
@@ -155,22 +136,7 @@ export const createPlanetaryBodySchema = z.object({
 			message: 'Celestial bodies must be assigned to a parent star',
 		})
 	}
-})
+}
 
-export const updatePlanetaryBodySchema = createPlanetaryBodySchema.partial().superRefine((data, ctx) => {
-	if ((data.bodyType === 'moon' || data.bodyType === 'ring_system') && data.parentId === null) {
-		ctx.addIssue({
-			code: z.ZodIssueCode.custom,
-			path: ['parentId'],
-			message: `${data.bodyType === 'moon' ? 'Moons' : 'Ring systems'} must orbit a parent body`,
-		})
-	}
-
-	if (data.parentId != null && data.starId === null) {
-		ctx.addIssue({
-			code: z.ZodIssueCode.custom,
-			path: ['starId'],
-			message: 'Bodies that orbit another body must still belong to a parent star',
-		})
-	}
-})
+export const createPlanetaryBodySchema = planetaryBodySchema.superRefine(validatePlanetaryBodyState)
+export const updatePlanetaryBodySchema = planetaryBodySchema.partial().superRefine(validatePlanetaryBodyState)

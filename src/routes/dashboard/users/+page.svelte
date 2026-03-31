@@ -125,12 +125,13 @@
 	</div>
 
 	<!-- Registration codes -->
-	<section class="bg-surface border border-border p-5 space-y-4">
-		<h2 class="text-sm font-semibold text-heading">Registration Codes</h2>
-		<p class="text-xs text-faint">Generate invite codes for new users. Each code can be used once.</p>
-		{#if permissions.canGenerateInviteCodes && !isOwner}
-			<p class="text-xs text-faint">Owner role is required to generate admin invite codes.</p>
-		{/if}
+		<section class="bg-surface border border-border p-5 space-y-4">
+			<h2 class="text-sm font-semibold text-heading">Registration Codes</h2>
+			<p class="text-xs text-faint">Generate invite codes for new users. Each code can be used once.</p>
+			<p class="text-xs text-faint">Codes are only shown in full when they are first generated.</p>
+			{#if permissions.canGenerateInviteCodes && !isOwner}
+				<p class="text-xs text-faint">Owner role is required to generate admin invite codes.</p>
+			{/if}
 
 		<div class="flex gap-3 items-end">
 			<Select
@@ -160,6 +161,9 @@
 							<code class="text-secondary font-mono">{code.code}</code>
 							<div class="flex items-center gap-2">
 								<span class="text-faint">{code.role}</span>
+								{#if code.isOwnerOnlyRole}
+									<span class="text-faint">owner-only</span>
+								{/if}
 								{#if code.usedBy}
 									<span class="text-accent">used</span>
 								{:else if code.expiresAt && new Date(code.expiresAt) < new Date()}
