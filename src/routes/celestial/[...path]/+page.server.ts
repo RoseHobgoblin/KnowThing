@@ -4,7 +4,8 @@ import { db } from '$lib/server/db/index.js'
 import { starSystems, stars, planetaryBodies, contentRecords, contentRevisions } from '$lib/server/db/schema.js'
 import { eq, sql } from 'drizzle-orm'
 import { parseWikitext } from '$lib/parser/index.js'
-import { requireAuth } from '$lib/server/auth.js'
+import { hasRole } from '$lib/server/auth.js'
+import { requireEditor } from '$lib/server/guards.js'
 import { updateContentEffects } from '$lib/server/content-effects.js'
 import { resolveStructuredData } from '$lib/server/structured-data.js'
 
@@ -18,14 +19,20 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	const slug = pathSegments.at(-1)!
 
 	// Require auth for edit/configure mode
-	if ((isEditMode || isConfigureMode) && !locals.user) {
-		redirect(302, `/auth/login?redirect=${encodeURIComponent(`/celestial/${params.path}`)}`)
+	if (isEditMode || isConfigureMode) {
+		if (!locals.user) {
+			throw redirect(302, `/auth/login?redirect=${encodeURIComponent(`/celestial/${params.path}`)}`)
+		}
+		if (!hasRole(locals.user.role, 'editor')) {
+			const viewPath = `/celestial/${pathSegments.join('/')}`
+			throw redirect(302, viewPath)
+		}
 	}
 
 	// Try systems first, then stars, then planetary bodies (case-insensitive, also match by page_slug)
 	const [system] = await db.select().from(starSystems).where(sql`LOWER(${starSystems.slug}) = LOWER(${slug}) OR LOWER(${starSystems.pageSlug}) = LOWER(${slug})`)
 	if (system) {
-		if (system.slug !== slug && !isEditMode) redirect(301, `/celestial/${system.slug}`)
+		if (system.slug !== slug && !isEditMode) throw redirect(301, `/celestial/${system.slug}`)
 		const content = await getContent(system.contentRecordId)
 		// Fetch stars + bodies for system map (include orbital data)
 		const systemStars = await db.execute(sql`
@@ -74,7 +81,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		}
 		const canonicalPath = parentSystem ? `/celestial/${parentSystem.slug}/${star.slug}` : `/celestial/${star.slug}`
 		const inputPath = `/celestial/${pathSegments.join('/')}`
-		if (canonicalPath !== inputPath && !isEditMode) redirect(301, canonicalPath)
+		if (canonicalPath !== inputPath && !isEditMode) throw redirect(301, canonicalPath)
 
 		const allSystems = await db.select({ id: starSystems.id, name: starSystems.name }).from(starSystems).orderBy(starSystems.name)
 		const content = await getContent(star.contentRecordId)
@@ -99,7 +106,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		}
 		const canonicalPath = parentSystem ? `/celestial/${parentSystem.slug}/${planet.slug}` : `/celestial/${planet.slug}`
 		const inputPath = `/celestial/${pathSegments.join('/')}`
-		if (canonicalPath !== inputPath && !isEditMode) redirect(301, canonicalPath)
+		if (canonicalPath !== inputPath && !isEditMode) throw redirect(301, canonicalPath)
 
 		const parentCrumbs: { label: string, href: string }[] = []
 		if (parentSystem) {
@@ -117,26 +124,26 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		return { kind: 'planet' as const, body: planet, allStars, siblings, isEditMode, isConfigureMode, parentCrumbs, infoboxFields: infoboxFields ? Object.fromEntries(infoboxFields) : null, ...content }
 	}
 
-	error(404, 'Celestial body not found')
+	throw error(404, 'Celestial body not found')
 }
 
 /** Save prose content for a celestial body */
 export const actions: Actions = {
 	default: async (event) => {
-		const user = requireAuth(event)
+		const user = requireEditor(event)
 		const formData = await event.request.formData()
 		const contentRecordId = Number(formData.get('contentRecordId'))
 		const content = formData.get('content')?.toString() || ''
 		const editSummary = formData.get('summary')?.toString() || ''
 
-		if (!contentRecordId) error(400, 'Missing content record ID')
+		if (!contentRecordId) throw error(400, 'Missing content record ID')
 
 		const [existing] = await db
 			.select()
 			.from(contentRecords)
 			.where(eq(contentRecords.id, contentRecordId))
 
-		if (!existing) error(404, 'Content record not found')
+		if (!existing) throw error(404, 'Content record not found')
 
 		const sizeBytes = new TextEncoder().encode(content).length
 		const { plainText, ast } = await updateContentEffects(db, contentRecordId, content)
@@ -157,7 +164,7 @@ export const actions: Actions = {
 
 		// Redirect back to the view page (strip /edit from the path)
 		const viewPath = event.url.pathname.replace(/\/(edit|configure)$/, '')
-		redirect(302, viewPath)
+		throw redirect(302, viewPath)
 	},
 }
 

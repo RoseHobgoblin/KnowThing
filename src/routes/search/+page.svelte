@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { PageData } from './$types.js'
 	import { sanitizeSnippet } from '$lib/utils.js'
+	import Badge from '$lib/components/ui/Badge.svelte'
 
 	let { data }: { data: PageData } = $props()
 
@@ -43,7 +44,7 @@
 				<div class="flex items-center gap-2">
 					<a href={resultUrl(r)} class="text-lg text-link font-medium hover:underline">{r.title}</a>
 					{#if domainLabel(r.domain)}
-						<span class="text-[10px] px-1.5 py-0.5 bg-raised text-secondary uppercase tracking-wider">{domainLabel(r.domain)}</span>
+						<Badge>{domainLabel(r.domain)}</Badge>
 					{/if}
 				</div>
 				{#if r.snippet}

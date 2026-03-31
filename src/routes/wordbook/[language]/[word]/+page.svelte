@@ -13,6 +13,7 @@
 	import Select from '$lib/components/ui/Select.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
+	import Badge from '$lib/components/ui/Badge.svelte'
 	import { PARTS_OF_SPEECH, POS_COLORS } from '$lib/components/wordbook/constants.js'
 	import InlineMarkup from '$lib/renderer/InlineMarkup.svelte'
 	import { createKnowContext } from '$lib/renderer/context.js'
@@ -169,7 +170,7 @@
 									<span class="text-xs font-bold text-faint">{index + 1}.</span>
 								{/if}
 								{#if def.partOfSpeech}
-									<span class="px-1.5 py-0.5 text-[10px] font-medium {posColors[def.partOfSpeech] || 'bg-raised text-secondary'}">{def.partOfSpeech}</span>
+									<Badge class={posColors[def.partOfSpeech] || ''}>{def.partOfSpeech}</Badge>
 								{/if}
 								{#if isAuthenticated && defs.length > 1}
 									<button onclick={() => deleteSense(entry.id, def.id)} class="text-error text-xs opacity-0 transition-opacity ml-auto hover:text-error-hover group-hover:opacity-100">×</button>

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import LanguageBadge from './LanguageBadge.svelte'
 	import InlineMarkup from '$lib/renderer/InlineMarkup.svelte'
+	import Badge from '$lib/components/ui/Badge.svelte'
 	import { POS_COLORS } from './constants.js'
 
 	let { entry, showLanguage = true }: {
@@ -33,7 +34,7 @@
 			<span class="text-sm text-faint font-mono">{entry.pronunciation}</span>
 		{/if}
 		{#if entry.partOfSpeech}
-			<span class="px-1.5 py-0.5 text-[10px] font-medium {posClass}">{entry.partOfSpeech}</span>
+			<Badge class={posClass}>{entry.partOfSpeech}</Badge>
 		{/if}
 		{#if showLanguage && entry.languageName && entry.languageSlug}
 			<LanguageBadge name={entry.languageName} slug={entry.languageSlug} color={entry.languageColor} />

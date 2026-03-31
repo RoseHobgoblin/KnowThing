@@ -4,7 +4,8 @@ import { db } from '$lib/server/db/index.js'
 import { calendars, contentRecords, contentRevisions } from '$lib/server/db/schema.js'
 import { eq, sql, asc } from 'drizzle-orm'
 import { parseWikitext } from '$lib/parser/index.js'
-import { requireAuth } from '$lib/server/auth.js'
+import { hasRole } from '$lib/server/auth.js'
+import { requireEditor } from '$lib/server/guards.js'
 import { updateContentEffects } from '$lib/server/content-effects.js'
 import type { CalendarConfig, StaticCalendarData } from '$lib/calendar/types.js'
 import { resolveDisplay } from '$lib/calendar/date-math.js'
@@ -35,16 +36,21 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 	const slug = pathSegments[0]
 
-	if (isConfigure && !locals.user) {
-		redirect(302, `/auth/login?redirect=${encodeURIComponent(`/calendar/${params.path}`)}`)
+	if (isConfigure) {
+		if (!locals.user) {
+			throw redirect(302, `/auth/login?redirect=${encodeURIComponent(`/calendar/${params.path}`)}`)
+		}
+		if (!hasRole(locals.user.role, 'editor')) {
+			throw redirect(302, `/calendar/${slug}`)
+		}
 	}
 
 	// Load calendar by slug
 	const [cal] = await db.select().from(calendars).where(sql`LOWER(${calendars.slug}) = LOWER(${slug})`)
-	if (!cal) error(404, 'Calendar not found')
+	if (!cal) throw error(404, 'Calendar not found')
 
 	// Canonical redirect
-	if (cal.slug !== slug && !isConfigure) redirect(301, `/calendar/${cal.slug}`)
+	if (cal.slug !== slug && !isConfigure) throw redirect(301, `/calendar/${cal.slug}`)
 
 	const config = buildCalendarConfig(cal)
 	const resolved = resolveDisplay(config)
@@ -79,7 +85,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 /** Save action for configure mode */
 export const actions: Actions = {
 	default: async (event) => {
-		const user = requireAuth(event)
+		const user = requireEditor(event)
 		const formData = await event.request.formData()
 		const calendarId = Number(formData.get('calendarId'))
 		const contentRecordId = Number(formData.get('contentRecordId')) || null
@@ -87,10 +93,10 @@ export const actions: Actions = {
 		const staticDataJson = formData.get('staticData')?.toString() || '{}'
 		const editSummary = formData.get('summary')?.toString() || ''
 
-		if (!calendarId) error(400, 'Missing calendar ID')
+		if (!calendarId) throw error(400, 'Missing calendar ID')
 
 		const [cal] = await db.select().from(calendars).where(eq(calendars.id, calendarId))
-		if (!cal) error(404, 'Calendar not found')
+		if (!cal) throw error(404, 'Calendar not found')
 
 		// Save static data
 		try {
@@ -118,7 +124,7 @@ export const actions: Actions = {
 			})
 		}
 
-		redirect(302, `/calendar/${cal.slug}`)
+		throw redirect(302, `/calendar/${cal.slug}`)
 	},
 }
 

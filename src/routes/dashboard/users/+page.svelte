@@ -6,6 +6,7 @@
 	import Button from '$lib/components/ui/Button.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
+	import Badge from '$lib/components/ui/Badge.svelte'
 
 	let { data }: { data: PageData } = $props()
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
@@ -87,7 +88,7 @@
 					<div class="flex items-center gap-2">
 						<span class="font-medium text-body">{user.username}</span>
 						{#if user.role === 'owner'}
-							<span class="text-[10px] px-1.5 py-0.5 bg-accent text-surface font-semibold uppercase tracking-wider">Owner</span>
+							<Badge variant="accent">Owner</Badge>
 						{/if}
 						<span class="text-xs text-faint">
 							joined {new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}

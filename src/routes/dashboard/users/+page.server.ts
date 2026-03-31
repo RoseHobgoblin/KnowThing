@@ -2,12 +2,10 @@ import type { PageServerLoad } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { users, registrationCodes } from '$lib/server/db/schema.js'
 import { asc, desc } from 'drizzle-orm'
-import { redirect, error } from '@sveltejs/kit'
-import { hasRole } from '$lib/server/auth.js'
+import { requireAdmin } from '$lib/server/guards.js'
 
-export const load: PageServerLoad = async ({ locals }) => {
-	if (!locals.user) throw redirect(302, '/auth/login')
-	if (!hasRole(locals.user.role, 'admin')) throw error(403, 'Admin access required')
+export const load: PageServerLoad = async (event) => {
+	requireAdmin(event)
 
 	const allUsers = await db
 		.select({

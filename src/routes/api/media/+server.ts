@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types.js'
 import { and, asc, desc, eq, sql } from 'drizzle-orm'
 import { db } from '$lib/server/db/index.js'
 import { contentMediaUsage, media } from '$lib/server/db/schema.js'
-import { requireRole } from '$lib/server/auth.js'
+import { requireEditorUser } from '$lib/server/auth.js'
 import { uploadMediaFile } from '$lib/server/services/media.js'
 
 /** GET /api/media — list media with search, filter, pagination */
@@ -94,7 +94,7 @@ export const GET: RequestHandler = async ({ url }) => {
 
 /** POST /api/media — upload file with processing */
 export const POST: RequestHandler = async (event) => {
-	const user = requireRole(event, 'editor')
+	const user = requireEditorUser(event)
 	const formData = await event.request.formData()
 	const file = formData.get('file')
 

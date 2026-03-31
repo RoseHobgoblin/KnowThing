@@ -229,3 +229,26 @@ export function requireRole(event: RequestEvent, minimumRole: Role): AuthUser {
 	}
 	return user
 }
+
+export function requireAuthenticatedUser(event: RequestEvent): AuthUser {
+	return requireAuth(event)
+}
+
+export function requireEditorUser(event: RequestEvent): AuthUser {
+	return requireRole(event, 'editor')
+}
+
+export function requireAdminUser(event: RequestEvent): AuthUser {
+	return requireRole(event, 'admin')
+}
+
+export function requireOwnerUser(event: RequestEvent): AuthUser {
+	const user = requireAuth(event)
+	if (user.role !== 'owner') {
+		throw Response.json({ error: 'Insufficient permissions' }, {
+			status: 403,
+			headers: { 'Content-Type': 'application/json' },
+		})
+	}
+	return user
+}

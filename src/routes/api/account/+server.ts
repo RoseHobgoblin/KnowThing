@@ -1,6 +1,6 @@
 import { isHttpError, json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
-import { requireAuth, clearSessionCookie } from '$lib/server/auth.js'
+import { requireAuthenticatedUser, clearSessionCookie } from '$lib/server/auth.js'
 import { z } from 'zod'
 import { changeOwnPassword, deleteOwnAccount } from '$lib/server/services/auth.js'
 
@@ -11,7 +11,7 @@ const changePasswordSchema = z.object({
 
 /** PUT /api/account — change password */
 export const PUT: RequestHandler = async (event) => {
-	const user = requireAuth(event)
+	const user = requireAuthenticatedUser(event)
 
 	const body = await event.request.json()
 	const parsed = changePasswordSchema.safeParse(body)
@@ -29,7 +29,7 @@ export const PUT: RequestHandler = async (event) => {
 		return json({ success: true, message: 'Password changed. Please log in again.' })
 	} catch (err: unknown) {
 		if (isHttpError(err)) {
-			return json({ error: err.body?.message ?? err.message }, { status: err.status })
+			return json({ error: err.body?.message ?? 'Request failed' }, { status: err.status })
 		}
 		throw err
 	}
@@ -37,7 +37,7 @@ export const PUT: RequestHandler = async (event) => {
 
 /** DELETE /api/account — delete own account */
 export const DELETE: RequestHandler = async (event) => {
-	const user = requireAuth(event)
+	const user = requireAuthenticatedUser(event)
 
 	try {
 		await deleteOwnAccount(user)
@@ -45,7 +45,7 @@ export const DELETE: RequestHandler = async (event) => {
 		return json({ success: true })
 	} catch (err: unknown) {
 		if (isHttpError(err)) {
-			return json({ error: err.body?.message ?? err.message }, { status: err.status })
+			return json({ error: err.body?.message ?? 'Request failed' }, { status: err.status })
 		}
 		throw err
 	}

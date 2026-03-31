@@ -3,12 +3,12 @@ import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { contentRecords } from '$lib/server/db/schema.js'
 import { eq, and } from 'drizzle-orm'
-import { requireRole } from '$lib/server/auth.js'
+import { requireEditorUser } from '$lib/server/auth.js'
 import { moveKnowPage } from '$lib/server/services/content.js'
 
 /** POST /api/pages/:slug/move — rename/move page */
 export const POST: RequestHandler = async (event) => {
-	const user = requireRole(event, 'editor')
+	const user = requireEditorUser(event)
 	const { slug } = event.params
 	const body = await event.request.json()
 	const { newSlug, newTitle } = body as { newSlug: string, newTitle?: string }

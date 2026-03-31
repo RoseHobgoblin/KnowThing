@@ -1,4 +1,6 @@
 <script lang="ts">
+	import Badge from '$lib/components/ui/Badge.svelte'
+
 	type TreeNode = {
 		id: number
 		name: string
@@ -25,7 +27,7 @@
 			<span class="text-xs text-faint italic">{n.nativeName}</span>
 		{/if}
 		{#if n.languageType !== 'language'}
-			<span class="text-[10px] px-1.5 py-0.5 bg-raised text-dim">{n.languageType}</span>
+			<Badge>{n.languageType}</Badge>
 		{/if}
 	</div>
 	{#each n.children as child}

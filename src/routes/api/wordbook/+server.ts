@@ -1,7 +1,7 @@
 import { isHttpError, json } from '@sveltejs/kit'
 import { z } from 'zod'
 import type { RequestHandler } from './$types.js'
-import { requireRole } from '$lib/server/auth.js'
+import { requireEditorUser } from '$lib/server/auth.js'
 import { createWordbookEntry } from '$lib/server/services/wordbook.js'
 import { searchWordbook } from '$lib/server/services/wordbook-search.js'
 
@@ -42,7 +42,7 @@ export const GET: RequestHandler = async ({ url }) => {
 
 /** POST /api/wordbook — create entry with definitions */
 export const POST: RequestHandler = async (event) => {
-	const user = requireRole(event, 'editor')
+	const user = requireEditorUser(event)
 	const body = await event.request.json()
 	const parsed = createWordSchema.safeParse(body)
 	if (!parsed.success) {

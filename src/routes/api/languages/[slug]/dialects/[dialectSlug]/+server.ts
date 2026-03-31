@@ -2,12 +2,12 @@ import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { languages, languageDialects } from '$lib/server/db/schema.js'
-import { requireAuth } from '$lib/server/auth.js'
+import { requireAdminUser } from '$lib/server/auth.js'
 import { eq, and } from 'drizzle-orm'
 
 /** PUT /api/languages/:slug/dialects/:dialectSlug */
 export const PUT: RequestHandler = async (event) => {
-	requireAuth(event)
+	requireAdminUser(event)
 
 	const [lang] = await db.select({ id: languages.id }).from(languages).where(eq(languages.slug, event.params.slug))
 	if (!lang) return json({ error: 'Language not found' }, { status: 404 })
@@ -31,8 +31,7 @@ export const PUT: RequestHandler = async (event) => {
 
 /** DELETE /api/languages/:slug/dialects/:dialectSlug */
 export const DELETE: RequestHandler = async (event) => {
-	const user = requireAuth(event)
-	if (user.role !== 'admin') return json({ error: 'Admin access required' }, { status: 403 })
+	requireAdminUser(event)
 
 	const [lang] = await db.select({ id: languages.id }).from(languages).where(eq(languages.slug, event.params.slug))
 	if (!lang) return json({ error: 'Language not found' }, { status: 404 })
