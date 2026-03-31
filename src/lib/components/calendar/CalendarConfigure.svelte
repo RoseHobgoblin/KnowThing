@@ -27,7 +27,8 @@
 		contentRecordId: number | null
 	} = $props()
 
-	const sd = config.static_data
+	// Capture initial config for form state — intentionally not reactive
+	const sd: Record<string, any> = config.static_data
 
 	// ── Form state ──────────────────────────────────────────
 	let epochOffset = $state(sd.epoch_offset ?? 0)
@@ -64,7 +65,9 @@
 		})),
 	)
 
-	let content = $state(wikiContent ?? '')
+	// Capture initial content for editor — intentionally not reactive
+	const initialContent = wikiContent ?? ''
+	let content = $state(initialContent)
 	let showPreview = $state(true)
 
 	// ── Derived ─────────────────────────────────────────────
@@ -78,8 +81,8 @@
 			months: months.map(m => ({ name: m.name, length: m.length, month_type: m.month_type as 'regular' | 'intercalary', short_name: m.short_name || undefined })),
 			leap_days: leapDays.map(ld => ({
 				name: ld.name, month_index: ld.month_index, after_day: ld.after_day, interval: ld.interval,
-				ignore: ld.ignore ? ld.ignore.split(',').map(s => Number.parseInt(s.trim())).filter(n => !Number.isNaN(n)) : [],
-				exclusive: ld.exclusive ? ld.exclusive.split(',').map(s => Number.parseInt(s.trim())).filter(n => !Number.isNaN(n)) : [],
+				ignore: ld.ignore ? ld.ignore.split(',').map((s: string) => Number.parseInt(s.trim())).filter((n: number) => !Number.isNaN(n)) : [],
+				exclusive: ld.exclusive ? ld.exclusive.split(',').map((s: string) => Number.parseInt(s.trim())).filter((n: number) => !Number.isNaN(n)) : [],
 				intercalary: ld.intercalary, offset: ld.offset,
 			})),
 			moons: moons.map(m => ({ name: m.name, cycle: m.cycle, offset: m.offset, face_color: m.face_color, shadow_color: m.shadow_color })),
@@ -249,7 +252,7 @@
 					<div class="grid grid-cols-2 gap-3 md:grid-cols-4">
 						<Input type="number" label="Starts at year" bind:value={era.start_year} />
 						<Input label="Ends at year" bind:value={era.end_year} placeholder="Open-ended" />
-						<Input label="Display format" bind:value={era.format} placeholder="{'{{year}} {{era_name}}'}" />
+						<Input label="Display format" bind:value={era.format} placeholder={'{{year}} {{era_name}}'} />
 						<Checkbox bind:value={era.reverse_numbering} label="Count backwards" />
 					</div>
 				</div>
