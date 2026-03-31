@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
+	import { page } from '$app/stores'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
 	import Checkbox from '$lib/components/ui/Checkbox.svelte'
@@ -32,6 +33,7 @@
 	let uploadProgress = $state('')
 	let uploadError = $state('')
 	let dragOver = $state(false)
+	const permissions = $derived($page.data.permissions)
 
 	function formatBytes(bytes: number | null): string {
 		if (!bytes) return '—'
@@ -144,36 +146,42 @@
 
 	<!-- Drop zone + Upload -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<div
-		class="relative border-2 border-dashed p-6 text-center transition-colors
-			{dragOver ? 'border-accent-border bg-accent-subtle' : 'border-border-strong bg-surface hover:border-border-strong'}"
-		ondrop={handleDrop}
-		ondragover={handleDragOver}
-		ondragleave={() => dragOver = false}
-	>
-		<div class="text-dim text-sm mb-2">
-			{#if dragOver}
-				Drop to upload
-			{:else if uploading}
-				{uploadProgress}
-			{:else}
-				Drag & drop images here, or
+	{#if permissions.canManageMedia}
+		<div
+			class="relative border-2 border-dashed p-6 text-center transition-colors
+				{dragOver ? 'border-accent-border bg-accent-subtle' : 'border-border-strong bg-surface hover:border-border-strong'}"
+			ondrop={handleDrop}
+			ondragover={handleDragOver}
+			ondragleave={() => dragOver = false}
+		>
+			<div class="text-dim text-sm mb-2">
+				{#if dragOver}
+					Drop to upload
+				{:else if uploading}
+					{uploadProgress}
+				{:else}
+					Drag & drop images here, or
+				{/if}
+			</div>
+			{#if !uploading}
+				<label class="
+					inline-block px-4 py-1.5 bg-accent text-surface text-sm cursor-pointer
+					transition-colors
+					hover:bg-accent-hover
+				">
+					Choose files
+					<input type="file" accept="image/*" multiple onchange={handleFileInput} class="hidden" />
+				</label>
+			{/if}
+			{#if uploadError}
+				<p class="text-error text-sm mt-2">{uploadError}</p>
 			{/if}
 		</div>
-		{#if !uploading}
-			<label class="
-				inline-block px-4 py-1.5 bg-accent text-surface text-sm cursor-pointer
-				transition-colors
-				hover:bg-accent-hover
-			">
-				Choose files
-				<input type="file" accept="image/*" multiple onchange={handleFileInput} class="hidden" />
-			</label>
-		{/if}
-		{#if uploadError}
-			<p class="text-error text-sm mt-2">{uploadError}</p>
-		{/if}
-	</div>
+	{:else if permissions.isAuthenticated}
+		<div class="border border-border-subtle bg-surface p-6 text-center">
+			<p class="text-sm text-faint">Editor role required to upload media.</p>
+		</div>
+	{/if}
 
 	<!-- Controls -->
 	<div class="flex flex-wrap gap-3 items-center">

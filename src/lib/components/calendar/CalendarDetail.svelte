@@ -23,7 +23,7 @@
 		ast: WikiNode | null
 	} = $props()
 
-	const isAdmin = $derived($page.data.isAdmin)
+	const permissions = $derived($page.data.permissions)
 	const layoutData = $derived($page.data)
 
 	createKnowContext({
@@ -39,10 +39,12 @@
 	title={calendar.name}
 >
 	{#snippet actions()}
-		{#if isAdmin}
+		{#if permissions.canConfigureCalendar}
 			<a href="/calendar/{calendar.slug}/configure" class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover">
 				<GearSixIcon size={14} weight="fill" />Configure
 			</a>
+		{:else if permissions.isAuthenticated}
+			<span class="text-faint text-sm">View only. Editor role required to configure calendars.</span>
 		{/if}
 	{/snippet}
 

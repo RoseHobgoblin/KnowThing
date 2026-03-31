@@ -13,7 +13,7 @@
 	let { children, data }: { children: Snippet, data: LayoutData } = $props()
 
 	const currentPath = $derived($page.url.pathname)
-	const isAdmin = $derived($page.data.isAdmin)
+	const permissions = $derived($page.data.permissions)
 
 	const linkClass = 'flex items-center gap-2 px-3 py-1.5 text-xs transition-colors'
 	const activeClass = 'text-accent font-medium bg-raised'
@@ -31,11 +31,15 @@
 		<a href="/dashboard/media" class="{linkClass} {isActive('/dashboard/media') ? activeClass : inactiveClass}"><Image size={14} weight="fill" />Media</a>
 		<a href="/dashboard/wanted" class="{linkClass} {isActive('/dashboard/wanted') ? activeClass : inactiveClass}"><FileMagnifyingGlass size={14} weight="fill" />Wanted</a>
 		<a href="/dashboard/orphans" class="{linkClass} {isActive('/dashboard/orphans') ? activeClass : inactiveClass}"><LinkBreak size={14} weight="fill" />Orphans</a>
-		{#if isAdmin}
+		{#if permissions.canManageSettings || permissions.canManageUsers}
 			<span class="border-l border-border-subtle mx-1"></span>
-			<a href="/dashboard/settings" class="{linkClass} {isActive('/dashboard/settings') ? activeClass : inactiveClass}"><Wrench size={14} weight="fill" />Settings</a>
-			<a href="/dashboard/users" class="{linkClass} {isActive('/dashboard/users') ? activeClass : inactiveClass}"><Users size={14} weight="fill" />Users</a>
-			<a href="/dashboard/export" class="{linkClass} {isActive('/dashboard/export') ? activeClass : inactiveClass}"><Export size={14} weight="fill" />Export</a>
+			{#if permissions.canManageSettings}
+				<a href="/dashboard/settings" class="{linkClass} {isActive('/dashboard/settings') ? activeClass : inactiveClass}"><Wrench size={14} weight="fill" />Settings</a>
+				<a href="/dashboard/export" class="{linkClass} {isActive('/dashboard/export') ? activeClass : inactiveClass}"><Export size={14} weight="fill" />Export</a>
+			{/if}
+			{#if permissions.canManageUsers}
+				<a href="/dashboard/users" class="{linkClass} {isActive('/dashboard/users') ? activeClass : inactiveClass}"><Users size={14} weight="fill" />Users</a>
+			{/if}
 		{/if}
 	</nav>
 

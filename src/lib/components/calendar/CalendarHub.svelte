@@ -21,7 +21,7 @@
 		primary: (any & { config: CalendarConfig }) | null
 	} = $props()
 
-	const isAdmin = $derived($page.data.isAdmin)
+	const permissions = $derived($page.data.permissions)
 
 	let newCalendarName = $state('')
 	let selectedPreset = $state('')
@@ -129,7 +129,7 @@
 		<p class="text-dim text-center py-8">No calendars configured yet.</p>
 	{/if}
 
-	{#if isAdmin}
+	{#if permissions.canManageSettings}
 		<div class="mt-8 border border-border-subtle bg-raised p-5 space-y-3">
 			<h2 class="text-sm font-semibold text-heading">New Calendar</h2>
 			<Select type="single" label="Start from preset" bind:value={selectedPreset} items={presetItems} />
@@ -139,6 +139,10 @@
 					{creating ? 'Creating...' : 'Create'}
 				</Button>
 			</div>
+		</div>
+	{:else if permissions.isAuthenticated}
+		<div class="mt-8 border border-border-subtle bg-raised p-5">
+			<p class="text-sm text-faint">Admin role required to create calendars.</p>
 		</div>
 	{/if}
 </ArticleShell>

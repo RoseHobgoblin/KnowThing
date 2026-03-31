@@ -20,7 +20,7 @@
 	let { data }: { data: PageData } = $props()
 
 	const kind = data.kind
-	const isAdmin = $derived($page.data.isAdmin)
+	const permissions = $derived($page.data.permissions)
 	const isEditMode = data.isEditMode
 	const isConfigureMode = data.isConfigureMode
 	const raw = data.body as any
@@ -169,15 +169,19 @@
 		title={raw.name}
 	>
 		{#snippet actions()}
-			{#if isAdmin}
-				{#if kind !== 'system'}
+			{#if permissions.canEditContent || permissions.canConfigureCelestial}
+				{#if kind !== 'system' && permissions.canConfigureCelestial}
 					<a href={configurePath} class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover">
 						<GearSix size={14} weight="fill" />Configure
 					</a>
 				{/if}
-				<a href={editPath} class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover">
-					<PencilSimple size={14} weight="fill" />Edit
-				</a>
+				{#if permissions.canEditContent}
+					<a href={editPath} class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover">
+						<PencilSimple size={14} weight="fill" />Edit
+					</a>
+				{/if}
+			{:else if permissions.isAuthenticated}
+				<span class="text-faint text-sm">View only. Editor role required for celestial changes.</span>
 			{/if}
 		{/snippet}
 			{#if kind === 'system'}

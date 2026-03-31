@@ -11,7 +11,9 @@
 	let { data }: { data: PageData } = $props()
 
 	const layoutData = $derived($page.data)
-	const isAuthenticated = $derived(!!layoutData.user)
+	const permissions = $derived(layoutData.permissions)
+	const isAuthenticated = $derived(permissions.isAuthenticated)
+	const canManageWordbook = $derived(permissions.canManageWordbook)
 	const wbName = $derived(layoutData.siteConfig?.wordbookName ?? 'Wordbook')
 
 	createKnowContext({
@@ -51,8 +53,12 @@
 	title={data.language.name}
 >
 	{#snippet actions()}
-		<a href="/wordbook/contribute?language={data.language.slug}" class="text-sm text-link hover:text-link-hover hover:underline">+ Add word</a>
-		<a href="/wordbook/contribute/language/{data.language.slug}" class="text-sm text-faint hover:text-link hover:underline">Edit language</a>
+		{#if canManageWordbook}
+			<a href="/wordbook/contribute?language={data.language.slug}" class="text-sm text-link hover:text-link-hover hover:underline">+ Add word</a>
+			<a href="/wordbook/contribute/language/{data.language.slug}" class="text-sm text-faint hover:text-link hover:underline">Edit language</a>
+		{:else if isAuthenticated}
+			<span class="text-faint text-sm">View only. Editor role required for wordbook changes.</span>
+		{/if}
 	{/snippet}
 
 	{#snippet badges()}
@@ -126,7 +132,7 @@
 	{/if}
 
 	<!-- Inflection system -->
-	{#if data.inflectionDimensions.length > 0 || isAuthenticated}
+	{#if data.inflectionDimensions.length > 0 || canManageWordbook}
 		<DimensionEditor
 			languageSlug={data.language.slug}
 			dimensions={data.inflectionDimensions}
@@ -161,9 +167,11 @@
 				<p>No words starting with "{data.currentLetter.toUpperCase()}"</p>
 			{:else}
 				<p class="text-lg mb-2">No words yet</p>
-				<p class="text-sm">
-					<a href="/wordbook/contribute?language={data.language.slug}" class="text-link hover:underline">Add the first word</a>
-				</p>
+				{#if canManageWordbook}
+					<p class="text-sm">
+						<a href="/wordbook/contribute?language={data.language.slug}" class="text-link hover:underline">Add the first word</a>
+					</p>
+				{/if}
 			{/if}
 		</div>
 	{/if}

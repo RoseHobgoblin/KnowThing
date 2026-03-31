@@ -15,7 +15,8 @@
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
 
 	const layoutData = $derived($page.data)
-	const isAdmin = $derived(layoutData.isAdmin)
+	const permissions = $derived(layoutData.permissions)
+	const canManageMedia = $derived(permissions.canManageMedia)
 
 	function formatBytes(bytes: number | null): string {
 		if (!bytes) return '—'
@@ -137,15 +138,19 @@
 							focus:outline-none focus:ring-2 focus:ring-accent
 						" placeholder="flags, maps, portraits" />
 					</div>
-					<div class="flex items-center gap-3">
-						<button onclick={saveDetails} disabled={saving} class="
-							px-4 py-1.5 bg-accent text-surface text-sm transition-colors
-							hover:bg-accent-hover
-							disabled:opacity-50
-						">
-							{saving ? 'Saving...' : 'Save'}
-						</button>
-					</div>
+					{#if canManageMedia}
+						<div class="flex items-center gap-3">
+							<button onclick={saveDetails} disabled={saving} class="
+								px-4 py-1.5 bg-accent text-surface text-sm transition-colors
+								hover:bg-accent-hover
+								disabled:opacity-50
+							">
+								{saving ? 'Saving...' : 'Save'}
+							</button>
+						</div>
+					{:else}
+						<p class="text-xs text-faint">Editor role required to change file details.</p>
+					{/if}
 				</div>
 			</div>
 		</div>
@@ -212,13 +217,15 @@
 					<a href="/api/media/{data.file.filename}" target="_blank" class="block px-3 py-2 text-sm text-secondary transition-colors hover:bg-page">
 						View full size ↗
 					</a>
-					{#if isAdmin}
+					{#if canManageMedia}
 						<button onclick={deleteFile} class="
 							w-full text-left px-3 py-2 text-sm text-error transition-colors
 							hover:bg-error-bg
 						">
 							Delete file{data.usage.length > 0 ? ` (used in ${data.usage.length} pages)` : ''}
 						</button>
+					{:else if permissions.isAuthenticated}
+						<p class="px-3 py-2 text-xs text-faint">Editor role required to delete files.</p>
 					{/if}
 				</div>
 			</div>

@@ -36,6 +36,7 @@
 	} = $props()
 
 	const isAdmin = $derived($page.data.isAdmin)
+	const permissions = $derived($page.data.permissions)
 
 	// Build render context — this component is keyed by slug, so context rebuilds on navigation
 	function buildStructuredData(raw: Record<string, Record<string, string>> | null) {
@@ -74,9 +75,13 @@
 	{title}
 >
 	{#snippet actions()}
-		<a href="/know/{slug}/edit" class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover"><PencilSimple size={14} weight="fill" />Edit</a>
-		<a href="/know/{slug}/move" class="text-dim transition-colors flex items-center gap-1 hover:text-secondary"><ArrowsLeftRight size={14} weight="fill" />Move</a>
-		<a href="/know/{slug}/history" class="text-dim transition-colors flex items-center gap-1 hover:text-secondary"><ClockCounterClockwise size={14} weight="fill" />History</a>
+		{#if permissions.canEditContent}
+			<a href="/know/{slug}/edit" class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover"><PencilSimple size={14} weight="fill" />Edit</a>
+			<a href="/know/{slug}/move" class="text-dim transition-colors flex items-center gap-1 hover:text-secondary"><ArrowsLeftRight size={14} weight="fill" />Move</a>
+			<a href="/know/{slug}/history" class="text-dim transition-colors flex items-center gap-1 hover:text-secondary"><ClockCounterClockwise size={14} weight="fill" />History</a>
+		{:else if permissions.isAuthenticated}
+			<span class="text-faint text-sm">View only. Editor role required for page actions.</span>
+		{/if}
 		{#if isAdmin}
 			<button onclick={ondeletepage} class="text-error transition-colors flex items-center gap-1 hover:text-error-hover"><Trash size={14} weight="fill" />Delete</button>
 		{/if}

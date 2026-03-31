@@ -11,6 +11,7 @@
 	let { data }: { data: PageData } = $props()
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
 
+	const permissions = $derived($page.data.permissions)
 	const currentUser = $derived($page.data.user)
 	const isOwner = $derived(currentUser?.role === 'owner')
 
@@ -119,6 +120,9 @@
 	<section class="bg-surface border border-border p-5 space-y-4">
 		<h2 class="text-sm font-semibold text-heading">Registration Codes</h2>
 		<p class="text-xs text-faint">Generate invite codes for new users. Each code can be used once.</p>
+		{#if permissions.canGenerateInviteCodes && !isOwner}
+			<p class="text-xs text-faint">Owner role is required to generate admin invite codes.</p>
+		{/if}
 
 		<div class="flex gap-3 items-end">
 			<Select

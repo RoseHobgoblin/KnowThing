@@ -21,6 +21,7 @@
 	let sidebarOpen = $state(false)
 
 	const sc = $derived(data.siteConfig)
+	const permissions = $derived(data.permissions)
 	const siteNameParts = $derived((sc?.siteName ?? 'KnowThing').split(/(?=[A-Z])/))
 	const currentPath = $derived($page.url.pathname)
 
@@ -74,9 +75,11 @@
 
 			{#if data.user}
 				<div class="my-2 border-t border-border-subtle"></div>
-				<a href="/know/create" class="{linkClass} {isActive('/know/create') ? activeClass : inactiveClass}"><PlusCircle size={16} weight="fill" />{sc?.navCreateLabel ?? 'New Page'}</a>
+				{#if permissions.canCreatePages}
+					<a href="/know/create" class="{linkClass} {isActive('/know/create') ? activeClass : inactiveClass}"><PlusCircle size={16} weight="fill" />{sc?.navCreateLabel ?? 'New Page'}</a>
+				{/if}
 				<a href="/dashboard/recent" class="{linkClass} {isActive('/dashboard/recent') ? activeClass : inactiveClass}"><ClockCounterClockwise size={16} weight="fill" />Recent Changes</a>
-				{#if data.user.role === 'admin' || data.user.role === 'owner'}
+				{#if permissions.canManageSettings}
 					<div class="my-2 border-t border-border-subtle"></div>
 					<a href="/dashboard/settings" class="{linkClass} {isActive('/dashboard') ? activeClass : inactiveClass}"><GearSix size={16} weight="fill" />Settings</a>
 				{/if}
@@ -162,9 +165,11 @@
 
 					{#if data.user}
 						<div class="my-2 border-t border-border-subtle"></div>
-						<a href="/know/create" onclick={navClick} class="{linkClass} {isActive('/know/create') ? activeClass : inactiveClass}"><PlusCircle size={16} weight="fill" />{sc?.navCreateLabel ?? 'New Page'}</a>
+						{#if permissions.canCreatePages}
+							<a href="/know/create" onclick={navClick} class="{linkClass} {isActive('/know/create') ? activeClass : inactiveClass}"><PlusCircle size={16} weight="fill" />{sc?.navCreateLabel ?? 'New Page'}</a>
+						{/if}
 						<a href="/dashboard/recent" onclick={navClick} class="{linkClass} {isActive('/dashboard/recent') ? activeClass : inactiveClass}"><ClockCounterClockwise size={16} weight="fill" />Recent Changes</a>
-						{#if data.user.role === 'admin' || data.user.role === 'owner'}
+						{#if permissions.canManageSettings}
 							<div class="my-2 border-t border-border-subtle"></div>
 							<a href="/dashboard/settings" onclick={navClick} class="{linkClass} {isActive('/dashboard') ? activeClass : inactiveClass}"><GearSix size={16} weight="fill" />Settings</a>
 						{/if}

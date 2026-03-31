@@ -32,7 +32,9 @@
 		pageBaseUrl: '/know',
 		calendarDate: layoutData.calendarDate ?? null,
 	})
-	const isAuthenticated = $derived(!!layoutData.user)
+	const permissions = $derived(layoutData.permissions)
+	const isAuthenticated = $derived(permissions.isAuthenticated)
+	const canManageWordbook = $derived(permissions.canManageWordbook)
 	const isAdmin = $derived(layoutData.isAdmin)
 	const wbName = $derived(layoutData.siteConfig?.wordbookName ?? 'Wordbook')
 
@@ -112,11 +114,13 @@
 	title={data.word}
 >
 	{#snippet actions()}
-		{#if isAuthenticated && data.homographs[0]}
+		{#if canManageWordbook && data.homographs[0]}
 			<a href="/wordbook/contribute/{data.homographs[0].entry.id}" class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover"><PencilSimple size={14} weight="fill" />Edit</a>
 			{#if isAdmin}
 				<button onclick={() => deleteEntry(data.homographs[0].entry.id)} class="text-error transition-colors flex items-center gap-1 hover:text-error-hover"><Trash size={14} weight="fill" />Delete</button>
 			{/if}
+		{:else if isAuthenticated}
+			<span class="text-faint text-sm">View only. Editor role required for wordbook changes.</span>
 		{/if}
 	{/snippet}
 
@@ -172,7 +176,7 @@
 								{#if def.partOfSpeech}
 									<Badge class={posColors[def.partOfSpeech] || ''}>{def.partOfSpeech}</Badge>
 								{/if}
-								{#if isAuthenticated && defs.length > 1}
+								{#if canManageWordbook && defs.length > 1}
 									<button onclick={() => deleteSense(entry.id, def.id)} class="text-error text-xs opacity-0 transition-opacity ml-auto hover:text-error-hover group-hover:opacity-100">×</button>
 								{/if}
 							</div>
@@ -190,7 +194,7 @@
 				</div>
 
 				<!-- Add sense -->
-				{#if isAuthenticated}
+				{#if canManageWordbook}
 					{#if addingSenseFor === entry.id}
 						<form onsubmit={e => addSense(entry.id, e)} class="mt-3 p-3 bg-page border border-border-subtle space-y-2">
 							{#if senseError}
@@ -229,7 +233,7 @@
 					stem={hom.inflection.stem}
 					hasInflection={hom.inflection.hasInflection}
 				/>
-				{#if isAuthenticated}
+				{#if canManageWordbook}
 					<InflectionEditor
 						entryId={entry.id}
 						languageSlug={data.language.slug}

@@ -5,8 +5,24 @@ import { eq, sql } from 'drizzle-orm'
 import { resolveDisplay } from '$lib/calendar/date-math.js'
 import type { CalendarConfig, ResolvedDate, StaticCalendarData } from '$lib/calendar/types.js'
 import { getSiteConfig } from '$lib/server/settings.js'
+import { hasRole } from '$lib/server/auth.js'
 
 export const load: LayoutServerLoad = async ({ locals }) => {
+	const user = locals.user
+	const permissions = {
+		isAuthenticated: !!user,
+		canEditContent: user ? hasRole(user.role, 'editor') : false,
+		canCreatePages: user ? hasRole(user.role, 'editor') : false,
+		canManageWordbook: user ? hasRole(user.role, 'editor') : false,
+		canManageMedia: user ? hasRole(user.role, 'editor') : false,
+		canConfigureCalendar: user ? hasRole(user.role, 'editor') : false,
+		canConfigureCelestial: user ? hasRole(user.role, 'editor') : false,
+		canManageSettings: user ? hasRole(user.role, 'admin') : false,
+		canManageUsers: user ? hasRole(user.role, 'admin') : false,
+		canManageLanguages: user ? hasRole(user.role, 'admin') : false,
+		canGenerateInviteCodes: user ? hasRole(user.role, 'admin') : false,
+	}
+
 	const [allContent, primaryCalendarRows, siteConfig] = await Promise.all([
 		db.select({ domain: contentRecords.domain, slug: contentRecords.slug, parentPath: contentRecords.parentPath }).from(contentRecords),
 		db.select().from(calendars).where(eq(calendars.isPrimary, true)).limit(1),
@@ -66,9 +82,10 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 	}
 
 	return {
-		user: locals.user,
-		isAdmin: locals.user?.role === 'admin' || locals.user?.role === 'owner' || false,
-		isEditor: locals.user?.role === 'editor' || locals.user?.role === 'admin' || locals.user?.role === 'owner' || false,
+		user,
+		isAdmin: permissions.canManageSettings,
+		isEditor: permissions.canEditContent,
+		permissions,
 		existingPages: allContent.filter(c => c.domain === 'know').map(c => c.slug.toLowerCase()),
 		existingContent: allContent.map(c => ({ domain: c.domain, slug: c.slug.toLowerCase(), parentPath: c.parentPath })),
 		calendarDate,

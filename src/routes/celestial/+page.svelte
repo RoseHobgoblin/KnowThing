@@ -23,34 +23,74 @@
 	let { data }: { data: PageData } = $props()
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
 
-	const isAdmin = $derived($page.data.isAdmin)
+	type RegistrySystem = {
+		id: number
+		name: string
+		slug: string
+		systemType: string | null
+		pageSlug: string | null
+		starCount: number
+		planetCount: number
+	}
+
+	type RegistryStar = {
+		id: number
+		name: string
+		slug: string
+		spectralType: string | null
+		color: string | null
+		pageSlug: string | null
+		systemId: number | null
+		semiMajorAxisAu: number | null
+		eccentricity: number | null
+		parentStarId: number | null
+		planetCount: number
+	}
+
+	type RegistryBody = {
+		id: number
+		name: string
+		slug: string
+		bodyType: string
+		starId: number | null
+		parentId: number | null
+		pageSlug: string | null
+		semiMajorAxisAu: number | null
+		eccentricity: number | null
+		moonCount: number
+	}
+
+	const permissions = $derived($page.data.permissions)
+	const systems = $derived(data.systems as RegistrySystem[])
+	const stars = $derived(data.stars as RegistryStar[])
+	const bodies = $derived(data.bodies as RegistryBody[])
 
 	let newSystemName = $state('')
 	let newStarName = $state('')
-	let newStarSystemId = $state<number | null>(null)
+	let newStarSystemId = $state<string | undefined>(undefined)
 	let newBodyName = $state('')
 	let newBodyType = $state('planet')
-	let newBodyStarId = $state<number | null>(null)
+	let newBodyStarId = $state<string | undefined>(undefined)
 	let creating = $state(false)
 
 	function starsForSystem(systemId: number) {
-		return (data.stars as any[]).filter((s: any) => s.systemId === systemId)
+		return stars.filter((star) => star.systemId === systemId)
 	}
 
 	function orphanStars() {
-		return (data.stars as any[]).filter((s: any) => !s.systemId)
+		return stars.filter((star) => !star.systemId)
 	}
 
 	function bodiesForStar(starId: number) {
-		return (data.bodies as any[]).filter((b: any) => b.starId === starId && !b.parentId)
+		return bodies.filter((body) => body.starId === starId && !body.parentId)
 	}
 
 	function orphanBodies() {
-		return (data.bodies as any[]).filter((b: any) => !b.starId && !b.parentId)
+		return bodies.filter((body) => !body.starId && !body.parentId)
 	}
 
 	function moonsForBody(bodyId: number) {
-		return (data.bodies as any[]).filter((b: any) => b.parentId === bodyId)
+		return bodies.filter((body) => body.parentId === bodyId)
 	}
 
 	const slugify = urlSlugify
@@ -82,11 +122,16 @@
 			const res = await fetch('/api/stars', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ name: newStarName.trim(), slug: slugify(newStarName), systemId: newStarSystemId }),
+				body: JSON.stringify({
+					name: newStarName.trim(),
+					slug: slugify(newStarName),
+					systemId: newStarSystemId ? Number(newStarSystemId) : null,
+				}),
 			})
 			if (res.ok) {
 				pushSuccess(`Star "${newStarName}" created`)
 				newStarName = ''
+				newStarSystemId = undefined
 				invalidateAll()
 			} else {
 				const error = await res.json()
@@ -102,11 +147,17 @@
 			const res = await fetch('/api/planetary-bodies', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ name: newBodyName.trim(), slug: slugify(newBodyName), bodyType: newBodyType, starId: newBodyStarId }),
+				body: JSON.stringify({
+					name: newBodyName.trim(),
+					slug: slugify(newBodyName),
+					bodyType: newBodyType,
+					starId: newBodyStarId ? Number(newBodyStarId) : null,
+				}),
 			})
 			if (res.ok) {
 				pushSuccess(`${newBodyName} created`)
 				newBodyName = ''
+				newBodyStarId = undefined
 				invalidateAll()
 			} else {
 				const error = await res.json()
@@ -214,13 +265,13 @@
 	title="Celestial Registry"
 >
 
-	{#if (data.systems as any[]).length === 0 && orphanStars().length === 0 && orphanBodies().length === 0}
+	{#if systems.length === 0 && orphanStars().length === 0 && orphanBodies().length === 0}
 		<div class="bg-surface border border-border p-8 text-center">
 			<p class="text-dim">No celestial bodies registered yet.</p>
 		</div>
 	{:else}
 		<div class="space-y-4">
-			{#each data.systems as system (system.id)}
+			{#each systems as system (system.id)}
 				<div class="bg-surface border border-border">
 					<!-- System header -->
 					<div class="flex items-center justify-between px-4 py-3 bg-raised border-b border-border-subtle">
@@ -229,7 +280,7 @@
 							<a href="/celestial/{system.slug}" class="text-heading font-bold text-lg transition-colors hover:text-link">{system.name}</a>
 							<span class="text-xs text-faint">{system.systemType} · {system.starCount} {system.starCount === 1 ? 'star' : 'stars'} · {system.planetCount} {system.planetCount === 1 ? 'planet' : 'planets'}</span>
 						</div>
-						{#if isAdmin}
+						{#if permissions.canEditContent}
 							<div class="flex items-center gap-3 text-xs">
 								<a href="/celestial/{system.slug}/edit" class="text-link transition-colors flex items-center gap-1 hover:text-link-hover"><PencilSimple size={12} weight="fill" />Edit</a>
 								<button onclick={() => deleteItem('system', system.slug, system.name)} class="text-error transition-colors hover:text-error-hover">Delete</button>
@@ -248,7 +299,7 @@
 										<span class="text-xs text-faint">({star.spectralType})</span>
 									{/if}
 								</div>
-								{#if isAdmin}
+								{#if permissions.canConfigureCelestial}
 									<div class="flex items-center gap-3 text-xs">
 										<a href="/celestial/{system.slug}/{star.slug}/configure" class="text-link transition-colors flex items-center gap-1 hover:text-link-hover"><GearSix size={12} weight="fill" />Configure</a>
 										<button onclick={() => deleteItem('star', star.slug, star.name)} class="text-error transition-colors hover:text-error-hover" aria-label="Delete {star.name}"><X size={12} weight="bold" /></button>
@@ -267,7 +318,7 @@
 											<span class="text-xs text-dim">· {planet.moonCount} {planet.moonCount === 1 ? 'moon' : 'moons'}</span>
 										{/if}
 									</div>
-									{#if isAdmin}
+									{#if permissions.canConfigureCelestial}
 										<div class="flex items-center gap-3 text-xs">
 											<a href="/celestial/{system.slug}/{planet.slug}/configure" class="text-link transition-colors flex items-center gap-1 hover:text-link-hover"><GearSix size={12} weight="fill" />Configure</a>
 											<button onclick={() => deleteItem('body', planet.slug, planet.name)} class="text-error transition-colors hover:text-error-hover" aria-label="Delete {planet.name}"><X size={12} weight="bold" /></button>
@@ -280,7 +331,7 @@
 											<Moon size={10} class="text-faint" />
 											<a href="/celestial/{system.slug}/{moon.slug}" class="text-xs text-secondary transition-colors hover:text-link">{moon.name}</a>
 										</div>
-										{#if isAdmin}
+										{#if permissions.canConfigureCelestial}
 											<div class="flex items-center gap-3 text-xs">
 												<a href="/celestial/{system.slug}/{moon.slug}/configure" class="text-link transition-colors flex items-center gap-1 hover:text-link-hover"><GearSix size={12} weight="fill" />Configure</a>
 												<button onclick={() => deleteItem('body', moon.slug, moon.name)} class="text-error transition-colors hover:text-error-hover" aria-label="Delete {moon.name}"><X size={12} weight="bold" /></button>
@@ -307,7 +358,7 @@
 									<span class="text-xs text-faint">({star.spectralType})</span>
 								{/if}
 							</div>
-							{#if isAdmin}
+							{#if permissions.canConfigureCelestial}
 								<a href="/celestial/{star.slug}/configure" class="text-xs text-link flex items-center gap-1 transition-colors hover:text-link-hover"><GearSix size={12} weight="fill" />Configure</a>
 							{/if}
 						</div>
@@ -326,7 +377,7 @@
 								<span class="text-body">{body.name}</span>
 								<span class="text-xs text-faint">({body.bodyType})</span>
 							</div>
-							{#if isAdmin}
+							{#if permissions.canConfigureCelestial}
 								<a href="/celestial/{body.slug}/configure" class="text-xs text-link flex items-center gap-1 transition-colors hover:text-link-hover"><GearSix size={12} weight="fill" />Configure</a>
 							{/if}
 						</div>
@@ -337,7 +388,7 @@
 	{/if}
 
 	<!-- Admin: create forms -->
-	{#if isAdmin}
+	{#if permissions.canConfigureCelestial}
 		<div class="mt-8 space-y-4">
 			<!-- Presets -->
 			<section class="bg-surface border border-border p-5 space-y-3">
@@ -370,10 +421,9 @@
 					<Select
 						type="single"
 						label="System"
-						numeric
 						bind:value={newStarSystemId}
 						placeholder="None"
-						items={(data.systems as any[]).map(sys => ({ value: String(sys.id), label: sys.name as string }))}
+						items={systems.map((system) => ({ value: String(system.id), label: system.name }))}
 					/>
 					<Button onclick={createStar} disabled={!newStarName.trim()} loading={creating}>Add</Button>
 				</div>
@@ -397,14 +447,17 @@
 					<Select
 						type="single"
 						label="Star"
-						numeric
 						bind:value={newBodyStarId}
 						placeholder="None"
-						items={data.stars.map((star: any) => ({ value: String(star.id), label: star.name }))}
+						items={stars.map((star) => ({ value: String(star.id), label: star.name }))}
 					/>
 					<Button onclick={createBody} disabled={!newBodyName.trim()} loading={creating}>Add</Button>
 				</div>
 			</section>
+		</div>
+	{:else if permissions.isAuthenticated}
+		<div class="mt-8 bg-surface border border-border p-5">
+			<p class="text-sm text-faint">Editor role required to add or configure celestial records.</p>
 		</div>
 	{/if}
 </ArticleShell>
