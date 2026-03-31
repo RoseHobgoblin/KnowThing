@@ -1,14 +1,13 @@
 import type { PageServerLoad } from './$types.js'
-import { db } from '$lib/server/db/index.js'
-import { media, mediaHistory, mediaCategories, contentMediaUsage, contentRecords, users } from '$lib/server/db/schema.js'
-import { eq, desc, sql } from 'drizzle-orm'
 import { error, redirect } from '@sveltejs/kit'
+import { desc, eq } from 'drizzle-orm'
+import { db } from '$lib/server/db/index.js'
+import { contentMediaUsage, contentRecords, media, mediaCategories, mediaHistory, users } from '$lib/server/db/schema.js'
 
 export const load: PageServerLoad = async ({ params, locals }) => {
-	if (!locals.user) redirect(302, '/auth/login')
+	if (!locals.user) throw redirect(302, '/auth/login')
 
 	const filename = decodeURIComponent(params.filename)
-
 	const [file] = await db
 		.select({
 			id: media.id,
@@ -30,9 +29,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		.from(media)
 		.where(eq(media.filename, filename))
 
-	if (!file) error(404, 'File not found')
+	if (!file) throw error(404, 'File not found')
 
-	// Get uploader name
 	let uploaderName: string | null = null
 	if (file.uploadedBy) {
 		const [uploader] = await db
@@ -42,20 +40,17 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		uploaderName = uploader?.username || null
 	}
 
-	// Get categories
-	const cats = await db
+	const categories = await db
 		.select({ category: mediaCategories.category })
 		.from(mediaCategories)
 		.where(eq(mediaCategories.filename, filename))
 
-	// Get usage
 	const usage = await db
 		.select({ pageSlug: contentRecords.slug })
 		.from(contentMediaUsage)
 		.innerJoin(contentRecords, eq(contentMediaUsage.contentRecordId, contentRecords.id))
 		.where(eq(contentMediaUsage.filename, filename))
 
-	// Get history
 	const history = await db
 		.select({
 			id: mediaHistory.id,
@@ -73,8 +68,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	return {
 		file,
 		uploaderName,
-		categories: cats.map(c => c.category),
-		usage: usage.map(u => u.pageSlug),
+		categories: categories.map(category => category.category),
+		usage: usage.map(item => item.pageSlug),
 		history,
 	}
 }

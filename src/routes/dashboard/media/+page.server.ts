@@ -2,7 +2,7 @@ import type { PageServerLoad } from './$types.js'
 import { redirect } from '@sveltejs/kit'
 
 export const load: PageServerLoad = async ({ locals }) => {
-	if (!locals.user) redirect(302, '/auth/login')
-	// Files are loaded client-side via /api/media for search/filter/pagination
+	if (!locals.user) throw redirect(302, '/auth/login')
+
 	return {}
 }

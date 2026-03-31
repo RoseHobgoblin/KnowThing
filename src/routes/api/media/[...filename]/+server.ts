@@ -1,12 +1,13 @@
-import { error, json } from '@sveltejs/kit'
+import { error, isHttpError, json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
-import { db } from '$lib/server/db/index.js'
-import { media, mediaHistory, mediaCategories } from '$lib/server/db/schema.js'
 import { eq } from 'drizzle-orm'
-import { requireRole } from '$lib/server/auth.js'
-import { readFile, unlink } from 'node:fs/promises'
-import join from 'node:path'
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import { env } from '$env/dynamic/private'
+import { requireRole } from '$lib/server/auth.js'
+import { db } from '$lib/server/db/index.js'
+import { media } from '$lib/server/db/schema.js'
+import { deleteMediaFile, updateMediaMetadata } from '$lib/server/services/media.js'
 
 const UPLOAD_DIR = env.UPLOAD_DIR || './uploads'
 const THUMB_DIR = join(UPLOAD_DIR, 'thumbs')
@@ -25,7 +26,6 @@ export const GET: RequestHandler = async ({ params, url }) => {
 
 	if (!record) throw error(404, 'File not found')
 
-	// Try to serve a thumbnail if requested
 	if (requestedWidth && VALID_WIDTHS.has(requestedWidth)) {
 		const hasThumb =
 			(requestedWidth === 150 && record.hasThumb150) ||
@@ -34,8 +34,7 @@ export const GET: RequestHandler = async ({ params, url }) => {
 
 		if (hasThumb) {
 			try {
-				const thumbPath = join(THUMB_DIR, `${requestedWidth}_${filename}`)
-				const buffer = await readFile(thumbPath)
+				const buffer = await readFile(join(THUMB_DIR, `${requestedWidth}_${filename}`))
 				return new Response(buffer, {
 					headers: {
 						'Content-Type': record.mimeType || 'application/octet-stream',
@@ -44,12 +43,11 @@ export const GET: RequestHandler = async ({ params, url }) => {
 					},
 				})
 			} catch {
-				// Thumb missing on disk, fall through to original
+				// Fall back to original when the expected thumbnail is missing on disk.
 			}
 		}
 	}
 
-	// Serve original
 	try {
 		const buffer = await readFile(record.filepath)
 		return new Response(buffer, {
@@ -68,81 +66,28 @@ export const PUT: RequestHandler = async (event) => {
 	const user = requireRole(event, 'editor')
 	const filename = event.params.filename
 	const body = await event.request.json()
-	const { description, categories } = body as {
-		description?: string
-		categories?: string[]
-	}
+	const { description, categories } = body as { description?: string, categories?: string[] }
 
-	const [record] = await db
-		.select({ id: media.id })
-		.from(media)
-		.where(eq(media.filename, filename))
-
-	if (!record) throw error(404, 'File not found')
-
-	// Update description
-	if (description !== undefined) {
-		await db.update(media).set({ description: description.trim() || null }).where(eq(media.filename, filename))
-		await db.insert(mediaHistory).values({
-			filename,
-			userId: user.id,
-			action: 'describe',
-			details: description.trim() || '(cleared)',
-		})
-	}
-
-	// Update categories
-	if (categories !== undefined) {
-		await db.delete(mediaCategories).where(eq(mediaCategories.filename, filename))
-		if (categories.length > 0) {
-			await db.insert(mediaCategories).values(
-				categories.map(c => ({ filename, category: c.trim() })),
-			)
+	try {
+		return json(await updateMediaMetadata(user.id, filename, { description, categories }))
+	} catch (err: unknown) {
+		if (isHttpError(err)) {
+			return json({ error: err.body?.message ?? 'Request failed' }, { status: err.status })
 		}
+		throw err
 	}
-
-	return json({ success: true })
 }
 
 /** DELETE /api/media/:filename */
 export const DELETE: RequestHandler = async (event) => {
 	const user = requireRole(event, 'editor')
-	const filename = event.params.filename
 
-	const [record] = await db
-		.select()
-		.from(media)
-		.where(eq(media.filename, filename))
-		.limit(1)
-
-	if (!record) throw error(404, 'File not found')
-
-	// Delete original file
 	try {
-		await unlink(record.filepath)
-	} catch {
-		// File may already be gone
-	}
-
-	// Delete thumbnails
-	for (const size of [150, 300, 600]) {
-		try {
-			await unlink(join(THUMB_DIR, `${size}_${filename}`))
-		} catch {
-			// Thumb may not exist
+		return json(await deleteMediaFile(user.id, event.params.filename))
+	} catch (err: unknown) {
+		if (isHttpError(err)) {
+			return json({ error: err.body?.message ?? 'Request failed' }, { status: err.status })
 		}
+		throw err
 	}
-
-	// Log before deleting record
-	await db.insert(mediaHistory).values({
-		filename,
-		userId: user.id,
-		action: 'delete',
-		details: `${record.mimeType}, ${record.sizeBytes} bytes`,
-	})
-
-	await db.delete(mediaCategories).where(eq(mediaCategories.filename, filename))
-	await db.delete(media).where(eq(media.filename, filename))
-
-	return json({ success: true })
 }

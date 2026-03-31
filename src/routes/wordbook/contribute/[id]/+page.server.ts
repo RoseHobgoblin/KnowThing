@@ -5,13 +5,13 @@ import { eq, asc } from 'drizzle-orm'
 import { redirect, error } from '@sveltejs/kit'
 
 export const load: PageServerLoad = async ({ locals, params }) => {
-	if (!locals.user) redirect(302, '/auth/login')
+	if (!locals.user) throw redirect(302, '/auth/login')
 
 	const id = Number.parseInt(params.id)
-	if (isNaN(id)) error(400, 'Invalid ID')
+	if (isNaN(id)) throw error(400, 'Invalid ID')
 
 	const [entry] = await db.select().from(lexicon).where(eq(lexicon.id, id))
-	if (!entry) error(404, 'Entry not found')
+	if (!entry) throw error(404, 'Entry not found')
 
 	const defs = await db
 		.select()

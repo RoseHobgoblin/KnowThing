@@ -1,7 +1,6 @@
 import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
-import { db } from '$lib/server/db/index.js'
-import { sql } from 'drizzle-orm'
+import { searchContent } from '$lib/server/services/search.js'
 
 /** GET /api/search?q=...&limit=20 — full-text search across all content */
 export const GET: RequestHandler = async ({ url }) => {
@@ -12,27 +11,11 @@ export const GET: RequestHandler = async ({ url }) => {
 		return json([])
 	}
 
-	const tsquery = q
-		.split(/\s+/)
-		.filter(Boolean)
-		.map(w => w + ':*')
-		.join(' & ')
-
-	const result = await db.execute(sql`
-		SELECT
-			domain,
-			slug,
-			parent_path AS "parentPath",
-			title,
-			ts_rank(search_vector, to_tsquery('english', ${tsquery})) AS rank,
-			ts_headline('english', plain_text, to_tsquery('english', ${tsquery}),
-				'StartSel=<mark>, StopSel=</mark>, MaxWords=40, MinWords=20'
-			) AS snippet
-		FROM content_records
-		WHERE search_vector @@ to_tsquery('english', ${tsquery})
-		ORDER BY rank DESC
-		LIMIT ${limit}
-	`)
+	const result = await searchContent(q, {
+		limit,
+		headlineMaxWords: 40,
+		headlineMinWords: 20,
+	})
 
 	return json(result)
 }

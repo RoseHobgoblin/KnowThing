@@ -6,7 +6,7 @@ import { redirect } from '@sveltejs/kit'
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	if (!locals.user) {
-		redirect(302, '/auth/login')
+		throw redirect(302, '/auth/login')
 	}
 
 	const langs = await db
@@ -14,7 +14,6 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		.from(languages)
 		.orderBy(asc(languages.name))
 
-	// Pre-select language if passed via query param
 	const langSlug = url.searchParams.get('language')
 	const preselectedLanguageId = langSlug
 		? langs.find(l => l.slug === langSlug)?.id ?? null

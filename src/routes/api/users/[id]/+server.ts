@@ -1,9 +1,7 @@
-import { json } from '@sveltejs/kit'
+import { isHttpError, json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
-import { db } from '$lib/server/db/index.js'
-import { users } from '$lib/server/db/schema.js'
-import { requireRole, deleteUser } from '$lib/server/auth.js'
-import { eq } from 'drizzle-orm'
+import { requireRole } from '$lib/server/auth.js'
+import { deleteManagedUser } from '$lib/server/services/user-admin.js'
 
 /** DELETE /api/users/:id — delete a user (admin only, cannot delete owner or self) */
 export const DELETE: RequestHandler = async (event) => {
@@ -12,16 +10,13 @@ export const DELETE: RequestHandler = async (event) => {
 	const id = Number.parseInt(event.params.id)
 	if (isNaN(id)) return json({ error: 'Invalid ID' }, { status: 400 })
 
-	if (id === admin.id) {
-		return json({ error: 'Cannot delete yourself' }, { status: 400 })
+	try {
+		await deleteManagedUser(admin, id)
+		return json({ success: true })
+	} catch (err: unknown) {
+		if (isHttpError(err)) {
+			return json({ error: err.body?.message ?? err.message }, { status: err.status })
+		}
+		throw err
 	}
-
-	const [target] = await db.select({ role: users.role }).from(users).where(eq(users.id, id))
-	if (!target) return json({ error: 'User not found' }, { status: 404 })
-	if (target.role === 'owner') {
-		return json({ error: 'Cannot delete the owner' }, { status: 400 })
-	}
-
-	await deleteUser(id)
-	return json({ success: true })
 }
