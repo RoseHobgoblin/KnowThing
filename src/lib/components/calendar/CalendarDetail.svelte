@@ -7,7 +7,7 @@
 	import { createKnowContext } from '$lib/renderer/context.js'
 	import { page } from '$app/stores'
 	import { normalizePermissions } from '$lib/permissions.js'
-	import GearSixIcon from 'phosphor-svelte/lib/GearSix'
+	import GearSixIcon from 'phosphor-svelte/lib/GearSixIcon'
 	import { calendarDetailBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 
 	let {
