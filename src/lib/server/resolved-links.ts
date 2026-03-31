@@ -1,17 +1,23 @@
 import { db } from './db/index.js'
 import { contentLinks, contentRecords } from './db/schema.js'
-import { eq, sql } from 'drizzle-orm'
+import { eq, sql, and, inArray } from 'drizzle-orm'
 
 export interface ResolvedLink {
 	href: string
 	exists: boolean
 }
 
+/** Domains that WikiInternalLink falls through to when a know-domain link is unresolved */
+const FALLTHROUGH_DOMAINS = ['celestial', 'calendar']
+
 /**
  * For a given content record, fetch its outbound links from the content_links
  * table and resolve each to an href + existence flag by joining content_records.
  *
- * Returns a Map keyed by "domain:slug" (e.g. "know:onchera", "celestial:sunly-system").
+ * For unresolved know-domain links, also checks celestial/calendar domains
+ * (matching the WikiInternalLink cross-domain fallthrough behavior).
+ *
+ * Returns a Map keyed by "domain:slug" (lowercase, e.g. "know:onchera").
  */
 export async function getResolvedLinks(sourceId: number): Promise<Map<string, ResolvedLink>> {
 	const rows = await db
@@ -28,11 +34,45 @@ export async function getResolvedLinks(sourceId: number): Promise<Map<string, Re
 
 	const result = new Map<string, ResolvedLink>()
 
+	// Collect unresolved know-domain slugs for cross-domain fallthrough
+	const unresolvedKnowSlugs: string[] = []
+
 	for (const row of rows) {
-		const key = `${row.targetDomain}:${row.targetSlug}`
+		const key = `${row.targetDomain}:${row.targetSlug.toLowerCase()}`
 		const exists = row.targetId !== null
 		const href = buildHref(row.targetDomain, row.targetSlug, row.targetParentPath)
 		result.set(key, { href, exists })
+
+		if (!exists && row.targetDomain === 'know') {
+			unresolvedKnowSlugs.push(row.targetSlug.toLowerCase())
+		}
+	}
+
+	// Cross-domain fallthrough: check if unresolved know links exist in other domains
+	if (unresolvedKnowSlugs.length > 0) {
+		const crossDomainMatches = await db
+			.select({
+				domain: contentRecords.domain,
+				slug: contentRecords.slug,
+				parentPath: contentRecords.parentPath,
+			})
+			.from(contentRecords)
+			.where(and(
+				inArray(contentRecords.domain, FALLTHROUGH_DOMAINS),
+				sql`LOWER(${contentRecords.slug}) IN (${sql.join(unresolvedKnowSlugs.map(s => sql`${s}`), sql`, `)})`,
+			))
+
+		for (const match of crossDomainMatches) {
+			const lowerSlug = match.slug.toLowerCase()
+			// Add as the fallthrough domain key so WikiInternalLink finds it
+			const key = `${match.domain}:${lowerSlug}`
+			if (!result.has(key)) {
+				result.set(key, {
+					href: buildHref(match.domain, match.slug, match.parentPath),
+					exists: true,
+				})
+			}
+		}
 	}
 
 	return result
