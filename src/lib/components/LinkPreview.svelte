@@ -13,15 +13,15 @@
 	let summary = $state('')
 	let loading = $state(true)
 	let error = $state(false)
-	let popupEl: HTMLDivElement | undefined = $state()
+	let popupElement: HTMLDivElement | undefined = $state()
 
 	const POPUP_WIDTH = 320
 	const POPUP_HEIGHT_MAX = 200
 
 	// Position: prefer below and to the right, but flip if near edges
 	const style = $derived.by(() => {
-		const viewportW = typeof window !== 'undefined' ? window.innerWidth : 1200
-		const viewportH = typeof window !== 'undefined' ? window.innerHeight : 800
+		const viewportW = globalThis.window === undefined ? 1200 : window.innerWidth
+		const viewportH = globalThis.window === undefined ? 800 : window.innerHeight
 
 		let left = x + 12
 		let top = y + 16
@@ -55,17 +55,17 @@
 		fetch(`/api/pages/summary?slug=${encodeURIComponent(currentSlug)}`, {
 			signal: controller.signal,
 		})
-			.then(r => {
+			.then((r) => {
 				if (!r.ok) throw new Error('Not found')
 				return r.json()
 			})
-			.then(data => {
+			.then((data) => {
 				title = data.title
 				summary = data.summary
 				loading = false
 			})
-			.catch(err => {
-				if (err.name !== 'AbortError') {
+			.catch((error_) => {
+				if (error_.name !== 'AbortError') {
 					error = true
 					loading = false
 				}
@@ -77,22 +77,22 @@
 
 {#if !error}
 	<div
-		bind:this={popupEl}
+		bind:this={popupElement}
 		class="link-preview fixed z-50 border border-border bg-surface shadow-lg overflow-hidden"
 		style={style}
 		role="tooltip"
 	>
 		{#if loading}
 			<div class="p-4">
-				<div class="h-4 w-3/4 bg-skeleton rounded animate-pulse mb-2"></div>
-				<div class="h-3 w-full bg-skeleton-shimmer rounded animate-pulse mb-1"></div>
-				<div class="h-3 w-5/6 bg-skeleton-shimmer rounded animate-pulse"></div>
+				<div class="h-4 w-3/4 bg-skeleton rounded-sm animate-pulse mb-2"></div>
+				<div class="h-3 w-full bg-skeleton-shimmer rounded-sm animate-pulse mb-1"></div>
+				<div class="h-3 w-5/6 bg-skeleton-shimmer rounded-sm animate-pulse"></div>
 			</div>
 		{:else}
 			<div class="p-4">
-				<h3 class="font-semibold text-heading text-sm mb-1.5 leading-tight">{title}</h3>
+				<h3 class="font-semibold text-heading text-sm/tight mb-1.5">{title}</h3>
 				{#if summary}
-					<p class="text-xs text-body leading-relaxed">{summary}</p>
+					<p class="text-xs/relaxed text-body">{summary}</p>
 				{:else}
 					<p class="text-xs text-faint italic">No summary available.</p>
 				{/if}
