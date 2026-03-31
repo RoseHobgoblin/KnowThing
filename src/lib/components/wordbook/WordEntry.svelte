@@ -1,5 +1,6 @@
 <script lang="ts">
 	import LanguageBadge from './LanguageBadge.svelte'
+	import InlineMarkup from '$lib/renderer/InlineMarkup.svelte'
 	import { POS_COLORS } from './constants.js'
 
 	let { entry, showLanguage = true }: {
@@ -39,6 +40,6 @@
 		{/if}
 	</div>
 	{#if entry.definition}
-		<p class="text-sm text-secondary mt-1 line-clamp-2">{entry.definition}</p>
+		<p class="text-sm text-secondary mt-1 line-clamp-2"><InlineMarkup text={entry.definition} /></p>
 	{/if}
 </a>

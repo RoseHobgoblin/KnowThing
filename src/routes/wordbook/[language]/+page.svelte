@@ -6,11 +6,20 @@
 	import WordEntry from '$lib/components/wordbook/WordEntry.svelte'
 	import DimensionEditor from '$lib/components/wordbook/DimensionEditor.svelte'
 
+	import { createKnowContext } from '$lib/renderer/context.js'
+
 	let { data }: { data: PageData } = $props()
 
 	const layoutData = $derived($page.data)
 	const isAuthenticated = $derived(!!layoutData.user)
 	const wbName = $derived(layoutData.siteConfig?.wordbookName ?? 'Wordbook')
+
+	createKnowContext({
+		existingPages: new Set($page.data.existingPages || []),
+		mediaBaseUrl: '/api/media',
+		pageBaseUrl: '/know',
+		calendarDate: $page.data.calendarDate ?? null,
+	})
 
 	// Group entries by first letter
 	function groupByLetter(entries: typeof data.entries) {

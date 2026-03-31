@@ -6,10 +6,18 @@
 	import TagPill from '$lib/components/wordbook/TagPill.svelte'
 	import { wordbookSearchBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import { page } from '$app/stores'
+	import { createKnowContext } from '$lib/renderer/context.js'
 
 	let { data }: { data: PageData } = $props()
 
 	const wbName = $derived($page.data.siteConfig?.wordbookName ?? 'Wordbook')
+
+	createKnowContext({
+		existingPages: new Set($page.data.existingPages || []),
+		mediaBaseUrl: '/api/media',
+		pageBaseUrl: '/know',
+		calendarDate: $page.data.calendarDate ?? null,
+	})
 </script>
 
 <svelte:head>

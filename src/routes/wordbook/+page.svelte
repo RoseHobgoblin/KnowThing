@@ -6,10 +6,18 @@
 	import WordEntry from '$lib/components/wordbook/WordEntry.svelte'
 	import { wordbookBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import { page } from '$app/stores'
+	import { createKnowContext } from '$lib/renderer/context.js'
 
 	let { data }: { data: PageData } = $props()
 
 	const wbName = $derived($page.data.siteConfig?.wordbookName ?? 'Wordbook')
+
+	createKnowContext({
+		existingPages: new Set($page.data.existingPages || []),
+		mediaBaseUrl: '/api/media',
+		pageBaseUrl: '/know',
+		calendarDate: $page.data.calendarDate ?? null,
+	})
 </script>
 
 <svelte:head>
@@ -40,7 +48,7 @@
 				<a href="/wordbook/contribute/language" class="text-sm text-link hover:text-link-hover hover:underline">+ Add language</a>
 			</div>
 			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-				{#each data.languages as lang}
+				{#each data.languages as lang (lang.slug)}
 					<LanguageCard
 						name={lang.name}
 						slug={lang.slug}
@@ -67,7 +75,7 @@
 		<section>
 			<h2 class="text-lg font-semibold text-body mb-3">Recently Added</h2>
 			<div class="bg-raised border border-border-subtle divide-y divide-border-subtle">
-				{#each data.recent as entry}
+				{#each data.recent as entry (entry.id)}
 					<WordEntry {entry} />
 				{/each}
 			</div>

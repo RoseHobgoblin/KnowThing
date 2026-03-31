@@ -15,6 +15,7 @@
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import { PARTS_OF_SPEECH, POS_COLORS } from '$lib/components/wordbook/constants.js'
 	import InlineMarkup from '$lib/renderer/InlineMarkup.svelte'
+	import { createKnowContext } from '$lib/renderer/context.js'
 	import PencilSimple from 'phosphor-svelte/lib/PencilSimple'
 	import Trash from 'phosphor-svelte/lib/Trash'
 	import { wordbookWordBreadcrumbs } from '$lib/utils/breadcrumbs.js'
@@ -23,6 +24,13 @@
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
 
 	const layoutData = $derived($page.data)
+
+	createKnowContext({
+		existingPages: new Set(layoutData.existingPages || []),
+		mediaBaseUrl: '/api/media',
+		pageBaseUrl: '/know',
+		calendarDate: layoutData.calendarDate ?? null,
+	})
 	const isAuthenticated = $derived(!!layoutData.user)
 	const isAdmin = $derived(layoutData.isAdmin)
 	const wbName = $derived(layoutData.siteConfig?.wordbookName ?? 'Wordbook')
