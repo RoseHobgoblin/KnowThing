@@ -5,6 +5,11 @@ import { stars, starSystems } from '$lib/server/db/schema.js'
 import { requireRole } from '$lib/server/auth.js'
 import { eq, sql } from 'drizzle-orm'
 import { createStarSchema, updateStarSchema } from '$lib/celestial/schema.js'
+import {
+	deleteCelestialContentRecord,
+	ensureStarContentRecord,
+	syncBodiesForStar,
+} from '$lib/server/services/celestial-content.js'
 
 /** GET /api/stars/:slug */
 export const GET: RequestHandler = async ({ params }) => {
@@ -89,11 +94,21 @@ export const PUT: RequestHandler = async (event) => {
 	if (data.extra !== undefined) setClause.extra = data.extra ?? {}
 	if (data.description !== undefined) setClause.description = data.description?.trim() || ''
 
-	const [updated] = await db
-		.update(stars)
-		.set(setClause)
-		.where(eq(stars.slug, event.params.slug))
-		.returning()
+	const updated = await db.transaction(async (tx) => {
+		const [saved] = await tx
+			.update(stars)
+			.set(setClause)
+			.where(eq(stars.slug, event.params.slug))
+			.returning()
+
+		if (!saved) return null
+
+		await ensureStarContentRecord(tx, saved)
+		await syncBodiesForStar(tx, saved.id)
+
+		const [refetched] = await tx.select().from(stars).where(eq(stars.id, saved.id))
+		return refetched ?? saved
+	})
 
 	if (!updated) {
 		return json({ error: 'Star not found' }, { status: 404 })
@@ -106,10 +121,17 @@ export const PUT: RequestHandler = async (event) => {
 export const DELETE: RequestHandler = async (event) => {
 	requireRole(event, 'admin')
 
-	const [deleted] = await db
-		.delete(stars)
-		.where(eq(stars.slug, event.params.slug))
-		.returning()
+	const deleted = await db.transaction(async (tx) => {
+		const [removed] = await tx
+			.delete(stars)
+			.where(eq(stars.slug, event.params.slug))
+			.returning()
+
+		if (!removed) return null
+
+		await deleteCelestialContentRecord(tx, removed.contentRecordId)
+		return removed
+	})
 
 	if (!deleted) {
 		return json({ error: 'Star not found' }, { status: 404 })

@@ -6,6 +6,10 @@ import { requireRole } from '$lib/server/auth.js'
 import { eq, sql } from 'drizzle-orm'
 import { createPlanetaryBodySchema, updatePlanetaryBodySchema } from '$lib/celestial/schema.js'
 import { isDescendant } from '$lib/server/celestial/tree.js'
+import {
+	deleteCelestialContentRecord,
+	ensurePlanetaryBodyContentRecord,
+} from '$lib/server/services/celestial-content.js'
 
 /** GET /api/planetary-bodies/:slug */
 export const GET: RequestHandler = async ({ params }) => {
@@ -117,11 +121,20 @@ export const PUT: RequestHandler = async (event) => {
 	if (data.extra !== undefined) setClause.extra = data.extra ?? {}
 	if (data.description !== undefined) setClause.description = data.description?.trim() || ''
 
-	const [updated] = await db
-		.update(planetaryBodies)
-		.set(setClause)
-		.where(eq(planetaryBodies.slug, event.params.slug))
-		.returning()
+	const updated = await db.transaction(async (tx) => {
+		const [saved] = await tx
+			.update(planetaryBodies)
+			.set(setClause)
+			.where(eq(planetaryBodies.slug, event.params.slug))
+			.returning()
+
+		if (!saved) return null
+
+		await ensurePlanetaryBodyContentRecord(tx, saved)
+
+		const [refetched] = await tx.select().from(planetaryBodies).where(eq(planetaryBodies.id, saved.id))
+		return refetched ?? saved
+	})
 
 	if (!updated) {
 		return json({ error: 'Body not found' }, { status: 404 })
@@ -134,10 +147,17 @@ export const PUT: RequestHandler = async (event) => {
 export const DELETE: RequestHandler = async (event) => {
 	requireRole(event, 'admin')
 
-	const [deleted] = await db
-		.delete(planetaryBodies)
-		.where(eq(planetaryBodies.slug, event.params.slug))
-		.returning()
+	const deleted = await db.transaction(async (tx) => {
+		const [removed] = await tx
+			.delete(planetaryBodies)
+			.where(eq(planetaryBodies.slug, event.params.slug))
+			.returning()
+
+		if (!removed) return null
+
+		await deleteCelestialContentRecord(tx, removed.contentRecordId)
+		return removed
+	})
 
 	if (!deleted) {
 		return json({ error: 'Body not found' }, { status: 404 })

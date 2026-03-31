@@ -301,12 +301,23 @@
 				return
 			}
 
-			if (contentRecordId && content !== initialWikiContent) {
+			if (content !== initialWikiContent) {
+				if (!contentRecordId) {
+					saveError = 'Article content is not attached to this star yet. Reload and try again.'
+					pushError(saveError)
+					return
+				}
 				const formData = new FormData()
 				formData.set('contentRecordId', String(contentRecordId))
 				formData.set('content', content)
 				formData.set('summary', editSummary)
-				await fetch(window.location.pathname, { method: 'POST', body: formData })
+				const articleRes = await fetch(window.location.pathname, { method: 'POST', body: formData })
+				if (!articleRes.ok) {
+					const payload = await articleRes.json().catch(() => ({}))
+					saveError = payload.error || 'Failed to save article content'
+					pushError(saveError)
+					return
+				}
 			}
 
 			savedAt = new Date()

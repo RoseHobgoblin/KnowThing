@@ -45,7 +45,7 @@
 	createKnowContext({
 		resolvedLinks: new Map(Object.entries(data.resolvedLinks ?? {})),
 		mediaBaseUrl: '/api/media',
-		pageBaseUrl: '/know',
+		pageBaseUrl: '/celestial',
 		calendarDate: layoutData.calendarDate ?? null,
 	})
 

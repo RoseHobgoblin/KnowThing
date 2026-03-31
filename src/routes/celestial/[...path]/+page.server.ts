@@ -9,6 +9,11 @@ import { requireEditor } from '$lib/server/guards.js'
 import { updateContentEffects } from '$lib/server/content-effects.js'
 import { resolveStructuredData } from '$lib/server/structured-data.js'
 import { getResolvedLinks, serializeResolvedLinks } from '$lib/server/resolved-links.js'
+import {
+	ensurePlanetaryBodyContentRecord,
+	ensureStarContentRecord,
+	ensureSystemContentRecord,
+} from '$lib/server/services/celestial-content.js'
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const pathSegments = params.path.split('/')
@@ -34,7 +39,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	const [system] = await db.select().from(starSystems).where(sql`LOWER(${starSystems.slug}) = LOWER(${slug}) OR LOWER(${starSystems.pageSlug}) = LOWER(${slug})`)
 	if (system) {
 		if (system.slug !== slug && !isEditMode) throw redirect(301, `/celestial/${system.slug}`)
-		const content = await getContent(system.contentRecordId)
+		const contentRecordId = system.contentRecordId ?? await ensureSystemContentRecord(db, system)
+		const content = await getContent(contentRecordId)
 		// Fetch stars + bodies for system map (include orbital data)
 		const systemStars = await db.execute(sql`
 			SELECT id, name, slug, spectral_type AS "spectralType", color,
@@ -85,7 +91,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		if (canonicalPath !== inputPath && !isEditMode) throw redirect(301, canonicalPath)
 
 		const allSystems = await db.select({ id: starSystems.id, name: starSystems.name }).from(starSystems).orderBy(starSystems.name)
-		const content = await getContent(star.contentRecordId)
+		const contentRecordId = star.contentRecordId ?? await ensureStarContentRecord(db, star)
+		const content = await getContent(contentRecordId)
 		const parentCrumbs: { label: string, href: string }[] = []
 		if (parentSystem) {
 			parentCrumbs.push({ label: parentSystem.name, href: `/celestial/${parentSystem.slug}` })
@@ -120,7 +127,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 				.from(planetaryBodies)
 				.where(eq(planetaryBodies.starId, planet.starId))
 			: []
-		const content = await getContent(planet.contentRecordId)
+		const contentRecordId = planet.contentRecordId ?? await ensurePlanetaryBodyContentRecord(db, planet)
+		const content = await getContent(contentRecordId)
 		const infoboxFields = await resolveStructuredData('planet', planet.slug)
 		return { kind: 'planet' as const, body: planet, allStars, siblings, isEditMode, isConfigureMode, parentCrumbs, infoboxFields: infoboxFields ? Object.fromEntries(infoboxFields) : null, ...content }
 	}
@@ -148,7 +156,7 @@ export const actions: Actions = {
 
 		try {
 			const sizeBytes = new TextEncoder().encode(content).length
-			const { plainText, ast } = await updateContentEffects(db, contentRecordId, content)
+			const { plainText, ast } = await updateContentEffects(db, contentRecordId, content, 'celestial')
 
 			await db
 				.update(contentRecords)

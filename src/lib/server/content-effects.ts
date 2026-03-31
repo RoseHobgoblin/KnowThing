@@ -27,11 +27,11 @@ export async function updateContentEffects(
 	// Update links
 	await database.delete(contentLinks).where(eq(contentLinks.sourceId, contentRecordId))
 	if (linkTargets.length > 0) {
-		// Resolve target IDs where possible (for blue/red link detection)
+		// Resolve target IDs within the source domain so internal links stay domain-relative.
 		const targetRecords = await database
 			.select({ id: contentRecords.id, slug: contentRecords.slug })
 			.from(contentRecords)
-			.where(sql`LOWER(${contentRecords.slug}) IN (${sql.join(linkTargets.map(t => sql`LOWER(${t})`), sql`, `)})`)
+			.where(sql`${contentRecords.domain} = ${sourceDomain} AND LOWER(${contentRecords.slug}) IN (${sql.join(linkTargets.map(t => sql`LOWER(${t})`), sql`, `)})`)
 
 		const slugToId = new Map(targetRecords.map(r => [r.slug.toLowerCase(), r.id]))
 

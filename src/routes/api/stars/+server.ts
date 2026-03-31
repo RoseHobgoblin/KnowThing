@@ -5,6 +5,7 @@ import { stars, planetaryBodies, starSystems } from '$lib/server/db/schema.js'
 import { requireRole } from '$lib/server/auth.js'
 import { eq, sql } from 'drizzle-orm'
 import { createStarSchema } from '$lib/celestial/schema.js'
+import { ensureStarContentRecord } from '$lib/server/services/celestial-content.js'
 
 /** GET /api/stars — list all stars with planet counts */
 export const GET: RequestHandler = async () => {
@@ -51,36 +52,47 @@ export const POST: RequestHandler = async (event) => {
 		return json({ error: 'A star with this slug already exists' }, { status: 409 })
 	}
 
-	const [star] = await db
-		.insert(stars)
-		.values({
-			name: data.name.trim(),
-			slug: data.slug.trim().toLowerCase(),
-			pageSlug: data.pageSlug?.trim() || null,
-			spectralType: data.spectralType?.trim() || null,
-			mass: data.mass?.trim() || null,
-			radius: data.radius?.trim() || null,
-			luminosity: data.luminosity?.trim() || null,
-			luminosityVisual: data.luminosityVisual?.trim() || null,
-			temperature: data.temperature?.trim() || null,
-			age: data.age?.trim() || null,
-			color: data.color?.trim() || null,
-			orbitalPeriod: data.orbitalPeriod?.trim() || null,
-			semiMajorAxis: data.semiMajorAxis?.trim() || null,
-			semiMajorAxisAu: data.semiMajorAxisAu ?? null,
-			eccentricity: data.eccentricity ?? null,
-			periastron: data.periastron?.trim() || null,
-			apastron: data.apastron?.trim() || null,
-			apparentMagnitude: data.apparentMagnitude?.trim() || null,
-			angularDiameter: data.angularDiameter?.trim() || null,
-			companion: data.companion?.trim() || null,
-			parentStarId: data.parentStarId ?? null,
-			systemId: data.systemId ?? null,
-			epochPhase: data.epochPhase ?? null,
-			extra: data.extra ?? {},
-			description: data.description?.trim() || '',
-		})
-		.returning()
+	const star = await db.transaction(async (tx) => {
+		const [created] = await tx
+			.insert(stars)
+			.values({
+				name: data.name.trim(),
+				slug: data.slug.trim().toLowerCase(),
+				pageSlug: data.pageSlug?.trim() || null,
+				spectralType: data.spectralType?.trim() || null,
+				mass: data.mass?.trim() || null,
+				radius: data.radius?.trim() || null,
+				luminosity: data.luminosity?.trim() || null,
+				luminosityVisual: data.luminosityVisual?.trim() || null,
+				temperature: data.temperature?.trim() || null,
+				age: data.age?.trim() || null,
+				color: data.color?.trim() || null,
+				orbitalPeriod: data.orbitalPeriod?.trim() || null,
+				semiMajorAxis: data.semiMajorAxis?.trim() || null,
+				semiMajorAxisAu: data.semiMajorAxisAu ?? null,
+				eccentricity: data.eccentricity ?? null,
+				periastron: data.periastron?.trim() || null,
+				apastron: data.apastron?.trim() || null,
+				apparentMagnitude: data.apparentMagnitude?.trim() || null,
+				angularDiameter: data.angularDiameter?.trim() || null,
+				companion: data.companion?.trim() || null,
+				parentStarId: data.parentStarId ?? null,
+				systemId: data.systemId ?? null,
+				epochPhase: data.epochPhase ?? null,
+				extra: data.extra ?? {},
+				description: data.description?.trim() || '',
+			})
+			.returning()
+
+		await ensureStarContentRecord(tx, created)
+
+		const [updated] = await tx
+			.select()
+			.from(stars)
+			.where(eq(stars.id, created.id))
+
+		return updated ?? created
+	})
 
 	return json(star, { status: 201 })
 }

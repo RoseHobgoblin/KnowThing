@@ -5,6 +5,7 @@ import { planetaryBodies, stars } from '$lib/server/db/schema.js'
 import { requireRole } from '$lib/server/auth.js'
 import { eq, sql } from 'drizzle-orm'
 import { createPlanetaryBodySchema } from '$lib/celestial/schema.js'
+import { ensurePlanetaryBodyContentRecord } from '$lib/server/services/celestial-content.js'
 
 /** GET /api/planetary-bodies?star=slug — list bodies, optionally filtered by star */
 export const GET: RequestHandler = async ({ url }) => {
@@ -70,44 +71,55 @@ export const POST: RequestHandler = async (event) => {
 		}
 	}
 
-	const [created] = await db
-		.insert(planetaryBodies)
-		.values({
-			name: data.name.trim(),
-			slug: data.slug.trim().toLowerCase(),
-			bodyType: data.bodyType,
-			starId: data.starId ?? null,
-			parentId: data.parentId ?? null,
-			pageSlug: data.pageSlug?.trim() || null,
-			mass: data.mass?.trim() || null,
-			radius: data.radius?.trim() || null,
-			density: data.density?.trim() || null,
-			surfaceGravity: data.surfaceGravity?.trim() || null,
-			escapeVelocity: data.escapeVelocity?.trim() || null,
-			temperature: data.temperature?.trim() || null,
-			age: data.age?.trim() || null,
-			composition: data.composition?.trim() || null,
-			atmosphere: data.atmosphere?.trim() || null,
-			surfacePressure: data.surfacePressure?.trim() || null,
-			orbitalPeriod: data.orbitalPeriod?.trim() || null,
-			orbitalPeriodDays: data.orbitalPeriodDays ?? null,
-			semiMajorAxis: data.semiMajorAxis?.trim() || null,
-			semiMajorAxisAu: data.semiMajorAxisAu ?? null,
-			eccentricity: data.eccentricity ?? null,
-			inclination: data.inclination ?? null,
-			epochPhase: data.epochPhase ?? null,
-			rotationPeriod: data.rotationPeriod?.trim() || null,
-			rotationPeriodS: data.rotationPeriodS ?? null,
-			axialTilt: data.axialTilt ?? null,
-			apparentMagnitude: data.apparentMagnitude?.trim() || null,
-			angularDiameter: data.angularDiameter?.trim() || null,
-			albedo: data.albedo?.trim() || null,
-			satellites: data.satellites ?? null,
-			hasRings: data.hasRings ?? false,
-			extra: data.extra ?? {},
-			description: data.description?.trim() || '',
-		})
-		.returning()
+	const created = await db.transaction(async (tx) => {
+		const [inserted] = await tx
+			.insert(planetaryBodies)
+			.values({
+				name: data.name.trim(),
+				slug: data.slug.trim().toLowerCase(),
+				bodyType: data.bodyType,
+				starId: data.starId ?? null,
+				parentId: data.parentId ?? null,
+				pageSlug: data.pageSlug?.trim() || null,
+				mass: data.mass?.trim() || null,
+				radius: data.radius?.trim() || null,
+				density: data.density?.trim() || null,
+				surfaceGravity: data.surfaceGravity?.trim() || null,
+				escapeVelocity: data.escapeVelocity?.trim() || null,
+				temperature: data.temperature?.trim() || null,
+				age: data.age?.trim() || null,
+				composition: data.composition?.trim() || null,
+				atmosphere: data.atmosphere?.trim() || null,
+				surfacePressure: data.surfacePressure?.trim() || null,
+				orbitalPeriod: data.orbitalPeriod?.trim() || null,
+				orbitalPeriodDays: data.orbitalPeriodDays ?? null,
+				semiMajorAxis: data.semiMajorAxis?.trim() || null,
+				semiMajorAxisAu: data.semiMajorAxisAu ?? null,
+				eccentricity: data.eccentricity ?? null,
+				inclination: data.inclination ?? null,
+				epochPhase: data.epochPhase ?? null,
+				rotationPeriod: data.rotationPeriod?.trim() || null,
+				rotationPeriodS: data.rotationPeriodS ?? null,
+				axialTilt: data.axialTilt ?? null,
+				apparentMagnitude: data.apparentMagnitude?.trim() || null,
+				angularDiameter: data.angularDiameter?.trim() || null,
+				albedo: data.albedo?.trim() || null,
+				satellites: data.satellites ?? null,
+				hasRings: data.hasRings ?? false,
+				extra: data.extra ?? {},
+				description: data.description?.trim() || '',
+			})
+			.returning()
+
+		await ensurePlanetaryBodyContentRecord(tx, inserted)
+
+		const [updated] = await tx
+			.select()
+			.from(planetaryBodies)
+			.where(eq(planetaryBodies.id, inserted.id))
+
+		return updated ?? inserted
+	})
 
 	return json(created, { status: 201 })
 }

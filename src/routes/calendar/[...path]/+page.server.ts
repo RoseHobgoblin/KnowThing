@@ -107,7 +107,7 @@ export const actions: Actions = {
 		try {
 			if (contentRecordId) {
 				const sizeBytes = new TextEncoder().encode(content).length
-				const { plainText, ast } = await updateContentEffects(db, contentRecordId, content)
+				const { plainText, ast } = await updateContentEffects(db, contentRecordId, content, 'calendar')
 
 				await db
 					.update(contentRecords)

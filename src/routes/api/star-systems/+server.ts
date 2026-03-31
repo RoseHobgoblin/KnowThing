@@ -5,6 +5,7 @@ import { starSystems } from '$lib/server/db/schema.js'
 import { requireRole } from '$lib/server/auth.js'
 import { eq, sql } from 'drizzle-orm'
 import { createSystemSchema } from '$lib/celestial/schema.js'
+import { ensureSystemContentRecord } from '$lib/server/services/celestial-content.js'
 
 /** GET /api/star-systems — list all systems with star/planet counts */
 export const GET: RequestHandler = async () => {
@@ -37,17 +38,28 @@ export const POST: RequestHandler = async (event) => {
 		return json({ error: 'A system with this slug already exists' }, { status: 409 })
 	}
 
-	const [system] = await db
-		.insert(starSystems)
-		.values({
-			name: data.name.trim(),
-			slug: data.slug.trim().toLowerCase(),
-			pageSlug: data.pageSlug?.trim() || null,
-			systemType: data.systemType,
-			description: data.description?.trim() || '',
-			extra: data.extra ?? {},
-		})
-		.returning()
+	const system = await db.transaction(async (tx) => {
+		const [created] = await tx
+			.insert(starSystems)
+			.values({
+				name: data.name.trim(),
+				slug: data.slug.trim().toLowerCase(),
+				pageSlug: data.pageSlug?.trim() || null,
+				systemType: data.systemType,
+				description: data.description?.trim() || '',
+				extra: data.extra ?? {},
+			})
+			.returning()
+
+		await ensureSystemContentRecord(tx, created)
+
+		const [updated] = await tx
+			.select()
+			.from(starSystems)
+			.where(eq(starSystems.id, created.id))
+
+		return updated ?? created
+	})
 
 	return json(system, { status: 201 })
 }
