@@ -61,13 +61,16 @@
 	// Direct orbiters of the system center (companion stars + planets orbiting star directly)
 	const directOrbiters = $derived.by(() => {
 		const all: OrbitBody[] = []
+		const seen = new Set<number>()
 		for (const star of companionStars) {
-			if (star.semiMajorAxisAu) {
+			if (star.semiMajorAxisAu && !seen.has(star.id)) {
+				seen.add(star.id)
 				all.push({ ...star, orbitAu: star.semiMajorAxisAu, ecc: star.eccentricity ?? 0, isStar: true })
 			}
 		}
 		for (const body of bodies) {
-			if (body.semiMajorAxisAu && !body.parentId) {
+			if (body.semiMajorAxisAu && !body.parentId && !seen.has(body.id)) {
+				seen.add(body.id)
 				all.push({ ...body, orbitAu: body.semiMajorAxisAu, ecc: body.eccentricity ?? 0, isStar: false })
 			}
 		}
