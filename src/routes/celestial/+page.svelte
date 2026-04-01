@@ -449,7 +449,7 @@
 						items={[
 							{ value: 'planet', label: 'Planet' },
 							{ value: 'moon', label: 'Moon' },
-							{ value: 'dwarf_planet', label: 'Dwarf planet' },
+	
 							{ value: 'asteroid', label: 'Asteroid' },
 						]}
 					/>

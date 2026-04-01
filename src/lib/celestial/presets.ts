@@ -25,7 +25,7 @@ export interface StarPreset {
 
 export interface BodyPreset {
 	name: string
-	bodyType: 'planet' | 'moon' | 'dwarf_planet' | 'asteroid'
+	bodyType: 'planet' | 'moon' | 'asteroid'
 	mass: string
 	massKg: number
 	radius: string

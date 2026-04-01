@@ -17,6 +17,7 @@
 	import { summarizeZodIssues } from '$lib/utils.js'
 	import { getStarPresets, type StarPreset } from '$lib/celestial/presets.js'
 	import { deriveStarOrbitalFields, deriveDisplayStrings } from '$lib/celestial/compute.js'
+	import { validateStarPhysics } from '$lib/celestial/validate-physics.js'
 
 	type CelestialCrumb = { label: string, href: string }
 	type CelestialSystemOption = { id: number, name: string }
@@ -128,6 +129,7 @@
 
 	// Auto-computed from numeric inputs
 	const computedOrbital = $derived(deriveStarOrbitalFields(semiMajorAxisAu, eccentricity))
+	const physicsWarnings = $derived(validateStarPhysics({ massKg, radiusM, semiMajorAxisAu, eccentricity }))
 	const computedDisplay = $derived(deriveDisplayStrings(null, semiMajorAxisAu, null))
 
 	let apparentMagnitude = $state(initialDraft.apparentMagnitude)
@@ -366,6 +368,13 @@
 		{/if}
 		{#if validationIssues.length > 0}
 			<FormNotice tone="warning" title="Star draft needs attention" messages={validationIssues} />
+		{/if}
+		{#if physicsWarnings.length > 0}
+			<FormNotice
+				tone="warning"
+				title="Physics plausibility"
+				messages={physicsWarnings.map(w => `${w.severity === 'impossible' ? '🚫' : '⚠️'} ${w.message}`)}
+			/>
 		{/if}
 		<section class="bg-page border border-border-subtle p-5">
 			<h2 class="text-sm font-semibold text-heading border-b border-border-subtle pb-2">Current Summary</h2>

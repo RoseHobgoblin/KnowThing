@@ -75,7 +75,7 @@ const DOMAIN_RESOLVERS: Record<string, (slug: string) => Promise<FieldMap | null
 	},
 }
 
-// moon, dwarf_planet, celestial all resolve to the planetary_bodies table
+// moon, celestial all resolve to the planetary_bodies table
 DOMAIN_RESOLVERS['moon'] = DOMAIN_RESOLVERS['planet']
 DOMAIN_RESOLVERS['celestial'] = DOMAIN_RESOLVERS['planet']
 DOMAIN_RESOLVERS['celestial body'] = DOMAIN_RESOLVERS['planet']
@@ -96,8 +96,7 @@ DOMAIN_RESOLVERS['system'] = async (slug) => {
 	const [counts] = await db.execute(sql`
 		SELECT
 			(SELECT COUNT(*) FROM planetary_bodies pb JOIN stars s ON s.id = pb.star_id WHERE s.system_id = ${system.id} AND pb.body_type = 'planet')::int AS planets,
-			(SELECT COUNT(*) FROM planetary_bodies pb JOIN stars s ON s.id = pb.star_id WHERE s.system_id = ${system.id} AND pb.body_type = 'moon')::int AS moons,
-			(SELECT COUNT(*) FROM planetary_bodies pb JOIN stars s ON s.id = pb.star_id WHERE s.system_id = ${system.id} AND pb.body_type = 'dwarf_planet')::int AS dwarf_planets
+			(SELECT COUNT(*) FROM planetary_bodies pb JOIN stars s ON s.id = pb.star_id WHERE s.system_id = ${system.id} AND pb.body_type = 'moon')::int AS moons
 	`)
 
 	const fields = new Map<string, string>()
@@ -115,7 +114,6 @@ DOMAIN_RESOLVERS['system'] = async (slug) => {
 	const c = counts as any
 	if (c?.planets) fields.set('planets', String(c.planets))
 	if (c?.moons) fields.set('moons', String(c.moons))
-	if (c?.dwarf_planets) fields.set('dwarf_planets', String(c.dwarf_planets))
 
 	if (system.description) fields.set('description', system.description)
 

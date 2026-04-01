@@ -82,7 +82,6 @@
 		if (body.isStar) return 6
 		switch (body.bodyType) {
 			case 'planet': return 4
-			case 'dwarf_planet': return 2.5
 			case 'moon': return 2
 			default: return 3
 		}

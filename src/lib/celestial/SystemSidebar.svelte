@@ -8,7 +8,7 @@
 	import Star from 'phosphor-svelte/lib/Star'
 	import Planet from 'phosphor-svelte/lib/Planet'
 	import Moon from 'phosphor-svelte/lib/Moon'
-	import GlobeSimple from 'phosphor-svelte/lib/GlobeSimple'
+
 	import Asterisk from 'phosphor-svelte/lib/Asterisk'
 	import CircleDashed from 'phosphor-svelte/lib/CircleDashed'
 
@@ -48,7 +48,6 @@
 		switch (type) {
 			case 'planet': return Planet
 			case 'moon': return Moon
-			case 'dwarf_planet': return GlobeSimple
 			case 'asteroid': return Asterisk
 			case 'ring_system': return CircleDashed
 			default: return Planet

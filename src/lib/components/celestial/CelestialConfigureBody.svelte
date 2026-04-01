@@ -18,9 +18,10 @@
 	import { summarizeZodIssues } from '$lib/utils.js'
 	import { getBodyPresets, type BodyPreset } from '$lib/celestial/presets.js'
 	import { deriveBodyFields, deriveDisplayStrings } from '$lib/celestial/compute.js'
+	import { validateBodyPhysics } from '$lib/celestial/validate-physics.js'
 
 	type CelestialCrumb = { label: string, href: string }
-	type BodyType = 'planet' | 'moon' | 'dwarf_planet' | 'asteroid' | 'ring_system'
+	type BodyType = 'planet' | 'moon' | 'asteroid' | 'ring_system'
 	type CelestialStarOption = { id: number, name: string, slug: string }
 	type CelestialBodyOption = { id: number, name: string, slug: string }
 	type BodyRecord = {
@@ -202,6 +203,7 @@
 	const initialSnapshot = JSON.stringify(initialDraft)
 	// Auto-computed derived fields
 	const computedPhysical = $derived(deriveBodyFields(massKg, radiusM))
+	const physicsWarnings = $derived(validateBodyPhysics({ massKg, radiusM, orbitalPeriodDays, semiMajorAxisAu, eccentricity, rotationPeriodS, axialTilt, bodyType }))
 	const computedDisplay = $derived(deriveDisplayStrings(orbitalPeriodDays, semiMajorAxisAu, rotationPeriodS))
 
 	const currentSnapshot = $derived(JSON.stringify({
@@ -265,7 +267,6 @@
 	const bodyTypeItems: Array<{ value: BodyType, label: string }> = [
 		{ value: 'planet', label: 'Planet' },
 		{ value: 'moon', label: 'Moon' },
-		{ value: 'dwarf_planet', label: 'Dwarf Planet' },
 		{ value: 'asteroid', label: 'Asteroid' },
 		{ value: 'ring_system', label: 'Ring System' },
 	]
@@ -446,6 +447,13 @@
 		{/if}
 		{#if validationIssues.length > 0}
 			<FormNotice tone="warning" title="Body draft needs attention" messages={validationIssues} />
+		{/if}
+		{#if physicsWarnings.length > 0}
+			<FormNotice
+				tone="warning"
+				title="Physics plausibility"
+				messages={physicsWarnings.map(w => `${w.severity === 'impossible' ? '🚫' : '⚠️'} ${w.message}`)}
+			/>
 		{/if}
 		<section class="bg-page border border-border-subtle p-5">
 			<h2 class="text-sm font-semibold text-heading border-b border-border-subtle pb-2">Current Summary</h2>

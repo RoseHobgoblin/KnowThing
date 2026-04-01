@@ -82,7 +82,7 @@ export const updateStarSchema = starSchema.partial().superRefine(validateStarSta
 const planetaryBodySchema = z.object({
 	name: z.string().min(1),
 	slug: z.string().min(1),
-	bodyType: z.enum(['planet', 'moon', 'dwarf_planet', 'asteroid', 'ring_system']).default('planet'),
+	bodyType: z.enum(['planet', 'moon', 'asteroid', 'ring_system']).default('planet'),
 	starId: z.number().int().nullish(),
 	parentId: z.number().int().nullish(),
 	pageSlug: z.string().nullish(),

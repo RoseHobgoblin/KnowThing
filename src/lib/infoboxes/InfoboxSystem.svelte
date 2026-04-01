@@ -10,7 +10,7 @@
 	const KNOWN_KEYS = new Set([
 		'name', 'image', 'caption', 'image_size',
 		'system_type', 'stars', 'star_count',
-		'planets', 'moons', 'dwarf_planets',
+		'planets', 'moons',
 		'description',
 	])
 
@@ -23,7 +23,6 @@
 	const starCount = getField(fields, 'star_count') ?? ''
 	const planets = getField(fields, 'planets') ?? ''
 	const moons = getField(fields, 'moons') ?? ''
-	const dwarfPlanets = getField(fields, 'dwarf_planets') ?? ''
 
 	const typeLabel = systemType
 		? systemType.charAt(0).toUpperCase() + systemType.slice(1) + ' star system'
@@ -46,9 +45,6 @@
 
 	<InfoboxSection title="Bodies" />
 	<InfoboxRow label="Planets" value={planets} />
-	{#if dwarfPlanets && dwarfPlanets !== '0'}
-		<InfoboxRow label="Dwarf planets" value={dwarfPlanets} />
-	{/if}
 	{#if moons && moons !== '0'}
 		<InfoboxRow label="Moons" value={moons} />
 	{/if}
