@@ -117,13 +117,39 @@ export async function registerUser(input: {
 	const username = normalizeUsername(input.username)
 	const passwordHash = await bcrypt.hash(input.password, SALT_ROUNDS)
 
-	return db.transaction(async (tx) => {
-		const existingUsers = await tx.select({ id: users.id }).from(users).limit(1)
-		const isFirstUser = existingUsers.length === 0
+	type ValidRegistrationCode = {
+		id: number
+		role: string
+	}
+	const existingUsers = await db.select({ id: users.id }).from(users).limit(1)
+	const isFirstUser = existingUsers.length === 0
+	const now = new Date()
+	let validCode: ValidRegistrationCode | null = null
 
-		if (!isFirstUser && !input.code?.trim()) {
-			throw error(400, 'Registration code is required')
+	if (!isFirstUser && !input.code?.trim()) {
+		throw error(400, 'Registration code is required')
+	}
+
+	if (!isFirstUser) {
+		const code = input.code!.trim()
+		const [regCode] = await db
+			.select({ id: registrationCodes.id, role: registrationCodes.role })
+			.from(registrationCodes)
+			.where(and(
+				eq(registrationCodes.code, code),
+				isNull(registrationCodes.usedBy),
+				sql`(${registrationCodes.expiresAt} IS NULL OR ${registrationCodes.expiresAt} > ${now})`,
+			))
+			.limit(1)
+
+		if (!regCode) {
+			throw error(400, 'Invalid or expired registration code')
 		}
+
+		validCode = regCode
+	}
+
+	return db.transaction(async (tx) => {
 
 		const [createdUser] = await tx
 			.insert(users)
@@ -134,22 +160,18 @@ export async function registerUser(input: {
 			})
 			.returning({ id: users.id, username: users.username, role: users.role })
 
-		if (!isFirstUser) {
-			const code = input.code!.trim()
-			const now = new Date()
-
+		if (validCode) {
 			const [claimedCode] = await tx
 				.update(registrationCodes)
 				.set({ usedBy: createdUser.id, usedAt: now })
 				.where(and(
-					eq(registrationCodes.code, code),
+					eq(registrationCodes.id, validCode.id),
 					isNull(registrationCodes.usedBy),
-					sql`(${registrationCodes.expiresAt} IS NULL OR ${registrationCodes.expiresAt} > ${now})`,
 				))
 				.returning({ role: registrationCodes.role })
 
 			if (!claimedCode) {
-				throw error(400, 'Invalid or expired registration code')
+				throw new Error('Registration code was just used. Please request a new one.')
 			}
 
 			if (claimedCode.role !== 'editor') {

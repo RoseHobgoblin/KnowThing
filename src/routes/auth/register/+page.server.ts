@@ -47,9 +47,13 @@ export const actions: Actions = {
 				return fail(error.status, { error: error.body?.message ?? error.message, username })
 			}
 			const message = error instanceof Error ? error.message : 'Unknown error'
+			if (message.includes('Registration code was just used')) {
+				return fail(409, { error: message, username })
+			}
 			if (message.includes('unique') || message.includes('duplicate')) {
 				return fail(409, { error: 'Username already taken', username })
 			}
+			console.error('register failed', error)
 			return fail(500, { error: 'Registration failed', username })
 		}
 

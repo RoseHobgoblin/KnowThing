@@ -37,10 +37,14 @@
 	}
 	type PositionedSatellite = {
 		body: OrbitBody
-		parentId: number
+		parentKey: EntityKey
 		orbitRadius: number
+		parentRawX: number
+		parentRawY: number
 		rawX: number
 		rawY: number
+		parentX: number
+		parentY: number
 		x: number
 		y: number
 	}
@@ -175,6 +179,15 @@
 		return { x: cx - offset + a * Math.cos(angle), y: cy + b * Math.sin(angle) }
 	}
 
+	function parentKeyForBody(body: MapBody, primaryStarId: number | null, starIds: Set<number>): EntityKey | null {
+		if (body.parentId != null) {
+			if (starIds.has(body.parentId)) return `star:${body.parentId}` as EntityKey
+			return `body:${body.parentId}` as EntityKey
+		}
+		if (body.starId != null && body.starId !== primaryStarId) return `star:${body.starId}` as EntityKey
+		return null
+	}
+
 	function buildSelectionFamily(primaryStar: MapBody | null) {
 		if (selectedId == null) return new Set<EntityKey>()
 
@@ -226,6 +239,7 @@
 
 	function buildScene(): Scene {
 		const primaryStar = stars.find(star => !star.parentStarId) ?? stars[0] ?? null
+		const primaryStarId = primaryStar?.id ?? null
 		const starIds = new Set(stars.map(star => star.id))
 		const companionStars = stars.filter(star => star.parentStarId)
 		const directOrbiters: OrbitBody[] = []
@@ -240,9 +254,15 @@
 		}
 
 		for (const body of bodies) {
-			const parentIsStar = body.parentId != null && starIds.has(body.parentId)
 			const key = keyForBody(body, false)
-			if (body.semiMajorAxisAu && (!body.parentId || parentIsStar) && !seen.has(key)) {
+			const orbitsPrimaryStarDirectly =
+				body.semiMajorAxisAu != null
+				&& (
+					(body.starId != null && body.starId === primaryStarId && body.parentId == null)
+					|| body.parentId === primaryStarId
+					|| (body.starId == null && body.parentId == null)
+				)
+			if (orbitsPrimaryStarDirectly && !seen.has(key)) {
 				seen.add(key)
 				directOrbiters.push({ ...body, orbitAu: body.semiMajorAxisAu, ecc: body.eccentricity ?? 0, isStar: false, renderAsSatellite: false })
 			}
@@ -280,42 +300,71 @@
 			rawDirectPositions.push({ body, a, b, angle, rawX: pos.x, rawY: pos.y, x: pos.x, y: pos.y })
 		}
 
-		const rawSatellitePositions: Array<{
-			body: OrbitBody
-			parentId: number
-			orbitRadius: number
-			rawX: number
-			rawY: number
-		}> = []
+		const rawSatellitePositions: PositionedSatellite[] = []
+		const anchorRawPositions = new Map<EntityKey, { x: number, y: number }>()
+		if (primaryStar) anchorRawPositions.set(keyForBody(primaryStar, true), { x: CENTER, y: CENTER })
+		for (const position of rawDirectPositions) {
+			anchorRawPositions.set(keyForBody(position.body, position.body.isStar), { x: position.rawX, y: position.rawY })
+		}
 
-		for (const parent of rawDirectPositions) {
-			const satellites = bodies
-				.filter(body => body.parentId === parent.body.id && body.semiMajorAxisAu && !starIds.has(body.parentId))
-				.map(body => ({ ...body, orbitAu: body.semiMajorAxisAu!, ecc: body.eccentricity ?? 0, isStar: false, renderAsSatellite: true }))
-				.sort((a, b) => a.orbitAu - b.orbitAu)
+		const pendingBodies = bodies
+			.filter(body => body.semiMajorAxisAu != null && !seen.has(keyForBody(body, false)))
+			.map(body => ({ ...body, orbitAu: body.semiMajorAxisAu!, ecc: body.eccentricity ?? 0, isStar: false, renderAsSatellite: true }))
 
-			if (!satellites.length) continue
+		while (pendingBodies.length > 0) {
+			const groups = new Map<EntityKey, OrbitBody[]>()
+			const unresolved: OrbitBody[] = []
 
-			const maxSatelliteOrbit = Math.max(...satellites.map(satellite => satellite.orbitAu), 1)
-			let previousRadius = SAT_BASE_R - 6
+			for (const body of pendingBodies) {
+				const parentKey = parentKeyForBody(body, primaryStarId, starIds)
+				if (!parentKey || !anchorRawPositions.has(parentKey)) {
+					unresolved.push(body)
+					continue
+				}
+				const existing = groups.get(parentKey) ?? []
+				existing.push(body)
+				groups.set(parentKey, existing)
+			}
 
-			for (const [index, satellite] of satellites.entries()) {
-				const normalized = maxSatelliteOrbit > 0 ? satellite.orbitAu / maxSatelliteOrbit : 0
-				const scaled = SAT_BASE_R + Math.sqrt(normalized) * SAT_MAX_SPAN
-				const orbitRadius = Math.max(previousRadius + 6, scaled)
-				previousRadius = orbitRadius
+			if (groups.size === 0) break
+			pendingBodies.length = 0
+			pendingBodies.push(...unresolved)
 
-				const angle = computeAngle(satellite, index, satellites.length)
-				const x = parent.rawX + orbitRadius * Math.cos(angle)
-				const y = parent.rawY + orbitRadius * Math.sin(angle)
+			for (const [parentKey, satellites] of groups.entries()) {
+				const parentAnchor = anchorRawPositions.get(parentKey)
+				if (!parentAnchor) continue
 
-				rawSatellitePositions.push({
-					body: satellite,
-					parentId: parent.body.id,
-					orbitRadius,
-					rawX: x,
-					rawY: y,
-				})
+				satellites.sort((a, b) => a.orbitAu - b.orbitAu)
+				const maxSatelliteOrbit = Math.max(...satellites.map(satellite => satellite.orbitAu), 1)
+				let previousRadius = SAT_BASE_R - 6
+
+				for (const [index, satellite] of satellites.entries()) {
+					const normalized = maxSatelliteOrbit > 0 ? satellite.orbitAu / maxSatelliteOrbit : 0
+					const scaled = SAT_BASE_R + Math.sqrt(normalized) * SAT_MAX_SPAN
+					const orbitRadius = Math.max(previousRadius + 6, scaled)
+					previousRadius = orbitRadius
+
+					const angle = computeAngle(satellite, index, satellites.length)
+					const x = parentAnchor.x + orbitRadius * Math.cos(angle)
+					const y = parentAnchor.y + orbitRadius * Math.sin(angle)
+					const key = keyForBody(satellite, false)
+
+					rawSatellitePositions.push({
+						body: satellite,
+						parentKey,
+						orbitRadius,
+						parentRawX: parentAnchor.x,
+						parentRawY: parentAnchor.y,
+						rawX: x,
+						rawY: y,
+						parentX: parentAnchor.x,
+						parentY: parentAnchor.y,
+						x,
+						y,
+					})
+					anchorRawPositions.set(key, { x, y })
+					seen.add(key)
+				}
 			}
 		}
 
@@ -344,7 +393,8 @@
 		})
 		const satellitePositions: PositionedSatellite[] = rawSatellitePositions.map(position => {
 			const projected = project(position.rawX, position.rawY)
-			return { ...position, ...projected }
+			const projectedParent = project(position.parentRawX, position.parentRawY)
+			return { ...position, ...projected, parentX: projectedParent.x, parentY: projectedParent.y }
 		})
 
 		const hitTargets: HitTarget[] = []
@@ -621,9 +671,6 @@
 		}
 
 		for (const satellite of scene.satellitePositions) {
-			const parent = scene.directPositions.find(position => position.body.id === satellite.parentId)
-			if (!parent) continue
-
 			const key = keyForBody(satellite.body, false)
 			const isSelected = key === selectedId
 			context.save()
@@ -635,7 +682,7 @@
 					: theme.secondary
 			context.lineWidth = isSelected ? 1.5 : 0.5
 			context.beginPath()
-			context.arc(parent.x, parent.y, satellite.orbitRadius, 0, Math.PI * 2)
+			context.arc(satellite.parentX, satellite.parentY, satellite.orbitRadius, 0, Math.PI * 2)
 			context.stroke()
 			context.restore()
 
