@@ -23,7 +23,7 @@
 	import { orbitalAngle } from './orbit.js'
 	import type { ScaleMode, LabelMode, TrailMode } from './map-settings.js'
 
-	type OrbitBody = MapBody & { orbitAu: number, ecc: number, isStar: boolean }
+	type OrbitBody = MapBody & { orbitAu: number, ecc: number, isStar: boolean, renderAsSatellite: boolean }
 	type PositionedOrbit = {
 		body: OrbitBody
 		a: number
@@ -149,9 +149,9 @@
 		return () => observer.disconnect()
 	})
 
-	function bodyRadius(body: { isStar: boolean, parentId?: number | null }) {
+	function bodyRadius(body: { isStar: boolean, renderAsSatellite?: boolean }) {
 		if (body.isStar) return 6
-		if (body.parentId) return 2.5
+		if (body.renderAsSatellite) return 2.5
 		return 4
 	}
 
@@ -210,7 +210,7 @@
 		for (const star of companionStars) {
 			if (star.semiMajorAxisAu && !seen.has(star.id)) {
 				seen.add(star.id)
-				directOrbiters.push({ ...star, orbitAu: star.semiMajorAxisAu, ecc: star.eccentricity ?? 0, isStar: true })
+				directOrbiters.push({ ...star, orbitAu: star.semiMajorAxisAu, ecc: star.eccentricity ?? 0, isStar: true, renderAsSatellite: false })
 			}
 		}
 
@@ -218,7 +218,7 @@
 			const parentIsStar = body.parentId != null && starIds.has(body.parentId)
 			if (body.semiMajorAxisAu && (!body.parentId || parentIsStar) && !seen.has(body.id)) {
 				seen.add(body.id)
-				directOrbiters.push({ ...body, orbitAu: body.semiMajorAxisAu, ecc: body.eccentricity ?? 0, isStar: false })
+				directOrbiters.push({ ...body, orbitAu: body.semiMajorAxisAu, ecc: body.eccentricity ?? 0, isStar: false, renderAsSatellite: false })
 			}
 		}
 
@@ -242,13 +242,17 @@
 			}
 		}
 
-		const rawDirectPositions = directOrbiters.map((body, index) => {
-			const a = auToPixels(body.orbitAu)
+		const rawDirectPositions: PositionedOrbit[] = []
+		let previousOrbitRadius = DIRECT_MIN_R - DIRECT_MIN_GAP
+		for (const [index, body] of directOrbiters.entries()) {
+			const desiredA = auToPixels(body.orbitAu)
+			const a = Math.max(DIRECT_MIN_R, previousOrbitRadius + DIRECT_MIN_GAP, desiredA)
+			previousOrbitRadius = a
 			const b = a * Math.sqrt(1 - body.ecc * body.ecc)
 			const angle = computeAngle(body, index, directOrbiters.length)
 			const pos = ellipsePosition(a, b, body.ecc, angle, CENTER, CENTER)
-			return { body, a, b, angle, rawX: pos.x, rawY: pos.y }
-		})
+			rawDirectPositions.push({ body, a, b, angle, rawX: pos.x, rawY: pos.y, x: pos.x, y: pos.y })
+		}
 
 		const rawSatellitePositions: Array<{
 			body: OrbitBody
@@ -261,7 +265,7 @@
 		for (const parent of rawDirectPositions) {
 			const satellites = bodies
 				.filter(body => body.parentId === parent.body.id && body.semiMajorAxisAu && !starIds.has(body.parentId))
-				.map(body => ({ ...body, orbitAu: body.semiMajorAxisAu!, ecc: body.eccentricity ?? 0, isStar: false }))
+				.map(body => ({ ...body, orbitAu: body.semiMajorAxisAu!, ecc: body.eccentricity ?? 0, isStar: false, renderAsSatellite: true }))
 				.sort((a, b) => a.orbitAu - b.orbitAu)
 
 			if (!satellites.length) continue
@@ -373,7 +377,7 @@
 				return hoveredId === body.id
 			case 'major':
 				if (body.isStar) return true
-				if (!body.parentId) return true
+				if (!(body as OrbitBody).renderAsSatellite) return true
 				if (isSelected) return true
 				if (hoveredId === body.id) return true
 				return false
