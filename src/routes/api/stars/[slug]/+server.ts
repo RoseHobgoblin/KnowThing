@@ -10,7 +10,7 @@ import {
 	ensureStarContentRecord,
 	syncBodiesForStar,
 } from '$lib/server/services/celestial-content.js'
-import { deriveStarOrbitalFields } from '$lib/celestial/compute.js'
+import { deriveStarOrbitalFields, deriveDisplayStrings } from '$lib/celestial/compute.js'
 
 /** GET /api/stars/:slug */
 export const GET: RequestHandler = async ({ params }) => {
@@ -97,12 +97,16 @@ export const PUT: RequestHandler = async (event) => {
 	if (data.extra !== undefined) setClause.extra = data.extra ?? {}
 	if (data.description !== undefined) setClause.description = data.description?.trim() || ''
 
-	// Auto-compute periastron/apastron from orbital parameters
+	// Auto-compute derived fields from numeric inputs
 	const finalAu = data.semiMajorAxisAu !== undefined ? data.semiMajorAxisAu : current.semiMajorAxisAu
 	const finalEcc = data.eccentricity !== undefined ? data.eccentricity : current.eccentricity
 	const orbital = deriveStarOrbitalFields(finalAu ?? null, finalEcc ?? null)
 	setClause.periastron = orbital.periastron
 	setClause.apastron = orbital.apastron
+
+	// Auto-format display strings from numeric values
+	const display = deriveDisplayStrings(null, finalAu, null)
+	if (data.semiMajorAxis === undefined && display.semiMajorAxis) setClause.semiMajorAxis = display.semiMajorAxis
 
 	const updated = await db.transaction(async (tx) => {
 		const [saved] = await tx

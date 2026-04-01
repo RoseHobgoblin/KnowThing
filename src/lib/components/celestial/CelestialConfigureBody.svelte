@@ -65,9 +65,7 @@
 		starIdStr: string
 		parentIdStr: string
 		description: string
-		mass: string
 		massKg: number | null
-		radius: string
 		radiusM: number | null
 		temperature: string
 		age: string
@@ -94,9 +92,7 @@
 			starIdStr: bodyRecord.starId ? String(bodyRecord.starId) : '',
 			parentIdStr: bodyRecord.parentId ? String(bodyRecord.parentId) : '',
 			description: bodyRecord.description ?? '',
-			mass: bodyRecord.mass ?? '',
 			massKg: bodyRecord.massKg ?? null,
-			radius: bodyRecord.radius ?? '',
 			radiusM: bodyRecord.radiusM ?? null,
 			temperature: bodyRecord.temperature ?? '',
 			age: bodyRecord.age ?? '',
@@ -149,9 +145,7 @@
 	let parentIdStr = $state(initialDraft.parentIdStr)
 	let description = $state(initialDraft.description)
 
-	let mass = $state(initialDraft.mass)
 	let massKg = $state<number | null>(initialDraft.massKg)
-	let radius = $state(initialDraft.radius)
 	let radiusM = $state<number | null>(initialDraft.radiusM)
 	let temperature = $state(initialDraft.temperature)
 	let age = $state(initialDraft.age)
@@ -188,9 +182,7 @@
 
 	function applyPreset(preset: BodyPreset) {
 		bodyType = preset.bodyType
-		mass = preset.mass
 		massKg = preset.massKg
-		radius = preset.radius
 		radiusM = preset.radiusM
 		temperature = preset.temperature
 		composition = preset.composition
@@ -217,9 +209,7 @@
 		starIdStr,
 		parentIdStr,
 		description,
-		mass,
 		massKg,
-		radius,
 		radiusM,
 		temperature,
 		age,
@@ -248,9 +238,7 @@
 			starId: starIdStr ? Number(starIdStr) : null,
 			parentId: parentIdStr ? Number(parentIdStr) : null,
 			description,
-			mass: mass || null,
 			massKg,
-			radius: radius || null,
 			radiusM,
 			temperature: temperature || null,
 			age: age || null,
@@ -305,9 +293,7 @@
 		starIdStr = initialDraft.starIdStr
 		parentIdStr = initialDraft.parentIdStr
 		description = initialDraft.description
-		mass = initialDraft.mass
 		massKg = initialDraft.massKg
-		radius = initialDraft.radius
 		radiusM = initialDraft.radiusM
 		temperature = initialDraft.temperature
 		age = initialDraft.age
@@ -347,9 +333,7 @@
 					starId: starIdStr ? Number(starIdStr) : null,
 					parentId: parentIdStr ? Number(parentIdStr) : null,
 					description,
-					mass: mass || null,
 					massKg,
-					radius: radius || null,
 					radiusM,
 					temperature: temperature || null,
 					age: age || null,
@@ -501,9 +485,7 @@
 		<section class="bg-raised border border-border-subtle p-5 space-y-4">
 			<h2 class="text-sm font-semibold text-heading border-b border-border-subtle pb-2">Physical Characteristics</h2>
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-				<Input label="Mass (display)" bind:value={mass} placeholder="5.972 × 10²⁴ kg" />
 				<Input label="Mass (kg)" type="number" bind:value={massKg} step="any" placeholder="5.972e24" />
-				<Input label="Radius (display)" bind:value={radius} placeholder="6,371.0 km" />
 				<Input label="Radius (m)" type="number" bind:value={radiusM} step="any" placeholder="6371000" />
 				<div>
 					<span class="text-xs font-medium text-secondary block mb-1">Density</span>

@@ -6,6 +6,7 @@ import { requireRole } from '$lib/server/auth.js'
 import { eq, sql } from 'drizzle-orm'
 import { createStarSchema } from '$lib/celestial/schema.js'
 import { ensureStarContentRecord } from '$lib/server/services/celestial-content.js'
+import { deriveStarOrbitalFields } from '$lib/celestial/compute.js'
 
 /** GET /api/stars — list all stars with planet counts */
 export const GET: RequestHandler = async () => {
@@ -52,6 +53,9 @@ export const POST: RequestHandler = async (event) => {
 		return json({ error: 'A star with this slug already exists' }, { status: 409 })
 	}
 
+	// Auto-compute derived orbital fields
+	const orbital = deriveStarOrbitalFields(data.semiMajorAxisAu ?? null, data.eccentricity ?? null)
+
 	const star = await db.transaction(async (tx) => {
 		const [created] = await tx
 			.insert(stars)
@@ -61,7 +65,9 @@ export const POST: RequestHandler = async (event) => {
 				pageSlug: data.pageSlug?.trim() || null,
 				spectralType: data.spectralType?.trim() || null,
 				mass: data.mass?.trim() || null,
+				massKg: data.massKg ?? null,
 				radius: data.radius?.trim() || null,
+				radiusM: data.radiusM ?? null,
 				luminosity: data.luminosity?.trim() || null,
 				luminosityVisual: data.luminosityVisual?.trim() || null,
 				temperature: data.temperature?.trim() || null,
@@ -71,8 +77,8 @@ export const POST: RequestHandler = async (event) => {
 				semiMajorAxis: data.semiMajorAxis?.trim() || null,
 				semiMajorAxisAu: data.semiMajorAxisAu ?? null,
 				eccentricity: data.eccentricity ?? null,
-				periastron: data.periastron?.trim() || null,
-				apastron: data.apastron?.trim() || null,
+				periastron: orbital.periastron,
+				apastron: orbital.apastron,
 				apparentMagnitude: data.apparentMagnitude?.trim() || null,
 				angularDiameter: data.angularDiameter?.trim() || null,
 				companion: data.companion?.trim() || null,

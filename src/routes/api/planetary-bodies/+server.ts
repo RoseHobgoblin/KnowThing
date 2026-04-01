@@ -6,6 +6,7 @@ import { requireRole } from '$lib/server/auth.js'
 import { eq, sql } from 'drizzle-orm'
 import { createPlanetaryBodySchema } from '$lib/celestial/schema.js'
 import { ensurePlanetaryBodyContentRecord } from '$lib/server/services/celestial-content.js'
+import { deriveBodyFields, deriveDisplayStrings } from '$lib/celestial/compute.js'
 
 /** GET /api/planetary-bodies?star=slug — list bodies, optionally filtered by star */
 export const GET: RequestHandler = async ({ url }) => {
@@ -71,6 +72,10 @@ export const POST: RequestHandler = async (event) => {
 		}
 	}
 
+	// Auto-compute derived fields
+	const derived = deriveBodyFields(data.massKg ?? null, data.radiusM ?? null)
+	const display = deriveDisplayStrings(data.orbitalPeriodDays ?? null, data.semiMajorAxisAu ?? null, data.rotationPeriodS ?? null)
+
 	const created = await db.transaction(async (tx) => {
 		const [inserted] = await tx
 			.insert(planetaryBodies)
@@ -82,23 +87,25 @@ export const POST: RequestHandler = async (event) => {
 				parentId: data.parentId ?? null,
 				pageSlug: data.pageSlug?.trim() || null,
 				mass: data.mass?.trim() || null,
+				massKg: data.massKg ?? null,
 				radius: data.radius?.trim() || null,
-				density: data.density?.trim() || null,
-				surfaceGravity: data.surfaceGravity?.trim() || null,
-				escapeVelocity: data.escapeVelocity?.trim() || null,
+				radiusM: data.radiusM ?? null,
+				density: data.density?.trim() || derived.density,
+				surfaceGravity: data.surfaceGravity?.trim() || derived.surfaceGravity,
+				escapeVelocity: data.escapeVelocity?.trim() || derived.escapeVelocity,
 				temperature: data.temperature?.trim() || null,
 				age: data.age?.trim() || null,
 				composition: data.composition?.trim() || null,
 				atmosphere: data.atmosphere?.trim() || null,
 				surfacePressure: data.surfacePressure?.trim() || null,
-				orbitalPeriod: data.orbitalPeriod?.trim() || null,
+				orbitalPeriod: data.orbitalPeriod?.trim() || display.orbitalPeriod,
 				orbitalPeriodDays: data.orbitalPeriodDays ?? null,
-				semiMajorAxis: data.semiMajorAxis?.trim() || null,
+				semiMajorAxis: data.semiMajorAxis?.trim() || display.semiMajorAxis,
 				semiMajorAxisAu: data.semiMajorAxisAu ?? null,
 				eccentricity: data.eccentricity ?? null,
 				inclination: data.inclination ?? null,
 				epochPhase: data.epochPhase ?? null,
-				rotationPeriod: data.rotationPeriod?.trim() || null,
+				rotationPeriod: data.rotationPeriod?.trim() || display.rotationPeriod,
 				rotationPeriodS: data.rotationPeriodS ?? null,
 				axialTilt: data.axialTilt ?? null,
 				apparentMagnitude: data.apparentMagnitude?.trim() || null,
