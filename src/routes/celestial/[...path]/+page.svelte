@@ -16,8 +16,8 @@
 	import CelestialConfigureStar from '$lib/components/celestial/CelestialConfigureStar.svelte'
 	import CelestialConfigureBody from '$lib/components/celestial/CelestialConfigureBody.svelte'
 	import { celestialPathBreadcrumbs } from '$lib/utils/breadcrumbs.js'
-	import PencilSimple from 'phosphor-svelte/lib/PencilSimple'
-	import GearSix from 'phosphor-svelte/lib/GearSix'
+	import PencilSimpleIcon from 'phosphor-svelte/lib/PencilSimpleIcon'
+	import GearSixIcon from 'phosphor-svelte/lib/GearSixIcon'
 	import Editor from '$lib/components/Editor.svelte'
 	import LivePreview from '$lib/components/LivePreview.svelte'
 	import SaveStatusBadge from '$lib/components/editor/SaveStatusBadge.svelte'
@@ -57,13 +57,16 @@
 	let mapLabels = $state(DEFAULT_MAP_SETTINGS.labels)
 	let mapTrails = $state(DEFAULT_MAP_SETTINGS.trails)
 	let mapFollow = $state(DEFAULT_MAP_SETTINGS.follow)
-	let mapSelectedId = $state<number | null>(null)
+	let mapSelectedId = $state<string | null>(null)
 
 	// Resolve selected body for sidebar detail
 	const selectedBody = $derived.by(() => {
 		if (mapSelectedId == null) return null
-		const allBodies = [...(data.systemStars ?? []), ...(data.systemBodies ?? [])]
-		return allBodies.find(b => b.id === mapSelectedId) ?? null
+		const [kind, rawId] = mapSelectedId.split(':')
+		const numericId = Number(rawId)
+		if (kind === 'star') return (data.systemStars ?? []).find(b => b.id === numericId) ?? null
+		if (kind === 'body') return (data.systemBodies ?? []).find(b => b.id === numericId) ?? null
+		return null
 	})
 
 	// Build calendar configs for the date scrubber
@@ -221,12 +224,12 @@
 			{#if permissions.canEditContent || permissions.canConfigureCelestial}
 				{#if kind !== 'system' && permissions.canConfigureCelestial}
 					<a href={configurePath} class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover">
-						<GearSix size={14} weight="fill" />Configure
+						<GearSixIcon size={14} weight="fill" />Configure
 					</a>
 				{/if}
 				{#if permissions.canEditContent}
 					<a href={editPath} class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover">
-						<PencilSimple size={14} weight="fill" />Edit
+						<PencilSimpleIcon size={14} weight="fill" />Edit
 					</a>
 				{/if}
 			{:else if permissions.isAuthenticated}

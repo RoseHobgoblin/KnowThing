@@ -23,6 +23,7 @@
 	import { orbitalAngle } from './orbit.js'
 	import type { ScaleMode, LabelMode, TrailMode } from './map-settings.js'
 
+	type EntityKey = `star:${number}` | `body:${number}`
 	type OrbitBody = MapBody & { orbitAu: number, ecc: number, isStar: boolean, renderAsSatellite: boolean }
 	type PositionedOrbit = {
 		body: OrbitBody
@@ -44,7 +45,7 @@
 		y: number
 	}
 	type HitTarget = {
-		id: number
+		id: EntityKey
 		body: MapBody
 		x: number
 		y: number
@@ -65,7 +66,7 @@
 		directPositions: PositionedOrbit[]
 		satellitePositions: PositionedSatellite[]
 		cameraOffset: { x: number, y: number }
-		selectionFamily: Set<number>
+		selectionFamily: Set<EntityKey>
 		hitTargets: HitTarget[]
 	}
 
@@ -107,15 +108,19 @@
 		labels?: LabelMode
 		trails?: TrailMode
 		follow?: boolean
-		selectedId?: number | null
+		selectedId?: EntityKey | null
 	} = $props()
 
 	let containerEl: HTMLDivElement | null = null
 	let canvasEl: HTMLCanvasElement | null = null
 	let displaySize = $state({ width: SIZE, height: SIZE })
 	let theme = $state<ThemePalette>(DEFAULT_THEME)
-	let hoveredId = $state<number | null>(null)
+	let hoveredId = $state<EntityKey | null>(null)
 	let hoveredBody = $state<MapBody | null>(null)
+
+	function keyForBody(body: MapBody, isStar: boolean): EntityKey {
+		return `${isStar ? 'star' : 'body'}:${body.id}` as EntityKey
+	}
 
 	function readTheme() {
 		if (!containerEl) return
@@ -171,31 +176,48 @@
 	}
 
 	function buildSelectionFamily(primaryStar: MapBody | null) {
-		if (selectedId == null) return new Set<number>()
+		if (selectedId == null) return new Set<EntityKey>()
 
-		const ids = new Set<number>([selectedId])
-		const selectedStar = stars.find(star => star.id === selectedId)
-		const selectedBody = bodies.find(body => body.id === selectedId)
+		const ids = new Set<EntityKey>([selectedId])
+		const [selectedKind, rawId] = selectedId.split(':')
+		const selectedNumericId = Number(rawId)
+		const selectedStar = selectedKind === 'star'
+			? stars.find(star => star.id === selectedNumericId)
+			: null
+		const selectedBody = selectedKind === 'body'
+			? bodies.find(body => body.id === selectedNumericId)
+			: null
 
 		if (selectedStar) {
 			for (const body of bodies) {
 				if (body.starId === selectedStar.id) {
-					ids.add(body.id)
+					ids.add(keyForBody(body, false))
 					for (const moon of bodies) {
-						if (moon.parentId === body.id) ids.add(moon.id)
+						if (moon.parentId === body.id) ids.add(keyForBody(moon, false))
 					}
 				}
 			}
-			if (!selectedStar.parentStarId && primaryStar) ids.add(primaryStar.id)
-			if (selectedStar.parentStarId) ids.add(selectedStar.parentStarId)
+			if (!selectedStar.parentStarId && primaryStar) ids.add(keyForBody(primaryStar, true))
+			if (selectedStar.parentStarId) {
+				const parentStar = stars.find(star => star.id === selectedStar.parentStarId)
+				if (parentStar) ids.add(keyForBody(parentStar, true))
+			}
 			return ids
 		}
 
 		if (selectedBody) {
-			if (selectedBody.starId) ids.add(selectedBody.starId)
-			if (selectedBody.parentId) ids.add(selectedBody.parentId)
+			if (selectedBody.starId) {
+				const parentStar = stars.find(star => star.id === selectedBody.starId)
+				if (parentStar) ids.add(keyForBody(parentStar, true))
+			}
+			if (selectedBody.parentId) {
+				const parentBody = bodies.find(body => body.id === selectedBody.parentId)
+				if (parentBody) ids.add(keyForBody(parentBody, false))
+				const parentStar = stars.find(star => star.id === selectedBody.parentId)
+				if (parentStar) ids.add(keyForBody(parentStar, true))
+			}
 			for (const child of bodies) {
-				if (child.parentId === selectedBody.id) ids.add(child.id)
+				if (child.parentId === selectedBody.id) ids.add(keyForBody(child, false))
 			}
 		}
 
@@ -207,19 +229,21 @@
 		const starIds = new Set(stars.map(star => star.id))
 		const companionStars = stars.filter(star => star.parentStarId)
 		const directOrbiters: OrbitBody[] = []
-		const seen = new Set<number>()
+		const seen = new Set<EntityKey>()
 
 		for (const star of companionStars) {
-			if (star.semiMajorAxisAu && !seen.has(star.id)) {
-				seen.add(star.id)
+			const key = keyForBody(star, true)
+			if (star.semiMajorAxisAu && !seen.has(key)) {
+				seen.add(key)
 				directOrbiters.push({ ...star, orbitAu: star.semiMajorAxisAu, ecc: star.eccentricity ?? 0, isStar: true, renderAsSatellite: false })
 			}
 		}
 
 		for (const body of bodies) {
 			const parentIsStar = body.parentId != null && starIds.has(body.parentId)
-			if (body.semiMajorAxisAu && (!body.parentId || parentIsStar) && !seen.has(body.id)) {
-				seen.add(body.id)
+			const key = keyForBody(body, false)
+			if (body.semiMajorAxisAu && (!body.parentId || parentIsStar) && !seen.has(key)) {
+				seen.add(key)
 				directOrbiters.push({ ...body, orbitAu: body.semiMajorAxisAu, ecc: body.eccentricity ?? 0, isStar: false, renderAsSatellite: false })
 			}
 		}
@@ -297,11 +321,11 @@
 
 		let cameraOffset = { x: 0, y: 0 }
 		if (follow && selectedId != null) {
-			if (primaryStar?.id === selectedId) {
+			if (primaryStar && keyForBody(primaryStar, true) === selectedId) {
 				cameraOffset = { x: 0, y: 0 }
 			} else {
-				const selectedDirect = rawDirectPositions.find(position => position.body.id === selectedId)
-				const selectedSatellite = rawSatellitePositions.find(position => position.body.id === selectedId)
+				const selectedDirect = rawDirectPositions.find(position => keyForBody(position.body, position.body.isStar) === selectedId)
+				const selectedSatellite = rawSatellitePositions.find(position => keyForBody(position.body, false) === selectedId)
 				const target = selectedDirect ?? selectedSatellite ?? null
 				if (target) {
 					cameraOffset = { x: CENTER - target.rawX, y: CENTER - target.rawY }
@@ -327,7 +351,7 @@
 		if (primaryStar) {
 			const projected = project(CENTER, CENTER)
 			hitTargets.push({
-				id: primaryStar.id,
+				id: keyForBody(primaryStar, true),
 				body: primaryStar,
 				x: projected.x,
 				y: projected.y,
@@ -337,7 +361,7 @@
 
 		for (const position of directPositions) {
 			hitTargets.push({
-				id: position.body.id,
+				id: keyForBody(position.body, position.body.isStar),
 				body: position.body,
 				x: position.x,
 				y: position.y,
@@ -347,7 +371,7 @@
 
 		for (const position of satellitePositions) {
 			hitTargets.push({
-				id: position.body.id,
+				id: keyForBody(position.body, false),
 				body: position.body,
 				x: position.x,
 				y: position.y,
@@ -367,34 +391,35 @@
 
 	const scene = $derived.by(() => buildScene())
 
-	function isInFamily(id: number) {
+	function isInFamily(id: EntityKey) {
 		return scene.selectionFamily.has(id)
 	}
 
 	function showLabel(body: MapBody & { isStar: boolean }, isSelected: boolean) {
+		const key = keyForBody(body, body.isStar)
 		switch (labels) {
 			case 'off':
 				return false
 			case 'hovered':
-				return hoveredId === body.id
+				return hoveredId === key
 			case 'major':
 				if (body.isStar) return true
 				if (!(body as OrbitBody).renderAsSatellite) return true
 				if (isSelected) return true
-				if (hoveredId === body.id) return true
+				if (hoveredId === key) return true
 				return false
 			case 'all':
 				return true
 		}
 	}
 
-	function bodyOpacity(bodyId: number) {
+	function bodyOpacity(bodyId: EntityKey) {
 		if (selectedId == null) return 1
 		if (bodyId === selectedId || isInFamily(bodyId)) return 1
 		return 0.35
 	}
 
-	function orbitStroke(bodyId: number, isSelected: boolean) {
+	function orbitStroke(bodyId: EntityKey, isSelected: boolean) {
 		if (isSelected) return { color: theme.accent, width: 2.5, alpha: 1 }
 		if (selectedId != null && isInFamily(bodyId)) return { color: theme.accentLight, width: 1.5, alpha: 0.9 }
 		if (hoveredId === bodyId) return { color: theme.accent, width: 1.5, alpha: 0.85 }
@@ -465,11 +490,12 @@
 
 		for (const position of scene.directPositions) {
 			const offset = position.a * position.body.ecc
-			const stroke = orbitStroke(position.body.id, position.body.id === selectedId)
+			const key = keyForBody(position.body, position.body.isStar)
+			const stroke = orbitStroke(key, key === selectedId)
 			context.save()
 			context.strokeStyle = stroke.color
 			context.lineWidth = stroke.width
-			context.globalAlpha = stroke.alpha * bodyOpacity(position.body.id)
+			context.globalAlpha = stroke.alpha * bodyOpacity(key)
 			if (position.body.isStar) context.setLineDash([4, 3])
 			drawFullOrbit(context, CENTER + scene.cameraOffset.x - offset, CENTER + scene.cameraOffset.y, position.a, position.b)
 			context.restore()
@@ -477,11 +503,12 @@
 
 		if (trails !== 'off' && currentAbsoluteDay != null) {
 			for (const position of scene.directPositions) {
+				const key = keyForBody(position.body, position.body.isStar)
 				context.save()
 				context.strokeStyle = resolveColor(position.body.color, position.body.isStar ? '#FFE088' : theme.accentLight)
 				context.lineWidth = 1
 				context.lineCap = 'round'
-				context.globalAlpha = 0.4 * bodyOpacity(position.body.id)
+				context.globalAlpha = 0.4 * bodyOpacity(key)
 				const cx = CENTER + scene.cameraOffset.x - position.a * position.body.ecc
 				const cy = CENTER + scene.cameraOffset.y
 				if (trails === 'full') drawFullOrbit(context, cx, cy, position.a, position.b)
@@ -514,13 +541,14 @@
 		}
 
 		if (scene.primaryStar) {
+			const key = keyForBody(scene.primaryStar, true)
 			const projected = {
 				x: CENTER + scene.cameraOffset.x,
 				y: CENTER + scene.cameraOffset.y,
 			}
-			const isSelected = scene.primaryStar.id === selectedId
+			const isSelected = key === selectedId
 			context.save()
-			context.globalAlpha = bodyOpacity(scene.primaryStar.id)
+			context.globalAlpha = bodyOpacity(key)
 			context.fillStyle = primaryColor
 			context.beginPath()
 			context.arc(projected.x, projected.y, 10, 0, Math.PI * 2)
@@ -541,12 +569,13 @@
 					isSelected ? theme.accent : theme.secondary,
 					10,
 					isSelected ? 600 : 400,
-					bodyOpacity(scene.primaryStar.id),
+					bodyOpacity(key),
 				)
 			}
 		}
 
 		for (const position of scene.directPositions) {
+			const key = keyForBody(position.body, position.body.isStar)
 			if (position.body.isStar) {
 				const glow = context.createRadialGradient(position.x, position.y, 0, position.x, position.y, 30)
 				const color = resolveColor(position.body.color, '#FFE088')
@@ -554,7 +583,7 @@
 				glow.addColorStop(0.3, `${color}1a`)
 				glow.addColorStop(1, `${color}00`)
 				context.save()
-				context.globalAlpha = bodyOpacity(position.body.id)
+				context.globalAlpha = bodyOpacity(key)
 				context.fillStyle = glow
 				context.beginPath()
 				context.arc(position.x, position.y, 30, 0, Math.PI * 2)
@@ -562,10 +591,10 @@
 				context.restore()
 			}
 
-			const isSelected = position.body.id === selectedId
+			const isSelected = key === selectedId
 			const radius = bodyRadius(position.body)
 			context.save()
-			context.globalAlpha = bodyOpacity(position.body.id)
+			context.globalAlpha = bodyOpacity(key)
 			context.fillStyle = resolveColor(position.body.color, position.body.isStar ? '#FFE088' : theme.secondary)
 			context.beginPath()
 			context.arc(position.x, position.y, radius, 0, Math.PI * 2)
@@ -583,10 +612,10 @@
 					position.x,
 					position.y + radius + 12,
 					position.body.name,
-					isSelected ? theme.accent : hoveredId === position.body.id ? theme.heading : theme.dim,
+					isSelected ? theme.accent : hoveredId === key ? theme.heading : theme.dim,
 					9,
 					isSelected ? 600 : 400,
-					bodyOpacity(position.body.id),
+					bodyOpacity(key),
 				)
 			}
 		}
@@ -595,12 +624,13 @@
 			const parent = scene.directPositions.find(position => position.body.id === satellite.parentId)
 			if (!parent) continue
 
-			const isSelected = satellite.body.id === selectedId
+			const key = keyForBody(satellite.body, false)
+			const isSelected = key === selectedId
 			context.save()
-			context.globalAlpha = bodyOpacity(satellite.body.id)
+			context.globalAlpha = bodyOpacity(key)
 			context.strokeStyle = isSelected
 				? theme.accent
-				: isInFamily(satellite.body.id)
+				: isInFamily(key)
 					? theme.accentLight
 					: theme.secondary
 			context.lineWidth = isSelected ? 1.5 : 0.5
@@ -610,7 +640,7 @@
 			context.restore()
 
 			context.save()
-			context.globalAlpha = bodyOpacity(satellite.body.id)
+			context.globalAlpha = bodyOpacity(key)
 			context.fillStyle = resolveColor(satellite.body.color, theme.dim)
 			context.beginPath()
 			context.arc(satellite.x, satellite.y, 2.5, 0, Math.PI * 2)
@@ -622,7 +652,7 @@
 			}
 			context.restore()
 
-			if (labels === 'all' || hoveredId === satellite.body.id || isSelected) {
+			if (labels === 'all' || hoveredId === key || isSelected) {
 				drawLabel(
 					context,
 					satellite.x,
@@ -631,7 +661,7 @@
 					isSelected ? theme.accent : theme.dim,
 					7,
 					isSelected ? 600 : 400,
-					bodyOpacity(satellite.body.id),
+					bodyOpacity(key),
 				)
 			}
 		}
