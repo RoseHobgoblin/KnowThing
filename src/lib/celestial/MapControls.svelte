@@ -1,52 +1,95 @@
 <script lang="ts">
-	import type { ScaleMode, LabelMode, TrailMode, CenterTarget } from './map-settings.js'
-	import Select from '$lib/components/ui/Select.svelte'
-	import Checkbox from '$lib/components/ui/Checkbox.svelte'
+	import type { ScaleMode, LabelMode, TrailMode } from './map-settings.js'
 
 	let {
 		scale = $bindable('compressed'),
 		labels = $bindable('major'),
 		trails = $bindable('off'),
-		centerOn = $bindable('system'),
-		followSelection = $bindable(false),
+		follow = $bindable(false),
+		hasSelection = false,
 	}: {
 		scale: ScaleMode
 		labels: LabelMode
 		trails: TrailMode
-		centerOn: CenterTarget
-		followSelection: boolean
+		follow: boolean
+		hasSelection?: boolean
 	} = $props()
 
-	const scaleItems = [
-		{ value: 'realistic', label: 'Realistic' },
-		{ value: 'compressed', label: 'Compressed' },
-		{ value: 'logarithmic', label: 'Logarithmic' },
+	type SegmentItem<T extends string> = { value: T, label: string, title?: string }
+
+	const scaleItems: SegmentItem<ScaleMode>[] = [
+		{ value: 'realistic', label: 'Lin', title: 'Linear / realistic spacing' },
+		{ value: 'compressed', label: '√', title: 'Square root / compressed' },
+		{ value: 'logarithmic', label: 'Log', title: 'Logarithmic spacing' },
 	]
 
-	const labelItems = [
+	const labelItems: SegmentItem<LabelMode>[] = [
 		{ value: 'off', label: 'Off' },
-		{ value: 'hovered', label: 'Hovered' },
-		{ value: 'major', label: 'Major only' },
+		{ value: 'hovered', label: 'Hover' },
+		{ value: 'major', label: 'Major' },
 		{ value: 'all', label: 'All' },
 	]
 
-	const trailItems = [
+	const trailItems: SegmentItem<TrailMode>[] = [
 		{ value: 'off', label: 'Off' },
 		{ value: 'short', label: 'Short' },
-		{ value: 'full', label: 'Full orbit' },
-	]
-
-	const centerItems = [
-		{ value: 'system', label: 'System center' },
-		{ value: 'star', label: 'Primary star' },
-		{ value: 'selection', label: 'Selection' },
+		{ value: 'full', label: 'Full' },
 	]
 </script>
 
-<div class="flex flex-wrap items-center gap-3 px-3 py-2 bg-raised border border-border-subtle text-xs">
-	<Select label="Scale" type="single" bind:value={scale} items={scaleItems} size="sm" />
-	<Select label="Labels" type="single" bind:value={labels} items={labelItems} size="sm" />
-	<Select label="Trails" type="single" bind:value={trails} items={trailItems} size="sm" />
-	<Select label="Center" type="single" bind:value={centerOn} items={centerItems} size="sm" />
-	<Checkbox bind:value={followSelection} label="Follow" />
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-3 py-1.5 bg-page/80 text-[10px] text-secondary select-none">
+	<!-- Scale -->
+	<div class="flex items-center gap-1">
+		<span class="text-faint uppercase tracking-wider">Scale</span>
+		<div class="flex border border-border-subtle">
+			{#each scaleItems as item (item.value)}
+				<button
+					type="button"
+					title={item.title}
+					class="px-1.5 py-0.5 transition-colors {scale === item.value ? 'bg-accent-subtle text-accent font-medium' : 'hover:bg-raised'}"
+					onclick={() => scale = item.value}
+				>{item.label}</button>
+			{/each}
+		</div>
+	</div>
+
+	<!-- Labels -->
+	<div class="flex items-center gap-1">
+		<span class="text-faint uppercase tracking-wider">Labels</span>
+		<div class="flex border border-border-subtle">
+			{#each labelItems as item (item.value)}
+				<button
+					type="button"
+					class="px-1.5 py-0.5 transition-colors {labels === item.value ? 'bg-accent-subtle text-accent font-medium' : 'hover:bg-raised'}"
+					onclick={() => labels = item.value}
+				>{item.label}</button>
+			{/each}
+		</div>
+	</div>
+
+	<!-- Trails -->
+	<div class="flex items-center gap-1">
+		<span class="text-faint uppercase tracking-wider">Trails</span>
+		<div class="flex border border-border-subtle">
+			{#each trailItems as item (item.value)}
+				<button
+					type="button"
+					class="px-1.5 py-0.5 transition-colors {trails === item.value ? 'bg-accent-subtle text-accent font-medium' : 'hover:bg-raised'}"
+					onclick={() => trails = item.value}
+				>{item.label}</button>
+			{/each}
+		</div>
+	</div>
+
+	<!-- Follow -->
+	<button
+		type="button"
+		disabled={!hasSelection}
+		class="px-1.5 py-0.5 border border-border-subtle transition-colors
+			{follow && hasSelection ? 'bg-accent-subtle text-accent font-medium' : 'hover:bg-raised'}
+			{!hasSelection ? 'opacity-40 cursor-not-allowed' : ''}"
+		title={hasSelection ? 'Center on selected body' : 'Select a body first'}
+		onclick={() => follow = !follow}
+	>Follow</button>
 </div>

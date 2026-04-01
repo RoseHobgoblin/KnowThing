@@ -56,8 +56,7 @@
 	let mapScale = $state(DEFAULT_MAP_SETTINGS.scale)
 	let mapLabels = $state(DEFAULT_MAP_SETTINGS.labels)
 	let mapTrails = $state(DEFAULT_MAP_SETTINGS.trails)
-	let mapCenterOn = $state(DEFAULT_MAP_SETTINGS.centerOn)
-	let mapFollowSelection = $state(DEFAULT_MAP_SETTINGS.followSelection)
+	let mapFollow = $state(DEFAULT_MAP_SETTINGS.follow)
 	let mapSelectedId = $state<number | null>(null)
 
 	// Resolve selected body for sidebar detail
@@ -244,8 +243,8 @@
 								bind:scale={mapScale}
 								bind:labels={mapLabels}
 								bind:trails={mapTrails}
-								bind:centerOn={mapCenterOn}
-								bind:followSelection={mapFollowSelection}
+								bind:follow={mapFollow}
+								hasSelection={mapSelectedId != null}
 							/>
 							<SystemMap
 								systemName={raw.name}
@@ -255,8 +254,7 @@
 								scale={mapScale}
 								labels={mapLabels}
 								trails={mapTrails}
-								centerOn={mapCenterOn}
-								followSelection={mapFollowSelection}
+								follow={mapFollow}
 								bind:selectedId={mapSelectedId}
 							/>
 						{:else}
