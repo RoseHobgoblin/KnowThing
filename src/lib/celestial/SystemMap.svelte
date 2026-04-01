@@ -202,6 +202,7 @@
 
 	function buildScene(): Scene {
 		const primaryStar = stars.find(star => !star.parentStarId) ?? stars[0] ?? null
+		const starIds = new Set(stars.map(star => star.id))
 		const companionStars = stars.filter(star => star.parentStarId)
 		const directOrbiters: OrbitBody[] = []
 		const seen = new Set<number>()
@@ -214,7 +215,8 @@
 		}
 
 		for (const body of bodies) {
-			if (body.semiMajorAxisAu && !body.parentId && !seen.has(body.id)) {
+			const parentIsStar = body.parentId != null && starIds.has(body.parentId)
+			if (body.semiMajorAxisAu && (!body.parentId || parentIsStar) && !seen.has(body.id)) {
 				seen.add(body.id)
 				directOrbiters.push({ ...body, orbitAu: body.semiMajorAxisAu, ecc: body.eccentricity ?? 0, isStar: false })
 			}
@@ -258,7 +260,7 @@
 
 		for (const parent of rawDirectPositions) {
 			const satellites = bodies
-				.filter(body => body.parentId === parent.body.id && body.semiMajorAxisAu)
+				.filter(body => body.parentId === parent.body.id && body.semiMajorAxisAu && !starIds.has(body.parentId))
 				.map(body => ({ ...body, orbitAu: body.semiMajorAxisAu!, ecc: body.eccentricity ?? 0, isStar: false }))
 				.sort((a, b) => a.orbitAu - b.orbitAu)
 
