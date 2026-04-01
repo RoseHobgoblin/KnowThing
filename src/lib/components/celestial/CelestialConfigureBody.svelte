@@ -21,7 +21,7 @@
 	import { validateBodyPhysics } from '$lib/celestial/validate-physics.js'
 
 	type CelestialCrumb = { label: string, href: string }
-	type BodyType = 'planet' | 'moon' | 'asteroid' | 'ring_system'
+	type BodyType = 'planet' | 'asteroid' | 'ring_system'
 	type CelestialStarOption = { id: number, name: string, slug: string }
 	type CelestialBodyOption = { id: number, name: string, slug: string }
 	type BodyRecord = {
@@ -203,7 +203,7 @@
 	const initialSnapshot = JSON.stringify(initialDraft)
 	// Auto-computed derived fields
 	const computedPhysical = $derived(deriveBodyFields(massKg, radiusM))
-	const physicsWarnings = $derived(validateBodyPhysics({ massKg, radiusM, orbitalPeriodDays, semiMajorAxisAu, eccentricity, rotationPeriodS, axialTilt, bodyType }))
+	const physicsWarnings = $derived(validateBodyPhysics({ massKg, radiusM, orbitalPeriodDays, semiMajorAxisAu, eccentricity, rotationPeriodS, axialTilt, bodyType, isSatellite: !!parentIdStr }))
 	const computedDisplay = $derived(deriveDisplayStrings(orbitalPeriodDays, semiMajorAxisAu, rotationPeriodS))
 
 	const currentSnapshot = $derived(JSON.stringify({
@@ -266,7 +266,6 @@
 
 	const bodyTypeItems: Array<{ value: BodyType, label: string }> = [
 		{ value: 'planet', label: 'Planet' },
-		{ value: 'moon', label: 'Moon' },
 		{ value: 'asteroid', label: 'Asteroid' },
 		{ value: 'ring_system', label: 'Ring System' },
 	]

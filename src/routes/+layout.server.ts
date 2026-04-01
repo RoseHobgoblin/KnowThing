@@ -58,7 +58,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 				const moons = await db
 					.select({ id: planetaryBodies.id, orbitalPeriodDays: planetaryBodies.orbitalPeriodDays, epochPhase: planetaryBodies.epochPhase })
 					.from(planetaryBodies)
-					.where(sql`${planetaryBodies.parentId} = ${planet.id} AND ${planetaryBodies.bodyType} = 'moon'`)
+					.where(sql`${planetaryBodies.parentId} = ${planet.id}`)
 
 				staticData.planet = {
 					orbital_period_days: planet.orbitalPeriodDays ?? 0,

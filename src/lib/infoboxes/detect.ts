@@ -95,8 +95,6 @@ const KEYWORD_MAP: Record<string, InfoboxType> = {
 
 	// Planet / celestial body
 	'planet': 'planet',
-	'moon': 'planet',
-	'dwarf planet': 'planet',
 	'celestial': 'planet',
 	'celestial body': 'planet',
 	'satellite': 'planet',

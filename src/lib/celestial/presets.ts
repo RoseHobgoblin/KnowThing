@@ -25,7 +25,7 @@ export interface StarPreset {
 
 export interface BodyPreset {
 	name: string
-	bodyType: 'planet' | 'moon' | 'asteroid'
+	bodyType: 'planet' | 'asteroid'
 	mass: string
 	massKg: number
 	radius: string
@@ -173,7 +173,7 @@ export const celestialPresets: CelestialPreset[] = [
 						moons: [
 							{
 								name: 'Luna',
-								bodyType: 'moon',
+								bodyType: 'planet',
 								mass: '7.342 × 10²² kg',
 								massKg: 7.342e22,
 								radius: '1,737.4 km',
@@ -220,7 +220,7 @@ export const celestialPresets: CelestialPreset[] = [
 						hasRings: false,
 						moons: [
 							{
-								name: 'Phobos', bodyType: 'moon', mass: '1.066 × 10¹⁶ kg', massKg: 1.066e16, radius: '11.267 km', radiusM: 11_267,
+								name: 'Phobos', bodyType: 'planet', mass: '1.066 × 10¹⁶ kg', massKg: 1.066e16, radius: '11.267 km', radiusM: 11_267,
 								density: '1.876 g/cm³', surfaceGravity: '0.0057 m/s²', temperature: '233 K',
 								atmosphere: '', composition: 'Carbon chondrite',
 								orbitalPeriod: '0.319 days', orbitalPeriodDays: 0.3189, semiMajorAxisAu: 0.0000628,
@@ -228,7 +228,7 @@ export const celestialPresets: CelestialPreset[] = [
 								rotationPeriodS: 27_554, axialTilt: 0, satellites: 0, hasRings: false,
 							},
 							{
-								name: 'Deimos', bodyType: 'moon', mass: '1.476 × 10¹⁵ kg', massKg: 1.476e15, radius: '6.2 km', radiusM: 6_200,
+								name: 'Deimos', bodyType: 'planet', mass: '1.476 × 10¹⁵ kg', massKg: 1.476e15, radius: '6.2 km', radiusM: 6_200,
 								density: '1.471 g/cm³', surfaceGravity: '0.003 m/s²', temperature: '233 K',
 								atmosphere: '', composition: 'Carbon chondrite',
 								orbitalPeriod: '1.263 days', orbitalPeriodDays: 1.2624, semiMajorAxisAu: 0.000157,
@@ -261,7 +261,7 @@ export const celestialPresets: CelestialPreset[] = [
 						hasRings: true,
 						moons: [
 							{
-								name: 'Io', bodyType: 'moon', mass: '8.932 × 10²² kg', massKg: 8.932e22, radius: '1,821.6 km', radiusM: 1_821_600,
+								name: 'Io', bodyType: 'planet', mass: '8.932 × 10²² kg', massKg: 8.932e22, radius: '1,821.6 km', radiusM: 1_821_600,
 								density: '3.528 g/cm³', surfaceGravity: '1.796 m/s²', temperature: '110 K',
 								atmosphere: 'SO₂ (thin)', composition: 'Silicates, sulfur',
 								orbitalPeriod: '1.769 days', orbitalPeriodDays: 1.7691, semiMajorAxisAu: 0.00282,
@@ -269,7 +269,7 @@ export const celestialPresets: CelestialPreset[] = [
 								rotationPeriodS: 152_853, axialTilt: 0, satellites: 0, hasRings: false,
 							},
 							{
-								name: 'Europa', bodyType: 'moon', mass: '4.800 × 10²² kg', massKg: 4.800e22, radius: '1,560.8 km', radiusM: 1_560_800,
+								name: 'Europa', bodyType: 'planet', mass: '4.800 × 10²² kg', massKg: 4.800e22, radius: '1,560.8 km', radiusM: 1_560_800,
 								density: '3.013 g/cm³', surfaceGravity: '1.315 m/s²', temperature: '102 K',
 								atmosphere: 'O₂ (thin)', composition: 'Ice, silicates, subsurface ocean',
 								orbitalPeriod: '3.551 days', orbitalPeriodDays: 3.5512, semiMajorAxisAu: 0.00449,
@@ -277,7 +277,7 @@ export const celestialPresets: CelestialPreset[] = [
 								rotationPeriodS: 306_823, axialTilt: 0.1, satellites: 0, hasRings: false,
 							},
 							{
-								name: 'Ganymede', bodyType: 'moon', mass: '1.482 × 10²³ kg', massKg: 1.482e23, radius: '2,634.1 km', radiusM: 2_634_100,
+								name: 'Ganymede', bodyType: 'planet', mass: '1.482 × 10²³ kg', massKg: 1.482e23, radius: '2,634.1 km', radiusM: 2_634_100,
 								density: '1.936 g/cm³', surfaceGravity: '1.428 m/s²', temperature: '110 K',
 								atmosphere: 'O₂ (thin)', composition: 'Ice, silicates',
 								orbitalPeriod: '7.155 days', orbitalPeriodDays: 7.1546, semiMajorAxisAu: 0.00716,
@@ -285,7 +285,7 @@ export const celestialPresets: CelestialPreset[] = [
 								rotationPeriodS: 618_153, axialTilt: 0.33, satellites: 0, hasRings: false,
 							},
 							{
-								name: 'Callisto', bodyType: 'moon', mass: '1.076 × 10²³ kg', massKg: 1.076e23, radius: '2,410.3 km', radiusM: 2_410_300,
+								name: 'Callisto', bodyType: 'planet', mass: '1.076 × 10²³ kg', massKg: 1.076e23, radius: '2,410.3 km', radiusM: 2_410_300,
 								density: '1.834 g/cm³', surfaceGravity: '1.235 m/s²', temperature: '134 K',
 								atmosphere: 'CO₂ (thin)', composition: 'Ice, rock',
 								orbitalPeriod: '16.689 days', orbitalPeriodDays: 16.689, semiMajorAxisAu: 0.01259,
@@ -318,7 +318,7 @@ export const celestialPresets: CelestialPreset[] = [
 						hasRings: true,
 						moons: [
 							{
-								name: 'Titan', bodyType: 'moon', mass: '1.345 × 10²³ kg', massKg: 1.345e23, radius: '2,574.7 km', radiusM: 2_574_700,
+								name: 'Titan', bodyType: 'planet', mass: '1.345 × 10²³ kg', massKg: 1.345e23, radius: '2,574.7 km', radiusM: 2_574_700,
 								density: '1.882 g/cm³', surfaceGravity: '1.352 m/s²', temperature: '94 K',
 								atmosphere: 'N₂ 98.4%, CH₄ 1.4%', composition: 'Ice, rock, hydrocarbon lakes',
 								orbitalPeriod: '15.945 days', orbitalPeriodDays: 15.945, semiMajorAxisAu: 0.00817,
@@ -326,7 +326,7 @@ export const celestialPresets: CelestialPreset[] = [
 								rotationPeriodS: 1_377_648, axialTilt: 0, satellites: 0, hasRings: false,
 							},
 							{
-								name: 'Enceladus', bodyType: 'moon', mass: '1.080 × 10²⁰ kg', massKg: 1.080e20, radius: '252.1 km', radiusM: 252_100,
+								name: 'Enceladus', bodyType: 'planet', mass: '1.080 × 10²⁰ kg', massKg: 1.080e20, radius: '252.1 km', radiusM: 252_100,
 								density: '1.609 g/cm³', surfaceGravity: '0.113 m/s²', temperature: '75 K',
 								atmosphere: 'H₂O vapor (geyser)', composition: 'Ice, subsurface ocean',
 								orbitalPeriod: '1.370 days', orbitalPeriodDays: 1.3702, semiMajorAxisAu: 0.00159,
@@ -382,7 +382,7 @@ export const celestialPresets: CelestialPreset[] = [
 						hasRings: true,
 						moons: [
 							{
-								name: 'Triton', bodyType: 'moon', mass: '2.139 × 10²² kg', massKg: 2.139e22, radius: '1,353.4 km', radiusM: 1_353_400,
+								name: 'Triton', bodyType: 'planet', mass: '2.139 × 10²² kg', massKg: 2.139e22, radius: '1,353.4 km', radiusM: 1_353_400,
 								density: '2.061 g/cm³', surfaceGravity: '0.779 m/s²', temperature: '38 K',
 								atmosphere: 'N₂ (thin)', composition: 'Nitrogen ice, rock',
 								orbitalPeriod: '5.877 days (retrograde)', orbitalPeriodDays: 5.877, semiMajorAxisAu: 0.00237,

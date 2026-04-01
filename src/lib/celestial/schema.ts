@@ -82,7 +82,7 @@ export const updateStarSchema = starSchema.partial().superRefine(validateStarSta
 const planetaryBodySchema = z.object({
 	name: z.string().min(1),
 	slug: z.string().min(1),
-	bodyType: z.enum(['planet', 'moon', 'asteroid', 'ring_system']).default('planet'),
+	bodyType: z.enum(['planet', 'asteroid', 'ring_system']).default('planet'),
 	starId: z.number().int().nullish(),
 	parentId: z.number().int().nullish(),
 	pageSlug: z.string().nullish(),
@@ -125,11 +125,11 @@ const planetaryBodySchema = z.object({
 })
 
 function validatePlanetaryBodyState(data: Partial<z.infer<typeof planetaryBodySchema>>, ctx: z.RefinementCtx) {
-	if ((data.bodyType === 'moon' || data.bodyType === 'ring_system') && data.parentId == null) {
+	if (data.bodyType === 'ring_system' && data.parentId == null) {
 		ctx.addIssue({
 			code: z.ZodIssueCode.custom,
 			path: ['parentId'],
-			message: `${data.bodyType === 'moon' ? 'Moons' : 'Ring systems'} must orbit a parent body`,
+			message: 'Ring systems must orbit a parent body',
 		})
 	}
 

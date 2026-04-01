@@ -324,7 +324,7 @@
 										<a href="/celestial/{system.slug}/{planet.slug}" class="text-body text-sm transition-colors hover:text-link">{planet.name}</a>
 										<span class="text-xs text-faint">({planet.bodyType})</span>
 										{#if planet.moonCount > 0}
-											<span class="text-xs text-dim">· {planet.moonCount} {planet.moonCount === 1 ? 'moon' : 'moons'}</span>
+											<span class="text-xs text-dim">· {planet.moonCount} {planet.moonCount === 1 ? 'satellite' : 'satellites'}</span>
 										{/if}
 									</div>
 									{#if permissions.canConfigureCelestial}
@@ -448,8 +448,6 @@
 						bind:value={newBodyType}
 						items={[
 							{ value: 'planet', label: 'Planet' },
-							{ value: 'moon', label: 'Moon' },
-	
 							{ value: 'asteroid', label: 'Asteroid' },
 						]}
 					/>

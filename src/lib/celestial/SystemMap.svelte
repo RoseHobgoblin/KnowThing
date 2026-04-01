@@ -78,11 +78,11 @@
 	}
 
 	// Body sizes by type
-	function bodyRadius(body: { isStar: boolean, bodyType: string }): number {
+	function bodyRadius(body: { isStar: boolean, bodyType: string, parentId?: number | null }): number {
 		if (body.isStar) return 6
+		if (body.parentId) return 2
 		switch (body.bodyType) {
 			case 'planet': return 4
-			case 'moon': return 2
 			default: return 3
 		}
 	}

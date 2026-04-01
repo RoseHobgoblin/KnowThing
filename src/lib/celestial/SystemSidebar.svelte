@@ -44,10 +44,10 @@
 		return bodies.filter(b => b.parentId === bodyId)
 	}
 
-	function bodyIcon(type: string) {
+	function bodyIcon(type: string, isSatellite: boolean) {
+		if (isSatellite) return Moon
 		switch (type) {
 			case 'planet': return Planet
-			case 'moon': return Moon
 			case 'asteroid': return Asterisk
 			case 'ring_system': return CircleDashed
 			default: return Planet
@@ -115,14 +115,14 @@
 						class="flex items-center gap-2 px-1.5 py-1 ml-4 transition-colors hover:bg-raised"
 					>
 						<svelte:component
-							this={bodyIcon(planet.bodyType)}
+							this={bodyIcon(planet.bodyType, !!planet.parentId)}
 							size={14}
 							weight="fill"
 							class="shrink-0"
 							color={resolveColor(planet.color, 'var(--color-secondary)')}
 						/>
 						<span class="text-body">{planet.name}</span>
-						<span class="text-faint text-xs">({planet.bodyType})</span>
+						<span class="text-faint text-xs">({planet.parentId ? 'satellite' : planet.bodyType})</span>
 					</a>
 
 					<!-- Moons -->

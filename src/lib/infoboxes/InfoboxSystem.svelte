@@ -10,7 +10,7 @@
 	const KNOWN_KEYS = new Set([
 		'name', 'image', 'caption', 'image_size',
 		'system_type', 'stars', 'star_count',
-		'planets', 'moons',
+		'planets', 'satellites',
 		'description',
 	])
 
@@ -22,7 +22,7 @@
 	const starsList = getField(fields, 'stars') ?? ''
 	const starCount = getField(fields, 'star_count') ?? ''
 	const planets = getField(fields, 'planets') ?? ''
-	const moons = getField(fields, 'moons') ?? ''
+	const satellites = getField(fields, 'satellites') ?? ''
 
 	const typeLabel = systemType
 		? systemType.charAt(0).toUpperCase() + systemType.slice(1) + ' star system'
@@ -45,8 +45,8 @@
 
 	<InfoboxSection title="Bodies" />
 	<InfoboxRow label="Planets" value={planets} />
-	{#if moons && moons !== '0'}
-		<InfoboxRow label="Moons" value={moons} />
+	{#if satellites && satellites !== '0'}
+		<InfoboxRow label="Satellites" value={satellites} />
 	{/if}
 
 	{#each remaining as [key, value]}

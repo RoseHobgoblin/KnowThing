@@ -27,9 +27,10 @@ export function validateBodyPhysics(params: {
 	rotationPeriodS: number | null
 	axialTilt: number | null
 	bodyType: string | null
+	isSatellite: boolean
 }): PhysicsWarning[] {
 	const warnings: PhysicsWarning[] = []
-	const { massKg, radiusM, orbitalPeriodDays, semiMajorAxisAu, eccentricity, rotationPeriodS, axialTilt, bodyType } = params
+	const { massKg, radiusM, orbitalPeriodDays, semiMajorAxisAu, eccentricity, rotationPeriodS, axialTilt, bodyType, isSatellite } = params
 
 	if (massKg != null && massKg <= 0) {
 		warnings.push({ field: 'massKg', message: 'Mass must be positive', severity: 'impossible' })
@@ -56,9 +57,9 @@ export function validateBodyPhysics(params: {
 			warnings.push({ field: 'massKg', message: 'Mass exceeds ~13 Jupiter masses — this is in the brown dwarf range, not a planet', severity: 'warning' })
 		}
 	}
-	if (massKg != null && bodyType === 'moon') {
+	if (massKg != null && isSatellite) {
 		if (massKg > 0.5 * EARTH_MASS) {
-			warnings.push({ field: 'massKg', message: 'Moon mass exceeds half of Earth — unusually massive for a satellite', severity: 'warning' })
+			warnings.push({ field: 'massKg', message: 'Satellite mass exceeds half of Earth — unusually massive for a satellite', severity: 'warning' })
 		}
 	}
 
