@@ -1,7 +1,7 @@
 import { error } from '@sveltejs/kit'
 import bcrypt from 'bcrypt'
 import crypto from 'node:crypto'
-import { and, eq, gt, isNull, sql } from 'drizzle-orm'
+import { and, eq, gt, isNull, or, sql } from 'drizzle-orm'
 import { db } from '$lib/server/db/index.js'
 import { loginAttempts, registrationCodes, sessions, users } from '$lib/server/db/schema.js'
 import type { Role } from '$lib/server/auth.js'
@@ -138,7 +138,10 @@ export async function registerUser(input: {
 			.where(and(
 				eq(registrationCodes.code, code),
 				isNull(registrationCodes.usedBy),
-				sql`(${registrationCodes.expiresAt} IS NULL OR ${registrationCodes.expiresAt} > ${now})`,
+				or(
+					isNull(registrationCodes.expiresAt),
+					gt(registrationCodes.expiresAt, now),
+				),
 			))
 			.limit(1)
 
