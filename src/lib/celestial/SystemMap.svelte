@@ -72,6 +72,8 @@
 	const SIZE = 800
 	const CENTER = SIZE / 2
 	const PADDING = 80
+	const DIRECT_MIN_R = 72
+	const DIRECT_MIN_GAP = 18
 	const SAT_BASE_R = 14
 	const SAT_MAX_SPAN = 48
 	const FONT_STACK = 'Work Sans, ui-sans-serif, system-ui, sans-serif'
@@ -501,13 +503,13 @@
 			context.arc(centerX, centerY, CENTER * 0.85, 0, Math.PI * 2)
 			context.fill()
 
-			const inner = context.createRadialGradient(centerX, centerY, 0, centerX, centerY, 50)
+			const inner = context.createRadialGradient(centerX, centerY, 0, centerX, centerY, 40)
 			inner.addColorStop(0, `${primaryColor}66`)
 			inner.addColorStop(0.3, `${primaryColor}26`)
 			inner.addColorStop(1, `${primaryColor}00`)
 			context.fillStyle = inner
 			context.beginPath()
-			context.arc(centerX, centerY, 50, 0, Math.PI * 2)
+			context.arc(centerX, centerY, 40, 0, Math.PI * 2)
 			context.fill()
 		}
 
@@ -714,12 +716,11 @@
 		height={SIZE}
 		class="block w-full bg-page"
 		style="aspect-ratio: 1 / 1;"
-		role="img"
 		aria-label="System map of {systemName}"
 		onmousemove={handlePointerMove}
 		onmouseleave={handlePointerLeave}
 		onclick={handleClick}
-	/>
+	></canvas>
 
 	{#if hoveredBody && hoveredTarget}
 		<div
