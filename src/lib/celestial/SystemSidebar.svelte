@@ -19,6 +19,7 @@
 		systemSlug,
 		calendars = [],
 		currentAbsoluteDay = $bindable(0),
+		selectedBody = null,
 	}: {
 		system: { name: string, systemType?: string | null, system_type?: string | null }
 		stars: MapBody[]
@@ -26,6 +27,7 @@
 		systemSlug: string
 		calendars?: (CalendarConfig & { id: number })[]
 		currentAbsoluteDay?: number
+		selectedBody?: MapBody | null
 	} = $props()
 
 	let selectedCalendarId = $state(calendars[0]?.id ?? 0)
@@ -85,6 +87,46 @@
 			{/if}
 		</div>
 	</div>
+
+	<!-- Selected body detail -->
+	{#if selectedBody}
+		<div>
+			<div class="text-[10px] font-semibold text-faint uppercase tracking-wider border-b border-border-subtle pb-1 mb-2">Selected</div>
+			<div class="space-y-1.5">
+				<div class="font-medium text-heading">{selectedBody.name}</div>
+				<div class="space-y-1 text-secondary text-xs">
+					{#if selectedBody.bodyType}
+						<div class="flex justify-between">
+							<span>Type</span>
+							<span class="text-body">{selectedBody.parentId ? 'Satellite' : selectedBody.bodyType}</span>
+						</div>
+					{/if}
+					{#if selectedBody.semiMajorAxisAu}
+						<div class="flex justify-between">
+							<span>Semi-major axis</span>
+							<span class="text-body">{selectedBody.semiMajorAxisAu.toFixed(3)} AU</span>
+						</div>
+					{/if}
+					{#if selectedBody.orbitalPeriodDays}
+						<div class="flex justify-between">
+							<span>Orbital period</span>
+							<span class="text-body">{selectedBody.orbitalPeriodDays < 1 ? (selectedBody.orbitalPeriodDays * 24).toFixed(1) + ' h' : selectedBody.orbitalPeriodDays.toFixed(1) + ' d'}</span>
+						</div>
+					{/if}
+					{#if selectedBody.eccentricity != null}
+						<div class="flex justify-between">
+							<span>Eccentricity</span>
+							<span class="text-body">{selectedBody.eccentricity.toFixed(4)}</span>
+						</div>
+					{/if}
+				</div>
+				<a
+					href="/celestial/{systemSlug}/{selectedBody.slug}"
+					class="block text-link text-xs mt-2 transition-colors hover:text-link-hover"
+				>View details</a>
+			</div>
+		</div>
+	{/if}
 
 	<!-- Body list -->
 	<div>

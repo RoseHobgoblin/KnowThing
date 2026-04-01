@@ -9,7 +9,9 @@
 	import InfoboxStar from '$lib/infoboxes/InfoboxStar.svelte'
 	import InfoboxPlanet from '$lib/infoboxes/InfoboxPlanet.svelte'
 	import SystemMap from '$lib/celestial/SystemMap.svelte'
+	import MapControls from '$lib/celestial/MapControls.svelte'
 	import SystemSidebar from '$lib/celestial/SystemSidebar.svelte'
+	import { DEFAULT_MAP_SETTINGS } from '$lib/celestial/map-settings.js'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import CelestialConfigureStar from '$lib/components/celestial/CelestialConfigureStar.svelte'
 	import CelestialConfigureBody from '$lib/components/celestial/CelestialConfigureBody.svelte'
@@ -49,8 +51,21 @@
 		calendarDate: layoutData.calendarDate ?? null,
 	})
 
-	// System map time state — default to "now" via primary calendar
+	// System map state
 	let currentAbsoluteDay = $state(Math.floor(Date.now() / 86_400_000))
+	let mapScale = $state(DEFAULT_MAP_SETTINGS.scale)
+	let mapLabels = $state(DEFAULT_MAP_SETTINGS.labels)
+	let mapTrails = $state(DEFAULT_MAP_SETTINGS.trails)
+	let mapCenterOn = $state(DEFAULT_MAP_SETTINGS.centerOn)
+	let mapFollowSelection = $state(DEFAULT_MAP_SETTINGS.followSelection)
+	let mapSelectedId = $state<number | null>(null)
+
+	// Resolve selected body for sidebar detail
+	const selectedBody = $derived.by(() => {
+		if (mapSelectedId == null) return null
+		const allBodies = [...(data.systemStars ?? []), ...(data.systemBodies ?? [])]
+		return allBodies.find(b => b.id === mapSelectedId) ?? null
+	})
 
 	// Build calendar configs for the date scrubber
 	const systemCalendarConfigs = $derived.by(() => {
@@ -222,14 +237,27 @@
 			{#if kind === 'system'}
 				<!-- System: two-column layout -->
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-[1fr_280px]">
-					<!-- Map -->
-					<div>
+					<!-- Map + Controls -->
+					<div class="space-y-1">
 						{#if data.systemStars && data.systemStars.length > 0}
+							<MapControls
+								bind:scale={mapScale}
+								bind:labels={mapLabels}
+								bind:trails={mapTrails}
+								bind:centerOn={mapCenterOn}
+								bind:followSelection={mapFollowSelection}
+							/>
 							<SystemMap
 								systemName={raw.name}
 								stars={data.systemStars}
 								bodies={data.systemBodies ?? []}
 								{currentAbsoluteDay}
+								scale={mapScale}
+								labels={mapLabels}
+								trails={mapTrails}
+								centerOn={mapCenterOn}
+								followSelection={mapFollowSelection}
+								bind:selectedId={mapSelectedId}
 							/>
 						{:else}
 							<div class="flex items-center justify-center h-64 text-dim border border-border-subtle">
@@ -247,6 +275,7 @@
 							systemSlug={raw.slug}
 							calendars={systemCalendarConfigs}
 							bind:currentAbsoluteDay
+							{selectedBody}
 						/>
 					</div>
 
@@ -259,6 +288,7 @@
 							systemSlug={raw.slug}
 							calendars={systemCalendarConfigs}
 							bind:currentAbsoluteDay
+							{selectedBody}
 						/>
 					</div>
 				</div>

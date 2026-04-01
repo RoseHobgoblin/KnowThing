@@ -19,25 +19,35 @@
 </script>
 
 <script lang="ts">
-	import { goto } from '$app/navigation'
 	import { resolveColor } from './colors.js'
 	import { orbitalAngle } from './orbit.js'
+	import type { ScaleMode, LabelMode, TrailMode, CenterTarget } from './map-settings.js'
 
 	let {
 		systemName,
 		stars,
 		bodies,
 		currentAbsoluteDay,
+		scale = 'compressed',
+		labels = 'major',
+		trails = 'off',
+		centerOn = 'system',
+		followSelection = false,
+		selectedId = $bindable(null),
 	}: {
 		systemName: string
 		stars: MapBody[]
 		bodies: MapBody[]
-		/** When set, positions bodies at their actual orbital position for this day.
-		 *  When null/undefined, spreads bodies evenly for visual clarity. */
 		currentAbsoluteDay?: number | null
+		scale?: ScaleMode
+		labels?: LabelMode
+		trails?: TrailMode
+		centerOn?: CenterTarget
+		followSelection?: boolean
+		selectedId?: number | null
 	} = $props()
 
-	let hovered = $state<(MapBody & { isStar: boolean, spectralType?: string | null }) | null>(null)
+	let hovered = $state<(MapBody & { isStar: boolean }) | null>(null)
 	let hoveredPos = $state({ x: 0, y: 0 })
 
 	const SIZE = 800
@@ -48,7 +58,7 @@
 	const primaryStar = $derived(stars.find(s => !s.parentStarId) ?? stars[0])
 	const companionStars = $derived(stars.filter(s => s.parentStarId))
 
-	// All orbiting bodies: companion stars + planets (not moons — too small)
+	// All orbiting bodies: companion stars + direct orbiters (not satellites)
 	const orbitingBodies = $derived.by(() => {
 		const all: (MapBody & { orbitAu: number, ecc: number, isStar: boolean })[] = []
 
@@ -59,7 +69,7 @@
 		}
 
 		for (const body of bodies) {
-			if (body.semiMajorAxisAu && !body.parentStarId) {
+			if (body.semiMajorAxisAu && !body.parentId) {
 				all.push({ ...body, orbitAu: body.semiMajorAxisAu, ecc: body.eccentricity ?? 0, isStar: false })
 			}
 		}
@@ -67,14 +77,23 @@
 		return all.sort((a, b) => a.orbitAu - b.orbitAu)
 	})
 
-	// Sqrt scale: map AU to pixel radius
-	// Account for eccentricity offset so orbits don't clip
+	// --- Scale functions ---
 	const maxAu = $derived(Math.max(...orbitingBodies.map(b => b.orbitAu), 1))
 	const maxEcc = $derived(Math.max(...orbitingBodies.map(b => b.ecc), 0))
 	const maxVisualRadius = $derived((CENTER - PADDING) / (1 + maxEcc * 0.5))
 
 	function auToPixels(au: number): number {
-		return (Math.sqrt(au) / Math.sqrt(maxAu)) * maxVisualRadius
+		switch (scale) {
+			case 'realistic':
+				return (au / maxAu) * maxVisualRadius
+			case 'logarithmic':
+				return maxAu > 1
+					? (Math.log10(1 + au * 9 / maxAu) / Math.log10(10)) * maxVisualRadius
+					: (au / maxAu) * maxVisualRadius
+			case 'compressed':
+			default:
+				return (Math.sqrt(au) / Math.sqrt(maxAu)) * maxVisualRadius
+		}
 	}
 
 	// Body sizes by type
@@ -87,7 +106,7 @@
 		}
 	}
 
-	// Position each body on its orbit
+	// Position a body on its orbit
 	function bodyPosition(body: MapBody & { orbitAu: number, ecc: number }, index: number, total: number) {
 		const a = auToPixels(body.orbitAu)
 		const b = a * Math.sqrt(1 - body.ecc * body.ecc)
@@ -95,22 +114,81 @@
 
 		let angle: number
 		if (currentAbsoluteDay != null && body.orbitAu > 0) {
-			// Use real orbital position based on the current date
-			const periodDays = body.orbitalPeriodDays ?? (body.orbitAu * 365.25) // rough fallback
+			const periodDays = body.orbitalPeriodDays ?? (body.orbitAu * 365.25)
 			const phase = body.epochPhase ?? 0
 			angle = orbitalAngle(periodDays, phase, currentAbsoluteDay)
 		} else {
-			// No date context — spread evenly for visual clarity
 			angle = (index / Math.max(total, 1)) * Math.PI * 2 - Math.PI / 2
 		}
 
-		return {
-			x: CENTER - offset + a * Math.cos(angle),
-			y: CENTER + b * Math.sin(angle),
-			a,
-			b,
-			offset,
+		return { x: CENTER - offset + a * Math.cos(angle), y: CENTER + b * Math.sin(angle), a, b, offset, angle }
+	}
+
+	// --- Trail path generation ---
+	function trailPath(body: MapBody & { orbitAu: number, ecc: number }, currentAngle: number): string {
+		const a = auToPixels(body.orbitAu)
+		const b = a * Math.sqrt(1 - body.ecc * body.ecc)
+		const offset = a * body.ecc
+
+		if (trails === 'full') {
+			// Full ellipse
+			return `M ${CENTER - offset + a},${CENTER} A ${a},${b} 0 1 1 ${CENTER - offset + a - 0.001},${CENTER}`
 		}
+
+		// Short trail: ~25% of orbit behind the body
+		const steps = 32
+		const arcSpan = Math.PI * 0.5
+		const points: string[] = []
+		for (let i = 0; i <= steps; i++) {
+			const t = currentAngle - (i / steps) * arcSpan
+			const px = CENTER - offset + a * Math.cos(t)
+			const py = CENTER + b * Math.sin(t)
+			points.push(`${i === 0 ? 'M' : 'L'} ${px.toFixed(1)},${py.toFixed(1)}`)
+		}
+		return points.join(' ')
+	}
+
+	// --- Label visibility ---
+	function showLabel(body: MapBody & { isStar: boolean }, isSelected: boolean): boolean {
+		switch (labels) {
+			case 'off': return false
+			case 'hovered': return hovered?.id === body.id
+			case 'major':
+				// Stars, direct planets, and selected body always labeled
+				if (body.isStar) return true
+				if (!body.parentId) return true
+				if (isSelected) return true
+				if (hovered?.id === body.id) return true
+				return false
+			case 'all': return true
+		}
+	}
+
+	// --- Center/follow offset ---
+	const viewOffset = $derived.by(() => {
+		if (centerOn === 'system' || centerOn === 'star') {
+			// Both center on the primary star at the origin
+			return { x: 0, y: 0 }
+		}
+
+		if (centerOn === 'selection' && selectedId != null) {
+			const body = orbitingBodies.find(b => b.id === selectedId)
+			if (body) {
+				const idx = orbitingBodies.indexOf(body)
+				const pos = bodyPosition(body, idx, orbitingBodies.length)
+				return { x: CENTER - pos.x, y: CENTER - pos.y }
+			}
+		}
+
+		return { x: 0, y: 0 }
+	})
+
+	// Follow selection: recenter on selected body
+	const effectiveOffset = $derived(followSelection && selectedId != null ? viewOffset : (centerOn === 'selection' ? viewOffset : { x: 0, y: 0 }))
+
+	// --- Interaction ---
+	function handleSelect(body: MapBody) {
+		selectedId = selectedId === body.id ? null : body.id
 	}
 
 	function handleHover(body: MapBody & { isStar: boolean }, pos: { x: number, y: number }) {
@@ -118,17 +196,11 @@
 		hoveredPos = pos
 	}
 
-	function handleClick(body: MapBody) {
-		const target = body.pageSlug ? `/know/${body.pageSlug}` : `/celestial/${body.slug}`
-		goto(target)
-	}
-
-	// Tooltip positioning — to the right of the body, fall back left if near edge
-	const tipWidth = 140
-	const tipHeight = 40
-	const tipRight = $derived(hoveredPos.x + 16 + tipWidth < SIZE)
-	const tipX = $derived(tipRight ? hoveredPos.x + 16 : hoveredPos.x - tipWidth - 16)
-	const tipY = $derived(Math.min(Math.max(hoveredPos.y - tipHeight / 2, 4), SIZE - tipHeight - 4))
+	const tipWidth = 160
+	const tipHeight = 50
+	const tipRight = $derived(hoveredPos.x + effectiveOffset.x + 16 + tipWidth < SIZE)
+	const tipX = $derived(tipRight ? hoveredPos.x + effectiveOffset.x + 16 : hoveredPos.x + effectiveOffset.x - tipWidth - 16)
+	const tipY = $derived(Math.min(Math.max(hoveredPos.y + effectiveOffset.y - tipHeight / 2, 4), SIZE - tipHeight - 4))
 
 	const glowId = 'star-glow'
 </script>
@@ -141,7 +213,6 @@
 	onmouseleave={() => hovered = null}
 >
 	<defs>
-		<!-- Primary star glow -->
 		<radialGradient id="{glowId}-inner">
 			<stop offset="0%" stop-color={resolveColor(primaryStar?.color, '#FFE088')} stop-opacity="0.4" />
 			<stop offset="30%" stop-color={resolveColor(primaryStar?.color, '#FFE088')} stop-opacity="0.15" />
@@ -152,7 +223,6 @@
 			<stop offset="40%" stop-color={resolveColor(primaryStar?.color, '#FFE088')} stop-opacity="0.02" />
 			<stop offset="100%" stop-color={resolveColor(primaryStar?.color, '#FFE088')} stop-opacity="0" />
 		</radialGradient>
-		<!-- Companion star glows -->
 		{#each companionStars as cStar, i (cStar.id)}
 			{@const cColor = resolveColor(cStar.color, '#FFE088')}
 			<radialGradient id="{glowId}-comp-{i}">
@@ -163,103 +233,141 @@
 		{/each}
 	</defs>
 
-	<!-- Orbital paths -->
-	{#each orbitingBodies as body}
-		{@const a = auToPixels(body.orbitAu)}
-		{@const b = a * Math.sqrt(1 - body.ecc * body.ecc)}
-		{@const offset = a * body.ecc}
-		<ellipse
-			cx={CENTER - offset}
-			cy={CENTER}
-			rx={a}
-			ry={b}
-			fill="none"
-			stroke={hovered?.id === body.id ? 'var(--color-accent)' : 'color-mix(in srgb, var(--color-accent-light) 15%, transparent)'}
-			stroke-width={hovered?.id === body.id ? 1.5 : 1}
-			stroke-dasharray={body.isStar ? '4 3' : 'none'}
-			class="transition-colors"
-		/>
-	{/each}
+	<g transform="translate({effectiveOffset.x},{effectiveOffset.y})">
+		<!-- Orbital paths -->
+		{#each orbitingBodies as body}
+			{@const a = auToPixels(body.orbitAu)}
+			{@const b = a * Math.sqrt(1 - body.ecc * body.ecc)}
+			{@const offset = a * body.ecc}
+			{@const isSelected = body.id === selectedId}
+			<ellipse
+				cx={CENTER - offset}
+				cy={CENTER}
+				rx={a}
+				ry={b}
+				fill="none"
+				stroke={isSelected ? 'var(--color-accent)' : hovered?.id === body.id ? 'var(--color-accent)' : 'color-mix(in srgb, var(--color-accent-light) 15%, transparent)'}
+				stroke-width={isSelected ? 2 : hovered?.id === body.id ? 1.5 : 1}
+				stroke-dasharray={body.isStar ? '4 3' : 'none'}
+				class="transition-colors"
+			/>
+		{/each}
 
-	<!-- Star light — ambient illumination across the system -->
-	{#if primaryStar}
-		<circle cx={CENTER} cy={CENTER} r={CENTER * 0.85} fill="url(#{glowId}-ambient)" />
-		<circle cx={CENTER} cy={CENTER} r={50} fill="url(#{glowId}-inner)" />
-	{/if}
+		<!-- Trails -->
+		{#if trails !== 'off' && currentAbsoluteDay != null}
+			{#each orbitingBodies as body, i}
+				{@const pos = bodyPosition(body, i, orbitingBodies.length)}
+				<path
+					d={trailPath(body, pos.angle)}
+					fill="none"
+					stroke={resolveColor(body.color, body.isStar ? '#FFE088' : 'var(--color-accent-light)')}
+					stroke-width={1}
+					stroke-opacity={0.4}
+					stroke-linecap="round"
+				/>
+			{/each}
+		{/if}
 
-	<!-- Primary star -->
-	{#if primaryStar}
-		<circle
-			cx={CENTER}
-			cy={CENTER}
-			r={10}
-			fill={resolveColor(primaryStar.color, '#FFE088')}
-			class="cursor-pointer"
-			onmouseenter={() => handleHover({ ...primaryStar, isStar: true, orbitAu: 0, ecc: 0 }, { x: CENTER, y: CENTER - 16 })}
-			onmouseleave={() => hovered = null}
-			onclick={() => handleClick(primaryStar)}
-		/>
-		<text
-			x={CENTER}
-			y={CENTER + 22}
-			text-anchor="middle"
-			fill="var(--color-secondary)"
-			font-size="10"
-			font-family="var(--font-body)"
-		>{primaryStar.name}</text>
-	{/if}
+		<!-- Star glow -->
+		{#if primaryStar}
+			<circle cx={CENTER} cy={CENTER} r={CENTER * 0.85} fill="url(#{glowId}-ambient)" />
+			<circle cx={CENTER} cy={CENTER} r={50} fill="url(#{glowId}-inner)" />
+		{/if}
 
-	<!-- Orbiting bodies -->
-	{#each orbitingBodies as body, i}
-		{@const pos = bodyPosition(body, i, orbitingBodies.length)}
-		{@const r = bodyRadius(body)}
-
-		<!-- Companion star glow -->
-		{#if body.isStar}
-			{@const compIdx = companionStars.findIndex(s => s.id === body.id)}
-			{#if compIdx >= 0}
-				<circle cx={pos.x} cy={pos.y} r={30} fill="url(#{glowId}-comp-{compIdx})" />
+		<!-- Primary star -->
+		{#if primaryStar}
+			{@const isSelected = primaryStar.id === selectedId}
+			<circle
+				cx={CENTER}
+				cy={CENTER}
+				r={10}
+				fill={resolveColor(primaryStar.color, '#FFE088')}
+				stroke={isSelected ? 'var(--color-accent)' : 'none'}
+				stroke-width={isSelected ? 2 : 0}
+				class="cursor-pointer"
+				onmouseenter={() => handleHover({ ...primaryStar, isStar: true }, { x: CENTER, y: CENTER - 16 })}
+				onmouseleave={() => hovered = null}
+				onclick={() => handleSelect(primaryStar)}
+				onkeydown={(e) => { if (e.key === 'Enter') handleSelect(primaryStar) }}
+				role="button"
+				tabindex="0"
+			/>
+			{#if showLabel({ ...primaryStar, isStar: true }, isSelected)}
+				<text
+					x={CENTER}
+					y={CENTER + 22}
+					text-anchor="middle"
+					fill={isSelected ? 'var(--color-accent)' : 'var(--color-secondary)'}
+					font-size="10"
+					font-family="var(--font-body)"
+					class="pointer-events-none"
+				>{primaryStar.name}</text>
 			{/if}
 		{/if}
 
-		<circle
-			cx={pos.x}
-			cy={pos.y}
-			{r}
-			fill={resolveColor(body.color, body.isStar ? '#FFE088' : 'var(--color-secondary)')}
-			class="cursor-pointer"
-			onmouseenter={() => handleHover(body, { x: pos.x, y: pos.y })}
-			onmouseleave={() => hovered = null}
-			onclick={() => handleClick(body)}
-		/>
+		<!-- Orbiting bodies -->
+		{#each orbitingBodies as body, i}
+			{@const pos = bodyPosition(body, i, orbitingBodies.length)}
+			{@const r = bodyRadius(body)}
+			{@const isSelected = body.id === selectedId}
 
-		<text
-			x={pos.x}
-			y={pos.y + r + 12}
-			text-anchor="middle"
-			fill={hovered?.id === body.id ? 'var(--color-heading)' : 'var(--color-dim)'}
-			font-size="9"
-			font-family="var(--font-body)"
-			class="transition-colors pointer-events-none"
-		>{body.name}</text>
+			<!-- Companion star glow -->
+			{#if body.isStar}
+				{@const compIdx = companionStars.findIndex(s => s.id === body.id)}
+				{#if compIdx >= 0}
+					<circle cx={pos.x} cy={pos.y} r={30} fill="url(#{glowId}-comp-{compIdx})" />
+				{/if}
+			{/if}
 
-		{#if body.moonCount && body.moonCount > 0}
-			<text
-				x={pos.x + r + 4}
-				y={pos.y - r}
-				fill="var(--color-faint)"
-				font-size="7"
-				font-family="var(--font-body)"
-				class="pointer-events-none"
-			>{body.moonCount}☽</text>
-		{/if}
-	{/each}
+			<circle
+				cx={pos.x}
+				cy={pos.y}
+				{r}
+				fill={resolveColor(body.color, body.isStar ? '#FFE088' : 'var(--color-secondary)')}
+				stroke={isSelected ? 'var(--color-accent)' : 'none'}
+				stroke-width={isSelected ? 2 : 0}
+				class="cursor-pointer"
+				onmouseenter={() => handleHover(body, { x: pos.x, y: pos.y })}
+				onmouseleave={() => hovered = null}
+				onclick={() => handleSelect(body)}
+				onkeydown={(e) => { if (e.key === 'Enter') handleSelect(body) }}
+				role="button"
+				tabindex="0"
+			/>
+
+			{#if showLabel(body, isSelected)}
+				<text
+					x={pos.x}
+					y={pos.y + r + 12}
+					text-anchor="middle"
+					fill={isSelected ? 'var(--color-accent)' : hovered?.id === body.id ? 'var(--color-heading)' : 'var(--color-dim)'}
+					font-size="9"
+					font-family="var(--font-body)"
+					class="transition-colors pointer-events-none"
+				>{body.name}</text>
+			{/if}
+
+			{#if body.moonCount && body.moonCount > 0 && labels !== 'off'}
+				<text
+					x={pos.x + r + 4}
+					y={pos.y - r}
+					fill="var(--color-faint)"
+					font-size="7"
+					font-family="var(--font-body)"
+					class="pointer-events-none"
+				>{body.moonCount}&#x263D;</text>
+			{/if}
+		{/each}
+	</g>
 
 	<!-- Tooltip -->
 	{#if hovered}
 		<foreignObject x={tipX} y={tipY} width={tipWidth} height={tipHeight}>
 			<div class="bg-surface border border-accent/30 px-2.5 py-1.5 shadow-lg">
 				<div class="font-semibold text-heading text-xs whitespace-nowrap">{hovered.name}{#if hovered.isStar && hovered.spectralType} <span class="text-faint font-normal">({hovered.spectralType})</span>{/if}</div>
+				{#if hovered.semiMajorAxisAu}
+					<div class="text-faint text-[10px]">{hovered.semiMajorAxisAu.toFixed(3)} AU</div>
+				{/if}
 			</div>
 		</foreignObject>
 	{/if}
