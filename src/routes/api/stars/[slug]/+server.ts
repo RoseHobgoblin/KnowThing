@@ -10,6 +10,7 @@ import {
 	ensureStarContentRecord,
 	syncBodiesForStar,
 } from '$lib/server/services/celestial-content.js'
+import { deriveStarOrbitalFields } from '$lib/celestial/compute.js'
 
 /** GET /api/stars/:slug */
 export const GET: RequestHandler = async ({ params }) => {
@@ -73,7 +74,9 @@ export const PUT: RequestHandler = async (event) => {
 	if (data.pageSlug !== undefined) setClause.pageSlug = data.pageSlug?.trim() || null
 	if (data.spectralType !== undefined) setClause.spectralType = data.spectralType?.trim() || null
 	if (data.mass !== undefined) setClause.mass = data.mass?.trim() || null
+	if (data.massKg !== undefined) setClause.massKg = data.massKg ?? null
 	if (data.radius !== undefined) setClause.radius = data.radius?.trim() || null
+	if (data.radiusM !== undefined) setClause.radiusM = data.radiusM ?? null
 	if (data.luminosity !== undefined) setClause.luminosity = data.luminosity?.trim() || null
 	if (data.luminosityVisual !== undefined) setClause.luminosityVisual = data.luminosityVisual?.trim() || null
 	if (data.temperature !== undefined) setClause.temperature = data.temperature?.trim() || null
@@ -93,6 +96,13 @@ export const PUT: RequestHandler = async (event) => {
 	if (data.epochPhase !== undefined) setClause.epochPhase = data.epochPhase ?? null
 	if (data.extra !== undefined) setClause.extra = data.extra ?? {}
 	if (data.description !== undefined) setClause.description = data.description?.trim() || ''
+
+	// Auto-compute periastron/apastron from orbital parameters
+	const finalAu = data.semiMajorAxisAu !== undefined ? data.semiMajorAxisAu : current.semiMajorAxisAu
+	const finalEcc = data.eccentricity !== undefined ? data.eccentricity : current.eccentricity
+	const orbital = deriveStarOrbitalFields(finalAu ?? null, finalEcc ?? null)
+	setClause.periastron = orbital.periastron
+	setClause.apastron = orbital.apastron
 
 	const updated = await db.transaction(async (tx) => {
 		const [saved] = await tx

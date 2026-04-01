@@ -10,6 +10,7 @@ import {
 	deleteCelestialContentRecord,
 	ensurePlanetaryBodyContentRecord,
 } from '$lib/server/services/celestial-content.js'
+import { deriveBodyFields, deriveDisplayStrings } from '$lib/celestial/compute.js'
 
 /** GET /api/planetary-bodies/:slug */
 export const GET: RequestHandler = async ({ params }) => {
@@ -94,7 +95,9 @@ export const PUT: RequestHandler = async (event) => {
 	if (data.parentId !== undefined) setClause.parentId = data.parentId ?? null
 	if (data.pageSlug !== undefined) setClause.pageSlug = data.pageSlug?.trim() || null
 	if (data.mass !== undefined) setClause.mass = data.mass?.trim() || null
+	if (data.massKg !== undefined) setClause.massKg = data.massKg ?? null
 	if (data.radius !== undefined) setClause.radius = data.radius?.trim() || null
+	if (data.radiusM !== undefined) setClause.radiusM = data.radiusM ?? null
 	if (data.density !== undefined) setClause.density = data.density?.trim() || null
 	if (data.surfaceGravity !== undefined) setClause.surfaceGravity = data.surfaceGravity?.trim() || null
 	if (data.escapeVelocity !== undefined) setClause.escapeVelocity = data.escapeVelocity?.trim() || null
@@ -120,6 +123,33 @@ export const PUT: RequestHandler = async (event) => {
 	if (data.hasRings !== undefined) setClause.hasRings = data.hasRings ?? false
 	if (data.extra !== undefined) setClause.extra = data.extra ?? {}
 	if (data.description !== undefined) setClause.description = data.description?.trim() || ''
+
+	// Auto-compute derived physical properties from numeric mass/radius
+	const finalMassKg = data.massKg !== undefined ? data.massKg : current.massKg
+	const finalRadiusM = data.radiusM !== undefined ? data.radiusM : current.radiusM
+	const derived = deriveBodyFields(finalMassKg, finalRadiusM)
+	// Only overwrite if not explicitly locked (user didn't send their own value)
+	if (data.density === undefined && derived.density) setClause.density = derived.density
+	if (data.surfaceGravity === undefined && derived.surfaceGravity) setClause.surfaceGravity = derived.surfaceGravity
+	if (data.escapeVelocity === undefined && derived.escapeVelocity) setClause.escapeVelocity = derived.escapeVelocity
+
+	// Auto-format display strings from numeric values
+	const finalOrbitalDays = data.orbitalPeriodDays !== undefined ? data.orbitalPeriodDays : current.orbitalPeriodDays
+	const finalAu = data.semiMajorAxisAu !== undefined ? data.semiMajorAxisAu : current.semiMajorAxisAu
+	const finalRotS = data.rotationPeriodS !== undefined ? data.rotationPeriodS : current.rotationPeriodS
+	const display = deriveDisplayStrings(finalOrbitalDays, finalAu, finalRotS)
+	if (data.orbitalPeriod === undefined && display.orbitalPeriod) setClause.orbitalPeriod = display.orbitalPeriod
+	if (data.semiMajorAxis === undefined && display.semiMajorAxis) setClause.semiMajorAxis = display.semiMajorAxis
+	if (data.rotationPeriod === undefined && display.rotationPeriod) setClause.rotationPeriod = display.rotationPeriod
+
+	// Auto-compute satellite count from child records
+	if (data.satellites === undefined) {
+		const [{ count }] = await db
+			.select({ count: sql<number>`count(*)::int` })
+			.from(planetaryBodies)
+			.where(eq(planetaryBodies.parentId, current.id))
+		setClause.satellites = count
+	}
 
 	const updated = await db.transaction(async (tx) => {
 		const [saved] = await tx

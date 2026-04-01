@@ -17,6 +17,7 @@
 	import { updatePlanetaryBodySchema } from '$lib/celestial/schema.js'
 	import { summarizeZodIssues } from '$lib/utils.js'
 	import { getBodyPresets, type BodyPreset } from '$lib/celestial/presets.js'
+	import { deriveBodyFields, deriveDisplayStrings } from '$lib/celestial/compute.js'
 
 	type CelestialCrumb = { label: string, href: string }
 	type BodyType = 'planet' | 'moon' | 'dwarf_planet' | 'asteroid' | 'ring_system'
@@ -31,7 +32,9 @@
 		parentId?: number | null
 		description?: string | null
 		mass?: string | null
+		massKg?: number | null
 		radius?: string | null
+		radiusM?: number | null
 		density?: string | null
 		surfaceGravity?: string | null
 		escapeVelocity?: string | null
@@ -63,29 +66,24 @@
 		parentIdStr: string
 		description: string
 		mass: string
+		massKg: number | null
 		radius: string
-		density: string
-		surfaceGravity: string
-		escapeVelocity: string
+		radiusM: number | null
 		temperature: string
 		age: string
 		composition: string
 		atmosphere: string
 		surfacePressure: string
-		orbitalPeriod: string
 		orbitalPeriodDays: number | null
-		semiMajorAxis: string
 		semiMajorAxisAu: number | null
 		eccentricity: number | null
 		inclination: number | null
 		epochPhase: number | null
-		rotationPeriod: string
 		rotationPeriodS: number | null
 		axialTilt: number | null
 		apparentMagnitude: string
 		angularDiameter: string
 		albedo: string
-		satellites: number | null
 		hasRings: boolean
 		content: string
 	}
@@ -97,29 +95,24 @@
 			parentIdStr: bodyRecord.parentId ? String(bodyRecord.parentId) : '',
 			description: bodyRecord.description ?? '',
 			mass: bodyRecord.mass ?? '',
+			massKg: bodyRecord.massKg ?? null,
 			radius: bodyRecord.radius ?? '',
-			density: bodyRecord.density ?? '',
-			surfaceGravity: bodyRecord.surfaceGravity ?? '',
-			escapeVelocity: bodyRecord.escapeVelocity ?? '',
+			radiusM: bodyRecord.radiusM ?? null,
 			temperature: bodyRecord.temperature ?? '',
 			age: bodyRecord.age ?? '',
 			composition: bodyRecord.composition ?? '',
 			atmosphere: bodyRecord.atmosphere ?? '',
 			surfacePressure: bodyRecord.surfacePressure ?? '',
-			orbitalPeriod: bodyRecord.orbitalPeriod ?? '',
 			orbitalPeriodDays: bodyRecord.orbitalPeriodDays ?? null,
-			semiMajorAxis: bodyRecord.semiMajorAxis ?? '',
 			semiMajorAxisAu: bodyRecord.semiMajorAxisAu ?? null,
 			eccentricity: bodyRecord.eccentricity ?? null,
 			inclination: bodyRecord.inclination ?? null,
 			epochPhase: bodyRecord.epochPhase ?? null,
-			rotationPeriod: bodyRecord.rotationPeriod ?? '',
 			rotationPeriodS: bodyRecord.rotationPeriodS ?? null,
 			axialTilt: bodyRecord.axialTilt ?? null,
 			apparentMagnitude: bodyRecord.apparentMagnitude ?? '',
 			angularDiameter: bodyRecord.angularDiameter ?? '',
 			albedo: bodyRecord.albedo ?? '',
-			satellites: bodyRecord.satellites ?? null,
 			hasRings: bodyRecord.hasRings ?? false,
 			content: articleContent,
 		}
@@ -157,10 +150,9 @@
 	let description = $state(initialDraft.description)
 
 	let mass = $state(initialDraft.mass)
+	let massKg = $state<number | null>(initialDraft.massKg)
 	let radius = $state(initialDraft.radius)
-	let density = $state(initialDraft.density)
-	let surfaceGravity = $state(initialDraft.surfaceGravity)
-	let escapeVelocity = $state(initialDraft.escapeVelocity)
+	let radiusM = $state<number | null>(initialDraft.radiusM)
 	let temperature = $state(initialDraft.temperature)
 	let age = $state(initialDraft.age)
 
@@ -168,15 +160,12 @@
 	let atmosphere = $state(initialDraft.atmosphere)
 	let surfacePressure = $state(initialDraft.surfacePressure)
 
-	let orbitalPeriod = $state(initialDraft.orbitalPeriod)
 	let orbitalPeriodDays = $state<number | null>(initialDraft.orbitalPeriodDays)
-	let semiMajorAxis = $state(initialDraft.semiMajorAxis)
 	let semiMajorAxisAu = $state<number | null>(initialDraft.semiMajorAxisAu)
 	let eccentricity = $state<number | null>(initialDraft.eccentricity)
 	let inclination = $state<number | null>(initialDraft.inclination)
 	let epochPhase = $state<number | null>(initialDraft.epochPhase)
 
-	let rotationPeriod = $state(initialDraft.rotationPeriod)
 	let rotationPeriodS = $state<number | null>(initialDraft.rotationPeriodS)
 	let axialTilt = $state<number | null>(initialDraft.axialTilt)
 
@@ -184,7 +173,6 @@
 	let angularDiameter = $state(initialDraft.angularDiameter)
 	let albedo = $state(initialDraft.albedo)
 
-	let satellites = $state<number | null>(initialDraft.satellites)
 	let hasRings = $state(initialDraft.hasRings)
 
 	let content = $state(initialDraft.content)
@@ -201,21 +189,18 @@
 	function applyPreset(preset: BodyPreset) {
 		bodyType = preset.bodyType
 		mass = preset.mass
+		massKg = preset.massKg
 		radius = preset.radius
-		density = preset.density
-		surfaceGravity = preset.surfaceGravity
+		radiusM = preset.radiusM
 		temperature = preset.temperature
 		composition = preset.composition
 		atmosphere = preset.atmosphere
-		orbitalPeriod = preset.orbitalPeriod
 		orbitalPeriodDays = preset.orbitalPeriodDays
 		semiMajorAxisAu = preset.semiMajorAxisAu
 		eccentricity = preset.eccentricity
 		inclination = preset.inclination
-		rotationPeriod = preset.rotationPeriod
 		rotationPeriodS = preset.rotationPeriodS
 		axialTilt = preset.axialTilt
-		satellites = preset.satellites
 		hasRings = preset.hasRings
 	}
 
@@ -223,35 +208,34 @@
 	let saveError = $state('')
 	let savedAt = $state<Date | null>(null)
 	const initialSnapshot = JSON.stringify(initialDraft)
+	// Auto-computed derived fields
+	const computedPhysical = $derived(deriveBodyFields(massKg, radiusM))
+	const computedDisplay = $derived(deriveDisplayStrings(orbitalPeriodDays, semiMajorAxisAu, rotationPeriodS))
+
 	const currentSnapshot = $derived(JSON.stringify({
 		bodyType,
 		starIdStr,
 		parentIdStr,
 		description,
 		mass,
+		massKg,
 		radius,
-		density,
-		surfaceGravity,
-		escapeVelocity,
+		radiusM,
 		temperature,
 		age,
 		composition,
 		atmosphere,
 		surfacePressure,
-		orbitalPeriod,
 		orbitalPeriodDays,
-		semiMajorAxis,
 		semiMajorAxisAu,
 		eccentricity,
 		inclination,
 		epochPhase,
-		rotationPeriod,
 		rotationPeriodS,
 		axialTilt,
 		apparentMagnitude,
 		angularDiameter,
 		albedo,
-		satellites,
 		hasRings,
 		content,
 	}))
@@ -265,29 +249,24 @@
 			parentId: parentIdStr ? Number(parentIdStr) : null,
 			description,
 			mass: mass || null,
+			massKg,
 			radius: radius || null,
-			density: density || null,
-			surfaceGravity: surfaceGravity || null,
-			escapeVelocity: escapeVelocity || null,
+			radiusM,
 			temperature: temperature || null,
 			age: age || null,
 			composition: composition || null,
 			atmosphere: atmosphere || null,
 			surfacePressure: surfacePressure || null,
-			orbitalPeriod: orbitalPeriod || null,
 			orbitalPeriodDays,
-			semiMajorAxis: semiMajorAxis || null,
 			semiMajorAxisAu,
 			eccentricity,
 			inclination,
 			epochPhase,
-			rotationPeriod: rotationPeriod || null,
 			rotationPeriodS,
 			axialTilt,
 			apparentMagnitude: apparentMagnitude || null,
 			angularDiameter: angularDiameter || null,
 			albedo: albedo || null,
-			satellites,
 			hasRings,
 		})
 
@@ -327,29 +306,24 @@
 		parentIdStr = initialDraft.parentIdStr
 		description = initialDraft.description
 		mass = initialDraft.mass
+		massKg = initialDraft.massKg
 		radius = initialDraft.radius
-		density = initialDraft.density
-		surfaceGravity = initialDraft.surfaceGravity
-		escapeVelocity = initialDraft.escapeVelocity
+		radiusM = initialDraft.radiusM
 		temperature = initialDraft.temperature
 		age = initialDraft.age
 		composition = initialDraft.composition
 		atmosphere = initialDraft.atmosphere
 		surfacePressure = initialDraft.surfacePressure
-		orbitalPeriod = initialDraft.orbitalPeriod
 		orbitalPeriodDays = initialDraft.orbitalPeriodDays
-		semiMajorAxis = initialDraft.semiMajorAxis
 		semiMajorAxisAu = initialDraft.semiMajorAxisAu
 		eccentricity = initialDraft.eccentricity
 		inclination = initialDraft.inclination
 		epochPhase = initialDraft.epochPhase
-		rotationPeriod = initialDraft.rotationPeriod
 		rotationPeriodS = initialDraft.rotationPeriodS
 		axialTilt = initialDraft.axialTilt
 		apparentMagnitude = initialDraft.apparentMagnitude
 		angularDiameter = initialDraft.angularDiameter
 		albedo = initialDraft.albedo
-		satellites = initialDraft.satellites
 		hasRings = initialDraft.hasRings
 		content = initialDraft.content
 		editSummary = ''
@@ -374,29 +348,24 @@
 					parentId: parentIdStr ? Number(parentIdStr) : null,
 					description,
 					mass: mass || null,
+					massKg,
 					radius: radius || null,
-					density: density || null,
-					surfaceGravity: surfaceGravity || null,
-					escapeVelocity: escapeVelocity || null,
+					radiusM,
 					temperature: temperature || null,
 					age: age || null,
 					composition: composition || null,
 					atmosphere: atmosphere || null,
 					surfacePressure: surfacePressure || null,
-					orbitalPeriod: orbitalPeriod || null,
 					orbitalPeriodDays,
-					semiMajorAxis: semiMajorAxis || null,
 					semiMajorAxisAu,
 					eccentricity,
 					inclination,
 					epochPhase,
-					rotationPeriod: rotationPeriod || null,
 					rotationPeriodS,
 					axialTilt,
 					apparentMagnitude: apparentMagnitude || null,
 					angularDiameter: angularDiameter || null,
 					albedo: albedo || null,
-					satellites,
 					hasRings,
 				}),
 			})
@@ -532,11 +501,22 @@
 		<section class="bg-raised border border-border-subtle p-5 space-y-4">
 			<h2 class="text-sm font-semibold text-heading border-b border-border-subtle pb-2">Physical Characteristics</h2>
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-				<Input label="Mass" bind:value={mass} placeholder="5.972 x 10^24 kg" />
-				<Input label="Radius" bind:value={radius} placeholder="6,371.0 km" />
-				<Input label="Density" bind:value={density} placeholder="5.514 g/cm^3" />
-				<Input label="Surface Gravity" bind:value={surfaceGravity} placeholder="9.807 m/s^2" />
-				<Input label="Escape Velocity" bind:value={escapeVelocity} placeholder="11.186 km/s" />
+				<Input label="Mass (display)" bind:value={mass} placeholder="5.972 × 10²⁴ kg" />
+				<Input label="Mass (kg)" type="number" bind:value={massKg} step="any" placeholder="5.972e24" />
+				<Input label="Radius (display)" bind:value={radius} placeholder="6,371.0 km" />
+				<Input label="Radius (m)" type="number" bind:value={radiusM} step="any" placeholder="6371000" />
+				<div>
+					<span class="text-xs font-medium text-secondary block mb-1">Density</span>
+					<p class="text-sm text-dim italic">{computedPhysical.density ?? '—'}</p>
+				</div>
+				<div>
+					<span class="text-xs font-medium text-secondary block mb-1">Surface Gravity</span>
+					<p class="text-sm text-dim italic">{computedPhysical.surfaceGravity ?? '—'}</p>
+				</div>
+				<div>
+					<span class="text-xs font-medium text-secondary block mb-1">Escape Velocity</span>
+					<p class="text-sm text-dim italic">{computedPhysical.escapeVelocity ?? '—'}</p>
+				</div>
 				<Input label="Temperature" bind:value={temperature} placeholder="288 K (mean)" />
 				<Input label="Age" bind:value={age} placeholder="~4.5 billion years" />
 			</div>
@@ -554,10 +534,16 @@
 		<section class="bg-raised border border-border-subtle p-5 space-y-4">
 			<h2 class="text-sm font-semibold text-heading border-b border-border-subtle pb-2">Orbital Parameters</h2>
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-				<Input label="Orbital Period" bind:value={orbitalPeriod} placeholder="365.25 days" />
 				<Input label="Orbital Period (days)" type="number" bind:value={orbitalPeriodDays} step="any" placeholder="365.25" />
-				<Input label="Semi-major Axis" bind:value={semiMajorAxis} placeholder="1.496 x 10^8 km" />
+				<div>
+					<span class="text-xs font-medium text-secondary block mb-1">Orbital Period</span>
+					<p class="text-sm text-dim italic">{computedDisplay.orbitalPeriod ?? '—'}</p>
+				</div>
 				<Input label="Semi-major Axis (AU)" type="number" bind:value={semiMajorAxisAu} step="any" placeholder="1.0" error={semiMajorAxisAu !== null && semiMajorAxisAu < 0 ? 'Must be 0 or greater' : ''} />
+				<div>
+					<span class="text-xs font-medium text-secondary block mb-1">Semi-major Axis</span>
+					<p class="text-sm text-dim italic">{computedDisplay.semiMajorAxis ?? '—'}</p>
+				</div>
 				<Input label="Eccentricity" type="number" bind:value={eccentricity} step="any" min={0} max={1} placeholder="0.0167" error={eccentricity !== null && (eccentricity < 0 || eccentricity > 1) ? 'Use a value from 0 to 1' : ''} />
 				<Input label="Inclination (deg)" type="number" bind:value={inclination} step="any" placeholder="0.0" />
 				<Input label="Epoch Phase" type="number" bind:value={epochPhase} step="any" min={0} max={1} placeholder="0.0" error={epochPhase !== null && (epochPhase < 0 || epochPhase > 1) ? 'Use a value from 0 to 1' : ''} />
@@ -567,8 +553,11 @@
 		<section class="bg-raised border border-border-subtle p-5 space-y-4">
 			<h2 class="text-sm font-semibold text-heading border-b border-border-subtle pb-2">Rotation</h2>
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-				<Input label="Rotation Period" bind:value={rotationPeriod} placeholder="23h 56m 4s" />
 				<Input label="Rotation Period (seconds)" type="number" bind:value={rotationPeriodS} step="any" placeholder="86164.1" />
+				<div>
+					<span class="text-xs font-medium text-secondary block mb-1">Rotation Period</span>
+					<p class="text-sm text-dim italic">{computedDisplay.rotationPeriod ?? '—'}</p>
+				</div>
 				<Input label="Axial Tilt (deg)" type="number" bind:value={axialTilt} step="any" placeholder="23.44" />
 			</div>
 		</section>
@@ -579,7 +568,6 @@
 				<Input label="Apparent Magnitude" bind:value={apparentMagnitude} placeholder="-3.86" />
 				<Input label="Angular Diameter" bind:value={angularDiameter} placeholder="3.5 arcsec" />
 				<Input label="Albedo" bind:value={albedo} placeholder="0.306" />
-				<Input label="Satellites" type="number" bind:value={satellites} min={0} placeholder="1" error={satellites !== null && satellites < 0 ? 'Cannot be negative' : ''} />
 				<Checkbox bind:value={hasRings} label="Has rings" />
 			</div>
 		</section>

@@ -21,7 +21,9 @@ const starSchema = z.object({
 
 	spectralType: z.string().nullish(),
 	mass: z.string().nullish(),
+	massKg: z.number().positive().nullish(),
 	radius: z.string().nullish(),
+	radiusM: z.number().positive().nullish(),
 	luminosity: z.string().nullish(),
 	luminosityVisual: z.string().nullish(),
 	temperature: z.string().nullish(),
@@ -86,7 +88,9 @@ const planetaryBodySchema = z.object({
 	pageSlug: z.string().nullish(),
 
 	mass: z.string().nullish(),
+	massKg: z.number().positive().nullish(),
 	radius: z.string().nullish(),
+	radiusM: z.number().positive().nullish(),
 	density: z.string().nullish(),
 	surfaceGravity: z.string().nullish(),
 	escapeVelocity: z.string().nullish(),

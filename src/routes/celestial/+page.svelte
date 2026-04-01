@@ -198,7 +198,8 @@
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
 						name: starPreset.name, slug: slugify(starPreset.name), systemId: sys.id,
-						spectralType: starPreset.spectralType, mass: starPreset.mass, radius: starPreset.radius,
+						spectralType: starPreset.spectralType, mass: starPreset.mass, massKg: starPreset.massKg,
+						radius: starPreset.radius, radiusM: starPreset.radiusM,
 						luminosity: starPreset.luminosity, temperature: starPreset.temperature,
 						age: starPreset.age, color: starPreset.color, apparentMagnitude: starPreset.apparentMagnitude,
 					}),
@@ -237,14 +238,14 @@
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
 				name: body.name, slug: slugify(body.name), bodyType: body.bodyType, starId, parentId,
-				mass: body.mass, radius: body.radius, density: body.density,
-				surfaceGravity: body.surfaceGravity, temperature: body.temperature,
+				mass: body.mass, massKg: body.massKg, radius: body.radius, radiusM: body.radiusM,
+				temperature: body.temperature,
 				atmosphere: body.atmosphere || null, composition: body.composition,
-				orbitalPeriod: body.orbitalPeriod, orbitalPeriodDays: body.orbitalPeriodDays,
+				orbitalPeriodDays: body.orbitalPeriodDays,
 				semiMajorAxisAu: body.semiMajorAxisAu, eccentricity: body.eccentricity,
-				inclination: body.inclination, rotationPeriod: body.rotationPeriod,
+				inclination: body.inclination,
 				rotationPeriodS: body.rotationPeriodS, axialTilt: body.axialTilt,
-				satellites: body.satellites, hasRings: body.hasRings,
+				hasRings: body.hasRings,
 			}),
 		})
 		if (!response.ok) { pushError(`Failed to create: ${body.name}`); return null }

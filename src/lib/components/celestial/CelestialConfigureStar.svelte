@@ -16,6 +16,7 @@
 	import { updateStarSchema } from '$lib/celestial/schema.js'
 	import { summarizeZodIssues } from '$lib/utils.js'
 	import { getStarPresets, type StarPreset } from '$lib/celestial/presets.js'
+	import { deriveStarOrbitalFields } from '$lib/celestial/compute.js'
 
 	type CelestialCrumb = { label: string, href: string }
 	type CelestialSystemOption = { id: number, name: string }
@@ -24,7 +25,9 @@
 		slug: string
 		spectralType?: string | null
 		mass?: string | null
+		massKg?: number | null
 		radius?: string | null
+		radiusM?: number | null
 		luminosity?: string | null
 		luminosityVisual?: string | null
 		temperature?: string | null
@@ -47,7 +50,9 @@
 	type StarDraftSnapshot = {
 		spectralType: string
 		mass: string
+		massKg: number | null
 		radius: string
+		radiusM: number | null
 		luminosity: string
 		luminosityVisual: string
 		temperature: string
@@ -58,8 +63,6 @@
 		semiMajorAxisAu: number | null
 		eccentricity: number | null
 		epochPhase: number | null
-		periastron: string
-		apastron: string
 		apparentMagnitude: string
 		angularDiameter: string
 		companion: string
@@ -72,7 +75,9 @@
 		return {
 			spectralType: starRecord.spectralType ?? '',
 			mass: starRecord.mass ?? '',
+			massKg: starRecord.massKg ?? null,
 			radius: starRecord.radius ?? '',
+			radiusM: starRecord.radiusM ?? null,
 			luminosity: starRecord.luminosity ?? '',
 			luminosityVisual: starRecord.luminosityVisual ?? '',
 			temperature: starRecord.temperature ?? '',
@@ -83,8 +88,6 @@
 			semiMajorAxisAu: starRecord.semiMajorAxisAu ?? null,
 			eccentricity: starRecord.eccentricity ?? null,
 			epochPhase: starRecord.epochPhase ?? null,
-			periastron: starRecord.periastron ?? '',
-			apastron: starRecord.apastron ?? '',
 			apparentMagnitude: starRecord.apparentMagnitude ?? '',
 			angularDiameter: starRecord.angularDiameter ?? '',
 			companion: starRecord.companion ?? '',
@@ -120,7 +123,9 @@
 
 	let spectralType = $state(initialDraft.spectralType)
 	let mass = $state(initialDraft.mass)
+	let massKg = $state<number | null>(initialDraft.massKg)
 	let radius = $state(initialDraft.radius)
+	let radiusM = $state<number | null>(initialDraft.radiusM)
 	let luminosity = $state(initialDraft.luminosity)
 	let luminosityVisual = $state(initialDraft.luminosityVisual)
 	let temperature = $state(initialDraft.temperature)
@@ -132,8 +137,9 @@
 	let semiMajorAxisAu = $state<number | null>(initialDraft.semiMajorAxisAu)
 	let eccentricity = $state<number | null>(initialDraft.eccentricity)
 	let epochPhase = $state<number | null>(initialDraft.epochPhase)
-	let periastron = $state(initialDraft.periastron)
-	let apastron = $state(initialDraft.apastron)
+
+	// Auto-computed from semiMajorAxisAu + eccentricity
+	const computedOrbital = $derived(deriveStarOrbitalFields(semiMajorAxisAu, eccentricity))
 
 	let apparentMagnitude = $state(initialDraft.apparentMagnitude)
 	let angularDiameter = $state(initialDraft.angularDiameter)
@@ -156,7 +162,9 @@
 	function applyPreset(preset: StarPreset) {
 		spectralType = preset.spectralType
 		mass = preset.mass
+		massKg = preset.massKg
 		radius = preset.radius
+		radiusM = preset.radiusM
 		luminosity = preset.luminosity
 		temperature = preset.temperature
 		age = preset.age
@@ -171,7 +179,9 @@
 	const currentSnapshot = $derived(JSON.stringify({
 		spectralType,
 		mass,
+		massKg,
 		radius,
+		radiusM,
 		luminosity,
 		luminosityVisual,
 		temperature,
@@ -182,8 +192,6 @@
 		semiMajorAxisAu,
 		eccentricity,
 		epochPhase,
-		periastron,
-		apastron,
 		apparentMagnitude,
 		angularDiameter,
 		companion,
@@ -198,7 +206,9 @@
 		const parsed = updateStarSchema.safeParse({
 			spectralType: spectralType || null,
 			mass: mass || null,
+			massKg,
 			radius: radius || null,
+			radiusM,
 			luminosity: luminosity || null,
 			luminosityVisual: luminosityVisual || null,
 			temperature: temperature || null,
@@ -209,8 +219,6 @@
 			semiMajorAxisAu,
 			eccentricity,
 			epochPhase,
-			periastron: periastron || null,
-			apastron: apastron || null,
 			apparentMagnitude: apparentMagnitude || null,
 			angularDiameter: angularDiameter || null,
 			companion: companion || null,
@@ -236,7 +244,9 @@
 	function resetDraft() {
 		spectralType = initialDraft.spectralType
 		mass = initialDraft.mass
+		massKg = initialDraft.massKg
 		radius = initialDraft.radius
+		radiusM = initialDraft.radiusM
 		luminosity = initialDraft.luminosity
 		luminosityVisual = initialDraft.luminosityVisual
 		temperature = initialDraft.temperature
@@ -247,8 +257,6 @@
 		semiMajorAxisAu = initialDraft.semiMajorAxisAu
 		eccentricity = initialDraft.eccentricity
 		epochPhase = initialDraft.epochPhase
-		periastron = initialDraft.periastron
-		apastron = initialDraft.apastron
 		apparentMagnitude = initialDraft.apparentMagnitude
 		angularDiameter = initialDraft.angularDiameter
 		companion = initialDraft.companion
@@ -274,7 +282,9 @@
 				body: JSON.stringify({
 					spectralType: spectralType || null,
 					mass: mass || null,
+					massKg,
 					radius: radius || null,
+					radiusM,
 					luminosity: luminosity || null,
 					luminosityVisual: luminosityVisual || null,
 					temperature: temperature || null,
@@ -285,8 +295,6 @@
 					semiMajorAxisAu,
 					eccentricity,
 					epochPhase,
-					periastron: periastron || null,
-					apastron: apastron || null,
 					apparentMagnitude: apparentMagnitude || null,
 					angularDiameter: angularDiameter || null,
 					companion: companion || null,
@@ -424,8 +432,10 @@
 			<h2 class="text-sm font-semibold text-heading border-b border-border-subtle pb-2">Stellar Properties</h2>
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
 				<Input label="Spectral Type" bind:value={spectralType} placeholder="G2V" />
-				<Input label="Mass" bind:value={mass} placeholder="1.0 solar masses" />
-				<Input label="Radius" bind:value={radius} placeholder="1.0 solar radii" />
+				<Input label="Mass (display)" bind:value={mass} placeholder="1.989 × 10³⁰ kg" />
+				<Input label="Mass (kg)" type="number" bind:value={massKg} step="any" placeholder="1.989e30" />
+				<Input label="Radius (display)" bind:value={radius} placeholder="696,340 km" />
+				<Input label="Radius (m)" type="number" bind:value={radiusM} step="any" placeholder="696340000" />
 				<Input label="Luminosity" bind:value={luminosity} placeholder="1.0 solar luminosities" />
 				<Input label="Visual Luminosity" bind:value={luminosityVisual} placeholder="1.0 solar luminosities (visual)" />
 				<Input label="Temperature" bind:value={temperature} placeholder="5,778 K" />
@@ -443,8 +453,14 @@
 				<Input label="Semi-major Axis (AU)" type="number" bind:value={semiMajorAxisAu} step="any" placeholder="23.4" error={semiMajorAxisAu !== null && semiMajorAxisAu < 0 ? 'Must be 0 or greater' : ''} />
 				<Input label="Eccentricity" type="number" bind:value={eccentricity} step="any" min={0} max={1} placeholder="0.0" error={eccentricity !== null && (eccentricity < 0 || eccentricity > 1) ? 'Use a value from 0 to 1' : ''} />
 				<Input label="Epoch Phase" type="number" bind:value={epochPhase} step="any" min={0} max={1} placeholder="0.0" error={epochPhase !== null && (epochPhase < 0 || epochPhase > 1) ? 'Use a value from 0 to 1' : ''} />
-				<Input label="Periastron" bind:value={periastron} placeholder="Closest approach" />
-				<Input label="Apastron" bind:value={apastron} placeholder="Furthest distance" />
+				<div>
+					<span class="text-xs font-medium text-secondary block mb-1">Periastron</span>
+					<p class="text-sm text-dim italic">{computedOrbital.periastron ?? '—'}</p>
+				</div>
+				<div>
+					<span class="text-xs font-medium text-secondary block mb-1">Apastron</span>
+					<p class="text-sm text-dim italic">{computedOrbital.apastron ?? '—'}</p>
+				</div>
 			</div>
 		</section>
 

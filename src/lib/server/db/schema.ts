@@ -408,7 +408,9 @@ export const stars = pgTable(
 
 		spectralType: text('spectral_type'),
 		mass: text('mass'),
+		massKg: doublePrecision('mass_kg'),
 		radius: text('radius'),
+		radiusM: doublePrecision('radius_m'),
 		luminosity: text('luminosity'),
 		luminosityVisual: text('luminosity_visual'),
 		temperature: text('temperature'),
@@ -454,7 +456,9 @@ export const planetaryBodies = pgTable(
 		pageSlug: text('page_slug'),
 
 		mass: text('mass'),
+		massKg: doublePrecision('mass_kg'),
 		radius: text('radius'),
+		radiusM: doublePrecision('radius_m'),
 		density: text('density'),
 		surfaceGravity: text('surface_gravity'),
 		escapeVelocity: text('escape_velocity'),
