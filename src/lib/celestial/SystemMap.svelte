@@ -23,6 +23,69 @@
 	import { orbitalAngle } from './orbit.js'
 	import type { ScaleMode, LabelMode, TrailMode } from './map-settings.js'
 
+	type OrbitBody = MapBody & { orbitAu: number, ecc: number, isStar: boolean }
+	type PositionedOrbit = {
+		body: OrbitBody
+		a: number
+		b: number
+		angle: number
+		rawX: number
+		rawY: number
+		x: number
+		y: number
+	}
+	type PositionedSatellite = {
+		body: OrbitBody
+		parentId: number
+		orbitRadius: number
+		rawX: number
+		rawY: number
+		x: number
+		y: number
+	}
+	type HitTarget = {
+		id: number
+		body: MapBody
+		x: number
+		y: number
+		r: number
+	}
+	type ThemePalette = {
+		page: string
+		surface: string
+		accent: string
+		accentLight: string
+		secondary: string
+		dim: string
+		heading: string
+		faint: string
+	}
+	type Scene = {
+		primaryStar: MapBody | null
+		directPositions: PositionedOrbit[]
+		satellitePositions: PositionedSatellite[]
+		cameraOffset: { x: number, y: number }
+		selectionFamily: Set<number>
+		hitTargets: HitTarget[]
+	}
+
+	const SIZE = 800
+	const CENTER = SIZE / 2
+	const PADDING = 80
+	const SAT_BASE_R = 14
+	const SAT_MAX_SPAN = 48
+	const FONT_STACK = 'Work Sans, ui-sans-serif, system-ui, sans-serif'
+	const DEFAULT_THEME: ThemePalette = {
+		page: '#111827',
+		surface: '#1f2937',
+		accent: '#d97706',
+		accentLight: '#f59e0b',
+		secondary: '#cbd5e1',
+		dim: '#94a3b8',
+		heading: '#f8fafc',
+		faint: '#64748b',
+	}
+
 	let {
 		systemName,
 		stars,
@@ -45,91 +108,54 @@
 		selectedId?: number | null
 	} = $props()
 
-	let hovered = $state<MapBody | null>(null)
-	let hoveredPos = $state({ x: 0, y: 0 })
+	let containerEl: HTMLDivElement | null = null
+	let canvasEl: HTMLCanvasElement | null = null
+	let displaySize = $state({ width: SIZE, height: SIZE })
+	let theme = $state<ThemePalette>(DEFAULT_THEME)
+	let hoveredId = $state<number | null>(null)
+	let hoveredBody = $state<MapBody | null>(null)
 
-	const SIZE = 800
-	const CENTER = SIZE / 2
-	const PADDING = 80
-
-	// --- Data model ---
-	const primaryStar = $derived(stars.find(s => !s.parentStarId) ?? stars[0])
-	const companionStars = $derived(stars.filter(s => s.parentStarId))
-
-	type OrbitBody = MapBody & { orbitAu: number, ecc: number, isStar: boolean }
-
-	// Direct orbiters of the system center (companion stars + planets orbiting star directly)
-	const directOrbiters = $derived.by(() => {
-		const all: OrbitBody[] = []
-		const seen = new Set<number>()
-		for (const star of companionStars) {
-			if (star.semiMajorAxisAu && !seen.has(star.id)) {
-				seen.add(star.id)
-				all.push({ ...star, orbitAu: star.semiMajorAxisAu, ecc: star.eccentricity ?? 0, isStar: true })
-			}
+	function readTheme() {
+		if (!containerEl) return
+		const style = getComputedStyle(containerEl)
+		theme = {
+			page: style.getPropertyValue('--color-page').trim() || DEFAULT_THEME.page,
+			surface: style.getPropertyValue('--color-surface').trim() || DEFAULT_THEME.surface,
+			accent: style.getPropertyValue('--color-accent').trim() || DEFAULT_THEME.accent,
+			accentLight: style.getPropertyValue('--color-accent-light').trim() || DEFAULT_THEME.accentLight,
+			secondary: style.getPropertyValue('--color-secondary').trim() || DEFAULT_THEME.secondary,
+			dim: style.getPropertyValue('--color-dim').trim() || DEFAULT_THEME.dim,
+			heading: style.getPropertyValue('--color-heading').trim() || DEFAULT_THEME.heading,
+			faint: style.getPropertyValue('--color-faint').trim() || DEFAULT_THEME.faint,
 		}
-		for (const body of bodies) {
-			if (body.semiMajorAxisAu && !body.parentId && !seen.has(body.id)) {
-				seen.add(body.id)
-				all.push({ ...body, orbitAu: body.semiMajorAxisAu, ecc: body.eccentricity ?? 0, isStar: false })
-			}
+	}
+
+	$effect(() => {
+		if (!containerEl) return
+
+		const updateRect = () => {
+			const rect = containerEl?.getBoundingClientRect()
+			if (!rect) return
+			const width = Math.max(1, Math.round(rect.width))
+			displaySize = { width, height: width }
+			readTheme()
 		}
-		return all.sort((a, b) => a.orbitAu - b.orbitAu)
+
+		updateRect()
+
+		const observer = new ResizeObserver(() => updateRect())
+		observer.observe(containerEl)
+
+		return () => observer.disconnect()
 	})
 
-	// Satellites grouped by parent
-	function satellitesOf(parentId: number): OrbitBody[] {
-		return bodies
-			.filter(b => b.parentId === parentId && b.semiMajorAxisAu)
-			.map(b => ({ ...b, orbitAu: b.semiMajorAxisAu!, ecc: b.eccentricity ?? 0, isStar: false }))
-			.sort((a, b) => a.orbitAu - b.orbitAu)
-	}
-
-	// --- Selection helpers ---
-	// "Family" of a selection: the selected body + its parent + its children
-	const selectionFamily = $derived.by(() => {
-		if (selectedId == null) return new Set<number>()
-		const ids = new Set<number>([selectedId])
-		// Add parent
-		const sel = [...stars, ...bodies].find(b => b.id === selectedId)
-		if (sel?.parentId) ids.add(sel.parentId)
-		if (sel?.starId) ids.add(sel.starId)
-		// Add children (satellites)
-		for (const b of bodies) {
-			if (b.parentId === selectedId) ids.add(b.id)
-		}
-		return ids
-	})
-
-	function isInFamily(id: number): boolean {
-		return selectionFamily.has(id)
-	}
-
-	// --- Scale ---
-	const maxAu = $derived(Math.max(...directOrbiters.map(b => b.orbitAu), 1))
-	const maxVisualRadius = $derived(CENTER - PADDING)
-
-	function auToPixels(au: number): number {
-		if (maxAu <= 0) return 0
-		switch (scale) {
-			case 'realistic':
-				return (au / maxAu) * maxVisualRadius
-			case 'logarithmic':
-				return (Math.log10(1 + au * 9 / maxAu)) * maxVisualRadius
-			case 'compressed':
-			default:
-				return (Math.sqrt(au / maxAu)) * maxVisualRadius
-		}
-	}
-
-	function bodyRadius(body: { isStar: boolean, parentId?: number | null }): number {
+	function bodyRadius(body: { isStar: boolean, parentId?: number | null }) {
 		if (body.isStar) return 6
 		if (body.parentId) return 2.5
 		return 4
 	}
 
-	// --- Positioning ---
-	function computeAngle(body: OrbitBody, index: number, total: number): number {
+	function computeAngle(body: OrbitBody, index: number, total: number) {
 		if (currentAbsoluteDay != null && body.orbitAu > 0) {
 			const periodDays = body.orbitalPeriodDays ?? (body.orbitAu * 365.25)
 			return orbitalAngle(periodDays, body.epochPhase ?? 0, currentAbsoluteDay)
@@ -142,338 +168,567 @@
 		return { x: cx - offset + a * Math.cos(angle), y: cy + b * Math.sin(angle) }
 	}
 
-	// Precomputed positions for direct orbiters
-	const directPositions = $derived(directOrbiters.map((body, i) => {
-		const a = auToPixels(body.orbitAu)
-		const b = a * Math.sqrt(1 - body.ecc * body.ecc)
-		const angle = computeAngle(body, i, directOrbiters.length)
-		const pos = ellipsePosition(a, b, body.ecc, angle, CENTER, CENTER)
-		return { body, a, b, angle, ...pos }
-	}))
+	function buildSelectionFamily(primaryStar: MapBody | null) {
+		if (selectedId == null) return new Set<number>()
 
-	// --- Follow / camera offset ---
-	const cameraOffset = $derived.by(() => {
-		if (!follow || selectedId == null) return { x: 0, y: 0 }
+		const ids = new Set<number>([selectedId])
+		const selectedStar = stars.find(star => star.id === selectedId)
+		const selectedBody = bodies.find(body => body.id === selectedId)
 
-		// Check if selection is a direct orbiter
-		const direct = directPositions.find(p => p.body.id === selectedId)
-		if (direct) return { x: CENTER - direct.x, y: CENTER - direct.y }
+		if (selectedStar) {
+			for (const body of bodies) {
+				if (body.starId === selectedStar.id) {
+					ids.add(body.id)
+					for (const moon of bodies) {
+						if (moon.parentId === body.id) ids.add(moon.id)
+					}
+				}
+			}
+			if (!selectedStar.parentStarId && primaryStar) ids.add(primaryStar.id)
+			if (selectedStar.parentStarId) ids.add(selectedStar.parentStarId)
+			return ids
+		}
 
-		// Check if selection is a satellite — find its parent's position
-		const sel = bodies.find(b => b.id === selectedId)
-		if (sel?.parentId) {
-			const parentPos = directPositions.find(p => p.body.id === sel.parentId)
-			if (parentPos) {
-				// Satellite position relative to parent
-				const sats = satellitesOf(sel.parentId)
-				const satIdx = sats.findIndex(s => s.id === selectedId)
-				if (satIdx >= 0) {
-					const sat = sats[satIdx]
-					const satA = Math.max(12 + satIdx * 8, 12)
-					const satB = satA * Math.sqrt(1 - sat.ecc * sat.ecc)
-					const satAngle = computeAngle(sat, satIdx, sats.length)
-					const satPos = ellipsePosition(satA, satB, sat.ecc, satAngle, parentPos.x, parentPos.y)
-					return { x: CENTER - satPos.x, y: CENTER - satPos.y }
+		if (selectedBody) {
+			if (selectedBody.starId) ids.add(selectedBody.starId)
+			if (selectedBody.parentId) ids.add(selectedBody.parentId)
+			for (const child of bodies) {
+				if (child.parentId === selectedBody.id) ids.add(child.id)
+			}
+		}
+
+		return ids
+	}
+
+	function buildScene(): Scene {
+		const primaryStar = stars.find(star => !star.parentStarId) ?? stars[0] ?? null
+		const companionStars = stars.filter(star => star.parentStarId)
+		const directOrbiters: OrbitBody[] = []
+		const seen = new Set<number>()
+
+		for (const star of companionStars) {
+			if (star.semiMajorAxisAu && !seen.has(star.id)) {
+				seen.add(star.id)
+				directOrbiters.push({ ...star, orbitAu: star.semiMajorAxisAu, ecc: star.eccentricity ?? 0, isStar: true })
+			}
+		}
+
+		for (const body of bodies) {
+			if (body.semiMajorAxisAu && !body.parentId && !seen.has(body.id)) {
+				seen.add(body.id)
+				directOrbiters.push({ ...body, orbitAu: body.semiMajorAxisAu, ecc: body.eccentricity ?? 0, isStar: false })
+			}
+		}
+
+		directOrbiters.sort((a, b) => a.orbitAu - b.orbitAu)
+
+		const maxAu = Math.max(...directOrbiters.map(body => body.orbitAu), 1)
+		const maxEcc = Math.max(...directOrbiters.map(body => body.ecc), 0)
+		const maxVisualRadius = (CENTER - PADDING) / (1 + maxEcc * 0.5)
+		const selectionFamily = buildSelectionFamily(primaryStar)
+
+		const auToPixels = (au: number) => {
+			if (maxAu <= 0) return 0
+			switch (scale) {
+				case 'realistic':
+					return (au / maxAu) * maxVisualRadius
+				case 'logarithmic':
+					return Math.log10(1 + au * 9 / maxAu) * maxVisualRadius
+				case 'compressed':
+				default:
+					return Math.sqrt(au / maxAu) * maxVisualRadius
+			}
+		}
+
+		const rawDirectPositions = directOrbiters.map((body, index) => {
+			const a = auToPixels(body.orbitAu)
+			const b = a * Math.sqrt(1 - body.ecc * body.ecc)
+			const angle = computeAngle(body, index, directOrbiters.length)
+			const pos = ellipsePosition(a, b, body.ecc, angle, CENTER, CENTER)
+			return { body, a, b, angle, rawX: pos.x, rawY: pos.y }
+		})
+
+		const rawSatellitePositions: Array<{
+			body: OrbitBody
+			parentId: number
+			orbitRadius: number
+			rawX: number
+			rawY: number
+		}> = []
+
+		for (const parent of rawDirectPositions) {
+			const satellites = bodies
+				.filter(body => body.parentId === parent.body.id && body.semiMajorAxisAu)
+				.map(body => ({ ...body, orbitAu: body.semiMajorAxisAu!, ecc: body.eccentricity ?? 0, isStar: false }))
+				.sort((a, b) => a.orbitAu - b.orbitAu)
+
+			if (!satellites.length) continue
+
+			const maxSatelliteOrbit = Math.max(...satellites.map(satellite => satellite.orbitAu), 1)
+			let previousRadius = SAT_BASE_R - 6
+
+			for (const [index, satellite] of satellites.entries()) {
+				const normalized = maxSatelliteOrbit > 0 ? satellite.orbitAu / maxSatelliteOrbit : 0
+				const scaled = SAT_BASE_R + Math.sqrt(normalized) * SAT_MAX_SPAN
+				const orbitRadius = Math.max(previousRadius + 6, scaled)
+				previousRadius = orbitRadius
+
+				const angle = computeAngle(satellite, index, satellites.length)
+				const x = parent.rawX + orbitRadius * Math.cos(angle)
+				const y = parent.rawY + orbitRadius * Math.sin(angle)
+
+				rawSatellitePositions.push({
+					body: satellite,
+					parentId: parent.body.id,
+					orbitRadius,
+					rawX: x,
+					rawY: y,
+				})
+			}
+		}
+
+		let cameraOffset = { x: 0, y: 0 }
+		if (follow && selectedId != null) {
+			if (primaryStar?.id === selectedId) {
+				cameraOffset = { x: 0, y: 0 }
+			} else {
+				const selectedDirect = rawDirectPositions.find(position => position.body.id === selectedId)
+				const selectedSatellite = rawSatellitePositions.find(position => position.body.id === selectedId)
+				const target = selectedDirect ?? selectedSatellite ?? null
+				if (target) {
+					cameraOffset = { x: CENTER - target.rawX, y: CENTER - target.rawY }
 				}
 			}
 		}
 
-		// Selected star at center
-		if (stars.find(s => s.id === selectedId && !s.parentStarId)) return { x: 0, y: 0 }
+		const project = (x: number, y: number) => ({
+			x: x + cameraOffset.x,
+			y: y + cameraOffset.y,
+		})
 
-		return { x: 0, y: 0 }
-	})
+		const directPositions: PositionedOrbit[] = rawDirectPositions.map(position => {
+			const projected = project(position.rawX, position.rawY)
+			return { ...position, ...projected }
+		})
+		const satellitePositions: PositionedSatellite[] = rawSatellitePositions.map(position => {
+			const projected = project(position.rawX, position.rawY)
+			return { ...position, ...projected }
+		})
 
-	// --- Trail paths ---
-	function trailPath(a: number, b: number, ecc: number, angle: number, cx: number, cy: number): string {
-		const offset = a * ecc
-		if (trails === 'full') {
-			return `M ${cx - offset + a},${cy} A ${a},${b} 0 1 1 ${cx - offset + a - 0.001},${cy}`
+		const hitTargets: HitTarget[] = []
+		if (primaryStar) {
+			const projected = project(CENTER, CENTER)
+			hitTargets.push({
+				id: primaryStar.id,
+				body: primaryStar,
+				x: projected.x,
+				y: projected.y,
+				r: 12,
+			})
 		}
-		const steps = 32
-		const span = Math.PI * 0.5
-		const pts: string[] = []
-		for (let i = 0; i <= steps; i++) {
-			const t = angle - (i / steps) * span
-			const px = cx - offset + a * Math.cos(t)
-			const py = cy + b * Math.sin(t)
-			pts.push(`${i === 0 ? 'M' : 'L'} ${px.toFixed(1)},${py.toFixed(1)}`)
+
+		for (const position of directPositions) {
+			hitTargets.push({
+				id: position.body.id,
+				body: position.body,
+				x: position.x,
+				y: position.y,
+				r: Math.max(8, bodyRadius(position.body) + 5),
+			})
 		}
-		return pts.join(' ')
+
+		for (const position of satellitePositions) {
+			hitTargets.push({
+				id: position.body.id,
+				body: position.body,
+				x: position.x,
+				y: position.y,
+				r: 8,
+			})
+		}
+
+		return {
+			primaryStar,
+			directPositions,
+			satellitePositions,
+			cameraOffset,
+			selectionFamily,
+			hitTargets,
+		}
 	}
 
-	// --- Label visibility ---
-	function showLabel(body: MapBody & { isStar: boolean }, isSelected: boolean): boolean {
+	const scene = $derived.by(() => buildScene())
+
+	function isInFamily(id: number) {
+		return scene.selectionFamily.has(id)
+	}
+
+	function showLabel(body: MapBody & { isStar: boolean }, isSelected: boolean) {
 		switch (labels) {
-			case 'off': return false
-			case 'hovered': return hovered?.id === body.id
+			case 'off':
+				return false
+			case 'hovered':
+				return hoveredId === body.id
 			case 'major':
 				if (body.isStar) return true
 				if (!body.parentId) return true
 				if (isSelected) return true
-				if (hovered?.id === body.id) return true
+				if (hoveredId === body.id) return true
 				return false
-			case 'all': return true
+			case 'all':
+				return true
 		}
 	}
 
-	// --- Orbit stroke style ---
-	function orbitStroke(bodyId: number, isSelected: boolean): { color: string, width: number } {
-		if (isSelected) return { color: 'var(--color-accent)', width: 2.5 }
-		if (selectedId != null && isInFamily(bodyId)) return { color: 'var(--color-accent-light)', width: 1.5 }
-		if (hovered?.id === bodyId) return { color: 'var(--color-accent)', width: 1.5 }
-		return { color: 'color-mix(in srgb, var(--color-accent-light) 15%, transparent)', width: 1 }
-	}
-
-	// --- Body fill opacity (dim non-family when something is selected) ---
-	function bodyOpacity(bodyId: number): number {
+	function bodyOpacity(bodyId: number) {
 		if (selectedId == null) return 1
 		if (bodyId === selectedId || isInFamily(bodyId)) return 1
 		return 0.35
 	}
 
-	// --- Interaction ---
-	function handleSelect(body: MapBody) {
-		selectedId = selectedId === body.id ? null : body.id
+	function orbitStroke(bodyId: number, isSelected: boolean) {
+		if (isSelected) return { color: theme.accent, width: 2.5, alpha: 1 }
+		if (selectedId != null && isInFamily(bodyId)) return { color: theme.accentLight, width: 1.5, alpha: 0.9 }
+		if (hoveredId === bodyId) return { color: theme.accent, width: 1.5, alpha: 0.85 }
+		return { color: theme.accentLight, width: 1, alpha: 0.22 }
 	}
 
-	function handleBackgroundClick() {
-		selectedId = null
+	function drawFullOrbit(ctx: CanvasRenderingContext2D, cx: number, cy: number, a: number, b: number) {
+		ctx.beginPath()
+		ctx.ellipse(cx, cy, a, b, 0, 0, Math.PI * 2)
+		ctx.stroke()
 	}
 
-	function handleHover(body: MapBody, pos: { x: number, y: number }) {
-		hovered = body
-		hoveredPos = pos
+	function drawShortTrail(
+		ctx: CanvasRenderingContext2D,
+		cx: number,
+		cy: number,
+		a: number,
+		b: number,
+		angle: number,
+	) {
+		const steps = 32
+		const span = Math.PI * 0.5
+		ctx.beginPath()
+		for (let index = 0; index <= steps; index += 1) {
+			const theta = angle - (index / steps) * span
+			const x = cx + a * Math.cos(theta)
+			const y = cy + b * Math.sin(theta)
+			if (index === 0) ctx.moveTo(x, y)
+			else ctx.lineTo(x, y)
+		}
+		ctx.stroke()
 	}
 
-	// Tooltip
-	const tipWidth = 160
-	const tipHeight = 50
-	const tipRight = $derived(hoveredPos.x + cameraOffset.x + 16 + tipWidth < SIZE)
-	const tipX = $derived(tipRight ? hoveredPos.x + cameraOffset.x + 16 : hoveredPos.x + cameraOffset.x - tipWidth - 16)
-	const tipY = $derived(Math.min(Math.max(hoveredPos.y + cameraOffset.y - tipHeight / 2, 4), SIZE - tipHeight - 4))
+	function drawLabel(
+		ctx: CanvasRenderingContext2D,
+		x: number,
+		y: number,
+		text: string,
+		color: string,
+		fontSize: number,
+		fontWeight: number,
+		alpha = 1,
+	) {
+		ctx.save()
+		ctx.globalAlpha *= alpha
+		ctx.fillStyle = color
+		ctx.font = `${fontWeight} ${fontSize}px ${FONT_STACK}`
+		ctx.textAlign = 'center'
+		ctx.textBaseline = 'middle'
+		ctx.fillText(text, x, y)
+		ctx.restore()
+	}
 
-	const glowId = 'star-glow'
+	function renderMap() {
+		if (!canvasEl) return
+		const context = canvasEl.getContext('2d')
+		if (!context) return
 
-	// Satellite ring radius around a parent body (pixels, not AU-scaled)
-	const SAT_BASE_R = 14
-	const SAT_STEP = 8
+		const dpr = window.devicePixelRatio || 1
+		canvasEl.width = Math.round(SIZE * dpr)
+		canvasEl.height = Math.round(SIZE * dpr)
+		context.setTransform(dpr, 0, 0, dpr, 0, 0)
+		context.clearRect(0, 0, SIZE, SIZE)
+		context.fillStyle = theme.page
+		context.fillRect(0, 0, SIZE, SIZE)
+
+		const primaryColor = resolveColor(scene.primaryStar?.color, '#FFE088')
+
+		for (const position of scene.directPositions) {
+			const offset = position.a * position.body.ecc
+			const stroke = orbitStroke(position.body.id, position.body.id === selectedId)
+			context.save()
+			context.strokeStyle = stroke.color
+			context.lineWidth = stroke.width
+			context.globalAlpha = stroke.alpha * bodyOpacity(position.body.id)
+			if (position.body.isStar) context.setLineDash([4, 3])
+			drawFullOrbit(context, CENTER + scene.cameraOffset.x - offset, CENTER + scene.cameraOffset.y, position.a, position.b)
+			context.restore()
+		}
+
+		if (trails !== 'off' && currentAbsoluteDay != null) {
+			for (const position of scene.directPositions) {
+				context.save()
+				context.strokeStyle = resolveColor(position.body.color, position.body.isStar ? '#FFE088' : theme.accentLight)
+				context.lineWidth = 1
+				context.lineCap = 'round'
+				context.globalAlpha = 0.4 * bodyOpacity(position.body.id)
+				const cx = CENTER + scene.cameraOffset.x - position.a * position.body.ecc
+				const cy = CENTER + scene.cameraOffset.y
+				if (trails === 'full') drawFullOrbit(context, cx, cy, position.a, position.b)
+				else drawShortTrail(context, cx, cy, position.a, position.b, position.angle)
+				context.restore()
+			}
+		}
+
+		if (scene.primaryStar) {
+			const centerX = CENTER + scene.cameraOffset.x
+			const centerY = CENTER + scene.cameraOffset.y
+
+			const ambient = context.createRadialGradient(centerX, centerY, 0, centerX, centerY, CENTER * 0.85)
+			ambient.addColorStop(0, `${primaryColor}10`)
+			ambient.addColorStop(0.4, `${primaryColor}05`)
+			ambient.addColorStop(1, `${primaryColor}00`)
+			context.fillStyle = ambient
+			context.beginPath()
+			context.arc(centerX, centerY, CENTER * 0.85, 0, Math.PI * 2)
+			context.fill()
+
+			const inner = context.createRadialGradient(centerX, centerY, 0, centerX, centerY, 50)
+			inner.addColorStop(0, `${primaryColor}66`)
+			inner.addColorStop(0.3, `${primaryColor}26`)
+			inner.addColorStop(1, `${primaryColor}00`)
+			context.fillStyle = inner
+			context.beginPath()
+			context.arc(centerX, centerY, 50, 0, Math.PI * 2)
+			context.fill()
+		}
+
+		if (scene.primaryStar) {
+			const projected = {
+				x: CENTER + scene.cameraOffset.x,
+				y: CENTER + scene.cameraOffset.y,
+			}
+			const isSelected = scene.primaryStar.id === selectedId
+			context.save()
+			context.globalAlpha = bodyOpacity(scene.primaryStar.id)
+			context.fillStyle = primaryColor
+			context.beginPath()
+			context.arc(projected.x, projected.y, 10, 0, Math.PI * 2)
+			context.fill()
+			if (isSelected) {
+				context.strokeStyle = theme.accent
+				context.lineWidth = 2.5
+				context.stroke()
+			}
+			context.restore()
+
+			if (showLabel({ ...scene.primaryStar, isStar: true }, isSelected)) {
+				drawLabel(
+					context,
+					projected.x,
+					projected.y + 22,
+					scene.primaryStar.name,
+					isSelected ? theme.accent : theme.secondary,
+					10,
+					isSelected ? 600 : 400,
+					bodyOpacity(scene.primaryStar.id),
+				)
+			}
+		}
+
+		for (const position of scene.directPositions) {
+			if (position.body.isStar) {
+				const glow = context.createRadialGradient(position.x, position.y, 0, position.x, position.y, 30)
+				const color = resolveColor(position.body.color, '#FFE088')
+				glow.addColorStop(0, `${color}4d`)
+				glow.addColorStop(0.3, `${color}1a`)
+				glow.addColorStop(1, `${color}00`)
+				context.save()
+				context.globalAlpha = bodyOpacity(position.body.id)
+				context.fillStyle = glow
+				context.beginPath()
+				context.arc(position.x, position.y, 30, 0, Math.PI * 2)
+				context.fill()
+				context.restore()
+			}
+
+			const isSelected = position.body.id === selectedId
+			const radius = bodyRadius(position.body)
+			context.save()
+			context.globalAlpha = bodyOpacity(position.body.id)
+			context.fillStyle = resolveColor(position.body.color, position.body.isStar ? '#FFE088' : theme.secondary)
+			context.beginPath()
+			context.arc(position.x, position.y, radius, 0, Math.PI * 2)
+			context.fill()
+			if (isSelected) {
+				context.strokeStyle = theme.accent
+				context.lineWidth = 2.5
+				context.stroke()
+			}
+			context.restore()
+
+			if (showLabel(position.body, isSelected)) {
+				drawLabel(
+					context,
+					position.x,
+					position.y + radius + 12,
+					position.body.name,
+					isSelected ? theme.accent : hoveredId === position.body.id ? theme.heading : theme.dim,
+					9,
+					isSelected ? 600 : 400,
+					bodyOpacity(position.body.id),
+				)
+			}
+		}
+
+		for (const satellite of scene.satellitePositions) {
+			const parent = scene.directPositions.find(position => position.body.id === satellite.parentId)
+			if (!parent) continue
+
+			const isSelected = satellite.body.id === selectedId
+			context.save()
+			context.globalAlpha = bodyOpacity(satellite.body.id)
+			context.strokeStyle = isSelected
+				? theme.accent
+				: isInFamily(satellite.body.id)
+					? theme.accentLight
+					: theme.secondary
+			context.lineWidth = isSelected ? 1.5 : 0.5
+			context.beginPath()
+			context.arc(parent.x, parent.y, satellite.orbitRadius, 0, Math.PI * 2)
+			context.stroke()
+			context.restore()
+
+			context.save()
+			context.globalAlpha = bodyOpacity(satellite.body.id)
+			context.fillStyle = resolveColor(satellite.body.color, theme.dim)
+			context.beginPath()
+			context.arc(satellite.x, satellite.y, 2.5, 0, Math.PI * 2)
+			context.fill()
+			if (isSelected) {
+				context.strokeStyle = theme.accent
+				context.lineWidth = 2
+				context.stroke()
+			}
+			context.restore()
+
+			if (labels === 'all' || hoveredId === satellite.body.id || isSelected) {
+				drawLabel(
+					context,
+					satellite.x,
+					satellite.y + 8,
+					satellite.body.name,
+					isSelected ? theme.accent : theme.dim,
+					7,
+					isSelected ? 600 : 400,
+					bodyOpacity(satellite.body.id),
+				)
+			}
+		}
+	}
+
+	$effect(() => {
+		renderMap()
+	})
+
+	function eventPoint(event: MouseEvent) {
+		const rect = canvasEl?.getBoundingClientRect()
+		if (!rect) return null
+		const x = ((event.clientX - rect.left) / rect.width) * SIZE
+		const y = ((event.clientY - rect.top) / rect.height) * SIZE
+		return { x, y }
+	}
+
+	function hitTest(point: { x: number, y: number }) {
+		let best: HitTarget | null = null
+		let bestDistance = Number.POSITIVE_INFINITY
+
+		for (const target of scene.hitTargets) {
+			const distance = Math.hypot(point.x - target.x, point.y - target.y)
+			if (distance <= target.r && distance < bestDistance) {
+				best = target
+				bestDistance = distance
+			}
+		}
+
+		return best
+	}
+
+	function handlePointerMove(event: MouseEvent) {
+		const point = eventPoint(event)
+		if (!point) return
+		const target = hitTest(point)
+		hoveredId = target?.id ?? null
+		hoveredBody = target?.body ?? null
+	}
+
+	function handlePointerLeave() {
+		hoveredId = null
+		hoveredBody = null
+	}
+
+	function handleClick(event: MouseEvent) {
+		const point = eventPoint(event)
+		if (!point) return
+		const target = hitTest(point)
+
+		if (!target) {
+			selectedId = null
+			return
+		}
+
+		selectedId = selectedId === target.id ? null : target.id
+	}
+
+	const hoveredTarget = $derived.by(() =>
+		hoveredId == null
+			? null
+			: scene.hitTargets.find(target => target.id === hoveredId) ?? null,
+	)
+
+	const tooltipStyle = $derived.by(() => {
+		if (!hoveredTarget) return ''
+		const x = (hoveredTarget.x / SIZE) * displaySize.width
+		const y = (hoveredTarget.y / SIZE) * displaySize.height
+		const tipWidth = 160
+		const tipHeight = 52
+		const placeRight = x + 16 + tipWidth < displaySize.width
+		const left = placeRight ? x + 16 : x - tipWidth - 16
+		const top = Math.min(Math.max(y - tipHeight / 2, 4), displaySize.height - tipHeight - 4)
+		return `left:${left}px;top:${top}px;`
+	})
 </script>
 
-<!-- svelte-ignore a11y_click_events_have_key_events -->
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<svg
-	viewBox="0 0 {SIZE} {SIZE}"
-	class="w-full max-w-2xl mx-auto bg-page"
-	role="img"
-	aria-label="System map of {systemName}"
-	onmouseleave={() => hovered = null}
-	onclick={handleBackgroundClick}
->
-	<defs>
-		<radialGradient id="{glowId}-inner">
-			<stop offset="0%" stop-color={resolveColor(primaryStar?.color, '#FFE088')} stop-opacity="0.4" />
-			<stop offset="30%" stop-color={resolveColor(primaryStar?.color, '#FFE088')} stop-opacity="0.15" />
-			<stop offset="100%" stop-color={resolveColor(primaryStar?.color, '#FFE088')} stop-opacity="0" />
-		</radialGradient>
-		<radialGradient id="{glowId}-ambient">
-			<stop offset="0%" stop-color={resolveColor(primaryStar?.color, '#FFE088')} stop-opacity="0.06" />
-			<stop offset="40%" stop-color={resolveColor(primaryStar?.color, '#FFE088')} stop-opacity="0.02" />
-			<stop offset="100%" stop-color={resolveColor(primaryStar?.color, '#FFE088')} stop-opacity="0" />
-		</radialGradient>
-		{#each companionStars as cStar, i (cStar.id)}
-			{@const cColor = resolveColor(cStar.color, '#FFE088')}
-			<radialGradient id="{glowId}-comp-{i}">
-				<stop offset="0%" stop-color={cColor} stop-opacity="0.3" />
-				<stop offset="30%" stop-color={cColor} stop-opacity="0.1" />
-				<stop offset="100%" stop-color={cColor} stop-opacity="0" />
-			</radialGradient>
-		{/each}
-	</defs>
+<div class="relative w-full max-w-2xl mx-auto" bind:this={containerEl}>
+	<canvas
+		bind:this={canvasEl}
+		width={SIZE}
+		height={SIZE}
+		class="block w-full bg-page"
+		style="aspect-ratio: 1 / 1;"
+		role="img"
+		aria-label="System map of {systemName}"
+		onmousemove={handlePointerMove}
+		onmouseleave={handlePointerLeave}
+		onclick={handleClick}
+	/>
 
-	<g transform="translate({cameraOffset.x},{cameraOffset.y})">
-		<!-- Orbital ellipses for direct orbiters -->
-		{#each directPositions as dp (dp.body.id)}
-			{@const orbit = orbitStroke(dp.body.id, dp.body.id === selectedId)}
-			{@const offset = dp.a * dp.body.ecc}
-			<ellipse
-				cx={CENTER - offset}
-				cy={CENTER}
-				rx={dp.a}
-				ry={dp.b}
-				fill="none"
-				stroke={orbit.color}
-				stroke-width={orbit.width}
-				stroke-dasharray={dp.body.isStar ? '4 3' : 'none'}
-				opacity={bodyOpacity(dp.body.id)}
-				class="transition-all duration-150"
-			/>
-		{/each}
-
-		<!-- Trails -->
-		{#if trails !== 'off' && currentAbsoluteDay != null}
-			{#each directPositions as dp (dp.body.id)}
-				<path
-					d={trailPath(dp.a, dp.b, dp.body.ecc, dp.angle, CENTER, CENTER)}
-					fill="none"
-					stroke={resolveColor(dp.body.color, dp.body.isStar ? '#FFE088' : 'var(--color-accent-light)')}
-					stroke-width={1}
-					stroke-opacity={0.4 * bodyOpacity(dp.body.id)}
-					stroke-linecap="round"
-				/>
-			{/each}
-		{/if}
-
-		<!-- Star glow -->
-		{#if primaryStar}
-			<circle cx={CENTER} cy={CENTER} r={CENTER * 0.85} fill="url(#{glowId}-ambient)" />
-			<circle cx={CENTER} cy={CENTER} r={50} fill="url(#{glowId}-inner)" />
-		{/if}
-
-		<!-- Primary star body -->
-		{#if primaryStar}
-			{@const isSelected = primaryStar.id === selectedId}
-			<!-- svelte-ignore a11y_no_static_element_interactions -->
-			<circle
-				cx={CENTER}
-				cy={CENTER}
-				r={10}
-				fill={resolveColor(primaryStar.color, '#FFE088')}
-				stroke={isSelected ? 'var(--color-accent)' : 'none'}
-				stroke-width={isSelected ? 2.5 : 0}
-				opacity={bodyOpacity(primaryStar.id)}
-				class="cursor-pointer"
-				onmouseenter={() => handleHover(primaryStar, { x: CENTER, y: CENTER - 16 })}
-				onmouseleave={() => hovered = null}
-				onclick={(e) => { e.stopPropagation(); handleSelect(primaryStar) }}
-			/>
-			{#if showLabel({ ...primaryStar, isStar: true }, isSelected)}
-				<text
-					x={CENTER}
-					y={CENTER + 22}
-					text-anchor="middle"
-					fill={isSelected ? 'var(--color-accent)' : 'var(--color-secondary)'}
-					font-size="10"
-					font-weight={isSelected ? '600' : '400'}
-					font-family="var(--font-body)"
-					class="pointer-events-none"
-				>{primaryStar.name}</text>
-			{/if}
-		{/if}
-
-		<!-- Direct orbiters + their satellites -->
-		{#each directPositions as dp (dp.body.id)}
-			{@const r = bodyRadius(dp.body)}
-			{@const isSelected = dp.body.id === selectedId}
-			{@const sats = satellitesOf(dp.body.id)}
-
-			<!-- Companion star glow -->
-			{#if dp.body.isStar}
-				{@const compIdx = companionStars.findIndex(s => s.id === dp.body.id)}
-				{#if compIdx >= 0}
-					<circle cx={dp.x} cy={dp.y} r={30} fill="url(#{glowId}-comp-{compIdx})" opacity={bodyOpacity(dp.body.id)} />
-				{/if}
-			{/if}
-
-			<!-- Body circle -->
-			<!-- svelte-ignore a11y_no_static_element_interactions -->
-			<circle
-				cx={dp.x}
-				cy={dp.y}
-				{r}
-				fill={resolveColor(dp.body.color, dp.body.isStar ? '#FFE088' : 'var(--color-secondary)')}
-				stroke={isSelected ? 'var(--color-accent)' : 'none'}
-				stroke-width={isSelected ? 2.5 : 0}
-				opacity={bodyOpacity(dp.body.id)}
-				class="cursor-pointer"
-				onmouseenter={() => handleHover(dp.body, { x: dp.x, y: dp.y })}
-				onmouseleave={() => hovered = null}
-				onclick={(e) => { e.stopPropagation(); handleSelect(dp.body) }}
-			/>
-
-			<!-- Label -->
-			{#if showLabel(dp.body, isSelected)}
-				<text
-					x={dp.x}
-					y={dp.y + r + 12}
-					text-anchor="middle"
-					fill={isSelected ? 'var(--color-accent)' : hovered?.id === dp.body.id ? 'var(--color-heading)' : 'var(--color-dim)'}
-					font-size="9"
-					font-weight={isSelected ? '600' : '400'}
-					font-family="var(--font-body)"
-					opacity={bodyOpacity(dp.body.id)}
-					class="transition-colors pointer-events-none"
-				>{dp.body.name}</text>
-			{/if}
-
-			<!-- Satellites rendered as small dots around the parent body -->
-			{#each sats as sat, si (sat.id)}
-				{@const satR = SAT_BASE_R + si * SAT_STEP}
-				{@const satAngle = computeAngle(sat, si, sats.length)}
-				{@const satX = dp.x + satR * Math.cos(satAngle)}
-				{@const satY = dp.y + satR * Math.sin(satAngle)}
-				{@const satIsSelected = sat.id === selectedId}
-
-				<!-- Satellite orbit ring (subtle) -->
-				<circle
-					cx={dp.x}
-					cy={dp.y}
-					r={satR}
-					fill="none"
-					stroke={satIsSelected ? 'var(--color-accent)' : isInFamily(sat.id) ? 'var(--color-accent-light)' : 'color-mix(in srgb, var(--color-secondary) 15%, transparent)'}
-					stroke-width={satIsSelected ? 1.5 : 0.5}
-					opacity={bodyOpacity(sat.id)}
-					class="transition-all duration-150"
-				/>
-
-				<!-- Satellite body -->
-				<!-- svelte-ignore a11y_no_static_element_interactions -->
-				<circle
-					cx={satX}
-					cy={satY}
-					r={2.5}
-					fill={resolveColor(sat.color, 'var(--color-dim)')}
-					stroke={satIsSelected ? 'var(--color-accent)' : 'none'}
-					stroke-width={satIsSelected ? 2 : 0}
-					opacity={bodyOpacity(sat.id)}
-					class="cursor-pointer"
-					onmouseenter={() => handleHover(sat, { x: satX, y: satY })}
-					onmouseleave={() => hovered = null}
-					onclick={(e) => { e.stopPropagation(); handleSelect(sat) }}
-				/>
-
-				<!-- Satellite label (only when selected, hovered, or labels=all) -->
-				{#if satIsSelected || hovered?.id === sat.id || labels === 'all'}
-					<text
-						x={satX}
-						y={satY + 8}
-						text-anchor="middle"
-						fill={satIsSelected ? 'var(--color-accent)' : 'var(--color-dim)'}
-						font-size="7"
-						font-weight={satIsSelected ? '600' : '400'}
-						font-family="var(--font-body)"
-						opacity={bodyOpacity(sat.id)}
-						class="pointer-events-none"
-					>{sat.name}</text>
-				{/if}
-			{/each}
-		{/each}
-	</g>
-
-	<!-- Tooltip -->
-	{#if hovered}
-		<foreignObject x={tipX} y={tipY} width={tipWidth} height={tipHeight}>
-			<div class="bg-surface border border-accent/30 px-2.5 py-1.5 shadow-lg">
-				<div class="font-semibold text-heading text-xs whitespace-nowrap">
-					{hovered.name}
-					{#if hovered.spectralType}
-						<span class="text-faint font-normal">({hovered.spectralType})</span>
-					{/if}
-				</div>
-				{#if hovered.semiMajorAxisAu}
-					<div class="text-faint text-[10px]">{hovered.semiMajorAxisAu.toFixed(3)} AU</div>
+	{#if hoveredBody && hoveredTarget}
+		<div
+			class="pointer-events-none absolute border px-2.5 py-1.5 shadow-lg"
+			style="{tooltipStyle}background:{theme.surface};border-color:{theme.accentLight};"
+		>
+			<div class="text-xs font-semibold text-heading whitespace-nowrap">
+				{hoveredBody.name}
+				{#if hoveredBody.spectralType}
+					<span class="font-normal text-faint">({hoveredBody.spectralType})</span>
 				{/if}
 			</div>
-		</foreignObject>
+			{#if hoveredBody.semiMajorAxisAu}
+				<div class="text-[10px] text-faint">{hoveredBody.semiMajorAxisAu.toFixed(3)} AU</div>
+			{/if}
+		</div>
 	{/if}
-</svg>
+</div>
