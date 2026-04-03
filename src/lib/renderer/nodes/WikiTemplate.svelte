@@ -290,7 +290,7 @@
 	{:else if resolution.component === 'date'}
 		{@const tsString = getPositionalArguments()[0]?.trim() || ''}
 		{@const ts = Number.parseInt(tsString)}
-		{#if !isNaN(ts) && ctx.calendarDate}
+		{#if !Number.isNaN(ts) && ctx.calendarDate}
 			{@const formatted = `${ctx.calendarDate.day_of_week_name}, ${ctx.calendarDate.day} ${ctx.calendarDate.month_name}, ${ctx.calendarDate.year_display}`}
 			<a href="/calendar?date={ts}" class="text-link hover:text-link-hover hover:underline" title="View in calendar">{formatted}</a>
 		{:else}

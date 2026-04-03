@@ -275,30 +275,33 @@
 		const maxVisualRadius = (CENTER - PADDING) / (1 + maxEcc * 0.5)
 		const selectionFamily = buildSelectionFamily(primaryStar)
 
-		const auToPixels = (au: number) => {
+		const scaleNormalized = (au: number) => {
 			if (maxAu <= 0) return 0
 			switch (scale) {
 				case 'realistic':
-					return (au / maxAu) * maxVisualRadius
+					return au / maxAu
 				case 'logarithmic':
-					return Math.log10(1 + au * 9 / maxAu) * maxVisualRadius
+					return Math.log10(1 + au * 9 / maxAu)
 				case 'compressed':
 				default:
-					return Math.sqrt(au / maxAu) * maxVisualRadius
+					return Math.sqrt(au / maxAu)
 			}
 		}
 
 		const rawDirectPositions: PositionedOrbit[] = []
-		const minSpaceNeeded = DIRECT_MIN_R + (directOrbiters.length - 1) * DIRECT_MIN_GAP
+		const n = directOrbiters.length
+		const minSpaceNeeded = DIRECT_MIN_R + Math.max(0, n - 1) * DIRECT_MIN_GAP
 		const gapScale = minSpaceNeeded > maxVisualRadius * 0.6
 			? (maxVisualRadius * 0.6) / minSpaceNeeded
 			: 1
 		const effectiveMinR = DIRECT_MIN_R * gapScale
 		const effectiveMinGap = DIRECT_MIN_GAP * gapScale
+		const lastFloor = effectiveMinR + Math.max(0, n - 1) * effectiveMinGap
+		const remainingSpace = Math.max(0, maxVisualRadius - lastFloor)
 		let previousOrbitRadius = effectiveMinR - effectiveMinGap
 		for (const [index, body] of directOrbiters.entries()) {
-			const desiredA = auToPixels(body.orbitAu)
-			const a = Math.max(effectiveMinR, previousOrbitRadius + effectiveMinGap, desiredA)
+			const floor = effectiveMinR + index * effectiveMinGap
+			const a = Math.max(floor + remainingSpace * scaleNormalized(body.orbitAu), previousOrbitRadius + effectiveMinGap)
 			previousOrbitRadius = a
 			const b = a * Math.sqrt(1 - body.ecc * body.ecc)
 			const angle = computeAngle(body, index, directOrbiters.length)

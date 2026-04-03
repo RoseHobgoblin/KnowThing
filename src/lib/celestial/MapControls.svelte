@@ -37,8 +37,7 @@
 	]
 </script>
 
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-3 py-1.5 bg-page/80 text-[10px] text-secondary select-none">
+<div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-3 py-1.5 bg-page text-xs text-secondary select-none">
 	<!-- Scale -->
 	<div class="flex items-center gap-1">
 		<span class="text-faint uppercase tracking-wider">Scale</span>
