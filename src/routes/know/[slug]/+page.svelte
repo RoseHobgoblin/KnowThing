@@ -3,6 +3,7 @@
 	import { page } from '$app/stores'
 	import Button from '$lib/components/ui/Button.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
+	import ShareMeta from '$lib/components/ShareMeta.svelte'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import { goto } from '$app/navigation'
 	import KnowArticle from './KnowArticle.svelte'
@@ -10,7 +11,7 @@
 	let { data }: { data: PageData } = $props()
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
 
-	const pageUrl = $derived($page.url.href)
+	const siteName = $derived($page.data.siteConfig?.siteName ?? 'KnowThing')
 	const description = $derived(!data.notFound ? data.description : '')
 
 	async function deletePage() {
@@ -27,15 +28,16 @@
 </script>
 
 <svelte:head>
-	<title>{data.title} — KnowThing</title>
-	{#if !data.notFound}
-		<meta name="description" content={description} />
-		<meta property="og:title" content={data.title} />
-		<meta property="og:description" content={description} />
-		<meta property="og:type" content="article" />
-		<meta property="og:url" content={pageUrl} />
-	{/if}
+	<title>{data.title} — {siteName}</title>
 </svelte:head>
+
+{#if !data.notFound}
+	<ShareMeta
+		title={`${data.title} — ${siteName}`}
+		{description}
+		type="article"
+	/>
+{/if}
 
 {#key data.slug}
 	{#if data.notFound}

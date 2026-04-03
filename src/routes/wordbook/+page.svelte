@@ -3,6 +3,7 @@
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import LanguageCard from '$lib/components/wordbook/LanguageCard.svelte'
 	import WordEntry from '$lib/components/wordbook/WordEntry.svelte'
+	import ShareMeta from '$lib/components/ShareMeta.svelte'
 	import { wordbookBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import { page } from '$app/stores'
 	import { createKnowContext } from '$lib/renderer/context.js'
@@ -10,6 +11,10 @@
 	let { data }: { data: PageData } = $props()
 
 	const wbName = $derived($page.data.siteConfig?.wordbookName ?? 'Wordbook')
+	const siteName = $derived($page.data.siteConfig?.siteName ?? 'KnowThing')
+	const description = $derived(
+		`${data.totalWords} ${data.totalWords === 1 ? 'word' : 'words'} across ${data.languages.length} ${data.languages.length === 1 ? 'language' : 'languages'}.`
+	)
 
 	createKnowContext({
 		mediaBaseUrl: '/api/media',
@@ -19,8 +24,13 @@
 </script>
 
 <svelte:head>
-	<title>{wbName} — KnowThing</title>
+	<title>{wbName} — {siteName}</title>
 </svelte:head>
+
+<ShareMeta
+	title={`${wbName} — ${siteName}`}
+	{description}
+/>
 
 <ArticleShell
 	breadcrumbs={wordbookBreadcrumbs(wbName)}

@@ -12,6 +12,7 @@
 	import InflectionEditor from '$lib/components/wordbook/InflectionEditor.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
+	import ShareMeta from '$lib/components/ShareMeta.svelte'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import Badge from '$lib/components/ui/Badge.svelte'
 	import { PARTS_OF_SPEECH, POS_COLORS } from '$lib/components/wordbook/constants.js'
@@ -36,6 +37,7 @@
 	const canManageWordbook = $derived(permissions.canManageWordbook)
 	const isAdmin = $derived(layoutData.isAdmin)
 	const wbName = $derived(layoutData.siteConfig?.wordbookName ?? 'Wordbook')
+	const siteName = $derived(layoutData.siteConfig?.siteName ?? 'KnowThing')
 
 	// Add sense form state
 	let addingSenseFor = $state<number | null>(null)
@@ -105,17 +107,17 @@
 
 	const firstDef = $derived(data.homographs[0]?.definitions[0]?.definition ?? '')
 	const ogDescription = $derived(firstDef ? `${data.word} — ${firstDef}` : `${data.word} in ${data.language.name}`)
-	const pageUrl = $derived($page.url.href)
 </script>
 
 <svelte:head>
-	<title>{data.word} ({data.language.name}) — Wordbook — KnowThing</title>
-	<meta name="description" content={ogDescription} />
-	<meta property="og:title" content="{data.word} ({data.language.name})" />
-	<meta property="og:description" content={ogDescription} />
-	<meta property="og:type" content="article" />
-	<meta property="og:url" content={pageUrl} />
+	<title>{data.word} ({data.language.name}) — {wbName} — {siteName}</title>
 </svelte:head>
+
+<ShareMeta
+	title={`${data.word} (${data.language.name}) — ${wbName} — ${siteName}`}
+	description={ogDescription}
+	type="article"
+/>
 
 <ArticleShell
 	breadcrumbs={wordbookWordBreadcrumbs(wbName, data.language, data.word)}

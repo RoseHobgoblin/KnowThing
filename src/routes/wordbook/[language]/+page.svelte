@@ -5,6 +5,7 @@
 	import AlphabetNav from '$lib/components/wordbook/AlphabetNav.svelte'
 	import WordEntry from '$lib/components/wordbook/WordEntry.svelte'
 	import DimensionEditor from '$lib/components/wordbook/DimensionEditor.svelte'
+	import ShareMeta from '$lib/components/ShareMeta.svelte'
 
 	import { createKnowContext } from '$lib/renderer/context.js'
 
@@ -15,6 +16,12 @@
 	const isAuthenticated = $derived(permissions.isAuthenticated)
 	const canManageWordbook = $derived(permissions.canManageWordbook)
 	const wbName = $derived(layoutData.siteConfig?.wordbookName ?? 'Wordbook')
+	const siteName = $derived(layoutData.siteConfig?.siteName ?? 'KnowThing')
+	const description = $derived(
+		data.language.description
+			? data.language.description
+			: `${Number(data.language.wordCount)} ${Number(data.language.wordCount) === 1 ? 'word' : 'words'} in ${data.language.name}.`
+	)
 
 	createKnowContext({
 		mediaBaseUrl: '/api/media',
@@ -44,8 +51,13 @@
 </script>
 
 <svelte:head>
-	<title>{data.language.name} — Wordbook — KnowThing</title>
+	<title>{data.language.name} — {wbName} — {siteName}</title>
 </svelte:head>
+
+<ShareMeta
+	title={`${data.language.name} — ${wbName} — ${siteName}`}
+	{description}
+/>
 
 <ArticleShell
 	{breadcrumbs}

@@ -87,11 +87,13 @@ export const load: PageServerLoad = async ({ params }) => {
 		.where(sql`LOWER(${lexicon.word}) = LOWER(${record.title.replaceAll(' ', '_')}) OR LOWER(${lexicon.word}) = LOWER(${record.title})`)
 		.limit(1)
 
-	// Extract plain-text description for OG meta tags
-	const plainText = stripMarkup(record.content)
-	const description = plainText.length > 200
-		? plainText.slice(0, 200).slice(0, plainText.slice(0, 200).lastIndexOf(' ')) + '...'
-		: plainText
+	// Normalize plain text for share metadata.
+	const plainText = (record.plainText || stripMarkup(record.content)).replace(/\s+/g, ' ').trim()
+	const excerpt = plainText.slice(0, 200)
+	const lastSpace = excerpt.lastIndexOf(' ')
+	const description = excerpt.length < plainText.length
+		? `${excerpt.slice(0, lastSpace > 120 ? lastSpace : excerpt.length).trimEnd()}...`
+		: excerpt
 
 	return {
 		notFound: false,
