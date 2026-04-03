@@ -203,13 +203,13 @@
 
 		<!-- Scrollable content -->
 		<main class="flex-1 overflow-y-auto flex flex-col">
-			<div class="flex-1 {currentPath.includes('/edit') || currentPath === '/know/create' ? 'w-full px-6 py-4' : 'max-w-6xl mx-auto w-full px-4 py-6 md:px-6 md:py-8'}">
+			<div class="flex-1 {currentPath.includes('/edit') || currentPath === '/know/create' ? 'w-full px-6 py-4' : 'max-w-8xl mx-auto w-full px-4 py-6 md:px-6 md:py-8'}">
 				{#key currentPath}
 					{@render children()}
 				{/key}
 			</div>
 			<footer class="border-t border-border bg-surface p-4 shrink-0 mt-auto">
-				<div class="max-w-6xl mx-auto text-xs text-faint text-center">
+				<div class="max-w-8xl mx-auto text-xs text-faint text-center">
 					{#if sc?.footerText}
 						{sc.footerText}
 					{:else}
