@@ -83,7 +83,7 @@
    ============================================================================ */
 
 :root {
-	--content-max-width: 80rem;
+	--content-max-width: 72rem;
 	--infobox-width: 20rem;
 
 	/* Ambient tinted shadow for floating elements */
