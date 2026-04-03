@@ -1,11 +1,8 @@
 <script lang="ts">
 	import type { ImageOption } from '$lib/parser/types.js'
-	import { getKnowContext } from '../context.js'
+	import MediaImage from '$lib/components/MediaImage.svelte'
 
 	let { filename, options }: { filename: string, options: ImageOption[] } = $props()
-
-	const ctx = getKnowContext()
-	const baseUrl = $derived(`${ctx.mediaBaseUrl}/${encodeURIComponent(filename)}`)
 
 	const isThumb = $derived(options.some(o => o.type === 'thumb'))
 	const isFrame = $derived(options.some(o => o.type === 'frame'))
@@ -20,47 +17,46 @@
 			filename,
 	)
 
-	// Pick the right thumbnail size based on requested width
-	function pickThumbSize(requestedWidth: number | undefined, isThumb: boolean): number | null {
-		if (!requestedWidth && isThumb) return 300 // Default thumb size
-		if (!requestedWidth) return null // Inline image, serve original
-		if (requestedWidth <= 150) return 150
-		if (requestedWidth <= 300) return 300
-		if (requestedWidth <= 600) return 600
-		return null // Larger than our biggest thumb, serve original
-	}
-
-	const thumbSize = $derived(pickThumbSize(width?.value, isThumb || isFrame))
-	const source = $derived(thumbSize ? `${baseUrl}?w=${thumbSize}` : baseUrl)
+	const displayWidth = $derived(width?.value ?? (isThumb || isFrame ? 320 : undefined))
+	const imageSizes = $derived(
+		alignment === 'center'
+			? '(max-width: 640px) calc(100vw - 3rem), min(90vw, 320px)'
+			: '(max-width: 640px) calc(100vw - 3rem), 320px',
+	)
+	const inlineSizes = $derived(
+		width?.value
+			? `${width.value}px`
+			: '(max-width: 640px) calc(100vw - 3rem), min(90vw, 600px)',
+	)
 
 	const alignClass = $derived(
 		alignment === 'left'
 			? 'float-left mr-4'
 			: (alignment === 'center'
-				? 'mx-auto'
+				? 'mx-auto clear-both'
 				: 'float-right ml-4'),
 	)
 </script>
 
 {#if isThumb || isFrame}
-	<figure class="know-image-frame border border-border-strong bg-page p-1 mb-2 max-w-xs {alignClass}">
-		<img
-			src={source}
+	<figure class="know-image-frame border border-border-strong bg-page p-1 mb-4 overflow-hidden max-w-full {alignClass}">
+		<MediaImage
+			{filename}
 			{alt}
-			loading="lazy"
-			class="block"
-			style={width ? `max-width: ${width.value}px` : 'max-width: 220px'}
+			displayWidth={displayWidth}
+			sizes={imageSizes}
+			class="block h-auto w-full"
 		/>
 		{#if caption}
 			<figcaption class="text-xs text-secondary px-1 pt-1">{caption.text}</figcaption>
 		{/if}
 	</figure>
 {:else}
-	<img
-		src={source}
+	<MediaImage
+		{filename}
 		{alt}
-		loading="lazy"
-		class="know-image inline-block"
-		style={width ? `max-width: ${width.value}px` : undefined}
+		displayWidth={width?.value}
+		sizes={inlineSizes}
+		class="know-image inline-block h-auto max-w-full"
 	/>
 {/if}

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte'
 	import InlineMarkup from '$lib/renderer/InlineMarkup.svelte'
+	import MediaImage from '$lib/components/MediaImage.svelte'
 
 	let {
 		title = '',
@@ -47,18 +48,13 @@
 		{#if image}
 			<tr>
 				<td colspan="2" class="text-center p-3 border-b border-border-subtle">
-					<img
-						src="/api/media/{image}?w=300"
+					<MediaImage
+						filename={image}
 						alt={imageCaption || image}
+						displayWidth={320}
+						sizes="(max-width: 640px) calc(100vw - 3rem), 320px"
 						class="max-w-full h-auto mx-auto"
-						onerror={(error) => { const element = error.currentTarget as HTMLImageElement; element.style.display = 'none'; if (element.nextElementSibling) (element.nextElementSibling as HTMLElement).style.display = 'block' }}
 					/>
-					<div class="
-						text-faint italic text-xs border border-dashed border-border p-6 bg-page
-						hidden
-					">
-						[Image: {image}]
-					</div>
 					{#if imageCaption}
 						<div class="text-xs text-dim mt-1.5"><InlineMarkup text={imageCaption} /></div>
 					{/if}
