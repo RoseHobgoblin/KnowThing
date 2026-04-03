@@ -1,7 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types.js'
 	import { page } from '$app/stores'
-	import ShareMeta from '$lib/components/ShareMeta.svelte'
 
 	let { data }: { data: PageData } = $props()
 	const sc = $derived($page.data.siteConfig)
@@ -9,12 +8,13 @@
 
 <svelte:head>
 	<title>{sc?.siteName ?? 'KnowThing'}</title>
+	<meta name="description" content={sc?.siteTagline ?? 'A collaborative encyclopedia'} />
+	<meta property="og:title" content={sc?.siteName ?? 'KnowThing'} />
+	<meta property="og:description" content={sc?.siteTagline ?? 'A collaborative encyclopedia'} />
+	<meta property="og:type" content="website" />
+	<meta property="og:url" content={$page.url.href} />
+	<meta property="og:site_name" content={sc?.siteName ?? 'KnowThing'} />
 </svelte:head>
-
-<ShareMeta
-	title={sc?.siteName ?? 'KnowThing'}
-	description={sc?.siteTagline ?? 'A collaborative encyclopedia'}
-/>
 
 <div class="space-y-8">
 	<!-- Hero -->

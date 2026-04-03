@@ -3,7 +3,6 @@
 	import { page } from '$app/stores'
 	import Button from '$lib/components/ui/Button.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
-	import ShareMeta from '$lib/components/ShareMeta.svelte'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import { goto } from '$app/navigation'
 	import KnowArticle from './KnowArticle.svelte'
@@ -29,15 +28,15 @@
 
 <svelte:head>
 	<title>{data.title} — {siteName}</title>
+	{#if !data.notFound}
+		<meta name="description" content={description} />
+		<meta property="og:title" content="{data.title} — {siteName}" />
+		<meta property="og:description" content={description} />
+		<meta property="og:type" content="article" />
+		<meta property="og:url" content={$page.url.href} />
+		<meta property="og:site_name" content={siteName} />
+	{/if}
 </svelte:head>
-
-{#if !data.notFound}
-	<ShareMeta
-		title={`${data.title} — ${siteName}`}
-		{description}
-		type="article"
-	/>
-{/if}
 
 {#key data.slug}
 	{#if data.notFound}

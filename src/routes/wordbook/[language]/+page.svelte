@@ -5,8 +5,6 @@
 	import AlphabetNav from '$lib/components/wordbook/AlphabetNav.svelte'
 	import WordEntry from '$lib/components/wordbook/WordEntry.svelte'
 	import DimensionEditor from '$lib/components/wordbook/DimensionEditor.svelte'
-	import ShareMeta from '$lib/components/ShareMeta.svelte'
-
 	import { createKnowContext } from '$lib/renderer/context.js'
 
 	let { data }: { data: PageData } = $props()
@@ -52,12 +50,13 @@
 
 <svelte:head>
 	<title>{data.language.name} — {wbName} — {siteName}</title>
+	<meta name="description" content={description} />
+	<meta property="og:title" content="{data.language.name} — {wbName} — {siteName}" />
+	<meta property="og:description" content={description} />
+	<meta property="og:type" content="website" />
+	<meta property="og:url" content={$page.url.href} />
+	<meta property="og:site_name" content={siteName} />
 </svelte:head>
-
-<ShareMeta
-	title={`${data.language.name} — ${wbName} — ${siteName}`}
-	{description}
-/>
 
 <ArticleShell
 	{breadcrumbs}

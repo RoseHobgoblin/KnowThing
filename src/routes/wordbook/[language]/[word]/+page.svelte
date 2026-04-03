@@ -12,7 +12,6 @@
 	import InflectionEditor from '$lib/components/wordbook/InflectionEditor.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
-	import ShareMeta from '$lib/components/ShareMeta.svelte'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import Badge from '$lib/components/ui/Badge.svelte'
 	import { PARTS_OF_SPEECH, POS_COLORS } from '$lib/components/wordbook/constants.js'
@@ -111,13 +110,13 @@
 
 <svelte:head>
 	<title>{data.word} ({data.language.name}) — {wbName} — {siteName}</title>
+	<meta name="description" content={ogDescription} />
+	<meta property="og:title" content="{data.word} ({data.language.name}) — {wbName} — {siteName}" />
+	<meta property="og:description" content={ogDescription} />
+	<meta property="og:type" content="article" />
+	<meta property="og:url" content={$page.url.href} />
+	<meta property="og:site_name" content={siteName} />
 </svelte:head>
-
-<ShareMeta
-	title={`${data.word} (${data.language.name}) — ${wbName} — ${siteName}`}
-	description={ogDescription}
-	type="article"
-/>
 
 <ArticleShell
 	breadcrumbs={wordbookWordBreadcrumbs(wbName, data.language, data.word)}

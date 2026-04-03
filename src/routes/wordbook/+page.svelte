@@ -3,7 +3,6 @@
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import LanguageCard from '$lib/components/wordbook/LanguageCard.svelte'
 	import WordEntry from '$lib/components/wordbook/WordEntry.svelte'
-	import ShareMeta from '$lib/components/ShareMeta.svelte'
 	import { wordbookBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import { page } from '$app/stores'
 	import { createKnowContext } from '$lib/renderer/context.js'
@@ -25,12 +24,13 @@
 
 <svelte:head>
 	<title>{wbName} — {siteName}</title>
+	<meta name="description" content={description} />
+	<meta property="og:title" content="{wbName} — {siteName}" />
+	<meta property="og:description" content={description} />
+	<meta property="og:type" content="website" />
+	<meta property="og:url" content={$page.url.href} />
+	<meta property="og:site_name" content={siteName} />
 </svelte:head>
-
-<ShareMeta
-	title={`${wbName} — ${siteName}`}
-	{description}
-/>
 
 <ArticleShell
 	breadcrumbs={wordbookBreadcrumbs(wbName)}
