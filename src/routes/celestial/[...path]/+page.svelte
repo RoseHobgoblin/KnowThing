@@ -297,10 +297,6 @@
 				<!-- Prose below the two-column section -->
 				{#if strippedAst}
 					<section class="space-y-3 mt-4">
-						<div>
-							<h3 class="text-sm font-semibold text-heading">Article Content</h3>
-							<p class="text-xs text-faint">Reference prose and documentation for this system.</p>
-						</div>
 						<article class="know-article">
 							<WikiNodeComponent node={strippedAst} />
 						</article>
@@ -321,10 +317,6 @@
 
 					{#if strippedAst}
 						<section class="space-y-3">
-							<div>
-								<h3 class="text-sm font-semibold text-heading">Article Content</h3>
-								<p class="text-xs text-faint">Reference prose and documentation for this {kind}.</p>
-							</div>
 							<article class="know-article">
 								<WikiNodeComponent node={strippedAst} />
 							</article>
