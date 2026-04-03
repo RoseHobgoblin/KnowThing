@@ -98,7 +98,7 @@
 		stars,
 		bodies,
 		currentAbsoluteDay,
-		scale = 'compressed',
+		scale = 'all',
 		labels = 'major',
 		trails = 'off',
 		follow = false,
@@ -237,6 +237,21 @@
 		return ids
 	}
 
+	function innerBoundaryAu(orbiters: OrbitBody[]): number {
+		if (orbiters.length <= 1) return orbiters[0]?.orbitAu ?? 1
+		let maxRatio = 0
+		let boundaryIndex = Math.ceil(orbiters.length / 2) - 1
+		for (let i = 0; i < orbiters.length - 1; i++) {
+			const ratio = orbiters[i + 1].orbitAu / Math.max(orbiters[i].orbitAu, 0.001)
+			if (ratio > maxRatio) {
+				maxRatio = ratio
+				boundaryIndex = i
+			}
+		}
+		if (maxRatio < 3) boundaryIndex = Math.ceil(orbiters.length / 2) - 1
+		return orbiters[boundaryIndex].orbitAu * 1.5
+	}
+
 	function buildScene(): Scene {
 		const primaryStar = stars.find(star => !star.parentStarId) ?? stars[0] ?? null
 		const primaryStarId = primaryStar?.id ?? null
@@ -275,21 +290,20 @@
 		const maxVisualRadius = (CENTER - PADDING) / (1 + maxEcc * 0.5)
 		const selectionFamily = buildSelectionFamily(primaryStar)
 
+		const effectiveMaxAu = scale === 'inner'
+			? innerBoundaryAu(directOrbiters)
+			: maxAu
+
 		const scaleNormalized = (au: number) => {
-			if (maxAu <= 0) return 0
-			switch (scale) {
-				case 'realistic':
-					return au / maxAu
-				case 'logarithmic':
-					return Math.log10(1 + au * 9 / maxAu)
-				case 'compressed':
-				default:
-					return Math.sqrt(au / maxAu)
-			}
+			if (effectiveMaxAu <= 0) return 0
+			return Math.sqrt(au / effectiveMaxAu)
 		}
 
 		const rawDirectPositions: PositionedOrbit[] = []
-		const n = directOrbiters.length
+		const innerCount = scale === 'inner'
+			? directOrbiters.filter(body => body.orbitAu <= effectiveMaxAu).length
+			: directOrbiters.length
+		const n = Math.max(innerCount, 1)
 		const minSpaceNeeded = DIRECT_MIN_R + Math.max(0, n - 1) * DIRECT_MIN_GAP
 		const gapScale = minSpaceNeeded > maxVisualRadius * 0.6
 			? (maxVisualRadius * 0.6) / minSpaceNeeded

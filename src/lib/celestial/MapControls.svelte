@@ -18,9 +18,8 @@
 	type SegmentItem<T extends string> = { value: T, label: string, title?: string }
 
 	const scaleItems: SegmentItem<ScaleMode>[] = [
-		{ value: 'realistic', label: 'Lin', title: 'Linear / realistic spacing' },
-		{ value: 'compressed', label: '√', title: 'Square root / compressed' },
-		{ value: 'logarithmic', label: 'Log', title: 'Logarithmic spacing' },
+		{ value: 'all', label: 'All', title: 'Fit all orbits' },
+		{ value: 'inner', label: 'Inner', title: 'Zoom to inner system' },
 	]
 
 	const labelItems: SegmentItem<LabelMode>[] = [
