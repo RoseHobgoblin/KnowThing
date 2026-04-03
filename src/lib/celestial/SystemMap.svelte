@@ -85,14 +85,14 @@
 	const SAT_MAX_SPAN = 48
 	const FONT_STACK = 'Work Sans, ui-sans-serif, system-ui, sans-serif'
 	const DEFAULT_THEME: ThemePalette = {
-		page: '#111827',
-		surface: '#1f2937',
-		accent: '#d97706',
-		accentLight: '#f59e0b',
-		secondary: '#cbd5e1',
-		dim: '#94a3b8',
-		heading: '#f8fafc',
-		faint: '#64748b',
+		page: '#12131D',
+		surface: '#1A1B26',
+		accent: '#FFE088',
+		accentLight: '#E9C349',
+		secondary: '#A09882',
+		dim: '#7A7264',
+		heading: '#F0E6D0',
+		faint: '#55504A',
 	}
 
 	let {
