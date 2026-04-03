@@ -102,10 +102,19 @@
 	}
 
 	const posColors = POS_COLORS
+
+	const firstDef = $derived(data.homographs[0]?.definitions[0]?.definition ?? '')
+	const ogDescription = $derived(firstDef ? `${data.word} — ${firstDef}` : `${data.word} in ${data.language.name}`)
+	const pageUrl = $derived($page.url.href)
 </script>
 
 <svelte:head>
 	<title>{data.word} ({data.language.name}) — Wordbook — KnowThing</title>
+	<meta name="description" content={ogDescription} />
+	<meta property="og:title" content="{data.word} ({data.language.name})" />
+	<meta property="og:description" content={ogDescription} />
+	<meta property="og:type" content="article" />
+	<meta property="og:url" content={pageUrl} />
 </svelte:head>
 
 <ArticleShell

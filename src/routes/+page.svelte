@@ -8,6 +8,11 @@
 
 <svelte:head>
 	<title>{sc?.siteName ?? 'KnowThing'}</title>
+	<meta name="description" content={sc?.siteTagline ?? 'A collaborative encyclopedia'} />
+	<meta property="og:title" content={sc?.siteName ?? 'KnowThing'} />
+	<meta property="og:description" content={sc?.siteTagline ?? 'A collaborative encyclopedia'} />
+	<meta property="og:type" content="website" />
+	<meta property="og:url" content={$page.url.href} />
 </svelte:head>
 
 <div class="space-y-8">

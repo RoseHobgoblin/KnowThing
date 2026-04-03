@@ -47,6 +47,10 @@
 	}
 </script>
 
+<svelte:head>
+	<meta property="og:site_name" content={sc?.siteName ?? 'KnowThing'} />
+</svelte:head>
+
 <Tooltip.Provider>
 <div class="h-screen flex bg-page overflow-hidden" dir={sc?.textDirection ?? 'ltr'}>
 

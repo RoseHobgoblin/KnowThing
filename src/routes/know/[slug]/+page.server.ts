@@ -3,7 +3,7 @@ import type { PageServerLoad } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { contentRecords, lexicon, languages } from '$lib/server/db/schema.js'
 import { eq, and, sql } from 'drizzle-orm'
-import { parseWikitext, extractCategoriesFromAst, extractInfoboxFromRefs, extractSystemMapRefs } from '$lib/parser/index.js'
+import { parseWikitext, extractCategoriesFromAst, extractInfoboxFromRefs, extractSystemMapRefs, stripMarkup } from '$lib/parser/index.js'
 import { resolveAllStructuredData, resolveAllSystemMaps } from '$lib/server/structured-data.js'
 import { getResolvedLinks, serializeResolvedLinks } from '$lib/server/resolved-links.js'
 
@@ -45,6 +45,7 @@ export const load: PageServerLoad = async ({ params }) => {
 			title: normalizedSlug.replaceAll('_', ' '),
 			ast: null,
 			categories: [],
+			description: '',
 		}
 	}
 
@@ -86,6 +87,12 @@ export const load: PageServerLoad = async ({ params }) => {
 		.where(sql`LOWER(${lexicon.word}) = LOWER(${record.title.replaceAll(' ', '_')}) OR LOWER(${lexicon.word}) = LOWER(${record.title})`)
 		.limit(1)
 
+	// Extract plain-text description for OG meta tags
+	const plainText = stripMarkup(record.content)
+	const description = plainText.length > 200
+		? plainText.slice(0, 200).slice(0, plainText.slice(0, 200).lastIndexOf(' ')) + '...'
+		: plainText
+
 	return {
 		notFound: false,
 		slug: record.slug,
@@ -99,5 +106,6 @@ export const load: PageServerLoad = async ({ params }) => {
 		structuredData,
 		systemMaps,
 		resolvedLinks: serializeResolvedLinks(resolvedLinks),
+		description,
 	}
 }

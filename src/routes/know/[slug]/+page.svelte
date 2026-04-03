@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types.js'
+	import { page } from '$app/stores'
 	import Button from '$lib/components/ui/Button.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
@@ -8,6 +9,9 @@
 
 	let { data }: { data: PageData } = $props()
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
+
+	const pageUrl = $derived($page.url.href)
+	const description = $derived(!data.notFound ? data.description : '')
 
 	async function deletePage() {
 		const ok = await confirmDialog.confirm('Delete page', `Delete "${data.title}"? This cannot be undone.`, 'Delete', 'Cancel')
@@ -24,6 +28,13 @@
 
 <svelte:head>
 	<title>{data.title} — KnowThing</title>
+	{#if !data.notFound}
+		<meta name="description" content={description} />
+		<meta property="og:title" content={data.title} />
+		<meta property="og:description" content={description} />
+		<meta property="og:type" content="article" />
+		<meta property="og:url" content={pageUrl} />
+	{/if}
 </svelte:head>
 
 {#key data.slug}
