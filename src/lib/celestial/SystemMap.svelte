@@ -72,6 +72,8 @@
 		cameraOffset: { x: number, y: number }
 		selectionFamily: Set<EntityKey>
 		hitTargets: HitTarget[]
+		effectiveMaxAu: number
+		maxVisualRadius: number
 	}
 
 	const SIZE = 800
@@ -121,6 +123,11 @@
 	let theme = $state<ThemePalette>(DEFAULT_THEME)
 	let hoveredId = $state<EntityKey | null>(null)
 	let hoveredBody = $state<MapBody | null>(null)
+	let zoomLevel = $state(1)
+	let panOffset = $state({ x: 0, y: 0 })
+	let isDragging = $state(false)
+	let dragStart: { x: number, y: number, panX: number, panY: number } | null = null
+	const isViewMoved = $derived(zoomLevel !== 1 || panOffset.x !== 0 || panOffset.y !== 0)
 
 	function keyForBody(body: MapBody, isStar: boolean): EntityKey {
 		return `${isStar ? 'star' : 'body'}:${body.id}` as EntityKey
@@ -279,7 +286,7 @@
 				)
 			if (orbitsPrimaryStarDirectly && !seen.has(key)) {
 				seen.add(key)
-				directOrbiters.push({ ...body, orbitAu: body.semiMajorAxisAu, ecc: body.eccentricity ?? 0, isStar: false, renderAsSatellite: false })
+				directOrbiters.push({ ...body, orbitAu: body.semiMajorAxisAu!, ecc: body.eccentricity ?? 0, isStar: false, renderAsSatellite: false })
 			}
 		}
 
@@ -459,6 +466,8 @@
 			cameraOffset,
 			selectionFamily,
 			hitTargets,
+			effectiveMaxAu,
+			maxVisualRadius,
 		}
 	}
 
@@ -558,6 +567,42 @@
 		context.clearRect(0, 0, SIZE, SIZE)
 		context.fillStyle = theme.page
 		context.fillRect(0, 0, SIZE, SIZE)
+
+		// Apply zoom/pan transform — all world-space drawing happens inside this block
+		context.save()
+		context.translate(CENTER, CENTER)
+		context.scale(zoomLevel, zoomLevel)
+		context.translate(-CENTER + panOffset.x, -CENTER + panOffset.y)
+
+		// Grid of + marks
+		{
+			const spacing = 80
+			const armLength = 3
+			const worldLeft = (0 - CENTER) / zoomLevel + CENTER - panOffset.x
+			const worldRight = (SIZE - CENTER) / zoomLevel + CENTER - panOffset.x
+			const worldTop = (0 - CENTER) / zoomLevel + CENTER - panOffset.y
+			const worldBottom = (SIZE - CENTER) / zoomLevel + CENTER - panOffset.y
+
+			context.save()
+			context.strokeStyle = theme.faint
+			context.lineWidth = 0.5
+			context.globalAlpha = 0.15
+
+			const startX = Math.floor(worldLeft / spacing) * spacing
+			const startY = Math.floor(worldTop / spacing) * spacing
+
+			for (let gx = startX; gx <= worldRight; gx += spacing) {
+				for (let gy = startY; gy <= worldBottom; gy += spacing) {
+					context.beginPath()
+					context.moveTo(gx - armLength, gy)
+					context.lineTo(gx + armLength, gy)
+					context.moveTo(gx, gy - armLength)
+					context.lineTo(gx, gy + armLength)
+					context.stroke()
+				}
+			}
+			context.restore()
+		}
 
 		const primaryColor = resolveColor(scene.primaryStar?.color, '#FFE088')
 
@@ -735,18 +780,133 @@
 				)
 			}
 		}
+		// End world-space transform
+		context.restore()
+
+		// --- HUD overlays (screen space) ---
+
+		// Distance legend
+		{
+			const positions = scene.directPositions
+			if (positions.length >= 1) {
+				const maxA = Math.max(...positions.map(p => p.a))
+				const maxAu = scene.effectiveMaxAu
+				if (maxAu > 0 && maxA > 0) {
+					// sqrt scale derivative at 30% of max: d(pixel)/d(au) = maxA / (2 * sqrt(au0 * maxAu))
+					const au0 = maxAu * 0.3
+					const dPixelPerAu = maxA / (2 * Math.sqrt(au0 * maxAu))
+					const effectiveDppa = dPixelPerAu * zoomLevel
+
+					const niceValues = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 2, 5, 10, 50, 100]
+					let bestAu = 1
+					let bestBarPx = effectiveDppa
+					for (const v of niceValues) {
+						const barPx = v * effectiveDppa
+						if (barPx >= 40 && barPx <= 150) {
+							bestAu = v
+							bestBarPx = barPx
+							break
+						}
+					}
+
+					if (bestBarPx >= 20 && bestBarPx <= 200) {
+						const x0 = 20
+						const y0 = SIZE - 20
+						const capH = 4
+
+						context.save()
+						context.strokeStyle = theme.faint
+						context.lineWidth = 1
+						context.globalAlpha = 0.6
+						context.beginPath()
+						context.moveTo(x0, y0 - capH)
+						context.lineTo(x0, y0 + capH)
+						context.moveTo(x0, y0)
+						context.lineTo(x0 + bestBarPx, y0)
+						context.moveTo(x0 + bestBarPx, y0 - capH)
+						context.lineTo(x0 + bestBarPx, y0 + capH)
+						context.stroke()
+
+						context.fillStyle = theme.faint
+						context.font = `400 9px ${FONT_STACK}`
+						context.textAlign = 'center'
+						context.textBaseline = 'bottom'
+						context.fillText(`~ ${bestAu} AU`, x0 + bestBarPx / 2, y0 - 6)
+						context.restore()
+					}
+				}
+			}
+		}
+
+		// Off-screen body indicators
+		{
+			const margin = 16
+			for (const target of scene.hitTargets) {
+				const screen = worldToScreen(target.x, target.y)
+				if (screen.x >= margin && screen.x <= SIZE - margin && screen.y >= margin && screen.y <= SIZE - margin) continue
+
+				const angle = Math.atan2(screen.y - CENTER, screen.x - CENTER)
+				const clampedX = Math.min(SIZE - margin, Math.max(margin, screen.x))
+				const clampedY = Math.min(SIZE - margin, Math.max(margin, screen.y))
+
+				const triSize = 5
+				const alpha = 0.7 * bodyOpacity(target.id)
+
+				context.save()
+				context.translate(clampedX, clampedY)
+				context.rotate(angle)
+				context.fillStyle = theme.dim
+				context.globalAlpha = alpha
+				context.beginPath()
+				context.moveTo(triSize, 0)
+				context.lineTo(-triSize, -triSize * 0.6)
+				context.lineTo(-triSize, triSize * 0.6)
+				context.closePath()
+				context.fill()
+				context.restore()
+
+				const labelX = clampedX - Math.cos(angle) * 14
+				const labelY = clampedY - Math.sin(angle) * 14
+				drawLabel(context, labelX, labelY, target.body.name, theme.dim, 8, 400, alpha)
+			}
+		}
 	}
 
 	$effect(() => {
 		renderMap()
 	})
 
-	function eventPoint(event: MouseEvent) {
+	// --- Coordinate transforms ---
+
+	/** Convert screen pixel coords to world (scene) coords */
+	function screenToWorld(sx: number, sy: number) {
+		return {
+			x: (sx - CENTER) / zoomLevel + CENTER - panOffset.x,
+			y: (sy - CENTER) / zoomLevel + CENTER - panOffset.y,
+		}
+	}
+
+	/** Convert world (scene) coords to screen pixel coords */
+	function worldToScreen(wx: number, wy: number) {
+		return {
+			x: CENTER + (wx - CENTER + panOffset.x) * zoomLevel,
+			y: CENTER + (wy - CENTER + panOffset.y) * zoomLevel,
+		}
+	}
+
+	function eventToScreen(event: MouseEvent) {
 		const rect = canvasEl?.getBoundingClientRect()
 		if (!rect) return null
-		const x = ((event.clientX - rect.left) / rect.width) * SIZE
-		const y = ((event.clientY - rect.top) / rect.height) * SIZE
-		return { x, y }
+		return {
+			x: ((event.clientX - rect.left) / rect.width) * SIZE,
+			y: ((event.clientY - rect.top) / rect.height) * SIZE,
+		}
+	}
+
+	function eventPoint(event: MouseEvent) {
+		const screen = eventToScreen(event)
+		if (!screen) return null
+		return screenToWorld(screen.x, screen.y)
 	}
 
 	function hitTest(point: { x: number, y: number }) {
@@ -755,7 +915,7 @@
 
 		for (const target of scene.hitTargets) {
 			const distance = Math.hypot(point.x - target.x, point.y - target.y)
-			if (distance <= target.r && distance < bestDistance) {
+			if (distance <= target.r / zoomLevel && distance < bestDistance) {
 				best = target
 				bestDistance = distance
 			}
@@ -764,7 +924,19 @@
 		return best
 	}
 
+	// --- Interaction handlers ---
+
 	function handlePointerMove(event: MouseEvent) {
+		if (isDragging && dragStart) {
+			const rect = canvasEl?.getBoundingClientRect()
+			if (!rect) return
+			const pxScale = SIZE / rect.width
+			panOffset = {
+				x: dragStart.panX + (event.clientX - dragStart.x) * pxScale / zoomLevel,
+				y: dragStart.panY + (event.clientY - dragStart.y) * pxScale / zoomLevel,
+			}
+			return
+		}
 		const point = eventPoint(event)
 		if (!point) return
 		const target = hitTest(point)
@@ -775,6 +947,24 @@
 	function handlePointerLeave() {
 		hoveredId = null
 		hoveredBody = null
+	}
+
+	function handleMouseDown(event: MouseEvent) {
+		if (event.button !== 0) return
+		const point = eventPoint(event)
+		if (point && hitTest(point)) return
+		isDragging = true
+		dragStart = {
+			x: event.clientX,
+			y: event.clientY,
+			panX: panOffset.x,
+			panY: panOffset.y,
+		}
+	}
+
+	function handleMouseUp() {
+		isDragging = false
+		dragStart = null
 	}
 
 	function handleClick(event: MouseEvent) {
@@ -790,6 +980,42 @@
 		selectedId = selectedId === target.id ? null : target.id
 	}
 
+	function resetView() {
+		zoomLevel = 1
+		panOffset = { x: 0, y: 0 }
+	}
+
+	// Wheel zoom + global mouseup listener
+	$effect(() => {
+		const canvas = canvasEl
+		if (!canvas) return
+
+		const onWheel = (event: WheelEvent) => {
+			event.preventDefault()
+			const rect = canvas.getBoundingClientRect()
+			const sx = ((event.clientX - rect.left) / rect.width) * SIZE
+			const sy = ((event.clientY - rect.top) / rect.height) * SIZE
+
+			const worldBefore = screenToWorld(sx, sy)
+			const factor = event.deltaY > 0 ? 0.9 : 1.1
+			const newZoom = Math.min(10, Math.max(0.5, zoomLevel * factor))
+
+			panOffset = {
+				x: CENTER - worldBefore.x + (sx - CENTER) / newZoom,
+				y: CENTER - worldBefore.y + (sy - CENTER) / newZoom,
+			}
+			zoomLevel = newZoom
+		}
+
+		canvas.addEventListener('wheel', onWheel, { passive: false })
+		window.addEventListener('mouseup', handleMouseUp)
+
+		return () => {
+			canvas.removeEventListener('wheel', onWheel)
+			window.removeEventListener('mouseup', handleMouseUp)
+		}
+	})
+
 	const hoveredTarget = $derived.by(() =>
 		hoveredId == null
 			? null
@@ -798,8 +1024,9 @@
 
 	const tooltipStyle = $derived.by(() => {
 		if (!hoveredTarget) return ''
-		const x = (hoveredTarget.x / SIZE) * displaySize.width
-		const y = (hoveredTarget.y / SIZE) * displaySize.height
+		const screen = worldToScreen(hoveredTarget.x, hoveredTarget.y)
+		const x = (screen.x / SIZE) * displaySize.width
+		const y = (screen.y / SIZE) * displaySize.height
 		const tipWidth = 160
 		const tipHeight = 52
 		const placeRight = x + 16 + tipWidth < displaySize.width
@@ -809,18 +1036,28 @@
 	})
 </script>
 
-<div class="relative w-full max-w-2xl mx-auto" bind:this={containerEl}>
+<div class="relative w-full" bind:this={containerEl}>
 	<canvas
 		bind:this={canvasEl}
 		width={SIZE}
 		height={SIZE}
 		class="block w-full bg-page"
-		style="aspect-ratio: 1 / 1;"
+		style="aspect-ratio: 1 / 1; cursor: {isDragging ? 'grabbing' : 'grab'};"
 		aria-label="System map of {systemName}"
 		onmousemove={handlePointerMove}
 		onmouseleave={handlePointerLeave}
+		onmousedown={handleMouseDown}
 		onclick={handleClick}
 	></canvas>
+
+	{#if isViewMoved}
+		<button
+			class="absolute top-2 right-2 px-1.5 py-0.5 text-[10px] font-medium text-dim bg-surface/80 border border-border-subtle transition-colors hover:text-accent"
+			onclick={resetView}
+		>
+			{zoomLevel.toFixed(1)}x
+		</button>
+	{/if}
 
 	{#if hoveredBody && hoveredTarget}
 		<div

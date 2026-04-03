@@ -36,7 +36,7 @@
 	]
 </script>
 
-<div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-3 py-1.5 bg-page text-xs text-secondary select-none">
+<div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-3 py-1.5 bg-page border-b border-border-subtle text-xs text-secondary select-none">
 	<!-- Scale -->
 	<div class="flex items-center gap-1">
 		<span class="text-faint uppercase tracking-wider">Scale</span>
