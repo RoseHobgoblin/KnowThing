@@ -6,7 +6,6 @@
 	import Input from '$lib/components/ui/Input.svelte'
 	import SaveStatusBadge from '$lib/components/editor/SaveStatusBadge.svelte'
 	import UnsavedChangesGuard from '$lib/components/editor/UnsavedChangesGuard.svelte'
-	import RecordModeBanner from '$lib/components/editor/RecordModeBanner.svelte'
 	import FormNotice from '$lib/components/editor/FormNotice.svelte'
 
 	let { form, data }: { form: ActionData, data: PageData } = $props()
@@ -22,12 +21,6 @@
 <svelte:head>
 	<title>Create page - KnowThing</title>
 </svelte:head>
-
-<RecordModeBanner
-	modeLabel="Create Article"
-	title="New Wiki Article"
-	description="Create a new article page here. Structured record configuration lives in domain-specific configure screens."
-/>
 
 {#if formError}
 	<div class="mb-3">
