@@ -289,10 +289,16 @@
 		}
 
 		const rawDirectPositions: PositionedOrbit[] = []
-		let previousOrbitRadius = DIRECT_MIN_R - DIRECT_MIN_GAP
+		const minSpaceNeeded = DIRECT_MIN_R + (directOrbiters.length - 1) * DIRECT_MIN_GAP
+		const gapScale = minSpaceNeeded > maxVisualRadius * 0.6
+			? (maxVisualRadius * 0.6) / minSpaceNeeded
+			: 1
+		const effectiveMinR = DIRECT_MIN_R * gapScale
+		const effectiveMinGap = DIRECT_MIN_GAP * gapScale
+		let previousOrbitRadius = effectiveMinR - effectiveMinGap
 		for (const [index, body] of directOrbiters.entries()) {
 			const desiredA = auToPixels(body.orbitAu)
-			const a = Math.max(DIRECT_MIN_R, previousOrbitRadius + DIRECT_MIN_GAP, desiredA)
+			const a = Math.max(effectiveMinR, previousOrbitRadius + effectiveMinGap, desiredA)
 			previousOrbitRadius = a
 			const b = a * Math.sqrt(1 - body.ecc * body.ecc)
 			const angle = computeAngle(body, index, directOrbiters.length)
