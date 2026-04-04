@@ -104,6 +104,21 @@
 		content: string
 	}
 
+	type BodyDirtySnapshot = BodyDraftSnapshot & {
+		densityUnlocked: boolean
+		densityOverride: string | null
+		gravityUnlocked: boolean
+		gravityOverride: string | null
+		escapeUnlocked: boolean
+		escapeOverride: string | null
+		periodUnlocked: boolean
+		periodOverride: number | string | null
+	}
+
+	function serializeDirtySnapshot(snapshot: BodyDirtySnapshot): string {
+		return JSON.stringify(snapshot)
+	}
+
 	function buildInitialBodyDraft(bodyRecord: BodyRecord, articleContent: string): BodyDraftSnapshot {
 		return {
 			name: bodyRecord.name,
@@ -231,7 +246,17 @@
 	let saving = $state(false)
 	let saveError = $state('')
 	let savedAt = $state<Date | null>(null)
-	let initialSnapshot = JSON.stringify(initialDraft)
+	let initialSnapshot = $state(serializeDirtySnapshot({
+		...initialDraft,
+		densityUnlocked: false,
+		densityOverride: null,
+		gravityUnlocked: false,
+		gravityOverride: null,
+		escapeUnlocked: false,
+		escapeOverride: null,
+		periodUnlocked: initialDraft.orbitalPeriodDays != null,
+		periodOverride: initialDraft.orbitalPeriodDays,
+	}))
 	// Always-derived display fields
 	const massDisplay = $derived(massKg ? formatMass(massKg) : null)
 	const radiusDisplay = $derived(radiusM ? formatRadius(radiusM) : null)
@@ -257,7 +282,7 @@
 	const keplerPeriodDisplay = $derived(keplerPeriodDays ? `${keplerPeriodDays.toFixed(3)} days` : null)
 	const computedDisplay = $derived(deriveDisplayStrings(effectivePeriodDays, semiMajorAxisAu, rotationPeriodS))
 
-	const currentSnapshot = $derived(JSON.stringify({
+	const currentSnapshot = $derived(serializeDirtySnapshot({
 		name,
 		slug,
 		bodyType,
