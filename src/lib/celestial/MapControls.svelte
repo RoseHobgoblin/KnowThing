@@ -2,7 +2,7 @@
 	import type { ScaleMode, LabelMode, TrailMode } from './map-settings.js'
 
 	let {
-		scale = $bindable('compressed'),
+		scale = $bindable('all'),
 		labels = $bindable('major'),
 		trails = $bindable('off'),
 		follow = $bindable(false),

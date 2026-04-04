@@ -10,7 +10,7 @@ import {
 	deleteCelestialContentRecord,
 	ensurePlanetaryBodyContentRecord,
 } from '$lib/server/services/celestial-content.js'
-import { deriveBodyFields, deriveDisplayStrings } from '$lib/celestial/compute.js'
+import { deriveBodyFields, deriveBodyOrbitalFields, deriveDisplayStrings } from '$lib/celestial/compute.js'
 
 /** GET /api/planetary-bodies/:slug */
 export const GET: RequestHandler = async ({ params }) => {
@@ -133,11 +133,31 @@ export const PUT: RequestHandler = async (event) => {
 	if (data.surfaceGravity === undefined && derived.surfaceGravity) setClause.surfaceGravity = derived.surfaceGravity
 	if (data.escapeVelocity === undefined && derived.escapeVelocity) setClause.escapeVelocity = derived.escapeVelocity
 
-	// Auto-format display strings from numeric values
-	const finalOrbitalDays = data.orbitalPeriodDays !== undefined ? data.orbitalPeriodDays : current.orbitalPeriodDays
+	// Look up parent mass for Kepler derivation
+	const finalStarId = data.starId !== undefined ? data.starId : current.starId
+	const finalParentId = data.parentId !== undefined ? data.parentId : current.parentId
+	let parentMassKg: number | null = null
+	if (finalParentId != null) {
+		const [parent] = await db.select({ massKg: planetaryBodies.massKg }).from(planetaryBodies).where(eq(planetaryBodies.id, finalParentId))
+		parentMassKg = parent?.massKg ?? null
+	}
+	if (parentMassKg == null && finalStarId != null) {
+		const [star] = await db.select({ massKg: stars.massKg }).from(stars).where(eq(stars.id, finalStarId))
+		parentMassKg = star?.massKg ?? null
+	}
+
+	// Auto-compute orbital period from Kepler's third law when not provided
 	const finalAu = data.semiMajorAxisAu !== undefined ? data.semiMajorAxisAu : current.semiMajorAxisAu
+	const finalOrbitalDays = data.orbitalPeriodDays !== undefined ? data.orbitalPeriodDays : current.orbitalPeriodDays
+	const orbital = deriveBodyOrbitalFields(finalAu, finalOrbitalDays, finalMassKg, parentMassKg)
+	const effectivePeriodDays = finalOrbitalDays ?? orbital.orbitalPeriodDays
+	if (data.orbitalPeriodDays === undefined && effectivePeriodDays != null && current.orbitalPeriodDays == null) {
+		setClause.orbitalPeriodDays = effectivePeriodDays
+	}
+
+	// Auto-format display strings from numeric values
 	const finalRotS = data.rotationPeriodS !== undefined ? data.rotationPeriodS : current.rotationPeriodS
-	const display = deriveDisplayStrings(finalOrbitalDays, finalAu, finalRotS)
+	const display = deriveDisplayStrings(effectivePeriodDays, finalAu, finalRotS)
 	if (data.orbitalPeriod === undefined && display.orbitalPeriod) setClause.orbitalPeriod = display.orbitalPeriod
 	if (data.semiMajorAxis === undefined && display.semiMajorAxis) setClause.semiMajorAxis = display.semiMajorAxis
 	if (data.rotationPeriod === undefined && display.rotationPeriod) setClause.rotationPeriod = display.rotationPeriod

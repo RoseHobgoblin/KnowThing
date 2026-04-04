@@ -18,6 +18,17 @@
 	import { getStarPresets, type StarPreset } from '$lib/celestial/presets.js'
 	import { deriveStarOrbitalFields, deriveDisplayStrings } from '$lib/celestial/compute.js'
 	import { validateStarPhysics } from '$lib/celestial/validate-physics.js'
+	import TabNavigation from '$lib/components/ui/TabNavigation.svelte'
+	import StickyActionBar from '$lib/components/editor/StickyActionBar.svelte'
+
+	const starTabs = [
+		{ id: 'identity', label: 'Identity' },
+		{ id: 'stellar', label: 'Stellar' },
+		{ id: 'orbit', label: 'Orbit' },
+		{ id: 'observation', label: 'Observation' },
+		{ id: 'article', label: 'Article' },
+	]
+	let activeTab = $state('identity')
 
 	type CelestialCrumb = { label: string, href: string }
 	type CelestialSystemOption = { id: number, name: string }
@@ -376,94 +387,87 @@
 				messages={physicsWarnings.map(w => `${w.severity === 'impossible' ? '🚫' : '⚠️'} ${w.message}`)}
 			/>
 		{/if}
-		<section class="bg-page border border-border-subtle p-5">
-			<h2 class="text-sm font-semibold text-heading border-b border-border-subtle pb-2">Current Summary</h2>
-			<div class="grid grid-cols-1 gap-4 pt-3 md:grid-cols-4">
-				<div>
-					<div class="text-xs font-medium text-secondary">System</div>
-					<div class="text-sm text-body">{systemItems.find(item => item.value === systemIdStr)?.label || 'Standalone'}</div>
-				</div>
-				<div>
-					<div class="text-xs font-medium text-secondary">Classification</div>
-					<div class="text-sm text-body">{spectralType || 'Unspecified star'}</div>
-				</div>
-				<div>
-					<div class="text-xs font-medium text-secondary">Orbit Summary</div>
-					<div class="text-sm text-body">{semiMajorAxisAu ?? '-'} AU, e={eccentricity ?? '-'}</div>
-				</div>
-				<div>
-					<div class="text-xs font-medium text-secondary">Article State</div>
-					<div class="text-sm text-body">{content.trim() ? 'Article content present' : 'No article content yet'}</div>
-				</div>
-			</div>
-		</section>
+		<TabNavigation navItems={starTabs} bind:activeSectionId={activeTab} fullWidth size="sm" />
 
-		<section class="bg-raised border border-border-subtle p-5 space-y-4">
-			<h2 class="text-sm font-semibold text-heading border-b border-border-subtle pb-2">Identity</h2>
-			<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-				<div><span class="text-xs font-medium text-secondary block mb-1">Name</span><p class="text-sm text-body">{initialStar.name}</p></div>
-				<Select label="System" type="single" bind:value={systemIdStr} items={systemItems} />
-				<Input label="Color" bind:value={color} placeholder="Yellow-white" />
-			</div>
-			<Input label="Description" bind:value={description} placeholder="Brief description..." />
-		</section>
-
-		<section class="bg-raised border border-border-subtle p-5 space-y-4">
-			<h2 class="text-sm font-semibold text-heading border-b border-border-subtle pb-2">Stellar Properties</h2>
-			<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-				<Input label="Spectral Type" bind:value={spectralType} placeholder="G2V" />
-				<Input label="Mass (kg)" type="number" bind:value={massKg} step="any" placeholder="1.989e30" />
-				<Input label="Radius (m)" type="number" bind:value={radiusM} step="any" placeholder="696340000" />
-				<Input label="Luminosity" bind:value={luminosity} placeholder="1.0 solar luminosities" />
-				<Input label="Visual Luminosity" bind:value={luminosityVisual} placeholder="1.0 solar luminosities (visual)" />
-				<Input label="Temperature" bind:value={temperature} placeholder="5,778 K" />
-				<Input label="Age" bind:value={age} placeholder="~4.6 billion years" />
-			</div>
-		</section>
-
-		<section class="bg-raised border border-border-subtle p-5 space-y-4">
-			<h2 class="text-sm font-semibold text-heading border-b border-border-subtle pb-2">Orbital Parameters</h2>
-			<p class="text-xs text-faint">For binary or multiple star systems. Leave blank for single stars.</p>
-			<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-				<Input label="Companion" bind:value={companion} placeholder="Binary partner name" />
-				<Input label="Semi-major Axis (AU)" type="number" bind:value={semiMajorAxisAu} step="any" placeholder="23.4" error={semiMajorAxisAu !== null && semiMajorAxisAu < 0 ? 'Must be 0 or greater' : ''} />
-				<Input label="Eccentricity" type="number" bind:value={eccentricity} step="any" min={0} max={1} placeholder="0.0" error={eccentricity !== null && (eccentricity < 0 || eccentricity > 1) ? 'Use a value from 0 to 1' : ''} />
-				<Input label="Epoch Phase" type="number" bind:value={epochPhase} step="any" min={0} max={1} placeholder="0.0" error={epochPhase !== null && (epochPhase < 0 || epochPhase > 1) ? 'Use a value from 0 to 1' : ''} />
-				<div>
-					<span class="text-xs font-medium text-secondary block mb-1">Semi-major Axis</span>
-					<p class="text-sm text-dim italic">{computedDisplay.semiMajorAxis ?? '—'}</p>
+		{#if activeTab === 'identity'}
+			<section class="bg-raised border border-border-subtle p-5 space-y-4">
+				<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+					<div><span class="text-xs font-medium text-secondary block mb-1">Name</span><p class="text-sm text-body">{initialStar.name}</p></div>
+					<Select label="System" type="single" bind:value={systemIdStr} items={systemItems} />
+					<Input label="Color" bind:value={color} placeholder="Yellow-white" />
 				</div>
-				<div>
-					<span class="text-xs font-medium text-secondary block mb-1">Periastron</span>
-					<p class="text-sm text-dim italic">{computedOrbital.periastron ?? '—'}</p>
+				<Input label="Description" bind:value={description} placeholder="Brief description..." />
+			</section>
+		{:else if activeTab === 'stellar'}
+			<section class="bg-raised border border-border-subtle p-5 space-y-4">
+				<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+					<Input label="Spectral Type" bind:value={spectralType} placeholder="G2V" />
+					<Input label="Mass (kg)" type="number" bind:value={massKg} step="any" placeholder="1.989e30" />
+					<Input label="Radius (m)" type="number" bind:value={radiusM} step="any" placeholder="696340000" />
+					<Input label="Luminosity" bind:value={luminosity} placeholder="1.0 solar luminosities" />
+					<Input label="Visual Luminosity" bind:value={luminosityVisual} placeholder="1.0 solar luminosities (visual)" />
+					<Input label="Temperature" bind:value={temperature} placeholder="5,778 K" />
+					<Input label="Age" bind:value={age} placeholder="~4.6 billion years" />
 				</div>
-				<div>
-					<span class="text-xs font-medium text-secondary block mb-1">Apastron</span>
-					<p class="text-sm text-dim italic">{computedOrbital.apastron ?? '—'}</p>
+			</section>
+		{:else if activeTab === 'orbit'}
+			<section class="bg-raised border border-border-subtle p-5 space-y-4">
+				<p class="text-xs text-faint">For binary or multiple star systems. Leave blank for single stars.</p>
+				<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+					<Input label="Companion" bind:value={companion} placeholder="Binary partner name" />
+					<Input label="Semi-major Axis (AU)" type="number" bind:value={semiMajorAxisAu} step="any" placeholder="23.4" error={semiMajorAxisAu !== null && semiMajorAxisAu < 0 ? 'Must be 0 or greater' : ''} />
+					<Input label="Eccentricity" type="number" bind:value={eccentricity} step="any" min={0} max={1} placeholder="0.0" error={eccentricity !== null && (eccentricity < 0 || eccentricity > 1) ? 'Use a value from 0 to 1' : ''} />
+					<Input label="Epoch Phase" type="number" bind:value={epochPhase} step="any" min={0} max={1} placeholder="0.0" error={epochPhase !== null && (epochPhase < 0 || epochPhase > 1) ? 'Use a value from 0 to 1' : ''} />
+					<div>
+						<span class="text-xs font-medium text-secondary block mb-1">Semi-major Axis</span>
+						<p class="text-sm text-dim italic">{computedDisplay.semiMajorAxis ?? '—'}</p>
+					</div>
+					<div>
+						<span class="text-xs font-medium text-secondary block mb-1">Periastron</span>
+						<p class="text-sm text-dim italic">{computedOrbital.periastron ?? '—'}</p>
+					</div>
+					<div>
+						<span class="text-xs font-medium text-secondary block mb-1">Apastron</span>
+						<p class="text-sm text-dim italic">{computedOrbital.apastron ?? '—'}</p>
+					</div>
 				</div>
-			</div>
-		</section>
+			</section>
+		{:else if activeTab === 'observation'}
+			<section class="bg-raised border border-border-subtle p-5 space-y-4">
+				<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+					<Input label="Apparent Magnitude" bind:value={apparentMagnitude} placeholder="-26.74" />
+					<Input label="Angular Diameter" bind:value={angularDiameter} placeholder="31.46 arcmin" />
+				</div>
+			</section>
+		{:else if activeTab === 'article'}
+			<ConfigureFooter
+				initialContent={initialWikiContent}
+				bind:content
+				bind:editSummary
+				cancelHref={viewPath}
+				{saving}
+				dirty={isDirty}
+				error={saveError}
+				{savedAt}
+				onsave={save}
+				ondiscard={resetDraft}
+			/>
+		{/if}
 
-		<section class="bg-raised border border-border-subtle p-5 space-y-4">
-			<h2 class="text-sm font-semibold text-heading border-b border-border-subtle pb-2">Observation</h2>
-			<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-				<Input label="Apparent Magnitude" bind:value={apparentMagnitude} placeholder="-26.74" />
-				<Input label="Angular Diameter" bind:value={angularDiameter} placeholder="31.46 arcmin" />
+		{#if activeTab !== 'article'}
+			<div class="space-y-3">
+				<StickyActionBar
+					dirty={isDirty}
+					{saving}
+					error={saveError}
+					{savedAt}
+					saveType="button"
+					onsave={save}
+					ondiscard={resetDraft}
+					cancelHref={viewPath}
+				/>
 			</div>
-		</section>
-
-		<ConfigureFooter
-			initialContent={initialWikiContent}
-			bind:content
-			bind:editSummary
-			cancelHref={viewPath}
-			{saving}
-			dirty={isDirty}
-			error={saveError}
-			{savedAt}
-			onsave={save}
-			ondiscard={resetDraft}
-		/>
+		{/if}
 
 		{#if permissions.canManageSettings}
 			<section class="border border-error-border bg-error-subtle/40 p-5 space-y-3">

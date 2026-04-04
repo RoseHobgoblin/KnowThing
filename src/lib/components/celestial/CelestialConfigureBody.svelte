@@ -17,13 +17,26 @@
 	import { updatePlanetaryBodySchema } from '$lib/celestial/schema.js'
 	import { summarizeZodIssues } from '$lib/utils.js'
 	import { getBodyPresets, type BodyPreset } from '$lib/celestial/presets.js'
-	import { deriveBodyFields, deriveDisplayStrings } from '$lib/celestial/compute.js'
+	import { deriveBodyFields, deriveBodyOrbitalFields, deriveDisplayStrings } from '$lib/celestial/compute.js'
 	import { validateBodyPhysics } from '$lib/celestial/validate-physics.js'
+	import TabNavigation from '$lib/components/ui/TabNavigation.svelte'
+	import StickyActionBar from '$lib/components/editor/StickyActionBar.svelte'
+
+	const bodyTabs = [
+		{ id: 'identity', label: 'Identity' },
+		{ id: 'physical', label: 'Physical' },
+		{ id: 'composition', label: 'Composition' },
+		{ id: 'orbit', label: 'Orbit' },
+		{ id: 'rotation', label: 'Rotation' },
+		{ id: 'observation', label: 'Observation' },
+		{ id: 'article', label: 'Article' },
+	]
+	let activeTab = $state('identity')
 
 	type CelestialCrumb = { label: string, href: string }
 	type BodyType = 'planet' | 'asteroid' | 'ring_system'
-	type CelestialStarOption = { id: number, name: string, slug: string }
-	type CelestialBodyOption = { id: number, name: string, slug: string }
+	type CelestialStarOption = { id: number, name: string, slug: string, massKg?: number | null }
+	type CelestialBodyOption = { id: number, name: string, slug: string, massKg?: number | null }
 	type BodyRecord = {
 		id: number
 		name: string
@@ -204,7 +217,21 @@
 	// Auto-computed derived fields
 	const computedPhysical = $derived(deriveBodyFields(massKg, radiusM))
 	const physicsWarnings = $derived(validateBodyPhysics({ massKg, radiusM, orbitalPeriodDays, semiMajorAxisAu, eccentricity, rotationPeriodS, axialTilt, bodyType, isSatellite: !!parentIdStr }))
-	const computedDisplay = $derived(deriveDisplayStrings(orbitalPeriodDays, semiMajorAxisAu, rotationPeriodS))
+
+	const parentMassKg = $derived.by(() => {
+		if (parentIdStr) {
+			const parent = siblings.find(s => String(s.id) === parentIdStr)
+			if (parent?.massKg) return parent.massKg
+		}
+		if (starIdStr) {
+			const star = allStars.find(s => String(s.id) === starIdStr)
+			if (star?.massKg) return star.massKg
+		}
+		return null
+	})
+	const computedOrbital = $derived(deriveBodyOrbitalFields(semiMajorAxisAu, orbitalPeriodDays, massKg, parentMassKg))
+	const effectivePeriodDays = $derived(orbitalPeriodDays ?? computedOrbital.orbitalPeriodDays)
+	const computedDisplay = $derived(deriveDisplayStrings(effectivePeriodDays, semiMajorAxisAu, rotationPeriodS))
 
 	const currentSnapshot = $derived(JSON.stringify({
 		bodyType,
@@ -454,125 +481,129 @@
 				messages={physicsWarnings.map(w => `${w.severity === 'impossible' ? '🚫' : '⚠️'} ${w.message}`)}
 			/>
 		{/if}
-		<section class="bg-page border border-border-subtle p-5">
-			<h2 class="text-sm font-semibold text-heading border-b border-border-subtle pb-2">Current Summary</h2>
-			<div class="grid grid-cols-1 gap-4 pt-3 md:grid-cols-4">
-				<div>
-					<div class="text-xs font-medium text-secondary">Classification</div>
-					<div class="text-sm text-body">{bodyType}</div>
-				</div>
-				<div>
-					<div class="text-xs font-medium text-secondary">Parent Star</div>
-					<div class="text-sm text-body">{starItems.find(item => item.value === starIdStr)?.label || 'Unassigned'}</div>
-				</div>
-				<div>
-					<div class="text-xs font-medium text-secondary">Orbit Summary</div>
-					<div class="text-sm text-body">{semiMajorAxisAu ?? '-'} AU, e={eccentricity ?? '-'}</div>
-				</div>
-				<div>
-					<div class="text-xs font-medium text-secondary">Article State</div>
-					<div class="text-sm text-body">{content.trim() ? 'Article content present' : 'No article content yet'}</div>
-				</div>
-			</div>
-		</section>
+		<TabNavigation navItems={bodyTabs} bind:activeSectionId={activeTab} fullWidth size="sm" />
 
-		<section class="bg-raised border border-border-subtle p-5 space-y-4">
-			<h2 class="text-sm font-semibold text-heading border-b border-border-subtle pb-2">Identity</h2>
-			<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-				<div><span class="text-xs font-medium text-secondary block mb-1">Name</span><p class="text-sm text-body">{initialBody.name}</p></div>
-				<Select label="Body Type" type="single" bind:value={bodyType} items={bodyTypeItems} />
-				<Select label="Parent Star" type="single" bind:value={starIdStr} items={starItems} />
-			</div>
-			<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-				<Select label="Orbits Body" type="single" bind:value={parentIdStr} items={parentItems} />
-				<Input label="Description" bind:value={description} placeholder="Brief description..." />
-			</div>
-		</section>
-
-		<section class="bg-raised border border-border-subtle p-5 space-y-4">
-			<h2 class="text-sm font-semibold text-heading border-b border-border-subtle pb-2">Physical Characteristics</h2>
-			<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-				<Input label="Mass (kg)" type="number" bind:value={massKg} step="any" placeholder="5.972e24" />
-				<Input label="Radius (m)" type="number" bind:value={radiusM} step="any" placeholder="6371000" />
-				<div>
-					<span class="text-xs font-medium text-secondary block mb-1">Density</span>
-					<p class="text-sm text-dim italic">{computedPhysical.density ?? '—'}</p>
+		{#if activeTab === 'identity'}
+			<section class="bg-raised border border-border-subtle p-5 space-y-4">
+				<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+					<div><span class="text-xs font-medium text-secondary block mb-1">Name</span><p class="text-sm text-body">{initialBody.name}</p></div>
+					<Select label="Body Type" type="single" bind:value={bodyType} items={bodyTypeItems} />
+					<Select label="Parent Star" type="single" bind:value={starIdStr} items={starItems} />
 				</div>
-				<div>
-					<span class="text-xs font-medium text-secondary block mb-1">Surface Gravity</span>
-					<p class="text-sm text-dim italic">{computedPhysical.surfaceGravity ?? '—'}</p>
+				<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+					<Select label="Orbits Body" type="single" bind:value={parentIdStr} items={parentItems} />
+					<Input label="Description" bind:value={description} placeholder="Brief description..." />
 				</div>
-				<div>
-					<span class="text-xs font-medium text-secondary block mb-1">Escape Velocity</span>
-					<p class="text-sm text-dim italic">{computedPhysical.escapeVelocity ?? '—'}</p>
+			</section>
+		{:else if activeTab === 'physical'}
+			<section class="bg-raised border border-border-subtle p-5 space-y-4">
+				<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+					<Input label="Mass (kg)" type="number" bind:value={massKg} step="any" placeholder="5.972e24" />
+					<Input label="Radius (m)" type="number" bind:value={radiusM} step="any" placeholder="6371000" />
+					<div>
+						<span class="text-xs font-medium text-secondary block mb-1">Density</span>
+						<p class="text-sm text-dim italic">{computedPhysical.density ?? '—'}</p>
+					</div>
+					<div>
+						<span class="text-xs font-medium text-secondary block mb-1">Surface Gravity</span>
+						<p class="text-sm text-dim italic">{computedPhysical.surfaceGravity ?? '—'}</p>
+					</div>
+					<div>
+						<span class="text-xs font-medium text-secondary block mb-1">Escape Velocity</span>
+						<p class="text-sm text-dim italic">{computedPhysical.escapeVelocity ?? '—'}</p>
+					</div>
+					<Input label="Temperature" bind:value={temperature} placeholder="288 K (mean)" />
+					<Input label="Age" bind:value={age} placeholder="~4.5 billion years" />
 				</div>
-				<Input label="Temperature" bind:value={temperature} placeholder="288 K (mean)" />
-				<Input label="Age" bind:value={age} placeholder="~4.5 billion years" />
-			</div>
-		</section>
-
-		<section class="bg-raised border border-border-subtle p-5 space-y-4">
-			<h2 class="text-sm font-semibold text-heading border-b border-border-subtle pb-2">Composition</h2>
-			<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-				<Input label="Composition" bind:value={composition} placeholder="Iron, nickel, silicates" />
-				<Input label="Atmosphere" bind:value={atmosphere} placeholder="N2 78%, O2 21%" />
-				<Input label="Surface Pressure" bind:value={surfacePressure} placeholder="101.325 kPa" />
-			</div>
-		</section>
-
-		<section class="bg-raised border border-border-subtle p-5 space-y-4">
-			<h2 class="text-sm font-semibold text-heading border-b border-border-subtle pb-2">Orbital Parameters</h2>
-			<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-				<Input label="Orbital Period (days)" type="number" bind:value={orbitalPeriodDays} step="any" placeholder="365.25" />
-				<div>
-					<span class="text-xs font-medium text-secondary block mb-1">Orbital Period</span>
-					<p class="text-sm text-dim italic">{computedDisplay.orbitalPeriod ?? '—'}</p>
+			</section>
+		{:else if activeTab === 'composition'}
+			<section class="bg-raised border border-border-subtle p-5 space-y-4">
+				<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+					<Input label="Composition" bind:value={composition} placeholder="Iron, nickel, silicates" />
+					<Input label="Atmosphere" bind:value={atmosphere} placeholder="N2 78%, O2 21%" />
+					<Input label="Surface Pressure" bind:value={surfacePressure} placeholder="101.325 kPa" />
 				</div>
-				<Input label="Semi-major Axis (AU)" type="number" bind:value={semiMajorAxisAu} step="any" placeholder="1.0" error={semiMajorAxisAu !== null && semiMajorAxisAu < 0 ? 'Must be 0 or greater' : ''} />
-				<div>
-					<span class="text-xs font-medium text-secondary block mb-1">Semi-major Axis</span>
-					<p class="text-sm text-dim italic">{computedDisplay.semiMajorAxis ?? '—'}</p>
+			</section>
+		{:else if activeTab === 'orbit'}
+			<section class="bg-raised border border-border-subtle p-5 space-y-4">
+				<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+					<Input label="Orbital Period (days)" type="number" bind:value={orbitalPeriodDays} step="any" placeholder="365.25" />
+					<div>
+						<span class="text-xs font-medium text-secondary block mb-1">Orbital Period</span>
+						<p class="text-sm text-dim italic">
+							{computedDisplay.orbitalPeriod ?? '—'}
+							{#if orbitalPeriodDays == null && computedOrbital.orbitalPeriodDays != null}
+								<span class="text-faint text-[10px] ml-1">(Kepler)</span>
+							{/if}
+						</p>
+					</div>
+					<Input label="Semi-major Axis (AU)" type="number" bind:value={semiMajorAxisAu} step="any" placeholder="1.0" error={semiMajorAxisAu !== null && semiMajorAxisAu < 0 ? 'Must be 0 or greater' : ''} />
+					<div>
+						<span class="text-xs font-medium text-secondary block mb-1">Semi-major Axis</span>
+						<p class="text-sm text-dim italic">{computedDisplay.semiMajorAxis ?? '—'}</p>
+					</div>
+					<Input label="Eccentricity" type="number" bind:value={eccentricity} step="any" min={0} max={1} placeholder="0.0167" error={eccentricity !== null && (eccentricity < 0 || eccentricity > 1) ? 'Use a value from 0 to 1' : ''} />
+					<Input label="Inclination (deg)" type="number" bind:value={inclination} step="any" placeholder="0.0" />
+					<Input label="Epoch Phase" type="number" bind:value={epochPhase} step="any" min={0} max={1} placeholder="0.0" error={epochPhase !== null && (epochPhase < 0 || epochPhase > 1) ? 'Use a value from 0 to 1' : ''} />
+					<div>
+						<span class="text-xs font-medium text-secondary block mb-1">Orbital Velocity</span>
+						<p class="text-sm text-dim italic">{computedOrbital.orbitalVelocity ?? '—'}</p>
+					</div>
+					<div>
+						<span class="text-xs font-medium text-secondary block mb-1">Hill Sphere</span>
+						<p class="text-sm text-dim italic">{computedOrbital.hillSphere ?? '—'}</p>
+					</div>
 				</div>
-				<Input label="Eccentricity" type="number" bind:value={eccentricity} step="any" min={0} max={1} placeholder="0.0167" error={eccentricity !== null && (eccentricity < 0 || eccentricity > 1) ? 'Use a value from 0 to 1' : ''} />
-				<Input label="Inclination (deg)" type="number" bind:value={inclination} step="any" placeholder="0.0" />
-				<Input label="Epoch Phase" type="number" bind:value={epochPhase} step="any" min={0} max={1} placeholder="0.0" error={epochPhase !== null && (epochPhase < 0 || epochPhase > 1) ? 'Use a value from 0 to 1' : ''} />
-			</div>
-		</section>
-
-		<section class="bg-raised border border-border-subtle p-5 space-y-4">
-			<h2 class="text-sm font-semibold text-heading border-b border-border-subtle pb-2">Rotation</h2>
-			<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-				<Input label="Rotation Period (seconds)" type="number" bind:value={rotationPeriodS} step="any" placeholder="86164.1" />
-				<div>
-					<span class="text-xs font-medium text-secondary block mb-1">Rotation Period</span>
-					<p class="text-sm text-dim italic">{computedDisplay.rotationPeriod ?? '—'}</p>
+			</section>
+		{:else if activeTab === 'rotation'}
+			<section class="bg-raised border border-border-subtle p-5 space-y-4">
+				<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+					<Input label="Rotation Period (seconds)" type="number" bind:value={rotationPeriodS} step="any" placeholder="86164.1" />
+					<div>
+						<span class="text-xs font-medium text-secondary block mb-1">Rotation Period</span>
+						<p class="text-sm text-dim italic">{computedDisplay.rotationPeriod ?? '—'}</p>
+					</div>
+					<Input label="Axial Tilt (deg)" type="number" bind:value={axialTilt} step="any" placeholder="23.44" />
 				</div>
-				<Input label="Axial Tilt (deg)" type="number" bind:value={axialTilt} step="any" placeholder="23.44" />
-			</div>
-		</section>
+			</section>
+		{:else if activeTab === 'observation'}
+			<section class="bg-raised border border-border-subtle p-5 space-y-4">
+				<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+					<Input label="Apparent Magnitude" bind:value={apparentMagnitude} placeholder="-3.86" />
+					<Input label="Angular Diameter" bind:value={angularDiameter} placeholder="3.5 arcsec" />
+					<Input label="Albedo" bind:value={albedo} placeholder="0.306" />
+					<Checkbox bind:value={hasRings} label="Has rings" />
+				</div>
+			</section>
+		{:else if activeTab === 'article'}
+			<ConfigureFooter
+				initialContent={initialWikiContent}
+				bind:content
+				bind:editSummary
+				cancelHref={viewPath}
+				{saving}
+				dirty={isDirty}
+				error={saveError}
+				{savedAt}
+				onsave={save}
+				ondiscard={resetDraft}
+			/>
+		{/if}
 
-		<section class="bg-raised border border-border-subtle p-5 space-y-4">
-			<h2 class="text-sm font-semibold text-heading border-b border-border-subtle pb-2">Observation and System</h2>
-			<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-				<Input label="Apparent Magnitude" bind:value={apparentMagnitude} placeholder="-3.86" />
-				<Input label="Angular Diameter" bind:value={angularDiameter} placeholder="3.5 arcsec" />
-				<Input label="Albedo" bind:value={albedo} placeholder="0.306" />
-				<Checkbox bind:value={hasRings} label="Has rings" />
+		{#if activeTab !== 'article'}
+			<div class="space-y-3">
+				<StickyActionBar
+					dirty={isDirty}
+					{saving}
+					error={saveError}
+					{savedAt}
+					saveType="button"
+					onsave={save}
+					ondiscard={resetDraft}
+					cancelHref={viewPath}
+				/>
 			</div>
-		</section>
-
-		<ConfigureFooter
-			initialContent={initialWikiContent}
-			bind:content
-			bind:editSummary
-			cancelHref={viewPath}
-			{saving}
-			dirty={isDirty}
-			error={saveError}
-			{savedAt}
-			onsave={save}
-			ondiscard={resetDraft}
-		/>
+		{/if}
 
 		{#if permissions.canManageSettings}
 			<section class="border border-error-border bg-error-subtle/40 p-5 space-y-3">

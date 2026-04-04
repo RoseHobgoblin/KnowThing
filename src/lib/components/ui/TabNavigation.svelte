@@ -121,14 +121,14 @@
 	<div
 		bind:this={containerElement}
 		class={cn(
-			'p-1 relative bg-raised',
+			'p-1 relative bg-page border border-border',
 			fullWidth ? 'grid grid-flow-col auto-cols-fr w-full gap-1' : 'inline-flex gap-1',
 		)}
 	>
 		<!-- Active indicator -->
 		<div
 			class={cn(
-				'absolute left-0 top-0 bg-surface shadow-sm',
+				'absolute left-0 top-0 bg-raised shadow-sm',
 				indicatorReady && 'transition-[transform,width] duration-300 ease-out',
 			)}
 			style:transform={indicatorStyle.transform}

@@ -121,9 +121,9 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			parentCrumbs.push({ label: parentSystem.name, href: `/celestial/${parentSystem.slug}` })
 		}
 
-		const allStars = await db.select({ id: stars.id, name: stars.name, slug: stars.slug }).from(stars).orderBy(stars.name)
+		const allStars = await db.select({ id: stars.id, name: stars.name, slug: stars.slug, massKg: stars.massKg }).from(stars).orderBy(stars.name)
 		const siblings = planet.starId
-			? await db.select({ id: planetaryBodies.id, name: planetaryBodies.name, slug: planetaryBodies.slug })
+			? await db.select({ id: planetaryBodies.id, name: planetaryBodies.name, slug: planetaryBodies.slug, massKg: planetaryBodies.massKg })
 				.from(planetaryBodies)
 				.where(eq(planetaryBodies.starId, planet.starId))
 			: []

@@ -23,6 +23,38 @@ export function computeEscapeVelocity(massKg: number, radiusM: number): number {
 	return Math.sqrt((2 * G * massKg) / radiusM)
 }
 
+/** orbital period via Kepler's third law: T = 2π√(a³/GM) → days */
+export function computeOrbitalPeriodDays(semiMajorAxisAu: number, parentMassKg: number): number {
+	const a = semiMajorAxisAu * AU_M
+	const seconds = 2 * Math.PI * Math.sqrt(a ** 3 / (G * parentMassKg))
+	return seconds / 86_400
+}
+
+/** mean orbital velocity: v = 2πa / T → m/s */
+export function computeOrbitalVelocity(semiMajorAxisAu: number, orbitalPeriodDays: number): number {
+	const a = semiMajorAxisAu * AU_M
+	return (2 * Math.PI * a) / (orbitalPeriodDays * 86_400)
+}
+
+/** Hill sphere radius: r_H ≈ a × (m / 3M)^(1/3) → AU */
+export function computeHillSphereAu(semiMajorAxisAu: number, bodyMassKg: number, parentMassKg: number): number {
+	return semiMajorAxisAu * Math.cbrt(bodyMassKg / (3 * parentMassKg))
+}
+
+/** Roche limit (rigid body): d ≈ R_parent × (2 × ρ_parent / ρ_sat)^(1/3) → metres */
+export function computeRocheLimitM(parentRadiusM: number, parentDensity: number, bodyDensity: number): number {
+	return parentRadiusM * Math.cbrt(2 * parentDensity / bodyDensity)
+}
+
+/** habitable zone inner/outer bounds (simple luminosity model): √(L/1.1) to √(L/0.53) → AU */
+export function computeHabitableZoneAu(luminosityW: number): { inner: number, outer: number } {
+	const lSolar = luminosityW / SOLAR_LUMINOSITY
+	return {
+		inner: Math.sqrt(lSolar / 1.1),
+		outer: Math.sqrt(lSolar / 0.53),
+	}
+}
+
 /** periastron = a(1-e) in AU */
 export function computePeriastron(semiMajorAxisAu: number, eccentricity: number): number {
 	return semiMajorAxisAu * (1 - eccentricity)
@@ -93,6 +125,23 @@ export function formatAuAsKm(au: number): string {
 	return `${km.toLocaleString('en-US', { maximumFractionDigits: 1 })} km`
 }
 
+/** Format orbital velocity in km/s */
+export function formatOrbitalVelocity(velocityMs: number): string {
+	return `${(velocityMs / 1000).toFixed(2)} km/s`
+}
+
+/** Format Hill sphere in AU or km depending on size */
+export function formatHillSphere(au: number): string {
+	if (au >= 0.01) return `${au.toFixed(4)} AU`
+	const km = au * AU_M / 1000
+	return `${km.toLocaleString('en-US', { maximumFractionDigits: 0 })} km`
+}
+
+/** Format Roche limit in km */
+export function formatRocheLimit(metres: number): string {
+	return `${(metres / 1000).toLocaleString('en-US', { maximumFractionDigits: 0 })} km`
+}
+
 // ---- Composite derivation for save-time ----
 
 export interface BodyDerivedFields {
@@ -110,6 +159,37 @@ export function deriveBodyFields(massKg: number | null, radiusM: number | null):
 		surfaceGravity: formatSurfaceGravity(computeSurfaceGravity(massKg, radiusM)),
 		escapeVelocity: formatEscapeVelocity(computeEscapeVelocity(massKg, radiusM)),
 	}
+}
+
+export interface BodyDerivedOrbitalFields {
+	orbitalPeriodDays: number | null
+	orbitalVelocity: string | null
+	hillSphere: string | null
+}
+
+export function deriveBodyOrbitalFields(
+	semiMajorAxisAu: number | null,
+	orbitalPeriodDays: number | null,
+	bodyMassKg: number | null,
+	parentMassKg: number | null,
+): BodyDerivedOrbitalFields {
+	let period = orbitalPeriodDays
+
+	// Compute orbital period from Kepler's third law if not provided
+	if (period == null && semiMajorAxisAu != null && parentMassKg != null && semiMajorAxisAu > 0 && parentMassKg > 0) {
+		period = computeOrbitalPeriodDays(semiMajorAxisAu, parentMassKg)
+	}
+
+	const orbitalVelocity = semiMajorAxisAu != null && period != null && period > 0
+		? formatOrbitalVelocity(computeOrbitalVelocity(semiMajorAxisAu, period))
+		: null
+
+	const hillSphere = semiMajorAxisAu != null && bodyMassKg != null && parentMassKg != null
+		&& semiMajorAxisAu > 0 && bodyMassKg > 0 && parentMassKg > 0
+		? formatHillSphere(computeHillSphereAu(semiMajorAxisAu, bodyMassKg, parentMassKg))
+		: null
+
+	return { orbitalPeriodDays: period, orbitalVelocity, hillSphere }
 }
 
 export interface StarDerivedOrbitalFields {
