@@ -14,6 +14,7 @@
 		error = '',
 		savedAt = null,
 		onsave,
+		onsaveandexit,
 		ondiscard,
 		submitType = 'button',
 		summaryName,
@@ -27,6 +28,7 @@
 		error?: string
 		savedAt?: Date | null
 		onsave?: () => void
+		onsaveandexit?: () => void
 		ondiscard?: () => void
 		/** Set to 'submit' for native form submission (CalendarConfigure) */
 		submitType?: 'button' | 'submit'
@@ -72,6 +74,7 @@
 		{savedAt}
 		saveType={submitType}
 		onsave={onsave}
+		onsaveandexit={onsaveandexit}
 		ondiscard={ondiscard}
 		cancelHref={cancelHref}
 	/>

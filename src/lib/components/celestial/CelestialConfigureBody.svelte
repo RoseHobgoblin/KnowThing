@@ -9,7 +9,6 @@
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import { goto } from '$app/navigation'
 	import UnsavedChangesGuard from '$lib/components/editor/UnsavedChangesGuard.svelte'
-	import SaveStatusBadge from '$lib/components/editor/SaveStatusBadge.svelte'
 	import FormNotice from '$lib/components/editor/FormNotice.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import { page } from '$app/stores'
@@ -21,6 +20,7 @@
 	import { validateBodyPhysics } from '$lib/celestial/validate-physics.js'
 	import TabNavigation from '$lib/components/ui/TabNavigation.svelte'
 	import StickyActionBar from '$lib/components/editor/StickyActionBar.svelte'
+	import DerivedField from '$lib/components/ui/DerivedField.svelte'
 
 	const bodyTabs = [
 		{ id: 'identity', label: 'Identity' },
@@ -213,7 +213,7 @@
 	let saving = $state(false)
 	let saveError = $state('')
 	let savedAt = $state<Date | null>(null)
-	const initialSnapshot = JSON.stringify(initialDraft)
+	let initialSnapshot = JSON.stringify(initialDraft)
 	// Auto-computed derived fields
 	const computedPhysical = $derived(deriveBodyFields(massKg, radiusM))
 	const physicsWarnings = $derived(validateBodyPhysics({ massKg, radiusM, orbitalPeriodDays, semiMajorAxisAu, eccentricity, rotationPeriodS, axialTilt, bodyType, isSatellite: !!parentIdStr }))
@@ -407,14 +407,20 @@
 			}
 
 			savedAt = new Date()
+			initialSnapshot = currentSnapshot
+			editSummary = ''
 			pushSuccess('Body saved')
-			goto(viewPath)
 		} catch {
 			saveError = 'Failed to save'
 			pushError('Failed to save')
 		} finally {
 			saving = false
 		}
+	}
+
+	async function saveAndExit() {
+		await save()
+		if (!saveError) goto(viewPath)
 	}
 
 	async function deleteBody() {
@@ -444,14 +450,7 @@
 >
 	<UnsavedChangesGuard when={isDirty && !saving} />
 	<div class="space-y-6">
-		<div class="flex items-center justify-between gap-3 bg-surface border border-border px-4 py-3">
-			<div>
-				<h2 class="text-sm font-semibold text-heading">Configure Record</h2>
-				<p class="text-xs text-faint">Structured body properties and article content are managed here.</p>
-			</div>
-			<SaveStatusBadge dirty={isDirty} {saving} error={saveError} {savedAt} />
-		</div>
-		<section class="bg-accent-subtle/30 border border-accent-border/50 p-4 flex flex-col gap-2 sm:flex-row sm:items-end">
+		<section class="bg-base border border-border p-4 flex flex-col gap-2 sm:flex-row sm:items-end">
 			<div class="flex-1">
 				<Select label="Populate from real-world data" type="single" bind:value={selectedPreset} items={presetItems} />
 			</div>
@@ -498,80 +497,51 @@
 		{:else if activeTab === 'physical'}
 			<section class="bg-raised border border-border-subtle p-5 space-y-4">
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-					<Input label="Mass (kg)" type="number" bind:value={massKg} step="any" placeholder="5.972e24" />
-					<Input label="Radius (m)" type="number" bind:value={radiusM} step="any" placeholder="6371000" />
-					<div>
-						<span class="text-xs font-medium text-secondary block mb-1">Density</span>
-						<p class="text-sm text-dim italic">{computedPhysical.density ?? '—'}</p>
-					</div>
-					<div>
-						<span class="text-xs font-medium text-secondary block mb-1">Surface Gravity</span>
-						<p class="text-sm text-dim italic">{computedPhysical.surfaceGravity ?? '—'}</p>
-					</div>
-					<div>
-						<span class="text-xs font-medium text-secondary block mb-1">Escape Velocity</span>
-						<p class="text-sm text-dim italic">{computedPhysical.escapeVelocity ?? '—'}</p>
-					</div>
-					<Input label="Temperature" bind:value={temperature} placeholder="288 K (mean)" />
-					<Input label="Age" bind:value={age} placeholder="~4.5 billion years" />
+					<Input label="Mass (kg)" type="number" bind:value={massKg} step="any" placeholder="5.972e24" hint="Total mass in kilograms. Earth is 5.972 × 10²⁴ kg. Used to derive density, gravity, escape velocity, and Hill sphere." />
+					<Input label="Radius (m)" type="number" bind:value={radiusM} step="any" placeholder="6371000" hint="Mean radius in metres. Earth is 6,371,000 m. Used to derive density, gravity, and escape velocity." />
+					<DerivedField label="Density" value={computedPhysical.density} hint="Mass / volume. Derived from mass and radius. Earth is 5.514 g/cm³." />
+					<DerivedField label="Surface Gravity" value={computedPhysical.surfaceGravity} hint="GM/r². Derived from mass and radius. Earth is 9.807 m/s²." />
+					<DerivedField label="Escape Velocity" value={computedPhysical.escapeVelocity} hint="√(2GM/r). Minimum speed to leave the body's gravity. Earth is 11.186 km/s." />
+					<Input label="Temperature" bind:value={temperature} placeholder="288 K (mean)" hint="Mean surface or cloud-top temperature. Free text — include units." />
+					<Input label="Age" bind:value={age} placeholder="~4.5 billion years" hint="Estimated age. Free text." />
 				</div>
 			</section>
 		{:else if activeTab === 'composition'}
 			<section class="bg-raised border border-border-subtle p-5 space-y-4">
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-					<Input label="Composition" bind:value={composition} placeholder="Iron, nickel, silicates" />
-					<Input label="Atmosphere" bind:value={atmosphere} placeholder="N2 78%, O2 21%" />
-					<Input label="Surface Pressure" bind:value={surfacePressure} placeholder="101.325 kPa" />
+					<Input label="Composition" bind:value={composition} placeholder="Iron, nickel, silicates" hint="Primary materials making up the body." />
+					<Input label="Atmosphere" bind:value={atmosphere} placeholder="N2 78%, O2 21%" hint="Atmospheric composition. Leave blank for airless bodies." />
+					<Input label="Surface Pressure" bind:value={surfacePressure} placeholder="101.325 kPa" hint="Atmospheric pressure at the surface. Earth is 101.325 kPa." />
 				</div>
 			</section>
 		{:else if activeTab === 'orbit'}
 			<section class="bg-raised border border-border-subtle p-5 space-y-4">
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-					<Input label="Orbital Period (days)" type="number" bind:value={orbitalPeriodDays} step="any" placeholder="365.25" />
-					<div>
-						<span class="text-xs font-medium text-secondary block mb-1">Orbital Period</span>
-						<p class="text-sm text-dim italic">
-							{computedDisplay.orbitalPeriod ?? '—'}
-							{#if orbitalPeriodDays == null && computedOrbital.orbitalPeriodDays != null}
-								<span class="text-faint text-[10px] ml-1">(Kepler)</span>
-							{/if}
-						</p>
-					</div>
-					<Input label="Semi-major Axis (AU)" type="number" bind:value={semiMajorAxisAu} step="any" placeholder="1.0" error={semiMajorAxisAu !== null && semiMajorAxisAu < 0 ? 'Must be 0 or greater' : ''} />
-					<div>
-						<span class="text-xs font-medium text-secondary block mb-1">Semi-major Axis</span>
-						<p class="text-sm text-dim italic">{computedDisplay.semiMajorAxis ?? '—'}</p>
-					</div>
-					<Input label="Eccentricity" type="number" bind:value={eccentricity} step="any" min={0} max={1} placeholder="0.0167" error={eccentricity !== null && (eccentricity < 0 || eccentricity > 1) ? 'Use a value from 0 to 1' : ''} />
-					<Input label="Inclination (deg)" type="number" bind:value={inclination} step="any" placeholder="0.0" />
-					<Input label="Epoch Phase" type="number" bind:value={epochPhase} step="any" min={0} max={1} placeholder="0.0" error={epochPhase !== null && (epochPhase < 0 || epochPhase > 1) ? 'Use a value from 0 to 1' : ''} />
-					<div>
-						<span class="text-xs font-medium text-secondary block mb-1">Orbital Velocity</span>
-						<p class="text-sm text-dim italic">{computedOrbital.orbitalVelocity ?? '—'}</p>
-					</div>
-					<div>
-						<span class="text-xs font-medium text-secondary block mb-1">Hill Sphere</span>
-						<p class="text-sm text-dim italic">{computedOrbital.hillSphere ?? '—'}</p>
-					</div>
+					<Input label="Orbital Period (days)" type="number" bind:value={orbitalPeriodDays} step="any" placeholder="365.25" hint="Time for one full orbit in days. Leave blank to auto-derive from semi-major axis and parent star mass via Kepler's third law." />
+					<DerivedField label="Orbital Period" value={computedDisplay.orbitalPeriod} tag={orbitalPeriodDays == null && computedOrbital.orbitalPeriodDays != null ? 'Kepler' : undefined} hint="Human-readable period. Formatted from the days value, or computed via T = 2π√(a³/GM) when parent star mass is known." />
+					<Input label="Semi-major Axis (AU)" type="number" bind:value={semiMajorAxisAu} step="any" placeholder="1.0" hint="Half the longest diameter of the orbit, in astronomical units. 1 AU = Earth–Sun distance." error={semiMajorAxisAu !== null && semiMajorAxisAu < 0 ? 'Must be 0 or greater' : ''} />
+					<DerivedField label="Semi-major Axis" value={computedDisplay.semiMajorAxis} hint="Same distance converted to kilometres." />
+					<Input label="Eccentricity" type="number" bind:value={eccentricity} step="any" min={0} max={1} placeholder="0.0167" hint="How elliptical the orbit is. 0 = perfect circle, 1 = parabolic escape. Earth is 0.0167." error={eccentricity !== null && (eccentricity < 0 || eccentricity > 1) ? 'Use a value from 0 to 1' : ''} />
+					<Input label="Inclination (deg)" type="number" bind:value={inclination} step="any" placeholder="0.0" hint="Angle of the orbital plane relative to the reference plane (ecliptic), in degrees." />
+					<Input label="Epoch Phase" type="number" bind:value={epochPhase} step="any" min={0} max={1} placeholder="0.0" hint="Position along the orbit at day 0 (0–1). Used for map animation. 0 = periapsis." error={epochPhase !== null && (epochPhase < 0 || epochPhase > 1) ? 'Use a value from 0 to 1' : ''} />
+					<DerivedField label="Orbital Velocity" value={computedOrbital.orbitalVelocity} hint="Mean speed along the orbit: 2πa / T. Earth is ~29.78 km/s." />
+					<DerivedField label="Hill Sphere" value={computedOrbital.hillSphere} hint="Maximum distance at which this body can hold satellites. Derived from semi-major axis, body mass, and parent mass: a × (m/3M)^⅓." />
 				</div>
 			</section>
 		{:else if activeTab === 'rotation'}
 			<section class="bg-raised border border-border-subtle p-5 space-y-4">
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-					<Input label="Rotation Period (seconds)" type="number" bind:value={rotationPeriodS} step="any" placeholder="86164.1" />
-					<div>
-						<span class="text-xs font-medium text-secondary block mb-1">Rotation Period</span>
-						<p class="text-sm text-dim italic">{computedDisplay.rotationPeriod ?? '—'}</p>
-					</div>
-					<Input label="Axial Tilt (deg)" type="number" bind:value={axialTilt} step="any" placeholder="23.44" />
+					<Input label="Rotation Period (seconds)" type="number" bind:value={rotationPeriodS} step="any" placeholder="86164.1" hint="Sidereal rotation period in seconds. Earth is 86,164 s (23h 56m 4s). Not the same as a solar day." />
+					<DerivedField label="Rotation Period" value={computedDisplay.rotationPeriod} hint="Human-readable rotation period, formatted from the seconds value." />
+					<Input label="Axial Tilt (deg)" type="number" bind:value={axialTilt} step="any" placeholder="23.44" hint="Angle between the rotational axis and the orbital plane. Earth is 23.44°. Drives seasons." />
 				</div>
 			</section>
 		{:else if activeTab === 'observation'}
 			<section class="bg-raised border border-border-subtle p-5 space-y-4">
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-					<Input label="Apparent Magnitude" bind:value={apparentMagnitude} placeholder="-3.86" />
-					<Input label="Angular Diameter" bind:value={angularDiameter} placeholder="3.5 arcsec" />
-					<Input label="Albedo" bind:value={albedo} placeholder="0.306" />
+					<Input label="Apparent Magnitude" bind:value={apparentMagnitude} placeholder="-3.86" hint="Brightness as seen from a reference point. Lower = brighter. Venus is about -4.6, full Moon is -12.7." />
+					<Input label="Angular Diameter" bind:value={angularDiameter} placeholder="3.5 arcsec" hint="Apparent size in the sky from a reference point. The Moon is ~31 arcminutes." />
+					<Input label="Albedo" bind:value={albedo} placeholder="0.306" hint="Fraction of incoming light reflected. 0 = perfectly dark, 1 = perfectly reflective. Earth is 0.306." />
 					<Checkbox bind:value={hasRings} label="Has rings" />
 				</div>
 			</section>
@@ -586,6 +556,7 @@
 				error={saveError}
 				{savedAt}
 				onsave={save}
+				onsaveandexit={saveAndExit}
 				ondiscard={resetDraft}
 			/>
 		{/if}
@@ -599,6 +570,7 @@
 					{savedAt}
 					saveType="button"
 					onsave={save}
+					onsaveandexit={saveAndExit}
 					ondiscard={resetDraft}
 					cancelHref={viewPath}
 				/>

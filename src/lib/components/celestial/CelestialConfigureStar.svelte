@@ -20,6 +20,7 @@
 	import { validateStarPhysics } from '$lib/celestial/validate-physics.js'
 	import TabNavigation from '$lib/components/ui/TabNavigation.svelte'
 	import StickyActionBar from '$lib/components/editor/StickyActionBar.svelte'
+	import DerivedField from '$lib/components/ui/DerivedField.svelte'
 
 	const starTabs = [
 		{ id: 'identity', label: 'Identity' },
@@ -175,7 +176,7 @@
 	let saving = $state(false)
 	let saveError = $state('')
 	let savedAt = $state<Date | null>(null)
-	const initialSnapshot = JSON.stringify(initialDraft)
+	let initialSnapshot = JSON.stringify(initialDraft)
 	const currentSnapshot = $derived(JSON.stringify({
 		spectralType,
 		massKg,
@@ -313,14 +314,20 @@
 			}
 
 			savedAt = new Date()
+			initialSnapshot = currentSnapshot
+			editSummary = ''
 			pushSuccess('Star saved')
-			goto(viewPath)
 		} catch {
 			saveError = 'Failed to save'
 			pushError('Failed to save')
 		} finally {
 			saving = false
 		}
+	}
+
+	async function saveAndExit() {
+		await save()
+		if (!saveError) goto(viewPath)
 	}
 
 	async function deleteStar() {
@@ -394,49 +401,40 @@
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
 					<div><span class="text-xs font-medium text-secondary block mb-1">Name</span><p class="text-sm text-body">{initialStar.name}</p></div>
 					<Select label="System" type="single" bind:value={systemIdStr} items={systemItems} />
-					<Input label="Color" bind:value={color} placeholder="Yellow-white" />
+					<Input label="Color" bind:value={color} placeholder="Yellow-white" hint="Descriptive color name used for map rendering. Examples: yellow-white, orange-red, blue-white." />
 				</div>
 				<Input label="Description" bind:value={description} placeholder="Brief description..." />
 			</section>
 		{:else if activeTab === 'stellar'}
 			<section class="bg-raised border border-border-subtle p-5 space-y-4">
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-					<Input label="Spectral Type" bind:value={spectralType} placeholder="G2V" />
-					<Input label="Mass (kg)" type="number" bind:value={massKg} step="any" placeholder="1.989e30" />
-					<Input label="Radius (m)" type="number" bind:value={radiusM} step="any" placeholder="696340000" />
-					<Input label="Luminosity" bind:value={luminosity} placeholder="1.0 solar luminosities" />
-					<Input label="Visual Luminosity" bind:value={luminosityVisual} placeholder="1.0 solar luminosities (visual)" />
-					<Input label="Temperature" bind:value={temperature} placeholder="5,778 K" />
-					<Input label="Age" bind:value={age} placeholder="~4.6 billion years" />
+					<Input label="Spectral Type" bind:value={spectralType} placeholder="G2V" hint="Morgan-Keenan classification. Letter = temperature class (O B A F G K M), number = subclass, roman numeral = luminosity class. The Sun is G2V." />
+					<Input label="Mass (kg)" type="number" bind:value={massKg} step="any" placeholder="1.989e30" hint="Total mass in kilograms. The Sun is 1.989 × 10³⁰ kg. Used by orbiting bodies to derive orbital periods via Kepler's law." />
+					<Input label="Radius (m)" type="number" bind:value={radiusM} step="any" placeholder="696340000" hint="Mean radius in metres. The Sun is 696,340,000 m." />
+					<Input label="Luminosity" bind:value={luminosity} placeholder="1.0 solar luminosities" hint="Total energy output. Free text — include units. Used for habitable zone calculations." />
+					<Input label="Visual Luminosity" bind:value={luminosityVisual} placeholder="1.0 solar luminosities (visual)" hint="Luminosity in the visible spectrum only. Can differ from bolometric luminosity for very hot or cool stars." />
+					<Input label="Temperature" bind:value={temperature} placeholder="5,778 K" hint="Effective surface temperature. The Sun is 5,778 K. Free text — include units." />
+					<Input label="Age" bind:value={age} placeholder="~4.6 billion years" hint="Estimated age. Free text." />
 				</div>
 			</section>
 		{:else if activeTab === 'orbit'}
 			<section class="bg-raised border border-border-subtle p-5 space-y-4">
 				<p class="text-xs text-faint">For binary or multiple star systems. Leave blank for single stars.</p>
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-					<Input label="Companion" bind:value={companion} placeholder="Binary partner name" />
-					<Input label="Semi-major Axis (AU)" type="number" bind:value={semiMajorAxisAu} step="any" placeholder="23.4" error={semiMajorAxisAu !== null && semiMajorAxisAu < 0 ? 'Must be 0 or greater' : ''} />
-					<Input label="Eccentricity" type="number" bind:value={eccentricity} step="any" min={0} max={1} placeholder="0.0" error={eccentricity !== null && (eccentricity < 0 || eccentricity > 1) ? 'Use a value from 0 to 1' : ''} />
-					<Input label="Epoch Phase" type="number" bind:value={epochPhase} step="any" min={0} max={1} placeholder="0.0" error={epochPhase !== null && (epochPhase < 0 || epochPhase > 1) ? 'Use a value from 0 to 1' : ''} />
-					<div>
-						<span class="text-xs font-medium text-secondary block mb-1">Semi-major Axis</span>
-						<p class="text-sm text-dim italic">{computedDisplay.semiMajorAxis ?? '—'}</p>
-					</div>
-					<div>
-						<span class="text-xs font-medium text-secondary block mb-1">Periastron</span>
-						<p class="text-sm text-dim italic">{computedOrbital.periastron ?? '—'}</p>
-					</div>
-					<div>
-						<span class="text-xs font-medium text-secondary block mb-1">Apastron</span>
-						<p class="text-sm text-dim italic">{computedOrbital.apastron ?? '—'}</p>
-					</div>
+					<Input label="Companion" bind:value={companion} placeholder="Binary partner name" hint="Display name of the binary partner. Informational only — the actual orbital relationship is set via the parent star field." />
+					<Input label="Semi-major Axis (AU)" type="number" bind:value={semiMajorAxisAu} step="any" placeholder="23.4" hint="Half the longest diameter of the binary orbit, in AU. Determines the orbit size on the system map." error={semiMajorAxisAu !== null && semiMajorAxisAu < 0 ? 'Must be 0 or greater' : ''} />
+					<Input label="Eccentricity" type="number" bind:value={eccentricity} step="any" min={0} max={1} placeholder="0.0" hint="How elliptical the binary orbit is. 0 = circular, approaching 1 = extremely elongated." error={eccentricity !== null && (eccentricity < 0 || eccentricity > 1) ? 'Use a value from 0 to 1' : ''} />
+					<Input label="Epoch Phase" type="number" bind:value={epochPhase} step="any" min={0} max={1} placeholder="0.0" hint="Position along the orbit at day 0 (0–1). Used for map animation." error={epochPhase !== null && (epochPhase < 0 || epochPhase > 1) ? 'Use a value from 0 to 1' : ''} />
+					<DerivedField label="Semi-major Axis" value={computedDisplay.semiMajorAxis} hint="Same distance converted to kilometres." />
+					<DerivedField label="Periastron" value={computedOrbital.periastron} hint="Closest approach: a × (1 − e). The near point of the binary orbit." />
+					<DerivedField label="Apastron" value={computedOrbital.apastron} hint="Farthest separation: a × (1 + e). The far point of the binary orbit." />
 				</div>
 			</section>
 		{:else if activeTab === 'observation'}
 			<section class="bg-raised border border-border-subtle p-5 space-y-4">
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-					<Input label="Apparent Magnitude" bind:value={apparentMagnitude} placeholder="-26.74" />
-					<Input label="Angular Diameter" bind:value={angularDiameter} placeholder="31.46 arcmin" />
+					<Input label="Apparent Magnitude" bind:value={apparentMagnitude} placeholder="-26.74" hint="Brightness as seen from a reference point. Lower = brighter. The Sun seen from Earth is -26.74." />
+					<Input label="Angular Diameter" bind:value={angularDiameter} placeholder="31.46 arcmin" hint="Apparent size in the sky from a reference point. The Sun is ~31.5 arcminutes from Earth." />
 				</div>
 			</section>
 		{:else if activeTab === 'article'}
@@ -450,6 +448,7 @@
 				error={saveError}
 				{savedAt}
 				onsave={save}
+				onsaveandexit={saveAndExit}
 				ondiscard={resetDraft}
 			/>
 		{/if}
@@ -463,6 +462,7 @@
 					{savedAt}
 					saveType="button"
 					onsave={save}
+					onsaveandexit={saveAndExit}
 					ondiscard={resetDraft}
 					cancelHref={viewPath}
 				/>

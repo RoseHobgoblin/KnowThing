@@ -10,6 +10,8 @@
 	import X from 'phosphor-svelte/lib/X'
 	import Eye from 'phosphor-svelte/lib/Eye'
 	import EyeSlash from 'phosphor-svelte/lib/EyeSlash'
+	import QuestionIcon from 'phosphor-svelte/lib/Question'
+	import Tooltip from './Tooltip.svelte'
 
 	type Props = SvelteHTMLElements['input'] & {
 		label?: string
@@ -24,6 +26,7 @@
 		onchange?: (newValue: string, oldValue: string) => void
 		charset?: string
 		error?: string
+		hint?: string
 	}
 
 	let {
@@ -47,6 +50,7 @@
 		onclear,
 		charset,
 		error: externalError,
+		hint,
 		...props
 	}: Props = $props()
 
@@ -138,12 +142,19 @@
 
 <div class={cn('relative', label ? 'space-y-1' : '', (validate || externalError) && 'pb-5', containerClass)}>
 	{#if label}
-		<Label for={id} class={labelClass}>
-			{label}
-			{#if required}
-				<span class="text-error">*</span>
+		<div class="flex items-center gap-1">
+			<Label for={id} class={labelClass}>
+				{label}
+				{#if required}
+					<span class="text-error">*</span>
+				{/if}
+			</Label>
+			{#if hint}
+				<Tooltip content={hint} side="top">
+					<span class="text-faint transition-colors cursor-help hover:text-secondary"><QuestionIcon size={12} weight="bold" /></span>
+				</Tooltip>
 			{/if}
-		</Label>
+		</div>
 	{/if}
 
 	<div class="relative">

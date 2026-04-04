@@ -11,6 +11,7 @@
 		savingLabel = 'Saving...',
 		saveType = 'button',
 		onsave,
+		onsaveandexit,
 		ondiscard,
 		discardLabel = 'Discard changes',
 		disableSave = false,
@@ -26,6 +27,7 @@
 		savingLabel?: string
 		saveType?: 'button' | 'submit'
 		onsave?: () => void
+		onsaveandexit?: () => void
 		ondiscard?: () => void
 		discardLabel?: string
 		disableSave?: boolean
@@ -62,6 +64,11 @@
 				<Button onclick={onsave} disabled={disableSave || saving} loading={saving}>
 					{saving ? savingLabel : saveLabel}
 				</Button>
+				{#if onsaveandexit}
+					<Button variant="secondary" onclick={onsaveandexit} disabled={disableSave || saving}>
+						Save & Exit
+					</Button>
+				{/if}
 			{/if}
 		</div>
 	</div>
