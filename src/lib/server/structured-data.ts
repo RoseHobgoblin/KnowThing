@@ -7,6 +7,7 @@ import {
 	computePeriastron, computeApastron, formatAu,
 	computeOrbitalVelocity, formatOrbitalVelocity,
 	computeOrbitalPeriodDays, formatPeriod,
+	computeHabitableZoneAu,
 } from '$lib/celestial/compute.js'
 
 export interface SystemMapData {
@@ -45,10 +46,12 @@ function rowToFieldMap(row: Record<string, unknown>, fieldNames: string[]): Fiel
 }
 
 const STAR_FIELDS = [
-	'name', 'spectralType', 'mass', 'radius', 'luminosity', 'luminosityVisual',
-	'temperature', 'age', 'color', 'orbitalPeriod', 'semiMajorAxis',
-	'periastron', 'apastron', 'apparentMagnitude', 'angularDiameter',
-	'companion', 'description',
+	'name', 'spectralType', 'mass', 'radius', 'density', 'surfaceGravity',
+	'escapeVelocity', 'luminosity', 'luminosityVisual',
+	'temperature', 'age', 'color', 'metallicity',
+	'rotationPeriod', 'orbitalPeriod', 'semiMajorAxis',
+	'periastron', 'apastron', 'apparentMagnitude', 'absoluteMagnitude',
+	'angularDiameter', 'companion', 'description',
 ]
 
 const PLANETARY_BODY_FIELDS = [
@@ -65,6 +68,40 @@ const DOMAIN_RESOLVERS: Record<string, (slug: string) => Promise<FieldMap | null
 		if (!row) return null
 		const fields = rowToFieldMap(row as unknown as Record<string, unknown>, STAR_FIELDS)
 		if (row.eccentricity != null) fields.set('eccentricity', String(row.eccentricity))
+		if (row.axialTilt != null) fields.set('axial_tilt', String(row.axialTilt))
+
+		// Parent star context for companions
+		if (row.parentStarId != null) {
+			const [parent] = await db.select({ name: stars.name, slug: stars.slug })
+				.from(stars).where(eq(stars.id, row.parentStarId))
+			if (parent) {
+				fields.set('companion_of', parent.name)
+				fields.set('companion_of_slug', parent.slug)
+			}
+		}
+
+		// Habitable zone from luminosity
+		if (row.luminosityW != null && row.luminosityW > 0) {
+			const hz = computeHabitableZoneAu(row.luminosityW)
+			fields.set('habitable_zone', `${hz.inner.toFixed(2)} – ${hz.outer.toFixed(2)} AU`)
+		}
+
+		// Equatorial rotation velocity
+		if (row.radiusM != null && row.rotationPeriodS != null && row.radiusM > 0 && row.rotationPeriodS > 0) {
+			const eqVel = (2 * Math.PI * row.radiusM) / row.rotationPeriodS
+			fields.set('equatorial_velocity', `${(eqVel / 1000).toFixed(2)} km/s`)
+		}
+
+		// Planet count
+		const [counts] = await db.execute(sql`
+			SELECT
+				(SELECT COUNT(*) FROM planetary_bodies WHERE star_id = ${row.id} AND parent_id IS NULL)::int AS planets,
+				(SELECT COUNT(*) FROM planetary_bodies WHERE star_id = ${row.id} AND parent_id IS NOT NULL)::int AS satellites
+		`)
+		const c = counts as any
+		if (c?.planets) fields.set('planets', String(c.planets))
+		if (c?.satellites) fields.set('known_satellites', String(c.satellites))
+
 		return fields
 	},
 	planet: async (slug) => {

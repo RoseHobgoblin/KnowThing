@@ -7,6 +7,12 @@ const G = 6.674_30e-11 // gravitational constant (m³ kg⁻¹ s⁻²)
 const AU_M = 1.495_978_707e11 // 1 AU in metres
 const STEFAN_BOLTZMANN = 5.670_374_419e-8 // W m⁻² K⁻⁴
 const SOLAR_LUMINOSITY = 3.828e26 // W
+const EARTH_MASS_KG = 5.972e24
+const JUPITER_MASS_KG = 1.898e27
+const SOLAR_MASS_KG = 1.989e30
+const EARTH_RADIUS_M = 6.371e6
+const JUPITER_RADIUS_M = 6.9911e7
+const SOLAR_RADIUS_M = 6.9634e8
 
 /** density = 3M / (4πr³) → kg/m³, displayed as g/cm³ */
 export function computeDensity(massKg: number, radiusM: number): number {
@@ -140,6 +146,39 @@ export function formatHillSphere(au: number): string {
 /** Format Roche limit in km */
 export function formatRocheLimit(metres: number): string {
 	return `${(metres / 1000).toLocaleString('en-US', { maximumFractionDigits: 0 })} km`
+}
+
+/** Format mass with reference scale */
+export function formatMass(kg: number): string {
+	if (kg >= SOLAR_MASS_KG * 0.1) {
+		return `${(kg / SOLAR_MASS_KG).toFixed(kg >= SOLAR_MASS_KG * 10 ? 1 : 3)} M☉`
+	}
+	if (kg >= JUPITER_MASS_KG * 0.1) {
+		return `${(kg / JUPITER_MASS_KG).toFixed(kg >= JUPITER_MASS_KG * 10 ? 1 : 3)} Mⱼ`
+	}
+	if (kg >= EARTH_MASS_KG * 0.01) {
+		return `${(kg / EARTH_MASS_KG).toFixed(kg >= EARTH_MASS_KG * 10 ? 1 : 3)} M⊕`
+	}
+	return `${kg.toExponential(3)} kg`
+}
+
+/** Format radius with reference scale */
+export function formatRadius(metres: number): string {
+	if (metres >= SOLAR_RADIUS_M * 0.1) {
+		return `${(metres / SOLAR_RADIUS_M).toFixed(metres >= SOLAR_RADIUS_M * 10 ? 1 : 3)} R☉`
+	}
+	if (metres >= JUPITER_RADIUS_M * 0.1) {
+		return `${(metres / JUPITER_RADIUS_M).toFixed(metres >= JUPITER_RADIUS_M * 10 ? 1 : 3)} Rⱼ`
+	}
+	if (metres >= EARTH_RADIUS_M * 0.01) {
+		return `${(metres / EARTH_RADIUS_M).toFixed(metres >= EARTH_RADIUS_M * 10 ? 1 : 3)} R⊕`
+	}
+	return `${(metres / 1000).toLocaleString('en-US', { maximumFractionDigits: 1 })} km`
+}
+
+/** Format temperature in Kelvin */
+export function formatTemperatureK(kelvin: number): string {
+	return `${kelvin.toLocaleString('en-US', { maximumFractionDigits: 0 })} K`
 }
 
 // ---- Composite derivation for save-time ----

@@ -412,12 +412,23 @@ export const stars = pgTable(
 		radius: text('radius'),
 		radiusM: doublePrecision('radius_m'),
 		luminosity: text('luminosity'),
+		luminosityW: doublePrecision('luminosity_w'),
 		luminosityVisual: text('luminosity_visual'),
 		temperature: text('temperature'),
+		temperatureK: doublePrecision('temperature_k'),
 		age: text('age'),
 		color: text('color'),
 
+		density: text('density'),
+		surfaceGravity: text('surface_gravity'),
+		escapeVelocity: text('escape_velocity'),
+
+		rotationPeriod: text('rotation_period'),
+		rotationPeriodS: doublePrecision('rotation_period_s'),
+		axialTilt: doublePrecision('axial_tilt'),
+
 		orbitalPeriod: text('orbital_period'),
+		orbitalPeriodDays: doublePrecision('orbital_period_days'),
 		semiMajorAxis: text('semi_major_axis'),
 		semiMajorAxisAu: doublePrecision('semi_major_axis_au'),
 		eccentricity: doublePrecision('eccentricity'),
@@ -425,8 +436,10 @@ export const stars = pgTable(
 		apastron: text('apastron'),
 
 		apparentMagnitude: text('apparent_magnitude'),
+		absoluteMagnitude: text('absolute_magnitude'),
 		angularDiameter: text('angular_diameter'),
 
+		metallicity: text('metallicity'),
 		companion: text('companion'),
 		parentStarId: integer('parent_star_id'),
 		systemId: integer('system_id').references(() => starSystems.id, { onDelete: 'set null' }),

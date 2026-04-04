@@ -6,7 +6,7 @@ import { requireRole } from '$lib/server/auth.js'
 import { eq, sql } from 'drizzle-orm'
 import { createPlanetaryBodySchema } from '$lib/celestial/schema.js'
 import { ensurePlanetaryBodyContentRecord } from '$lib/server/services/celestial-content.js'
-import { deriveBodyFields, deriveBodyOrbitalFields, deriveDisplayStrings } from '$lib/celestial/compute.js'
+import { deriveBodyFields, deriveBodyOrbitalFields, deriveDisplayStrings, formatMass, formatRadius } from '$lib/celestial/compute.js'
 
 /** GET /api/planetary-bodies?star=slug — list bodies, optionally filtered by star */
 export const GET: RequestHandler = async ({ url }) => {
@@ -99,9 +99,9 @@ export const POST: RequestHandler = async (event) => {
 				starId: data.starId ?? null,
 				parentId: data.parentId ?? null,
 				pageSlug: data.pageSlug?.trim() || null,
-				mass: data.mass?.trim() || null,
+				mass: data.massKg ? formatMass(data.massKg) : data.mass?.trim() || null,
 				massKg: data.massKg ?? null,
-				radius: data.radius?.trim() || null,
+				radius: data.radiusM ? formatRadius(data.radiusM) : data.radius?.trim() || null,
 				radiusM: data.radiusM ?? null,
 				density: data.density?.trim() || derived.density,
 				surfaceGravity: data.surfaceGravity?.trim() || derived.surfaceGravity,

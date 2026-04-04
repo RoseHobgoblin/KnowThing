@@ -9,13 +9,19 @@
 
 	const KNOWN_KEYS = new Set([
 		'name', 'image', 'caption', 'image_size',
-		'spectral_type', 'mass', 'radius', 'luminosity', 'luminosity_visual',
-		'temperature', 'age', 'color',
+		'spectral_type', 'mass', 'radius', 'density', 'surface_gravity', 'escape_velocity',
+		'luminosity', 'luminosity_visual',
+		'temperature', 'age', 'color', 'metallicity',
+		'habitable_zone',
+		'rotation_period', 'axial_tilt', 'equatorial_velocity',
 		'orbital_period', 'orbital_semimajor', 'semi_major_axis', 'eccentricity',
 		'orbital_eccentricity', 'periastron', 'apastron',
 		'apparent_magnitude', 'apparent_magnitude_bright', 'apparent_magnitude_dim',
+		'absolute_magnitude',
 		'angular_diameter', 'angular_diameter_max', 'angular_diameter_min',
-		'mean_distance', 'companion', 'description', 'from',
+		'mean_distance', 'companion', 'companion_of', 'companion_of_slug',
+		'planets', 'known_satellites',
+		'description', 'from',
 	])
 
 	const title = getField(fields, 'name') ?? ''
@@ -25,11 +31,20 @@
 	const spectralType = getField(fields, 'spectral_type') ?? ''
 	const mass = getField(fields, 'mass') ?? ''
 	const radius = getField(fields, 'radius') ?? ''
+	const density = getField(fields, 'density') ?? ''
+	const surfaceGravity = getField(fields, 'surface_gravity') ?? ''
+	const escapeVelocity = getField(fields, 'escape_velocity') ?? ''
 	const luminosity = getField(fields, 'luminosity') ?? ''
 	const luminosityVisual = getField(fields, 'luminosity_visual') ?? ''
 	const temperature = getField(fields, 'temperature') ?? ''
 	const age = getField(fields, 'age') ?? ''
 	const color = getField(fields, 'color') ?? ''
+	const metallicity = getField(fields, 'metallicity') ?? ''
+	const habitableZone = getField(fields, 'habitable_zone') ?? ''
+
+	const rotationPeriod = getField(fields, 'rotation_period') ?? ''
+	const axialTilt = getField(fields, 'axial_tilt') ?? ''
+	const equatorialVelocity = getField(fields, 'equatorial_velocity') ?? ''
 
 	const orbitalPeriod = getField(fields, 'orbital_period') ?? ''
 	const semiMajorAxis = getField(fields, 'orbital_semimajor', 'semi_major_axis') ?? ''
@@ -37,19 +52,25 @@
 	const periastron = getField(fields, 'periastron') ?? ''
 	const apastron = getField(fields, 'apastron') ?? ''
 
-	// Single or range magnitude/diameter
 	const apparentMagnitude = getField(fields, 'apparent_magnitude') ?? ''
 	const apparentMagnitudeBright = getField(fields, 'apparent_magnitude_bright') ?? ''
 	const apparentMagnitudeDim = getField(fields, 'apparent_magnitude_dim') ?? ''
+	const absoluteMagnitude = getField(fields, 'absolute_magnitude') ?? ''
 	const angularDiameter = getField(fields, 'angular_diameter') ?? ''
 	const angularDiameterMax = getField(fields, 'angular_diameter_max') ?? ''
 	const angularDiameterMin = getField(fields, 'angular_diameter_min') ?? ''
 
 	const meanDistance = getField(fields, 'mean_distance') ?? ''
 	const companion = getField(fields, 'companion') ?? ''
+	const companionOf = getField(fields, 'companion_of') ?? ''
+	const companionOfSlug = getField(fields, 'companion_of_slug') ?? ''
+	const planets = getField(fields, 'planets') ?? ''
+	const knownSatellites = getField(fields, 'known_satellites') ?? ''
 
+	const hasRotation = rotationPeriod || axialTilt || equatorialVelocity
 	const hasOrbital = orbitalPeriod || semiMajorAxis || eccentricity || periastron || apastron
-	const hasObservation = apparentMagnitude || apparentMagnitudeBright || angularDiameter || angularDiameterMax || meanDistance
+	const hasObservation = apparentMagnitude || apparentMagnitudeBright || absoluteMagnitude || angularDiameter || angularDiameterMax || meanDistance
+	const hasSystem = companion || companionOf || planets || knownSatellites
 
 	const remaining = getRemainingFields(fields, KNOWN_KEYS)
 </script>
@@ -64,13 +85,25 @@
 	<InfoboxRow label="Spectral type" value={spectralType} />
 	<InfoboxRow label="Mass" value={mass} />
 	<InfoboxRow label="Radius" value={radius} />
+	<InfoboxRow label="Density" value={density} />
+	<InfoboxRow label="Surface gravity" value={surfaceGravity} />
+	<InfoboxRow label="Escape velocity" value={escapeVelocity} />
 	<InfoboxRow label="Luminosity" value={luminosity} />
 	{#if luminosityVisual}
 		<InfoboxRow label="Luminosity (visual)" value={luminosityVisual} />
 	{/if}
 	<InfoboxRow label="Temperature" value={temperature} />
+	<InfoboxRow label="Metallicity" value={metallicity} />
 	<InfoboxRow label="Age" value={age} />
 	<InfoboxRow label="Color" value={color} />
+	<InfoboxRow label="Habitable zone" value={habitableZone} />
+
+	{#if hasRotation}
+		<InfoboxSection title="Rotation" />
+		<InfoboxRow label="Rotation period" value={rotationPeriod} />
+		<InfoboxRow label="Equatorial velocity" value={equatorialVelocity} />
+		<InfoboxRow label="Axial tilt" value={axialTilt} />
+	{/if}
 
 	{#if hasOrbital}
 		<InfoboxSection title="Orbit" />
@@ -92,6 +125,7 @@
 		{#if apparentMagnitudeDim}
 			<InfoboxRow label="Apparent mag. (dim)" value={apparentMagnitudeDim} />
 		{/if}
+		<InfoboxRow label="Absolute magnitude" value={absoluteMagnitude} />
 		<InfoboxRow label="Mean distance" value={meanDistance} />
 		{#if angularDiameter}
 			<InfoboxRow label="Angular diameter" value={angularDiameter} />
@@ -104,9 +138,14 @@
 		{/if}
 	{/if}
 
-	{#if companion}
+	{#if hasSystem}
 		<InfoboxSection title="System" />
+		{#if companionOf}
+			<InfoboxRow label="Companion of" value={companionOfSlug ? `[[${companionOfSlug}|${companionOf}]]` : companionOf} />
+		{/if}
 		<InfoboxRow label="Companion" value={companion} />
+		<InfoboxRow label="Planets" value={planets} />
+		<InfoboxRow label="Known satellites" value={knownSatellites} />
 	{/if}
 
 	{#each remaining as [key, value]}

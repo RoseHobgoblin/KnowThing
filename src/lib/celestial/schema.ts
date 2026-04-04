@@ -25,12 +25,23 @@ const starSchema = z.object({
 	radius: z.string().nullish(),
 	radiusM: z.number().positive().nullish(),
 	luminosity: z.string().nullish(),
+	luminosityW: z.number().positive().nullish(),
 	luminosityVisual: z.string().nullish(),
 	temperature: z.string().nullish(),
+	temperatureK: z.number().positive().nullish(),
 	age: z.string().nullish(),
 	color: z.string().nullish(),
 
+	density: z.string().nullish(),
+	surfaceGravity: z.string().nullish(),
+	escapeVelocity: z.string().nullish(),
+
+	rotationPeriod: z.string().nullish(),
+	rotationPeriodS: z.number().positive().nullish(),
+	axialTilt: z.number().nullish(),
+
 	orbitalPeriod: z.string().nullish(),
+	orbitalPeriodDays: z.number().positive().nullish(),
 	semiMajorAxis: z.string().nullish(),
 	semiMajorAxisAu: z.number().min(0).nullish(),
 	eccentricity: nullableUnitIntervalSchema,
@@ -39,8 +50,10 @@ const starSchema = z.object({
 	apastron: z.string().nullish(),
 
 	apparentMagnitude: z.string().nullish(),
+	absoluteMagnitude: z.string().nullish(),
 	angularDiameter: z.string().nullish(),
 
+	metallicity: z.string().nullish(),
 	companion: z.string().nullish(),
 	parentStarId: z.number().int().nullish(),
 	systemId: z.number().int().nullish(),

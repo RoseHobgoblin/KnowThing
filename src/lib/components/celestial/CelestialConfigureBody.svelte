@@ -21,6 +21,8 @@
 	import TabNavigation from '$lib/components/ui/TabNavigation.svelte'
 	import StickyActionBar from '$lib/components/editor/StickyActionBar.svelte'
 	import DerivedField from '$lib/components/ui/DerivedField.svelte'
+	import LockableDerivedField from '$lib/components/ui/LockableDerivedField.svelte'
+	import { formatMass, formatRadius } from '$lib/celestial/compute.js'
 
 	const bodyTabs = [
 		{ id: 'identity', label: 'Identity' },
@@ -183,6 +185,14 @@
 
 	let hasRings = $state(initialDraft.hasRings)
 
+	// Lock states for overridable derived fields
+	let densityLocked = $state(false)
+	let densityOverride = $state<string | null>(null)
+	let gravityLocked = $state(false)
+	let gravityOverride = $state<string | null>(null)
+	let escapeLocked = $state(false)
+	let escapeOverride = $state<string | null>(null)
+
 	let content = $state(initialDraft.content)
 	let editSummary = $state('')
 
@@ -214,6 +224,10 @@
 	let saveError = $state('')
 	let savedAt = $state<Date | null>(null)
 	let initialSnapshot = JSON.stringify(initialDraft)
+	// Always-derived display fields
+	const massDisplay = $derived(massKg ? formatMass(massKg) : null)
+	const radiusDisplay = $derived(radiusM ? formatRadius(radiusM) : null)
+
 	// Auto-computed derived fields
 	const computedPhysical = $derived(deriveBodyFields(massKg, radiusM))
 	const physicsWarnings = $derived(validateBodyPhysics({ massKg, radiusM, orbitalPeriodDays, semiMajorAxisAu, eccentricity, rotationPeriodS, axialTilt, bodyType, isSatellite: !!parentIdStr }))
@@ -361,7 +375,12 @@
 					parentId: parentIdStr ? Number(parentIdStr) : null,
 					description,
 					massKg,
+					mass: massDisplay,
 					radiusM,
+					radius: radiusDisplay,
+					density: densityLocked ? densityOverride : undefined,
+					surfaceGravity: gravityLocked ? gravityOverride : undefined,
+					escapeVelocity: escapeLocked ? escapeOverride : undefined,
 					temperature: temperature || null,
 					age: age || null,
 					composition: composition || null,
@@ -498,10 +517,12 @@
 			<section class="bg-raised border border-border-subtle p-5 space-y-4">
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
 					<Input label="Mass (kg)" type="number" bind:value={massKg} step="any" placeholder="5.972e24" hint="Total mass in kilograms. Earth is 5.972 × 10²⁴ kg. Used to derive density, gravity, escape velocity, and Hill sphere." />
+					<DerivedField label="Mass" value={massDisplay} hint="Auto-formatted from the numeric mass value. Shows Earth/Jupiter/Solar reference units." />
 					<Input label="Radius (m)" type="number" bind:value={radiusM} step="any" placeholder="6371000" hint="Mean radius in metres. Earth is 6,371,000 m. Used to derive density, gravity, and escape velocity." />
-					<DerivedField label="Density" value={computedPhysical.density} hint="Mass / volume. Derived from mass and radius. Earth is 5.514 g/cm³." />
-					<DerivedField label="Surface Gravity" value={computedPhysical.surfaceGravity} hint="GM/r². Derived from mass and radius. Earth is 9.807 m/s²." />
-					<DerivedField label="Escape Velocity" value={computedPhysical.escapeVelocity} hint="√(2GM/r). Minimum speed to leave the body's gravity. Earth is 11.186 km/s." />
+					<DerivedField label="Radius" value={radiusDisplay} hint="Auto-formatted from the numeric radius value. Shows Earth/Jupiter/Solar reference units." />
+					<LockableDerivedField label="Density" derivedValue={computedPhysical.density} bind:value={densityOverride} bind:locked={densityLocked} hint="Mass / volume. Derived from mass and radius. Earth is 5.514 g/cm³. Lock to override for exotic materials." />
+					<LockableDerivedField label="Surface Gravity" derivedValue={computedPhysical.surfaceGravity} bind:value={gravityOverride} bind:locked={gravityLocked} hint="GM/r². Derived from mass and radius. Earth is 9.807 m/s². Lock to override for artificial or magical gravity." />
+					<LockableDerivedField label="Escape Velocity" derivedValue={computedPhysical.escapeVelocity} bind:value={escapeOverride} bind:locked={escapeLocked} hint="√(2GM/r). Earth is 11.186 km/s. Lock to override." />
 					<Input label="Temperature" bind:value={temperature} placeholder="288 K (mean)" hint="Mean surface or cloud-top temperature. Free text — include units." />
 					<Input label="Age" bind:value={age} placeholder="~4.5 billion years" hint="Estimated age. Free text." />
 				</div>

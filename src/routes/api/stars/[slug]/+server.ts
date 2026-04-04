@@ -10,7 +10,7 @@ import {
 	ensureStarContentRecord,
 	syncBodiesForStar,
 } from '$lib/server/services/celestial-content.js'
-import { deriveStarOrbitalFields, deriveDisplayStrings } from '$lib/celestial/compute.js'
+import { deriveBodyFields, deriveStarOrbitalFields, deriveDisplayStrings, computeLuminosity, formatLuminosity, computeOrbitalPeriodDays, formatPeriod, formatMass, formatRadius, formatTemperatureK } from '$lib/celestial/compute.js'
 
 /** GET /api/stars/:slug */
 export const GET: RequestHandler = async ({ params }) => {
@@ -78,18 +78,29 @@ export const PUT: RequestHandler = async (event) => {
 	if (data.radius !== undefined) setClause.radius = data.radius?.trim() || null
 	if (data.radiusM !== undefined) setClause.radiusM = data.radiusM ?? null
 	if (data.luminosity !== undefined) setClause.luminosity = data.luminosity?.trim() || null
+	if (data.luminosityW !== undefined) setClause.luminosityW = data.luminosityW ?? null
 	if (data.luminosityVisual !== undefined) setClause.luminosityVisual = data.luminosityVisual?.trim() || null
 	if (data.temperature !== undefined) setClause.temperature = data.temperature?.trim() || null
+	if (data.temperatureK !== undefined) setClause.temperatureK = data.temperatureK ?? null
 	if (data.age !== undefined) setClause.age = data.age?.trim() || null
 	if (data.color !== undefined) setClause.color = data.color?.trim() || null
+	if (data.density !== undefined) setClause.density = data.density?.trim() || null
+	if (data.surfaceGravity !== undefined) setClause.surfaceGravity = data.surfaceGravity?.trim() || null
+	if (data.escapeVelocity !== undefined) setClause.escapeVelocity = data.escapeVelocity?.trim() || null
+	if (data.rotationPeriod !== undefined) setClause.rotationPeriod = data.rotationPeriod?.trim() || null
+	if (data.rotationPeriodS !== undefined) setClause.rotationPeriodS = data.rotationPeriodS ?? null
+	if (data.axialTilt !== undefined) setClause.axialTilt = data.axialTilt ?? null
 	if (data.orbitalPeriod !== undefined) setClause.orbitalPeriod = data.orbitalPeriod?.trim() || null
+	if (data.orbitalPeriodDays !== undefined) setClause.orbitalPeriodDays = data.orbitalPeriodDays ?? null
 	if (data.semiMajorAxis !== undefined) setClause.semiMajorAxis = data.semiMajorAxis?.trim() || null
 	if (data.semiMajorAxisAu !== undefined) setClause.semiMajorAxisAu = data.semiMajorAxisAu ?? null
 	if (data.eccentricity !== undefined) setClause.eccentricity = data.eccentricity ?? null
 	if (data.periastron !== undefined) setClause.periastron = data.periastron?.trim() || null
 	if (data.apastron !== undefined) setClause.apastron = data.apastron?.trim() || null
 	if (data.apparentMagnitude !== undefined) setClause.apparentMagnitude = data.apparentMagnitude?.trim() || null
+	if (data.absoluteMagnitude !== undefined) setClause.absoluteMagnitude = data.absoluteMagnitude?.trim() || null
 	if (data.angularDiameter !== undefined) setClause.angularDiameter = data.angularDiameter?.trim() || null
+	if (data.metallicity !== undefined) setClause.metallicity = data.metallicity?.trim() || null
 	if (data.companion !== undefined) setClause.companion = data.companion?.trim() || null
 	if (data.parentStarId !== undefined) setClause.parentStarId = data.parentStarId ?? null
 	if (data.systemId !== undefined) setClause.systemId = data.systemId ?? null
@@ -97,16 +108,53 @@ export const PUT: RequestHandler = async (event) => {
 	if (data.extra !== undefined) setClause.extra = data.extra ?? {}
 	if (data.description !== undefined) setClause.description = data.description?.trim() || ''
 
-	// Auto-compute derived fields from numeric inputs
+	// Always-derive display strings from numeric values
+	const finalMassKg = data.massKg !== undefined ? data.massKg : current.massKg
+	const finalRadiusM = data.radiusM !== undefined ? data.radiusM : current.radiusM
+	if (finalMassKg != null && finalMassKg > 0) setClause.mass = formatMass(finalMassKg)
+	if (finalRadiusM != null && finalRadiusM > 0) setClause.radius = formatRadius(finalRadiusM)
+	const finalTempK = data.temperatureK !== undefined ? data.temperatureK : current.temperatureK
+	if (finalTempK != null && finalTempK > 0) setClause.temperature = formatTemperatureK(finalTempK)
+
+	// Auto-compute derived physical fields
+	const physical = deriveBodyFields(finalMassKg, finalRadiusM)
+	if (data.density === undefined && physical.density) setClause.density = physical.density
+	if (data.surfaceGravity === undefined && physical.surfaceGravity) setClause.surfaceGravity = physical.surfaceGravity
+	if (data.escapeVelocity === undefined && physical.escapeVelocity) setClause.escapeVelocity = physical.escapeVelocity
+
+	// Auto-compute luminosity from radius + temperature via Stefan-Boltzmann
+	if (data.luminosityW === undefined && finalRadiusM != null && finalTempK != null && finalRadiusM > 0 && finalTempK > 0) {
+		const derivedW = computeLuminosity(finalRadiusM, finalTempK)
+		setClause.luminosityW = derivedW
+		if (data.luminosity === undefined) setClause.luminosity = formatLuminosity(derivedW)
+	}
+
+	// Auto-compute orbital fields
 	const finalAu = data.semiMajorAxisAu !== undefined ? data.semiMajorAxisAu : current.semiMajorAxisAu
 	const finalEcc = data.eccentricity !== undefined ? data.eccentricity : current.eccentricity
 	const orbital = deriveStarOrbitalFields(finalAu ?? null, finalEcc ?? null)
-	setClause.periastron = orbital.periastron
-	setClause.apastron = orbital.apastron
+	if (data.periastron === undefined) setClause.periastron = orbital.periastron
+	if (data.apastron === undefined) setClause.apastron = orbital.apastron
 
-	// Auto-format display strings from numeric values
-	const display = deriveDisplayStrings(null, finalAu, null)
+	// Auto-compute binary orbital period from Kepler's law
+	const finalOrbitalDays = data.orbitalPeriodDays !== undefined ? data.orbitalPeriodDays : current.orbitalPeriodDays
+	if (finalOrbitalDays == null && finalAu != null && finalAu > 0 && current.parentStarId != null) {
+		const [parentStar] = await db.select({ massKg: stars.massKg }).from(stars).where(eq(stars.id, current.parentStarId))
+		if (parentStar?.massKg) {
+			const totalMass = (finalMassKg ?? 0) + parentStar.massKg
+			if (totalMass > 0) {
+				const period = computeOrbitalPeriodDays(finalAu, totalMass)
+				setClause.orbitalPeriodDays = period
+				if (data.orbitalPeriod === undefined) setClause.orbitalPeriod = formatPeriod(period * 86_400)
+			}
+		}
+	}
+
+	// Auto-format display strings
+	const display = deriveDisplayStrings(finalOrbitalDays ?? (setClause.orbitalPeriodDays as number | null), finalAu, data.rotationPeriodS !== undefined ? data.rotationPeriodS : current.rotationPeriodS)
 	if (data.semiMajorAxis === undefined && display.semiMajorAxis) setClause.semiMajorAxis = display.semiMajorAxis
+	if (data.orbitalPeriod === undefined && display.orbitalPeriod) setClause.orbitalPeriod = display.orbitalPeriod
+	if (data.rotationPeriod === undefined && display.rotationPeriod) setClause.rotationPeriod = display.rotationPeriod
 
 	const updated = await db.transaction(async (tx) => {
 		const [saved] = await tx

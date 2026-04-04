@@ -58,7 +58,7 @@
 			'flex shrink-0 items-center justify-center size-4 border transition-colors mt-0.5',
 			value
 				? 'bg-accent border-accent text-surface'
-				: error ? 'border-error bg-transparent' : 'border-border-strong bg-surface',
+				: (error ? 'border-error bg-transparent' : 'border-border-strong bg-surface'),
 			disabled && 'cursor-not-allowed opacity-50',
 			readonly ? 'cursor-default' : 'cursor-pointer hover:border-accent',
 			className,

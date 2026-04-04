@@ -117,8 +117,8 @@
 		selectedId?: EntityKey | null
 	} = $props()
 
-	let containerEl: HTMLDivElement | null = null
-	let canvasEl: HTMLCanvasElement | null = null
+	let containerElement: HTMLDivElement | null = null
+	let canvasElement: HTMLCanvasElement | null = null
 	let displaySize = $state({ width: SIZE, height: SIZE })
 	let theme = $state<ThemePalette>(DEFAULT_THEME)
 	let hoveredId = $state<EntityKey | null>(null)
@@ -134,8 +134,8 @@
 	}
 
 	function readTheme() {
-		if (!containerEl) return
-		const style = getComputedStyle(containerEl)
+		if (!containerElement) return
+		const style = getComputedStyle(containerElement)
 		theme = {
 			page: style.getPropertyValue('--color-page').trim() || DEFAULT_THEME.page,
 			surface: style.getPropertyValue('--color-surface').trim() || DEFAULT_THEME.surface,
@@ -149,10 +149,10 @@
 	}
 
 	$effect(() => {
-		if (!containerEl) return
+		if (!containerElement) return
 
 		const updateRect = () => {
-			const rect = containerEl?.getBoundingClientRect()
+			const rect = containerElement?.getBoundingClientRect()
 			if (!rect) return
 			const width = Math.max(1, Math.round(rect.width))
 			displaySize = { width, height: width }
@@ -162,7 +162,7 @@
 		updateRect()
 
 		const observer = new ResizeObserver(() => updateRect())
-		observer.observe(containerEl)
+		observer.observe(containerElement)
 
 		return () => observer.disconnect()
 	})
@@ -568,13 +568,13 @@
 	}
 
 	function renderMap() {
-		if (!canvasEl) return
-		const context = canvasEl.getContext('2d')
+		if (!canvasElement) return
+		const context = canvasElement.getContext('2d')
 		if (!context) return
 
 		const dpr = window.devicePixelRatio || 1
-		canvasEl.width = Math.round(SIZE * dpr)
-		canvasEl.height = Math.round(SIZE * dpr)
+		canvasElement.width = Math.round(SIZE * dpr)
+		canvasElement.height = Math.round(SIZE * dpr)
 		context.setTransform(dpr, 0, 0, dpr, 0, 0)
 		context.clearRect(0, 0, SIZE, SIZE)
 		context.fillStyle = theme.page
@@ -924,7 +924,7 @@
 	}
 
 	function eventToScreen(event: MouseEvent) {
-		const rect = canvasEl?.getBoundingClientRect()
+		const rect = canvasElement?.getBoundingClientRect()
 		if (!rect) return null
 		return {
 			x: ((event.clientX - rect.left) / rect.width) * SIZE,
@@ -957,7 +957,7 @@
 
 	function handlePointerMove(event: MouseEvent) {
 		if (isDragging && dragStart) {
-			const rect = canvasEl?.getBoundingClientRect()
+			const rect = canvasElement?.getBoundingClientRect()
 			if (!rect) return
 			const pxScale = SIZE / rect.width
 			panOffset = {
@@ -1016,7 +1016,7 @@
 
 	// Wheel zoom + global mouseup listener
 	$effect(() => {
-		const canvas = canvasEl
+		const canvas = canvasElement
 		if (!canvas) return
 
 		const onWheel = (event: WheelEvent) => {
@@ -1065,9 +1065,9 @@
 	})
 </script>
 
-<div class="relative w-full" bind:this={containerEl}>
+<div class="relative w-full" bind:this={containerElement}>
 	<canvas
-		bind:this={canvasEl}
+		bind:this={canvasElement}
 		width={SIZE}
 		height={SIZE}
 		class="block w-full bg-page"

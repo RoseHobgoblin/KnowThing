@@ -10,7 +10,7 @@ import {
 	deleteCelestialContentRecord,
 	ensurePlanetaryBodyContentRecord,
 } from '$lib/server/services/celestial-content.js'
-import { deriveBodyFields, deriveBodyOrbitalFields, deriveDisplayStrings } from '$lib/celestial/compute.js'
+import { deriveBodyFields, deriveBodyOrbitalFields, deriveDisplayStrings, formatMass, formatRadius } from '$lib/celestial/compute.js'
 
 /** GET /api/planetary-bodies/:slug */
 export const GET: RequestHandler = async ({ params }) => {
@@ -124,9 +124,13 @@ export const PUT: RequestHandler = async (event) => {
 	if (data.extra !== undefined) setClause.extra = data.extra ?? {}
 	if (data.description !== undefined) setClause.description = data.description?.trim() || ''
 
-	// Auto-compute derived physical properties from numeric mass/radius
+	// Always-derive display strings from numeric values
 	const finalMassKg = data.massKg !== undefined ? data.massKg : current.massKg
 	const finalRadiusM = data.radiusM !== undefined ? data.radiusM : current.radiusM
+	if (finalMassKg != null && finalMassKg > 0) setClause.mass = formatMass(finalMassKg)
+	if (finalRadiusM != null && finalRadiusM > 0) setClause.radius = formatRadius(finalRadiusM)
+
+	// Auto-compute derived physical properties from numeric mass/radius
 	const derived = deriveBodyFields(finalMassKg, finalRadiusM)
 	// Only overwrite if not explicitly locked (user didn't send their own value)
 	if (data.density === undefined && derived.density) setClause.density = derived.density
