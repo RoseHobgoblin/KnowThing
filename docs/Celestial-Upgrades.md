@@ -40,6 +40,16 @@
 - Search by name, type, parent star, parent body, and article content
 - Results show path context like Sunly > Earth > Moon
 
+### Procedural body rendering
+- Zoom-aware detail levels: flat dot < 8px, gradient sphere 8–30px, full detail 30px+
+- Gas giants: horizontal banding with wave distortion, color-driven palette
+- Rocky worlds: procedural landmass patches from composition/color data
+- Ice worlds: pale base with fracture lines, blue-white limb
+- Atmosphere haze ring at limb for bodies with atmosphere data
+- Ring systems: tilted ellipses for hasRings bodies
+- Star corona expansion at high zoom
+- All driven by existing schema fields: color, bodyType, atmosphere, composition, hasRings, temperature
+
 ### Import/backfill/admin tools
 - Bulk-fix old records
 - Recompute derived fields for all celestial records

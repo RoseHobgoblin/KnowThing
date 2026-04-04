@@ -267,11 +267,15 @@
 		const directOrbiters: OrbitBody[] = []
 		const seen = new Set<EntityKey>()
 
+		const deepCompanionStars: OrbitBody[] = []
 		for (const star of companionStars) {
 			const key = keyForBody(star, true)
-			if (star.semiMajorAxisAu && !seen.has(key)) {
+			if (!star.semiMajorAxisAu || seen.has(key)) continue
+			if (star.parentStarId === primaryStarId) {
 				seen.add(key)
 				directOrbiters.push({ ...star, orbitAu: star.semiMajorAxisAu, ecc: star.eccentricity ?? 0, isStar: true, renderAsSatellite: false })
+			} else {
+				deepCompanionStars.push({ ...star, orbitAu: star.semiMajorAxisAu, ecc: star.eccentricity ?? 0, isStar: true, renderAsSatellite: true })
 			}
 		}
 
@@ -337,28 +341,36 @@
 			anchorRawPositions.set(keyForBody(position.body, position.body.isStar), { x: position.rawX, y: position.rawY })
 		}
 
-		const pendingBodies = bodies
-			.filter(body => body.semiMajorAxisAu != null && !seen.has(keyForBody(body, false)))
-			.map(body => ({ ...body, orbitAu: body.semiMajorAxisAu!, ecc: body.eccentricity ?? 0, isStar: false, renderAsSatellite: true }))
+		const pendingItems: OrbitBody[] = [
+			...deepCompanionStars,
+			...bodies
+				.filter(body => body.semiMajorAxisAu != null && !seen.has(keyForBody(body, false)))
+				.map(body => ({ ...body, orbitAu: body.semiMajorAxisAu!, ecc: body.eccentricity ?? 0, isStar: false, renderAsSatellite: true })),
+		]
 
-		while (pendingBodies.length > 0) {
+		while (pendingItems.length > 0) {
 			const groups = new Map<EntityKey, OrbitBody[]>()
 			const unresolved: OrbitBody[] = []
 
-			for (const body of pendingBodies) {
-				const parentKey = parentKeyForBody(body, primaryStarId, starIds)
+			for (const item of pendingItems) {
+				let parentKey: EntityKey | null
+				if (item.isStar && item.parentStarId != null) {
+					parentKey = `star:${item.parentStarId}` as EntityKey
+				} else {
+					parentKey = parentKeyForBody(item, primaryStarId, starIds)
+				}
 				if (!parentKey || !anchorRawPositions.has(parentKey)) {
-					unresolved.push(body)
+					unresolved.push(item)
 					continue
 				}
 				const existing = groups.get(parentKey) ?? []
-				existing.push(body)
+				existing.push(item)
 				groups.set(parentKey, existing)
 			}
 
 			if (groups.size === 0) break
-			pendingBodies.length = 0
-			pendingBodies.push(...unresolved)
+			pendingItems.length = 0
+			pendingItems.push(...unresolved)
 
 			for (const [parentKey, satellites] of groups.entries()) {
 				const parentAnchor = anchorRawPositions.get(parentKey)
@@ -377,7 +389,7 @@
 					const angle = computeAngle(satellite, index, satellites.length)
 					const x = parentAnchor.x + orbitRadius * Math.cos(angle)
 					const y = parentAnchor.y + orbitRadius * Math.sin(angle)
-					const key = keyForBody(satellite, false)
+					const key = keyForBody(satellite, satellite.isStar)
 
 					rawSatellitePositions.push({
 						body: satellite,
@@ -404,7 +416,7 @@
 				cameraOffset = { x: 0, y: 0 }
 			} else {
 				const selectedDirect = rawDirectPositions.find(position => keyForBody(position.body, position.body.isStar) === selectedId)
-				const selectedSatellite = rawSatellitePositions.find(position => keyForBody(position.body, false) === selectedId)
+				const selectedSatellite = rawSatellitePositions.find(position => keyForBody(position.body, position.body.isStar) === selectedId)
 				const target = selectedDirect ?? selectedSatellite ?? null
 				if (target) {
 					cameraOffset = { x: CENTER - target.rawX, y: CENTER - target.rawY }
@@ -451,7 +463,7 @@
 
 		for (const position of satellitePositions) {
 			hitTargets.push({
-				id: keyForBody(position.body, false),
+				id: keyForBody(position.body, position.body.isStar),
 				body: position.body,
 				x: position.x,
 				y: position.y,
@@ -739,7 +751,7 @@
 		}
 
 		for (const satellite of scene.satellitePositions) {
-			const key = keyForBody(satellite.body, false)
+			const key = keyForBody(satellite.body, satellite.body.isStar)
 			const isSelected = key === selectedId
 			context.save()
 			context.globalAlpha = bodyOpacity(key)
@@ -749,16 +761,33 @@
 					? theme.accentLight
 					: theme.secondary
 			context.lineWidth = isSelected ? 1.5 : 0.5
+			if (satellite.body.isStar) context.setLineDash([4, 3])
 			context.beginPath()
 			context.arc(satellite.parentX, satellite.parentY, satellite.orbitRadius, 0, Math.PI * 2)
 			context.stroke()
 			context.restore()
 
+			if (satellite.body.isStar) {
+				const starColor = resolveColor(satellite.body.color, '#FFE088')
+				const glow = context.createRadialGradient(satellite.x, satellite.y, 0, satellite.x, satellite.y, 20)
+				glow.addColorStop(0, `${starColor}4d`)
+				glow.addColorStop(0.3, `${starColor}1a`)
+				glow.addColorStop(1, `${starColor}00`)
+				context.save()
+				context.globalAlpha = bodyOpacity(key)
+				context.fillStyle = glow
+				context.beginPath()
+				context.arc(satellite.x, satellite.y, 20, 0, Math.PI * 2)
+				context.fill()
+				context.restore()
+			}
+
+			const satRadius = satellite.body.isStar ? 5 : 2.5
 			context.save()
 			context.globalAlpha = bodyOpacity(key)
-			context.fillStyle = resolveColor(satellite.body.color, theme.dim)
+			context.fillStyle = resolveColor(satellite.body.color, satellite.body.isStar ? '#FFE088' : theme.dim)
 			context.beginPath()
-			context.arc(satellite.x, satellite.y, 2.5, 0, Math.PI * 2)
+			context.arc(satellite.x, satellite.y, satRadius, 0, Math.PI * 2)
 			context.fill()
 			if (isSelected) {
 				context.strokeStyle = theme.accent
