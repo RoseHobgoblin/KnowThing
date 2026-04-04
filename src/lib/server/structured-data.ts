@@ -3,6 +3,11 @@ import { stars, planetaryBodies, starSystems } from './db/schema.js'
 import { eq, sql } from 'drizzle-orm'
 import type { FieldMap } from '$lib/infoboxes/types.js'
 import type { MapBody } from '$lib/celestial/SystemMap.svelte'
+import {
+	computePeriastron, computeApastron, formatAu,
+	computeOrbitalVelocity, formatOrbitalVelocity,
+	computeOrbitalPeriodDays, formatPeriod,
+} from '$lib/celestial/compute.js'
 
 export interface SystemMapData {
 	systemName: string
@@ -21,7 +26,7 @@ function rowToFieldMap(row: Record<string, unknown>, fieldNames: string[]): Fiel
 		const value = row[field]
 		if (value != null && value !== '') {
 			// Convert camelCase to snake_case for FieldMap keys
-			const key = field.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`)
+			const key = field.replaceAll(/[A-Z]/g, letter => `_${letter.toLowerCase()}`)
 			map.set(key, String(value))
 		}
 	}
@@ -71,6 +76,56 @@ const DOMAIN_RESOLVERS: Record<string, (slug: string) => Promise<FieldMap | null
 		if (row.inclination != null) fields.set('inclination', String(row.inclination))
 		if (row.satellites != null) fields.set('satellites', String(row.satellites))
 		if (row.hasRings) fields.set('has_rings', 'yes')
+
+		// Parent body context
+		if (row.parentId != null) {
+			const [parent] = await db.select({ name: planetaryBodies.name, slug: planetaryBodies.slug })
+				.from(planetaryBodies).where(eq(planetaryBodies.id, row.parentId))
+			if (parent) {
+				fields.set('satellite_of', parent.name)
+				fields.set('satellite_of_slug', parent.slug)
+			}
+		}
+
+		// Parent star name
+		if (row.starId != null) {
+			const [star] = await db.select({ name: stars.name, slug: stars.slug, massKg: stars.massKg })
+				.from(stars).where(eq(stars.id, row.starId))
+			if (star) {
+				if (!row.parentId) fields.set('satellite_of', star.name)
+				fields.set('parent_star', star.name)
+				fields.set('parent_star_slug', star.slug)
+
+				// Kepler-derived orbital period if not stored
+				if (row.orbitalPeriodDays == null && row.semiMajorAxisAu != null && star.massKg != null) {
+					const period = computeOrbitalPeriodDays(row.semiMajorAxisAu, star.massKg)
+					fields.set('orbital_period', formatPeriod(period * 86_400))
+				}
+			}
+		}
+
+		// Computed orbital fields
+		if (row.semiMajorAxisAu != null && row.eccentricity != null) {
+			fields.set('periapsis', formatAu(computePeriastron(row.semiMajorAxisAu, row.eccentricity)))
+			fields.set('apoapsis', formatAu(computeApastron(row.semiMajorAxisAu, row.eccentricity)))
+		}
+		if (row.semiMajorAxisAu != null && row.orbitalPeriodDays != null && row.orbitalPeriodDays > 0) {
+			fields.set('orbital_velocity', formatOrbitalVelocity(computeOrbitalVelocity(row.semiMajorAxisAu, row.orbitalPeriodDays)))
+		}
+
+		// Computed physical fields from radius
+		if (row.radiusM != null && row.radiusM > 0) {
+			const r = row.radiusM
+			fields.set('circumference', `${((2 * Math.PI * r) / 1000).toLocaleString('en-US', { maximumFractionDigits: 0 })} km`)
+			fields.set('surface_area', `${((4 * Math.PI * r * r) / 1e6).toExponential(3)} km²`)
+			fields.set('volume', `${((4 / 3 * Math.PI * r * r * r) / 1e9).toExponential(3)} km³`)
+
+			if (row.rotationPeriodS != null && row.rotationPeriodS > 0) {
+				const eqVel = (2 * Math.PI * r) / row.rotationPeriodS
+				fields.set('equatorial_velocity', `${eqVel.toFixed(eqVel >= 100 ? 0 : 1)} m/s`)
+			}
+		}
+
 		return fields
 	},
 }
@@ -98,9 +153,7 @@ DOMAIN_RESOLVERS['system'] = async (slug) => {
 			(SELECT COUNT(*) FROM planetary_bodies pb JOIN stars s ON s.id = pb.star_id WHERE s.system_id = ${system.id} AND pb.parent_id IS NOT NULL)::int AS satellites
 	`)
 
-	const fields = new Map<string, string>()
-	fields.set('name', system.name)
-	fields.set('system_type', system.systemType ?? 'single')
+	const fields = new Map<string, string>([['name', system.name], ['system_type', system.systemType ?? 'single']])
 
 	// Stars list
 	const starNames = (systemStars as any[]).map((s: any) => {
@@ -168,7 +221,7 @@ export async function resolveSystemMapData(slug: string): Promise<SystemMapData 
 export async function resolveAllSystemMaps(slugs: string[]): Promise<Record<string, SystemMapData>> {
 	const result: Record<string, SystemMapData> = {}
 	await Promise.all(
-		slugs.map(async slug => {
+		slugs.map(async (slug) => {
 			const data = await resolveSystemMapData(slug)
 			if (data) result[slug] = data
 		}),
@@ -194,12 +247,12 @@ export async function resolveStructuredData(
  * Returns a Map keyed by `${type}:${slug}` → FieldMap.
  */
 export async function resolveAllStructuredData(
-	refs: { type: string, slug: string }[],
+	references: { type: string, slug: string }[],
 ): Promise<Map<string, FieldMap>> {
 	const result = new Map<string, FieldMap>()
 
 	await Promise.all(
-		refs.map(async ({ type, slug }) => {
+		references.map(async ({ type, slug }) => {
 			const fields = await resolveStructuredData(type, slug)
 			if (fields) {
 				result.set(slug, fields)
