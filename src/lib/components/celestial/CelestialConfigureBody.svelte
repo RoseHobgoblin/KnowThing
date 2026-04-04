@@ -186,11 +186,11 @@
 	let hasRings = $state(initialDraft.hasRings)
 
 	// Lock states for overridable derived fields
-	let densityLocked = $state(false)
+	let densityUnlocked = $state(false)
 	let densityOverride = $state<string | null>(null)
-	let gravityLocked = $state(false)
+	let gravityUnlocked = $state(false)
 	let gravityOverride = $state<string | null>(null)
-	let escapeLocked = $state(false)
+	let escapeUnlocked = $state(false)
 	let escapeOverride = $state<string | null>(null)
 
 	let content = $state(initialDraft.content)
@@ -378,9 +378,9 @@
 					mass: massDisplay,
 					radiusM,
 					radius: radiusDisplay,
-					density: densityLocked ? densityOverride : undefined,
-					surfaceGravity: gravityLocked ? gravityOverride : undefined,
-					escapeVelocity: escapeLocked ? escapeOverride : undefined,
+					density: densityUnlocked ? densityOverride : undefined,
+					surfaceGravity: gravityUnlocked ? gravityOverride : undefined,
+					escapeVelocity: escapeUnlocked ? escapeOverride : undefined,
 					temperature: temperature || null,
 					age: age || null,
 					composition: composition || null,
@@ -520,9 +520,9 @@
 					<DerivedField label="Mass" value={massDisplay} hint="Auto-formatted from the numeric mass value. Shows Earth/Jupiter/Solar reference units." />
 					<Input label="Radius (m)" type="number" bind:value={radiusM} step="any" placeholder="6371000" hint="Mean radius in metres. Earth is 6,371,000 m. Used to derive density, gravity, and escape velocity." />
 					<DerivedField label="Radius" value={radiusDisplay} hint="Auto-formatted from the numeric radius value. Shows Earth/Jupiter/Solar reference units." />
-					<LockableDerivedField label="Density" derivedValue={computedPhysical.density} bind:value={densityOverride} bind:locked={densityLocked} hint="Mass / volume. Derived from mass and radius. Earth is 5.514 g/cm³. Lock to override for exotic materials." />
-					<LockableDerivedField label="Surface Gravity" derivedValue={computedPhysical.surfaceGravity} bind:value={gravityOverride} bind:locked={gravityLocked} hint="GM/r². Derived from mass and radius. Earth is 9.807 m/s². Lock to override for artificial or magical gravity." />
-					<LockableDerivedField label="Escape Velocity" derivedValue={computedPhysical.escapeVelocity} bind:value={escapeOverride} bind:locked={escapeLocked} hint="√(2GM/r). Earth is 11.186 km/s. Lock to override." />
+					<LockableDerivedField label="Density" derivedValue={computedPhysical.density} bind:value={densityOverride} bind:unlocked={densityUnlocked} hint="Mass / volume. Derived from mass and radius. Earth is 5.514 g/cm³. Lock to override for exotic materials." />
+					<LockableDerivedField label="Surface Gravity" derivedValue={computedPhysical.surfaceGravity} bind:value={gravityOverride} bind:unlocked={gravityUnlocked} hint="GM/r². Derived from mass and radius. Earth is 9.807 m/s². Lock to override for artificial or magical gravity." />
+					<LockableDerivedField label="Escape Velocity" derivedValue={computedPhysical.escapeVelocity} bind:value={escapeOverride} bind:unlocked={escapeUnlocked} hint="√(2GM/r). Earth is 11.186 km/s. Lock to override." />
 					<Input label="Temperature" bind:value={temperature} placeholder="288 K (mean)" hint="Mean surface or cloud-top temperature. Free text — include units." />
 					<Input label="Age" bind:value={age} placeholder="~4.5 billion years" hint="Estimated age. Free text." />
 				</div>

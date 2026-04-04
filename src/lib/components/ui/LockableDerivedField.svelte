@@ -7,7 +7,7 @@
 		label,
 		derivedValue,
 		value = $bindable<number | string | null>(null),
-		locked = $bindable(false),
+		unlocked = $bindable(false),
 		hint,
 		type = 'text',
 		step,
@@ -16,19 +16,19 @@
 		label: string
 		derivedValue: string | null
 		value?: number | string | null
-		locked?: boolean
+		unlocked?: boolean
 		hint?: string
 		type?: 'text' | 'number'
 		step?: string
 		placeholder?: string
 	} = $props()
 
-	function toggleLock() {
-		if (locked) {
-			locked = false
+	function toggle() {
+		if (unlocked) {
+			unlocked = false
 			value = null
 		} else {
-			locked = true
+			unlocked = true
 			if (type === 'number' && derivedValue != null) {
 				const parsed = parseFloat(derivedValue)
 				value = isNaN(parsed) ? derivedValue : parsed
@@ -39,23 +39,27 @@
 	}
 </script>
 
-<div class="relative">
-	{#if locked}
-		<Input {label} bind:value {type} {step} {placeholder} {hint} />
-	{:else}
-		<Input {label} value={derivedValue ?? '—'} readonly {hint} />
-	{/if}
+{#snippet lockIcon()}
 	<button
 		type="button"
-		class="absolute top-0.5 text-faint transition-colors hover:text-secondary"
-		style="right: -16px;"
-		onclick={toggleLock}
-		title={locked ? 'Unlock: revert to auto-derived value' : 'Lock: override with a custom value'}
+		class="text-faint transition-colors inline-flex hover:text-secondary"
+		onclick={toggle}
+		title={unlocked ? 'Re-lock: revert to auto-derived value' : 'Unlock: override with a custom value'}
 	>
-		{#if locked}
-			<LockSimple size={11} weight="bold" />
-		{:else}
+		{#if unlocked}
 			<LockSimpleOpen size={11} weight="bold" />
+		{:else}
+			<LockSimple size={11} weight="bold" />
 		{/if}
 	</button>
-</div>
+{/snippet}
+
+{#if unlocked}
+	<Input {label} bind:value {type} {step} {placeholder} {hint}>
+		{#snippet labelExtra()}{@render lockIcon()}{/snippet}
+	</Input>
+{:else}
+	<Input {label} value={derivedValue ?? '—'} readonly {hint}>
+		{#snippet labelExtra()}{@render lockIcon()}{/snippet}
+	</Input>
+{/if}

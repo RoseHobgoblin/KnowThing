@@ -179,13 +179,13 @@
 	let description = $state(initialDraft.description)
 
 	// Lock states for overridable derived fields
-	let densityLocked = $state(false)
+	let densityUnlocked = $state(false)
 	let densityOverride = $state<string | null>(null)
-	let gravityLocked = $state(false)
+	let gravityUnlocked = $state(false)
 	let gravityOverride = $state<string | null>(null)
-	let escapeLocked = $state(false)
+	let escapeUnlocked = $state(false)
 	let escapeOverride = $state<string | null>(null)
-	let luminosityLocked = $state(false)
+	let luminosityUnlocked = $state(false)
 	let luminosityOverride = $state<string | null>(null)
 
 	// Always-derived display fields
@@ -344,10 +344,10 @@
 					mass: massDisplay,
 					radiusM,
 					radius: radiusDisplay,
-					density: densityLocked ? densityOverride : undefined,
-					surfaceGravity: gravityLocked ? gravityOverride : undefined,
-					escapeVelocity: escapeLocked ? escapeOverride : undefined,
-					luminosity: luminosityLocked ? luminosityOverride : undefined,
+					density: densityUnlocked ? densityOverride : undefined,
+					surfaceGravity: gravityUnlocked ? gravityOverride : undefined,
+					escapeVelocity: escapeUnlocked ? escapeOverride : undefined,
+					luminosity: luminosityUnlocked ? luminosityOverride : undefined,
 					luminosityW,
 					luminosityVisual: luminosityVisual || null,
 					temperature: tempDisplay,
@@ -495,12 +495,12 @@
 					<DerivedField label="Mass" value={massDisplay} hint="Auto-formatted from the numeric mass value. Shows Solar reference units." />
 					<Input label="Radius (m)" type="number" bind:value={radiusM} step="any" placeholder="696340000" hint="Mean radius in metres. The Sun is 696,340,000 m." />
 					<DerivedField label="Radius" value={radiusDisplay} hint="Auto-formatted from the numeric radius value. Shows Solar reference units." />
-					<LockableDerivedField label="Density" derivedValue={computedPhysical.density} bind:value={densityOverride} bind:locked={densityLocked} hint="Mass / volume. Derived from mass and radius. Lock to override." />
-					<LockableDerivedField label="Surface Gravity" derivedValue={computedPhysical.surfaceGravity} bind:value={gravityOverride} bind:locked={gravityLocked} hint="GM/r². Derived from mass and radius. The Sun is 274 m/s²." />
-					<LockableDerivedField label="Escape Velocity" derivedValue={computedPhysical.escapeVelocity} bind:value={escapeOverride} bind:locked={escapeLocked} hint="√(2GM/r). The Sun is 617.7 km/s." />
+					<LockableDerivedField label="Density" derivedValue={computedPhysical.density} bind:value={densityOverride} bind:unlocked={densityUnlocked} hint="Mass / volume. Derived from mass and radius. Lock to override." />
+					<LockableDerivedField label="Surface Gravity" derivedValue={computedPhysical.surfaceGravity} bind:value={gravityOverride} bind:unlocked={gravityUnlocked} hint="GM/r². Derived from mass and radius. The Sun is 274 m/s²." />
+					<LockableDerivedField label="Escape Velocity" derivedValue={computedPhysical.escapeVelocity} bind:value={escapeOverride} bind:unlocked={escapeUnlocked} hint="√(2GM/r). The Sun is 617.7 km/s." />
 					<Input label="Temperature (K)" type="number" bind:value={temperatureK} step="any" placeholder="5778" hint="Effective surface temperature in Kelvin. The Sun is 5,778 K. Used with radius to derive luminosity via Stefan-Boltzmann law." />
 					<DerivedField label="Temperature" value={tempDisplay} hint="Auto-formatted from the numeric Kelvin value." />
-					<LockableDerivedField label="Luminosity{!luminosityLocked && derivedLuminosityW ? ' (Stefan-Boltzmann)' : ''}" derivedValue={derivedLuminosityLabel} bind:value={luminosityOverride} bind:locked={luminosityLocked} hint="L = 4πR²σT⁴. Derived from radius and temperature. The Sun is 1.0 L☉. Lock to set a custom value for magically dim/bright stars." />
+					<LockableDerivedField label="Luminosity{!luminosityUnlocked && derivedLuminosityW ? ' (Stefan-Boltzmann)' : ''}" derivedValue={derivedLuminosityLabel} bind:value={luminosityOverride} bind:unlocked={luminosityUnlocked} hint="L = 4πR²σT⁴. Derived from radius and temperature. The Sun is 1.0 L☉. Lock to set a custom value for magically dim/bright stars." />
 					<Input label="Visual Luminosity" bind:value={luminosityVisual} placeholder="1.0 L☉ (visual)" hint="Luminosity in the visible spectrum only. Can differ from bolometric luminosity for very hot or cool stars." />
 					{#if habitableZone}
 						<DerivedField label="Habitable Zone" value="{habitableZone.inner.toFixed(2)} – {habitableZone.outer.toFixed(2)} AU" hint="Conservative HZ from luminosity: inner = √(L/1.1), outer = √(L/0.53). Where liquid water could exist on a rocky planet." />

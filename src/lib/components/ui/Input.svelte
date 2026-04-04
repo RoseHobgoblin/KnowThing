@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { tick } from 'svelte'
+	import { tick, type Snippet } from 'svelte'
 	import type { SvelteHTMLElements } from 'svelte/elements'
 	import { cn, getZodValidationError } from '$lib/utils'
 	import { useId } from 'bits-ui'
@@ -16,6 +16,7 @@
 	type Props = SvelteHTMLElements['input'] & {
 		label?: string
 		labelClass?: string
+		labelExtra?: Snippet
 		containerClass?: string
 		validate?: ZodType
 		validateImmediately?: boolean
@@ -51,6 +52,7 @@
 		charset,
 		error: externalError,
 		hint,
+		labelExtra,
 		...props
 	}: Props = $props()
 
@@ -149,6 +151,9 @@
 					<span class="text-error">*</span>
 				{/if}
 			</Label>
+			{#if labelExtra}
+				{@render labelExtra()}
+			{/if}
 			{#if hint}
 				<Tooltip content={hint} side="top">
 					<span class="text-faint transition-colors cursor-help hover:text-secondary"><QuestionIcon size={12} weight="bold" /></span>
