@@ -77,6 +77,8 @@
 	}
 
 	type BodyDraftSnapshot = {
+		name: string
+		slug: string
 		bodyType: BodyType
 		starIdStr: string
 		parentIdStr: string
@@ -104,6 +106,8 @@
 
 	function buildInitialBodyDraft(bodyRecord: BodyRecord, articleContent: string): BodyDraftSnapshot {
 		return {
+			name: bodyRecord.name,
+			slug: bodyRecord.slug,
 			bodyType: bodyRecord.bodyType ?? 'planet',
 			starIdStr: bodyRecord.starId ? String(bodyRecord.starId) : '',
 			parentIdStr: bodyRecord.parentId ? String(bodyRecord.parentId) : '',
@@ -156,6 +160,8 @@
 		? `${initialParentCrumbs.at(-1)!.href}/${initialBody.slug}`
 		: `/celestial/${initialBody.slug}`)
 
+	let name = $state(initialDraft.name)
+	let slug = $state(initialDraft.slug)
 	let bodyType = $state<BodyType>(initialDraft.bodyType)
 	let starIdStr = $state(initialDraft.starIdStr)
 	let parentIdStr = $state(initialDraft.parentIdStr)
@@ -192,6 +198,8 @@
 	let gravityOverride = $state<string | null>(null)
 	let escapeUnlocked = $state(false)
 	let escapeOverride = $state<string | null>(null)
+	let periodUnlocked = $state(initialDraft.orbitalPeriodDays != null)
+	let periodOverride = $state<number | string | null>(initialDraft.orbitalPeriodDays)
 
 	let content = $state(initialDraft.content)
 	let editSummary = $state('')
@@ -243,11 +251,15 @@
 		}
 		return null
 	})
-	const computedOrbital = $derived(deriveBodyOrbitalFields(semiMajorAxisAu, orbitalPeriodDays, massKg, parentMassKg))
-	const effectivePeriodDays = $derived(orbitalPeriodDays ?? computedOrbital.orbitalPeriodDays)
+	const computedOrbital = $derived(deriveBodyOrbitalFields(semiMajorAxisAu, periodUnlocked ? orbitalPeriodDays : null, massKg, parentMassKg))
+	const keplerPeriodDays = $derived(computedOrbital.orbitalPeriodDays)
+	const effectivePeriodDays = $derived(periodUnlocked ? orbitalPeriodDays : keplerPeriodDays)
+	const keplerPeriodDisplay = $derived(keplerPeriodDays ? `${keplerPeriodDays.toFixed(3)} days` : null)
 	const computedDisplay = $derived(deriveDisplayStrings(effectivePeriodDays, semiMajorAxisAu, rotationPeriodS))
 
 	const currentSnapshot = $derived(JSON.stringify({
+		name,
+		slug,
 		bodyType,
 		starIdStr,
 		parentIdStr,
@@ -259,7 +271,6 @@
 		composition,
 		atmosphere,
 		surfacePressure,
-		orbitalPeriodDays,
 		semiMajorAxisAu,
 		eccentricity,
 		inclination,
@@ -271,6 +282,10 @@
 		albedo,
 		hasRings,
 		content,
+		densityUnlocked, densityOverride,
+		gravityUnlocked, gravityOverride,
+		escapeUnlocked, escapeOverride,
+		periodUnlocked, periodOverride,
 	}))
 	const isDirty = $derived(currentSnapshot !== initialSnapshot || editSummary.trim().length > 0)
 	let stablePermissions = $state(normalizePermissions($page.data.permissions))
@@ -330,6 +345,8 @@
 	})
 
 	function resetDraft() {
+		name = initialDraft.name
+		slug = initialDraft.slug
 		bodyType = initialDraft.bodyType
 		starIdStr = initialDraft.starIdStr
 		parentIdStr = initialDraft.parentIdStr
@@ -353,6 +370,14 @@
 		albedo = initialDraft.albedo
 		hasRings = initialDraft.hasRings
 		content = initialDraft.content
+		densityUnlocked = false
+		densityOverride = null
+		gravityUnlocked = false
+		gravityOverride = null
+		escapeUnlocked = false
+		escapeOverride = null
+		periodUnlocked = initialDraft.orbitalPeriodDays != null
+		periodOverride = initialDraft.orbitalPeriodDays
 		editSummary = ''
 		saveError = ''
 	}
@@ -370,6 +395,7 @@
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
+					name,
 					bodyType,
 					starId: starIdStr ? Number(starIdStr) : null,
 					parentId: parentIdStr ? Number(parentIdStr) : null,
@@ -386,7 +412,7 @@
 					composition: composition || null,
 					atmosphere: atmosphere || null,
 					surfacePressure: surfacePressure || null,
-					orbitalPeriodDays,
+					orbitalPeriodDays: periodUnlocked ? orbitalPeriodDays : null,
 					semiMajorAxisAu,
 					eccentricity,
 					inclination,
@@ -404,6 +430,13 @@
 				saveError = data.error || 'Failed to save properties'
 				pushError(saveError)
 				return
+			}
+
+			const saved = await res.json().catch(() => null)
+			if (saved?.slug && saved.slug !== initialBody.slug) {
+				slug = saved.slug
+				// Update URL without navigation so save-and-exit uses the new slug
+				globalThis.history.replaceState({}, '', globalThis.location.pathname.replace(initialBody.slug, saved.slug))
 			}
 
 			if (content !== initialWikiContent) {
@@ -504,7 +537,8 @@
 		{#if activeTab === 'identity'}
 			<section class="bg-raised border border-border-subtle p-5 space-y-4">
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-					<div><span class="text-xs font-medium text-secondary block mb-1">Name</span><p class="text-sm text-body">{initialBody.name}</p></div>
+					<Input label="Name" bind:value={name} placeholder="Body name" />
+					<DerivedField label="Slug" value={slug} hint="URL identifier. Changes when the body is renamed." />
 					<Select label="Body Type" type="single" bind:value={bodyType} items={bodyTypeItems} />
 					<Select label="Parent Star" type="single" bind:value={starIdStr} items={starItems} />
 				</div>
@@ -538,8 +572,8 @@
 		{:else if activeTab === 'orbit'}
 			<section class="bg-raised border border-border-subtle p-5 space-y-4">
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-					<Input label="Orbital Period (days)" type="number" bind:value={orbitalPeriodDays} step="any" placeholder="365.25" hint="Time for one full orbit in days. Leave blank to auto-derive from semi-major axis and parent star mass via Kepler's third law." />
-					<DerivedField label="Orbital Period" value={computedDisplay.orbitalPeriod} tag={orbitalPeriodDays == null && computedOrbital.orbitalPeriodDays != null ? 'Kepler' : undefined} hint="Human-readable period. Formatted from the days value, or computed via T = 2π√(a³/GM) when parent star mass is known." />
+					<LockableDerivedField label="Orbital Period (days)" derivedValue={keplerPeriodDisplay} bind:value={orbitalPeriodDays} bind:unlocked={periodUnlocked} type="number" step="any" placeholder="365.25" hint="Time for one full orbit in days. Derived from semi-major axis + parent star mass via Kepler's third law. Unlock to set a custom value." />
+					<DerivedField label="Orbital Period" value={computedDisplay.orbitalPeriod} hint="Human-readable period formatted from the days value." />
 					<Input label="Semi-major Axis (AU)" type="number" bind:value={semiMajorAxisAu} step="any" placeholder="1.0" hint="Half the longest diameter of the orbit, in astronomical units. 1 AU = Earth–Sun distance." error={semiMajorAxisAu !== null && semiMajorAxisAu < 0 ? 'Must be 0 or greater' : ''} />
 					<DerivedField label="Semi-major Axis" value={computedDisplay.semiMajorAxis} hint="Same distance converted to kilometres." />
 					<Input label="Eccentricity" type="number" bind:value={eccentricity} step="any" min={0} max={1} placeholder="0.0167" hint="How elliptical the orbit is. 0 = perfect circle, 1 = parabolic escape. Earth is 0.0167." error={eccentricity !== null && (eccentricity < 0 || eccentricity > 1) ? 'Use a value from 0 to 1' : ''} />

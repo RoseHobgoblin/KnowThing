@@ -16,7 +16,9 @@ export interface StarPreset {
 	radius: string
 	radiusM: number
 	luminosity: string
+	luminosityW?: number
 	temperature: string
+	temperatureK?: number
 	age: string
 	color: string
 	apparentMagnitude: string
@@ -97,7 +99,9 @@ export const celestialPresets: CelestialPreset[] = [
 				radius: '696,340 km (1.0 R☉)',
 				radiusM: 696_340_000,
 				luminosity: '3.828 × 10²⁶ W (1.0 L☉)',
+				luminosityW: 3.828e26,
 				temperature: '5,778 K',
+				temperatureK: 5778,
 				age: '~4.6 billion years',
 				color: 'Yellow-white',
 				apparentMagnitude: '−26.74',

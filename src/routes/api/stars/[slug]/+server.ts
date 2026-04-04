@@ -11,6 +11,7 @@ import {
 	syncBodiesForStar,
 } from '$lib/server/services/celestial-content.js'
 import { deriveBodyFields, deriveStarOrbitalFields, deriveDisplayStrings, computeLuminosity, formatLuminosity, computeOrbitalPeriodDays, formatPeriod, formatMass, formatRadius, formatTemperatureK } from '$lib/celestial/compute.js'
+import { urlSlugify } from '$lib/utils/slugify.js'
 
 /** GET /api/stars/:slug */
 export const GET: RequestHandler = async ({ params }) => {
@@ -70,7 +71,14 @@ export const PUT: RequestHandler = async (event) => {
 
 	const setClause: Record<string, unknown> = { updatedAt: new Date() }
 
-	if (data.name !== undefined) setClause.name = data.name.trim()
+	if (data.name !== undefined) {
+		setClause.name = data.name.trim()
+		const newSlug = urlSlugify(data.name)
+		if (newSlug && newSlug !== current.slug) {
+			const [conflict] = await db.select({ id: stars.id }).from(stars).where(eq(stars.slug, newSlug))
+			if (!conflict) setClause.slug = newSlug
+		}
+	}
 	if (data.pageSlug !== undefined) setClause.pageSlug = data.pageSlug?.trim() || null
 	if (data.spectralType !== undefined) setClause.spectralType = data.spectralType?.trim() || null
 	if (data.mass !== undefined) setClause.mass = data.mass?.trim() || null

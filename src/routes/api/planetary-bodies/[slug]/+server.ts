@@ -11,6 +11,7 @@ import {
 	ensurePlanetaryBodyContentRecord,
 } from '$lib/server/services/celestial-content.js'
 import { deriveBodyFields, deriveBodyOrbitalFields, deriveDisplayStrings, formatMass, formatRadius } from '$lib/celestial/compute.js'
+import { urlSlugify } from '$lib/utils/slugify.js'
 
 /** GET /api/planetary-bodies/:slug */
 export const GET: RequestHandler = async ({ params }) => {
@@ -89,7 +90,14 @@ export const PUT: RequestHandler = async (event) => {
 
 	const setClause: Record<string, unknown> = { updatedAt: new Date() }
 
-	if (data.name !== undefined) setClause.name = data.name.trim()
+	if (data.name !== undefined) {
+		setClause.name = data.name.trim()
+		const newSlug = urlSlugify(data.name)
+		if (newSlug && newSlug !== current.slug) {
+			const [conflict] = await db.select({ id: planetaryBodies.id }).from(planetaryBodies).where(eq(planetaryBodies.slug, newSlug))
+			if (!conflict) setClause.slug = newSlug
+		}
+	}
 	if (data.bodyType !== undefined) setClause.bodyType = data.bodyType
 	if (data.starId !== undefined) setClause.starId = data.starId ?? null
 	if (data.parentId !== undefined) setClause.parentId = data.parentId ?? null

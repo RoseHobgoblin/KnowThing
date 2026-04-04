@@ -71,6 +71,8 @@
 	}
 
 	type StarDraftSnapshot = {
+		name: string
+		slug: string
 		spectralType: string
 		massKg: number | null
 		radiusM: number | null
@@ -99,6 +101,8 @@
 
 	function buildInitialStarDraft(starRecord: StarRecord, articleContent: string): StarDraftSnapshot {
 		return {
+			name: starRecord.name,
+			slug: starRecord.slug,
 			spectralType: starRecord.spectralType ?? '',
 			massKg: starRecord.massKg ?? null,
 			radiusM: starRecord.radiusM ?? null,
@@ -150,6 +154,8 @@
 		? `${initialParentCrumbs.at(-1)!.href}/${initialStar.slug}`
 		: `/celestial/${initialStar.slug}`)
 
+	let name = $state(initialDraft.name)
+	let slug = $state(initialDraft.slug)
 	let spectralType = $state(initialDraft.spectralType)
 	let massKg = $state<number | null>(initialDraft.massKg)
 	let radiusM = $state<number | null>(initialDraft.radiusM)
@@ -223,10 +229,21 @@
 		massKg = preset.massKg
 		radiusM = preset.radiusM
 		luminosity = preset.luminosity
+		luminosityW = preset.luminosityW ?? null
 		temperature = preset.temperature
+		temperatureK = preset.temperatureK ?? null
 		age = preset.age
 		color = preset.color
 		apparentMagnitude = preset.apparentMagnitude
+		// Reset lock states — preset values are canonical
+		densityUnlocked = false
+		densityOverride = null
+		gravityUnlocked = false
+		gravityOverride = null
+		escapeUnlocked = false
+		escapeOverride = null
+		luminosityUnlocked = false
+		luminosityOverride = null
 	}
 
 	let saving = $state(false)
@@ -234,13 +251,13 @@
 	let savedAt = $state<Date | null>(null)
 	let initialSnapshot = JSON.stringify(initialDraft)
 	const currentSnapshot = $derived(JSON.stringify({
+		name,
+		slug,
 		spectralType,
 		massKg,
 		radiusM,
-		luminosity,
 		luminosityW,
 		luminosityVisual,
-		temperature,
 		temperatureK,
 		age,
 		color,
@@ -257,6 +274,10 @@
 		companion,
 		systemIdStr,
 		description,
+		densityUnlocked, densityOverride,
+		gravityUnlocked, gravityOverride,
+		escapeUnlocked, escapeOverride,
+		luminosityUnlocked, luminosityOverride,
 		content,
 	}))
 	const isDirty = $derived(currentSnapshot !== initialSnapshot || editSummary.trim().length > 0)
@@ -298,6 +319,8 @@
 	})
 
 	function resetDraft() {
+		name = initialDraft.name
+		slug = initialDraft.slug
 		spectralType = initialDraft.spectralType
 		massKg = initialDraft.massKg
 		radiusM = initialDraft.radiusM
@@ -322,6 +345,14 @@
 		systemIdStr = initialDraft.systemIdStr
 		description = initialDraft.description
 		content = initialDraft.content
+		densityUnlocked = false
+		densityOverride = null
+		gravityUnlocked = false
+		gravityOverride = null
+		escapeUnlocked = false
+		escapeOverride = null
+		luminosityUnlocked = false
+		luminosityOverride = null
 		editSummary = ''
 		saveError = ''
 	}
@@ -339,6 +370,7 @@
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
+					name,
 					spectralType: spectralType || null,
 					massKg,
 					mass: massDisplay,
@@ -374,6 +406,12 @@
 				saveError = body.error || 'Failed to save properties'
 				pushError(saveError)
 				return
+			}
+
+			const saved = await res.json().catch(() => null)
+			if (saved?.slug && saved.slug !== initialStar.slug) {
+				slug = saved.slug
+				globalThis.history.replaceState({}, '', globalThis.location.pathname.replace(initialStar.slug, saved.slug))
 			}
 
 			if (content !== initialWikiContent) {
@@ -481,7 +519,8 @@
 		{#if activeTab === 'identity'}
 			<section class="bg-raised border border-border-subtle p-5 space-y-4">
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-					<div><span class="text-xs font-medium text-secondary block mb-1">Name</span><p class="text-sm text-body">{initialStar.name}</p></div>
+					<Input label="Name" bind:value={name} placeholder="Star name" />
+					<DerivedField label="Slug" value={slug} hint="URL identifier. Changes when the star is renamed." />
 					<Select label="System" type="single" bind:value={systemIdStr} items={systemItems} />
 					<Input label="Color" bind:value={color} placeholder="Yellow-white" hint="Descriptive color name used for map rendering. Examples: yellow-white, orange-red, blue-white." />
 				</div>
