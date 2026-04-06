@@ -21,11 +21,10 @@ export const actions: Actions = {
 			return fail(400, { error: 'Title is required', title, content })
 		}
 
+		let record: Awaited<ReturnType<typeof createKnowPage>>
 		try {
-			const record = await createKnowPage({ title, content, userId: user.id })
-			throw redirect(302, `/know/${record.slug}`)
+			record = await createKnowPage({ title, content, userId: user.id })
 		} catch (error: unknown) {
-			if (error instanceof Response) throw error
 			if (isHttpError(error) && error.status === 409) {
 				return fail(409, { error: error.body?.message ?? error.message, title, content })
 			}
@@ -35,5 +34,7 @@ export const actions: Actions = {
 			}
 			return fail(500, { error: 'Failed to create page', title, content })
 		}
+
+		throw redirect(302, `/know/${record.slug}`)
 	},
 }
