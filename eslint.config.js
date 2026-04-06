@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url'
 import { configs, parser } from 'typescript-eslint'
 import eslintPluginUnicorn from 'eslint-plugin-unicorn'
 import deMorgan from 'eslint-plugin-de-morgan'
+import local from './eslint-plugin-local/index.js'
 
 const gitignorePath = fileURLToPath(new URL('.gitignore', import.meta.url))
 
@@ -17,6 +18,7 @@ export default defineConfig(
 		plugins: {
 			'svelte': svelte,
 			'@stylistic': stylistic,
+			'local': local,
 		},
 	},
 	includeIgnoreFile(gitignorePath),
@@ -133,6 +135,27 @@ export default defineConfig(
 			// Array helpers (recommended with no-useless-undefined)
 			'array-callback-return': ['error', { allowImplicit: true }],
 			'getter-return': ['error', { allowImplicit: true }],
+
+			// Local
+			'local/no-cn-static-only': 'warn',
+			'local/prefer-derived-by': 'warn',
+			'local/prefer-cn-for-dynamic-classes': 'warn',
+			'local/no-console-server': 'error',
+			'local/no-spread-state-array': 'warn',
+			'local/no-inline-import-type': 'warn',
+			'local/prefer-style-directive': 'warn',
+			'local/no-onclick-disabled-guard': 'warn',
+			'local/no-dynamic-tailwind-class': 'error',
+			'local/no-px-arbitrary-tailwind': 'warn',
+
+			// Built-in restrictions
+			'no-restricted-globals': ['error', {
+				name: 'alert',
+				message: 'Use a notification or dialog component instead.',
+			}, {
+				name: 'confirm',
+				message: 'Use ConfirmDialog from $lib/components/ui/ instead.',
+			}],
 
 			// Tailwind
 			'better-tailwindcss/enforce-consistent-line-wrapping': ['warn', {
