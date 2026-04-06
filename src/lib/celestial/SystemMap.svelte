@@ -1081,7 +1081,7 @@
 
 	{#if isViewMoved}
 		<button
-			class="absolute top-2 right-2 px-1.5 py-0.5 text-[10px] font-medium text-dim bg-surface/80 border border-border-subtle transition-colors hover:text-accent"
+			class="absolute top-2 right-2 px-1.5 py-0.5 text-xs font-medium text-dim bg-surface/80 border border-border-subtle transition-colors hover:text-accent"
 			onclick={resetView}
 		>
 			{zoomLevel.toFixed(1)}x
@@ -1100,7 +1100,7 @@
 				{/if}
 			</div>
 			{#if hoveredBody.semiMajorAxisAu}
-				<div class="text-[10px] text-faint">{hoveredBody.semiMajorAxisAu.toFixed(3)} AU</div>
+				<div class="text-xs text-faint">{hoveredBody.semiMajorAxisAu.toFixed(3)} AU</div>
 			{/if}
 		</div>
 	{/if}

@@ -159,7 +159,7 @@ export default defineConfig(
 
 			// Tailwind
 			'better-tailwindcss/enforce-consistent-line-wrapping': ['warn', {
-				printWidth: 100,
+				printWidth: 160,
 				classesPerLine: 0,
 				preferSingleLine: true,
 				indent: 'tab',

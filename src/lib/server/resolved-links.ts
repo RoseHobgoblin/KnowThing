@@ -25,8 +25,9 @@ export async function getResolvedLinks(sourceId: number): Promise<Map<string, Re
 			targetDomain: contentLinks.targetDomain,
 			targetSlug: contentLinks.targetSlug,
 			targetId: contentLinks.targetId,
-			// Join target record for parentPath (needed for hierarchical URLs)
+			// Join target record for parentPath and current slug (needed for URLs after moves)
 			targetParentPath: contentRecords.parentPath,
+			resolvedSlug: contentRecords.slug,
 		})
 		.from(contentLinks)
 		.leftJoin(contentRecords, eq(contentLinks.targetId, contentRecords.id))
@@ -40,7 +41,9 @@ export async function getResolvedLinks(sourceId: number): Promise<Map<string, Re
 	for (const row of rows) {
 		const key = `${row.targetDomain}:${row.targetSlug.toLowerCase()}`
 		const exists = row.targetId !== null
-		const href = buildHref(row.targetDomain, row.targetSlug, row.targetParentPath)
+		// Use the actual record slug for the URL (handles moves), fall back to targetSlug for red links
+		const hrefSlug = row.resolvedSlug ?? row.targetSlug
+		const href = buildHref(row.targetDomain, hrefSlug, row.targetParentPath)
 		result.set(key, { href, exists })
 
 		if (!exists && row.targetDomain === 'know') {

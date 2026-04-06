@@ -192,9 +192,12 @@ export async function moveKnowPage(input: MoveKnowPageInput) {
 			.where(eq(contentRecords.id, existing.id))
 			.returning()
 
+		// Update targetId on inbound links so they resolve to the moved record.
+		// Do NOT rewrite targetSlug — it must stay matching the source wikitext
+		// so the renderer's slug-based lookup still finds the entry.
 		await tx
 			.update(contentLinks)
-			.set({ targetSlug: newSlug, targetId: existing.id })
+			.set({ targetId: existing.id })
 			.where(and(eq(contentLinks.targetDomain, 'know'), eq(contentLinks.targetSlug, existing.slug)))
 
 		await updateContentEffects(tx, existing.id, existing.content, 'know')
