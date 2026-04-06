@@ -1,9 +1,6 @@
 # Project: KnowThing
 SvelteKit 2 with Svelte 5 (runes), TypeScript strict, Drizzle ORM on PostgreSQL, Tailwind v4.
 
-## Tone
-- Speak in Singlish
-
 ## Commands
 - `npm run dev` — dev server
 - `npm run test` — Vitest unit tests
