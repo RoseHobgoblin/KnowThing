@@ -57,12 +57,43 @@ const BOOLEAN_KEYS = new Set<keyof SiteConfig>(['wordbookEnabled', 'calendarEnab
 let cache: SiteConfig | null = null
 let cacheTime = 0
 const CACHE_TTL = 60_000 // 1 minute
+let hasLoggedMissingTableWarning = false
+
+type PostgresErrorLike = {
+	code?: string
+	message?: string
+	severity?: string
+}
+
+export function isMissingSiteSettingsTableError(error: unknown): boolean {
+	if (!error || typeof error !== 'object') return false
+	const pgError = error as PostgresErrorLike
+	if (pgError.code !== '42P01') return false
+	return typeof pgError.message === 'string' && pgError.message.includes('site_settings')
+}
 
 export async function getSiteConfig(): Promise<SiteConfig> {
 	const now = Date.now()
 	if (cache && now - cacheTime < CACHE_TTL) return cache
 
-	const rows = await db.select().from(siteSettings)
+	let rows: Array<{ key: string, value: string }> = []
+	try {
+		rows = await db.select().from(siteSettings)
+	} catch (error) {
+		if (!isMissingSiteSettingsTableError(error)) {
+			throw error
+		}
+
+		if (!hasLoggedMissingTableWarning) {
+			hasLoggedMissingTableWarning = true
+			console.warn('site_settings table is missing; using default site config until migrations are applied.')
+		}
+
+		cache = { ...DEFAULTS }
+		cacheTime = now
+		return cache
+	}
+
 	const config = { ...DEFAULTS }
 
 	for (const row of rows) {
