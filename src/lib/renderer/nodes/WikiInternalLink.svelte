@@ -9,21 +9,11 @@
 	const ctx = getKnowContext()
 	const slug = $derived(slugify(target))
 
-	// Look up from the per-page resolved links map (populated server-side)
+	// Look up from the per-page resolved links map (populated server-side).
+	// The server already resolves cross-domain fallthrough, so one lookup suffices.
 	const resolved = $derived.by(() => {
-		const lowerSlug = slug.toLowerCase()
-
-		// Check know domain first, then fall through to celestial/calendar
-		const knowLink = ctx.resolvedLinks.get(`know:${lowerSlug}`)
-		if (knowLink?.exists) return knowLink
-
-		for (const domain of ['celestial', 'calendar']) {
-			const link = ctx.resolvedLinks.get(`${domain}:${lowerSlug}`)
-			if (link) return link
-		}
-
-		// Not in resolved map — default to know domain red link
-		return { href: `${ctx.pageBaseUrl}/${slug}`, exists: false }
+		return ctx.resolvedLinks.get(`know:${slug.toLowerCase()}`)
+			?? { href: `${ctx.pageBaseUrl}/${slug}`, exists: false }
 	})
 
 	const href = $derived(resolved.href)

@@ -51,7 +51,9 @@ export async function getResolvedLinks(sourceId: number): Promise<Map<string, Re
 		}
 	}
 
-	// Cross-domain fallthrough: check if unresolved know links exist in other domains
+	// Cross-domain fallthrough: if unresolved know-domain links exist in
+	// celestial/calendar, update the original know:slug entry in-place so the
+	// client gets a single, authoritative answer per link — no fallthrough needed.
 	if (unresolvedKnowSlugs.length > 0) {
 		const crossDomainMatches = await db
 			.select({
@@ -66,15 +68,12 @@ export async function getResolvedLinks(sourceId: number): Promise<Map<string, Re
 			))
 
 		for (const match of crossDomainMatches) {
-			const lowerSlug = match.slug.toLowerCase()
-			// Add as the fallthrough domain key so WikiInternalLink finds it
-			const key = `${match.domain}:${lowerSlug}`
-			if (!result.has(key)) {
-				result.set(key, {
-					href: buildHref(match.domain, match.slug, match.parentPath),
-					exists: true,
-				})
-			}
+			const knowKey = `know:${match.slug.toLowerCase()}`
+			// Overwrite the red know entry with the real destination
+			result.set(knowKey, {
+				href: buildHref(match.domain, match.slug, match.parentPath),
+				exists: true,
+			})
 		}
 	}
 
