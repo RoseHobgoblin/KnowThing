@@ -5,6 +5,7 @@ export type * from './types.js'
 
 import type { WikiNode } from './types.js'
 import { parse } from './parser.js'
+import { parseInline } from './inline.js'
 
 // ============================================================================
 // AST-based extractors (accept a pre-parsed AST)
@@ -185,6 +186,9 @@ function getChildren(node: WikiNode): WikiNode[] {
 			return node.rows.flatMap(row => row.cells.flatMap(cell => cell.children))
 		case 'navbox':
 			return node.groups.flatMap(group => group.items)
+		case 'template':
+			// Template args store raw wikitext strings — parse them to find links inside
+			return node.args.flatMap(arg => arg.value ? parseInline(arg.value) : [])
 		default:
 			return []
 	}
