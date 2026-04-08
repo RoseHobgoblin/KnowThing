@@ -20,17 +20,21 @@ const FALLTHROUGH_DOMAINS = ['celestial', 'calendar']
  * Returns a Map keyed by "domain:slug" (lowercase, e.g. "know:onchera").
  */
 export async function getResolvedLinks(sourceId: number): Promise<Map<string, ResolvedLink>> {
+	// Join on (domain, slug) instead of targetId so existence is always checked
+	// live — stale targetId values can't cause phantom red links.
 	const rows = await db
 		.select({
 			targetDomain: contentLinks.targetDomain,
 			targetSlug: contentLinks.targetSlug,
-			targetId: contentLinks.targetId,
-			// Join target record for parentPath and current slug (needed for URLs after moves)
+			resolvedId: contentRecords.id,
 			targetParentPath: contentRecords.parentPath,
 			resolvedSlug: contentRecords.slug,
 		})
 		.from(contentLinks)
-		.leftJoin(contentRecords, eq(contentLinks.targetId, contentRecords.id))
+		.leftJoin(contentRecords, and(
+			eq(contentRecords.domain, contentLinks.targetDomain),
+			sql`LOWER(${contentRecords.slug}) = LOWER(${contentLinks.targetSlug})`,
+		))
 		.where(eq(contentLinks.sourceId, sourceId))
 
 	const result = new Map<string, ResolvedLink>()
@@ -40,7 +44,7 @@ export async function getResolvedLinks(sourceId: number): Promise<Map<string, Re
 
 	for (const row of rows) {
 		const key = `${row.targetDomain}:${row.targetSlug.toLowerCase()}`
-		const exists = row.targetId !== null
+		const exists = row.resolvedId !== null
 		// Use the actual record slug for the URL (handles moves), fall back to targetSlug for red links
 		const hrefSlug = row.resolvedSlug ?? row.targetSlug
 		const href = buildHref(row.targetDomain, hrefSlug, row.targetParentPath)
