@@ -15,7 +15,7 @@
 
 		// Check know domain first, then fall through to celestial/calendar
 		const knowLink = ctx.resolvedLinks.get(`know:${lowerSlug}`)
-		if (knowLink) return knowLink
+		if (knowLink?.exists) return knowLink
 
 		for (const domain of ['celestial', 'calendar']) {
 			const link = ctx.resolvedLinks.get(`${domain}:${lowerSlug}`)
