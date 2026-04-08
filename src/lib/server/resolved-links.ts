@@ -7,15 +7,14 @@ export interface ResolvedLink {
 	exists: boolean
 }
 
-/** Domains that WikiInternalLink falls through to when a know-domain link is unresolved */
-const FALLTHROUGH_DOMAINS = ['celestial', 'calendar']
+/** All content domains — unresolved links in one domain fall through to the others */
+const ALL_DOMAINS = ['know', 'celestial', 'calendar']
 
 /**
  * For a given content record, fetch its outbound links from the content_links
  * table and resolve each to an href + existence flag by joining content_records.
  *
- * For unresolved know-domain links, also checks celestial/calendar domains
- * (matching the WikiInternalLink cross-domain fallthrough behavior).
+ * For unresolved links in any domain, falls through to check all other domains.
  *
  * Returns a Map keyed by "domain:slug" (lowercase, e.g. "know:onchera").
  */
@@ -39,8 +38,8 @@ export async function getResolvedLinks(sourceId: number): Promise<Map<string, Re
 
 	const result = new Map<string, ResolvedLink>()
 
-	// Collect unresolved know-domain slugs for cross-domain fallthrough
-	const unresolvedKnowSlugs: string[] = []
+	// Collect unresolved slugs (with their source domain) for cross-domain fallthrough
+	const unresolvedEntries: { domain: string, slug: string }[] = []
 
 	for (const row of rows) {
 		const key = `${row.targetDomain}:${row.targetSlug.toLowerCase()}`
@@ -50,15 +49,15 @@ export async function getResolvedLinks(sourceId: number): Promise<Map<string, Re
 		const href = buildHref(row.targetDomain, hrefSlug, row.targetParentPath)
 		result.set(key, { href, exists })
 
-		if (!exists && row.targetDomain === 'know') {
-			unresolvedKnowSlugs.push(row.targetSlug.toLowerCase())
+		if (!exists) {
+			unresolvedEntries.push({ domain: row.targetDomain, slug: row.targetSlug.toLowerCase() })
 		}
 	}
 
-	// Cross-domain fallthrough: if unresolved know-domain links exist in
-	// celestial/calendar, update the original know:slug entry in-place so the
-	// client gets a single, authoritative answer per link — no fallthrough needed.
-	if (unresolvedKnowSlugs.length > 0) {
+	// Cross-domain fallthrough: for any unresolved link, check all OTHER domains.
+	// Updates the original key in-place so the client gets a single authoritative answer.
+	if (unresolvedEntries.length > 0) {
+		const uniqueSlugs = [...new Set(unresolvedEntries.map(entry => entry.slug))]
 		const crossDomainMatches = await db
 			.select({
 				domain: contentRecords.domain,
@@ -67,17 +66,25 @@ export async function getResolvedLinks(sourceId: number): Promise<Map<string, Re
 			})
 			.from(contentRecords)
 			.where(and(
-				inArray(contentRecords.domain, FALLTHROUGH_DOMAINS),
-				sql`LOWER(${contentRecords.slug}) IN (${sql.join(unresolvedKnowSlugs.map(s => sql`${s}`), sql`, `)})`,
+				inArray(contentRecords.domain, ALL_DOMAINS),
+				sql`LOWER(${contentRecords.slug}) IN (${sql.join(uniqueSlugs.map(s => sql`${s}`), sql`, `)})`,
 			))
 
+		// Index matches by lowercase slug → first match wins
+		const slugToMatch = new Map<string, typeof crossDomainMatches[number]>()
 		for (const match of crossDomainMatches) {
-			const knowKey = `know:${match.slug.toLowerCase()}`
-			// Overwrite the red know entry with the real destination
-			result.set(knowKey, {
-				href: buildHref(match.domain, match.slug, match.parentPath),
-				exists: true,
-			})
+			const ls = match.slug.toLowerCase()
+			if (!slugToMatch.has(ls)) slugToMatch.set(ls, match)
+		}
+
+		for (const { domain, slug } of unresolvedEntries) {
+			const match = slugToMatch.get(slug)
+			if (match && match.domain !== domain) {
+				result.set(`${domain}:${slug}`, {
+					href: buildHref(match.domain, match.slug, match.parentPath),
+					exists: true,
+				})
+			}
 		}
 	}
 

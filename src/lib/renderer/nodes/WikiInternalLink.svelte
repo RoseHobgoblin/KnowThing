@@ -12,7 +12,7 @@
 	// Look up from the per-page resolved links map (populated server-side).
 	// The server already resolves cross-domain fallthrough, so one lookup suffices.
 	const resolved = $derived.by(() => {
-		return ctx.resolvedLinks.get(`know:${slug.toLowerCase()}`)
+		return ctx.resolvedLinks.get(`${ctx.sourceDomain}:${slug.toLowerCase()}`)
 			?? { href: `${ctx.pageBaseUrl}/${slug}`, exists: false }
 	})
 

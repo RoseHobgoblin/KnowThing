@@ -15,6 +15,8 @@ export interface KnowRenderContext {
 	mediaBaseUrl: string
 	/** Base URL for article pages, e.g. '/know' */
 	pageBaseUrl: string
+	/** Content domain for this page (know, celestial, calendar) — used for link resolution */
+	sourceDomain: string
 	/** Footnotes collected by WikiReference, consumed by WikiReferenceList */
 	footnotes: Writable<FootnoteEntry[]>
 	/** Per-page resolved link map keyed by "domain:slug" */
@@ -44,6 +46,7 @@ export function createKnowContext(overrides: Partial<KnowRenderContext> = {}): K
 	const ctx: KnowRenderContext = {
 		mediaBaseUrl: '/api/media',
 		pageBaseUrl: '/know',
+		sourceDomain: 'know',
 		footnotes: writable([]),
 		resolvedLinks: new Map(),
 		templateResolver: null,

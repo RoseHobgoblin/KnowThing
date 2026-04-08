@@ -36,7 +36,8 @@
 
 	createKnowContext({
 		mediaBaseUrl: '/api/media',
-		pageBaseUrl: '/know',
+		pageBaseUrl: '/calendar',
+		sourceDomain: 'calendar',
 		calendarDate: layoutData.calendarDate ?? null,
 	})
 </script>

@@ -48,6 +48,7 @@
 		resolvedLinks: new Map(Object.entries(data.resolvedLinks ?? {})),
 		mediaBaseUrl: '/api/media',
 		pageBaseUrl: '/celestial',
+		sourceDomain: 'celestial',
 		calendarDate: layoutData.calendarDate ?? null,
 	})
 
