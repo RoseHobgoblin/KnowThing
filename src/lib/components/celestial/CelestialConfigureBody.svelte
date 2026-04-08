@@ -296,6 +296,7 @@
 		composition,
 		atmosphere,
 		surfacePressure,
+		orbitalPeriodDays,
 		semiMajorAxisAu,
 		eccentricity,
 		inclination,
@@ -416,7 +417,7 @@
 		saving = true
 		saveError = ''
 		try {
-			const res = await fetch(`/api/planetary-bodies/${initialBody.slug}`, {
+			const response = await fetch(`/api/planetary-bodies/${initialBody.slug}`, {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -450,14 +451,14 @@
 					hasRings,
 				}),
 			})
-			if (!res.ok) {
-				const data = await res.json().catch(() => ({}))
+			if (!response.ok) {
+				const data = await response.json().catch(() => ({}))
 				saveError = data.error || 'Failed to save properties'
 				pushError(saveError)
 				return
 			}
 
-			const saved = await res.json().catch(() => null)
+			const saved = await response.json().catch(() => null)
 			if (saved?.slug && saved.slug !== initialBody.slug) {
 				slug = saved.slug
 				// Update URL without navigation so save-and-exit uses the new slug
@@ -474,9 +475,9 @@
 				formData.set('contentRecordId', String(contentRecordId))
 				formData.set('content', content)
 				formData.set('summary', editSummary)
-				const articleRes = await fetch(window.location.pathname, { method: 'POST', body: formData })
-				if (!articleRes.ok) {
-					const payload = await articleRes.json().catch(() => ({}))
+				const articleResponse = await fetch(globalThis.location.pathname, { method: 'POST', body: formData })
+				if (!articleResponse.ok) {
+					const payload = await articleResponse.json().catch(() => ({}))
 					saveError = payload.error || 'Failed to save article content'
 					pushError(saveError)
 					return

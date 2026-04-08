@@ -198,6 +198,7 @@
 	function buildSelectionFamily(primaryStar: MapBody | null) {
 		if (selectedId == null) return new Set<EntityKey>()
 
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity
 		const ids = new Set<EntityKey>([selectedId])
 		const [selectedKind, rawId] = selectedId.split(':')
 		const selectedNumericId = Number(rawId)
@@ -248,11 +249,11 @@
 		if (orbiters.length <= 1) return orbiters[0]?.orbitAu ?? 1
 		let maxRatio = 0
 		let boundaryIndex = Math.ceil(orbiters.length / 2) - 1
-		for (let i = 0; i < orbiters.length - 1; i++) {
-			const ratio = orbiters[i + 1].orbitAu / Math.max(orbiters[i].orbitAu, 0.001)
+		for (let index = 0; index < orbiters.length - 1; index++) {
+			const ratio = orbiters[index + 1].orbitAu / Math.max(orbiters[index].orbitAu, 0.001)
 			if (ratio > maxRatio) {
 				maxRatio = ratio
-				boundaryIndex = i
+				boundaryIndex = index
 			}
 		}
 		if (maxRatio < 3) boundaryIndex = Math.ceil(orbiters.length / 2) - 1
@@ -265,6 +266,7 @@
 		const starIds = new Set(stars.map(star => star.id))
 		const companionStars = stars.filter(star => star.parentStarId)
 		const directOrbiters: OrbitBody[] = []
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity
 		const seen = new Set<EntityKey>()
 
 		const deepCompanionStars: OrbitBody[] = []
@@ -335,6 +337,7 @@
 		}
 
 		const rawSatellitePositions: PositionedSatellite[] = []
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity
 		const anchorRawPositions = new Map<EntityKey, { x: number, y: number }>()
 		if (primaryStar) anchorRawPositions.set(keyForBody(primaryStar, true), { x: CENTER, y: CENTER })
 		for (const position of rawDirectPositions) {
@@ -349,6 +352,7 @@
 		]
 
 		while (pendingItems.length > 0) {
+			// eslint-disable-next-line svelte/prefer-svelte-reactivity
 			const groups = new Map<EntityKey, OrbitBody[]>()
 			const unresolved: OrbitBody[] = []
 
@@ -429,11 +433,11 @@
 			y: y + cameraOffset.y,
 		})
 
-		const directPositions: PositionedOrbit[] = rawDirectPositions.map(position => {
+		const directPositions: PositionedOrbit[] = rawDirectPositions.map((position) => {
 			const projected = project(position.rawX, position.rawY)
 			return { ...position, ...projected }
 		})
-		const satellitePositions: PositionedSatellite[] = rawSatellitePositions.map(position => {
+		const satellitePositions: PositionedSatellite[] = rawSatellitePositions.map((position) => {
 			const projected = project(position.rawX, position.rawY)
 			const projectedParent = project(position.parentRawX, position.parentRawY)
 			return { ...position, ...projected, parentX: projectedParent.x, parentY: projectedParent.y }
@@ -742,7 +746,7 @@
 					position.x,
 					position.y + radius + 12,
 					position.body.name,
-					isSelected ? theme.accent : hoveredId === key ? theme.heading : theme.dim,
+					isSelected ? theme.accent : (hoveredId === key ? theme.heading : theme.dim),
 					9,
 					isSelected ? 600 : 400,
 					bodyOpacity(key),
@@ -757,9 +761,7 @@
 			context.globalAlpha = bodyOpacity(key)
 			context.strokeStyle = isSelected
 				? theme.accent
-				: isInFamily(key)
-					? theme.accentLight
-					: theme.secondary
+				: (isInFamily(key) ? theme.accentLight : theme.secondary)
 			context.lineWidth = isSelected ? 1.5 : 0.5
 			if (satellite.body.isStar) context.setLineDash([4, 3])
 			context.beginPath()
@@ -817,7 +819,7 @@
 		// Distance legend
 		{
 			const positions = scene.directPositions
-			if (positions.length >= 1) {
+			if (positions.length > 0) {
 				const maxA = Math.max(...positions.map(p => p.a))
 				const maxAu = scene.effectiveMaxAu
 				if (maxAu > 0 && maxA > 0) {
@@ -1037,11 +1039,11 @@
 		}
 
 		canvas.addEventListener('wheel', onWheel, { passive: false })
-		window.addEventListener('mouseup', handleMouseUp)
+		globalThis.addEventListener('mouseup', handleMouseUp)
 
 		return () => {
 			canvas.removeEventListener('wheel', onWheel)
-			window.removeEventListener('mouseup', handleMouseUp)
+			globalThis.removeEventListener('mouseup', handleMouseUp)
 		}
 	})
 
