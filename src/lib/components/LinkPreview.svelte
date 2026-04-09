@@ -1,10 +1,12 @@
 <script lang="ts">
 	let {
 		slug,
+		domain = 'know',
 		x,
 		y,
 	}: {
 		slug: string
+		domain?: string
 		x: number
 		y: number
 	} = $props()
@@ -52,7 +54,7 @@
 
 		const controller = new AbortController()
 
-		fetch(`/api/pages/summary?slug=${encodeURIComponent(currentSlug)}`, {
+		fetch(`/api/pages/summary?slug=${encodeURIComponent(currentSlug)}&domain=${encodeURIComponent(domain)}`, {
 			signal: controller.signal,
 		})
 			.then((r) => {

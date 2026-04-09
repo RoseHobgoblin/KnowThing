@@ -4,7 +4,7 @@ import { contentRecords } from '$lib/server/db/schema.js'
 import { eq, and, sql } from 'drizzle-orm'
 
 /**
- * GET /api/pages/summary?slug=onchera
+ * GET /api/pages/summary?slug=onchera&domain=know
  * Returns a short summary of a page for link preview popups.
  * Extracts the first paragraph of wikitext, strips markup, truncates.
  */
@@ -14,13 +14,20 @@ export const GET: RequestHandler = async ({ url }) => {
 		return json({ error: 'Missing slug' }, { status: 400 })
 	}
 
+	const domain = url.searchParams.get('domain')?.toLowerCase()
+
+	// If domain specified, search that domain; otherwise search all domains
+	const condition = domain
+		? and(eq(contentRecords.domain, domain), eq(sql`LOWER(${contentRecords.slug})`, slug))
+		: eq(sql`LOWER(${contentRecords.slug})`, slug)
+
 	const [page] = await db
 		.select({
 			title: contentRecords.title,
 			content: contentRecords.content,
 		})
 		.from(contentRecords)
-		.where(and(eq(contentRecords.domain, 'know'), eq(sql`LOWER(${contentRecords.slug})`, slug)))
+		.where(condition)
 		.limit(1)
 
 	if (!page) {

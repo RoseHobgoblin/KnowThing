@@ -178,8 +178,8 @@
 	let name = $state(initialDraft.name)
 	let slug = $state(initialDraft.slug)
 	let bodyType = $state<BodyType>(initialDraft.bodyType)
-	let starIdStr = $state(initialDraft.starIdStr)
-	let parentIdStr = $state(initialDraft.parentIdStr)
+	let starIdString = $state(initialDraft.starIdStr)
+	let parentIdString = $state(initialDraft.parentIdStr)
 	let description = $state(initialDraft.description)
 
 	let massKg = $state<number | null>(initialDraft.massKg)
@@ -263,15 +263,15 @@
 
 	// Auto-computed derived fields
 	const computedPhysical = $derived(deriveBodyFields(massKg, radiusM))
-	const physicsWarnings = $derived(validateBodyPhysics({ massKg, radiusM, orbitalPeriodDays, semiMajorAxisAu, eccentricity, rotationPeriodS, axialTilt, bodyType, isSatellite: !!parentIdStr }))
+	const physicsWarnings = $derived(validateBodyPhysics({ massKg, radiusM, orbitalPeriodDays, semiMajorAxisAu, eccentricity, rotationPeriodS, axialTilt, bodyType, isSatellite: !!parentIdString }))
 
 	const parentMassKg = $derived.by(() => {
-		if (parentIdStr) {
-			const parent = siblings.find(s => String(s.id) === parentIdStr)
+		if (parentIdString) {
+			const parent = siblings.find(s => String(s.id) === parentIdString)
 			if (parent?.massKg) return parent.massKg
 		}
-		if (starIdStr) {
-			const star = allStars.find(s => String(s.id) === starIdStr)
+		if (starIdString) {
+			const star = allStars.find(s => String(s.id) === starIdString)
 			if (star?.massKg) return star.massKg
 		}
 		return null
@@ -286,8 +286,8 @@
 		name,
 		slug,
 		bodyType,
-		starIdStr,
-		parentIdStr,
+		starIdStr: starIdString,
+		parentIdStr: parentIdString,
 		description,
 		massKg,
 		radiusM,
@@ -319,8 +319,8 @@
 	const validationIssues = $derived.by(() => {
 		const parsed = updatePlanetaryBodySchema.safeParse({
 			bodyType,
-			starId: starIdStr ? Number(starIdStr) : null,
-			parentId: parentIdStr ? Number(parentIdStr) : null,
+			starId: starIdString ? Number(starIdString) : null,
+			parentId: parentIdString ? Number(parentIdString) : null,
 			description,
 			massKg,
 			radiusM,
@@ -374,8 +374,8 @@
 		name = initialDraft.name
 		slug = initialDraft.slug
 		bodyType = initialDraft.bodyType
-		starIdStr = initialDraft.starIdStr
-		parentIdStr = initialDraft.parentIdStr
+		starIdString = initialDraft.starIdStr
+		parentIdString = initialDraft.parentIdStr
 		description = initialDraft.description
 		massKg = initialDraft.massKg
 		radiusM = initialDraft.radiusM
@@ -423,8 +423,8 @@
 				body: JSON.stringify({
 					name,
 					bodyType,
-					starId: starIdStr ? Number(starIdStr) : null,
-					parentId: parentIdStr ? Number(parentIdStr) : null,
+					starId: starIdString ? Number(starIdString) : null,
+					parentId: parentIdString ? Number(parentIdString) : null,
 					description,
 					massKg,
 					mass: massDisplay,
@@ -566,10 +566,10 @@
 					<Input label="Name" bind:value={name} placeholder="Body name" />
 					<DerivedField label="Slug" value={slug} hint="URL identifier. Changes when the body is renamed." />
 					<Select label="Body Type" type="single" bind:value={bodyType} items={bodyTypeItems} />
-					<Select label="Parent Star" type="single" bind:value={starIdStr} items={starItems} />
+					<Select label="Parent Star" type="single" bind:value={starIdString} items={starItems} />
 				</div>
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-					<Select label="Orbits Body" type="single" bind:value={parentIdStr} items={parentItems} />
+					<Select label="Orbits Body" type="single" bind:value={parentIdString} items={parentItems} />
 					<Input label="Description" bind:value={description} placeholder="Brief description..." />
 				</div>
 			</section>
