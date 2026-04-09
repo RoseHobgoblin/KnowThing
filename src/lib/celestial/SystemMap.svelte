@@ -20,7 +20,7 @@
 
 <script lang="ts">
 	import { resolveColor } from './colors.js'
-	import { orbitalAngle } from './orbit.js'
+	import { meanAnomaly, solveKeplerE } from './orbit.js'
 	import type { ScaleMode, LabelMode, TrailMode } from './map-settings.js'
 
 	type EntityKey = `star:${number}` | `body:${number}`
@@ -176,7 +176,8 @@
 	function computeAngle(body: OrbitBody, index: number, total: number) {
 		if (currentAbsoluteDay != null && body.orbitAu > 0) {
 			const periodDays = body.orbitalPeriodDays ?? (body.orbitAu * 365.25)
-			return orbitalAngle(periodDays, body.epochPhase ?? 0, currentAbsoluteDay)
+			const M = meanAnomaly(periodDays, body.epochPhase ?? 0, currentAbsoluteDay)
+			return solveKeplerE(M, body.ecc)
 		}
 		return (index / Math.max(total, 1)) * Math.PI * 2 - Math.PI / 2
 	}
