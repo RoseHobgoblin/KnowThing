@@ -894,19 +894,19 @@
 				if (r < 20 || r > scene.maxVisualRadius + 10) continue
 				context.save()
 				context.setLineDash([2, 6])
-				context.strokeStyle = theme.faint
+				context.strokeStyle = theme.secondary
 				context.lineWidth = 0.5
-				context.globalAlpha = 0.2
+				context.globalAlpha = 0.3
 				context.beginPath()
 				context.arc(cx, cy, r, 0, Math.PI * 2)
 				context.stroke()
 				context.restore()
 				context.save()
-				context.fillStyle = theme.faint
-				context.font = `400 7px ${FONT_STACK}`
+				context.fillStyle = theme.secondary
+				context.font = `400 9px ${FONT_STACK}`
 				context.textAlign = 'left'
 				context.textBaseline = 'middle'
-				context.globalAlpha = 0.35
+				context.globalAlpha = 0.6
 				context.fillText(`${au} AU`, cx + r + 4, cy)
 				context.restore()
 			}
@@ -995,13 +995,13 @@
 				const clampedX = Math.min(SIZE - margin, Math.max(margin, screen.x))
 				const clampedY = Math.min(SIZE - margin, Math.max(margin, screen.y))
 
-				const triSize = 5
-				const alpha = 0.7 * bodyOpacity(target.id)
+				const triSize = 8
+				const alpha = 0.85 * bodyOpacity(target.id)
 
 				context.save()
 				context.translate(clampedX, clampedY)
 				context.rotate(angle)
-				context.fillStyle = theme.dim
+				context.fillStyle = theme.secondary
 				context.globalAlpha = alpha
 				context.beginPath()
 				context.moveTo(triSize, 0)
@@ -1011,9 +1011,9 @@
 				context.fill()
 				context.restore()
 
-				const labelX = clampedX - Math.cos(angle) * 14
-				const labelY = clampedY - Math.sin(angle) * 14
-				drawLabel(context, labelX, labelY, target.body.name, theme.dim, 8, 400, alpha)
+				const labelX = clampedX - Math.cos(angle) * 18
+				const labelY = clampedY - Math.sin(angle) * 18
+				drawLabel(context, labelX, labelY, target.body.name, theme.secondary, 9, 500, alpha)
 			}
 		}
 	}

@@ -249,7 +249,7 @@
 				<!-- System: two-column layout -->
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-[1fr_280px]">
 					<!-- Map + Controls -->
-					<div class="max-w-2xl mx-auto border border-border-subtle overflow-hidden">
+					<div class="border border-border-subtle overflow-hidden">
 						{#if data.systemStars && data.systemStars.length > 0}
 							<MapControls
 								bind:scale={mapScale}
