@@ -6,6 +6,7 @@
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
 	import Checkbox from '$lib/components/ui/Checkbox.svelte'
+	import Input from '$lib/components/ui/Input.svelte'
 
 	type MediaFile = {
 		id: number
@@ -207,15 +208,12 @@
 
 	<!-- Controls -->
 	<div class="flex flex-wrap gap-3 items-center">
-		<input
+		<Input
 			type="text"
 			bind:value={searchQuery}
 			oninput={handleSearch}
 			placeholder="Search files..."
-			class="
-				flex-1 min-w-[200px] px-3 py-2 border border-border-strong text-sm bg-surface
-				focus:outline-none focus:ring-2 focus:ring-accent
-			"
+			class="flex-1 min-w-[200px]"
 		/>
 
 		<Select

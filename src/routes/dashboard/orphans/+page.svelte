@@ -20,7 +20,10 @@
 		<div class="divide-y divide-border-subtle">
 			{#each data.orphans as p}
 				<div class="px-6 py-3 flex items-center justify-between">
-					<a href="/know/{p.slug}" class="text-link font-medium text-sm hover:text-link-hover">{p.title}</a>
+					<div class="flex items-center gap-2 min-w-0">
+						<a href="/{p.domain}/{p.parentPath ? `${p.parentPath}/` : ''}{p.slug}" class="text-link font-medium text-sm hover:text-link-hover">{p.title}</a>
+						{#if p.domain !== 'know'}<span class="text-xs text-faint bg-raised px-1.5 py-0.5 rounded">{p.domain}</span>{/if}
+					</div>
 					<span class="text-xs text-faint">
 						{new Date(p.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
 					</span>

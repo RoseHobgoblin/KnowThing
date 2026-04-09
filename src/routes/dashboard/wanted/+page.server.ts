@@ -8,14 +8,15 @@ export const load: PageServerLoad = async () => {
 	// contentLinks.targetId is null when the target page doesn't exist
 	const wanted = await db
 		.select({
+			domain: contentLinks.targetDomain,
 			slug: contentLinks.targetSlug,
 			linkCount: sql<number>`count(*)::int`,
 		})
 		.from(contentLinks)
 		.where(
-			sql`${contentLinks.targetId} IS NULL AND ${contentLinks.targetDomain} = 'know'`,
+			sql`${contentLinks.targetId} IS NULL`,
 		)
-		.groupBy(contentLinks.targetSlug)
+		.groupBy(contentLinks.targetDomain, contentLinks.targetSlug)
 		.orderBy(sql`count(*) DESC`)
 		.limit(50)
 

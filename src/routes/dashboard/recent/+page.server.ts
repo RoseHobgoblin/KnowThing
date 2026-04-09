@@ -11,7 +11,9 @@ export const load: PageServerLoad = async ({ url }) => {
 	const edits = await db
 		.select({
 			id: contentRevisions.id,
+			domain: contentRecords.domain,
 			pageSlug: contentRecords.slug,
+			parentPath: contentRecords.parentPath,
 			title: contentRevisions.title,
 			editSummary: contentRevisions.editSummary,
 			sizeBytes: contentRevisions.sizeBytes,
@@ -21,7 +23,6 @@ export const load: PageServerLoad = async ({ url }) => {
 		.from(contentRevisions)
 		.innerJoin(contentRecords, eq(contentRevisions.contentRecordId, contentRecords.id))
 		.leftJoin(users, eq(contentRevisions.userId, users.id))
-		.where(eq(contentRecords.domain, 'know'))
 		.orderBy(desc(contentRevisions.createdAt))
 		.limit(perPage)
 		.offset(offset)

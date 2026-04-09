@@ -5,14 +5,15 @@ import { contentRecords, contentRevisions, users } from '$lib/server/db/schema.j
 import { eq, and, desc } from 'drizzle-orm'
 import { requireRole } from '$lib/server/auth.js'
 
-/** GET /api/pages/:slug/history — revision list */
+/** GET /api/pages/:slug/history?domain=know — revision list */
 export const GET: RequestHandler = async (event) => {
 	requireRole(event, 'editor')
-	const { params } = event
+	const { params, url } = event
+	const domain = url.searchParams.get('domain') || 'know'
 	const [record] = await db
 		.select({ id: contentRecords.id })
 		.from(contentRecords)
-		.where(and(eq(contentRecords.domain, 'know'), eq(contentRecords.slug, params.slug)))
+		.where(and(eq(contentRecords.domain, domain), eq(contentRecords.slug, params.slug)))
 		.limit(1)
 
 	if (!record) throw error(404, 'Page not found')

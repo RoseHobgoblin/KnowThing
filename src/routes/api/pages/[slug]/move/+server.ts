@@ -17,10 +17,11 @@ export const POST: RequestHandler = async (event) => {
 		return json({ error: 'newSlug is required' }, { status: 400 })
 	}
 
+	const domain = event.url.searchParams.get('domain') || 'know'
 	const [existing] = await db
 		.select()
 		.from(contentRecords)
-		.where(and(eq(contentRecords.domain, 'know'), eq(contentRecords.slug, slug)))
+		.where(and(eq(contentRecords.domain, domain), eq(contentRecords.slug, slug)))
 		.limit(1)
 
 	if (!existing) throw error(404, 'Page not found')

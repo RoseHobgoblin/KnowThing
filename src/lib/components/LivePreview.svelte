@@ -4,7 +4,7 @@
 	import { page } from '$app/stores'
 	import type { WikiNode } from '$lib/parser/types.js'
 
-	let { content = '' }: { content: string } = $props()
+	let { content = '', domain = 'know' }: { content: string, domain?: string } = $props()
 
 	let ast = $state<WikiNode | null>(null)
 	let loading = $state(false)
@@ -14,7 +14,8 @@
 
 	createKnowContext({
 		mediaBaseUrl: '/api/media',
-		pageBaseUrl: '/know',
+		pageBaseUrl: `/${domain}`,
+		sourceDomain: domain,
 		calendarDate: layoutData.calendarDate ?? null,
 	})
 

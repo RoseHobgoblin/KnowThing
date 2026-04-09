@@ -6,6 +6,7 @@
 	import { wordbookBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import { page } from '$app/stores'
 	import { createKnowContext } from '$lib/renderer/context.js'
+	import Input from '$lib/components/ui/Input.svelte'
 
 	let { data }: { data: PageData } = $props()
 
@@ -43,11 +44,11 @@
 	<form action="/search" method="GET" class="max-w-2xl mb-4 flex gap-2 flex-col sm:flex-row">
 		<input type="hidden" name="scope" value="wordbook" />
 		<div class="flex-1 flex gap-2">
-			<input
+			<Input
 				type="text"
 				name="q"
 				placeholder="Search words, definitions, etymology..."
-				class="flex-1 px-4 py-3 text-lg border border-border-strong bg-surface text-heading focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent-border placeholder:text-faint"
+				class="flex-1 text-lg"
 			/>
 			{#if data.languages.length > 0}
 				<select

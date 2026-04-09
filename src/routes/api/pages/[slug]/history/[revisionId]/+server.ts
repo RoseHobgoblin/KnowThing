@@ -14,10 +14,11 @@ export const GET: RequestHandler = async (event) => {
 	if (isNaN(id)) throw error(400, 'Invalid revision ID')
 
 	// Look up the content record for this slug to verify ownership
+	const domain = event.url.searchParams.get('domain') || 'know'
 	const [record] = await db
 		.select({ id: contentRecords.id })
 		.from(contentRecords)
-		.where(and(eq(contentRecords.domain, 'know'), eq(contentRecords.slug, params.slug)))
+		.where(and(eq(contentRecords.domain, domain), eq(contentRecords.slug, params.slug)))
 		.limit(1)
 
 	if (!record) throw error(404, 'Page not found')

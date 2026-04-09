@@ -11,12 +11,12 @@ export const load: PageServerLoad = async () => {
 		.where(sql`${contentLinks.targetId} IS NOT NULL`)
 
 	const orphans = await db
-		.select({ slug: contentRecords.slug, title: contentRecords.title, updatedAt: contentRecords.updatedAt })
+		.select({ domain: contentRecords.domain, slug: contentRecords.slug, title: contentRecords.title, parentPath: contentRecords.parentPath, updatedAt: contentRecords.updatedAt })
 		.from(contentRecords)
 		.where(
-			sql`${contentRecords.domain} = 'know' AND ${contentRecords.id} NOT IN (${linkedIds})`,
+			sql`${contentRecords.id} NOT IN (${linkedIds})`,
 		)
-		.orderBy(contentRecords.title)
+		.orderBy(contentRecords.domain, contentRecords.title)
 
 	return { orphans }
 }

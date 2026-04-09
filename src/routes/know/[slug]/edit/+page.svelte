@@ -7,6 +7,7 @@
 	import UnsavedChangesGuard from '$lib/components/editor/UnsavedChangesGuard.svelte'
 	import RecordModeBanner from '$lib/components/editor/RecordModeBanner.svelte'
 	import FormNotice from '$lib/components/editor/FormNotice.svelte'
+	import Input from '$lib/components/ui/Input.svelte'
 
 	let { form, data }: { form: ActionData, data: PageData } = $props()
 	let content = $state(data.content)
@@ -85,14 +86,11 @@
 			flex flex-col items-stretch gap-2 px-6 py-2.5 bg-surface border-t border-border
 			sm:flex-row sm:items-center sm:gap-3
 		">
-			<input
+			<Input
 				type="text"
 				bind:value={editSummary}
 				placeholder="Edit summary (optional)"
-				class="
-					flex-1 border border-border px-3 py-2 text-sm bg-page text-body
-					focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent-border
-				"
+				class="flex-1"
 			/>
 			<div class="flex gap-2">
 				<button

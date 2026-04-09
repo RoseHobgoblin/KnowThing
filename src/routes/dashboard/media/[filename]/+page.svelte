@@ -8,6 +8,7 @@
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import UnsavedChangesGuard from '$lib/components/editor/UnsavedChangesGuard.svelte'
 	import StickyActionBar from '$lib/components/editor/StickyActionBar.svelte'
+	import Input from '$lib/components/ui/Input.svelte'
 	import FormNotice from '$lib/components/editor/FormNotice.svelte'
 	import RecordModeBanner from '$lib/components/editor/RecordModeBanner.svelte'
 
@@ -124,11 +125,11 @@
 	<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
 		<div class="lg:col-span-2">
 			<div class="bg-surface border border-border overflow-hidden">
-				<div class="bg-raised p-4 flex items-center justify-center min-h-[300px]">
+				<div class="bg-raised p-4 flex items-center justify-center min-h-75">
 					<img
 						src="/api/media/{data.file.filename}"
 						alt={data.file.filename}
-						class="max-w-full max-h-[600px] object-contain shadow-sm"
+						class="max-w-full max-h-150 object-contain shadow-sm"
 					/>
 				</div>
 
@@ -139,19 +140,19 @@
 							{#if data.file.hasThumb150}
 								<div class="text-center">
 									<img src="/api/media/{data.file.filename}?w=150" alt="150px" class="h-16 object-contain border border-border" />
-									<span class="text-[10px] text-faint block mt-1">150px</span>
+									<span class="text-xs text-faint block mt-1">150px</span>
 								</div>
 							{/if}
 							{#if data.file.hasThumb300}
 								<div class="text-center">
 									<img src="/api/media/{data.file.filename}?w=300" alt="300px" class="h-16 object-contain border border-border" />
-									<span class="text-[10px] text-faint block mt-1">300px</span>
+									<span class="text-xs text-faint block mt-1">300px</span>
 								</div>
 							{/if}
 							{#if data.file.hasThumb600}
 								<div class="text-center">
 									<img src="/api/media/{data.file.filename}?w=600" alt="600px" class="h-16 object-contain border border-border" />
-									<span class="text-[10px] text-faint block mt-1">600px</span>
+									<span class="text-xs text-faint block mt-1">600px</span>
 								</div>
 							{/if}
 						</div>
@@ -182,12 +183,12 @@
 						></textarea>
 					</div>
 					<div>
-						<label for="cats" class="block text-xs font-medium text-secondary mb-1">Categories <span class="text-faint">(comma-separated)</span></label>
-						<input
+						<Input
 							id="cats"
+							label="Categories"
+							hint="Comma-separated"
 							type="text"
 							bind:value={categoriesInput}
-							class="w-full px-3 py-2 border border-border-strong text-sm focus:outline-none focus:ring-2 focus:ring-accent"
 							placeholder="flags, maps, portraits"
 						/>
 					</div>

@@ -14,12 +14,13 @@ const updatePageSchema = z.object({
 	editSummary: z.string().optional(),
 })
 
-/** GET /api/pages/:slug */
-export const GET: RequestHandler = async ({ params }) => {
+/** GET /api/pages/:slug?domain=know */
+export const GET: RequestHandler = async ({ params, url }) => {
+	const domain = url.searchParams.get('domain') || 'know'
 	const [record] = await db
 		.select()
 		.from(contentRecords)
-		.where(and(eq(contentRecords.domain, 'know'), eq(contentRecords.slug, params.slug)))
+		.where(and(eq(contentRecords.domain, domain), eq(contentRecords.slug, params.slug)))
 		.limit(1)
 
 	if (!record) throw error(404, 'Page not found')
@@ -48,15 +49,16 @@ export const PUT: RequestHandler = async (event) => {
 	return json(updated)
 }
 
-/** DELETE /api/pages/:slug */
+/** DELETE /api/pages/:slug?domain=know */
 export const DELETE: RequestHandler = async (event) => {
 	requireRole(event, 'editor')
 	const { slug } = event.params
+	const domain = event.url.searchParams.get('domain') || 'know'
 
 	const [existing] = await db
 		.select({ id: contentRecords.id })
 		.from(contentRecords)
-		.where(and(eq(contentRecords.domain, 'know'), eq(contentRecords.slug, slug)))
+		.where(and(eq(contentRecords.domain, domain), eq(contentRecords.slug, slug)))
 		.limit(1)
 
 	if (!existing) throw error(404, 'Page not found')

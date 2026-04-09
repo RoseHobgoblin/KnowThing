@@ -23,6 +23,7 @@
 	import SaveStatusBadge from '$lib/components/editor/SaveStatusBadge.svelte'
 	import UnsavedChangesGuard from '$lib/components/editor/UnsavedChangesGuard.svelte'
 	import FormNotice from '$lib/components/editor/FormNotice.svelte'
+	import Input from '$lib/components/ui/Input.svelte'
 	import StickyActionBar from '$lib/components/editor/StickyActionBar.svelte'
 
 	let { data, form }: { data: PageData, form: ActionData } = $props()
@@ -191,18 +192,17 @@
 					<div class="w-full h-1/2 border-l border-border bg-surface flex flex-col min-h-0 shrink-0 md:w-[45%] md:max-w-2xl md:h-auto">
 						<div class="bg-raised px-6 py-1.5 text-xs font-medium text-faint border-b border-border-subtle uppercase tracking-wide">Preview</div>
 						<div class="flex-1 overflow-y-auto px-6 py-4">
-							<LivePreview {content} />
+							<LivePreview {content} domain="celestial" />
 						</div>
 					</div>
 				{/if}
 			</div>
 
 			<div class="space-y-3 border-t border-border bg-surface px-6 py-3">
-				<input
+				<Input
 					type="text"
 					bind:value={editSummary}
 					placeholder="Edit summary (optional)"
-					class="w-full border border-border px-3 py-2 text-sm bg-page text-body focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent-border"
 				/>
 				<StickyActionBar
 					dirty={isDirty}

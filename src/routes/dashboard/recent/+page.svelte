@@ -20,7 +20,8 @@
 			{#each data.edits as edit}
 				<div class="px-6 py-3 flex items-start gap-4">
 					<div class="flex-1 min-w-0">
-						<a href="/know/{edit.pageSlug}" class="text-link font-medium text-sm hover:text-link-hover">{edit.title}</a>
+						<a href="/{edit.domain}/{edit.parentPath ? `${edit.parentPath}/` : ''}{edit.pageSlug}" class="text-link font-medium text-sm hover:text-link-hover">{edit.title}</a>
+							{#if edit.domain !== 'know'}<span class="text-xs text-faint bg-raised px-1.5 py-0.5 rounded">{edit.domain}</span>{/if}
 						{#if edit.editSummary}
 							<span class="text-faint text-sm ml-1">— {edit.editSummary}</span>
 						{/if}
@@ -34,7 +35,7 @@
 							{/if}
 						</div>
 					</div>
-					<a href="/know/{edit.pageSlug}/history" class="text-xs text-faint shrink-0 hover:text-link">history</a>
+					<a href="/{edit.domain}/{edit.parentPath ? `${edit.parentPath}/` : ''}{edit.pageSlug}" class="text-xs text-faint shrink-0 hover:text-link">history</a>
 				</div>
 			{/each}
 		</div>
