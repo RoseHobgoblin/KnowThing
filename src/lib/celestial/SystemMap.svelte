@@ -347,8 +347,6 @@
 		directOrbiters.sort((a, b) => a.orbitAu - b.orbitAu)
 
 		const maxAu = Math.max(...directOrbiters.map(body => body.orbitAu), 1)
-		const outermostEcc = directOrbiters.at(-1)?.ecc ?? 0
-		const maxVisualRadius = (CENTER - PADDING) / (1 + outermostEcc)
 		const selectionFamily = buildSelectionFamily(primaryStar)
 
 		const effectiveMaxAu = scale === 'inner'
@@ -358,6 +356,9 @@
 		const visibleOrbiters = scale === 'inner'
 			? directOrbiters.filter(body => body.orbitAu <= effectiveMaxAu)
 			: directOrbiters
+
+		const outermostVisibleEcc = visibleOrbiters.at(-1)?.ecc ?? 0
+		const maxVisualRadius = (CENTER - PADDING) / (1 + outermostVisibleEcc)
 
 		const auMin = visibleOrbiters[0]?.orbitAu ?? 1
 		const rawRadii = visibleOrbiters.map(body =>
