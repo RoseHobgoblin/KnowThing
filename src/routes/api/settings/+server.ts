@@ -1,9 +1,10 @@
 import { json, type RequestHandler } from '@sveltejs/kit'
-import { z } from 'zod'
 import { db } from '$lib/server/db/index.js'
 import { siteSettings } from '$lib/server/db/schema.js'
 import { requireRole } from '$lib/server/auth.js'
 import { invalidateSettingsCache, isMissingSiteSettingsTableError } from '$lib/server/settings.js'
+import { parseBody } from '$lib/server/utils.js'
+import { z } from 'zod'
 
 const VALID_KEYS = new Set([
 	'site_name', 'site_tagline', 'institution_name', 'footer_text',
@@ -33,13 +34,10 @@ export const GET: RequestHandler = async () => {
 /** PUT /api/settings — update settings (admin only) */
 export const PUT: RequestHandler = async (event) => {
 	requireRole(event, 'admin')
-	const body = await event.request.json()
-	const parsed = updateSchema.safeParse(body)
-	if (!parsed.success) {
-		return json({ error: 'Invalid settings format' }, { status: 400 })
-	}
+	const data = await parseBody(event.request, updateSchema)
+	if (data instanceof Response) return data
 
-	for (const [key, value] of Object.entries(parsed.data)) {
+	for (const [key, value] of Object.entries(data)) {
 		if (!VALID_KEYS.has(key)) continue
 		try {
 			await db

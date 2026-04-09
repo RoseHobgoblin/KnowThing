@@ -1,4 +1,4 @@
-import { isHttpError, json } from '@sveltejs/kit'
+import { json } from '@sveltejs/kit'
 import { z } from 'zod'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
@@ -6,6 +6,7 @@ import { lexicon, definitions, languages } from '$lib/server/db/schema.js'
 import { requireRole } from '$lib/server/auth.js'
 import { eq, asc } from 'drizzle-orm'
 import { updateWordbookEntry } from '$lib/server/services/wordbook.js'
+import { parseBody, handleServiceCall } from '$lib/server/utils.js'
 
 const updateWordSchema = z.object({
 	word: z.string().optional(),
@@ -59,21 +60,13 @@ export const PUT: RequestHandler = async (event) => {
 	const id = Number.parseInt(event.params.id)
 	if (isNaN(id)) return json({ error: 'Invalid ID' }, { status: 400 })
 
-	const body = await event.request.json()
-	const parsed = updateWordSchema.safeParse(body)
-	if (!parsed.success) {
-		return json({ error: parsed.error.issues[0].message }, { status: 400 })
-	}
+	const data = await parseBody(event.request, updateWordSchema)
+	if (data instanceof Response) return data
 
-	try {
-		const updated = await updateWordbookEntry(id, parsed.data, user.id)
+	return handleServiceCall(async () => {
+		const updated = await updateWordbookEntry(id, data, user.id)
 		return json(updated)
-	} catch (err: unknown) {
-		if (isHttpError(err)) {
-			return json({ error: err.body?.message ?? err.message }, { status: err.status })
-		}
-		throw err
-	}
+	})
 }
 
 /** DELETE /api/wordbook/:id — delete entire entry */

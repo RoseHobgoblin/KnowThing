@@ -1,8 +1,9 @@
-import { isHttpError, json } from '@sveltejs/kit'
+import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
 import { getInflectionTable } from '$lib/server/wordbook/inflection.js'
 import { updateEntryInflection } from '$lib/server/services/wordbook.js'
+import { handleServiceCall } from '$lib/server/utils.js'
 
 /** GET /api/wordbook/:id/inflection — get inflection table */
 export const GET: RequestHandler = async ({ params }) => {
@@ -26,13 +27,8 @@ export const PUT: RequestHandler = async (event) => {
 		overrides?: Record<string, string>
 	}
 
-	try {
+	return handleServiceCall(async () => {
 		const table = await updateEntryInflection(entryId, { classId, stem, overrides })
 		return json(table)
-	} catch (err: unknown) {
-		if (isHttpError(err)) {
-			return json({ error: err.body?.message ?? err.message }, { status: err.status })
-		}
-		throw err
-	}
+	})
 }

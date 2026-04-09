@@ -1,9 +1,10 @@
-import { isHttpError, json } from '@sveltejs/kit'
+import { json } from '@sveltejs/kit'
 import { z } from 'zod'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
 import { createWordbookEntry } from '$lib/server/services/wordbook.js'
 import { searchWordbookEntries } from '$lib/server/services/search/wordbook.js'
+import { parseBody, handleServiceCall } from '$lib/server/utils.js'
 
 const createWordSchema = z.object({
 	word: z.string().min(1, 'Word is required'),
@@ -43,19 +44,11 @@ export const GET: RequestHandler = async ({ url }) => {
 /** POST /api/wordbook — create entry with definitions */
 export const POST: RequestHandler = async (event) => {
 	const user = requireRole(event, 'editor')
-	const body = await event.request.json()
-	const parsed = createWordSchema.safeParse(body)
-	if (!parsed.success) {
-		return json({ error: parsed.error.issues[0].message }, { status: 400 })
-	}
+	const data = await parseBody(event.request, createWordSchema)
+	if (data instanceof Response) return data
 
-	try {
-		const entry = await createWordbookEntry({ ...parsed.data, userId: user.id })
+	return handleServiceCall(async () => {
+		const entry = await createWordbookEntry({ ...data, userId: user.id })
 		return json(entry, { status: 201 })
-	} catch (err: unknown) {
-		if (isHttpError(err)) {
-			return json({ error: err.body?.message ?? 'Request failed' }, { status: err.status })
-		}
-		throw err
-	}
+	})
 }

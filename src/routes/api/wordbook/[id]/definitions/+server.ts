@@ -1,7 +1,8 @@
-import { isHttpError, json } from '@sveltejs/kit'
+import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
 import { addEntryDefinition, replaceEntryDefinitions } from '$lib/server/services/wordbook.js'
+import { handleServiceCall } from '$lib/server/utils.js'
 
 /** POST /api/wordbook/:id/definitions — add a new sense */
 export const POST: RequestHandler = async (event) => {
@@ -22,15 +23,10 @@ export const POST: RequestHandler = async (event) => {
 		return json({ error: 'Definition is required' }, { status: 400 })
 	}
 
-	try {
+	return handleServiceCall(async () => {
 		const def = await addEntryDefinition(entryId, { partOfSpeech, definition, usageExample, usageTranslation })
 		return json(def, { status: 201 })
-	} catch (err: unknown) {
-		if (isHttpError(err)) {
-			return json({ error: err.body?.message ?? err.message }, { status: err.status })
-		}
-		throw err
-	}
+	})
 }
 
 /** PUT /api/wordbook/:id/definitions — bulk replace all definitions atomically */
@@ -49,13 +45,8 @@ export const PUT: RequestHandler = async (event) => {
 		return json({ error: 'At least one definition is required' }, { status: 400 })
 	}
 
-	try {
+	return handleServiceCall(async () => {
 		const result = await replaceEntryDefinitions(entryId, defs, user.id)
 		return json(result)
-	} catch (err: unknown) {
-		if (isHttpError(err)) {
-			return json({ error: err.body?.message ?? err.message }, { status: err.status })
-		}
-		throw err
-	}
+	})
 }

@@ -1,8 +1,9 @@
-import { isHttpError, json } from '@sveltejs/kit'
+import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
 import { z } from 'zod'
 import { createRegistrationCode } from '$lib/server/services/auth.js'
+import { parseBody, handleServiceCall } from '$lib/server/utils.js'
 
 const createCodeSchema = z.object({
 	role: z.enum(['viewer', 'editor', 'admin']).default('editor'),
@@ -13,24 +14,16 @@ const createCodeSchema = z.object({
 export const POST: RequestHandler = async (event) => {
 	const user = requireRole(event, 'admin')
 
-	const body = await event.request.json()
-	const parsed = createCodeSchema.safeParse(body)
-	if (!parsed.success) {
-		return json({ error: parsed.error.issues[0].message }, { status: 400 })
-	}
+	const data = await parseBody(event.request, createCodeSchema)
+	if (data instanceof Response) return data
 
-	try {
+	return handleServiceCall(async () => {
 		const code = await createRegistrationCode({
 			createdBy: user.id,
-			role: parsed.data.role,
-			expiresInHours: parsed.data.expiresInHours,
+			role: data.role,
+			expiresInHours: data.expiresInHours,
 			creatorRole: user.role,
 		})
 		return json({ code }, { status: 201 })
-	} catch (err: unknown) {
-		if (isHttpError(err)) {
-			return json({ error: err.body?.message ?? err.message }, { status: err.status })
-		}
-		throw err
-	}
+	})
 }

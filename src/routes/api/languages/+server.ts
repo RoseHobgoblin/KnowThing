@@ -6,6 +6,7 @@ import { languages } from '$lib/server/db/schema.js'
 import { requireRole } from '$lib/server/auth.js'
 import { asc, sql } from 'drizzle-orm'
 import { lexicon } from '$lib/server/db/schema.js'
+import { parseBody } from '$lib/server/utils.js'
 
 const createLanguageSchema = z.object({
 	name: z.string().min(1, 'Name is required'),
@@ -52,13 +53,10 @@ export const GET: RequestHandler = async () => {
 /** POST /api/languages — create a language */
 export const POST: RequestHandler = async (event) => {
 	requireRole(event, 'admin')
-	const body = await event.request.json()
-	const parsed = createLanguageSchema.safeParse(body)
-	if (!parsed.success) {
-		return json({ error: parsed.error.issues[0].message }, { status: 400 })
-	}
+	const data = await parseBody(event.request, createLanguageSchema)
+	if (data instanceof Response) return data
 
-	const { name, slug, nativeName, script, family, color, description, pageSlug, parentLanguageId, languageType } = parsed.data
+	const { name, slug, nativeName, script, family, color, description, pageSlug, parentLanguageId, languageType } = data
 
 	const validTypes = ['proto', 'language', 'historical']
 	const type = languageType && validTypes.includes(languageType) ? languageType : 'language'

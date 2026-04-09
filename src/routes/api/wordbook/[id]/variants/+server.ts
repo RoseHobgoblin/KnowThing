@@ -1,10 +1,11 @@
-import { isHttpError, json } from '@sveltejs/kit'
+import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { lexiconVariants, languageDialects } from '$lib/server/db/schema.js'
 import { requireRole } from '$lib/server/auth.js'
 import { eq } from 'drizzle-orm'
 import { addEntryVariant } from '$lib/server/services/wordbook.js'
+import { handleServiceCall } from '$lib/server/utils.js'
 
 /** GET /api/wordbook/:id/variants */
 export const GET: RequestHandler = async ({ params }) => {
@@ -49,13 +50,8 @@ export const POST: RequestHandler = async (event) => {
 		return json({ error: 'At least pronunciation or spelling is required' }, { status: 400 })
 	}
 
-	try {
+	return handleServiceCall(async () => {
 		const variant = await addEntryVariant(entryId, { dialectId, pronunciation, spelling, notes })
 		return json(variant, { status: 201 })
-	} catch (err: unknown) {
-		if (isHttpError(err)) {
-			return json({ error: err.body?.message ?? err.message }, { status: err.status })
-		}
-		throw err
-	}
+	})
 }

@@ -1,4 +1,4 @@
-import { error, isHttpError, json } from '@sveltejs/kit'
+import { error, json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { eq } from 'drizzle-orm'
 import { readFile } from 'node:fs/promises'
@@ -8,6 +8,7 @@ import { requireRole } from '$lib/server/auth.js'
 import { db } from '$lib/server/db/index.js'
 import { media } from '$lib/server/db/schema.js'
 import { deleteMediaFile, updateMediaMetadata } from '$lib/server/services/media.js'
+import { handleServiceCall } from '$lib/server/utils.js'
 
 const UPLOAD_DIR = env.UPLOAD_DIR || './uploads'
 const THUMB_DIR = join(UPLOAD_DIR, 'thumbs')
@@ -68,26 +69,16 @@ export const PUT: RequestHandler = async (event) => {
 	const body = await event.request.json()
 	const { description, categories } = body as { description?: string, categories?: string[] }
 
-	try {
+	return handleServiceCall(async () => {
 		return json(await updateMediaMetadata(user.id, filename, { description, categories }))
-	} catch (err: unknown) {
-		if (isHttpError(err)) {
-			return json({ error: err.body?.message ?? 'Request failed' }, { status: err.status })
-		}
-		throw err
-	}
+	})
 }
 
 /** DELETE /api/media/:filename */
 export const DELETE: RequestHandler = async (event) => {
 	const user = requireRole(event, 'editor')
 
-	try {
+	return handleServiceCall(async () => {
 		return json(await deleteMediaFile(user.id, event.params.filename))
-	} catch (err: unknown) {
-		if (isHttpError(err)) {
-			return json({ error: err.body?.message ?? 'Request failed' }, { status: err.status })
-		}
-		throw err
-	}
+	})
 }

@@ -5,6 +5,7 @@ import { planetaryBodies, stars } from '$lib/server/db/schema.js'
 import { requireRole } from '$lib/server/auth.js'
 import { eq, sql } from 'drizzle-orm'
 import { createPlanetaryBodySchema, updatePlanetaryBodySchema } from '$lib/celestial/schema.js'
+import { parseBody } from '$lib/server/utils.js'
 import { isDescendant } from '$lib/server/celestial/tree.js'
 import {
 	deleteCelestialContentRecord,
@@ -29,7 +30,7 @@ export const GET: RequestHandler = async ({ params }) => {
 		WHERE pb.slug = ${params.slug}
 	`)
 
-	if (!result.length) {
+	if (result.length === 0) {
 		return json({ error: 'Body not found' }, { status: 404 })
 	}
 
@@ -40,13 +41,8 @@ export const GET: RequestHandler = async ({ params }) => {
 export const PUT: RequestHandler = async (event) => {
 	requireRole(event, 'admin')
 
-	const body = await event.request.json()
-	const parsed = updatePlanetaryBodySchema.safeParse(body)
-	if (!parsed.success) {
-		return json({ error: parsed.error.issues[0].message }, { status: 400 })
-	}
-
-	const data = parsed.data
+	const data = await parseBody(event.request, updatePlanetaryBodySchema)
+	if (data instanceof Response) return data
 
 	// Get current body for circular ref check
 	const [current] = await db
@@ -82,7 +78,7 @@ export const PUT: RequestHandler = async (event) => {
 			return json({ error: 'Parent body not found' }, { status: 400 })
 		}
 
-		const nextStarId = data.starId !== undefined ? data.starId : current.starId
+		const nextStarId = data.starId === undefined ? current.starId : data.starId
 		if (nextStarId != null && parentBody.starId != null && parentBody.starId !== nextStarId) {
 			return json({ error: 'Parent body belongs to a different star' }, { status: 400 })
 		}
@@ -133,8 +129,8 @@ export const PUT: RequestHandler = async (event) => {
 	if (data.description !== undefined) setClause.description = data.description?.trim() || ''
 
 	// Always-derive display strings from numeric values
-	const finalMassKg = data.massKg !== undefined ? data.massKg : current.massKg
-	const finalRadiusM = data.radiusM !== undefined ? data.radiusM : current.radiusM
+	const finalMassKg = data.massKg === undefined ? current.massKg : data.massKg
+	const finalRadiusM = data.radiusM === undefined ? current.radiusM : data.radiusM
 	if (finalMassKg != null && finalMassKg > 0) setClause.mass = formatMass(finalMassKg)
 	if (finalRadiusM != null && finalRadiusM > 0) setClause.radius = formatRadius(finalRadiusM)
 
@@ -146,8 +142,8 @@ export const PUT: RequestHandler = async (event) => {
 	if (data.escapeVelocity === undefined && derived.escapeVelocity) setClause.escapeVelocity = derived.escapeVelocity
 
 	// Look up parent mass for Kepler derivation
-	const finalStarId = data.starId !== undefined ? data.starId : current.starId
-	const finalParentId = data.parentId !== undefined ? data.parentId : current.parentId
+	const finalStarId = data.starId === undefined ? current.starId : data.starId
+	const finalParentId = data.parentId === undefined ? current.parentId : data.parentId
 	let parentMassKg: number | null = null
 	if (finalParentId != null) {
 		const [parent] = await db.select({ massKg: planetaryBodies.massKg }).from(planetaryBodies).where(eq(planetaryBodies.id, finalParentId))
@@ -159,8 +155,8 @@ export const PUT: RequestHandler = async (event) => {
 	}
 
 	// Auto-compute orbital period from Kepler's third law when not provided
-	const finalAu = data.semiMajorAxisAu !== undefined ? data.semiMajorAxisAu : current.semiMajorAxisAu
-	const finalOrbitalDays = data.orbitalPeriodDays !== undefined ? data.orbitalPeriodDays : current.orbitalPeriodDays
+	const finalAu = data.semiMajorAxisAu === undefined ? current.semiMajorAxisAu : data.semiMajorAxisAu
+	const finalOrbitalDays = data.orbitalPeriodDays === undefined ? current.orbitalPeriodDays : data.orbitalPeriodDays
 	const orbital = deriveBodyOrbitalFields(finalAu, finalOrbitalDays, finalMassKg, parentMassKg)
 	const effectivePeriodDays = finalOrbitalDays ?? orbital.orbitalPeriodDays
 	if (data.orbitalPeriodDays === undefined && effectivePeriodDays != null && current.orbitalPeriodDays == null) {
@@ -168,7 +164,7 @@ export const PUT: RequestHandler = async (event) => {
 	}
 
 	// Auto-format display strings from numeric values
-	const finalRotS = data.rotationPeriodS !== undefined ? data.rotationPeriodS : current.rotationPeriodS
+	const finalRotS = data.rotationPeriodS === undefined ? current.rotationPeriodS : data.rotationPeriodS
 	const display = deriveDisplayStrings(effectivePeriodDays, finalAu, finalRotS)
 	if (data.orbitalPeriod === undefined && display.orbitalPeriod) setClause.orbitalPeriod = display.orbitalPeriod
 	if (data.semiMajorAxis === undefined && display.semiMajorAxis) setClause.semiMajorAxis = display.semiMajorAxis

@@ -1,10 +1,11 @@
-import { json, error, isHttpError } from '@sveltejs/kit'
+import { json, error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { contentRecords } from '$lib/server/db/schema.js'
 import { eq, and } from 'drizzle-orm'
 import { requireRole } from '$lib/server/auth.js'
 import { moveKnowPage } from '$lib/server/services/content.js'
+import { handleServiceCall } from '$lib/server/utils.js'
 
 /** POST /api/pages/:slug/move — rename/move page */
 export const POST: RequestHandler = async (event) => {
@@ -26,7 +27,7 @@ export const POST: RequestHandler = async (event) => {
 
 	if (!existing) throw error(404, 'Page not found')
 
-	try {
+	return handleServiceCall(async () => {
 		const updated = await moveKnowPage({
 			slug,
 			newSlug: newSlug.trim(),
@@ -34,10 +35,5 @@ export const POST: RequestHandler = async (event) => {
 			userId: user.id,
 		})
 		return json({ slug: updated.slug, title: updated.title })
-	} catch (error_: unknown) {
-		if (isHttpError(error_)) {
-			return json({ error: error_.body?.message ?? error_.message }, { status: error_.status })
-		}
-		throw error_
-	}
+	})
 }

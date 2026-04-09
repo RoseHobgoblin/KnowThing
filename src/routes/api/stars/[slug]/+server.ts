@@ -5,6 +5,7 @@ import { stars, starSystems } from '$lib/server/db/schema.js'
 import { requireRole } from '$lib/server/auth.js'
 import { eq, sql } from 'drizzle-orm'
 import { createStarSchema, updateStarSchema } from '$lib/celestial/schema.js'
+import { parseBody } from '$lib/server/utils.js'
 import {
 	deleteCelestialContentRecord,
 	ensureStarContentRecord,
@@ -34,13 +35,8 @@ export const GET: RequestHandler = async ({ params }) => {
 export const PUT: RequestHandler = async (event) => {
 	requireRole(event, 'admin')
 
-	const body = await event.request.json()
-	const parsed = updateStarSchema.safeParse(body)
-	if (!parsed.success) {
-		return json({ error: parsed.error.issues[0].message }, { status: 400 })
-	}
-
-	const data = parsed.data
+	const data = await parseBody(event.request, updateStarSchema)
+	if (data instanceof Response) return data
 	const [current] = await db.select().from(stars).where(eq(stars.slug, event.params.slug))
 	if (!current) {
 		return json({ error: 'Star not found' }, { status: 404 })

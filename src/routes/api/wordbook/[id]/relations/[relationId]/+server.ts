@@ -1,7 +1,8 @@
-import { isHttpError, json } from '@sveltejs/kit'
+import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
 import { deleteEntryRelation } from '$lib/server/services/wordbook.js'
+import { handleServiceCall } from '$lib/server/utils.js'
 
 /** DELETE /api/wordbook/:id/relations/:relationId */
 export const DELETE: RequestHandler = async (event) => {
@@ -11,13 +12,8 @@ export const DELETE: RequestHandler = async (event) => {
 	const relationId = Number.parseInt(event.params.relationId)
 	if (isNaN(entryId) || isNaN(relationId)) return json({ error: 'Invalid relation ID' }, { status: 400 })
 
-	try {
+	return handleServiceCall(async () => {
 		await deleteEntryRelation(entryId, relationId)
 		return json({ success: true })
-	} catch (err: unknown) {
-		if (isHttpError(err)) {
-			return json({ error: err.body?.message ?? err.message }, { status: err.status })
-		}
-		throw err
-	}
+	})
 }

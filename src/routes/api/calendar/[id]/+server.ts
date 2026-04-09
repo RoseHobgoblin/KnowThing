@@ -6,6 +6,7 @@ import { calendars } from '$lib/server/db/schema.js'
 import { requireRole } from '$lib/server/auth.js'
 import { eq } from 'drizzle-orm'
 import { staticDataSchema } from '$lib/calendar/schema.js'
+import { parseBody } from '$lib/server/utils.js'
 
 const updateCalendarSchema = z.object({
 	name: z.string().optional(),
@@ -33,13 +34,10 @@ export const PUT: RequestHandler = async (event) => {
 	const id = Number.parseInt(event.params.id)
 	if (isNaN(id)) return json({ error: 'Invalid ID' }, { status: 400 })
 
-	const body = await event.request.json()
-	const parsed = updateCalendarSchema.safeParse(body)
-	if (!parsed.success) {
-		return json({ error: parsed.error.issues[0].message }, { status: 400 })
-	}
+	const data = await parseBody(event.request, updateCalendarSchema)
+	if (data instanceof Response) return data
 
-	const { name, description, isPrimary, planetId, staticData } = parsed.data
+	const { name, description, isPrimary, planetId, staticData } = data
 
 	// If setting as primary, unset others
 	if (isPrimary) {

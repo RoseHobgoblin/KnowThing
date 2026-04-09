@@ -1,4 +1,4 @@
-import { isHttpError, json } from '@sveltejs/kit'
+import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { lexicon } from '$lib/server/db/schema.js'
@@ -6,6 +6,7 @@ import { requireRole } from '$lib/server/auth.js'
 import { eq } from 'drizzle-orm'
 import { getDirectRelations, computeCognates, getEtymologyChain } from '$lib/server/wordbook/etymology.js'
 import { addEntryRelation } from '$lib/server/services/wordbook.js'
+import { handleServiceCall } from '$lib/server/utils.js'
 
 /** GET /api/wordbook/:id/relations — full relations + computed cognates */
 export const GET: RequestHandler = async ({ params }) => {
@@ -45,13 +46,8 @@ export const POST: RequestHandler = async (event) => {
 		notes?: string
 	}
 
-	try {
+	return handleServiceCall(async () => {
 		const relation = await addEntryRelation(id, { targetId, relationType, notes })
 		return json(relation, { status: 201 })
-	} catch (err: unknown) {
-		if (isHttpError(err)) {
-			return json({ error: err.body?.message ?? err.message }, { status: err.status })
-		}
-		throw err
-	}
+	})
 }

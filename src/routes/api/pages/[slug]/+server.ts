@@ -1,5 +1,4 @@
 import { json, error } from '@sveltejs/kit'
-import { z } from 'zod'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { contentRecords } from '$lib/server/db/schema.js'
@@ -7,6 +6,8 @@ import { eq, and } from 'drizzle-orm'
 import { requireRole } from '$lib/server/auth.js'
 import { deleteContentEffects } from '$lib/server/content-effects.js'
 import { updateKnowPage } from '$lib/server/services/content.js'
+import { parseBody } from '$lib/server/utils.js'
+import { z } from 'zod'
 
 const updatePageSchema = z.object({
 	content: z.string(),
@@ -31,12 +32,9 @@ export const GET: RequestHandler = async ({ params, url }) => {
 export const PUT: RequestHandler = async (event) => {
 	const user = requireRole(event, 'editor')
 	const { slug } = event.params
-	const body = await event.request.json()
-	const parsed = updatePageSchema.safeParse(body)
-	if (!parsed.success) {
-		return json({ error: parsed.error.issues[0].message }, { status: 400 })
-	}
-	const { title, content, editSummary } = parsed.data
+	const data = await parseBody(event.request, updatePageSchema)
+	if (data instanceof Response) return data
+	const { title, content, editSummary } = data
 
 	const updated = await updateKnowPage({
 		slug,

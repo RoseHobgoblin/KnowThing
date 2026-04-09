@@ -7,6 +7,7 @@ import { requireRole } from '$lib/server/auth.js'
 import { eq } from 'drizzle-orm'
 import { staticDataSchema } from '$lib/calendar/schema.js'
 import { urlSlugify } from '$lib/utils/slugify.js'
+import { parseBody } from '$lib/server/utils.js'
 
 const createCalendarSchema = z.object({
 	name: z.string().min(1, 'Name is required'),
@@ -34,13 +35,10 @@ export const GET: RequestHandler = async () => {
 export const POST: RequestHandler = async (event) => {
 	requireRole(event, 'admin')
 
-	const body = await event.request.json()
-	const parsed = createCalendarSchema.safeParse(body)
-	if (!parsed.success) {
-		return json({ error: parsed.error.issues[0].message }, { status: 400 })
-	}
+	const data = await parseBody(event.request, createCalendarSchema)
+	if (data instanceof Response) return data
 
-	const { name, description, isPrimary, staticData } = parsed.data
+	const { name, description, isPrimary, staticData } = data
 	const slug = urlSlugify(name)
 
 	// Check slug uniqueness

@@ -7,6 +7,7 @@ import { eq, sql } from 'drizzle-orm'
 import { createPlanetaryBodySchema } from '$lib/celestial/schema.js'
 import { ensurePlanetaryBodyContentRecord } from '$lib/server/services/celestial-content.js'
 import { deriveBodyFields, deriveBodyOrbitalFields, deriveDisplayStrings, formatMass, formatRadius } from '$lib/celestial/compute.js'
+import { parseBody } from '$lib/server/utils.js'
 
 /** GET /api/planetary-bodies?star=slug — list bodies, optionally filtered by star */
 export const GET: RequestHandler = async ({ url }) => {
@@ -36,13 +37,8 @@ export const GET: RequestHandler = async ({ url }) => {
 export const POST: RequestHandler = async (event) => {
 	requireRole(event, 'admin')
 
-	const body = await event.request.json()
-	const parsed = createPlanetaryBodySchema.safeParse(body)
-	if (!parsed.success) {
-		return json({ error: parsed.error.issues[0].message }, { status: 400 })
-	}
-
-	const data = parsed.data
+	const data = await parseBody(event.request, createPlanetaryBodySchema)
+	if (data instanceof Response) return data
 
 	// Check slug uniqueness
 	const [existing] = await db.select({ id: planetaryBodies.id }).from(planetaryBodies).where(eq(planetaryBodies.slug, data.slug))

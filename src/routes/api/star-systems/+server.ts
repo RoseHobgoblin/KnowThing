@@ -6,6 +6,7 @@ import { requireRole } from '$lib/server/auth.js'
 import { eq, sql } from 'drizzle-orm'
 import { createSystemSchema } from '$lib/celestial/schema.js'
 import { ensureSystemContentRecord } from '$lib/server/services/celestial-content.js'
+import { parseBody } from '$lib/server/utils.js'
 
 /** GET /api/star-systems — list all systems with star/planet counts */
 export const GET: RequestHandler = async () => {
@@ -25,13 +26,8 @@ export const GET: RequestHandler = async () => {
 export const POST: RequestHandler = async (event) => {
 	requireRole(event, 'admin')
 
-	const body = await event.request.json()
-	const parsed = createSystemSchema.safeParse(body)
-	if (!parsed.success) {
-		return json({ error: parsed.error.issues[0].message }, { status: 400 })
-	}
-
-	const data = parsed.data
+	const data = await parseBody(event.request, createSystemSchema)
+	if (data instanceof Response) return data
 
 	const [existing] = await db.select({ id: starSystems.id }).from(starSystems).where(eq(starSystems.slug, data.slug))
 	if (existing) {

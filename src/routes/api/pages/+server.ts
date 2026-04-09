@@ -1,4 +1,4 @@
-import { isHttpError, json } from '@sveltejs/kit'
+import { json } from '@sveltejs/kit'
 import { z } from 'zod'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
@@ -6,6 +6,7 @@ import { contentRecords } from '$lib/server/db/schema.js'
 import { desc, eq } from 'drizzle-orm'
 import { requireRole } from '$lib/server/auth.js'
 import { createKnowPage } from '$lib/server/services/content.js'
+import { parseBody, handleServiceCall } from '$lib/server/utils.js'
 
 const createPageSchema = z.object({
 	title: z.string().min(1, 'Title is required'),
@@ -32,13 +33,13 @@ export const GET: RequestHandler = async () => {
 export const POST: RequestHandler = async (event) => {
 	const user = requireRole(event, 'editor')
 	const body = await event.request.json()
-	const parsed = createPageSchema.safeParse(body)
-	if (!parsed.success) {
-		return json({ error: parsed.error.issues[0].message }, { status: 400 })
+	const data = createPageSchema.safeParse(body)
+	if (!data.success) {
+		return json({ error: data.error.issues[0].message }, { status: 400 })
 	}
-	const { title, content } = parsed.data
+	const { title, content } = data.data
 
-	try {
+	return handleServiceCall(async () => {
 		const record = await createKnowPage({
 			title,
 			content: content || '',
@@ -46,10 +47,5 @@ export const POST: RequestHandler = async (event) => {
 			userId: user.id,
 		})
 		return json(record, { status: 201 })
-	} catch (error: unknown) {
-		if (isHttpError(error)) {
-			return json({ error: error.body?.message ?? 'Request failed' }, { status: error.status })
-		}
-		throw error
-	}
+	})
 }

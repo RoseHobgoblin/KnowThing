@@ -7,6 +7,7 @@ import { eq, sql } from 'drizzle-orm'
 import { createStarSchema } from '$lib/celestial/schema.js'
 import { ensureStarContentRecord } from '$lib/server/services/celestial-content.js'
 import { deriveBodyFields, deriveStarOrbitalFields, deriveDisplayStrings, computeLuminosity, formatLuminosity } from '$lib/celestial/compute.js'
+import { parseBody } from '$lib/server/utils.js'
 
 /** GET /api/stars — list all stars with planet counts */
 export const GET: RequestHandler = async () => {
@@ -25,13 +26,8 @@ export const GET: RequestHandler = async () => {
 export const POST: RequestHandler = async (event) => {
 	requireRole(event, 'admin')
 
-	const body = await event.request.json()
-	const parsed = createStarSchema.safeParse(body)
-	if (!parsed.success) {
-		return json({ error: parsed.error.issues[0].message }, { status: 400 })
-	}
-
-	const data = parsed.data
+	const data = await parseBody(event.request, createStarSchema)
+	if (data instanceof Response) return data
 
 	if (data.systemId != null) {
 		const [system] = await db.select({ id: starSystems.id }).from(starSystems).where(eq(starSystems.id, data.systemId))

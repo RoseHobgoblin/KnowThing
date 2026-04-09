@@ -1,9 +1,10 @@
-import { isHttpError, json } from '@sveltejs/kit'
+import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
 import { uploadMediaFile } from '$lib/server/services/media.js'
 import { listMedia } from '$lib/server/services/search/media.js'
 import { parseUnifiedSearchParams } from '$lib/server/services/search/query.js'
+import { handleServiceCall } from '$lib/server/utils.js'
 
 /** GET /api/media — list media with search, filter, pagination */
 export const GET: RequestHandler = async ({ url }) => {
@@ -30,12 +31,7 @@ export const POST: RequestHandler = async (event) => {
 		return json({ error: 'No file provided' }, { status: 400 })
 	}
 
-	try {
+	return handleServiceCall(async () => {
 		return json(await uploadMediaFile(user.id, file), { status: 201 })
-	} catch (err: unknown) {
-		if (isHttpError(err)) {
-			return json({ error: err.body?.message ?? 'Request failed' }, { status: err.status })
-		}
-		throw err
-	}
+	})
 }

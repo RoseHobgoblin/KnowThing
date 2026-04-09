@@ -6,6 +6,7 @@ import { languages } from '$lib/server/db/schema.js'
 import { requireRole } from '$lib/server/auth.js'
 import { eq, sql } from 'drizzle-orm'
 import { isDescendant } from '$lib/server/wordbook/language-tree.js'
+import { parseBody } from '$lib/server/utils.js'
 
 const updateLanguageSchema = z.object({
 	name: z.string().nullish(),
@@ -57,13 +58,10 @@ export const GET: RequestHandler = async ({ params }) => {
 /** PUT /api/languages/:slug */
 export const PUT: RequestHandler = async (event) => {
 	requireRole(event, 'admin')
-	const body = await event.request.json()
-	const parsed = updateLanguageSchema.safeParse(body)
-	if (!parsed.success) {
-		return json({ error: parsed.error.issues[0].message }, { status: 400 })
-	}
+	const data = await parseBody(event.request, updateLanguageSchema)
+	if (data instanceof Response) return data
 
-	const { name, nativeName, script, family, color, description, pageSlug, parentLanguageId, languageType } = parsed.data
+	const { name, nativeName, script, family, color, description, pageSlug, parentLanguageId, languageType } = data
 
 	// Get current language ID for circular reference check
 	const [current] = await db.select({ id: languages.id }).from(languages).where(eq(languages.slug, event.params.slug))
