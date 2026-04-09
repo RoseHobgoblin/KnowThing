@@ -73,16 +73,22 @@
 		selectionFamily: Set<EntityKey>
 		hitTargets: HitTarget[]
 		effectiveMaxAu: number
+		auMin: number
 		maxVisualRadius: number
 	}
 
 	const SIZE = 800
 	const CENTER = SIZE / 2
 	const PADDING = 80
-	const DIRECT_MIN_R = 72
-	const DIRECT_MIN_GAP = 18
-	const SAT_BASE_R = 14
-	const SAT_MAX_SPAN = 48
+	const MIN_FIRST_ORBIT = 36
+	const MIN_ADJACENT_GAP = 14
+	const R_GUARD = 30
+	const COMPACT_EXPONENT = 0.4
+	const SAT_INNER_MARGIN = 10
+	const SAT_MIN_ZONE = 20
+	const SAT_MAX_ZONE = 80
+	const SAT_ZONE_FRACTION = 0.4
+	const LOG_RING_DECADES = [0.01, 0.1, 1, 10, 100, 1000]
 	const FONT_STACK = 'Work Sans, ui-sans-serif, system-ui, sans-serif'
 	const DEFAULT_THEME: ThemePalette = {
 		page: '#12131D',
@@ -100,7 +106,7 @@
 		stars,
 		bodies,
 		currentAbsoluteDay,
-		scale = 'all',
+		scale = 'log',
 		labels = 'major',
 		trails = 'off',
 		follow = false,
@@ -261,6 +267,47 @@
 		return orbiters[boundaryIndex].orbitAu * 1.5
 	}
 
+	function scaleAuToPixel(au: number, auMin: number, auMax: number, rMax: number): number {
+		switch (scale) {
+			case 'log': {
+				if (auMin >= auMax) return (MIN_FIRST_ORBIT + rMax) / 2
+				const logMin = Math.log(auMin)
+				const logRange = Math.log(auMax) - logMin
+				const t = (Math.log(au) - logMin) / logRange
+				return MIN_FIRST_ORBIT + t * (rMax - MIN_FIRST_ORBIT)
+			}
+			case 'proportional':
+			case 'inner':
+				return R_GUARD + (au / auMax) * (rMax - R_GUARD)
+			case 'compact': {
+				const t = (au / auMax) ** COMPACT_EXPONENT
+				return MIN_FIRST_ORBIT + t * (rMax - MIN_FIRST_ORBIT)
+			}
+		}
+	}
+
+	function enforceMinGaps(radii: number[], rMax: number): number[] {
+		const result = [...radii]
+		if (result.length === 0) return result
+
+		result[0] = Math.max(result[0], MIN_FIRST_ORBIT)
+
+		for (let index = 1; index < result.length; index++) {
+			result[index] = Math.max(result[index], result[index - 1] + MIN_ADJACENT_GAP)
+		}
+
+		if (result.at(-1)! > rMax) {
+			const factor = rMax / result.at(-1)!
+			for (let index = 0; index < result.length; index++) result[index] *= factor
+			const reducedGap = MIN_ADJACENT_GAP * factor
+			for (let index = 1; index < result.length; index++) {
+				result[index] = Math.max(result[index], result[index - 1] + reducedGap)
+			}
+		}
+
+		return result
+	}
+
 	function buildScene(): Scene {
 		const primaryStar = stars.find(star => !star.parentStarId) ?? stars[0] ?? null
 		const primaryStarId = primaryStar?.id ?? null
@@ -300,41 +347,43 @@
 		directOrbiters.sort((a, b) => a.orbitAu - b.orbitAu)
 
 		const maxAu = Math.max(...directOrbiters.map(body => body.orbitAu), 1)
-		const maxEcc = Math.max(...directOrbiters.map(body => body.ecc), 0)
-		const maxVisualRadius = (CENTER - PADDING) / (1 + maxEcc * 0.5)
+		const outermostEcc = directOrbiters.at(-1)?.ecc ?? 0
+		const maxVisualRadius = (CENTER - PADDING) / (1 + outermostEcc)
 		const selectionFamily = buildSelectionFamily(primaryStar)
 
 		const effectiveMaxAu = scale === 'inner'
 			? innerBoundaryAu(directOrbiters)
 			: maxAu
 
-		const scaleNormalized = (au: number) => {
-			if (effectiveMaxAu <= 0) return 0
-			return Math.sqrt(au / effectiveMaxAu)
-		}
+		const visibleOrbiters = scale === 'inner'
+			? directOrbiters.filter(body => body.orbitAu <= effectiveMaxAu)
+			: directOrbiters
+
+		const auMin = visibleOrbiters[0]?.orbitAu ?? 1
+		const rawRadii = visibleOrbiters.map(body =>
+			scaleAuToPixel(body.orbitAu, auMin, effectiveMaxAu, maxVisualRadius),
+		)
+		const finalRadii = enforceMinGaps(rawRadii, maxVisualRadius)
 
 		const rawDirectPositions: PositionedOrbit[] = []
-		const innerCount = scale === 'inner'
-			? directOrbiters.filter(body => body.orbitAu <= effectiveMaxAu).length
-			: directOrbiters.length
-		const n = Math.max(innerCount, 1)
-		const minSpaceNeeded = DIRECT_MIN_R + Math.max(0, n - 1) * DIRECT_MIN_GAP
-		const gapScale = minSpaceNeeded > maxVisualRadius * 0.6
-			? (maxVisualRadius * 0.6) / minSpaceNeeded
-			: 1
-		const effectiveMinR = DIRECT_MIN_R * gapScale
-		const effectiveMinGap = DIRECT_MIN_GAP * gapScale
-		const lastFloor = effectiveMinR + Math.max(0, n - 1) * effectiveMinGap
-		const remainingSpace = Math.max(0, maxVisualRadius - lastFloor)
-		let previousOrbitRadius = effectiveMinR - effectiveMinGap
-		for (const [index, body] of directOrbiters.entries()) {
-			const floor = effectiveMinR + index * effectiveMinGap
-			const a = Math.max(floor + remainingSpace * scaleNormalized(body.orbitAu), previousOrbitRadius + effectiveMinGap)
-			previousOrbitRadius = a
+		for (const [index, body] of visibleOrbiters.entries()) {
+			const a = finalRadii[index]
 			const b = a * Math.sqrt(1 - body.ecc * body.ecc)
-			const angle = computeAngle(body, index, directOrbiters.length)
+			const angle = computeAngle(body, index, visibleOrbiters.length)
 			const pos = ellipsePosition(a, b, body.ecc, angle, CENTER, CENTER)
 			rawDirectPositions.push({ body, a, b, angle, rawX: pos.x, rawY: pos.y, x: pos.x, y: pos.y })
+		}
+
+		if (scale === 'inner') {
+			for (const body of directOrbiters) {
+				if (body.orbitAu > effectiveMaxAu) {
+					const a = maxVisualRadius * 2
+					const b = a
+					const angle = computeAngle(body, 0, 1)
+					const pos = ellipsePosition(a, b, 0, angle, CENTER, CENTER)
+					rawDirectPositions.push({ body, a, b, angle, rawX: pos.x, rawY: pos.y, x: pos.x, y: pos.y })
+				}
+			}
 		}
 
 		const rawSatellitePositions: PositionedSatellite[] = []
@@ -343,6 +392,13 @@
 		if (primaryStar) anchorRawPositions.set(keyForBody(primaryStar, true), { x: CENTER, y: CENTER })
 		for (const position of rawDirectPositions) {
 			anchorRawPositions.set(keyForBody(position.body, position.body.isStar), { x: position.rawX, y: position.rawY })
+		}
+
+		// Build a lookup from entity key to finalRadii index for satellite zone sizing
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity
+		const orbiterRadiiByKey = new Map<EntityKey, number>()
+		for (const [index, body] of visibleOrbiters.entries()) {
+			orbiterRadiiByKey.set(keyForBody(body, body.isStar), finalRadii[index])
 		}
 
 		const pendingItems: OrbitBody[] = [
@@ -382,14 +438,28 @@
 				if (!parentAnchor) continue
 
 				satellites.sort((a, b) => a.orbitAu - b.orbitAu)
-				const maxSatelliteOrbit = Math.max(...satellites.map(satellite => satellite.orbitAu), 1)
-				let previousRadius = SAT_BASE_R - 6
+
+				// Dynamic zone sizing based on gap to nearest neighbour
+				const parentR = orbiterRadiiByKey.get(parentKey)
+				let zone = SAT_MIN_ZONE
+				if (parentR != null) {
+					let gapBelow = parentR
+					let gapAbove = Infinity
+					for (let radiiIndex = 0; radiiIndex < finalRadii.length; radiiIndex++) {
+						if (Math.abs(finalRadii[radiiIndex] - parentR) < 0.1) {
+							if (radiiIndex > 0) gapBelow = finalRadii[radiiIndex] - finalRadii[radiiIndex - 1]
+							if (radiiIndex < finalRadii.length - 1) gapAbove = finalRadii[radiiIndex + 1] - finalRadii[radiiIndex]
+							break
+						}
+					}
+					const halfGap = Math.min(gapBelow, gapAbove) * SAT_ZONE_FRACTION
+					const minZone = Math.max(SAT_MIN_ZONE, satellites.length * 6)
+					zone = Math.min(Math.max(halfGap, minZone), SAT_MAX_ZONE)
+				}
 
 				for (const [index, satellite] of satellites.entries()) {
-					const normalized = maxSatelliteOrbit > 0 ? satellite.orbitAu / maxSatelliteOrbit : 0
-					const scaled = SAT_BASE_R + Math.sqrt(normalized) * SAT_MAX_SPAN
-					const orbitRadius = Math.max(previousRadius + 6, scaled)
-					previousRadius = orbitRadius
+					const t = satellites.length === 1 ? 0.5 : index / (satellites.length - 1)
+					const orbitRadius = SAT_INNER_MARGIN + t * (zone - SAT_INNER_MARGIN)
 
 					const angle = computeAngle(satellite, index, satellites.length)
 					const x = parentAnchor.x + orbitRadius * Math.cos(angle)
@@ -484,6 +554,7 @@
 			selectionFamily,
 			hitTargets,
 			effectiveMaxAu,
+			auMin,
 			maxVisualRadius,
 		}
 	}
@@ -812,28 +883,52 @@
 				)
 			}
 		}
+		// Reference rings for log/compact modes (world-space)
+		if ((scale === 'log' || scale === 'compact') && scene.directPositions.length > 0) {
+			const cx = CENTER + scene.cameraOffset.x
+			const cy = CENTER + scene.cameraOffset.y
+			for (const au of LOG_RING_DECADES) {
+				if (au < scene.auMin * 0.5 || au > scene.effectiveMaxAu * 1.5) continue
+				const r = scaleAuToPixel(au, scene.auMin, scene.effectiveMaxAu, scene.maxVisualRadius)
+				if (r < 20 || r > scene.maxVisualRadius + 10) continue
+				context.save()
+				context.setLineDash([2, 6])
+				context.strokeStyle = theme.faint
+				context.lineWidth = 0.5
+				context.globalAlpha = 0.2
+				context.beginPath()
+				context.arc(cx, cy, r, 0, Math.PI * 2)
+				context.stroke()
+				context.restore()
+				context.save()
+				context.fillStyle = theme.faint
+				context.font = `400 7px ${FONT_STACK}`
+				context.textAlign = 'left'
+				context.textBaseline = 'middle'
+				context.globalAlpha = 0.35
+				context.fillText(`${au} AU`, cx + r + 4, cy)
+				context.restore()
+			}
+		}
+
 		// End world-space transform
 		context.restore()
 
 		// --- HUD overlays (screen space) ---
 
-		// Distance legend
-		{
+		// Distance legend (linear bar for proportional/inner modes)
+		if (scale === 'proportional' || scale === 'inner') {
 			const positions = scene.directPositions
 			if (positions.length > 0) {
 				const maxA = Math.max(...positions.map(p => p.a))
 				const maxAu = scene.effectiveMaxAu
 				if (maxAu > 0 && maxA > 0) {
-					// sqrt scale derivative at 30% of max: d(pixel)/d(au) = maxA / (2 * sqrt(au0 * maxAu))
-					const au0 = maxAu * 0.3
-					const dPixelPerAu = maxA / (2 * Math.sqrt(au0 * maxAu))
-					const effectiveDppa = dPixelPerAu * zoomLevel
-
+					const pxPerAu = ((maxA - R_GUARD) / maxAu) * zoomLevel
 					const niceValues = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 2, 5, 10, 50, 100]
 					let bestAu = 1
-					let bestBarPx = effectiveDppa
+					let bestBarPx = pxPerAu
 					for (const v of niceValues) {
-						const barPx = v * effectiveDppa
+						const barPx = v * pxPerAu
 						if (barPx >= 40 && barPx <= 150) {
 							bestAu = v
 							bestBarPx = barPx
@@ -863,11 +958,29 @@
 						context.font = `400 9px ${FONT_STACK}`
 						context.textAlign = 'center'
 						context.textBaseline = 'bottom'
-						context.fillText(`~ ${bestAu} AU`, x0 + bestBarPx / 2, y0 - 6)
+						context.fillText(`${bestAu} AU`, x0 + bestBarPx / 2, y0 - 6)
 						context.restore()
 					}
 				}
 			}
+		}
+
+		// Scale mode label
+		{
+			const modeLabels: Record<ScaleMode, string> = {
+				log: 'Log scale',
+				proportional: 'Linear scale',
+				compact: 'Compact scale',
+				inner: 'Inner system',
+			}
+			context.save()
+			context.fillStyle = theme.faint
+			context.font = `400 8px ${FONT_STACK}`
+			context.textAlign = 'right'
+			context.textBaseline = 'top'
+			context.globalAlpha = 0.5
+			context.fillText(modeLabels[scale], SIZE - 12, 12)
+			context.restore()
 		}
 
 		// Off-screen body indicators

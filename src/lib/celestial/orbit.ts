@@ -24,11 +24,11 @@ export function meanAnomaly(
  * @param e - orbital eccentricity (0 ≤ e < 1)
  * @returns eccentric anomaly E in radians
  */
-export function solveKeplerE(M: number, e: number): number {
-	if (e < 1e-12) return M
-	let E = M + e * Math.sin(M) // good initial guess
-	for (let i = 0; i < 15; i++) {
-		const dE = (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E))
+export function solveKeplerE(M: number, ecc: number): number {
+	if (ecc < 1e-12) return M
+	let E = M + ecc * Math.sin(M) // good initial guess
+	for (let step = 0; step < 15; step++) {
+		const dE = (E - ecc * Math.sin(E) - M) / (1 - ecc * Math.cos(E))
 		E -= dE
 		if (Math.abs(dE) < 1e-12) break
 	}

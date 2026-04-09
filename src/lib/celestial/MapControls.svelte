@@ -2,7 +2,7 @@
 	import type { ScaleMode, LabelMode, TrailMode } from './map-settings.js'
 
 	let {
-		scale = $bindable('all'),
+		scale = $bindable('log'),
 		labels = $bindable('major'),
 		trails = $bindable('off'),
 		follow = $bindable(false),
@@ -18,8 +18,10 @@
 	type SegmentItem<T extends string> = { value: T, label: string, title?: string }
 
 	const scaleItems: SegmentItem<ScaleMode>[] = [
-		{ value: 'all', label: 'All', title: 'Fit all orbits' },
-		{ value: 'inner', label: 'Inner', title: 'Zoom to inner system' },
+		{ value: 'log', label: 'Log', title: 'Logarithmic scale (default)' },
+		{ value: 'proportional', label: 'Linear', title: 'True proportional distances' },
+		{ value: 'compact', label: 'Compact', title: 'Compressed power-law scale' },
+		{ value: 'inner', label: 'Inner', title: 'Inner system only' },
 	]
 
 	const labelItems: SegmentItem<LabelMode>[] = [

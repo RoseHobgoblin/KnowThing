@@ -1,4 +1,4 @@
-export type ScaleMode = 'all' | 'inner'
+export type ScaleMode = 'log' | 'proportional' | 'compact' | 'inner'
 export type LabelMode = 'off' | 'hovered' | 'major' | 'all'
 export type TrailMode = 'off' | 'short' | 'full'
 
@@ -10,7 +10,7 @@ export interface MapSettings {
 }
 
 export const DEFAULT_MAP_SETTINGS: MapSettings = {
-	scale: 'all',
+	scale: 'log',
 	labels: 'major',
 	trails: 'off',
 	follow: false,
