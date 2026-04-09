@@ -3,6 +3,8 @@ import type { Actions, PageServerLoad } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { starSystems, stars, planetaryBodies, contentRecords, contentRevisions } from '$lib/server/db/schema.js'
 import { eq, sql } from 'drizzle-orm'
+import type { MapBody } from '$lib/celestial/SystemMap.svelte'
+import type { WikiNode } from '$lib/parser/types.js'
 import { parseWikitext } from '$lib/parser/index.js'
 import { hasRole } from '$lib/server/auth.js'
 import { requireEditor } from '$lib/server/guards.js'
@@ -42,15 +44,15 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		const contentRecordId = system.contentRecordId ?? await ensureSystemContentRecord(db, system)
 		const content = await getContent(contentRecordId)
 		// Fetch stars + bodies for system map (include orbital data)
-		const systemStars = await db.execute(sql`
+		const systemStars = [...await db.execute(sql`
 			SELECT id, name, slug, spectral_type AS "spectralType", color,
 				page_slug AS "pageSlug", semi_major_axis_au AS "semiMajorAxisAu",
 				eccentricity, parent_star_id AS "parentStarId",
 				epoch_phase AS "epochPhase"
 			FROM stars WHERE system_id = ${system.id}
 			ORDER BY parent_star_id NULLS FIRST, name
-		`)
-		const systemBodies = await db.execute(sql`
+		`)] as unknown as MapBody[]
+		const systemBodies = [...await db.execute(sql`
 			SELECT pb.id, pb.name, pb.slug, pb.body_type AS "bodyType",
 				pb.page_slug AS "pageSlug", pb.semi_major_axis_au AS "semiMajorAxisAu",
 				pb.eccentricity, pb.star_id AS "starId", pb.parent_id AS "parentId",
@@ -61,7 +63,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			JOIN stars s ON s.id = pb.star_id
 			WHERE s.system_id = ${system.id}
 			ORDER BY pb.semi_major_axis_au NULLS LAST, pb.name
-		`)
+		`)] as unknown as MapBody[]
 		// Load calendars relevant to this system (linked to bodies here, plus universal)
 		const systemCalendars = await db.execute(sql`
 			SELECT c.id, c.name, c.static_data AS "staticData", c.planet_id AS "planetId"
@@ -192,7 +194,7 @@ async function getContent(contentRecordId: number | null) {
 
 	if (!record) return { wikiContent: '', ast: null, contentRecordId: null, resolvedLinks: {} as Record<string, { href: string, exists: boolean }> }
 
-	const ast = (record.parsedAst as import('$lib/parser/types.js').WikiNode) ?? (record.content ? parseWikitext(record.content) : null)
+	const ast = (record.parsedAst as WikiNode) ?? (record.content ? parseWikitext(record.content) : null)
 	const links = await getResolvedLinks(record.id)
 
 	return { wikiContent: record.content, ast, contentRecordId: record.id, resolvedLinks: serializeResolvedLinks(links) }

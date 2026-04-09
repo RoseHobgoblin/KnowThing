@@ -25,6 +25,8 @@
 	import FormNotice from '$lib/components/editor/FormNotice.svelte'
 	import Input from '$lib/components/ui/Input.svelte'
 	import StickyActionBar from '$lib/components/editor/StickyActionBar.svelte'
+	import type { WikiNode } from '$lib/parser/types.js'
+	import { cn } from '$lib/utils'
 
 	let { data, form }: { data: PageData, form: ActionData } = $props()
 
@@ -35,7 +37,7 @@
 	const isEditMode = $derived(data.isEditMode)
 	const isConfigureMode = $derived(data.isConfigureMode)
 	const raw = $derived(data.body as any)
-	const ast = $derived(data.ast as import('$lib/parser/types.js').WikiNode | null)
+	const ast = $derived(data.ast as WikiNode | null)
 
 	const layoutData = $derived($page.data)
 
@@ -59,7 +61,7 @@
 	let mapLabels = $state(DEFAULT_MAP_SETTINGS.labels)
 	let mapTrails = $state(DEFAULT_MAP_SETTINGS.trails)
 	let mapFollow = $state(DEFAULT_MAP_SETTINGS.follow)
-	let mapSelectedId = $state<string | null>(null)
+	let mapSelectedId = $state<`star:${number}` | `body:${number}` | null>(null)
 
 	// Resolve selected body for sidebar detail
 	const selectedBody = $derived.by(() => {
@@ -103,10 +105,10 @@
 	const parentCrumbs = $derived(((data as any).parentCrumbs ?? []) as { label: string, href: string }[])
 
 	// Strip infobox templates from the AST — the celestial page renders its own infobox from structured data
-	function stripInfoboxes(node: import('$lib/parser/types.js').WikiNode): import('$lib/parser/types.js').WikiNode | null {
+	function stripInfoboxes(node: WikiNode): WikiNode | null {
 		if (node.type === 'template' && node.name.toLowerCase().startsWith('infobox')) return null
 		if ('children' in node && Array.isArray(node.children)) {
-			const filtered = node.children.map(stripInfoboxes).filter(Boolean) as import('$lib/parser/types.js').WikiNode[]
+			const filtered = node.children.map(stripInfoboxes).filter(Boolean) as WikiNode[]
 			return { ...node, children: filtered }
 		}
 		return node
@@ -154,7 +156,13 @@
 	<!-- EDIT MODE -->
 	<div>
 		<UnsavedChangesGuard when={isDirty && !saving} />
-		<form method="POST" use:enhance={() => { saving = true; return async ({ update }) => { saving = false; await update() } }} class="flex flex-col h-[calc(100vh-5rem)]">
+		<form method="POST" use:enhance={() => {
+			saving = true
+			return async ({ update }) => {
+				saving = false
+				await update()
+			}
+		}} class="flex flex-col h-[calc(100vh-5rem)]">
 			<input type="hidden" name="content" value={content} />
 			<input type="hidden" name="contentRecordId" value={data.contentRecordId ?? ''} />
 			<input type="hidden" name="summary" value={editSummary} />
@@ -175,7 +183,7 @@
 					<button
 						type="button"
 						onclick={() => (showPreview = !showPreview)}
-						class="px-3 py-1 border border-border text-xs text-secondary hover:bg-raised {showPreview ? 'bg-accent-subtle border-accent-border text-accent' : ''}"
+						class={cn('px-3 py-1 border border-border text-xs text-secondary hover:bg-raised', showPreview && 'bg-accent-subtle border-accent-border text-accent')}
 					>
 						{showPreview ? 'Hide preview' : 'Show preview'}
 					</button>
@@ -184,7 +192,7 @@
 
 			<!-- Editor + Preview -->
 			<div class="flex-1 flex flex-col min-h-0 md:flex-row">
-				<div class="flex-1 min-h-0 min-w-0 overflow-hidden {showPreview ? 'h-1/2 md:h-auto' : ''}">
+				<div class={cn('flex-1 min-h-0 min-w-0 overflow-hidden', showPreview && 'h-1/2 md:h-auto')}>
 					<Editor value={data.wikiContent ?? ''} onchange={v => (content = v)} />
 				</div>
 
