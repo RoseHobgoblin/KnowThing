@@ -700,7 +700,7 @@
 		const primaryColor = resolveColor(scene.primaryStar?.color, '#FFE088')
 
 		for (const position of scene.directPositions) {
-			const offset = position.a * position.body.ecc
+			const focusOffset = Math.sqrt(Math.max(position.a * position.a - position.b * position.b, 0))
 			const key = keyForBody(position.body, position.body.isStar)
 			const stroke = orbitStroke(key, key === selectedId)
 			context.save()
@@ -708,7 +708,7 @@
 			context.lineWidth = stroke.width
 			context.globalAlpha = stroke.alpha * bodyOpacity(key)
 			if (position.body.isStar) context.setLineDash([4, 3])
-			drawFullOrbit(context, CENTER + scene.cameraOffset.x - offset, CENTER + scene.cameraOffset.y, position.a, position.b)
+			drawFullOrbit(context, CENTER + scene.cameraOffset.x - focusOffset, CENTER + scene.cameraOffset.y, position.a, position.b)
 			context.restore()
 		}
 
@@ -720,7 +720,8 @@
 				context.lineWidth = 1
 				context.lineCap = 'round'
 				context.globalAlpha = 0.4 * bodyOpacity(key)
-				const cx = CENTER + scene.cameraOffset.x - position.a * position.body.ecc
+				const focusOffset = Math.sqrt(Math.max(position.a * position.a - position.b * position.b, 0))
+				const cx = CENTER + scene.cameraOffset.x - focusOffset
 				const cy = CENTER + scene.cameraOffset.y
 				if (trails === 'full') drawFullOrbit(context, cx, cy, position.a, position.b)
 				else drawShortTrail(context, cx, cy, position.a, position.b, position.angle)
