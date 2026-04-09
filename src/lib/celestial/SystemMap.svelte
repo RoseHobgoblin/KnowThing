@@ -188,9 +188,9 @@
 		return (index / Math.max(total, 1)) * Math.PI * 2 - Math.PI / 2
 	}
 
-	function ellipsePosition(a: number, b: number, ecc: number, angle: number, cx: number, cy: number) {
-		const offset = a * ecc
-		return { x: cx - offset + a * Math.cos(angle), y: cy + b * Math.sin(angle) }
+	function ellipsePosition(a: number, b: number, angle: number, cx: number, cy: number) {
+		const focusOffset = Math.sqrt(Math.max(a * a - b * b, 0))
+		return { x: cx - focusOffset + a * Math.cos(angle), y: cy + b * Math.sin(angle) }
 	}
 
 	function parentKeyForBody(body: MapBody, primaryStarId: number | null, starIds: Set<number>): EntityKey | null {
@@ -368,10 +368,14 @@
 
 		const rawDirectPositions: PositionedOrbit[] = []
 		for (const [index, body] of visibleOrbiters.entries()) {
-			const a = finalRadii[index]
-			const b = a * Math.sqrt(1 - body.ecc * body.ecc)
+			const gapDelta = finalRadii[index] - rawRadii[index]
+			const periPx = scaleAuToPixel(body.orbitAu * (1 - body.ecc), auMin, effectiveMaxAu, maxVisualRadius) + gapDelta
+			const apoPx = scaleAuToPixel(body.orbitAu * (1 + body.ecc), auMin, effectiveMaxAu, maxVisualRadius) + gapDelta
+			const a = (periPx + apoPx) / 2
+			const c = (apoPx - periPx) / 2
+			const b = Math.sqrt(Math.max(a * a - c * c, 0))
 			const angle = computeAngle(body, index, visibleOrbiters.length)
-			const pos = ellipsePosition(a, b, body.ecc, angle, CENTER, CENTER)
+			const pos = ellipsePosition(a, b, angle, CENTER, CENTER)
 			rawDirectPositions.push({ body, a, b, angle, rawX: pos.x, rawY: pos.y, x: pos.x, y: pos.y })
 		}
 
@@ -381,7 +385,7 @@
 					const a = maxVisualRadius * 2
 					const b = a
 					const angle = computeAngle(body, 0, 1)
-					const pos = ellipsePosition(a, b, 0, angle, CENTER, CENTER)
+					const pos = ellipsePosition(a, b, angle, CENTER, CENTER)
 					rawDirectPositions.push({ body, a, b, angle, rawX: pos.x, rawY: pos.y, x: pos.x, y: pos.y })
 				}
 			}
