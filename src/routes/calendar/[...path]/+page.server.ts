@@ -9,8 +9,6 @@ import { requireEditor } from '$lib/server/guards.js'
 import { updateContentEffects } from '$lib/server/content-effects.js'
 import type { CalendarConfig, StaticCalendarData } from '$lib/calendar/types.js'
 import { resolveDisplay } from '$lib/calendar/date-math.js'
-import { parseStaticCalendarDataJson } from '$lib/calendar/schema.js'
-import { summarizeZodIssues } from '$lib/utils.js'
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const pathSegments = (params.path || '').split('/').filter(Boolean)
@@ -79,55 +77,47 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	}
 }
 
+/** Save article content for a calendar */
 export const actions: Actions = {
 	default: async (event) => {
 		const user = requireEditor(event)
 		const formData = await event.request.formData()
-		const calendarId = Number(formData.get('calendarId'))
-		const contentRecordId = Number(formData.get('contentRecordId')) || null
+		const contentRecordId = Number(formData.get('contentRecordId'))
 		const content = formData.get('content')?.toString() || ''
-		const staticDataJson = formData.get('staticData')?.toString() || '{}'
 		const editSummary = formData.get('summary')?.toString() || ''
 
-		if (!calendarId) return fail(400, { error: 'Missing calendar ID' })
+		if (!contentRecordId) return fail(400, { error: 'Missing content record ID' })
 
-		const [cal] = await db.select().from(calendars).where(eq(calendars.id, calendarId))
-		if (!cal) return fail(404, { error: 'Calendar not found' })
+		const [existing] = await db
+			.select()
+			.from(contentRecords)
+			.where(eq(contentRecords.id, contentRecordId))
 
-		const parsedStaticData = parseStaticCalendarDataJson(staticDataJson)
-		if (!parsedStaticData.success) {
-			return fail(400, {
-				error: 'Calendar configuration is invalid',
-				validationIssues: summarizeZodIssues(parsedStaticData.error),
-			})
-		}
-
-		await db.update(calendars).set({ staticData: parsedStaticData.data }).where(eq(calendars.id, calendarId))
+		if (!existing) return fail(404, { error: 'Content record not found' })
 
 		try {
-			if (contentRecordId) {
-				const sizeBytes = new TextEncoder().encode(content).length
-				const { plainText, ast } = await updateContentEffects(db, contentRecordId, content, 'calendar')
+			const sizeBytes = new TextEncoder().encode(content).length
+			const { plainText, ast } = await updateContentEffects(db, contentRecordId, content, 'calendar')
 
-				await db
-					.update(contentRecords)
-					.set({ content, plainText, parsedAst: ast, sizeBytes, updatedAt: new Date() })
-					.where(eq(contentRecords.id, contentRecordId))
+			await db
+				.update(contentRecords)
+				.set({ content, plainText, parsedAst: ast, sizeBytes, updatedAt: new Date() })
+				.where(eq(contentRecords.id, contentRecordId))
 
-				await db.insert(contentRevisions).values({
-					contentRecordId,
-					title: cal.name,
-					content,
-					sizeBytes,
-					editSummary,
-					userId: user.id,
-				})
-			}
+			await db.insert(contentRevisions).values({
+				contentRecordId,
+				title: existing.title,
+				content,
+				sizeBytes,
+				editSummary,
+				userId: user.id,
+			})
 		} catch {
-			return fail(500, { error: 'Failed to save calendar changes' })
+			return fail(500, { error: 'Failed to save article changes' })
 		}
 
-		throw redirect(302, `/calendar/${cal.slug}`)
+		const viewPath = event.url.pathname.replace(/\/configure$/, '')
+		throw redirect(302, viewPath)
 	},
 }
 

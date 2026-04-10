@@ -29,7 +29,7 @@ export const GET: RequestHandler = async ({ params }) => {
 
 /** PUT /api/calendar/:id — update calendar config */
 export const PUT: RequestHandler = async (event) => {
-	requireRole(event, 'admin')
+	requireRole(event, 'editor')
 
 	const id = Number.parseInt(event.params.id)
 	if (isNaN(id)) return json({ error: 'Invalid ID' }, { status: 400 })
