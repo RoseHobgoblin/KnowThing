@@ -8,6 +8,8 @@ import {
 	computeOrbitalVelocity, formatOrbitalVelocity,
 	computeOrbitalPeriodDays, formatPeriod,
 	computeHabitableZoneAu,
+	formatMass, formatRadius, formatTemperatureK, formatLuminosity,
+	formatAuAsKm, deriveBodyFields,
 } from '$lib/celestial/compute.js'
 
 export interface SystemMapData {
@@ -46,20 +48,38 @@ function rowToFieldMap(row: Record<string, unknown>, fieldNames: string[]): Fiel
 }
 
 const STAR_FIELDS = [
-	'name', 'spectralType', 'mass', 'radius', 'density', 'surfaceGravity',
-	'escapeVelocity', 'luminosity', 'luminosityVisual',
-	'temperature', 'age', 'color', 'metallicity',
-	'rotationPeriod', 'orbitalPeriod', 'semiMajorAxis',
-	'periastron', 'apastron', 'apparentMagnitude', 'absoluteMagnitude',
+	'name', 'spectralType', 'luminosityVisual',
+	'age', 'color', 'metallicity',
+	'apparentMagnitude', 'absoluteMagnitude',
 	'angularDiameter', 'companion', 'description',
 ]
 
 const PLANETARY_BODY_FIELDS = [
-	'name', 'bodyType', 'mass', 'radius', 'density', 'surfaceGravity',
-	'escapeVelocity', 'temperature', 'age', 'composition', 'atmosphere',
-	'surfacePressure', 'orbitalPeriod', 'semiMajorAxis', 'rotationPeriod',
-	'apparentMagnitude', 'angularDiameter', 'albedo', 'description',
+	'name', 'bodyType', 'temperature', 'age', 'composition', 'atmosphere',
+	'surfacePressure', 'apparentMagnitude', 'angularDiameter', 'albedo',
+	'description',
 ]
+
+interface NumericRow {
+	massKg: number | null
+	radiusM: number | null
+	orbitalPeriodDays: number | null
+	semiMajorAxisAu: number | null
+	rotationPeriodS: number | null
+}
+
+/** Compute display strings from numeric values and insert into a FieldMap. */
+function addDerivedDisplayFields(fields: FieldMap, row: NumericRow): void {
+	if (row.massKg != null && row.massKg > 0) fields.set('mass', formatMass(row.massKg))
+	if (row.radiusM != null && row.radiusM > 0) fields.set('radius', formatRadius(row.radiusM))
+	const phys = deriveBodyFields(row.massKg ?? null, row.radiusM ?? null)
+	if (phys.density) fields.set('density', phys.density)
+	if (phys.surfaceGravity) fields.set('surface_gravity', phys.surfaceGravity)
+	if (phys.escapeVelocity) fields.set('escape_velocity', phys.escapeVelocity)
+	if (row.orbitalPeriodDays != null && row.orbitalPeriodDays > 0) fields.set('orbital_period', formatPeriod(row.orbitalPeriodDays * 86_400))
+	if (row.semiMajorAxisAu != null && row.semiMajorAxisAu > 0) fields.set('semi_major_axis', formatAuAsKm(row.semiMajorAxisAu))
+	if (row.rotationPeriodS != null && row.rotationPeriodS > 0) fields.set('rotation_period', formatPeriod(row.rotationPeriodS))
+}
 
 /** Domain mapper registry: infobox type → table query + field mapper */
 const DOMAIN_RESOLVERS: Record<string, (slug: string) => Promise<FieldMap | null>> = {
@@ -67,6 +87,13 @@ const DOMAIN_RESOLVERS: Record<string, (slug: string) => Promise<FieldMap | null
 		const [row] = await db.select().from(stars).where(eq(stars.slug, slug))
 		if (!row) return null
 		const fields = rowToFieldMap(row as unknown as Record<string, unknown>, STAR_FIELDS)
+		addDerivedDisplayFields(fields, row)
+		if (row.temperatureK != null && row.temperatureK > 0) fields.set('temperature', formatTemperatureK(row.temperatureK))
+		if (row.luminosityW != null && row.luminosityW > 0) fields.set('luminosity', formatLuminosity(row.luminosityW))
+		if (row.semiMajorAxisAu != null && row.eccentricity != null) {
+			fields.set('periastron', formatAu(computePeriastron(row.semiMajorAxisAu, row.eccentricity)))
+			fields.set('apastron', formatAu(computeApastron(row.semiMajorAxisAu, row.eccentricity)))
+		}
 		if (row.eccentricity != null) fields.set('eccentricity', String(row.eccentricity))
 		if (row.axialTilt != null) fields.set('axial_tilt', String(row.axialTilt))
 
@@ -108,6 +135,7 @@ const DOMAIN_RESOLVERS: Record<string, (slug: string) => Promise<FieldMap | null
 		const [row] = await db.select().from(planetaryBodies).where(eq(planetaryBodies.slug, slug))
 		if (!row) return null
 		const fields = rowToFieldMap(row as unknown as Record<string, unknown>, PLANETARY_BODY_FIELDS)
+		addDerivedDisplayFields(fields, row)
 		if (row.eccentricity != null) fields.set('eccentricity', String(row.eccentricity))
 		if (row.axialTilt != null) fields.set('axial_tilt', String(row.axialTilt))
 		if (row.inclination != null) fields.set('inclination', String(row.inclination))

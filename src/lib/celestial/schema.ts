@@ -20,34 +20,21 @@ const starSchema = z.object({
 	pageSlug: z.string().nullish(),
 
 	spectralType: z.string().nullish(),
-	mass: z.string().nullish(),
 	massKg: z.number().positive().nullish(),
-	radius: z.string().nullish(),
 	radiusM: z.number().positive().nullish(),
-	luminosity: z.string().nullish(),
 	luminosityW: z.number().positive().nullish(),
 	luminosityVisual: z.string().nullish(),
-	temperature: z.string().nullish(),
 	temperatureK: z.number().positive().nullish(),
 	age: z.string().nullish(),
 	color: z.string().nullish(),
 
-	density: z.string().nullish(),
-	surfaceGravity: z.string().nullish(),
-	escapeVelocity: z.string().nullish(),
-
-	rotationPeriod: z.string().nullish(),
 	rotationPeriodS: z.number().positive().nullish(),
 	axialTilt: z.number().nullish(),
 
-	orbitalPeriod: z.string().nullish(),
 	orbitalPeriodDays: z.number().positive().nullish(),
-	semiMajorAxis: z.string().nullish(),
 	semiMajorAxisAu: z.number().min(0).nullish(),
 	eccentricity: nullableUnitIntervalSchema,
 	epochPhase: nullableUnitIntervalSchema,
-	periastron: z.string().nullish(),
-	apastron: z.string().nullish(),
 
 	apparentMagnitude: z.string().nullish(),
 	absoluteMagnitude: z.string().nullish(),
@@ -64,13 +51,10 @@ const starSchema = z.object({
 
 function validateStarState(data: Partial<z.infer<typeof starSchema>>, ctx: z.RefinementCtx) {
 	const hasOrbitalData = data.companion != null
-		|| data.orbitalPeriod != null
-		|| data.semiMajorAxis != null
+		|| data.orbitalPeriodDays != null
 		|| data.semiMajorAxisAu != null
 		|| data.eccentricity != null
 		|| data.epochPhase != null
-		|| data.periastron != null
-		|| data.apastron != null
 
 	if (hasOrbitalData && data.systemId == null) {
 		ctx.addIssue({
@@ -100,13 +84,8 @@ const planetaryBodySchema = z.object({
 	parentId: z.number().int().nullish(),
 	pageSlug: z.string().nullish(),
 
-	mass: z.string().nullish(),
 	massKg: z.number().positive().nullish(),
-	radius: z.string().nullish(),
 	radiusM: z.number().positive().nullish(),
-	density: z.string().nullish(),
-	surfaceGravity: z.string().nullish(),
-	escapeVelocity: z.string().nullish(),
 	temperature: z.string().nullish(),
 	age: z.string().nullish(),
 
@@ -114,15 +93,12 @@ const planetaryBodySchema = z.object({
 	atmosphere: z.string().nullish(),
 	surfacePressure: z.string().nullish(),
 
-	orbitalPeriod: z.string().nullish(),
 	orbitalPeriodDays: z.number().positive().nullish(),
-	semiMajorAxis: z.string().nullish(),
 	semiMajorAxisAu: z.number().min(0).nullish(),
 	eccentricity: nullableUnitIntervalSchema,
 	inclination: z.number().nullish(),
 	epochPhase: nullableUnitIntervalSchema,
 
-	rotationPeriod: z.string().nullish(),
 	rotationPeriodS: z.number().positive().nullish(),
 	axialTilt: z.number().nullish(),
 

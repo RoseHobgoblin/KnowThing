@@ -407,33 +407,20 @@ export const stars = pgTable(
 		pageSlug: text('page_slug'),
 
 		spectralType: text('spectral_type'),
-		mass: text('mass'),
 		massKg: doublePrecision('mass_kg'),
-		radius: text('radius'),
 		radiusM: doublePrecision('radius_m'),
-		luminosity: text('luminosity'),
 		luminosityW: doublePrecision('luminosity_w'),
 		luminosityVisual: text('luminosity_visual'),
-		temperature: text('temperature'),
 		temperatureK: doublePrecision('temperature_k'),
 		age: text('age'),
 		color: text('color'),
 
-		density: text('density'),
-		surfaceGravity: text('surface_gravity'),
-		escapeVelocity: text('escape_velocity'),
-
-		rotationPeriod: text('rotation_period'),
 		rotationPeriodS: doublePrecision('rotation_period_s'),
 		axialTilt: doublePrecision('axial_tilt'),
 
-		orbitalPeriod: text('orbital_period'),
 		orbitalPeriodDays: doublePrecision('orbital_period_days'),
-		semiMajorAxis: text('semi_major_axis'),
 		semiMajorAxisAu: doublePrecision('semi_major_axis_au'),
 		eccentricity: doublePrecision('eccentricity'),
-		periastron: text('periastron'),
-		apastron: text('apastron'),
 
 		apparentMagnitude: text('apparent_magnitude'),
 		absoluteMagnitude: text('absolute_magnitude'),
@@ -468,13 +455,8 @@ export const planetaryBodies = pgTable(
 		contentRecordId: integer('content_record_id').references(() => contentRecords.id, { onDelete: 'set null' }),
 		pageSlug: text('page_slug'),
 
-		mass: text('mass'),
 		massKg: doublePrecision('mass_kg'),
-		radius: text('radius'),
 		radiusM: doublePrecision('radius_m'),
-		density: text('density'),
-		surfaceGravity: text('surface_gravity'),
-		escapeVelocity: text('escape_velocity'),
 		temperature: text('temperature'),
 		age: text('age'),
 
@@ -482,14 +464,11 @@ export const planetaryBodies = pgTable(
 		atmosphere: text('atmosphere'),
 		surfacePressure: text('surface_pressure'),
 
-		orbitalPeriod: text('orbital_period'),
 		orbitalPeriodDays: doublePrecision('orbital_period_days'),
-		semiMajorAxis: text('semi_major_axis'),
 		semiMajorAxisAu: doublePrecision('semi_major_axis_au'),
 		eccentricity: doublePrecision('eccentricity'),
 		inclination: doublePrecision('inclination'),
 
-		rotationPeriod: text('rotation_period'),
 		rotationPeriodS: doublePrecision('rotation_period_s'),
 		axialTilt: doublePrecision('axial_tilt'),
 

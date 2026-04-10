@@ -1,12 +1,12 @@
 import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
-import { stars, planetaryBodies, starSystems } from '$lib/server/db/schema.js'
+import { stars, starSystems } from '$lib/server/db/schema.js'
 import { requireRole } from '$lib/server/auth.js'
 import { eq, sql } from 'drizzle-orm'
 import { createStarSchema } from '$lib/celestial/schema.js'
 import { ensureStarContentRecord } from '$lib/server/services/celestial-content.js'
-import { deriveBodyFields, deriveStarOrbitalFields, deriveDisplayStrings, computeLuminosity, formatLuminosity } from '$lib/celestial/compute.js'
+import { computeLuminosity } from '$lib/celestial/compute.js'
 import { parseBody } from '$lib/server/utils.js'
 
 /** GET /api/stars — list all stars with planet counts */
@@ -49,16 +49,10 @@ export const POST: RequestHandler = async (event) => {
 		return json({ error: 'A star with this slug already exists' }, { status: 409 })
 	}
 
-	// Auto-compute derived fields
-	const physical = deriveBodyFields(data.massKg ?? null, data.radiusM ?? null)
-	const orbital = deriveStarOrbitalFields(data.semiMajorAxisAu ?? null, data.eccentricity ?? null)
-	const display = deriveDisplayStrings(data.orbitalPeriodDays ?? null, data.semiMajorAxisAu ?? null, data.rotationPeriodS ?? null)
-
+	// Auto-compute luminosity from radius + temperature via Stefan-Boltzmann
 	let derivedLuminosityW = data.luminosityW ?? null
-	let derivedLuminosity = data.luminosity?.trim() || null
 	if (derivedLuminosityW == null && data.radiusM != null && data.temperatureK != null && data.radiusM > 0 && data.temperatureK > 0) {
 		derivedLuminosityW = computeLuminosity(data.radiusM, data.temperatureK)
-		if (!derivedLuminosity) derivedLuminosity = formatLuminosity(derivedLuminosityW)
 	}
 
 	const star = await db.transaction(async (tx) => {
@@ -69,30 +63,18 @@ export const POST: RequestHandler = async (event) => {
 				slug: data.slug.trim().toLowerCase(),
 				pageSlug: data.pageSlug?.trim() || null,
 				spectralType: data.spectralType?.trim() || null,
-				mass: data.mass?.trim() || null,
 				massKg: data.massKg ?? null,
-				radius: data.radius?.trim() || null,
 				radiusM: data.radiusM ?? null,
-				luminosity: derivedLuminosity,
 				luminosityW: derivedLuminosityW,
 				luminosityVisual: data.luminosityVisual?.trim() || null,
-				temperature: data.temperature?.trim() || null,
 				temperatureK: data.temperatureK ?? null,
 				age: data.age?.trim() || null,
 				color: data.color?.trim() || null,
-				density: data.density?.trim() || physical.density,
-				surfaceGravity: data.surfaceGravity?.trim() || physical.surfaceGravity,
-				escapeVelocity: data.escapeVelocity?.trim() || physical.escapeVelocity,
-				rotationPeriod: data.rotationPeriod?.trim() || display.rotationPeriod,
 				rotationPeriodS: data.rotationPeriodS ?? null,
 				axialTilt: data.axialTilt ?? null,
-				orbitalPeriod: data.orbitalPeriod?.trim() || display.orbitalPeriod,
 				orbitalPeriodDays: data.orbitalPeriodDays ?? null,
-				semiMajorAxis: data.semiMajorAxis?.trim() || display.semiMajorAxis,
 				semiMajorAxisAu: data.semiMajorAxisAu ?? null,
 				eccentricity: data.eccentricity ?? null,
-				periastron: data.periastron?.trim() || orbital.periastron,
-				apastron: data.apastron?.trim() || orbital.apastron,
 				apparentMagnitude: data.apparentMagnitude?.trim() || null,
 				absoluteMagnitude: data.absoluteMagnitude?.trim() || null,
 				angularDiameter: data.angularDiameter?.trim() || null,
