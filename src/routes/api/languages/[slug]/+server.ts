@@ -4,8 +4,8 @@ import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { languages } from '$lib/server/db/schema.js'
 import { requireRole } from '$lib/server/auth.js'
-import { eq, sql } from 'drizzle-orm'
-import { isDescendant } from '$lib/server/wordbook/language-tree.js'
+import { eq } from 'drizzle-orm'
+import { isDescendant, queryLanguagesWithFamily } from '$lib/server/wordbook/language-tree.js'
 import { parseBody } from '$lib/server/utils.js'
 
 const updateLanguageSchema = z.object({
@@ -22,33 +22,9 @@ const updateLanguageSchema = z.object({
 
 /** GET /api/languages/:slug — with inherited family from ancestors */
 export const GET: RequestHandler = async ({ params }) => {
-	const result = await db.execute(sql`
-		WITH RECURSIVE ancestry AS (
-			SELECT id, family, parent_language_id, 0 AS depth
-			FROM languages
-			WHERE slug = ${params.slug}
-			UNION ALL
-			SELECT a.id, p.family, p.parent_language_id, a.depth + 1
-			FROM ancestry a
-			JOIN languages p ON p.id = a.parent_language_id
-			WHERE a.family IS NULL AND a.depth < 10
-		)
-		SELECT
-			l.id, l.name, l.slug, l.native_name AS "nativeName",
-			l.script,
-			COALESCE(l.family, (
-				SELECT a.family FROM ancestry a WHERE a.id = l.id AND a.family IS NOT NULL ORDER BY a.depth LIMIT 1
-			)) AS family,
-			l.color, l.description,
-			l.parent_language_id AS "parentLanguageId",
-			l.language_type AS "languageType",
-			l.page_slug AS "pageSlug",
-			(SELECT COUNT(*) FROM lexicon WHERE language_id = l.id)::int AS "wordCount"
-		FROM languages l
-		WHERE l.slug = ${params.slug}
-	`)
+	const result = await queryLanguagesWithFamily(params.slug)
 
-	if (!result.length) {
+	if (result.length === 0) {
 		return json({ error: 'Language not found' }, { status: 404 })
 	}
 

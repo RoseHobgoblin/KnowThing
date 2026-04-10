@@ -12,6 +12,38 @@ export interface TreeNode {
 	children: TreeNode[]
 }
 
+/** Query languages with family inherited from ancestors via recursive CTE. */
+export async function queryLanguagesWithFamily(slug?: string) {
+	const seedFilter = slug ? sql`WHERE slug = ${slug}` : sql``
+	const outerFilter = slug ? sql`WHERE l.slug = ${slug}` : sql``
+
+	return db.execute(sql`
+		WITH RECURSIVE ancestry AS (
+			SELECT id, family, parent_language_id, 0 AS depth
+			FROM languages ${seedFilter}
+			UNION ALL
+			SELECT a.id, p.family, p.parent_language_id, a.depth + 1
+			FROM ancestry a
+			JOIN languages p ON p.id = a.parent_language_id
+			WHERE a.family IS NULL AND a.depth < 10
+		)
+		SELECT
+			l.id, l.name, l.slug, l.native_name AS "nativeName",
+			l.script,
+			COALESCE(l.family, (
+				SELECT a.family FROM ancestry a WHERE a.id = l.id AND a.family IS NOT NULL ORDER BY a.depth LIMIT 1
+			)) AS family,
+			l.color, l.description,
+			l.parent_language_id AS "parentLanguageId",
+			l.language_type AS "languageType",
+			l.page_slug AS "pageSlug",
+			(SELECT COUNT(*) FROM lexicon WHERE language_id = l.id)::int AS "wordCount"
+		FROM languages l
+		${outerFilter}
+		ORDER BY l.name ASC
+	`)
+}
+
 /** Get the root ancestor of a language by walking up parent chain */
 export async function getRootAncestor(languageId: number): Promise<{ id: number, name: string, slug: string }> {
 	const result = await db.execute(sql`
