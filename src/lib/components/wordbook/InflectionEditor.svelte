@@ -144,7 +144,7 @@
 						items={filteredClasses.map(cls => ({ value: String(cls.id), label: cls.name }))}
 						containerClass="w-full"
 					/>
-					<p class="text-[10px] text-faint mt-1">Select a class to auto-generate forms from its rules.</p>
+					<p class="text-xs text-faint mt-1">Select a class to auto-generate forms from its rules.</p>
 				{:else}
 					<div class="p-2 bg-warning-bg border border-warning-border text-xs text-body">
 						{#if availableClasses.length > 0}
@@ -168,7 +168,7 @@
 			<div class="flex-1 min-w-[150px]">
 				<label class="block text-xs font-medium text-secondary mb-1">Stem</label>
 				<Input bind:value={stem} containerClass="w-full" placeholder="e.g. tsid" />
-				<p class="text-[10px] text-faint mt-1">The base form that rules transform. Usually the word minus its ending.</p>
+				<p class="text-xs text-faint mt-1">The base form that rules transform. Usually the word minus its ending.</p>
 			</div>
 		</div>
 
@@ -178,7 +178,7 @@
 				<label class="block text-xs font-medium text-secondary mb-1">
 					Overrides
 				</label>
-				<p class="text-[10px] text-faint mb-2">Leave blank to use the class rule. Fill in to override with an irregular form.</p>
+				<p class="text-xs text-faint mb-2">Leave blank to use the class rule. Fill in to override with an irregular form.</p>
 				<div class="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
 					{#each cellKeys as key}
 						{@const generated = inflection.forms[key] || ''}

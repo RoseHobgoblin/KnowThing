@@ -69,7 +69,7 @@
 <div class="space-y-4 text-sm">
 	<!-- System metadata -->
 	<div>
-		<div class="text-[10px] font-semibold text-faint uppercase tracking-wider border-b border-border-subtle pb-1 mb-2">System</div>
+		<div class="text-xs font-semibold text-faint uppercase tracking-wider border-b border-border-subtle pb-1 mb-2">System</div>
 		<div class="space-y-1.5 text-secondary">
 			<div class="flex justify-between">
 				<span>Type</span>
@@ -91,7 +91,7 @@
 	<!-- Selected body detail -->
 	{#if selectedBody}
 		<div>
-			<div class="text-[10px] font-semibold text-faint uppercase tracking-wider border-b border-border-subtle pb-1 mb-2">Selected</div>
+			<div class="text-xs font-semibold text-faint uppercase tracking-wider border-b border-border-subtle pb-1 mb-2">Selected</div>
 			<div class="space-y-1.5">
 				<div class="font-medium text-heading">{selectedBody.name}</div>
 				<div class="space-y-1 text-secondary text-xs">
@@ -130,7 +130,7 @@
 
 	<!-- Body list -->
 	<div>
-		<div class="text-[10px] font-semibold text-faint uppercase tracking-wider border-b border-border-subtle pb-1 mb-2">Bodies</div>
+		<div class="text-xs font-semibold text-faint uppercase tracking-wider border-b border-border-subtle pb-1 mb-2">Bodies</div>
 		<div class="space-y-0.5">
 			{#each stars as star (star.id)}
 				{@const isPrimary = !star.parentStarId}
@@ -185,7 +185,7 @@
 	<!-- Calendar / Time -->
 	{#if calendars.length > 0 && selectedCalendar}
 		<div>
-			<div class="text-[10px] font-semibold text-faint uppercase tracking-wider border-b border-border-subtle pb-1 mb-2">
+			<div class="text-xs font-semibold text-faint uppercase tracking-wider border-b border-border-subtle pb-1 mb-2">
 				Viewing
 				{#if calendars.length > 1}
 					<Select

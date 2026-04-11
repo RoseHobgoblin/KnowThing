@@ -169,7 +169,7 @@
 				>
 					<div class="flex items-center gap-2">
 						<div class="font-medium text-sm text-heading">{r.title}</div>
-						<span class="text-[10px] uppercase tracking-wide text-faint">{r.badge}</span>
+						<span class="text-xs uppercase tracking-wide text-faint">{r.badge}</span>
 					</div>
 					{#if r.snippet}
 						<div class="text-xs text-dim mt-0.5">{@html sanitizeSnippet(r.snippet)}</div>

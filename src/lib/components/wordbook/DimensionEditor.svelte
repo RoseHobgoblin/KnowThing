@@ -194,7 +194,7 @@
 	<div class="flex items-center justify-between mb-3">
 		<div class="flex items-center gap-2">
 			<h3 class="text-sm font-semibold text-body">Inflection System</h3>
-			<button onclick={() => showHelp = !showHelp} class="text-[10px] text-faint hover:text-link border border-border-subtle rounded px-1.5 py-0.5">{showHelp ? 'Hide help' : '?'}</button>
+			<button onclick={() => showHelp = !showHelp} class="text-xs text-faint hover:text-link border border-border-subtle rounded px-1.5 py-0.5">{showHelp ? 'Hide help' : '?'}</button>
 		</div>
 		<div class="flex gap-2">
 			<button onclick={() => showAddDim = !showAddDim} class="text-xs text-link hover:text-link-hover hover:underline">+ Dimension</button>
@@ -274,7 +274,7 @@
 							<div class="flex items-center gap-2 text-sm group">
 								<span class="font-medium text-secondary">{dim.name}</span>
 								<span class="text-faint text-xs">[{dim.dimValues.join(', ')}]</span>
-								<span class="text-faint text-[10px]">axis {dim.sortOrder}</span>
+								<span class="text-faint text-xs">axis {dim.sortOrder}</span>
 								<button onclick={() => deleteDimension(dim.id)} class="
 									text-error text-xs opacity-0 transition-opacity
 									hover:text-error-hover
@@ -364,7 +364,7 @@
 													<button onclick={() => editingClassId = null} class="text-xs text-faint hover:text-dim">Cancel</button>
 												</div>
 
-												<p class="text-[10px] text-faint mt-2">
+												<p class="text-xs text-faint mt-2">
 													Use <code class="bg-surface-dim px-1">{'{'+'stem}'}</code> as placeholder. Example: <code class="bg-surface-dim px-1">{'{'+'stem}n'}</code> produces "{previewStem}n"
 												</p>
 											{/if}

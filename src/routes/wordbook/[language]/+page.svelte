@@ -116,7 +116,7 @@
 							<span class="text-faint text-xs italic">{child.nativeName}</span>
 						{/if}
 						{#if child.languageType !== 'language'}
-							<span class="text-[10px] text-faint">({child.languageType})</span>
+							<span class="text-xs text-faint">({child.languageType})</span>
 						{/if}
 					</a>
 				{/each}

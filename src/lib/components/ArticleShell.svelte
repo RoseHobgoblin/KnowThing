@@ -44,7 +44,7 @@
 	<div class="px-4 pt-4 md:px-6">
 		{#if breadcrumbs.length > 0}
 			<nav aria-label="Breadcrumb">
-				<ol class="flex flex-wrap items-center text-[10px] font-semibold uppercase tracking-wider mb-1">
+				<ol class="flex flex-wrap items-center text-xs font-semibold uppercase tracking-wider mb-1">
 					<li>
 						<a href="/" class="text-link transition-colors hover:text-link-hover">{rootLabel}</a>
 					</li>

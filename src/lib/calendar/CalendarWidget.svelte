@@ -283,7 +283,7 @@
 						{#if moons.length > 0}
 							<div class="flex gap-0.5 mt-0.5">
 								{#each moons as moon}
-									<span class="text-[10px] leading-none" title="{moon.name}: {moon.phase_name}">
+									<span class="text-xs leading-none" title="{moon.name}: {moon.phase_name}">
 										{MOON_EMOJI[moonPhaseKey(moon.phase)] ?? '🌑'}
 									</span>
 								{/each}
@@ -306,7 +306,7 @@
 						class="cursor-pointer border p-1.5 transition-colors {isCurrent ? 'border-accent bg-accent-subtle' : 'border-border-subtle hover:border-border-strong hover:bg-raised'}"
 						onclick={() => selectMiniMonth(monthIdx)}
 					>
-						<div class="text-[10px] font-semibold text-heading mb-1 text-center truncate">{miniGrid.monthName}</div>
+						<div class="text-xs font-semibold text-heading mb-1 text-center truncate">{miniGrid.monthName}</div>
 						<div class="grid gap-px" style="grid-template-columns: repeat({miniGrid.weekdays.length}, 1fr)">
 							{#each miniGrid.days as day}
 								{#if day === null}
@@ -315,7 +315,7 @@
 									{@const isToday = isCurrent && day === resolved.day}
 									{@const seasonColor = getSeasonColor(day, monthIdx)}
 									<div
-										class="h-2.5 text-center leading-[10px] {isToday ? 'bg-accent text-white' : ''}"
+										class="h-2.5 text-center leading-xs {isToday ? 'bg-accent text-white' : ''}"
 										style={!isToday && seasonColor ? `background: ${seasonColor}22` : ''}
 									>
 										<span class="text-[6px] {isToday ? 'text-white' : 'text-body'}">{day}</span>

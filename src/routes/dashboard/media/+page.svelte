@@ -281,7 +281,7 @@
 					</div>
 					<div class="p-2">
 						<div class="text-xs font-medium text-body truncate group-hover:text-link">{file.filename}</div>
-						<div class="flex items-center gap-1 text-[10px] text-faint mt-0.5">
+						<div class="flex items-center gap-1 text-xs text-faint mt-0.5">
 							{#if file.width && file.height}
 								<span>{file.width}×{file.height}</span>
 								<span>·</span>

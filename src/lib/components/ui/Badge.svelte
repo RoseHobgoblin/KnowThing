@@ -21,7 +21,7 @@
 </script>
 
 <span class={cn(
-	'inline-block px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider',
+	'inline-block px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wider',
 	variants[variant],
 	className,
 )}>

@@ -79,7 +79,7 @@
 		<button onclick={() => stepDay(1)} class="text-secondary px-1 transition-colors hover:text-heading" title="Next day"><CaretRight size={12} weight="bold" /></button>
 
 		<!-- Now button -->
-		<button onclick={goToNow} class="text-link text-[10px] transition-colors hover:text-link-hover" title="Jump to current date">Now</button>
+		<button onclick={goToNow} class="text-link text-xs transition-colors hover:text-link-hover" title="Jump to current date">Now</button>
 	</div>
 
 	<!-- Year slider -->

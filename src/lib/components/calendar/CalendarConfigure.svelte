@@ -483,9 +483,9 @@
 						</div>
 						<Input type="number" bind:value={dayLengthSeconds} min={1} />
 						{#if dayLengthSeconds < 1}
-							<p class="text-[10px] text-error mt-1">Day length must be at least one second.</p>
+							<p class="text-xs text-error mt-1">Day length must be at least one second.</p>
 						{:else}
-						<p class="text-[10px] text-faint mt-1">{dayLengthHours} hours</p>
+						<p class="text-xs text-faint mt-1">{dayLengthHours} hours</p>
 						{/if}
 					</div>
 					<div>
@@ -505,12 +505,12 @@
 				</div>
 				{#each months as month, index (month._id)}
 					<div class="flex gap-2 items-center group">
-						<span class="text-[10px] text-faint w-5 text-right shrink-0">{index + 1}</span>
+						<span class="text-xs text-faint w-5 text-right shrink-0">{index + 1}</span>
 						<Input bind:value={month.name} placeholder="Month name" containerClass="flex-1" error={!month.name.trim() ? 'Required' : ''} />
 						<Input bind:value={month.short_name} placeholder="Abbr" containerClass="w-14" />
 						<div class="flex items-center gap-1">
 							<Input type="number" bind:value={month.length} min={1} containerClass="w-14" class="text-center" error={month.length < 1 ? 'Min 1' : ''} />
-							<span class="text-[10px] text-faint">days</span>
+							<span class="text-xs text-faint">days</span>
 						</div>
 						<Select type="single" bind:value={month.month_type} items={[{ value: 'regular', label: 'Regular' }, { value: 'intercalary', label: 'Intercalary' }, { value: 'lunisolar_leap', label: 'Lunisolar Leap' }]} containerClass="w-32" size="sm" />
 						<button type="button" onclick={() => months = months.filter((_, i) => i !== index)} class="text-faint opacity-0 transition-opacity group-hover:opacity-100 hover:text-error">×</button>
@@ -530,7 +530,7 @@
 				</div>
 				{#each weekdays as day, index (day._id)}
 					<div class="flex gap-2 items-center group">
-						<span class="text-[10px] text-faint w-5 text-right shrink-0">{index}</span>
+						<span class="text-xs text-faint w-5 text-right shrink-0">{index}</span>
 						<Input bind:value={day.name} placeholder="Weekday name" containerClass="flex-1" error={!day.name.trim() ? 'Required' : ''} />
 						<Input bind:value={day.abbreviation} placeholder="Abbr" containerClass="w-16" />
 						<button type="button" onclick={() => weekdays = weekdays.filter((_, i) => i !== index)} class="text-faint opacity-0 transition-opacity group-hover:opacity-100 hover:text-error">×</button>
@@ -599,11 +599,11 @@
 						<Input bind:value={moon.name} placeholder="Moon name" containerClass="flex-1" error={!moon.name.trim() ? 'Required' : ''} />
 						<div class="flex items-center gap-1">
 							<Input type="number" bind:value={moon.cycle} step="0.01" containerClass="w-20" class="text-center" />
-							<span class="text-[10px] text-faint whitespace-nowrap">day cycle</span>
+							<span class="text-xs text-faint whitespace-nowrap">day cycle</span>
 						</div>
 						<div class="flex items-center gap-1">
 							<Input type="number" bind:value={moon.offset} containerClass="w-16" class="text-center" />
-							<span class="text-[10px] text-faint">offset</span>
+							<span class="text-xs text-faint">offset</span>
 						</div>
 						<button type="button" onclick={() => moons = moons.filter((_, i) => i !== index)} class="text-faint opacity-0 transition-opacity group-hover:opacity-100 hover:text-error">×</button>
 					</div>
