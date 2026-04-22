@@ -39,6 +39,8 @@
 		body: OrbitBody
 		parentKey: EntityKey
 		orbitRadius: number
+		orbitSemiMinor: number
+		focusOffset: number
 		parentRawX: number
 		parentRawY: number
 		rawX: number
@@ -181,7 +183,7 @@
 
 	function computeAngle(body: OrbitBody, index: number, total: number) {
 		if (currentAbsoluteDay != null && body.orbitAu > 0) {
-			const periodDays = body.orbitalPeriodDays ?? (body.orbitAu * 365.25)
+			const periodDays = body.orbitalPeriodDays ?? (body.orbitAu ** 1.5 * 365.25)
 			const M = meanAnomaly(periodDays, body.epochPhase ?? 0, currentAbsoluteDay)
 			return solveKeplerE(M, body.ecc)
 		}
@@ -255,7 +257,7 @@
 	function innerBoundaryAu(orbiters: OrbitBody[]): number {
 		if (orbiters.length <= 1) return orbiters[0]?.orbitAu ?? 1
 		let maxRatio = 0
-		let boundaryIndex = Math.ceil(orbiters.length / 2) - 1
+		let boundaryIndex = -1
 		for (let index = 0; index < orbiters.length - 1; index++) {
 			const ratio = orbiters[index + 1].orbitAu / Math.max(orbiters[index].orbitAu, 0.001)
 			if (ratio > maxRatio) {
@@ -263,8 +265,12 @@
 				boundaryIndex = index
 			}
 		}
-		if (maxRatio < 3) boundaryIndex = Math.ceil(orbiters.length / 2) - 1
-		return orbiters[boundaryIndex].orbitAu * 1.5
+		// No meaningful gap — return the outermost orbit so inner view shows everything
+		if (maxRatio < 2 || boundaryIndex < 0) {
+			return orbiters.at(-1)!.orbitAu
+		}
+		// Geometric mean of the two bounding orbits — proportional cut across the gap
+		return Math.sqrt(orbiters[boundaryIndex].orbitAu * orbiters[boundaryIndex + 1].orbitAu)
 	}
 
 	function scaleAuToPixel(au: number, auMin: number, auMax: number, rMax: number): number {
@@ -465,16 +471,21 @@
 				for (const [index, satellite] of satellites.entries()) {
 					const t = satellites.length === 1 ? 0.5 : index / (satellites.length - 1)
 					const orbitRadius = SAT_INNER_MARGIN + t * (zone - SAT_INNER_MARGIN)
+					const orbitSemiMinor = orbitRadius * Math.sqrt(1 - satellite.ecc * satellite.ecc)
+					const focusOffset = orbitRadius * satellite.ecc
 
 					const angle = computeAngle(satellite, index, satellites.length)
-					const x = parentAnchor.x + orbitRadius * Math.cos(angle)
-					const y = parentAnchor.y + orbitRadius * Math.sin(angle)
+					const ellipseCx = parentAnchor.x - focusOffset
+					const x = ellipseCx + orbitRadius * Math.cos(angle)
+					const y = parentAnchor.y + orbitSemiMinor * Math.sin(angle)
 					const key = keyForBody(satellite, satellite.isStar)
 
 					rawSatellitePositions.push({
 						body: satellite,
 						parentKey,
 						orbitRadius,
+						orbitSemiMinor,
+						focusOffset,
 						parentRawX: parentAnchor.x,
 						parentRawY: parentAnchor.y,
 						rawX: x,
@@ -843,7 +854,15 @@
 			context.lineWidth = isSelected ? 1.5 : 0.5
 			if (satellite.body.isStar) context.setLineDash([4, 3])
 			context.beginPath()
-			context.arc(satellite.parentX, satellite.parentY, satellite.orbitRadius, 0, Math.PI * 2)
+			context.ellipse(
+				satellite.parentX - satellite.focusOffset,
+				satellite.parentY,
+				satellite.orbitRadius,
+				satellite.orbitSemiMinor,
+				0,
+				0,
+				Math.PI * 2,
+			)
 			context.stroke()
 			context.restore()
 
