@@ -3,7 +3,7 @@ import type { PageServerLoad } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { contentRecords, lexicon, languages } from '$lib/server/db/schema.js'
 import { eq, and, sql } from 'drizzle-orm'
-import { parseWikitext, extractCategoriesFromAst, extractInfoboxFromRefs, extractSystemMapRefs, stripMarkup } from '$lib/parser/index.js'
+import { parseWikitext, extractCategoriesFromAst, extractInfoboxFromRefs, extractSystemMapRefs, extractImagesFromAst, stripMarkup } from '$lib/parser/index.js'
 import { resolveAllStructuredData, resolveAllSystemMaps } from '$lib/server/structured-data.js'
 import { getResolvedLinks, serializeResolvedLinks } from '$lib/server/resolved-links.js'
 
@@ -109,5 +109,6 @@ export const load: PageServerLoad = async ({ params }) => {
 		systemMaps,
 		resolvedLinks: serializeResolvedLinks(resolvedLinks),
 		description,
+		ogImage: extractImagesFromAst(ast)[0] ?? null,
 	}
 }

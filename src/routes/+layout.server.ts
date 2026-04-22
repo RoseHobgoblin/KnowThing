@@ -30,6 +30,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 	])
 
 	let calendarDate: ResolvedDate | null = null
+	let calendarConfig: CalendarConfig | null = null
 	if (primaryCalendarRows.length > 0) {
 		const row = primaryCalendarRows[0]
 		const staticData: StaticCalendarData = {
@@ -72,13 +73,13 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 			}
 		}
 
-		const config: CalendarConfig = {
+		calendarConfig = {
 			name: row.name,
 			description: row.description || '',
 			primary: true,
 			static_data: staticData,
 		}
-		calendarDate = resolveDisplay(config)
+		calendarDate = resolveDisplay(calendarConfig)
 	}
 
 	return {
@@ -87,6 +88,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		isEditor: permissions.canEditContent,
 		permissions,
 		calendarDate,
+		calendarConfig,
 		siteConfig,
 	}
 }

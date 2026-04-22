@@ -1,7 +1,7 @@
 import { getContext, setContext } from 'svelte'
 import { writable, type Writable } from 'svelte/store'
 import type { TemplateArg, WikiNode } from '$lib/parser/types.js'
-import type { ResolvedDate } from '$lib/calendar/types.js'
+import type { CalendarConfig, ResolvedDate } from '$lib/calendar/types.js'
 
 const KNOW_CONTEXT_KEY = 'know-render-context'
 
@@ -31,6 +31,8 @@ export interface KnowRenderContext {
 	templates: Map<string, string> | null
 	/** Resolved calendar date for calendar magic words */
 	calendarDate: ResolvedDate | null
+	/** Active calendar config (needed to format arbitrary timestamps in {{date}}) */
+	calendarConfig: CalendarConfig | null
 	/** Pre-fetched structured data for from=slug infobox resolution */
 	structuredData: Map<string, Map<string, string>> | null
 	/** Pre-fetched system map data for {{System map|slug}} */
@@ -54,6 +56,7 @@ export function createKnowContext(overrides: Partial<KnowRenderContext> = {}): K
 		namespace: '',
 		templates: null,
 		calendarDate: null,
+		calendarConfig: null,
 		structuredData: null,
 		systemMaps: null,
 		...overrides,

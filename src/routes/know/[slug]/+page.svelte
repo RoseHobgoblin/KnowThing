@@ -12,6 +12,11 @@
 
 	const siteName = $derived($page.data.siteConfig?.siteName ?? 'KnowThing')
 	const description = $derived(!data.notFound ? data.description : '')
+	const ogImageUrl = $derived(
+		!data.notFound && data.ogImage
+			? `${$page.url.origin}/api/media/${encodeURIComponent(data.ogImage)}`
+			: null,
+	)
 
 	async function deletePage() {
 		const ok = await confirmDialog.confirm('Delete page', `Delete "${data.title}"? This cannot be undone.`, 'Delete', 'Cancel')
@@ -35,6 +40,13 @@
 		<meta property="og:type" content="article" />
 		<meta property="og:url" content={$page.url.href} />
 		<meta property="og:site_name" content={siteName} />
+		{#if ogImageUrl}
+			<meta property="og:image" content={ogImageUrl} />
+			<meta name="twitter:card" content="summary_large_image" />
+			<meta name="twitter:image" content={ogImageUrl} />
+		{:else}
+			<meta name="twitter:card" content="summary" />
+		{/if}
 	{/if}
 </svelte:head>
 

@@ -55,6 +55,7 @@
 		mediaBaseUrl: '/api/media',
 		pageBaseUrl: '/know',
 		calendarDate: $page.data.calendarDate ?? null,
+		calendarConfig: $page.data.calendarConfig ?? null,
 		structuredData: buildStructuredData(rawStructuredData),
 		systemMaps: systemMaps as KnowRenderContext['systemMaps'],
 	})
