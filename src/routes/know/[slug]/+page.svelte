@@ -12,11 +12,14 @@
 
 	const siteName = $derived($page.data.siteConfig?.siteName ?? 'KnowThing')
 	const description = $derived(!data.notFound ? data.description : '')
-	const ogImageUrl = $derived(
-		!data.notFound && data.ogImage
-			? `${$page.url.origin}/api/media/${encodeURIComponent(data.ogImage)}`
-			: null,
-	)
+	const ogImageUrl = $derived.by(() => {
+		if (data.notFound || !data.card?.image) return null
+		const base = `${$page.url.origin}/api/media/${encodeURIComponent(data.card.image)}`
+		if (data.card.mimeType === 'image/svg+xml') {
+			return data.card.hasRaster ? `${base}?raster=1` : null
+		}
+		return base
+	})
 
 	async function deletePage() {
 		const ok = await confirmDialog.confirm('Delete page', `Delete "${data.title}"? This cannot be undone.`, 'Delete', 'Cancel')

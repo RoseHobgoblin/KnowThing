@@ -3,21 +3,10 @@ import type { PageServerLoad } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { contentRecords, lexicon, languages } from '$lib/server/db/schema.js'
 import { eq, and, sql } from 'drizzle-orm'
-import { parseWikitext, extractCategoriesFromAst, extractInfoboxFromRefs, extractSystemMapRefs, extractImagesFromAst, extractInfoboxImageRef, stripMarkup } from '$lib/parser/index.js'
+import { parseWikitext, extractCategoriesFromAst, extractInfoboxFromRefs, extractSystemMapRefs, stripMarkup } from '$lib/parser/index.js'
 import { resolveAllStructuredData, resolveAllSystemMaps } from '$lib/server/structured-data.js'
 import { getResolvedLinks, serializeResolvedLinks } from '$lib/server/resolved-links.js'
-
-function resolveOgImage(
-	ast: import('$lib/parser/types.js').WikiNode,
-	structuredData: Record<string, Record<string, string>> | null,
-): string | null {
-	const infoboxRef = extractInfoboxImageRef(ast)
-	if (infoboxRef?.image) return infoboxRef.image
-	if (infoboxRef?.fromSlug && structuredData?.[infoboxRef.fromSlug]?.image) {
-		return structuredData[infoboxRef.fromSlug].image
-	}
-	return extractImagesFromAst(ast)[0] ?? null
-}
+import { buildDescription, lookupMediaInfo, resolveCardImageSync } from '$lib/server/services/page-card.js'
 
 export const load: PageServerLoad = async ({ params }) => {
 	// Case-insensitive lookup within the 'know' domain
@@ -58,6 +47,7 @@ export const load: PageServerLoad = async ({ params }) => {
 			ast: null,
 			categories: [],
 			description: '',
+			card: { image: null, mimeType: null, hasRaster: false },
 		}
 	}
 
@@ -99,13 +89,9 @@ export const load: PageServerLoad = async ({ params }) => {
 		.where(sql`LOWER(${lexicon.word}) = LOWER(${record.title.replaceAll(' ', '_')}) OR LOWER(${lexicon.word}) = LOWER(${record.title})`)
 		.limit(1)
 
-	// Normalize plain text for share metadata.
-	const plainText = (record.plainText || stripMarkup(record.content)).replace(/\s+/g, ' ').trim()
-	const excerpt = plainText.slice(0, 200)
-	const lastSpace = excerpt.lastIndexOf(' ')
-	const description = excerpt.length < plainText.length
-		? `${excerpt.slice(0, lastSpace > 120 ? lastSpace : excerpt.length).trimEnd()}...`
-		: excerpt
+	const description = buildDescription(record.plainText || stripMarkup(record.content))
+	const cardImage = resolveCardImageSync(ast, structuredData)
+	const cardMedia = cardImage ? await lookupMediaInfo(cardImage) : null
 
 	return {
 		notFound: false,
@@ -121,6 +107,10 @@ export const load: PageServerLoad = async ({ params }) => {
 		systemMaps,
 		resolvedLinks: serializeResolvedLinks(resolvedLinks),
 		description,
-		ogImage: resolveOgImage(ast, structuredData),
+		card: {
+			image: cardImage,
+			mimeType: cardMedia?.mimeType ?? null,
+			hasRaster: cardMedia?.hasRaster ?? false,
+		},
 	}
 }

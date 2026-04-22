@@ -13,12 +13,13 @@
 
 	let title = $state('')
 	let summary = $state('')
+	let image = $state<string | null>(null)
 	let loading = $state(true)
 	let error = $state(false)
 	let popupElement: HTMLDivElement | undefined = $state()
 
 	const POPUP_WIDTH = 320
-	const POPUP_HEIGHT_MAX = 200
+	const POPUP_HEIGHT_MAX = 280
 
 	// Position: prefer below and to the right, but flip if near edges
 	const style = $derived.by(() => {
@@ -51,6 +52,7 @@
 		error = false
 		title = ''
 		summary = ''
+		image = null
 
 		const controller = new AbortController()
 
@@ -64,6 +66,7 @@
 			.then((data) => {
 				title = data.title
 				summary = data.summary
+				image = data.image ?? null
 				loading = false
 			})
 			.catch((error_) => {
@@ -91,6 +94,9 @@
 				<div class="h-3 w-5/6 bg-skeleton-shimmer rounded-sm animate-pulse"></div>
 			</div>
 		{:else}
+			{#if image}
+				<img src={image} alt="" class="block w-full h-32 object-cover bg-skeleton" loading="lazy" />
+			{/if}
 			<div class="p-4">
 				<h3 class="font-semibold text-heading text-sm/tight mb-1.5">{title}</h3>
 				{#if summary}
@@ -105,7 +111,7 @@
 
 <style>
 	.link-preview {
-		max-height: 200px;
+		max-height: 280px;
 		pointer-events: none;
 		animation: preview-fade-in 0.15s ease-out;
 		/* Reset cascade — preview can be a DOM child of centered/bold cells like .infobox-title */

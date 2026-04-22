@@ -204,6 +204,7 @@ export const media = pgTable('media', {
 	hasThumb150: boolean('has_thumb_150').default(false),
 	hasThumb300: boolean('has_thumb_300').default(false),
 	hasThumb600: boolean('has_thumb_600').default(false),
+	hasRaster: boolean('has_raster').default(false),
 	uploadedAt: timestamp('uploaded_at', { withTimezone: true }).defaultNow().notNull(),
 })
 

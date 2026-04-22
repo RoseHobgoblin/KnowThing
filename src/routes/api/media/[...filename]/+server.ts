@@ -12,6 +12,7 @@ import { handleServiceCall } from '$lib/server/utils.js'
 
 const UPLOAD_DIR = env.UPLOAD_DIR || './uploads'
 const THUMB_DIR = join(UPLOAD_DIR, 'thumbs')
+const RASTER_DIR = join(UPLOAD_DIR, 'rasters')
 const VALID_WIDTHS = new Set([150, 300, 600])
 
 /** GET /api/media/:filename — serve file or thumbnail */
@@ -26,6 +27,21 @@ export const GET: RequestHandler = async ({ params, url }) => {
 		.limit(1)
 
 	if (!record) throw error(404, 'File not found')
+
+	// Raster fallback for SVGs — used by social share cards, which can't embed SVG.
+	if (url.searchParams.has('raster') && record.hasRaster) {
+		try {
+			const buffer = await readFile(join(RASTER_DIR, `${filename}.png`))
+			return new Response(buffer, {
+				headers: {
+					'Content-Type': 'image/png',
+					'Cache-Control': 'public, max-age=31536000, immutable',
+				},
+			})
+		} catch {
+			// Fall through to original if raster is missing on disk.
+		}
+	}
 
 	if (requestedWidth && VALID_WIDTHS.has(requestedWidth)) {
 		const hasThumb =

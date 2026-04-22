@@ -10,8 +10,10 @@ import { media, mediaCategories, mediaHistory } from '$lib/server/db/schema.js'
 
 const UPLOAD_DIR = env.UPLOAD_DIR || './uploads'
 const THUMB_DIR = join(UPLOAD_DIR, 'thumbs')
+const RASTER_DIR = join(UPLOAD_DIR, 'rasters')
 const MAX_UPLOAD_SIZE = Number.parseInt(env.MAX_UPLOAD_SIZE || '10485760')
 const THUMB_SIZES = [150, 300, 600] as const
+const RASTER_WIDTH = 1200
 
 function normalizeCategories(categories?: string[]) {
 	if (!categories) return undefined
@@ -67,8 +69,22 @@ export async function uploadMediaFile(userId: number, file: File) {
 	let hasThumb150 = false
 	let hasThumb300 = false
 	let hasThumb600 = false
+	let hasRaster = false
 
-	if (file.type !== 'image/svg+xml') {
+	if (file.type === 'image/svg+xml') {
+		try {
+			await mkdir(RASTER_DIR, { recursive: true })
+			await sharp(buffer, { density: 192 })
+				.resize(RASTER_WIDTH, undefined, { withoutEnlargement: false })
+				.png()
+				.toFile(join(RASTER_DIR, `${filename}.png`))
+			hasRaster = true
+		} catch (cause) {
+			// SVG may reference external fonts/assets sharp can't resolve — article
+			// keeps the crisp SVG, share cards just won't have an image for this one.
+			console.error('SVG rasterization failed:', cause)
+		}
+	} else {
 		try {
 			const image = sharp(buffer)
 			const metadata = await image.metadata()
@@ -110,6 +126,7 @@ export async function uploadMediaFile(userId: number, file: File) {
 			hasThumb150,
 			hasThumb300,
 			hasThumb600,
+			hasRaster,
 		})
 		.returning()
 
@@ -174,6 +191,14 @@ export async function deleteMediaFile(userId: number, filename: string) {
 			await unlink(join(THUMB_DIR, `${size}_${filename}`))
 		} catch {
 			// Thumbnail may already be missing on disk.
+		}
+	}
+
+	if (record.hasRaster) {
+		try {
+			await unlink(join(RASTER_DIR, `${filename}.png`))
+		} catch {
+			// Raster may already be missing on disk.
 		}
 	}
 

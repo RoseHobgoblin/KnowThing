@@ -1,103 +1,21 @@
 import { json, type RequestHandler } from '@sveltejs/kit'
-import { db } from '$lib/server/db/index.js'
-import { contentRecords } from '$lib/server/db/schema.js'
-import { eq, and, sql } from 'drizzle-orm'
+import { getPageCard, buildCardImageUrl } from '$lib/server/services/page-card.js'
 
 /**
  * GET /api/pages/summary?slug=onchera&domain=know
- * Returns a short summary of a page for link preview popups.
- * Extracts the first paragraph of wikitext, strips markup, truncates.
+ * Returns card metadata for link previews — same source as OG/Twitter tags.
  */
 export const GET: RequestHandler = async ({ url }) => {
-	const slug = url.searchParams.get('slug')?.toLowerCase()
-	if (!slug) {
-		return json({ error: 'Missing slug' }, { status: 400 })
-	}
+	const slug = url.searchParams.get('slug')
+	if (!slug) return json({ error: 'Missing slug' }, { status: 400 })
 
-	const domain = url.searchParams.get('domain')?.toLowerCase()
-
-	// If domain specified, search that domain; otherwise search all domains
-	const condition = domain
-		? and(eq(contentRecords.domain, domain), eq(sql`LOWER(${contentRecords.slug})`, slug))
-		: eq(sql`LOWER(${contentRecords.slug})`, slug)
-
-	const [page] = await db
-		.select({
-			title: contentRecords.title,
-			content: contentRecords.content,
-		})
-		.from(contentRecords)
-		.where(condition)
-		.limit(1)
-
-	if (!page) {
-		return json({ error: 'Not found' }, { status: 404 })
-	}
-
-	const summary = extractSummary(page.content, 300)
+	const domain = url.searchParams.get('domain') || 'know'
+	const card = await getPageCard(slug, domain)
+	if (!card) return json({ error: 'Not found' }, { status: 404 })
 
 	return json({
-		title: page.title,
-		summary,
+		title: card.title,
+		summary: card.description,
+		image: buildCardImageUrl(url.origin, card),
 	})
-}
-
-/**
- * Extract first meaningful paragraph from wikitext and strip markup.
- */
-function extractSummary(wikitext: string, maxLength: number): string {
-	const lines = wikitext.split('\n')
-	let paragraph = ''
-	let insideTemplate = false
-
-	for (const line of lines) {
-		const trimmed = line.trim()
-		// Track multi-line templates (infoboxes etc.)
-		if (trimmed.startsWith('{{') && !trimmed.endsWith('}}')) insideTemplate = true
-		if (insideTemplate) {
-			if (trimmed.endsWith('}}')) insideTemplate = false
-			continue
-		}
-		// Skip empty lines, headings, single-line templates, categories, images, tables
-		if (!trimmed) continue
-		if (trimmed.startsWith('=')) continue
-		if (trimmed.startsWith('{{') && trimmed.endsWith('}}')) continue
-		if (trimmed === '}}') continue
-		if (trimmed.startsWith('[[Category:')) continue
-		if (trimmed.startsWith('[[File:') || trimmed.startsWith('[[Image:')) continue
-		if (trimmed.startsWith('{|') || trimmed.startsWith('|}') || trimmed.startsWith('|') || trimmed.startsWith('!')) continue
-		if (trimmed.startsWith('*') || trimmed.startsWith('#') || trimmed.startsWith(':') || trimmed.startsWith(';')) continue
-
-		paragraph = trimmed
-		break
-	}
-
-	if (!paragraph) return ''
-
-	// Strip wikitext markup
-	let text = paragraph
-	// Strip '''bold''' and ''italic''
-	text = text.replaceAll(/'{2,3}/g, '')
-	// Strip [[File:...|...]] and [[Image:...|...]] entirely
-	text = text.replaceAll(/\[\[(?:File|Image):[^\]]*\]\]/gi, '')
-	// Convert [[link|display]] to display, [[link]] to link
-	text = text.replaceAll(/\[\[(?:[^|\]]*\|)?([^\]]*)\]\]/g, '$1')
-	// Strip {{templates}}
-	text = text.replaceAll(/\{\{[^}]*\}\}/g, '')
-	// Strip <ref>...</ref> and <ref ... />
-	text = text.replaceAll(/<ref[^>]*>[\S\s]*?<\/ref>/gi, '')
-	text = text.replaceAll(/<ref[^>]*\/>/gi, '')
-	// Strip remaining HTML tags
-	text = text.replaceAll(/<[^>]+>/g, '')
-	// Clean up whitespace
-	text = text.replaceAll(/\s+/g, ' ').trim()
-
-	if (text.length > maxLength) {
-		// Truncate at last word boundary
-		const truncated = text.slice(0, maxLength)
-		const lastSpace = truncated.lastIndexOf(' ')
-		text = (lastSpace > 0 ? truncated.slice(0, lastSpace) : truncated) + '...'
-	}
-
-	return text
 }
