@@ -99,6 +99,25 @@ export function extractInfoboxFromRefs(ast: WikiNode): { type: string, slug: str
 }
 
 /**
+ * Walk a pre-parsed AST and find the first infobox's `image` field.
+ * Returns the literal `image=` arg when set; otherwise the `from=` slug so the
+ * caller can look it up in pre-resolved structured data.
+ */
+export function extractInfoboxImageRef(ast: WikiNode): { image?: string, fromSlug?: string } | null {
+	let result: { image?: string, fromSlug?: string } | null = null
+	walkNodes([ast], (node) => {
+		if (result) return
+		if (node.type === 'template' && node.name.toLowerCase().startsWith('infobox')) {
+			const imageArg = node.args.find(a => a.name?.toLowerCase().trim() === 'image')?.value?.trim()
+			const fromArg = node.args.find(a => a.name?.toLowerCase().trim() === 'from')?.value?.trim()
+			if (imageArg) result = { image: imageArg }
+			else if (fromArg) result = { fromSlug: fromArg }
+		}
+	})
+	return result
+}
+
+/**
  * Walk a pre-parsed AST and find {{System map|slug}} templates.
  * Returns the system slugs to pre-fetch.
  */

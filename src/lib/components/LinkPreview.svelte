@@ -108,6 +108,13 @@
 		max-height: 200px;
 		pointer-events: none;
 		animation: preview-fade-in 0.15s ease-out;
+		/* Reset cascade — preview can be a DOM child of centered/bold cells like .infobox-title */
+		text-align: left;
+		font-weight: 400;
+		font-style: normal;
+		font-family: var(--font-body);
+		text-transform: none;
+		letter-spacing: normal;
 	}
 
 	@keyframes preview-fade-in {

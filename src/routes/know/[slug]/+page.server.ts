@@ -3,9 +3,21 @@ import type { PageServerLoad } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { contentRecords, lexicon, languages } from '$lib/server/db/schema.js'
 import { eq, and, sql } from 'drizzle-orm'
-import { parseWikitext, extractCategoriesFromAst, extractInfoboxFromRefs, extractSystemMapRefs, extractImagesFromAst, stripMarkup } from '$lib/parser/index.js'
+import { parseWikitext, extractCategoriesFromAst, extractInfoboxFromRefs, extractSystemMapRefs, extractImagesFromAst, extractInfoboxImageRef, stripMarkup } from '$lib/parser/index.js'
 import { resolveAllStructuredData, resolveAllSystemMaps } from '$lib/server/structured-data.js'
 import { getResolvedLinks, serializeResolvedLinks } from '$lib/server/resolved-links.js'
+
+function resolveOgImage(
+	ast: import('$lib/parser/types.js').WikiNode,
+	structuredData: Record<string, Record<string, string>> | null,
+): string | null {
+	const infoboxRef = extractInfoboxImageRef(ast)
+	if (infoboxRef?.image) return infoboxRef.image
+	if (infoboxRef?.fromSlug && structuredData?.[infoboxRef.fromSlug]?.image) {
+		return structuredData[infoboxRef.fromSlug].image
+	}
+	return extractImagesFromAst(ast)[0] ?? null
+}
 
 export const load: PageServerLoad = async ({ params }) => {
 	// Case-insensitive lookup within the 'know' domain
@@ -109,6 +121,6 @@ export const load: PageServerLoad = async ({ params }) => {
 		systemMaps,
 		resolvedLinks: serializeResolvedLinks(resolvedLinks),
 		description,
-		ogImage: extractImagesFromAst(ast)[0] ?? null,
+		ogImage: resolveOgImage(ast, structuredData),
 	}
 }
