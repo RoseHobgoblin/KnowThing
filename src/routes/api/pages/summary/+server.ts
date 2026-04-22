@@ -17,5 +17,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		title: card.title,
 		summary: card.description,
 		image: buildCardImageUrl(url.origin, card),
+		imageWidth: card.imageWidth,
+		imageHeight: card.imageHeight,
 	})
 }

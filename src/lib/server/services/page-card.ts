@@ -17,6 +17,8 @@ export interface PageCard {
 	image: string | null
 	imageMimeType: string | null
 	imageHasRaster: boolean
+	imageWidth: number | null
+	imageHeight: number | null
 }
 
 export async function getPageCard(slug: string, domain = 'know'): Promise<PageCard | null> {
@@ -43,6 +45,8 @@ export async function getPageCard(slug: string, domain = 'know'): Promise<PageCa
 		image: imageFilename,
 		imageMimeType: mediaRow?.mimeType ?? null,
 		imageHasRaster: mediaRow?.hasRaster ?? false,
+		imageWidth: mediaRow?.width ?? null,
+		imageHeight: mediaRow?.height ?? null,
 	}
 }
 
@@ -81,7 +85,12 @@ export async function lookupMediaInfo(filename: string) {
 
 async function lookupMedia(filename: string) {
 	const [row] = await db
-		.select({ mimeType: media.mimeType, hasRaster: media.hasRaster })
+		.select({
+			mimeType: media.mimeType,
+			hasRaster: media.hasRaster,
+			width: media.width,
+			height: media.height,
+		})
 		.from(media)
 		.where(eq(media.filename, filename))
 		.limit(1)

@@ -14,14 +14,31 @@
 	let title = $state('')
 	let summary = $state('')
 	let image = $state<string | null>(null)
+	let imageWidth = $state<number | null>(null)
+	let imageHeight = $state<number | null>(null)
 	let loading = $state(true)
 	let error = $state(false)
 	let popupElement: HTMLDivElement | undefined = $state()
 
-	const POPUP_WIDTH = 320
-	const POPUP_HEIGHT_MAX = 280
+	const STACKED_WIDTH = 320
+	const SIDE_TEXT_WIDTH = 240
+	const SIDE_IMAGE_HEIGHT = 200
+	const POPUP_HEIGHT_MAX = 400
 
-	// Position: prefer below and to the right, but flip if near edges
+	// Side-by-side (image left, text right) when portrait; stacked otherwise.
+	const isPortrait = $derived(
+		!!image && imageWidth != null && imageHeight != null && imageHeight > imageWidth,
+	)
+	const sideImageWidth = $derived(
+		isPortrait && imageWidth && imageHeight
+			? Math.round(SIDE_IMAGE_HEIGHT * (imageWidth / imageHeight))
+			: 140,
+	)
+	const popupWidth = $derived(isPortrait ? SIDE_TEXT_WIDTH + sideImageWidth : STACKED_WIDTH)
+	const stackedAspect = $derived(
+		!isPortrait && image && imageWidth && imageHeight ? `${imageWidth} / ${imageHeight}` : null,
+	)
+
 	const style = $derived.by(() => {
 		const viewportW = globalThis.window === undefined ? 1200 : window.innerWidth
 		const viewportH = globalThis.window === undefined ? 800 : window.innerHeight
@@ -29,21 +46,16 @@
 		let left = x + 12
 		let top = y + 16
 
-		// Flip horizontally if too close to right edge
-		if (left + POPUP_WIDTH > viewportW - 16) {
-			left = x - POPUP_WIDTH - 12
+		if (left + popupWidth > viewportW - 16) {
+			left = x - popupWidth - 12
 		}
-
-		// Flip vertically if too close to bottom
 		if (top + POPUP_HEIGHT_MAX > viewportH - 16) {
 			top = y - POPUP_HEIGHT_MAX - 8
 		}
-
-		// Clamp
 		if (left < 8) left = 8
 		if (top < 8) top = 8
 
-		return `left: ${left}px; top: ${top}px; width: ${POPUP_WIDTH}px;`
+		return `left: ${left}px; top: ${top}px; width: ${popupWidth}px;`
 	})
 
 	$effect(() => {
@@ -53,6 +65,8 @@
 		title = ''
 		summary = ''
 		image = null
+		imageWidth = null
+		imageHeight = null
 
 		const controller = new AbortController()
 
@@ -67,6 +81,8 @@
 				title = data.title
 				summary = data.summary
 				image = data.image ?? null
+				imageWidth = data.imageWidth ?? null
+				imageHeight = data.imageHeight ?? null
 				loading = false
 			})
 			.catch((error_) => {
@@ -93,9 +109,33 @@
 				<div class="h-3 w-full bg-skeleton-shimmer rounded-sm animate-pulse mb-1"></div>
 				<div class="h-3 w-5/6 bg-skeleton-shimmer rounded-sm animate-pulse"></div>
 			</div>
+		{:else if isPortrait && image}
+			<div class="flex">
+				<img
+					src={image}
+					alt=""
+					class="block shrink-0 bg-skeleton"
+					style="width: {sideImageWidth}px; height: {SIDE_IMAGE_HEIGHT}px;"
+					loading="lazy"
+				/>
+				<div class="p-4 min-w-0 flex-1">
+					<h3 class="font-semibold text-heading text-sm/tight mb-1.5">{title}</h3>
+					{#if summary}
+						<p class="text-xs/relaxed text-body">{summary}</p>
+					{:else}
+						<p class="text-xs text-faint italic">No summary available.</p>
+					{/if}
+				</div>
+			</div>
 		{:else}
 			{#if image}
-				<img src={image} alt="" class="block w-full h-32 object-cover bg-skeleton" loading="lazy" />
+				<img
+					src={image}
+					alt=""
+					class="block w-full bg-skeleton"
+					style={stackedAspect ? `aspect-ratio: ${stackedAspect};` : 'height: 128px; object-fit: cover;'}
+					loading="lazy"
+				/>
 			{/if}
 			<div class="p-4">
 				<h3 class="font-semibold text-heading text-sm/tight mb-1.5">{title}</h3>
