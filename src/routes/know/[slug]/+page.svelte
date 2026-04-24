@@ -73,6 +73,7 @@
 			updatedAt={data.updatedAt}
 			wordbookMatch={data.wordbookMatch}
 			structuredData={data.structuredData ?? null}
+			structuredCollections={data.structuredCollections ?? null}
 			systemMaps={data.systemMaps ?? null}
 			resolvedLinks={data.resolvedLinks ?? null}
 			ondeletepage={deletePage}

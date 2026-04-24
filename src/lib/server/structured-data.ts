@@ -1,6 +1,6 @@
 import { db } from './db/index.js'
-import { stars, planetaryBodies, starSystems } from './db/schema.js'
-import { eq, sql } from 'drizzle-orm'
+import { stars, planetaryBodies, starSystems, phonemes, languages } from './db/schema.js'
+import { eq, and, sql, asc } from 'drizzle-orm'
 import type { FieldMap } from '$lib/infoboxes/types.js'
 import type { MapBody } from '$lib/celestial/SystemMap.svelte'
 import {
@@ -325,5 +325,70 @@ export async function resolveAllStructuredData(
 		}),
 	)
 
+	return result
+}
+
+// ============================================================================
+// Collection resolvers — for array-shaped structured data (tables, grids).
+// Keyed by `${type}:${slug}` since two collection types share a language slug.
+// ============================================================================
+
+export type StructuredCollection = Record<string, unknown>[]
+export interface CollectionRef { type: string, slug: string }
+
+async function loadPhonemesByType(slug: string, phonemeType: 'consonant' | 'vowel'): Promise<StructuredCollection | null> {
+	const [lang] = await db.select({ id: languages.id }).from(languages).where(eq(languages.slug, slug))
+	if (!lang) return null
+	const rows = await db
+		.select()
+		.from(phonemes)
+		.where(and(eq(phonemes.languageId, lang.id), eq(phonemes.type, phonemeType)))
+		.orderBy(asc(phonemes.sortOrder), asc(phonemes.id))
+	return rows as unknown as StructuredCollection
+}
+
+async function loadPhonology(slug: string): Promise<StructuredCollection | null> {
+	const [lang] = await db.select({ id: languages.id }).from(languages).where(eq(languages.slug, slug))
+	if (!lang) return null
+	const rows = await db
+		.select()
+		.from(phonemes)
+		.where(eq(phonemes.languageId, lang.id))
+		.orderBy(asc(phonemes.type), asc(phonemes.sortOrder), asc(phonemes.id))
+	return rows as unknown as StructuredCollection
+}
+
+export const COLLECTION_RESOLVERS: Record<
+	string,
+	(slug: string) => Promise<StructuredCollection | null>
+> = {
+	consonants: slug => loadPhonemesByType(slug, 'consonant'),
+	vowels: slug => loadPhonemesByType(slug, 'vowel'),
+	phonology: loadPhonology,
+}
+
+export async function resolveStructuredCollection(
+	type: string,
+	slug: string,
+): Promise<StructuredCollection | null> {
+	const resolver = COLLECTION_RESOLVERS[type]
+	if (!resolver) return null
+	return resolver(slug)
+}
+
+/**
+ * Batch-resolve array-shaped structured data (phoneme grids, etc).
+ * Returns a Map keyed by `${type}:${slug}` → array of row objects.
+ */
+export async function resolveAllStructuredCollections(
+	references: CollectionRef[],
+): Promise<Map<string, StructuredCollection>> {
+	const result = new Map<string, StructuredCollection>()
+	await Promise.all(
+		references.map(async ({ type, slug }) => {
+			const rows = await resolveStructuredCollection(type, slug)
+			if (rows) result.set(`${type}:${slug}`, rows)
+		}),
+	)
 	return result
 }

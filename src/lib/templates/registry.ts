@@ -22,6 +22,8 @@ import Footnote from './builtins/Footnote.svelte'
 import ShortFootnote from './builtins/ShortFootnote.svelte'
 import Notelist from './builtins/Notelist.svelte'
 import SystemMap from './builtins/SystemMap.svelte'
+import PhonemeGrid from '$lib/renderer/structured/PhonemeGrid.svelte'
+import PhonologySection from '$lib/renderer/structured/PhonologySection.svelte'
 
 /**
  * Each entry is a Svelte component plus the static props it always receives
@@ -67,4 +69,7 @@ export const BUILTIN_TEMPLATES: Record<string, BuiltinEntry> = {
 	'cite journal': { component: Citation },
 	'wt': { component: Wt },
 	'system map': { component: SystemMap },
+	'consonants': { component: PhonemeGrid, staticProps: { type: 'consonant' } },
+	'vowels': { component: PhonemeGrid, staticProps: { type: 'vowel' } },
+	'phonology': { component: PhonologySection },
 }

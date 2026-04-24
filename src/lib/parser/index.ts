@@ -118,6 +118,27 @@ export function extractInfoboxImageRef(ast: WikiNode): { image?: string, fromSlu
 }
 
 /**
+ * Walk a pre-parsed AST and find collection-shaped structured-data templates:
+ * {{consonants|slug}}, {{vowels|slug}}, {{phonology|slug}}.
+ * Returns the refs to pre-fetch via resolveAllStructuredCollections.
+ */
+const COLLECTION_TEMPLATE_NAMES = new Set(['consonants', 'vowels', 'phonology'])
+
+export function extractCollectionRefs(ast: WikiNode): { type: string, slug: string }[] {
+	const refs: { type: string, slug: string }[] = []
+	walkNodes([ast], (node) => {
+		if (node.type === 'template') {
+			const name = node.name.toLowerCase().trim()
+			if (COLLECTION_TEMPLATE_NAMES.has(name)) {
+				const slug = node.args[0]?.value?.trim()
+				if (slug) refs.push({ type: name, slug })
+			}
+		}
+	})
+	return refs
+}
+
+/**
  * Walk a pre-parsed AST and find {{System map|slug}} templates.
  * Returns the system slugs to pre-fetch.
  */

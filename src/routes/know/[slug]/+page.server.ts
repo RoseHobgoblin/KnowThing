@@ -3,8 +3,8 @@ import type { PageServerLoad } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { contentRecords, lexicon, languages } from '$lib/server/db/schema.js'
 import { eq, and, sql } from 'drizzle-orm'
-import { parseWikitext, extractCategoriesFromAst, extractInfoboxFromRefs, extractSystemMapRefs, stripMarkup } from '$lib/parser/index.js'
-import { resolveAllStructuredData, resolveAllSystemMaps } from '$lib/server/structured-data.js'
+import { parseWikitext, extractCategoriesFromAst, extractInfoboxFromRefs, extractSystemMapRefs, extractCollectionRefs, stripMarkup } from '$lib/parser/index.js'
+import { resolveAllStructuredData, resolveAllStructuredCollections, resolveAllSystemMaps } from '$lib/server/structured-data.js'
 import { getResolvedLinks, serializeResolvedLinks } from '$lib/server/resolved-links.js'
 import { buildDescription, lookupMediaInfo, resolveCardImageSync } from '$lib/server/services/page-card.js'
 
@@ -77,6 +77,16 @@ export const load: PageServerLoad = async ({ params }) => {
 		? await resolveAllSystemMaps(systemMapSlugs)
 		: null
 
+	// Pre-fetch array-shaped structured data (phoneme grids, etc)
+	const collectionRefs = extractCollectionRefs(ast)
+	let structuredCollections: Record<string, Record<string, unknown>[]> | null = null
+	if (collectionRefs.length > 0) {
+		const resolved = await resolveAllStructuredCollections(collectionRefs)
+		if (resolved.size > 0) {
+			structuredCollections = Object.fromEntries(resolved)
+		}
+	}
+
 	// Check if this page title matches a word in the wordbook
 	const wordbookMatches = await db
 		.select({
@@ -104,6 +114,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		updatedAt: record.updatedAt,
 		wordbookMatch: wordbookMatches[0] || null,
 		structuredData,
+		structuredCollections,
 		systemMaps,
 		resolvedLinks: serializeResolvedLinks(resolvedLinks),
 		description,

@@ -21,6 +21,7 @@
 		updatedAt,
 		wordbookMatch,
 		structuredData: rawStructuredData,
+		structuredCollections,
 		systemMaps,
 		resolvedLinks: rawResolvedLinks,
 		ondeletepage,
@@ -32,6 +33,7 @@
 		updatedAt: string | Date | null
 		wordbookMatch: { word: string, languageSlug: string, languageName: string } | null
 		structuredData: Record<string, Record<string, string>> | null
+		structuredCollections: Record<string, Record<string, unknown>[]> | null
 		systemMaps: Record<string, unknown> | null
 		resolvedLinks: Record<string, { href: string, exists: boolean }> | null
 		ondeletepage: () => void
@@ -57,6 +59,7 @@
 		calendarDate: $page.data.calendarDate ?? null,
 		calendarConfig: $page.data.calendarConfig ?? null,
 		structuredData: buildStructuredData(rawStructuredData),
+		structuredCollections: (structuredCollections ?? null) as KnowRenderContext['structuredCollections'],
 		systemMaps: systemMaps as KnowRenderContext['systemMaps'],
 	})
 </script>

@@ -277,6 +277,33 @@ export const languageDialects = pgTable(
 	],
 )
 
+export const phonemes = pgTable(
+	'phonemes',
+	{
+		id: serial('id').primaryKey(),
+		languageId: integer('language_id')
+			.references(() => languages.id, { onDelete: 'cascade' })
+			.notNull(),
+		ipa: text('ipa').notNull(),
+		type: text('type').notNull(), // 'consonant' | 'vowel' | 'diphthong' | 'special'
+		place: text('place'),
+		manner: text('manner'),
+		subtype: text('subtype'), // null | 'plain' | 'tense' | 'aspirated' | ...
+		voicing: text('voicing'), // 'voiced' | 'voiceless' | null
+		height: text('height'),
+		backness: text('backness'),
+		rounded: boolean('rounded'),
+		marginal: boolean('marginal').notNull().default(false),
+		notes: text('notes'),
+		sortOrder: integer('sort_order').notNull().default(0),
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+	},
+	table => [
+		index('idx_phonemes_language_type').on(table.languageId, table.type, table.sortOrder),
+	],
+)
+
 export const lexicon = pgTable(
 	'lexicon',
 	{
