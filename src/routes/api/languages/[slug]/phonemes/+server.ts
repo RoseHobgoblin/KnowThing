@@ -9,6 +9,15 @@ import { eq, and, asc, sql } from 'drizzle-orm'
 
 const PHONEME_TYPES = ['consonant', 'vowel', 'diphthong', 'special'] as const
 
+/** Normalize axis values (place/manner/height/backness/subtype) so case or
+ * whitespace differences don't silently create divergent columns in the grid
+ * (e.g. "Bilabial" vs "bilabial"). Internal whitespace is collapsed. */
+export function normalizeAxis(value: string | null | undefined): string | null {
+	if (value == null) return null
+	const cleaned = value.trim().toLowerCase().replaceAll(/\s+/g, ' ')
+	return cleaned || null
+}
+
 const createPhonemeSchema = z.object({
 	ipa: z.string().min(1, 'IPA is required'),
 	type: z.enum(PHONEME_TYPES),
@@ -72,12 +81,12 @@ export const POST: RequestHandler = async (event) => {
 					languageId: lang.id,
 					ipa: data.ipa.trim(),
 					type: data.type,
-					place: data.place?.trim() || null,
-					manner: data.manner?.trim() || null,
-					subtype: data.subtype?.trim() || null,
+					place: normalizeAxis(data.place),
+					manner: normalizeAxis(data.manner),
+					subtype: normalizeAxis(data.subtype),
 					voicing: data.voicing ?? null,
-					height: data.height?.trim() || null,
-					backness: data.backness?.trim() || null,
+					height: normalizeAxis(data.height),
+					backness: normalizeAxis(data.backness),
 					rounded: data.rounded ?? null,
 					notes: data.notes?.trim() || null,
 					sortOrder,

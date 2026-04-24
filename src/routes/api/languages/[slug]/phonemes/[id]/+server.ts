@@ -5,6 +5,7 @@ import { db } from '$lib/server/db/index.js'
 import { languages, phonemes } from '$lib/server/db/schema.js'
 import { requireRole } from '$lib/server/auth.js'
 import { parseBody } from '$lib/server/utils.js'
+import { normalizeAxis } from '../+server.js'
 import { eq, and } from 'drizzle-orm'
 
 const updatePhonemeSchema = z.object({
@@ -47,12 +48,12 @@ export const PATCH: RequestHandler = async (event) => {
 	const updates: Partial<typeof phonemes.$inferInsert> = { updatedAt: new Date() }
 	if (data.ipa !== undefined) updates.ipa = data.ipa.trim()
 	if (data.type !== undefined) updates.type = data.type
-	if (data.place !== undefined) updates.place = data.place?.trim() || null
-	if (data.manner !== undefined) updates.manner = data.manner?.trim() || null
-	if (data.subtype !== undefined) updates.subtype = data.subtype?.trim() || null
+	if (data.place !== undefined) updates.place = normalizeAxis(data.place)
+	if (data.manner !== undefined) updates.manner = normalizeAxis(data.manner)
+	if (data.subtype !== undefined) updates.subtype = normalizeAxis(data.subtype)
 	if (data.voicing !== undefined) updates.voicing = data.voicing ?? null
-	if (data.height !== undefined) updates.height = data.height?.trim() || null
-	if (data.backness !== undefined) updates.backness = data.backness?.trim() || null
+	if (data.height !== undefined) updates.height = normalizeAxis(data.height)
+	if (data.backness !== undefined) updates.backness = normalizeAxis(data.backness)
 	if (data.rounded !== undefined) updates.rounded = data.rounded ?? null
 	if (data.notes !== undefined) updates.notes = data.notes?.trim() || null
 	if (data.sortOrder !== undefined && data.sortOrder !== null) updates.sortOrder = data.sortOrder

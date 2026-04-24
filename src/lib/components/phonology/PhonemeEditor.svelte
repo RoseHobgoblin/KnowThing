@@ -84,6 +84,7 @@
 
 	let phonemes = $state<Phoneme[]>(initial)
 	let pickerOpen = $state(false)
+	let pickerFilter = $state<'consonant' | 'vowel'>('consonant')
 	let manualOpen = $state(false)
 	let editingId = $state<number | null>(null)
 	let draft = $state<Draft>(emptyDraft())
@@ -114,7 +115,8 @@
 	]
 
 	// ───────────────────────────────────────────────────────────────── actions
-	function openPicker(_type: 'consonant' | 'vowel') {
+	function openPicker(kind: 'consonant' | 'vowel') {
+		pickerFilter = kind
 		pickerOpen = true
 	}
 
@@ -179,16 +181,20 @@
 				? `/api/languages/${languageSlug}/phonemes/${editingId}`
 				: `/api/languages/${languageSlug}/phonemes`
 			const method = editingId ? 'PATCH' : 'POST'
+			// Wipe axis fields that don't apply to this type so changing
+			// consonant → vowel (or back) doesn't leave stale data behind.
+			const isConsonantish = draft.type === 'consonant' || draft.type === 'special' || draft.type === 'diphthong'
+			const isVowel = draft.type === 'vowel'
 			const body: Record<string, unknown> = {
 				ipa: draft.ipa.trim(),
 				type: draft.type,
-				place: draft.place.trim() || null,
-				manner: draft.manner.trim() || null,
-				subtype: draft.subtype.trim() || null,
-				voicing: draft.voicing || null,
-				height: draft.height.trim() || null,
-				backness: draft.backness.trim() || null,
-				rounded: draft.rounded ?? null,
+				place: isConsonantish ? (draft.place.trim() || null) : null,
+				manner: isConsonantish ? (draft.manner.trim() || null) : null,
+				subtype: isConsonantish ? (draft.subtype.trim() || null) : null,
+				voicing: isConsonantish ? (draft.voicing || null) : null,
+				height: isVowel ? (draft.height.trim() || null) : null,
+				backness: isVowel ? (draft.backness.trim() || null) : null,
+				rounded: isVowel ? (draft.rounded ?? null) : null,
 				notes: draft.notes.trim() || null,
 			}
 			const response = await fetch(url, {
@@ -313,7 +319,7 @@
 												{#if !readOnly}
 													<button
 														type="button"
-														class="text-faint hover:text-accent transition-colors opacity-0 group-hover:opacity-100 px-1"
+														class="text-faint transition-colors opacity-0 px-1 hover:text-accent group-hover:opacity-100"
 														onclick={() => openCell(kind, null, axes)}
 														title="Add another here"
 													>
@@ -324,7 +330,7 @@
 										{:else if !readOnly}
 											<button
 												type="button"
-												class="w-full h-full min-h-8 px-2 py-1.5 text-faint hover:text-accent hover:bg-accent-subtle transition-colors cursor-pointer"
+												class="size-full min-h-8 px-2 py-1.5 text-faint transition-colors cursor-pointer hover:text-accent hover:bg-accent-subtle"
 												onclick={() => openCell(kind, null, axes)}
 												title="Add {row.header} {col}"
 												aria-label="Add {row.header} {col}"
@@ -344,12 +350,12 @@
 
 			{#if grid.footnotes.length > 0}
 				<ol class="mt-2 text-xs text-dim space-y-0.5 list-none pl-2">
-					{#each grid.footnotes as fn (fn.index)}
+					{#each grid.footnotes as function_ (function_.index)}
 						<li>
 							<span class="font-mono text-faint">*</span>
-							<span class="font-serif">{fn.ipa}</span>
+							<span class="font-serif">{function_.ipa}</span>
 							<span class="mx-1">·</span>
-							<span>{fn.text}</span>
+							<span>{function_.text}</span>
 						</li>
 					{/each}
 				</ol>
@@ -408,7 +414,7 @@
 	</section>
 {/if}
 
-<IpaPicker bind:open={pickerOpen} onpick={handlePick} />
+<IpaPicker bind:open={pickerOpen} filter={pickerFilter} busy={saving} onpick={handlePick} />
 
 <Dialog bind:open={manualOpen} title={editingId ? `Edit /${draft.ipa || '?'}/` : 'Add phoneme'}>
 	<div class="space-y-3 pb-2">

@@ -15,17 +15,31 @@ describe('buildPhonemeGrid', () => {
 		expect(buildPhonemeGrid([], 'consonant')).toBeNull()
 	})
 
-	it('derives columns (place) and rows (manner) from data, preserving first-seen order', () => {
+	it('derives columns (place) and rows (manner) in canonical IPA order regardless of input order', () => {
 		const rows = [
-			c('p', 'bilabial', 'plosive', 'voiceless'),
-			c('t', 'alveolar', 'plosive', 'voiceless'),
+			// Scramble the input order to prove canonical ordering wins.
 			c('k', 'velar', 'plosive', 'voiceless'),
-			c('m', 'bilabial', 'nasal', 'voiced'),
 			c('n', 'alveolar', 'nasal', 'voiced'),
+			c('p', 'bilabial', 'plosive', 'voiceless'),
+			c('m', 'bilabial', 'nasal', 'voiced'),
+			c('t', 'alveolar', 'plosive', 'voiceless'),
 		]
 		const grid = buildPhonemeGrid(rows, 'consonant')!
 		expect(grid.columns).toEqual(['bilabial', 'alveolar', 'velar'])
 		expect(grid.rows.map(r => r.header)).toEqual(['plosive', 'nasal'])
+	})
+
+	it('pushes non-canonical (conlang) axis values to the end alphabetically', () => {
+		const rows = [
+			c('p', 'bilabial', 'plosive', 'voiceless'),
+			c('t', 'alveolar', 'plosive', 'voiceless'),
+			c('ǃ', 'velaro-bilabial', 'click', 'voiceless'),
+			c('ʛ', 'labio-uvular', 'implosive', 'voiced'),
+		]
+		const grid = buildPhonemeGrid(rows, 'consonant')!
+		// Canonical places first (bilabial, alveolar), then conlang places
+		// alphabetically (labio-uvular, velaro-bilabial).
+		expect(grid.columns).toEqual(['bilabial', 'alveolar', 'labio-uvular', 'velaro-bilabial'])
 	})
 
 	it('pairs voiceless before voiced in the same cell', () => {
@@ -45,14 +59,17 @@ describe('buildPhonemeGrid', () => {
 		expect(grid.cells.has(cellKey({ header: 'nasal' }, 'bilabial'))).toBe(false)
 	})
 
-	it('uses subtype to create distinct sub-rows under the same manner', () => {
+	it('uses subtype to create distinct sub-rows in canonical order (plain → tense → aspirated)', () => {
 		const rows = [
-			c('p', 'bilabial', 'plosive', 'voiceless', { subtype: 'plain' }),
+			// Scrambled input; canonical subtype order drives the output.
 			c('pʰ', 'bilabial', 'plosive', 'voiceless', { subtype: 'aspirated' }),
+			c('p͈', 'bilabial', 'plosive', 'voiceless', { subtype: 'tense' }),
+			c('p', 'bilabial', 'plosive', 'voiceless', { subtype: 'plain' }),
 		]
 		const grid = buildPhonemeGrid(rows, 'consonant')!
 		expect(grid.rows).toEqual([
 			{ header: 'plosive', subtype: 'plain' },
+			{ header: 'plosive', subtype: 'tense' },
 			{ header: 'plosive', subtype: 'aspirated' },
 		])
 	})
@@ -70,16 +87,28 @@ describe('buildPhonemeGrid', () => {
 		])
 	})
 
-	it('builds a vowel grid from height × backness', () => {
+	it('builds a vowel grid from height × backness in canonical order', () => {
 		const rows = [
-			v('i', 'close', 'front'),
-			v('u', 'close', 'back', { rounded: true }),
+			// Input order jumbled; output must be front → central → back
+			// and close → open regardless.
 			v('a', 'open', 'central'),
+			v('u', 'close', 'back', { rounded: true }),
+			v('i', 'close', 'front'),
 		]
 		const grid = buildPhonemeGrid(rows, 'vowel')!
-		expect(grid.columns).toEqual(['front', 'back', 'central'])
+		expect(grid.columns).toEqual(['front', 'central', 'back'])
 		expect(grid.rows.map(r => r.header)).toEqual(['close', 'open'])
 		expect(grid.cells.get(cellKey({ header: 'close' }, 'front'))?.[0].ipa).toBe('i')
+	})
+
+	it('sorts unrounded before rounded vowels within a cell', () => {
+		const rows = [
+			v('y', 'close', 'front', { rounded: true }),
+			v('i', 'close', 'front', { rounded: false }),
+		]
+		const grid = buildPhonemeGrid(rows, 'vowel')!
+		const cell = grid.cells.get(cellKey({ header: 'close' }, 'front'))!
+		expect(cell.map(p => p.ipa)).toEqual(['i', 'y'])
 	})
 
 	it('ignores phonemes missing an axis value but still records their footnotes', () => {

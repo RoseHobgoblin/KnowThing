@@ -5,23 +5,30 @@
 	let {
 		open = $bindable(false),
 		onpick,
+		filter = 'all',
+		busy = false,
 	}: {
 		open?: boolean
 		onpick: (entry: IpaEntry) => void
+		/** Restrict which sections are shown. 'consonant' hides the vowel/diphthong
+		 * sections; 'vowel' shows only vowels + diphthongs. */
+		filter?: 'all' | 'consonant' | 'vowel'
+		/** Disable symbol buttons while a previous pick is still being saved. */
+		busy?: boolean
 	} = $props()
+
+	const CONSONANT_SECTIONS = new Set(['pulmonic', 'affricates', 'non-pulmonic', 'co-articulated'])
+	const VOWEL_SECTIONS = new Set(['vowels', 'diphthongs'])
+
+	const visibleSections = $derived(
+		filter === 'all'
+			? IPA_SECTIONS
+			: IPA_SECTIONS.filter(s => (filter === 'consonant' ? CONSONANT_SECTIONS : VOWEL_SECTIONS).has(s.id)),
+	)
 
 	function handlePick(entry: IpaEntry) {
 		onpick(entry)
 		open = false
-	}
-
-	function findEntry(section: IpaSection, row: string, col: string, preferVoicing?: 'voiced' | 'voiceless'): IpaEntry | undefined {
-		const rowKey = section.id === 'vowels' ? 'height' : 'manner'
-		const colKey = section.id === 'vowels' ? 'backness' : 'place'
-		const matches = section.entries.filter(e => (e as any)[rowKey] === row && (e as any)[colKey] === col)
-		if (matches.length === 0) return undefined
-		if (preferVoicing) return matches.find(m => m.voicing === preferVoicing) ?? matches[0]
-		return matches[0]
 	}
 
 	function pairCellEntries(section: IpaSection, row: string, col: string): IpaEntry[] {
@@ -33,7 +40,7 @@
 
 <Dialog bind:open title="Choose a phoneme" mainClass="max-w-5xl">
 	<div class="space-y-8 pb-4">
-		{#each IPA_SECTIONS as section}
+		{#each visibleSections as section (section.id)}
 			<section>
 				<h4 class="text-heading font-medium mb-2 capitalize">{section.label}</h4>
 
@@ -62,8 +69,13 @@
 														{#each entries as entry}
 															<button
 																type="button"
-																class="font-serif text-base px-1.5 py-0.5 rounded-sm cursor-pointer transition-colors hover:bg-accent-subtle hover:text-accent"
+																class="
+																	font-serif text-base px-1.5 py-0.5 rounded-sm cursor-pointer transition-colors
+																	hover:bg-accent-subtle hover:text-accent
+																	disabled:opacity-50 disabled:cursor-wait
+																"
 																onclick={() => handlePick(entry)}
+																disabled={busy}
 																title="{entry.symbol} — {[entry.voicing, row, col].filter(Boolean).join(' ')}"
 															>
 																{entry.symbol}
@@ -84,8 +96,13 @@
 						{#each section.entries as entry}
 							<button
 								type="button"
-								class="font-serif text-base px-2 py-1 rounded-sm border border-border-subtle cursor-pointer transition-colors hover:bg-accent-subtle hover:text-accent"
+								class="
+									font-serif text-base px-2 py-1 rounded-sm border border-border-subtle cursor-pointer transition-colors
+									hover:bg-accent-subtle hover:text-accent
+									disabled:opacity-50 disabled:cursor-wait
+								"
 								onclick={() => handlePick(entry)}
+								disabled={busy}
 								title="{entry.symbol}{entry.place ? ' — ' + entry.place : ''}{entry.manner ? ' ' + entry.manner : ''}"
 							>
 								{entry.symbol}

@@ -1,3 +1,12 @@
+import {
+	CANONICAL_PLACES,
+	CANONICAL_MANNERS,
+	CANONICAL_HEIGHTS,
+	CANONICAL_BACKNESS,
+	CANONICAL_SUBTYPES,
+	canonicalComparator,
+} from './phoneme-ordering.js'
+
 export interface PhonemeRow {
 	id?: number
 	ipa: string
@@ -24,9 +33,12 @@ export interface PhonemeGridModel {
 
 /**
  * Build a sparse manner×place (or height×backness) grid from a phoneme list.
- * - Axis values are derived from distinct values present in the data, preserving
- *   first-occurrence order (sort_order drives the input list).
- * - Within each cell, voiceless is placed before voiced (Wikipedia convention).
+ * - Axis values are derived from distinct values present in the data.
+ * - Columns and rows are sorted by canonical IPA order; conlang-specific
+ *   values (not in the canonical IPA chart) fall through to alphabetical at
+ *   the end, so familiar axes always come first.
+ * - Within each cell, voiceless goes before voiced (consonants) and
+ *   unrounded before rounded (vowels), matching Wikipedia's IPA charts.
  * - Footnotes are collected across all phonemes with non-empty notes.
  */
 export function buildPhonemeGrid(
@@ -37,25 +49,35 @@ export function buildPhonemeGrid(
 
 	const colKey = type === 'consonant' ? 'place' : 'backness'
 	const rowKey = type === 'consonant' ? 'manner' : 'height'
+	const colComparator = canonicalComparator(type === 'consonant' ? CANONICAL_PLACES : CANONICAL_BACKNESS)
+	const rowComparator = canonicalComparator(type === 'consonant' ? CANONICAL_MANNERS : CANONICAL_HEIGHTS)
+	const subtypeComparator = canonicalComparator(CANONICAL_SUBTYPES)
 
-	const seenCols = new Set<string>()
-	const columns: string[] = []
-	const rowPairs: { header: string, subtype?: string }[] = []
-	const seenRowKeys = new Set<string>()
+	const columnSet = new Set<string>()
+	const rowMap = new Map<string, Set<string | undefined>>()
 
 	for (const r of data) {
 		const col = (r[colKey] ?? '') as string
-		if (col && !seenCols.has(col)) {
-			seenCols.add(col)
-			columns.push(col)
-		}
+		if (col) columnSet.add(col)
 		const header = (r[rowKey] ?? '') as string
 		const subtype = r.subtype ?? undefined
-		const rowKeyString = `${header} ${subtype ?? ''}`
-		if (header && !seenRowKeys.has(rowKeyString)) {
-			seenRowKeys.add(rowKeyString)
-			rowPairs.push({ header, subtype })
+		if (header) {
+			const subs = rowMap.get(header) ?? new Set<string | undefined>()
+			subs.add(subtype)
+			rowMap.set(header, subs)
 		}
+	}
+
+	const columns = [...columnSet].toSorted(colComparator)
+	const rowPairs: { header: string, subtype?: string }[] = []
+	for (const header of [...rowMap.keys()].toSorted(rowComparator)) {
+		const subs = [...(rowMap.get(header) ?? [])].toSorted((a, b) => {
+			if (a === undefined && b === undefined) return 0
+			if (a === undefined) return -1
+			if (b === undefined) return 1
+			return subtypeComparator(a, b)
+		})
+		for (const sub of subs) rowPairs.push({ header, subtype: sub })
 	}
 
 	const cells = new Map<string, PhonemeRow[]>()
@@ -77,10 +99,16 @@ export function buildPhonemeGrid(
 		}
 	}
 
+	// Within a cell: voiceless before voiced (consonant convention), unrounded
+	// before rounded (vowel convention). Wikipedia-style IPA chart ordering.
 	for (const list of cells.values()) {
 		list.sort((a, b) => {
-			const order: Record<string, number> = { voiceless: 0, voiced: 1 }
-			return (order[a.voicing ?? ''] ?? 2) - (order[b.voicing ?? ''] ?? 2)
+			const voicingOrder: Record<string, number> = { voiceless: 0, voiced: 1 }
+			const voicingDelta = (voicingOrder[a.voicing ?? ''] ?? 2) - (voicingOrder[b.voicing ?? ''] ?? 2)
+			if (voicingDelta !== 0) return voicingDelta
+			const roundA = a.rounded === true ? 1 : (a.rounded === false ? 0 : 2)
+			const roundB = b.rounded === true ? 1 : (b.rounded === false ? 0 : 2)
+			return roundA - roundB
 		})
 	}
 
