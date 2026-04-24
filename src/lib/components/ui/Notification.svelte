@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { expireNotification, type NotificationType } from '$lib/notifications.svelte.ts'
+	import { expireNotification, triggerNotificationAction, type NotificationType } from '$lib/notifications.svelte.ts'
 	import { cn } from '$lib/utils'
-	import Info from 'phosphor-svelte/lib/Info'
-	import CheckCircle from 'phosphor-svelte/lib/CheckCircle'
-	import WarningCircle from 'phosphor-svelte/lib/WarningCircle'
-	import SpinnerGap from 'phosphor-svelte/lib/SpinnerGap'
+	import Info from 'phosphor-svelte/lib/InfoIcon'
+	import CheckCircle from 'phosphor-svelte/lib/CheckCircleIcon'
+	import WarningCircle from 'phosphor-svelte/lib/WarningCircleIcon'
+	import SpinnerGap from 'phosphor-svelte/lib/SpinnerGapIcon'
 
 	const { notification }: { notification: NotificationType } = $props()
 
@@ -16,31 +16,52 @@
 
 	const variant = $derived(notification.type ?? 'info')
 
-	function onclick() {
+	function dismiss() {
 		expireNotification(notification.id)
+	}
+
+	function runAction(event: MouseEvent) {
+		event.stopPropagation()
+		triggerNotificationAction(notification.id)
 	}
 </script>
 
-<button
-	{onclick}
+<div
+	role="status"
 	class={cn(
-		'relative flex items-center gap-3 px-4 py-3 bg-surface border border-border shadow-lg cursor-pointer animate-slide-in min-w-64 max-w-sm overflow-hidden text-left',
+		'relative flex items-center gap-3 px-4 py-3 bg-surface border border-border shadow-lg animate-slide-in min-w-64 max-w-sm overflow-hidden text-left',
 		notification.expired && 'animate-slide-out',
 	)}
 >
-	<div class={cn('size-7 flex items-center justify-center bg-raised shrink-0 text-sm font-bold', colors[variant].icon)}>
-		{#if notification.loading}
-			<SpinnerGap size={16} weight="bold" class="animate-spin" />
-		{:else if variant === 'success'}
-			<CheckCircle size={16} weight="fill" />
-		{:else if variant === 'error'}
-			<WarningCircle size={16} weight="fill" />
-		{:else}
-			<Info size={16} weight="fill" />
-		{/if}
-	</div>
+	<button
+		type="button"
+		onclick={dismiss}
+		class="flex items-center gap-3 flex-1 text-left cursor-pointer"
+		aria-label="Dismiss notification"
+	>
+		<div class={cn('size-7 flex items-center justify-center bg-raised shrink-0 text-sm font-bold', colors[variant].icon)}>
+			{#if notification.loading}
+				<SpinnerGap size={16} weight="bold" class="animate-spin" />
+			{:else if variant === 'success'}
+				<CheckCircle size={16} weight="fill" />
+			{:else if variant === 'error'}
+				<WarningCircle size={16} weight="fill" />
+			{:else}
+				<Info size={16} weight="fill" />
+			{/if}
+		</div>
+		<p class="text-sm text-body">{notification.message}</p>
+	</button>
 
-	<p class="text-sm text-body">{notification.message}</p>
+	{#if notification.action}
+		<button
+			type="button"
+			onclick={runAction}
+			class="shrink-0 px-2.5 py-1 text-xs font-medium uppercase tracking-wider text-accent hover:bg-accent-subtle transition-colors cursor-pointer"
+		>
+			{notification.action.label}
+		</button>
+	{/if}
 
 	{#if notification.duration && notification.duration > 0}
 		<div
@@ -48,7 +69,7 @@
 			style="animation-duration: {notification.duration}ms"
 		></div>
 	{/if}
-</button>
+</div>
 
 <style>
 	@keyframes slide-in {
