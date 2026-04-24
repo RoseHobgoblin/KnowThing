@@ -293,6 +293,7 @@ export const phonemes = pgTable(
 		height: text('height'),
 		backness: text('backness'),
 		rounded: boolean('rounded'),
+		marginal: boolean('marginal').notNull().default(false),
 		notes: text('notes'),
 		sortOrder: integer('sort_order').notNull().default(0),
 		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),

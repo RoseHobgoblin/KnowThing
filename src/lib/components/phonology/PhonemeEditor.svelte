@@ -8,9 +8,11 @@
 	import IpaPicker from './IpaPicker.svelte'
 	import { type IpaEntry } from '$lib/data/ipa-chart.js'
 	import { buildPhonemeGrid, cellKey, type PhonemeRow } from '$lib/renderer/structured/phoneme-grid.js'
+	import { cn } from '$lib/utils'
 	import Plus from 'phosphor-svelte/lib/PlusIcon'
 	import PencilSimple from 'phosphor-svelte/lib/PencilSimpleIcon'
 	import Trash from 'phosphor-svelte/lib/TrashIcon'
+	import Copy from 'phosphor-svelte/lib/CopyIcon'
 
 	interface Phoneme {
 		id: number
@@ -24,6 +26,7 @@
 		height: string | null
 		backness: string | null
 		rounded: boolean | null
+		marginal: boolean
 		notes: string | null
 		sortOrder: number
 	}
@@ -49,6 +52,7 @@
 		height: string
 		backness: string
 		rounded: boolean | undefined
+		marginal: boolean
 		notes: string
 	}
 
@@ -63,6 +67,7 @@
 			height: '',
 			backness: '',
 			rounded: undefined,
+			marginal: false,
 			notes: '',
 		}
 	}
@@ -78,6 +83,7 @@
 			height: p.height ?? '',
 			backness: p.backness ?? '',
 			rounded: p.rounded ?? undefined,
+			marginal: p.marginal ?? false,
 			notes: p.notes ?? '',
 		}
 	}
@@ -88,9 +94,14 @@
 	let manualOpen = $state(false)
 	let editingId = $state<number | null>(null)
 	let draft = $state<Draft>(emptyDraft())
+	/** Snapshot of the draft as it was when the dialog last opened. Used to
+	 * detect unsaved changes and protect against accidental close. */
+	let draftSnapshot = $state<Draft>(emptyDraft())
 	let saving = $state(false)
 	let errorMessage = $state('')
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
+
+	const dirty = $derived(JSON.stringify(draft) !== JSON.stringify(draftSnapshot))
 
 	const consonants = $derived(phonemes.filter(p => p.type === 'consonant'))
 	const vowels = $derived(phonemes.filter(p => p.type === 'vowel'))
@@ -122,6 +133,7 @@
 
 	function openManual(type: string, prefill: Partial<Draft> = {}) {
 		draft = { ...emptyDraft(type), ...prefill }
+		draftSnapshot = $state.snapshot(draft) as Draft
 		editingId = null
 		manualOpen = true
 	}
@@ -135,6 +147,7 @@
 		if (existing) {
 			editingId = existing.id
 			draft = draftFrom(existing)
+			draftSnapshot = $state.snapshot(draft) as Draft
 			manualOpen = true
 		} else {
 			openManual(kind, axes)
@@ -153,6 +166,7 @@
 			height: entry.height ?? null,
 			backness: entry.backness ?? null,
 			rounded: entry.rounded ?? null,
+			marginal: false,
 		}
 		saving = true
 		try {
@@ -195,6 +209,7 @@
 				height: isVowel ? (draft.height.trim() || null) : null,
 				backness: isVowel ? (draft.backness.trim() || null) : null,
 				rounded: isVowel ? (draft.rounded ?? null) : null,
+				marginal: draft.marginal,
 				notes: draft.notes.trim() || null,
 			}
 			const response = await fetch(url, {
@@ -213,9 +228,49 @@
 			} else {
 				phonemes = [...phonemes, saved]
 			}
+			// Sync the snapshot so dirty goes false before close, preventing a
+			// spurious "discard changes?" prompt on the closing transition.
+			draftSnapshot = $state.snapshot(draft) as Draft
 			manualOpen = false
 		} finally {
 			saving = false
+		}
+	}
+
+	/** Turn the current edit session into a new-add with the same fields as a
+	 * starting point. Keeps the user in the dialog so they can tweak the IPA
+	 * symbol before saving — the whole point is reusing feature values for a
+	 * series of related phonemes (e.g. adding /pʰ tʰ kʰ/ after /p t k/). */
+	function duplicate() {
+		editingId = null
+		// draft already has the current values; just clear the ID so Save
+		// becomes Add (POST instead of PATCH). IPA stays so the user sees what
+		// they started from and can edit it.
+	}
+
+	async function cancelDialog() {
+		if (dirty) {
+			const ok = await confirmDialog.confirm(
+				'Discard changes?',
+				'You have unsaved changes to this phoneme. Close without saving?',
+				'Discard',
+				'Keep editing',
+			)
+			if (!ok) return
+		}
+		manualOpen = false
+	}
+
+	/** Ctrl/Cmd+Enter or plain Enter (when focus is on an input that doesn't
+	 * itself consume Enter) commits the form. Mirrors the Save button. */
+	function onDialogKeydown(event: KeyboardEvent) {
+		if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+			const target = event.target as HTMLElement | null
+			// Let textareas keep Enter for newlines; all our fields are <input>s,
+			// so Enter anywhere inside the form submits.
+			if (target?.tagName === 'TEXTAREA') return
+			event.preventDefault()
+			if (!saving && draft.ipa.trim()) saveManual()
 		}
 	}
 
@@ -307,12 +362,16 @@
 												{#each list as p (p.id)}
 													<button
 														type="button"
-														class="phoneme-chip font-serif text-base px-2 py-0.5 rounded-sm transition-colors {readOnly ? 'cursor-default' : 'cursor-pointer hover:bg-accent-subtle hover:text-accent'}"
+														class={cn(
+															'phoneme-chip font-serif text-base px-2 py-0.5 rounded-sm transition-colors',
+															p.marginal && 'text-dim',
+															readOnly ? 'cursor-default' : 'cursor-pointer hover:bg-accent-subtle hover:text-accent',
+														)}
 														onclick={() => openCell(kind, p as Phoneme, axes)}
-														title={p.notes ?? `${p.ipa} — edit`}
+														title={p.marginal ? `marginal · ${p.notes ?? p.ipa}` : p.notes ?? `${p.ipa} — edit`}
 														disabled={readOnly}
 													>
-														{p.ipa}
+														{#if p.marginal}({p.ipa}){:else}{p.ipa}{/if}
 														{#if p.notes?.trim()}<span class="text-dim text-xs align-top ml-0.5">*</span>{/if}
 													</button>
 												{/each}
@@ -416,8 +475,12 @@
 
 <IpaPicker bind:open={pickerOpen} filter={pickerFilter} busy={saving} onpick={handlePick} />
 
-<Dialog bind:open={manualOpen} title={editingId ? `Edit /${draft.ipa || '?'}/` : 'Add phoneme'}>
-	<div class="space-y-3 pb-2">
+<Dialog
+	bind:open={manualOpen}
+	title={editingId ? `Edit /${draft.ipa || '?'}/` : 'Add phoneme'}
+	unclosable={dirty || saving}
+>
+	<div class="space-y-3 pb-2" role="presentation" onkeydown={onDialogKeydown}>
 		<div class="grid grid-cols-2 gap-3">
 			<Input label="IPA" bind:value={draft.ipa} />
 			<Select label="Type" type="single" items={TYPE_ITEMS} bind:value={draft.type} />
@@ -444,8 +507,19 @@
 
 		<Input label="Notes (footnote)" bind:value={draft.notes} />
 
+		<div class="flex items-center gap-2">
+			<Checkbox bind:value={draft.marginal} label="Marginal" />
+			<span class="text-xs text-dim">Renders as (symbol) in the grid — for loanword-only or restricted phonemes.</span>
+		</div>
+
+		{#if dirty}
+			<div class="text-xs text-warning bg-warning-bg border border-warning-border px-2 py-1">
+				Unsaved changes — Save to commit, or Cancel to discard.
+			</div>
+		{/if}
+
 		<div class="flex justify-between items-center pt-3 border-t border-border-subtle">
-			<div>
+			<div class="flex gap-2">
 				{#if editingId}
 					<Button variant="danger" size="sm" onclick={async () => {
 						const p = phonemes.find(x => x.id === editingId)
@@ -453,11 +527,14 @@
 					}}>
 						<Trash size={14} weight="bold" /> Delete
 					</Button>
+					<Button variant="secondary" size="sm" onclick={duplicate}>
+						<Copy size={14} weight="bold" /> Duplicate
+					</Button>
 				{/if}
 			</div>
 			<div class="flex gap-2">
-				<Button variant="secondary" onclick={() => manualOpen = false}>Cancel</Button>
-				<Button onclick={saveManual} loading={saving}>
+				<Button variant="secondary" onclick={cancelDialog}>Cancel</Button>
+				<Button onclick={saveManual} loading={saving} disabled={!draft.ipa.trim()}>
 					{#if editingId}
 						<PencilSimple size={14} weight="bold" /> Save
 					{:else}

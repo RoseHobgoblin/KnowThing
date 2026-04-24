@@ -28,6 +28,7 @@ const createPhonemeSchema = z.object({
 	height: z.string().nullish(),
 	backness: z.string().nullish(),
 	rounded: z.boolean().nullish(),
+	marginal: z.boolean().nullish(),
 	notes: z.string().nullish(),
 	sortOrder: z.number().int().nullish(),
 })
@@ -88,6 +89,7 @@ export const POST: RequestHandler = async (event) => {
 					height: normalizeAxis(data.height),
 					backness: normalizeAxis(data.backness),
 					rounded: data.rounded ?? null,
+					marginal: data.marginal ?? false,
 					notes: data.notes?.trim() || null,
 					sortOrder,
 				})

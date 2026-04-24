@@ -45,8 +45,11 @@
 								{#if list.length > 0}
 									<span class="phoneme-cell inline-flex gap-1.5">
 										{#each list as p}
-											<span class="font-serif text-base" title={p.notes ?? undefined}>
-												{p.ipa}
+											<span
+												class="font-serif text-base {p.marginal ? 'text-dim' : ''}"
+												title={p.marginal ? `marginal: ${p.notes ?? p.ipa}` : p.notes ?? undefined}
+											>
+												{#if p.marginal}({p.ipa}){:else}{p.ipa}{/if}
 												{#if p.notes?.trim()}
 													{@const function_ = footnoteIndex(p.ipa, grid.footnotes)}
 													{#if function_ !== null}<sup class="text-dim text-xs">{function_}</sup>{/if}

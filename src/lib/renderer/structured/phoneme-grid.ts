@@ -18,6 +18,7 @@ export interface PhonemeRow {
 	height?: string | null
 	backness?: string | null
 	rounded?: boolean | null
+	marginal?: boolean | null
 	notes?: string | null
 	sortOrder?: number | null
 	sort_order?: number | null

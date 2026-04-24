@@ -18,6 +18,7 @@ const updatePhonemeSchema = z.object({
 	height: z.string().nullish(),
 	backness: z.string().nullish(),
 	rounded: z.boolean().nullish(),
+	marginal: z.boolean().nullish(),
 	notes: z.string().nullish(),
 	sortOrder: z.number().int().nullish(),
 })
@@ -55,6 +56,7 @@ export const PATCH: RequestHandler = async (event) => {
 	if (data.height !== undefined) updates.height = normalizeAxis(data.height)
 	if (data.backness !== undefined) updates.backness = normalizeAxis(data.backness)
 	if (data.rounded !== undefined) updates.rounded = data.rounded ?? null
+	if (data.marginal !== undefined) updates.marginal = data.marginal ?? false
 	if (data.notes !== undefined) updates.notes = data.notes?.trim() || null
 	if (data.sortOrder !== undefined && data.sortOrder !== null) updates.sortOrder = data.sortOrder
 
