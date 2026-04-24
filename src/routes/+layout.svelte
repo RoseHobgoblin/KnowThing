@@ -11,6 +11,7 @@
 	import Shuffle from 'phosphor-svelte/lib/Shuffle'
 	import BookOpen from 'phosphor-svelte/lib/BookOpen'
 	import CalendarBlank from 'phosphor-svelte/lib/CalendarBlank'
+	import MapTrifold from 'phosphor-svelte/lib/MapTrifold'
 	import Planet from 'phosphor-svelte/lib/Planet'
 	import Tag from 'phosphor-svelte/lib/Tag'
 	import ClockCounterClockwise from 'phosphor-svelte/lib/ClockCounterClockwise'
@@ -20,7 +21,7 @@
 
 	let { children, data }: { children: any, data: LayoutData } = $props()
 	let sidebarOpen = $state(false)
-	let stablePermissions = $state(normalizePermissions(data.permissions))
+	let stablePermissions = $state(normalizePermissions($page.data.permissions))
 
 	const sc = $derived(data.siteConfig)
 	const permissions = $derived(stablePermissions)
@@ -74,6 +75,7 @@
 			{#if sc?.calendarEnabled !== false}
 				<a href="/calendar" class="{linkClass} {isActive('/calendar') ? activeClass : inactiveClass}"><CalendarBlank size={16} weight="fill" />{sc?.navCalendarLabel ?? 'Calendar'}</a>
 			{/if}
+			<a href="/worldmap" class="{linkClass} {isActive('/worldmap') ? activeClass : inactiveClass}"><MapTrifold size={16} weight="fill" />World Maps</a>
 			<a href="/celestial" class="{linkClass} {isActive('/celestial') ? activeClass : inactiveClass}"><Planet size={16} weight="fill" />Celestial</a>
 
 			<div class="my-2 border-t border-border-subtle"></div>
@@ -164,6 +166,7 @@
 					{#if sc?.calendarEnabled !== false}
 						<a href="/calendar" onclick={navClick} class="{linkClass} {isActive('/calendar') ? activeClass : inactiveClass}"><CalendarBlank size={16} weight="fill" />{sc?.navCalendarLabel ?? 'Calendar'}</a>
 					{/if}
+					<a href="/worldmap" onclick={navClick} class="{linkClass} {isActive('/worldmap') ? activeClass : inactiveClass}"><MapTrifold size={16} weight="fill" />World Maps</a>
 					<a href="/celestial" onclick={navClick} class="{linkClass} {isActive('/celestial') ? activeClass : inactiveClass}"><Planet size={16} weight="fill" />Celestial</a>
 
 					<div class="my-2 border-t border-border-subtle"></div>

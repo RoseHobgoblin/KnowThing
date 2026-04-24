@@ -144,6 +144,32 @@ export function calendarConfigureBreadcrumbs(
 	]
 }
 
+// ── World Map ──────────────────────────────────────────────────────────
+
+export function worldmapBreadcrumbs(): Breadcrumb[] {
+	return [{ label: 'World Maps' }]
+}
+
+export function worldmapDetailBreadcrumbs(
+	name: string,
+): Breadcrumb[] {
+	return [
+		{ label: 'World Maps', href: '/worldmap' },
+		{ label: name },
+	]
+}
+
+export function worldmapRegionAssignmentsBreadcrumbs(
+	name: string,
+	slug: string,
+): Breadcrumb[] {
+	return [
+		{ label: 'World Maps', href: '/worldmap' },
+		{ label: name, href: `/worldmap/${slug}` },
+		{ label: 'Region Assignments' },
+	]
+}
+
 // ── Account ────────────────────────────────────────────────────────────
 
 export function accountBreadcrumbs(): Breadcrumb[] {

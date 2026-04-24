@@ -494,6 +494,90 @@ export const planetaryBodies = pgTable(
 )
 
 // ============================================================================
+// World Maps & Countries
+// ============================================================================
+
+export const worldMaps = pgTable(
+	'world_maps',
+	{
+		id: serial('id').primaryKey(),
+		name: text('name').notNull(),
+		slug: text('slug').unique().notNull(),
+		imageFilename: text('image_filename').notNull(),
+		imageWidth: integer('image_width'),
+		imageHeight: integer('image_height'),
+		waterHex: text('water_hex').notNull().default('#000000'),
+		timePeriod: text('time_period'),
+		event: text('event'),
+		linkedPageSlug: text('linked_page_slug'),
+		description: text('description').default(''),
+		contentRecordId: integer('content_record_id').references(() => contentRecords.id, { onDelete: 'set null' }),
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+	},
+	table => [
+		index('idx_world_maps_slug').on(table.slug),
+	],
+)
+
+export const countries = pgTable(
+	'countries',
+	{
+		id: serial('id').primaryKey(),
+		name: text('name').notNull(),
+		slug: text('slug').unique().notNull(),
+		pageSlug: text('page_slug').notNull(),
+		contentRecordId: integer('content_record_id').references(() => contentRecords.id, { onDelete: 'set null' }),
+		capital: text('capital'),
+		governance: text('governance'),
+		color: text('color'),
+		extra: jsonb('extra').default({}),
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+	},
+	table => [
+		index('idx_countries_slug').on(table.slug),
+		index('idx_countries_page_slug').on(table.pageSlug),
+	],
+)
+
+export const worldMapRegions = pgTable(
+	'world_map_regions',
+	{
+		id: serial('id').primaryKey(),
+		mapId: integer('map_id')
+			.references(() => worldMaps.id, { onDelete: 'cascade' })
+			.notNull(),
+		countryId: integer('country_id').references(() => countries.id, { onDelete: 'set null' }),
+		hexColor: text('hex_color').notNull(),
+		label: text('label').default(''),
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+	},
+	table => [
+		index('idx_world_map_regions_map').on(table.mapId),
+		index('idx_world_map_regions_country').on(table.countryId),
+		index('idx_world_map_regions_hex').on(table.mapId, table.hexColor),
+	],
+)
+
+export const worldMapRegionGeometry = pgTable(
+	'world_map_region_geometry',
+	{
+		id: serial('id').primaryKey(),
+		regionId: integer('region_id')
+			.references(() => worldMapRegions.id, { onDelete: 'cascade' })
+			.notNull(),
+		pathData: text('path_data').notNull(),
+		sortOrder: integer('sort_order').notNull().default(0),
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+	},
+	table => [
+		index('idx_world_map_region_geometry_region').on(table.regionId, table.sortOrder),
+	],
+)
+
+// ============================================================================
 // Inflection / Declension / Conjugation
 // ============================================================================
 
