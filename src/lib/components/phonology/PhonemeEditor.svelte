@@ -9,6 +9,7 @@
 	import { type IpaEntry } from '$lib/data/ipa-chart.js'
 	import { buildPhonemeGrid, cellKey, type PhonemeRow } from '$lib/renderer/structured/phoneme-grid.js'
 	import { cn } from '$lib/utils'
+	import { pushUndoable, pushError } from '$lib/notifications.svelte'
 	import Plus from 'phosphor-svelte/lib/PlusIcon'
 	import PencilSimple from 'phosphor-svelte/lib/PencilSimpleIcon'
 	import Trash from 'phosphor-svelte/lib/TrashIcon'
@@ -275,21 +276,55 @@
 	}
 
 	async function handleDelete(p: Phoneme) {
-		const ok = await confirmDialog.confirm(
-			'Delete phoneme',
-			`Delete /${p.ipa}/? This cannot be undone.`,
-			'Delete',
-			'Cancel',
-		)
-		if (!ok) return
+		// Skip confirm dialog — the undo toast IS the safety net now. One click,
+		// one toast, six seconds to change your mind. This is the Gmail pattern.
 		const response = await fetch(`/api/languages/${languageSlug}/phonemes/${p.id}`, { method: 'DELETE' })
 		if (!response.ok) {
 			const error = await response.json().catch(() => null)
 			errorMessage = error?.error ?? 'Failed to delete phoneme'
 			return
 		}
+
+		// Snapshot the deleted row so we can re-POST on undo.
+		const snapshot: Phoneme = { ...p }
 		phonemes = phonemes.filter(x => x.id !== p.id)
 		if (editingId === p.id) manualOpen = false
+
+		pushUndoable(
+			`Deleted /${p.ipa}/`,
+			async () => {
+				// Undo: re-POST with the same feature values. Gets a new ID from
+				// the server — that's fine since we've already removed the old
+				// row from local state, and external refs (wiki templates) use
+				// IPA + slug, not the numeric id.
+				const undoResponse = await fetch(`/api/languages/${languageSlug}/phonemes`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						ipa: snapshot.ipa,
+						type: snapshot.type,
+						place: snapshot.place,
+						manner: snapshot.manner,
+						subtype: snapshot.subtype,
+						voicing: snapshot.voicing,
+						height: snapshot.height,
+						backness: snapshot.backness,
+						rounded: snapshot.rounded,
+						marginal: snapshot.marginal,
+						notes: snapshot.notes,
+						sortOrder: snapshot.sortOrder,
+					}),
+				})
+				if (!undoResponse.ok) {
+					pushError(`Couldn't restore /${snapshot.ipa}/`)
+					return
+				}
+				const restored = await undoResponse.json() as Phoneme
+				phonemes = [...phonemes, restored]
+			},
+			// onExpire: nothing to do — server already deleted. Kept for parity.
+			() => {},
+		)
 	}
 </script>
 
