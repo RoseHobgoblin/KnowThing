@@ -35,6 +35,8 @@ export interface KnowRenderContext {
 	calendarConfig: CalendarConfig | null
 	/** Pre-fetched structured data for from=slug infobox resolution */
 	structuredData: Map<string, Map<string, string>> | null
+	/** Pre-fetched array-shaped structured data (phoneme grids, etc) keyed by `${type}:${slug}` */
+	structuredCollections: Record<string, Record<string, unknown>[]> | null
 	/** Pre-fetched system map data for {{System map|slug}} */
 	systemMaps: Record<string, { systemName: string, stars: any[], bodies: any[] }> | null
 }
@@ -58,6 +60,7 @@ export function createKnowContext(overrides: Partial<KnowRenderContext> = {}): K
 		calendarDate: null,
 		calendarConfig: null,
 		structuredData: null,
+		structuredCollections: null,
 		systemMaps: null,
 		...overrides,
 	}
