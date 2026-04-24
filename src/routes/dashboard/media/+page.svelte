@@ -7,6 +7,7 @@
 	import Select from '$lib/components/ui/Select.svelte'
 	import Checkbox from '$lib/components/ui/Checkbox.svelte'
 	import Input from '$lib/components/ui/Input.svelte'
+	import Skeleton from '$lib/components/ui/Skeleton.svelte'
 
 	type MediaFile = {
 		id: number
@@ -252,7 +253,31 @@
 
 	<!-- File grid/list -->
 	{#if loading}
-		<div class="text-center py-12 text-faint">Loading...</div>
+		{#if viewMode === 'grid'}
+			<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5" aria-busy="true" aria-label="Loading media">
+				{#each Array(12) as _}
+					<div class="bg-surface border border-border overflow-hidden">
+						<Skeleton class="aspect-square w-full" />
+						<div class="p-2 space-y-1.5">
+							<Skeleton class="h-3 w-3/4" />
+							<Skeleton class="h-3 w-1/2" />
+						</div>
+					</div>
+				{/each}
+			</div>
+		{:else}
+			<div class="bg-surface border border-border divide-y divide-border-subtle" aria-busy="true" aria-label="Loading media">
+				{#each Array(8) as _}
+					<div class="flex items-center gap-4 px-4 py-3">
+						<Skeleton class="size-12 shrink-0" />
+						<div class="flex-1 min-w-0 space-y-1.5">
+							<Skeleton class="h-4 w-1/3" />
+							<Skeleton class="h-3 w-2/3" />
+						</div>
+					</div>
+				{/each}
+			</div>
+		{/if}
 	{:else if files.length === 0}
 		<div class="text-center py-12 text-faint">
 			{searchQuery ? 'No files match your search.' : 'No media uploaded yet.'}
