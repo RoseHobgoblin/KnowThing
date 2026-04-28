@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { normalizeAxis } from '../+server.js'
+import { normalizeAxis } from '$lib/server/utils.js'
 
 describe('normalizeAxis', () => {
 	it('lowercases and trims', () => {

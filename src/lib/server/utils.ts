@@ -32,3 +32,12 @@ export async function handleServiceCall<T>(function_: () => Promise<T>): Promise
 		throw error
 	}
 }
+
+/** Normalize axis values (place/manner/height/backness/subtype) so case or
+ * whitespace differences don't silently create divergent columns in the grid
+ * (e.g. "Bilabial" vs "bilabial"). Internal whitespace is collapsed. */
+export function normalizeAxis(value: string | null | undefined): string | null {
+	if (value == null) return null
+	const cleaned = value.trim().toLowerCase().replaceAll(/\s+/g, ' ')
+	return cleaned || null
+}

@@ -5,18 +5,24 @@
 		label: string
 		countryName: string
 		pageSlug: string | null
-		paths: string[]
+		paths: Array<{ d: string, transform: string | null }>
 	}
 
 	let {
 		width,
 		height,
 		waterHex = '#000000',
+		imageSrc = null,
+		transparentRegions = false,
+		highlightRegionId = null,
 		regions,
 	}: {
 		width: number
 		height: number
 		waterHex?: string
+		imageSrc?: string | null
+		transparentRegions?: boolean
+		highlightRegionId?: number | null
 		regions: WorldRegion[]
 	} = $props()
 
@@ -36,8 +42,13 @@
 	const minZoom = 1
 	const maxZoom = 24
 
-	const viewBoxValue = $derived(`${viewX} ${viewY} ${viewWidth} ${viewHeight}`)
-	const zoomLevel = $derived(Math.min(maxZoom, Math.max(minZoom, width / viewWidth)))
+	const effectiveViewWidth = $derived(viewWidth || width)
+	const effectiveViewHeight = $derived(viewHeight || height)
+	const viewBoxValue = $derived(`${viewX} ${viewY} ${effectiveViewWidth} ${effectiveViewHeight}`)
+	const zoomLevel = $derived(Math.min(maxZoom, Math.max(minZoom, width / effectiveViewWidth)))
+	const renderRegions = $derived(
+		[...regions].sort((left, right) => getRegionPaintWeight(right) - getRegionPaintWeight(left) || left.id - right.id)
+	)
 
 	$effect(() => {
 		if (viewWidth === 0 || viewHeight === 0) {
@@ -64,11 +75,13 @@
 	}
 
 	function zoomAt(factor: number, anchorX: number, anchorY: number) {
-		const nextWidth = Math.min(width, Math.max(width / maxZoom, viewWidth / factor))
+		const currentViewWidth = viewWidth || width
+		const currentViewHeight = viewHeight || height
+		const nextWidth = Math.min(width, Math.max(width / maxZoom, currentViewWidth / factor))
 		const nextHeight = (nextWidth / width) * height
 
-		const relX = (anchorX - viewX) / viewWidth
-		const relY = (anchorY - viewY) / viewHeight
+		const relX = (anchorX - viewX) / currentViewWidth
+		const relY = (anchorY - viewY) / currentViewHeight
 
 		viewX = anchorX - relX * nextWidth
 		viewY = anchorY - relY * nextHeight
@@ -88,31 +101,42 @@
 	}
 
 	function onPointerDown(event: PointerEvent) {
+		const target = event.target as Element | null
+		if (target?.closest('a')) {
+			return
+		}
+
 		dragging = true
 		dragStartX = event.clientX
 		dragStartY = event.clientY
 		dragOriginViewX = viewX
 		dragOriginViewY = viewY
-		const target = event.currentTarget as SVGSVGElement | null
-		target?.setPointerCapture(event.pointerId)
+		svgEl?.setPointerCapture(event.pointerId)
 	}
 
 	function onPointerMove(event: PointerEvent) {
 		if (!dragging || !svgEl) return
 		const rect = svgEl.getBoundingClientRect()
-		const dx = ((event.clientX - dragStartX) / rect.width) * viewWidth
-		const dy = ((event.clientY - dragStartY) / rect.height) * viewHeight
+		const currentViewWidth = viewWidth || width
+		const currentViewHeight = viewHeight || height
+		const dx = ((event.clientX - dragStartX) / rect.width) * currentViewWidth
+		const dy = ((event.clientY - dragStartY) / rect.height) * currentViewHeight
 
-		const maxX = width - viewWidth
-		const maxY = height - viewHeight
+		const maxX = width - currentViewWidth
+		const maxY = height - currentViewHeight
 		viewX = Math.max(0, Math.min(maxX, dragOriginViewX - dx))
 		viewY = Math.max(0, Math.min(maxY, dragOriginViewY - dy))
 	}
 
 	function onPointerUp(event: PointerEvent) {
 		dragging = false
-		const target = event.currentTarget as SVGSVGElement | null
-		target?.releasePointerCapture(event.pointerId)
+		if (svgEl?.hasPointerCapture(event.pointerId)) {
+			svgEl.releasePointerCapture(event.pointerId)
+		}
+	}
+
+	function getRegionPaintWeight(region: WorldRegion) {
+		return region.paths.reduce((total, pathData) => total + pathData.d.length, 0)
 	}
 </script>
 
@@ -134,6 +158,8 @@
 		<svg
 			bind:this={svgEl}
 			viewBox={viewBoxValue}
+			width={width}
+			height={height}
 			class="w-full h-auto touch-none select-none"
 			style={`aspect-ratio: ${width} / ${height}; cursor: ${dragging ? 'grabbing' : 'grab'};`}
 			onwheel={onWheel}
@@ -146,21 +172,49 @@
 		>
 			<rect x="0" y="0" width={width} height={height} fill={waterHex} />
 
-			{#each regions as region (region.id)}
-				{@const hasTarget = Boolean(region.pageSlug)}
+			{#if imageSrc}
+				<image
+					href={imageSrc}
+					x="0"
+					y="0"
+					width={width}
+					height={height}
+					preserveAspectRatio="none"
+					opacity="1"
+					pointer-events="none"
+				/>
+			{/if}
+
+			{#each renderRegions as region (region.id)}
+				{@const isNothing = region.pageSlug === 'NOTHING'}
+				{@const hasTarget = Boolean(region.pageSlug) && !isNothing}
+				{@const isHighlighted = highlightRegionId === region.id}
+				{@const regionFill = transparentRegions ? region.hexColor : region.hexColor}
+				{@const regionStroke = transparentRegions ? 'transparent' : 'var(--color-border)'}
+				{@const pointerEventsValue = isNothing ? 'none' : (transparentRegions ? 'all' : 'visiblePainted')}
+				{@const fillOp = isNothing ? 0 : (isHighlighted ? 0.2 : (transparentRegions ? 0 : 1))}
+				{@const strokeOp = isNothing ? 0 : (isHighlighted ? 1 : (transparentRegions ? 0 : 1))}
+				{@const strokeColor = isHighlighted ? 'var(--color-heading)' : regionStroke}
+				{@const strokeWidth = isHighlighted ? 2.2 : 0.8}
+				
 				{#if hasTarget}
 					<a
 						href={`/know/${region.pageSlug}`}
 						aria-label={region.countryName}
+						class="world-region-link"
 					>
 						<title>{region.countryName}</title>
-						{#each region.paths as d, index (`${region.id}-${index}`)}
+						{#each region.paths as pathData, index (`${region.id}-${index}`)}
 							<path
-								d={d}
-								fill={region.hexColor}
-								stroke="var(--color-border)"
-								stroke-width="0.8"
+								d={pathData.d}
+								transform={pathData.transform}
+								fill={regionFill}
+								fill-opacity={fillOp}
+								stroke={strokeColor}
+								stroke-opacity={strokeOp}
+								stroke-width={strokeWidth}
 								vector-effect="non-scaling-stroke"
+								pointer-events={pointerEventsValue}
 								class="world-region-path"
 							/>
 						{/each}
@@ -168,13 +222,17 @@
 				{:else}
 					<g>
 						<title>{region.countryName}</title>
-						{#each region.paths as d, index (`${region.id}-${index}`)}
+						{#each region.paths as pathData, index (`${region.id}-${index}`)}
 							<path
-								d={d}
-								fill={region.hexColor}
-								stroke="var(--color-border)"
-								stroke-width="0.8"
+								d={pathData.d}
+								transform={pathData.transform}
+								fill={regionFill}
+								fill-opacity={fillOp}
+								stroke={strokeColor}
+								stroke-opacity={strokeOp}
+								stroke-width={strokeWidth}
 								vector-effect="non-scaling-stroke"
+								pointer-events={pointerEventsValue}
 								class="world-region-path"
 							/>
 						{/each}
@@ -186,12 +244,16 @@
 </div>
 
 <style>
+	.world-region-link {
+		cursor: pointer;
+	}
+
 	.world-region-path {
 		transition: stroke-width 120ms ease, stroke 120ms ease;
 	}
 
-	a .world-region-path:hover,
-	a:focus .world-region-path {
+	.world-region-link:hover .world-region-path,
+	.world-region-link:focus .world-region-path {
 		stroke: var(--color-heading);
 		stroke-width: 1.8;
 	}

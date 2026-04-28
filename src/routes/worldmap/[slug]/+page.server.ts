@@ -19,11 +19,14 @@ export const load: PageServerLoad = async ({ params }) => {
 			wm.id,
 			wm.name,
 			wm.slug,
+			wm.image_filename AS "imageFilename",
+			m.mime_type AS "imageMimeType",
 			wm.description,
 			wm.image_width AS "imageWidth",
 			wm.image_height AS "imageHeight",
 			wm.water_hex AS "waterHex"
 		FROM world_maps wm
+		LEFT JOIN media m ON m.filename = wm.image_filename
 		WHERE wm.slug = ${params.slug}
 		LIMIT 1
 	`)
@@ -55,7 +58,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		label: string
 		countryName: string
 		pageSlug: string | null
-		paths: string[]
+		paths: Array<{ d: string, transform: string | null }>
 	}>()
 
 	for (const row of rows) {
@@ -67,13 +70,34 @@ export const load: PageServerLoad = async ({ params }) => {
 				label: row.label || row.countryName || row.hexColor,
 				countryName: row.countryName || row.hexColor,
 				pageSlug: row.pageSlug,
-				paths: row.pathData ? [row.pathData] : [],
+				paths: [],
 			})
+			if (row.pathData) {
+				let d = row.pathData
+				let transform = null
+				if (d.startsWith('T:')) {
+					const splitIdx = d.indexOf('|')
+					if (splitIdx !== -1) {
+						transform = d.slice(2, splitIdx).trim()
+						d = d.slice(splitIdx + 1).trim()
+					}
+				}
+				regionMap.get(row.regionId)!.paths.push({ d, transform })
+			}
 			continue
 		}
 
 		if (row.pathData) {
-			current.paths.push(row.pathData)
+			let d = row.pathData
+			let transform = null
+			if (d.startsWith('T:')) {
+				const splitIdx = d.indexOf('|')
+				if (splitIdx !== -1) {
+					transform = d.slice(2, splitIdx).trim()
+					d = d.slice(splitIdx + 1).trim()
+				}
+			}
+			current.paths.push({ d, transform })
 		}
 	}
 

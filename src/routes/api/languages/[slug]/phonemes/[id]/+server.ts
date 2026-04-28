@@ -4,8 +4,7 @@ import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { languages, phonemes, graphemePhonemes, graphemes } from '$lib/server/db/schema.js'
 import { requireRole } from '$lib/server/auth.js'
-import { parseBody } from '$lib/server/utils.js'
-import { normalizeAxis } from '../+server.js'
+import { parseBody, normalizeAxis } from '$lib/server/utils.js'
 import { eq, and, asc, sql } from 'drizzle-orm'
 
 const updatePhonemeSchema = z.object({

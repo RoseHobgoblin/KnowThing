@@ -9,13 +9,15 @@
 		label: string
 		countryName: string
 		pageSlug: string | null
-		paths: string[]
+		paths: Array<{ d: string, transform: string | null }>
 	}
 
 	type MapItem = {
 		id: number
 		name: string
 		slug: string
+		imageFilename: string | null
+		imageMimeType: string | null
 		description: string | null
 		imageWidth: number | null
 		imageHeight: number | null
@@ -45,10 +47,13 @@
 	{/if}
 
 	{#if data.map.imageWidth && data.map.imageHeight}
+		{@const sourceUrl = data.map.imageFilename ? `/api/media/${encodeURIComponent(data.map.imageFilename)}` : null}
 		<WorldSvgMap
 			width={data.map.imageWidth}
 			height={data.map.imageHeight}
 			waterHex={data.map.waterHex || '#000000'}
+			imageSrc={sourceUrl}
+			transparentRegions={data.map.imageMimeType === 'image/svg+xml'}
 			regions={data.regions}
 		/>
 	{:else}
