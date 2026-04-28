@@ -6,7 +6,7 @@ services:
       dockerfile: Dockerfile
     restart: on-failure
     ports:
-      - "3000:${PORT:-3000}"
+      - "3500:${PORT:-3000}"
     environment:
       DATABASE_URL: postgres://knowthing:${DB_PASSWORD:-knowthing}@db:5432/knowthing
       UPLOAD_DIR: /app/uploads
