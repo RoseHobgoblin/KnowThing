@@ -4,19 +4,10 @@ import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { languages, phonemes } from '$lib/server/db/schema.js'
 import { requireRole } from '$lib/server/auth.js'
-import { parseBody } from '$lib/server/utils.js'
+import { parseBody, normalizeAxis } from '$lib/server/utils.js'
 import { eq, and, asc, sql } from 'drizzle-orm'
 
 const PHONEME_TYPES = ['consonant', 'vowel', 'diphthong', 'special'] as const
-
-/** Normalize axis values (place/manner/height/backness/subtype) so case or
- * whitespace differences don't silently create divergent columns in the grid
- * (e.g. "Bilabial" vs "bilabial"). Internal whitespace is collapsed. */
-function normalizeAxis(value: string | null | undefined): string | null {
-	if (value == null) return null
-	const cleaned = value.trim().toLowerCase().replaceAll(/\s+/g, ' ')
-	return cleaned || null
-}
 
 const createPhonemeSchema = z.object({
 	ipa: z.string().min(1, 'IPA is required'),
