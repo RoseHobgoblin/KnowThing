@@ -107,7 +107,7 @@
 
 <svelte:head>
 	<title>World Maps</title>
-	<meta name="description" content="Interactive world maps generated from PNG region data." />
+	<meta name="description" content="Interactive world maps generated from SVG region data." />
 </svelte:head>
 
 <ArticleShell
