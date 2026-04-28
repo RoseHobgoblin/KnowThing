@@ -304,6 +304,43 @@ export const phonemes = pgTable(
 	],
 )
 
+export const graphemes = pgTable(
+	'graphemes',
+	{
+		id: serial('id').primaryKey(),
+		languageId: integer('language_id')
+			.references(() => languages.id, { onDelete: 'cascade' })
+			.notNull(),
+		grapheme: text('grapheme').notNull(),
+		romanization: text('romanization'),
+		environment: text('environment'),
+		notes: text('notes'),
+		sortOrder: integer('sort_order').notNull().default(0),
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+	},
+	table => [
+		index('idx_graphemes_language').on(table.languageId, table.sortOrder),
+	],
+)
+
+export const graphemePhonemes = pgTable(
+	'grapheme_phonemes',
+	{
+		graphemeId: integer('grapheme_id')
+			.references(() => graphemes.id, { onDelete: 'cascade' })
+			.notNull(),
+		phonemeId: integer('phoneme_id')
+			.references(() => phonemes.id, { onDelete: 'cascade' })
+			.notNull(),
+		position: integer('position').notNull(),
+	},
+	table => [
+		primaryKey({ columns: [table.graphemeId, table.position] }),
+		index('idx_grapheme_phonemes_phoneme').on(table.phonemeId),
+	],
+)
+
 export const lexicon = pgTable(
 	'lexicon',
 	{

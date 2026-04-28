@@ -30,4 +30,9 @@ describe('extractCollectionRefs', () => {
 		const ast = parse('{{consonants|}}')
 		expect(extractCollectionReferences(ast)).toEqual([])
 	})
+
+	it('finds {{orthography|slug}}', () => {
+		const ast = parse('{{orthography|oncerhan}}')
+		expect(extractCollectionReferences(ast)).toEqual([{ type: 'orthography', slug: 'oncerhan' }])
+	})
 })

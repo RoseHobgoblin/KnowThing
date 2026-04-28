@@ -89,7 +89,11 @@
 		}
 	}
 
+	interface LinkedGrapheme { id: number, grapheme: string, environment: string | null }
+
 	let phonemes = $state<Phoneme[]>(initial)
+	let linkedGraphemes = $state<LinkedGrapheme[]>([])
+	let loadingLinked = $state(false)
 	let pickerOpen = $state(false)
 	let pickerFilter = $state<'consonant' | 'vowel'>('consonant')
 	let manualOpen = $state(false)
@@ -149,9 +153,23 @@
 			editingId = existing.id
 			draft = draftFrom(existing)
 			draftSnapshot = $state.snapshot(draft) as Draft
+			loadLinkedGraphemes(existing.id)
 			manualOpen = true
 		} else {
 			openManual(kind, axes)
+		}
+	}
+
+	async function loadLinkedGraphemes(phonemeId: number) {
+		linkedGraphemes = []
+		loadingLinked = true
+		try {
+			const response = await fetch(`/api/languages/${languageSlug}/phonemes/${phonemeId}`)
+			if (!response.ok) return
+			const body = await response.json() as { graphemes?: LinkedGrapheme[] }
+			linkedGraphemes = body.graphemes ?? []
+		} finally {
+			loadingLinked = false
 		}
 	}
 
@@ -285,13 +303,20 @@
 			return
 		}
 
+		const body = await response.json().catch(() => ({ affectedGraphemes: 0 })) as { affectedGraphemes?: number }
+		const affected = body.affectedGraphemes ?? 0
+
 		// Snapshot the deleted row so we can re-POST on undo.
 		const snapshot: Phoneme = { ...p }
 		phonemes = phonemes.filter(x => x.id !== p.id)
 		if (editingId === p.id) manualOpen = false
 
+		const toastMessage = affected > 0
+			? `Deleted /${p.ipa}/. ${affected} ${affected === 1 ? 'grapheme' : 'graphemes'} became silent.`
+			: `Deleted /${p.ipa}/`
+
 		pushUndoable(
-			`Deleted /${p.ipa}/`,
+			toastMessage,
 			async () => {
 				// Undo: re-POST with the same feature values. Gets a new ID from
 				// the server — that's fine since we've already removed the old
@@ -541,6 +566,32 @@
 		{/if}
 
 		<Input label="Notes (footnote)" bind:value={draft.notes} />
+
+		{#if editingId}
+			<div class="pt-2 border-t border-border-subtle">
+				<div class="text-xs uppercase tracking-wider text-dim mb-1.5">Written as</div>
+				{#if loadingLinked}
+					<div class="text-xs text-faint">Loading…</div>
+				{:else if linkedGraphemes.length === 0}
+					<div class="text-xs text-faint italic">
+						No graphemes map to this phoneme yet.
+						<a href="/wordbook/{languageSlug}/orthography" class="text-link hover:underline">Open orthography →</a>
+					</div>
+				{:else}
+					<div class="flex flex-wrap gap-1.5 items-center">
+						{#each linkedGraphemes as lg (lg.id)}
+							<span class="inline-flex items-center gap-1 px-2 py-0.5 border border-border-subtle bg-raised text-sm">
+								<span class="font-serif">{lg.grapheme}</span>
+								{#if lg.environment}
+									<span class="text-dim text-xs">({lg.environment})</span>
+								{/if}
+							</span>
+						{/each}
+						<a href="/wordbook/{languageSlug}/orthography" class="text-xs text-link ml-1 hover:underline">edit →</a>
+					</div>
+				{/if}
+			</div>
+		{/if}
 
 		<div class="flex items-center gap-2">
 			<Checkbox bind:value={draft.marginal} label="Marginal" />
