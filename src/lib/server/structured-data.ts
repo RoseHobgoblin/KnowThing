@@ -1,6 +1,6 @@
 import { db } from './db/index.js'
-import { stars, planetaryBodies, starSystems, phonemes, languages } from './db/schema.js'
-import { eq, and, sql, asc } from 'drizzle-orm'
+import { stars, planetaryBodies, starSystems, phonemes, languages, graphemes, graphemePhonemes } from './db/schema.js'
+import { eq, and, sql, asc, inArray } from 'drizzle-orm'
 import type { FieldMap } from '$lib/infoboxes/types.js'
 import type { MapBody } from '$lib/celestial/SystemMap.svelte'
 import {
@@ -358,6 +358,46 @@ async function loadPhonology(slug: string): Promise<StructuredCollection | null>
 	return rows as unknown as StructuredCollection
 }
 
+async function loadOrthography(slug: string): Promise<StructuredCollection | null> {
+	const [lang] = await db.select({ id: languages.id }).from(languages).where(eq(languages.slug, slug))
+	if (!lang) return null
+
+	const rows = await db
+		.select({
+			id: graphemes.id,
+			grapheme: graphemes.grapheme,
+			romanization: graphemes.romanization,
+			environment: graphemes.environment,
+			notes: graphemes.notes,
+			sortOrder: graphemes.sortOrder,
+		})
+		.from(graphemes)
+		.where(eq(graphemes.languageId, lang.id))
+		.orderBy(asc(graphemes.sortOrder), asc(graphemes.id))
+
+	if (rows.length === 0) return []
+
+	const links = await db
+		.select({
+			graphemeId: graphemePhonemes.graphemeId,
+			position: graphemePhonemes.position,
+			ipa: phonemes.ipa,
+			type: phonemes.type,
+		})
+		.from(graphemePhonemes)
+		.innerJoin(phonemes, eq(graphemePhonemes.phonemeId, phonemes.id))
+		.where(inArray(graphemePhonemes.graphemeId, rows.map(r => r.id)))
+		.orderBy(asc(graphemePhonemes.graphemeId), asc(graphemePhonemes.position))
+
+	const byId = new Map<number, { ipa: string, type: string }[]>()
+	for (const l of links) {
+		if (!byId.has(l.graphemeId)) byId.set(l.graphemeId, [])
+		byId.get(l.graphemeId)!.push({ ipa: l.ipa, type: l.type })
+	}
+
+	return rows.map(r => ({ ...r, phonemes: byId.get(r.id) ?? [] })) as unknown as StructuredCollection
+}
+
 export const COLLECTION_RESOLVERS: Record<
 	string,
 	(slug: string) => Promise<StructuredCollection | null>
@@ -365,6 +405,7 @@ export const COLLECTION_RESOLVERS: Record<
 	consonants: slug => loadPhonemesByType(slug, 'consonant'),
 	vowels: slug => loadPhonemesByType(slug, 'vowel'),
 	phonology: loadPhonology,
+	orthography: loadOrthography,
 }
 
 export async function resolveStructuredCollection(

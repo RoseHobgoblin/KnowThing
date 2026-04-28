@@ -122,7 +122,7 @@ export function extractInfoboxImageRef(ast: WikiNode): { image?: string, fromSlu
  * {{consonants|slug}}, {{vowels|slug}}, {{phonology|slug}}.
  * Returns the refs to pre-fetch via resolveAllStructuredCollections.
  */
-const COLLECTION_TEMPLATE_NAMES = new Set(['consonants', 'vowels', 'phonology'])
+const COLLECTION_TEMPLATE_NAMES = new Set(['consonants', 'vowels', 'phonology', 'orthography'])
 
 export function extractCollectionRefs(ast: WikiNode): { type: string, slug: string }[] {
 	const refs: { type: string, slug: string }[] = []

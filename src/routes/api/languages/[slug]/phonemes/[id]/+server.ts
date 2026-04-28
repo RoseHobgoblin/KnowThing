@@ -2,10 +2,10 @@ import { json } from '@sveltejs/kit'
 import { z } from 'zod'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
-import { languages, phonemes } from '$lib/server/db/schema.js'
+import { languages, phonemes, graphemePhonemes, graphemes } from '$lib/server/db/schema.js'
 import { requireRole } from '$lib/server/auth.js'
 import { parseBody, normalizeAxis } from '$lib/server/utils.js'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, asc, sql } from 'drizzle-orm'
 
 const updatePhonemeSchema = z.object({
 	ipa: z.string().min(1).optional(),
@@ -71,7 +71,37 @@ export const PATCH: RequestHandler = async (event) => {
 	}
 }
 
-/** DELETE /api/languages/:slug/phonemes/:id */
+/** GET /api/languages/:slug/phonemes/:id — includes the set of graphemes that
+ * reference this phoneme, so the editor can show a "Written as" read-only list. */
+export const GET: RequestHandler = async (event) => {
+	const id = Number(event.params.id)
+	if (!Number.isInteger(id)) return json({ error: 'Invalid id' }, { status: 400 })
+
+	const resolved = await resolvePhoneme(event.params.slug, id)
+	if ('error' in resolved) return json({ error: resolved.error }, { status: resolved.status })
+
+	// Group by grapheme so a multi-position reference (e.g. か → /k/+/a/+/k/+/a/
+	// hypothetically uses the same phoneme twice) doesn't render the same
+	// grapheme as two "Written as" chips.
+	const linkedGraphemes = await db
+		.selectDistinct({
+			id: graphemes.id,
+			grapheme: graphemes.grapheme,
+			environment: graphemes.environment,
+			sortOrder: graphemes.sortOrder,
+		})
+		.from(graphemePhonemes)
+		.innerJoin(graphemes, eq(graphemePhonemes.graphemeId, graphemes.id))
+		.where(eq(graphemePhonemes.phonemeId, id))
+		.orderBy(asc(graphemes.sortOrder), asc(graphemes.id))
+
+	return json({ ...resolved.row, graphemes: linkedGraphemes })
+}
+
+/** DELETE /api/languages/:slug/phonemes/:id
+ * Returns affectedGraphemes — the count of graphemes that had at least one
+ * link to this phoneme. The editor surfaces this to the user so "N graphemes
+ * became silent" can be shown in the undo toast. */
 export const DELETE: RequestHandler = async (event) => {
 	requireRole(event, 'editor')
 	const id = Number(event.params.id)
@@ -81,8 +111,15 @@ export const DELETE: RequestHandler = async (event) => {
 	if ('error' in resolved) return json({ error: resolved.error }, { status: resolved.status })
 
 	try {
+		const [countRow] = await db.execute(sql`
+			SELECT COUNT(DISTINCT grapheme_id)::int AS n
+			FROM grapheme_phonemes
+			WHERE phoneme_id = ${id}
+		`) as unknown as [{ n: number }]
+		const affectedGraphemes = countRow?.n ?? 0
+
 		await db.delete(phonemes).where(eq(phonemes.id, id))
-		return json({ ok: true })
+		return json({ ok: true, affectedGraphemes })
 	} catch {
 		return json({ error: 'Failed to delete phoneme' }, { status: 500 })
 	}
