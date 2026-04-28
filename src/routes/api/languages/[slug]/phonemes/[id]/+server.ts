@@ -81,8 +81,11 @@ export const GET: RequestHandler = async (event) => {
 	const resolved = await resolvePhoneme(event.params.slug, id)
 	if ('error' in resolved) return json({ error: resolved.error }, { status: resolved.status })
 
+	// Group by grapheme so a multi-position reference (e.g. か → /k/+/a/+/k/+/a/
+	// hypothetically uses the same phoneme twice) doesn't render the same
+	// grapheme as two "Written as" chips.
 	const linkedGraphemes = await db
-		.select({
+		.selectDistinct({
 			id: graphemes.id,
 			grapheme: graphemes.grapheme,
 			environment: graphemes.environment,

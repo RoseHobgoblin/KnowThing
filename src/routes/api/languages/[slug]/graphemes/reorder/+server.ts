@@ -11,6 +11,17 @@ const reorderSchema = z.object({
 	order: z.array(z.number().int()),
 })
 
+/** Reject any payload that doesn't cover the language's graphemes exactly:
+ * size mismatch, duplicate ids, or unknown ids. Duplicate-id check is the
+ * subtle one — `[1,1,2]` passes length+membership but silently leaves another
+ * grapheme's sort_order untouched. */
+export function validateReorderPayload(order: number[], existingIds: Set<number>): 'ok' | 'mismatch' {
+	if (order.length !== existingIds.size) return 'mismatch'
+	if (new Set(order).size !== order.length) return 'mismatch'
+	for (const id of order) if (!existingIds.has(id)) return 'mismatch'
+	return 'ok'
+}
+
 /** POST /api/languages/:slug/graphemes/reorder — bulk sort_order update.
  * The `order` array must cover exactly the language's graphemes. */
 export const POST: RequestHandler = async (event) => {
@@ -30,10 +41,7 @@ export const POST: RequestHandler = async (event) => {
 				.where(eq(graphemes.languageId, lang.id))
 			const existing = new Set(rows.map(r => r.id))
 
-			if (data.order.length !== existing.size) throw new Error('ORDER_MISMATCH')
-			for (const id of data.order) {
-				if (!existing.has(id)) throw new Error('ORDER_MISMATCH')
-			}
+			if (validateReorderPayload(data.order, existing) !== 'ok') throw new Error('ORDER_MISMATCH')
 
 			// sort_order has no uniqueness constraint, so direct per-row overwrite is safe.
 			for (const [index, id] of data.order.entries()) {

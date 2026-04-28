@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { normalizeEnvironment, createGraphemeSchema } from '../+server.js'
+import { validateReorderPayload } from '../reorder/+server.js'
 
 describe('normalizeEnvironment', () => {
 	it('lowercases and trims', () => {
@@ -51,5 +52,30 @@ describe('createGraphemeSchema', () => {
 			notes: null,
 		})
 		expect(result.success).toBe(true)
+	})
+})
+
+describe('validateReorderPayload', () => {
+	const existing = new Set([1, 2, 3])
+
+	it('accepts a permutation that covers every id exactly once', () => {
+		expect(validateReorderPayload([3, 1, 2], existing)).toBe('ok')
+		expect(validateReorderPayload([1, 2, 3], existing)).toBe('ok')
+	})
+
+	it('rejects size mismatches', () => {
+		expect(validateReorderPayload([1, 2], existing)).toBe('mismatch')
+		expect(validateReorderPayload([1, 2, 3, 4], existing)).toBe('mismatch')
+	})
+
+	it('rejects duplicate ids that silently omit another grapheme', () => {
+		// [1,1,2] is the same length as existing and every id is a member, but
+		// it leaves grapheme 3 with stale sort_order and overwrites grapheme 1
+		// twice. The endpoint must reject this.
+		expect(validateReorderPayload([1, 1, 2], existing)).toBe('mismatch')
+	})
+
+	it('rejects ids that don\'t belong to the language', () => {
+		expect(validateReorderPayload([1, 2, 99], existing)).toBe('mismatch')
 	})
 })
