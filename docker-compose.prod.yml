@@ -5,6 +5,8 @@ services:
       context: .
       dockerfile: Dockerfile
     restart: on-failure
+    ports:
+      - "3000:${PORT:-3000}"
     environment:
       DATABASE_URL: postgres://knowthing:${DB_PASSWORD:-knowthing}@db:5432/knowthing
       UPLOAD_DIR: /app/uploads
@@ -38,23 +40,6 @@ services:
       timeout: 5s
       retries: 5
 
-  caddy:
-    image: caddy:2-alpine
-    restart: unless-stopped
-    ports:
-      - '80:80'
-      - '443:443'
-    environment:
-      DOMAIN: ${DOMAIN:-localhost}
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - app
-
 volumes:
   pgdata:
   uploads:
-  caddy_data:
-  caddy_config:
