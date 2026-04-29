@@ -1,17 +1,9 @@
-import { json, error } from '@sveltejs/kit'
+import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
-import { db } from '$lib/server/db/index.js'
-import { templates } from '$lib/server/db/schema.js'
-import { eq } from 'drizzle-orm'
+import { getTemplate } from '$lib/server/services/templates.js'
+import { handleServiceCall } from '$lib/server/utils.js'
 
 /** GET /api/templates/:name — get template source */
 export const GET: RequestHandler = async ({ params }) => {
-	const [tmpl] = await db
-		.select()
-		.from(templates)
-		.where(eq(templates.name, params.name))
-		.limit(1)
-
-	if (!tmpl) throw error(404, 'Template not found')
-	return json(tmpl)
+	return handleServiceCall(async () => json(await getTemplate(params.name)))
 }

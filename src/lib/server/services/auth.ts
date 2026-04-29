@@ -65,6 +65,11 @@ async function verifyCredentials(username: string, password: string) {
 	return { id: user.id, username: user.username, role: user.role }
 }
 
+export async function hasAnyUser(): Promise<boolean> {
+	const existing = await db.select({ id: users.id }).from(users).limit(1)
+	return existing.length > 0
+}
+
 export async function checkLoginThrottle(username: string): Promise<boolean> {
 	const windowStart = new Date(Date.now() - 15 * 60 * 1000)
 

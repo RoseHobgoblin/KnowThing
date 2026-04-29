@@ -141,6 +141,7 @@ export default defineConfig(
 			'local/prefer-derived-by': 'warn',
 			'local/prefer-cn-for-dynamic-classes': 'warn',
 			'local/no-console-server': 'error',
+			'local/no-db-import-in-routes': 'error',
 			'local/no-spread-state-array': 'warn',
 			'local/no-inline-import-type': 'warn',
 			'local/prefer-style-directive': 'warn',

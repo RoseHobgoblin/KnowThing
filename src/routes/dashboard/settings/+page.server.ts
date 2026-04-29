@@ -1,10 +1,6 @@
 import type { PageServerLoad } from './$types.js'
-import { db } from '$lib/server/db/index.js'
-import { siteSettings } from '$lib/server/db/schema.js'
+import { getSiteSettings } from '$lib/server/services/settings.js'
 
 export const load: PageServerLoad = async () => {
-	const rows = await db.select().from(siteSettings)
-	const settings: Record<string, string> = {}
-	for (const row of rows) settings[row.key] = row.value
-	return { settings }
+	return { settings: await getSiteSettings() }
 }

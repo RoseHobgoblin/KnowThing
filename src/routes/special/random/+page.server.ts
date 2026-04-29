@@ -1,15 +1,9 @@
 import { redirect } from '@sveltejs/kit'
 import type { PageServerLoad } from './$types.js'
-import { db } from '$lib/server/db/index.js'
-import { contentRecords } from '$lib/server/db/schema.js'
-import { sql } from 'drizzle-orm'
+import { pickRandomPage } from '$lib/server/services/dashboard.js'
 
 export const load: PageServerLoad = async () => {
-	const [randomPage] = await db
-		.select({ domain: contentRecords.domain, slug: contentRecords.slug, parentPath: contentRecords.parentPath })
-		.from(contentRecords)
-		.orderBy(sql`RANDOM()`)
-		.limit(1)
+	const randomPage = await pickRandomPage()
 
 	if (randomPage) {
 		const path = randomPage.parentPath
@@ -18,6 +12,5 @@ export const load: PageServerLoad = async () => {
 		throw redirect(302, path)
 	}
 
-	// No pages exist yet
 	throw redirect(302, '/')
 }

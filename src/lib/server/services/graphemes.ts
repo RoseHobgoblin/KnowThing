@@ -61,11 +61,14 @@ async function loadFoldedPhonemes(database: Db, graphemeId: number) {
 
 export async function listGraphemes(slug: string) {
 	const lang = await assertLanguage(slug)
+	return listGraphemesByLanguageId(lang.id)
+}
 
+export async function listGraphemesByLanguageId(languageId: number) {
 	const rows = await db
 		.select()
 		.from(graphemes)
-		.where(eq(graphemes.languageId, lang.id))
+		.where(eq(graphemes.languageId, languageId))
 		.orderBy(asc(graphemes.sortOrder), asc(graphemes.id))
 
 	if (rows.length === 0) return []

@@ -1,23 +1,14 @@
-import { error, redirect } from '@sveltejs/kit'
+import { redirect } from '@sveltejs/kit'
 import type { PageServerLoad } from './$types.js'
-import { db } from '$lib/server/db/index.js'
-import { contentRecords, lexicon, languages } from '$lib/server/db/schema.js'
-import { eq, and, sql } from 'drizzle-orm'
 import { parseWikitext, extractCategoriesFromAst, extractInfoboxFromRefs, extractSystemMapRefs, extractCollectionRefs, stripMarkup } from '$lib/parser/index.js'
 import { resolveAllStructuredData, resolveAllStructuredCollections, resolveAllSystemMaps } from '$lib/server/structured-data.js'
 import { getResolvedLinks, serializeResolvedLinks } from '$lib/server/resolved-links.js'
 import { buildDescription, lookupMediaInfo, resolveCardImageSync } from '$lib/server/services/page-card.js'
+import { findPageCaseInsensitive, findPageInAnyDomain } from '$lib/server/services/pages.js'
+import { findWordbookMatchByTitle } from '$lib/server/services/wordbook.js'
 
 export const load: PageServerLoad = async ({ params }) => {
-	// Case-insensitive lookup within the 'know' domain
-	const [record] = await db
-		.select()
-		.from(contentRecords)
-		.where(and(
-			eq(contentRecords.domain, 'know'),
-			sql`LOWER(${contentRecords.slug}) = LOWER(${params.slug})`,
-		))
-		.limit(1)
+	const record = await findPageCaseInsensitive('know', params.slug)
 
 	// Canonical redirect: if slug casing doesn't match stored form
 	if (record && record.slug !== params.slug) {
@@ -26,11 +17,7 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	if (!record) {
 		// Check if this slug exists in another domain (e.g. moved to celestial)
-		const [otherDomain] = await db
-			.select({ domain: contentRecords.domain, slug: contentRecords.slug, parentPath: contentRecords.parentPath })
-			.from(contentRecords)
-			.where(sql`LOWER(${contentRecords.slug}) = LOWER(${params.slug})`)
-			.limit(1)
+		const otherDomain = await findPageInAnyDomain(params.slug)
 
 		if (otherDomain) {
 			const path = otherDomain.parentPath
@@ -55,10 +42,8 @@ export const load: PageServerLoad = async ({ params }) => {
 	const ast = (record.parsedAst as import('$lib/parser/types.js').WikiNode) ?? parseWikitext(record.content)
 	const cats = extractCategoriesFromAst(ast)
 
-	// Fetch per-page resolved links for red/blue link detection
 	const resolvedLinks = await getResolvedLinks(record.id)
 
-	// Pre-fetch structured data for any from=slug infobox references
 	const fromRefs = extractInfoboxFromRefs(ast)
 	let structuredData: Record<string, Record<string, string>> | null = null
 	if (fromRefs.length > 0) {
@@ -71,13 +56,11 @@ export const load: PageServerLoad = async ({ params }) => {
 		}
 	}
 
-	// Pre-fetch system map data for {{System map|slug}} templates
 	const systemMapSlugs = extractSystemMapRefs(ast)
 	const systemMaps = systemMapSlugs.length > 0
 		? await resolveAllSystemMaps(systemMapSlugs)
 		: null
 
-	// Pre-fetch array-shaped structured data (phoneme grids, etc)
 	const collectionRefs = extractCollectionRefs(ast)
 	let structuredCollections: Record<string, Record<string, unknown>[]> | null = null
 	if (collectionRefs.length > 0) {
@@ -87,17 +70,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		}
 	}
 
-	// Check if this page title matches a word in the wordbook
-	const wordbookMatches = await db
-		.select({
-			word: lexicon.word,
-			languageSlug: languages.slug,
-			languageName: languages.name,
-		})
-		.from(lexicon)
-		.innerJoin(languages, eq(lexicon.languageId, languages.id))
-		.where(sql`LOWER(${lexicon.word}) = LOWER(${record.title.replaceAll(' ', '_')}) OR LOWER(${lexicon.word}) = LOWER(${record.title})`)
-		.limit(1)
+	const wordbookMatch = await findWordbookMatchByTitle(record.title)
 
 	const description = buildDescription(record.plainText || stripMarkup(record.content))
 	const cardImage = resolveCardImageSync(ast, structuredData)
@@ -112,7 +85,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		ast,
 		categories: cats,
 		updatedAt: record.updatedAt,
-		wordbookMatch: wordbookMatches[0] || null,
+		wordbookMatch,
 		structuredData,
 		structuredCollections,
 		systemMaps,

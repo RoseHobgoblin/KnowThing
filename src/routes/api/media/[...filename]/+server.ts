@@ -1,13 +1,14 @@
 import { error, json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
-import { eq } from 'drizzle-orm'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { env } from '$env/dynamic/private'
 import { requireRole } from '$lib/server/auth.js'
-import { db } from '$lib/server/db/index.js'
-import { media } from '$lib/server/db/schema.js'
-import { deleteMediaFile, updateMediaMetadata } from '$lib/server/services/media.js'
+import {
+	deleteMediaFile,
+	findMediaRecord,
+	updateMediaMetadata,
+} from '$lib/server/services/media.js'
 import { handleServiceCall } from '$lib/server/utils.js'
 
 const UPLOAD_DIR = env.UPLOAD_DIR || './uploads'
@@ -20,12 +21,7 @@ export const GET: RequestHandler = async ({ params, url }) => {
 	const filename = params.filename
 	const requestedWidth = Number.parseInt(url.searchParams.get('w') || '0')
 
-	const [record] = await db
-		.select()
-		.from(media)
-		.where(eq(media.filename, filename))
-		.limit(1)
-
+	const record = await findMediaRecord(filename)
 	if (!record) throw error(404, 'File not found')
 
 	// Raster fallback for SVGs — used by social share cards, which can't embed SVG.

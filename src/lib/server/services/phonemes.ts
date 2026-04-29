@@ -30,8 +30,11 @@ async function assertPhonemeInLanguage(languageId: number, phonemeId: number) {
 
 export async function listPhonemes(slug: string, typeFilter: string | null) {
 	const lang = await assertLanguage(slug)
+	return listPhonemesByLanguageId(lang.id, typeFilter)
+}
 
-	const conditions = [eq(phonemes.languageId, lang.id)]
+export async function listPhonemesByLanguageId(languageId: number, typeFilter: string | null) {
+	const conditions = [eq(phonemes.languageId, languageId)]
 	if (typeFilter && (PHONEME_TYPES as readonly string[]).includes(typeFilter)) {
 		conditions.push(eq(phonemes.type, typeFilter))
 	}
@@ -40,6 +43,14 @@ export async function listPhonemes(slug: string, typeFilter: string | null) {
 		.select()
 		.from(phonemes)
 		.where(and(...conditions))
+		.orderBy(asc(phonemes.type), asc(phonemes.sortOrder), asc(phonemes.id))
+}
+
+export async function listPhonemeSummaryForLanguage(languageId: number) {
+	return db
+		.select({ id: phonemes.id, ipa: phonemes.ipa, type: phonemes.type, sortOrder: phonemes.sortOrder })
+		.from(phonemes)
+		.where(eq(phonemes.languageId, languageId))
 		.orderBy(asc(phonemes.type), asc(phonemes.sortOrder), asc(phonemes.id))
 }
 

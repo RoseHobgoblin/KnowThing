@@ -1,9 +1,9 @@
 import { error } from '@sveltejs/kit'
-import { asc, eq } from 'drizzle-orm'
+import { asc, eq, sql } from 'drizzle-orm'
 import type { z } from 'zod'
 import { db } from '$lib/server/db/index.js'
-import { calendars, contentRecords } from '$lib/server/db/schema.js'
-import { deleteContentEffects } from '$lib/server/content-effects.js'
+import { calendars, contentRecords, contentRevisions } from '$lib/server/db/schema.js'
+import { deleteContentEffects, updateContentEffects } from '$lib/server/content-effects.js'
 import { urlSlugify } from '$lib/utils/slugify.js'
 import type {
 	createCalendarSchema,
@@ -12,6 +12,62 @@ import type {
 
 type CreateCalendarInput = z.infer<typeof createCalendarSchema>
 type UpdateCalendarInput = z.infer<typeof updateCalendarSchema>
+
+export type Calendar = typeof calendars.$inferSelect
+
+export async function listAllCalendars() {
+	return db.select().from(calendars).orderBy(asc(calendars.name))
+}
+
+export async function findCalendarBySlugCaseInsensitive(slug: string) {
+	const [cal] = await db.select().from(calendars).where(sql`LOWER(${calendars.slug}) = LOWER(${slug})`)
+	return cal ?? null
+}
+
+export async function loadCalendarContent(contentRecordId: number | null) {
+	if (!contentRecordId) {
+		return { wikiContent: '', ast: null as unknown, contentRecordId: null as number | null }
+	}
+	const [record] = await db
+		.select({ id: contentRecords.id, content: contentRecords.content, parsedAst: contentRecords.parsedAst })
+		.from(contentRecords)
+		.where(eq(contentRecords.id, contentRecordId))
+	if (!record) return { wikiContent: '', ast: null, contentRecordId: null }
+	return { wikiContent: record.content, ast: record.parsedAst, contentRecordId: record.id, rawContent: record.content }
+}
+
+export async function saveCalendarContent(input: {
+	contentRecordId: number
+	content: string
+	editSummary: string
+	userId: number
+}) {
+	const [existing] = await db
+		.select()
+		.from(contentRecords)
+		.where(eq(contentRecords.id, input.contentRecordId))
+
+	if (!existing) return { ok: false as const, status: 404, error: 'Content record not found' }
+
+	const sizeBytes = new TextEncoder().encode(input.content).length
+	const { plainText, ast } = await updateContentEffects(db, input.contentRecordId, input.content, 'calendar')
+
+	await db
+		.update(contentRecords)
+		.set({ content: input.content, plainText, parsedAst: ast, sizeBytes, updatedAt: new Date() })
+		.where(eq(contentRecords.id, input.contentRecordId))
+
+	await db.insert(contentRevisions).values({
+		contentRecordId: input.contentRecordId,
+		title: existing.title,
+		content: input.content,
+		sizeBytes,
+		editSummary: input.editSummary,
+		userId: input.userId,
+	})
+
+	return { ok: true as const }
+}
 
 export async function listCalendars() {
 	return db

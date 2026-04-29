@@ -1,20 +1,11 @@
-import { error, fail, redirect } from '@sveltejs/kit'
+import { fail, redirect } from '@sveltejs/kit'
 import type { Actions, PageServerLoad } from './$types.js'
-import { db } from '$lib/server/db/index.js'
-import { contentRecords } from '$lib/server/db/schema.js'
-import { eq, and } from 'drizzle-orm'
 import { requireEditor } from '$lib/server/guards.js'
 import { updateKnowPage } from '$lib/server/services/content.js'
+import { getPageForEdit } from '$lib/server/services/pages.js'
 
 export const load: PageServerLoad = async ({ params }) => {
-	const [record] = await db
-		.select({ id: contentRecords.id, slug: contentRecords.slug, title: contentRecords.title, content: contentRecords.content })
-		.from(contentRecords)
-		.where(and(eq(contentRecords.domain, 'know'), eq(contentRecords.slug, params.slug)))
-		.limit(1)
-
-	if (!record) throw error(404, 'Page not found')
-
+	const record = await getPageForEdit('know', params.slug)
 	return { slug: record.slug, title: record.title, content: record.content }
 }
 

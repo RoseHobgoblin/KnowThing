@@ -1,87 +1,34 @@
 import type { PageServerLoad } from './$types.js'
-import { db } from '$lib/server/db/index.js'
-import { contentRecords, contentRevisions, lexicon, languages, media, calendars, users } from '$lib/server/db/schema.js'
-import { desc, eq, sql, count, and } from 'drizzle-orm'
 import { resolveDisplay } from '$lib/calendar/date-math.js'
 import type { CalendarConfig, StaticCalendarData } from '$lib/calendar/types.js'
+import {
+	getFeaturedArticle,
+	getHomepageCounts,
+	getPrimaryCalendarRow,
+	getRandomWord,
+	getRecentEdits,
+} from '$lib/server/services/homepage.js'
 
 export const load: PageServerLoad = async () => {
-	const [
-		recentEdits,
-		articleCount,
-		wordCount,
-		languageCount,
-		mediaCount,
-		userCount,
-		featuredArticle,
-		randomWord,
-		primaryCalendarRows,
-	] = await Promise.all([
-		// Recent edits (last 8)
-		db
-			.select({
-				pageSlug: contentRecords.slug,
-				title: contentRevisions.title,
-				editSummary: contentRevisions.editSummary,
-				createdAt: contentRevisions.createdAt,
-				userId: contentRevisions.userId,
-			})
-			.from(contentRevisions)
-			.innerJoin(contentRecords, eq(contentRevisions.contentRecordId, contentRecords.id))
-			.where(eq(contentRecords.domain, 'know'))
-			.orderBy(desc(contentRevisions.createdAt))
-			.limit(8),
-
-		// Counts
-		db.select({ value: count() }).from(contentRecords).where(eq(contentRecords.domain, 'know')),
-		db.select({ value: count() }).from(lexicon),
-		db.select({ value: count() }).from(languages),
-		db.select({ value: count() }).from(media),
-		db.select({ value: count() }).from(users),
-
-		// Featured: most recently updated article with decent content
-		db
-			.select({ slug: contentRecords.slug, title: contentRecords.title, content: contentRecords.content })
-			.from(contentRecords)
-			.where(and(eq(contentRecords.domain, 'know'), sql`LENGTH(${contentRecords.content}) > 200`))
-			.orderBy(desc(contentRecords.updatedAt))
-			.limit(1),
-
-		// Random word with definition — single query, random offset instead of full-table sort
-		db.select({ value: count() }).from(lexicon).then(async ([{ value: total }]) => {
-			if (total === 0) return []
-			const randomOffset = Math.floor(Math.random() * total)
-			return db
-				.select({
-					word: lexicon.word,
-					languageName: languages.name,
-					languageSlug: languages.slug,
-					pronunciation: lexicon.pronunciation,
-					definition: sql<string>`(SELECT definition FROM definitions WHERE entry_id = ${lexicon.id} ORDER BY sense_number LIMIT 1)`,
-				})
-				.from(lexicon)
-				.innerJoin(languages, eq(lexicon.languageId, languages.id))
-				.offset(randomOffset)
-				.limit(1)
-		}),
-
-		// Primary calendar
-		db.select().from(calendars).where(eq(calendars.isPrimary, true)).limit(1),
+	const [recentEdits, stats, featured, randomWord, primaryCalendar] = await Promise.all([
+		getRecentEdits(8),
+		getHomepageCounts(),
+		getFeaturedArticle(),
+		getRandomWord(),
+		getPrimaryCalendarRow(),
 	])
 
-	// Resolve calendar date
 	let calendarInfo: { name: string, dayName: string, day: number, monthName: string, yearDisplay: string, seasonName: string } | null = null
-	if (primaryCalendarRows.length > 0) {
-		const row = primaryCalendarRows[0]
+	if (primaryCalendar) {
 		const config: CalendarConfig = {
-			name: row.name,
-			description: row.description || '',
+			name: primaryCalendar.name,
+			description: primaryCalendar.description || '',
 			primary: true,
 			static_data: {
 				first_week_day: 0, weekdays: [], months: [], leap_days: [],
 				moons: [], eras: [], seasons: [], display_moons: false,
 				year_offset: 0, epoch_offset: 0,
-				...(row.staticData as Partial<StaticCalendarData>),
+				...(primaryCalendar.staticData as Partial<StaticCalendarData>),
 			},
 		}
 		const resolved = resolveDisplay(config)
@@ -95,14 +42,12 @@ export const load: PageServerLoad = async () => {
 		}
 	}
 
-	// Extract first paragraph for featured article summary
 	let featuredSummary = ''
-	if (featuredArticle[0]) {
-		const lines = featuredArticle[0].content.split('\n')
+	if (featured) {
+		const lines = featured.content.split('\n')
 		let insideTemplate = false
 		for (const line of lines) {
 			const trimmed = line.trim()
-			// Track multi-line templates (infoboxes)
 			if (trimmed.startsWith('{{')) insideTemplate = true
 			if (insideTemplate) {
 				if (trimmed.includes('}}') && !trimmed.startsWith('{{')) insideTemplate = false
@@ -111,9 +56,7 @@ export const load: PageServerLoad = async () => {
 			if (!trimmed || trimmed.startsWith('=') || trimmed.startsWith('[[Category:') || trimmed.startsWith('[[File:') || trimmed.startsWith('{|') || trimmed.startsWith('|}') || trimmed.startsWith('|') || trimmed.startsWith('!') || trimmed.startsWith('*') || trimmed.startsWith('#') || trimmed.startsWith(':') || trimmed.startsWith(';') || trimmed === '}}') continue
 			featuredSummary = trimmed
 				.replaceAll(/'{2,3}/g, '')
-				// Strip [[File:...|...]] and [[Image:...|...]] entirely
 				.replaceAll(/\[\[(?:File|Image):[^\]]*\]\]/gi, '')
-				// Convert [[link|display]] to display, [[link]] to link
 				.replaceAll(/\[\[(?:[^|\]]*\|)?([^\]]*)\]\]/g, '$1')
 				.replaceAll(/\{\{[^}]*\}\}/g, '')
 				.replaceAll(/<ref[^>]*>[\S\s]*?<\/ref>/gi, '')
@@ -130,20 +73,14 @@ export const load: PageServerLoad = async () => {
 	}
 
 	return {
-		stats: {
-			articles: articleCount[0]?.value ?? 0,
-			words: wordCount[0]?.value ?? 0,
-			languages: languageCount[0]?.value ?? 0,
-			media: mediaCount[0]?.value ?? 0,
-			users: userCount[0]?.value ?? 0,
-		},
+		stats,
 		recentEdits,
-		featured: featuredArticle[0] ? {
-			slug: featuredArticle[0].slug,
-			title: featuredArticle[0].title,
+		featured: featured ? {
+			slug: featured.slug,
+			title: featured.title,
 			summary: featuredSummary,
 		} : null,
-		randomWord: randomWord[0] ?? null,
+		randomWord,
 		calendarInfo,
 	}
 }

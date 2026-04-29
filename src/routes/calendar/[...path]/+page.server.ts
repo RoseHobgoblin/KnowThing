@@ -1,23 +1,23 @@
 import { error, fail, redirect } from '@sveltejs/kit'
 import type { Actions, PageServerLoad } from './$types.js'
-import { db } from '$lib/server/db/index.js'
-import { calendars, contentRecords, contentRevisions } from '$lib/server/db/schema.js'
-import { eq, sql, asc } from 'drizzle-orm'
 import { parseWikitext } from '$lib/parser/index.js'
 import { hasRole } from '$lib/server/auth.js'
 import { requireEditor } from '$lib/server/guards.js'
-import { updateContentEffects } from '$lib/server/content-effects.js'
 import type { CalendarConfig, StaticCalendarData } from '$lib/calendar/types.js'
 import { resolveDisplay } from '$lib/calendar/date-math.js'
+import {
+	type Calendar,
+	findCalendarBySlugCaseInsensitive,
+	listAllCalendars,
+	loadCalendarContent,
+	saveCalendarContent,
+} from '$lib/server/services/calendar.js'
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const pathSegments = (params.path || '').split('/').filter(Boolean)
 
 	if (pathSegments.length === 0) {
-		const allCalendars = await db
-			.select()
-			.from(calendars)
-			.orderBy(asc(calendars.name))
+		const allCalendars = await listAllCalendars()
 
 		const configs = allCalendars.map(cal => ({
 			...cal,
@@ -43,7 +43,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		}
 	}
 
-	const [cal] = await db.select().from(calendars).where(sql`LOWER(${calendars.slug}) = LOWER(${slug})`)
+	const cal = await findCalendarBySlugCaseInsensitive(slug)
 	if (!cal) throw error(404, 'Calendar not found')
 
 	if (cal.slug !== slug && !isConfigure) throw redirect(301, `/calendar/${cal.slug}`)
@@ -51,33 +51,21 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	const config = buildCalendarConfig(cal)
 	const resolved = resolveDisplay(config)
 
-	let wikiContent = ''
-	let ast = null
-	let contentRecordId: number | null = null
-	if (cal.contentRecordId) {
-		const [record] = await db
-			.select({ id: contentRecords.id, content: contentRecords.content, parsedAst: contentRecords.parsedAst })
-			.from(contentRecords)
-			.where(eq(contentRecords.id, cal.contentRecordId))
-		if (record) {
-			wikiContent = record.content
-			ast = (record.parsedAst as import('$lib/parser/types.js').WikiNode) ?? (record.content ? parseWikitext(record.content) : null)
-			contentRecordId = record.id
-		}
-	}
+	const loaded = await loadCalendarContent(cal.contentRecordId)
+	const ast = (loaded.ast as import('$lib/parser/types.js').WikiNode | null)
+		?? (loaded.wikiContent ? parseWikitext(loaded.wikiContent) : null)
 
 	return {
 		mode: (isConfigure ? 'configure' : 'detail') as 'configure' | 'detail',
 		calendar: cal,
 		config,
 		resolved,
-		wikiContent,
+		wikiContent: loaded.wikiContent,
 		ast,
-		contentRecordId,
+		contentRecordId: loaded.contentRecordId,
 	}
 }
 
-/** Save article content for a calendar */
 export const actions: Actions = {
 	default: async (event) => {
 		const user = requireEditor(event)
@@ -88,30 +76,9 @@ export const actions: Actions = {
 
 		if (!contentRecordId) return fail(400, { error: 'Missing content record ID' })
 
-		const [existing] = await db
-			.select()
-			.from(contentRecords)
-			.where(eq(contentRecords.id, contentRecordId))
-
-		if (!existing) return fail(404, { error: 'Content record not found' })
-
 		try {
-			const sizeBytes = new TextEncoder().encode(content).length
-			const { plainText, ast } = await updateContentEffects(db, contentRecordId, content, 'calendar')
-
-			await db
-				.update(contentRecords)
-				.set({ content, plainText, parsedAst: ast, sizeBytes, updatedAt: new Date() })
-				.where(eq(contentRecords.id, contentRecordId))
-
-			await db.insert(contentRevisions).values({
-				contentRecordId,
-				title: existing.title,
-				content,
-				sizeBytes,
-				editSummary,
-				userId: user.id,
-			})
+			const result = await saveCalendarContent({ contentRecordId, content, editSummary, userId: user.id })
+			if (!result.ok) return fail(result.status, { error: result.error })
 		} catch {
 			return fail(500, { error: 'Failed to save article changes' })
 		}
@@ -121,7 +88,7 @@ export const actions: Actions = {
 	},
 }
 
-function buildCalendarConfig(cal: typeof calendars.$inferSelect): CalendarConfig {
+function buildCalendarConfig(cal: Calendar): CalendarConfig {
 	return {
 		name: cal.name,
 		description: cal.description || '',

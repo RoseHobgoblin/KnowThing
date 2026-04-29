@@ -1,7 +1,17 @@
 import { and, eq, isNull } from 'drizzle-orm'
 import { db } from '$lib/server/db/index.js'
-import { contentRecords, planetaryBodies, starSystems, stars } from '$lib/server/db/schema.js'
-import { backfillLinkTargets, deleteContentEffects } from '$lib/server/content-effects.js'
+import {
+	contentRecords,
+	contentRevisions,
+	planetaryBodies,
+	starSystems,
+	stars,
+} from '$lib/server/db/schema.js'
+import {
+	backfillLinkTargets,
+	deleteContentEffects,
+	updateContentEffects,
+} from '$lib/server/content-effects.js'
 
 type ContentDatabase = Pick<typeof db, 'select' | 'insert' | 'update' | 'delete'>
 
@@ -195,6 +205,39 @@ export async function syncBodiesForStar(database: ContentDatabase, starId: numbe
 	for (const body of bodies) {
 		await ensurePlanetaryBodyContentRecord(database, body)
 	}
+}
+
+export async function saveCelestialContent(input: {
+	contentRecordId: number
+	content: string
+	editSummary: string
+	userId: number
+}) {
+	const [existing] = await db
+		.select()
+		.from(contentRecords)
+		.where(eq(contentRecords.id, input.contentRecordId))
+
+	if (!existing) return { ok: false as const, status: 404, error: 'Content record not found' }
+
+	const sizeBytes = new TextEncoder().encode(input.content).length
+	const { plainText, ast } = await updateContentEffects(db, input.contentRecordId, input.content, 'celestial')
+
+	await db
+		.update(contentRecords)
+		.set({ content: input.content, plainText, parsedAst: ast, sizeBytes, updatedAt: new Date() })
+		.where(eq(contentRecords.id, input.contentRecordId))
+
+	await db.insert(contentRevisions).values({
+		contentRecordId: input.contentRecordId,
+		title: existing.title,
+		content: input.content,
+		sizeBytes,
+		editSummary: input.editSummary,
+		userId: input.userId,
+	})
+
+	return { ok: true as const }
 }
 
 export async function deleteCelestialContentRecord(database: ContentDatabase, contentRecordId: number | null) {

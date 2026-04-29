@@ -2,9 +2,7 @@ import { fail, isHttpError, redirect } from '@sveltejs/kit'
 import { z } from 'zod'
 import type { Actions, PageServerLoad } from './$types.js'
 import { setSessionCookie } from '$lib/server/auth.js'
-import { db } from '$lib/server/db/index.js'
-import { users } from '$lib/server/db/schema.js'
-import { registerUser } from '$lib/server/services/auth.js'
+import { hasAnyUser, registerUser } from '$lib/server/services/auth.js'
 
 const registerSchema = z.object({
 	username: z.string().min(3, 'Username must be at least 3 characters'),
@@ -15,10 +13,7 @@ const registerSchema = z.object({
 
 export const load: PageServerLoad = async ({ locals }) => {
 	if (locals.user) throw redirect(302, '/')
-
-	// Check if any users exist — first user doesn't need a code
-	const existing = await db.select({ id: users.id }).from(users).limit(1)
-	return { requireCode: existing.length > 0 }
+	return { requireCode: await hasAnyUser() }
 }
 
 export const actions: Actions = {

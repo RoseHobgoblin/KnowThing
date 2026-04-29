@@ -1,12 +1,10 @@
 import type { LayoutServerLoad } from './$types.js'
-import { db } from '$lib/server/db/index.js'
-import { calendars, planetaryBodies } from '$lib/server/db/schema.js'
-import { eq, sql } from 'drizzle-orm'
 import { resolveDisplay } from '$lib/calendar/date-math.js'
 import type { CalendarConfig, ResolvedDate, StaticCalendarData } from '$lib/calendar/types.js'
 import { getSiteConfig } from '$lib/server/settings.js'
 import { hasRole } from '$lib/server/auth.js'
 import type { AppPermissions } from '$lib/permissions.js'
+import { getPrimaryCalendarWithPlanetData } from '$lib/server/services/layout.js'
 
 export const load: LayoutServerLoad = async ({ locals }) => {
 	const user = locals.user
@@ -24,15 +22,15 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		canGenerateInviteCodes: user ? hasRole(user.role, 'admin') : false,
 	}
 
-	const [primaryCalendarRows, siteConfig] = await Promise.all([
-		db.select().from(calendars).where(eq(calendars.isPrimary, true)).limit(1),
+	const [primaryCalendar, siteConfig] = await Promise.all([
+		getPrimaryCalendarWithPlanetData(),
 		getSiteConfig(),
 	])
 
 	let calendarDate: ResolvedDate | null = null
 	let calendarConfig: CalendarConfig | null = null
-	if (primaryCalendarRows.length > 0) {
-		const row = primaryCalendarRows[0]
+	if (primaryCalendar) {
+		const { calendar: row, planet, moons } = primaryCalendar
 		const staticData: StaticCalendarData = {
 			first_week_day: 0,
 			weekdays: [],
@@ -47,29 +45,18 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 			...(row.staticData as Partial<StaticCalendarData>),
 		}
 
-		// Enrich with planet data if linked
-		if (row.planetId) {
-			const [planet] = await db.select().from(planetaryBodies).where(eq(planetaryBodies.id, row.planetId))
-			if (planet) {
-				// Derive day length from planet rotation
-				if (planet.rotationPeriodS) {
-					staticData.day_length_seconds = planet.rotationPeriodS
-				}
-				// Fetch moons for phase computation
-				const moons = await db
-					.select({ id: planetaryBodies.id, orbitalPeriodDays: planetaryBodies.orbitalPeriodDays, epochPhase: planetaryBodies.epochPhase })
-					.from(planetaryBodies)
-					.where(sql`${planetaryBodies.parentId} = ${planet.id}`)
-
-				staticData.planet = {
-					orbital_period_days: planet.orbitalPeriodDays ?? 0,
-					rotation_period_s: planet.rotationPeriodS ?? 86400,
-					moons: moons.map(m => ({
-						id: m.id,
-						orbital_period_days: m.orbitalPeriodDays ?? 29.5,
-						epoch_phase: m.epochPhase ?? 0,
-					})),
-				}
+		if (planet) {
+			if (planet.rotationPeriodS) {
+				staticData.day_length_seconds = planet.rotationPeriodS
+			}
+			staticData.planet = {
+				orbital_period_days: planet.orbitalPeriodDays ?? 0,
+				rotation_period_s: planet.rotationPeriodS ?? 86400,
+				moons: moons.map(m => ({
+					id: m.id,
+					orbital_period_days: m.orbitalPeriodDays ?? 29.5,
+					epoch_phase: m.epochPhase ?? 0,
+				})),
 			}
 		}
 

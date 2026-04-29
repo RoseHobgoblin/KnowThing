@@ -1,41 +1,28 @@
 import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
-import { db } from '$lib/server/db/index.js'
-import { lexiconVariants, languageDialects } from '$lib/server/db/schema.js'
 import { requireRole } from '$lib/server/auth.js'
-import { eq } from 'drizzle-orm'
-import { addEntryVariant } from '$lib/server/services/wordbook.js'
+import { addEntryVariant, listEntryVariants } from '$lib/server/services/wordbook.js'
 import { handleServiceCall } from '$lib/server/utils.js'
+
+function parseId(raw: string) {
+	const id = Number.parseInt(raw)
+	if (isNaN(id)) return null
+	return id
+}
 
 /** GET /api/wordbook/:id/variants */
 export const GET: RequestHandler = async ({ params }) => {
-	const entryId = Number.parseInt(params.id)
-	if (isNaN(entryId)) return json({ error: 'Invalid ID' }, { status: 400 })
+	const entryId = parseId(params.id)
+	if (entryId == null) return json({ error: 'Invalid ID' }, { status: 400 })
 
-	const variants = await db
-		.select({
-			id: lexiconVariants.id,
-			pronunciation: lexiconVariants.pronunciation,
-			spelling: lexiconVariants.spelling,
-			notes: lexiconVariants.notes,
-			dialectId: lexiconVariants.dialectId,
-			dialectName: languageDialects.name,
-			dialectSlug: languageDialects.slug,
-			dialectRegion: languageDialects.region,
-		})
-		.from(lexiconVariants)
-		.innerJoin(languageDialects, eq(lexiconVariants.dialectId, languageDialects.id))
-		.where(eq(lexiconVariants.entryId, entryId))
-
-	return json(variants)
+	return handleServiceCall(async () => json(await listEntryVariants(entryId)))
 }
 
 /** POST /api/wordbook/:id/variants */
 export const POST: RequestHandler = async (event) => {
 	requireRole(event, 'editor')
-
-	const entryId = Number.parseInt(event.params.id)
-	if (isNaN(entryId)) return json({ error: 'Invalid ID' }, { status: 400 })
+	const entryId = parseId(event.params.id)
+	if (entryId == null) return json({ error: 'Invalid ID' }, { status: 400 })
 
 	const body = await event.request.json()
 	const { dialectId, pronunciation, spelling, notes } = body as {
@@ -43,11 +30,6 @@ export const POST: RequestHandler = async (event) => {
 		pronunciation?: string
 		spelling?: string
 		notes?: string
-	}
-
-	if (!dialectId) return json({ error: 'dialectId is required' }, { status: 400 })
-	if (!pronunciation?.trim() && !spelling?.trim()) {
-		return json({ error: 'At least pronunciation or spelling is required' }, { status: 400 })
 	}
 
 	return handleServiceCall(async () => {

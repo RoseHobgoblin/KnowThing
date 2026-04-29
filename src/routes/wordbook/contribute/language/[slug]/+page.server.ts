@@ -1,20 +1,16 @@
 import type { PageServerLoad } from './$types.js'
-import { db } from '$lib/server/db/index.js'
-import { languages } from '$lib/server/db/schema.js'
-import { eq, asc, ne } from 'drizzle-orm'
 import { redirect, error } from '@sveltejs/kit'
+import {
+	getLanguageRowBySlug,
+	listLanguageOptionsExcluding,
+} from '$lib/server/services/languages.js'
 
 export const load: PageServerLoad = async ({ locals, params }) => {
 	if (!locals.user) throw redirect(302, '/auth/login')
 
-	const [lang] = await db.select().from(languages).where(eq(languages.slug, params.slug))
+	const lang = await getLanguageRowBySlug(params.slug)
 	if (!lang) throw error(404, 'Language not found')
 
-	const otherLanguages = await db
-		.select({ id: languages.id, name: languages.name, slug: languages.slug })
-		.from(languages)
-		.where(ne(languages.id, lang.id))
-		.orderBy(asc(languages.name))
-
+	const otherLanguages = await listLanguageOptionsExcluding(lang.id)
 	return { language: lang, otherLanguages }
 }

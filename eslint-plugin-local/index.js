@@ -2,6 +2,7 @@ import noCnStaticOnly from './no-cn-static-only.js'
 import preferDerivedBy from './prefer-derived-by.js'
 import preferCnForDynamicClasses from './prefer-cn-for-dynamic-classes.js'
 import noConsoleServer from './no-console-server.js'
+import noDbImportInRoutes from './no-db-import-in-routes.js'
 import noSpreadStateArray from './no-spread-state-array.js'
 import noInlineImportType from './no-inline-import-type.js'
 import preferStyleDirective from './prefer-style-directive.js'
@@ -15,6 +16,7 @@ const plugin = {
 		'prefer-derived-by': preferDerivedBy,
 		'prefer-cn-for-dynamic-classes': preferCnForDynamicClasses,
 		'no-console-server': noConsoleServer,
+		'no-db-import-in-routes': noDbImportInRoutes,
 		'no-spread-state-array': noSpreadStateArray,
 		'no-inline-import-type': noInlineImportType,
 		'prefer-style-directive': preferStyleDirective,
