@@ -92,7 +92,7 @@
 	bind:open
 	title={selected ? 'Add modifiers' : 'Choose a phoneme'}
 	subtitle={selected ? `Refine the base symbol /${selected.symbol}/ before adding` : undefined}
-	mainClass="w-5xl"
+	mainClass="w-7xl"
 >
 	{#if selected}
 		<!-- ─────────────────────────────────────────── refining phase ── -->
