@@ -28,7 +28,7 @@
 | Language articles | Template with text fields for phonology, morphology, syntax | Full structured data system |
 | Dictionary | Interactive word list, CSV import, VulgarLang integration | Full lexicon CRUD with pronunciation, etymology, tags, homographs |
 | Definitions | Single definition per word | Multiple definitions per entry with sense numbering, POS, usage examples, dialect targeting |
-| Phoneme inventory | Text field (type it yourself) | Schema designed, not yet built (Phase 1 planned) |
+| Phoneme inventory | Text field (type it yourself) | Built: phoneme + grapheme tables with grapheme→phoneme mapping, IPA, place/manner/voicing for consonants, height/backness/rounded for vowels, PhonemeEditor UI |
 | Inflection/declension | Not supported — type tables manually | **Full system**: dimensions, paradigm classes, rules, stem patterns, auto-generated forms, overrides |
 | Dialects | Not supported | Per-language dialects with region, lexicon variants, dialect-specific definitions |
 | Etymology | Text field | Structured relations: derived_from, loan_from, compound_of between entries |
@@ -43,15 +43,15 @@
 
 | | WorldAnvil | KnowThing |
 |---|---|---|
-| Map type | 2D image with pin overlays (Leaflet-style) | Not built. Vision: 3D globe from equirectangular PNG |
-| Pins/markers | 36+ icon sets, custom icons (Grandmaster+), draggable pins | Planned: city markers at lat/long |
-| Labels | Text markers in multiple styles (Master+) | Not planned |
-| Lines/journeys | Road/river/journey tracking with styling (Master+) | Not planned |
-| Layers | Multiple image layers with transparency (Master+) | Planned: visualization modes (political, linguistic, religious, historical) |
-| Map-to-map drill | Galaxy > planet > continent > city > room | Not planned |
-| Data-driven recoloring | No — pins only, no region coloring | Planned: hex-color regions, dynamic recoloring from structured data |
-| Historical timeline | No | Planned: time slider showing territorial changes |
-| **Edge** | **WA wins — it exists. KT's vision is more ambitious but is 0% built** |
+| Map type | 2D image with pin overlays (Leaflet-style) | Built: SVG worldmap with region overlays, zoom/pan, click navigation. 3D globe still planned |
+| Pins/markers | 36+ icon sets, custom icons (Grandmaster+), draggable pins | Not built. Region-based, not pin-based |
+| Labels | Text markers in multiple styles (Master+) | Built: per-region labels |
+| Lines/journeys | Road/river/journey tracking with styling (Master+) | Not built |
+| Layers | Multiple image layers with transparency (Master+) | Partial: transparency modes on regions. Multi-layer images not built |
+| Map-to-map drill | Galaxy > planet > continent > city > room | Click-through to region's linked page; no nested map drill |
+| Data-driven recoloring | No — pins only, no region coloring | Built: hex-color regions per map. Dynamic recoloring from structured data still planned |
+| Historical timeline | No | Map has `timePeriod` + `event` fields; time slider not built |
+| **Edge** | **WA wins on breadth (pins, journeys, multi-layer). KT has the data-driven region foundation WA can't match, but only the foundation** |
 
 ---
 
@@ -223,7 +223,7 @@
 | Notebooks | Mobile-friendly quick capture | None |
 | World meta prompts | Creativity questionnaire for genre/themes | None |
 | CSS customization | Tier-gated with restrictions | Full control (self-hosted) |
-| Export | ZIP archive, CSV | Export page (details unclear) |
+| Export | ZIP archive, CSV | JSON export of all wiki pages (slug, title, content) — admin-only. No media or structured data export yet |
 
 ---
 
@@ -234,7 +234,7 @@
 | Wiki/Articles | ★★★★ | ★★★★★ | 12 infobox types, recursive templates, unified data model |
 | Linguistics | ★★ | ★★★★★ | Inflections, etymology, dialects, families, homographs — all built |
 | Celestial/Astronomy | ☆ | ★★★★ | Interactive system maps, orbital mechanics, spectral classification — WA has nothing |
-| Maps | ★★★★ | ☆ | KT has nothing built |
+| Maps | ★★★★ | ★★ | KT has SVG region maps; no pins, journeys, or 3D globe yet |
 | Calendar | ★★★ | ★★★★★ | KT is deeper, WA's is stalled |
 | Timelines | ★★★★ | ☆ | KT has nothing built |
 | Characters/Relations | ★★★ | ★★ | KT has person/royalty/officeholder infoboxes, knowledge graph planned |
@@ -264,4 +264,4 @@ KT wins on:
 5. **Data ownership** — self-hosted, no paywalls, no storage limits
 6. **Performance** — SvelteKit SSR vs WA's notoriously slow pages
 
-The path: finish the linguistics pipeline (phonology, CarveCraft), build the knowledge graph, then expand outward.
+The path: ship CarveCraft (glyphs, font generation), build the knowledge graph, deepen maps (pins, time slider), then expand outward.
