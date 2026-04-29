@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { normalizeEnvironment, createGraphemeSchema } from '../+server.js'
-import { validateReorderPayload } from '../reorder/+server.js'
+import { normalizeEnvironment, createGraphemeSchema, validateReorderPayload } from '$lib/server/graphemes.js'
 
 describe('normalizeEnvironment', () => {
 	it('lowercases and trims', () => {

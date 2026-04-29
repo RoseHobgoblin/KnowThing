@@ -5,7 +5,7 @@ import { db } from '$lib/server/db/index.js'
 import { languages, graphemes, graphemePhonemes, phonemes } from '$lib/server/db/schema.js'
 import { requireRole } from '$lib/server/auth.js'
 import { parseBody } from '$lib/server/utils.js'
-import { normalizeEnvironment } from '../+server.js'
+import { normalizeEnvironment } from '$lib/server/graphemes.js'
 import { eq, and, asc, inArray } from 'drizzle-orm'
 
 const updateGraphemeSchema = z.object({

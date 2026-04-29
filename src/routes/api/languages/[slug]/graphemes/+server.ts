@@ -1,28 +1,11 @@
 import { json } from '@sveltejs/kit'
-import { z } from 'zod'
 import type { RequestHandler } from './$types.js'
 import { db } from '$lib/server/db/index.js'
 import { languages, graphemes, graphemePhonemes, phonemes } from '$lib/server/db/schema.js'
 import { requireRole } from '$lib/server/auth.js'
 import { parseBody } from '$lib/server/utils.js'
+import { normalizeEnvironment, createGraphemeSchema } from '$lib/server/graphemes.js'
 import { eq, and, asc, inArray, sql } from 'drizzle-orm'
-
-/** Environment strings are free-form but normalized to avoid accidental
- * divergence ("Before Front Vowels" vs "before front vowels"). */
-export function normalizeEnvironment(value: string | null | undefined): string | null {
-	if (value == null) return null
-	const cleaned = value.trim().toLowerCase().replaceAll(/\s+/g, ' ')
-	return cleaned || null
-}
-
-export const createGraphemeSchema = z.object({
-	grapheme: z.string().min(1, 'Grapheme is required'),
-	phonemeIds: z.array(z.number().int()).default([]),
-	romanization: z.string().nullish(),
-	environment: z.string().nullish(),
-	notes: z.string().nullish(),
-	sortOrder: z.number().int().nullish(),
-})
 
 async function assertPhonemesBelongToLanguage(tx: typeof db, phonemeIds: number[], languageId: number) {
 	if (phonemeIds.length === 0) return true

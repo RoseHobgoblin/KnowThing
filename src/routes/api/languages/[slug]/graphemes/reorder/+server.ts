@@ -5,22 +5,12 @@ import { db } from '$lib/server/db/index.js'
 import { languages, graphemes } from '$lib/server/db/schema.js'
 import { requireRole } from '$lib/server/auth.js'
 import { parseBody } from '$lib/server/utils.js'
+import { validateReorderPayload } from '$lib/server/graphemes.js'
 import { eq, and } from 'drizzle-orm'
 
 const reorderSchema = z.object({
 	order: z.array(z.number().int()),
 })
-
-/** Reject any payload that doesn't cover the language's graphemes exactly:
- * size mismatch, duplicate ids, or unknown ids. Duplicate-id check is the
- * subtle one — `[1,1,2]` passes length+membership but silently leaves another
- * grapheme's sort_order untouched. */
-export function validateReorderPayload(order: number[], existingIds: Set<number>): 'ok' | 'mismatch' {
-	if (order.length !== existingIds.size) return 'mismatch'
-	if (new Set(order).size !== order.length) return 'mismatch'
-	for (const id of order) if (!existingIds.has(id)) return 'mismatch'
-	return 'ok'
-}
 
 /** POST /api/languages/:slug/graphemes/reorder — bulk sort_order update.
  * The `order` array must cover exactly the language's graphemes. */
