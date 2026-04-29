@@ -1,14 +1,9 @@
 import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireAuth, clearSessionCookie } from '$lib/server/auth.js'
-import { z } from 'zod'
 import { changeOwnPassword, deleteOwnAccount } from '$lib/server/services/auth.js'
 import { parseBody, handleServiceCall } from '$lib/server/utils.js'
-
-const changePasswordSchema = z.object({
-	currentPassword: z.string().min(1),
-	newPassword: z.string().min(8, 'New password must be at least 8 characters'),
-})
+import { changePasswordSchema } from '$lib/server/http/account/schemas.js'
 
 /** PUT /api/account — change password */
 export const PUT: RequestHandler = async (event) => {

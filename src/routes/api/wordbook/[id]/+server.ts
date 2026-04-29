@@ -1,5 +1,4 @@
 import { json } from '@sveltejs/kit'
-import { z } from 'zod'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
 import {
@@ -8,16 +7,7 @@ import {
 	updateWordbookEntry,
 } from '$lib/server/services/wordbook.js'
 import { parseBody, handleServiceCall } from '$lib/server/utils.js'
-
-const updateWordSchema = z.object({
-	word: z.string().optional(),
-	languageId: z.number().optional(),
-	pronunciation: z.string().optional(),
-	etymology: z.string().optional(),
-	notes: z.string().optional(),
-	pageSlug: z.string().optional(),
-	tags: z.array(z.string()).optional(),
-})
+import { updateWordSchema } from '$lib/server/http/wordbook/schemas.js'
 
 function parseId(raw: string) {
 	const id = Number.parseInt(raw)

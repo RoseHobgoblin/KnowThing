@@ -8,13 +8,7 @@ SvelteKit 2 with Svelte 5 (runes), TypeScript strict, Drizzle ORM on PostgreSQL,
 - `npm run check` — svelte-check type checking
 - `npm run db:migrate` — Drizzle migrations
 
-## Architecture
-- `src/routes/` — SvelteKit pages, layouts, and `+server.ts` API endpoints
-- `src/lib/components/ui/` — reusable UI primitives (Dialog, Input, Select, Tooltip, etc.)
-- `src/lib/server/` — server-only code (auth, guards, rate limiting, services)
-- `src/lib/server/db/` — Drizzle schema, migrations, and connection
-- `drizzle/` — generated migration SQL files
-- `eslint-plugin-local/` — project-specific ESLint rules
+
 
 ## Code Style
 - Svelte 5 runes (`$state`, `$derived`, `$effect`) — no legacy reactive syntax
