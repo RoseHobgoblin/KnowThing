@@ -1,4 +1,4 @@
-import { json } from '@sveltejs/kit'
+import { error } from '@sveltejs/kit'
 import { db } from '$lib/server/db/index.js'
 import { eq } from 'drizzle-orm'
 import { deleteCelestialContentRecord } from '$lib/server/services/celestial-content.js'
@@ -43,14 +43,14 @@ export function applyFieldUpdates(
 }
 
 /**
- * Delete a celestial entity and clean up its content record.
+ * Delete a celestial entity and clean up its content record. Throws 404 if not found.
  */
 export async function deleteCelestialEntity(
 	table: PgTable,
 	slugColumn: PgColumn,
 	slug: string,
 	entityName: string,
-): Promise<Response> {
+): Promise<{ success: true }> {
 	const deleted = await db.transaction(async (tx) => {
 		const [removed] = await (tx as any)
 			.delete(table)
@@ -64,8 +64,8 @@ export async function deleteCelestialEntity(
 	})
 
 	if (!deleted) {
-		return json({ error: `${entityName} not found` }, { status: 404 })
+		throw error(404, `${entityName} not found`)
 	}
 
-	return json({ success: true })
+	return { success: true }
 }

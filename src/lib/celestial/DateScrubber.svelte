@@ -32,8 +32,8 @@
 		currentAbsoluteDay += delta
 	}
 
-	function onSlider(e: Event) {
-		const target = e.target as HTMLInputElement
+	function onSlider(event: Event) {
+		const target = event.target as HTMLInputElement
 		const dayInYear = Number(target.value)
 		if (!selectedCalendar || !currentDate) return
 		const yearStart = absoluteDay(selectedCalendar.static_data, { year: currentDate.year, month: 1, day: 1 })
