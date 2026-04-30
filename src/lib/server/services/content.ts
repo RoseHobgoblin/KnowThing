@@ -1,8 +1,13 @@
 import { error } from '@sveltejs/kit'
 import { and, eq, ne, sql } from 'drizzle-orm'
 import { db } from '$lib/server/db/index.js'
-import { contentLinks, contentRecords, contentRevisions } from '$lib/server/db/schema.js'
-import { updateContentEffects, backfillLinkTargets } from '$lib/server/content-effects.js'
+import { contentRecords } from '$lib/server/db/schema.js'
+import {
+	createContentRecordAtomic,
+	moveContentRecordAtomic,
+	saveContentRecordAtomic,
+	type ContentRecord,
+} from '$lib/server/services/content-records.js'
 import { slugify } from '$lib/renderer/context.js'
 
 export interface CreateKnowPageInput {
@@ -84,89 +89,42 @@ async function assertNoKnowSlugConflict(slug: string, excludedRecordId?: number)
 	}
 }
 
-export async function createKnowPage(input: CreateKnowPageInput) {
+export async function createKnowPage(input: CreateKnowPageInput): Promise<ContentRecord> {
 	const title = input.title.trim()
-	const content = input.content
 	const slug = normalizeKnowSlug(title, input.slug)
-	const sizeBytes = new TextEncoder().encode(content).length
 
 	await assertNoCrossDomainSlugCollision(slug)
 	await assertNoKnowSlugConflict(slug)
 
-	return db.transaction(async (tx) => {
-		const [record] = await tx
-			.insert(contentRecords)
-			.values({ domain: 'know', slug, title, content, plainText: '', sizeBytes })
-			.returning()
-
-		const { plainText, ast } = await updateContentEffects(tx, record.id, content)
-
-		const [updated] = await tx
-			.update(contentRecords)
-			.set({ plainText, parsedAst: ast })
-			.where(eq(contentRecords.id, record.id))
-			.returning()
-
-		await tx.insert(contentRevisions).values({
-			contentRecordId: record.id,
-			title,
-			content,
-			sizeBytes,
-			editSummary: 'Page created',
-			userId: input.userId,
-		})
-
-		// Backfill any existing red links pointing at this new page
-		await backfillLinkTargets(tx, record.id, 'know', slug)
-
-		return updated
+	return createContentRecordAtomic({
+		domain: 'know',
+		slug,
+		title,
+		content: input.content,
+		editSummary: 'Page created',
+		userId: input.userId,
 	})
 }
 
-export async function updateKnowPage(input: UpdateKnowPageInput) {
+export async function updateKnowPage(input: UpdateKnowPageInput): Promise<ContentRecord> {
 	const existing = await getKnowPageRecord(input.slug)
-	if (!existing) {
-		throw error(404, 'Page not found')
-	}
+	if (!existing) throw error(404, 'Page not found')
 
-	const title = input.title?.trim() || existing.title
-	const content = input.content
-	const sizeBytes = new TextEncoder().encode(content).length
-
-	return db.transaction(async (tx) => {
-		const { plainText, ast } = await updateContentEffects(tx, existing.id, content)
-
-		const [updated] = await tx
-			.update(contentRecords)
-			.set({
-				title,
-				content,
-				plainText,
-				parsedAst: ast,
-				sizeBytes,
-				updatedAt: new Date(),
-			})
-			.where(eq(contentRecords.id, existing.id))
-			.returning()
-
-		await tx.insert(contentRevisions).values({
-			contentRecordId: existing.id,
-			title: updated.title,
-			content,
-			sizeBytes,
-			editSummary: input.editSummary || '',
-			userId: input.userId,
-		})
-
-		return updated
+	const result = await saveContentRecordAtomic({
+		contentRecordId: existing.id,
+		content: input.content,
+		editSummary: input.editSummary || '',
+		userId: input.userId,
+		title: input.title,
 	})
+
+	if (!result.ok) throw error(result.status, result.error)
+	return result.record
 }
 
-export async function moveKnowPage(input: MoveKnowPageInput) {
+export async function moveKnowPage(input: MoveKnowPageInput): Promise<ContentRecord> {
 	const existing = await getKnowPageRecord(input.slug)
-	if (!existing) {
-		throw error(404, 'Page not found')
-	}
+	if (!existing) throw error(404, 'Page not found')
 
 	const newTitle = input.newTitle.trim()
 	const newSlug = normalizeKnowSlug(newTitle, input.newSlug)
@@ -176,32 +134,10 @@ export async function moveKnowPage(input: MoveKnowPageInput) {
 		await assertNoKnowSlugConflict(newSlug, existing.id)
 	}
 
-	return db.transaction(async (tx) => {
-		await tx.insert(contentRevisions).values({
-			contentRecordId: existing.id,
-			title: newTitle,
-			content: existing.content,
-			sizeBytes: existing.sizeBytes,
-			editSummary: `Moved from "${existing.title}" (${existing.slug}) to "${newTitle}" (${newSlug})`,
-			userId: input.userId,
-		})
-
-		const [updated] = await tx
-			.update(contentRecords)
-			.set({ slug: newSlug, title: newTitle, updatedAt: new Date() })
-			.where(eq(contentRecords.id, existing.id))
-			.returning()
-
-		// Update targetId on inbound links so they resolve to the moved record.
-		// Do NOT rewrite targetSlug — it must stay matching the source wikitext
-		// so the renderer's slug-based lookup still finds the entry.
-		await tx
-			.update(contentLinks)
-			.set({ targetId: existing.id })
-			.where(and(eq(contentLinks.targetDomain, 'know'), eq(contentLinks.targetSlug, existing.slug)))
-
-		await updateContentEffects(tx, existing.id, existing.content, 'know')
-
-		return updated
+	return moveContentRecordAtomic({
+		contentRecordId: existing.id,
+		newSlug,
+		newTitle,
+		userId: input.userId,
 	})
 }

@@ -8,7 +8,7 @@ import {
 	users,
 } from '$lib/server/db/schema.js'
 import { db } from '$lib/server/db/index.js'
-import { deleteContentEffects } from '$lib/server/content-effects.js'
+import { deleteContentRecord } from '$lib/server/services/content-records.js'
 
 export async function listPages() {
 	return db
@@ -47,8 +47,7 @@ async function assertPage(domain: string, slug: string) {
 
 export async function deletePage(domain: string, slug: string) {
 	const existing = await assertPage(domain, slug)
-	await deleteContentEffects(existing.id)
-	await db.delete(contentRecords).where(eq(contentRecords.id, existing.id))
+	await deleteContentRecord(db, existing.id)
 	return { ok: true }
 }
 

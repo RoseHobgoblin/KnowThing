@@ -5,7 +5,7 @@ import { parseWikitext, extractLinksFromAst, extractDomainLinksFromAst, extractC
 import { slugify } from '$lib/renderer/context.js'
 import type { WikiNode } from '$lib/parser/types.js'
 
-type ContentEffectsDatabase = Pick<typeof db, 'delete' | 'insert' | 'select' | 'update'>
+export type ContentEffectsDatabase = Pick<typeof db, 'delete' | 'insert' | 'select' | 'update'>
 
 /**
  * After saving content, update derived tables: links, categories, media_usage.
@@ -92,10 +92,13 @@ export async function updateContentEffects(
 /**
  * Clean up derived tables when content is deleted.
  */
-export async function deleteContentEffects(contentRecordId: number): Promise<void> {
-	await db.delete(contentLinks).where(eq(contentLinks.sourceId, contentRecordId))
-	await db.delete(contentCategories).where(eq(contentCategories.contentRecordId, contentRecordId))
-	await db.delete(contentMediaUsage).where(eq(contentMediaUsage.contentRecordId, contentRecordId))
+export async function deleteContentEffects(
+	database: ContentEffectsDatabase,
+	contentRecordId: number,
+): Promise<void> {
+	await database.delete(contentLinks).where(eq(contentLinks.sourceId, contentRecordId))
+	await database.delete(contentCategories).where(eq(contentCategories.contentRecordId, contentRecordId))
+	await database.delete(contentMediaUsage).where(eq(contentMediaUsage.contentRecordId, contentRecordId))
 }
 
 /**
