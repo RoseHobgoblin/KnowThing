@@ -7,7 +7,7 @@ import {
 	createContentRecord,
 	deleteContentRecord,
 	loadContentRecord,
-	saveContentRecordAtomic,
+	saveContentRecord,
 } from '$lib/server/services/content-records.js'
 import { urlSlugify } from '$lib/utils/slugify.js'
 import type {
@@ -39,7 +39,7 @@ export async function saveCalendarContent(input: {
 	editSummary: string
 	userId: number
 }) {
-	const result = await saveContentRecordAtomic(input)
+	const result = await db.transaction(tx => saveContentRecord(tx, input))
 	if (!result.ok) return { ok: false as const, status: result.status, error: result.error }
 	return { ok: true as const }
 }

@@ -1,3 +1,4 @@
+import { error } from '@sveltejs/kit'
 import { and, eq, isNull, sql } from 'drizzle-orm'
 import { db } from '$lib/server/db/index.js'
 import { contentLinks, contentRecords, contentRevisions } from '$lib/server/db/schema.js'
@@ -85,39 +86,7 @@ export async function ensureContentRecord(
 		if (!existingById) recordId = null
 	}
 
-	if (!recordId) {
-		const existing = await findExistingRecord(database, input.domain, input.slug, input.parentPath)
-		if (existing) {
-			recordId = existing.id
-			await database
-				.update(contentRecords)
-				.set({
-					title: input.title,
-					slug: input.slug,
-					parentPath: input.parentPath,
-					updatedAt: new Date(),
-				})
-				.where(eq(contentRecords.id, recordId))
-		} else {
-			const [created] = await database
-				.insert(contentRecords)
-				.values({
-					domain: input.domain,
-					slug: input.slug,
-					parentPath: input.parentPath,
-					title: input.title,
-					content: '',
-					plainText: '',
-					sizeBytes: 0,
-				})
-				.returning({ id: contentRecords.id })
-
-			recordId = created.id
-			await backfillLinkTargets(database, recordId, input.domain, input.slug)
-		}
-
-		await input.attach(recordId)
-	} else {
+	if (recordId) {
 		await database
 			.update(contentRecords)
 			.set({
@@ -127,8 +96,40 @@ export async function ensureContentRecord(
 				updatedAt: new Date(),
 			})
 			.where(eq(contentRecords.id, recordId))
+		return recordId
 	}
 
+	const existing = await findExistingRecord(database, input.domain, input.slug, input.parentPath)
+	if (existing) {
+		recordId = existing.id
+		await database
+			.update(contentRecords)
+			.set({
+				title: input.title,
+				slug: input.slug,
+				parentPath: input.parentPath,
+				updatedAt: new Date(),
+			})
+			.where(eq(contentRecords.id, recordId))
+	} else {
+		const [created] = await database
+			.insert(contentRecords)
+			.values({
+				domain: input.domain,
+				slug: input.slug,
+				parentPath: input.parentPath,
+				title: input.title,
+				content: '',
+				plainText: '',
+				sizeBytes: 0,
+			})
+			.returning({ id: contentRecords.id })
+
+		recordId = created.id
+		await backfillLinkTargets(database, recordId, input.domain, input.slug)
+	}
+
+	await input.attach(recordId)
 	return recordId
 }
 
@@ -183,10 +184,6 @@ export async function createContentRecord(
 	return updated
 }
 
-export async function createContentRecordAtomic(input: CreateContentRecordInput): Promise<ContentRecord> {
-	return db.transaction(tx => createContentRecord(tx, input))
-}
-
 export interface SaveContentRecordInput {
 	contentRecordId: number
 	content: string
@@ -239,10 +236,6 @@ export async function saveContentRecord(
 	return { ok: true, record: updated }
 }
 
-export async function saveContentRecordAtomic(input: SaveContentRecordInput): Promise<SaveContentRecordResult> {
-	return db.transaction(tx => saveContentRecord(tx, input))
-}
-
 export interface MoveContentRecordInput {
 	contentRecordId: number
 	newSlug: string
@@ -260,9 +253,7 @@ export async function moveContentRecord(
 		.from(contentRecords)
 		.where(eq(contentRecords.id, input.contentRecordId))
 
-	if (!existing) {
-		throw new Error(`Content record ${input.contentRecordId} not found`)
-	}
+	if (!existing) throw error(404, 'Content record not found')
 
 	const editSummary = input.editSummaryFn?.(existing.slug, existing.title)
 		?? `Moved from "${existing.title}" (${existing.slug}) to "${input.newTitle}" (${input.newSlug})`
@@ -296,10 +287,6 @@ export async function moveContentRecord(
 	await updateContentEffects(database, existing.id, existing.content, existing.domain)
 
 	return updated
-}
-
-export async function moveContentRecordAtomic(input: MoveContentRecordInput): Promise<ContentRecord> {
-	return db.transaction(tx => moveContentRecord(tx, input))
 }
 
 export async function deleteContentRecord(

@@ -3,9 +3,9 @@ import { and, eq, ne, sql } from 'drizzle-orm'
 import { db } from '$lib/server/db/index.js'
 import { contentRecords } from '$lib/server/db/schema.js'
 import {
-	createContentRecordAtomic,
-	moveContentRecordAtomic,
-	saveContentRecordAtomic,
+	createContentRecord,
+	moveContentRecord,
+	saveContentRecord,
 	type ContentRecord,
 } from '$lib/server/services/content-records.js'
 import { slugify } from '$lib/renderer/context.js'
@@ -96,27 +96,27 @@ export async function createKnowPage(input: CreateKnowPageInput): Promise<Conten
 	await assertNoCrossDomainSlugCollision(slug)
 	await assertNoKnowSlugConflict(slug)
 
-	return createContentRecordAtomic({
+	return db.transaction(tx => createContentRecord(tx, {
 		domain: 'know',
 		slug,
 		title,
 		content: input.content,
 		editSummary: 'Page created',
 		userId: input.userId,
-	})
+	}))
 }
 
 export async function updateKnowPage(input: UpdateKnowPageInput): Promise<ContentRecord> {
 	const existing = await getKnowPageRecord(input.slug)
 	if (!existing) throw error(404, 'Page not found')
 
-	const result = await saveContentRecordAtomic({
+	const result = await db.transaction(tx => saveContentRecord(tx, {
 		contentRecordId: existing.id,
 		content: input.content,
 		editSummary: input.editSummary || '',
 		userId: input.userId,
 		title: input.title,
-	})
+	}))
 
 	if (!result.ok) throw error(result.status, result.error)
 	return result.record
@@ -134,10 +134,10 @@ export async function moveKnowPage(input: MoveKnowPageInput): Promise<ContentRec
 		await assertNoKnowSlugConflict(newSlug, existing.id)
 	}
 
-	return moveContentRecordAtomic({
+	return db.transaction(tx => moveContentRecord(tx, {
 		contentRecordId: existing.id,
 		newSlug,
 		newTitle,
 		userId: input.userId,
-	})
+	}))
 }

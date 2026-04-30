@@ -8,7 +8,7 @@ import {
 import {
 	deleteContentRecord,
 	ensureContentRecord,
-	saveContentRecordAtomic,
+	saveContentRecord,
 	type ContentRecordsDatabase,
 } from '$lib/server/services/content-records.js'
 
@@ -122,7 +122,7 @@ export async function saveCelestialContent(input: {
 	editSummary: string
 	userId: number
 }) {
-	const result = await saveContentRecordAtomic(input)
+	const result = await db.transaction(tx => saveContentRecord(tx, input))
 	if (!result.ok) return { ok: false as const, status: result.status, error: result.error }
 	return { ok: true as const }
 }
