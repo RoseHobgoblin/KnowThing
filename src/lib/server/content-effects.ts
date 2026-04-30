@@ -1,7 +1,7 @@
 import { db } from './db/index.js'
 import { contentLinks, contentCategories, contentMediaUsage, contentRecords } from './db/schema.js'
 import { eq, and, sql } from 'drizzle-orm'
-import { parseWikitext, extractLinksFromAst, extractDomainLinksFromAst, extractCategoriesFromAst, extractImagesFromAst, stripMarkup } from '$lib/parser/index.js'
+import { parseWikitext, extractLinksFromAst, extractDomainLinksFromAst, extractCategoriesFromAst, extractImagesFromAst, extractPlainTextFromAst } from '$lib/parser/index.js'
 import { slugify } from '$lib/renderer/context.js'
 import type { WikiNode } from '$lib/parser/types.js'
 
@@ -22,7 +22,7 @@ export async function updateContentEffects(
 	const domainLinks = extractDomainLinksFromAst(ast)
 	const cats = extractCategoriesFromAst(ast)
 	const images = extractImagesFromAst(ast)
-	const plainText = stripMarkup(content)
+	const plainText = extractPlainTextFromAst(ast)
 
 	// Update links
 	await database.delete(contentLinks).where(eq(contentLinks.sourceId, contentRecordId))
