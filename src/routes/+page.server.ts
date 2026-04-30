@@ -1,6 +1,8 @@
 import type { PageServerLoad } from './$types.js'
 import { resolveDisplay } from '$lib/calendar/date-math.js'
 import type { CalendarConfig, StaticCalendarData } from '$lib/calendar/types.js'
+import { extractSummaryFromAst, parseWikitext } from '$lib/parser/index.js'
+import type { WikiNode } from '$lib/parser/types.js'
 import {
 	getFeaturedArticle,
 	getHomepageCounts,
@@ -42,35 +44,12 @@ export const load: PageServerLoad = async () => {
 		}
 	}
 
-	let featuredSummary = ''
-	if (featured) {
-		const lines = featured.content.split('\n')
-		let insideTemplate = false
-		for (const line of lines) {
-			const trimmed = line.trim()
-			if (trimmed.startsWith('{{')) insideTemplate = true
-			if (insideTemplate) {
-				if (trimmed.includes('}}') && !trimmed.startsWith('{{')) insideTemplate = false
-				continue
-			}
-			if (!trimmed || trimmed.startsWith('=') || trimmed.startsWith('[[Category:') || trimmed.startsWith('[[File:') || trimmed.startsWith('{|') || trimmed.startsWith('|}') || trimmed.startsWith('|') || trimmed.startsWith('!') || trimmed.startsWith('*') || trimmed.startsWith('#') || trimmed.startsWith(':') || trimmed.startsWith(';') || trimmed === '}}') continue
-			featuredSummary = trimmed
-				.replaceAll(/'{2,3}/g, '')
-				.replaceAll(/\[\[(?:File|Image):[^\]]*\]\]/gi, '')
-				.replaceAll(/\[\[(?:[^|\]]*\|)?([^\]]*)\]\]/g, '$1')
-				.replaceAll(/\{\{[^}]*\}\}/g, '')
-				.replaceAll(/<ref[^>]*>[\S\s]*?<\/ref>/gi, '')
-				.replaceAll(/<ref[^>]*\/>/gi, '')
-				.replaceAll(/<[^>]+>/g, '')
-				.replaceAll(/\s+/g, ' ')
-				.trim()
-			break
-		}
-		if (featuredSummary.length > 250) {
-			const cut = featuredSummary.slice(0, 250)
-			featuredSummary = cut.slice(0, cut.lastIndexOf(' ')) + '...'
-		}
-	}
+	const featuredSummary = featured
+		? extractSummaryFromAst(
+			(featured.parsedAst as WikiNode | null) ?? parseWikitext(featured.content),
+			{ maxLength: 250 },
+		)
+		: ''
 
 	return {
 		stats,

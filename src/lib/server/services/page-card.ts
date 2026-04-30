@@ -6,7 +6,7 @@ import {
 	extractImagesFromAst,
 	extractInfoboxFromRefs,
 	extractInfoboxImageRef,
-	stripMarkup,
+	extractSummaryFromAst,
 } from '$lib/parser/index.js'
 import { resolveAllStructuredData } from '$lib/server/structured-data.js'
 import type { WikiNode } from '$lib/parser/types.js'
@@ -26,7 +26,6 @@ export async function getPageCard(slug: string, domain = 'know'): Promise<PageCa
 		.select({
 			title: contentRecords.title,
 			content: contentRecords.content,
-			plainText: contentRecords.plainText,
 			parsedAst: contentRecords.parsedAst,
 		})
 		.from(contentRecords)
@@ -41,7 +40,7 @@ export async function getPageCard(slug: string, domain = 'know'): Promise<PageCa
 
 	return {
 		title: record.title,
-		description: buildDescription(record.plainText || stripMarkup(record.content)),
+		description: extractSummaryFromAst(ast, { maxLength: 200 }),
 		image: imageFilename,
 		imageMimeType: mediaRow?.mimeType ?? null,
 		imageHasRaster: mediaRow?.hasRaster ?? false,
@@ -95,14 +94,6 @@ async function lookupMedia(filename: string) {
 		.where(eq(media.filename, filename))
 		.limit(1)
 	return row ?? null
-}
-
-export function buildDescription(plainText: string, maxLength = 200): string {
-	const clean = plainText.replaceAll(/\s+/g, ' ').trim()
-	if (clean.length <= maxLength) return clean
-	const truncated = clean.slice(0, maxLength)
-	const lastSpace = truncated.lastIndexOf(' ')
-	return `${truncated.slice(0, lastSpace > 120 ? lastSpace : truncated.length).trimEnd()}...`
 }
 
 /**

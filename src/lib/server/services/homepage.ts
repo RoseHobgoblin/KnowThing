@@ -51,7 +51,12 @@ export async function getHomepageCounts() {
 
 export async function getFeaturedArticle() {
 	const [featured] = await db
-		.select({ slug: contentRecords.slug, title: contentRecords.title, content: contentRecords.content })
+		.select({
+			slug: contentRecords.slug,
+			title: contentRecords.title,
+			content: contentRecords.content,
+			parsedAst: contentRecords.parsedAst,
+		})
 		.from(contentRecords)
 		.where(and(eq(contentRecords.domain, 'know'), sql`LENGTH(${contentRecords.content}) > 200`))
 		.orderBy(desc(contentRecords.updatedAt))

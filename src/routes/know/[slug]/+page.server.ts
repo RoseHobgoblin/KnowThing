@@ -1,9 +1,9 @@
 import { redirect } from '@sveltejs/kit'
 import type { PageServerLoad } from './$types.js'
-import { parseWikitext, extractCategoriesFromAst, extractInfoboxFromRefs, extractSystemMapRefs, extractCollectionRefs, stripMarkup } from '$lib/parser/index.js'
+import { parseWikitext, extractCategoriesFromAst, extractInfoboxFromRefs, extractSystemMapRefs, extractCollectionRefs, extractSummaryFromAst } from '$lib/parser/index.js'
 import { resolveAllStructuredData, resolveAllStructuredCollections, resolveAllSystemMaps } from '$lib/server/structured-data.js'
 import { getResolvedLinks, serializeResolvedLinks } from '$lib/server/resolved-links.js'
-import { buildDescription, lookupMediaInfo, resolveCardImageSync } from '$lib/server/services/page-card.js'
+import { lookupMediaInfo, resolveCardImageSync } from '$lib/server/services/page-card.js'
 import { findPageCaseInsensitive, findPageInAnyDomain } from '$lib/server/services/pages.js'
 import { findWordbookMatchByTitle } from '$lib/server/services/wordbook.js'
 
@@ -72,7 +72,7 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	const wordbookMatch = await findWordbookMatchByTitle(record.title)
 
-	const description = buildDescription(record.plainText || stripMarkup(record.content))
+	const description = extractSummaryFromAst(ast, { maxLength: 200 })
 	const cardImage = resolveCardImageSync(ast, structuredData)
 	const cardMedia = cardImage ? await lookupMediaInfo(cardImage) : null
 

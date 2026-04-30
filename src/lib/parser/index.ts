@@ -1,6 +1,7 @@
 export { parse as parseWikitext } from './parser.js'
 export { parseInline } from './inline.js'
 export { tokenize } from './lexer.js'
+export { extractSummaryFromAst, extractSummary, type SummaryOptions } from './summary.js'
 export type * from './types.js'
 
 import type { WikiNode } from './types.js'
