@@ -7,6 +7,9 @@ import { requireRole } from '$lib/server/auth.js'
 import {
 	deleteMediaFile,
 	findMediaRecord,
+	renameMediaFile,
+	replaceMediaFile,
+	restoreMediaVersion,
 	updateMediaMetadata,
 } from '$lib/server/services/media.js'
 import { handleServiceCall } from '$lib/server/utils.js'
@@ -95,6 +98,41 @@ export const PUT: RequestHandler = async (event) => {
 
 	return handleServiceCall(async () => {
 		return json(await updateMediaMetadata(user.id, filename, { description, categories }))
+	})
+}
+
+/** POST /api/media/:filename — replace file with new version (multipart) */
+export const POST: RequestHandler = async (event) => {
+	const user = requireRole(event, 'editor')
+	const filename = event.params.filename
+	const formData = await event.request.formData()
+	const file = formData.get('file')
+
+	if (!(file instanceof File)) {
+		return json({ error: 'No file provided' }, { status: 400 })
+	}
+
+	return handleServiceCall(async () => {
+		return json(await replaceMediaFile(user.id, filename, file))
+	})
+}
+
+/** PATCH /api/media/:filename — rename or restore (JSON body) */
+export const PATCH: RequestHandler = async (event) => {
+	const user = requireRole(event, 'editor')
+	const filename = event.params.filename
+	const body = await event.request.json() as
+		| { action: 'rename', newFilename: string }
+		| { action: 'restore', version: number }
+
+	return handleServiceCall(async () => {
+		if (body.action === 'rename') {
+			return json(await renameMediaFile(user.id, filename, body.newFilename))
+		}
+		if (body.action === 'restore') {
+			return json(await restoreMediaVersion(user.id, filename, body.version))
+		}
+		return json({ error: 'Unknown action' }, { status: 400 })
 	})
 }
 

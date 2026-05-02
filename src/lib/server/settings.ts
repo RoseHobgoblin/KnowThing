@@ -16,6 +16,7 @@ export interface SiteConfig {
 	calendarEnabled: boolean
 	textDirection: 'ltr' | 'rtl'
 	logoUrl: string
+	stripExifOnUpload: boolean
 }
 
 const DEFAULTS: SiteConfig = {
@@ -33,6 +34,7 @@ const DEFAULTS: SiteConfig = {
 	calendarEnabled: true,
 	textDirection: 'ltr',
 	logoUrl: '',
+	stripExifOnUpload: true,
 }
 
 const KEY_MAP: Record<string, keyof SiteConfig> = {
@@ -50,9 +52,10 @@ const KEY_MAP: Record<string, keyof SiteConfig> = {
 	'calendar_enabled': 'calendarEnabled',
 	'text_direction': 'textDirection',
 	'logo_url': 'logoUrl',
+	'strip_exif_on_upload': 'stripExifOnUpload',
 }
 
-const BOOLEAN_KEYS = new Set<keyof SiteConfig>(['wordbookEnabled', 'calendarEnabled'])
+const BOOLEAN_KEYS = new Set<keyof SiteConfig>(['wordbookEnabled', 'calendarEnabled', 'stripExifOnUpload'])
 
 let cache: SiteConfig | null = null
 let cacheTime = 0

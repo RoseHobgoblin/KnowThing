@@ -57,17 +57,33 @@ export function extractCategoriesFromAst(ast: WikiNode): string[] {
 	return cats
 }
 
+// Matches a template-argument value that is a bare image filename, e.g.
+// "Flag_of_Onchera.svg" or "Coat of arms.png". Whitespace and trailing
+// punctuation rule out free-form prose that happens to mention a filename.
+const TEMPLATE_IMAGE_VALUE = /^[^\n|]+\.(?:svg|png|jpe?g|gif|webp)$/i
+
 /**
- * Walk a pre-parsed AST and collect all image filenames.
+ * Walk a pre-parsed AST and collect all image filenames — both from explicit
+ * `[[File:...]]` image nodes and from template arguments whose value looks
+ * like an image filename (`image_flag = Foo.svg`, `coat_of_arms = Bar.png`,
+ * etc.). The latter is what makes infobox-flag and gallery-template usage
+ * show up in `contentMediaUsage`.
  */
 export function extractImagesFromAst(ast: WikiNode): string[] {
-	const images: string[] = []
+	const images = new Set<string>()
 	walkNodes([ast], (node) => {
 		if (node.type === 'image') {
-			images.push(node.filename)
+			images.add(node.filename)
+		} else if (node.type === 'template') {
+			for (const arg of node.args) {
+				const value = arg.value.trim()
+				if (TEMPLATE_IMAGE_VALUE.test(value)) {
+					images.add(value)
+				}
+			}
 		}
 	})
-	return images
+	return [...images]
 }
 
 // ============================================================================

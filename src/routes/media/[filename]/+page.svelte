@@ -105,6 +105,83 @@
 		copied = true
 		setTimeout(() => (copied = false), 2000)
 	}
+
+	let replaceInput: HTMLInputElement | undefined
+	let replacing = $state(false)
+
+	async function onReplaceFile(event: Event) {
+		const input = event.currentTarget as HTMLInputElement
+		const file = input.files?.[0]
+		if (!file) return
+
+		replacing = true
+		const formData = new FormData()
+		formData.set('file', file)
+		const res = await fetch(`/api/media/${encodeURIComponent(data.file.filename)}`, {
+			method: 'POST',
+			body: formData,
+		})
+		replacing = false
+		input.value = ''
+		if (res.ok) {
+			pushSuccess('Uploaded as new version. Previous version archived.')
+			invalidateAll()
+		} else {
+			const body = await res.json().catch(() => ({}))
+			pushError(body.error || 'Failed to replace file')
+		}
+	}
+
+	async function restoreVersion(version: number) {
+		const ok = await confirmDialog.confirm(
+			'Restore version',
+			`Restore version ${version}? Current version will be archived.`,
+			'Restore',
+			'Cancel',
+		)
+		if (!ok) return
+		const res = await fetch(`/api/media/${encodeURIComponent(data.file.filename)}`, {
+			method: 'PATCH',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ action: 'restore', version }),
+		})
+		if (res.ok) {
+			pushSuccess(`Restored version ${version}.`)
+			invalidateAll()
+		} else {
+			const body = await res.json().catch(() => ({}))
+			pushError(body.error || 'Failed to restore version')
+		}
+	}
+
+	let renameInput = $state(data.file.filename)
+	let renaming = $state(false)
+	let renameOpen = $state(false)
+
+	async function submitRename() {
+		const target = renameInput.trim()
+		if (!target || target === data.file.filename) {
+			renameOpen = false
+			return
+		}
+		renaming = true
+		const res = await fetch(`/api/media/${encodeURIComponent(data.file.filename)}`, {
+			method: 'PATCH',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ action: 'rename', newFilename: target }),
+		})
+		renaming = false
+		if (res.ok) {
+			const body = await res.json().catch(() => ({}))
+			const finalName: string = body.newFilename ?? target
+			pushSuccess(`Renamed to ${finalName}. ${body.rewrittenPages ?? 0} page(s) updated.`)
+			renameOpen = false
+			goto(`/media/${encodeURIComponent(finalName)}`)
+		} else {
+			const body = await res.json().catch(() => ({}))
+			pushError(body.error || 'Failed to rename file')
+		}
+	}
 </script>
 
 <svelte:head>
@@ -261,12 +338,87 @@
 						</a>
 					{/if}
 					{#if canManageMedia}
+						<button
+							type="button"
+							onclick={() => replaceInput?.click()}
+							disabled={replacing}
+							class="w-full text-left px-3 py-2 text-sm text-link transition-colors hover:bg-accent-subtle disabled:opacity-50"
+						>
+							{replacing ? 'Uploading...' : 'Upload new version'}
+						</button>
+						<input
+							bind:this={replaceInput}
+							type="file"
+							class="hidden"
+							onchange={onReplaceFile}
+							accept={data.file.mimeType ?? '*/*'}
+						/>
+						<button
+							type="button"
+							onclick={() => { renameOpen = !renameOpen; renameInput = data.file.filename }}
+							class="w-full text-left px-3 py-2 text-sm text-link transition-colors hover:bg-accent-subtle"
+						>
+							Rename file
+						</button>
+						{#if renameOpen}
+							<div class="px-3 py-2 space-y-2 bg-raised">
+								<Input
+									id="rename"
+									label="New filename"
+									hint="Pages referencing this file will be rewritten."
+									type="text"
+									bind:value={renameInput}
+								/>
+								<div class="flex gap-2">
+									<button
+										type="button"
+										onclick={submitRename}
+										disabled={renaming}
+										class="px-3 py-1.5 text-sm bg-accent text-white disabled:opacity-50"
+									>
+										{renaming ? 'Renaming...' : 'Rename'}
+									</button>
+									<button
+										type="button"
+										onclick={() => { renameOpen = false }}
+										class="px-3 py-1.5 text-sm text-secondary hover:bg-page"
+									>
+										Cancel
+									</button>
+								</div>
+							</div>
+						{/if}
 						<button onclick={deleteFile} class="w-full text-left px-3 py-2 text-sm text-error transition-colors hover:bg-error-bg">
 							Delete file{data.usage.length > 0 ? ` (used in ${data.usage.length} pages)` : ''}
 						</button>
 					{/if}
 				</div>
 			</div>
+
+			{#if data.versions && data.versions.length > 0}
+				<div class="bg-surface border border-border p-4">
+					<h3 class="text-sm font-semibold text-body mb-3">Version history</h3>
+					<ul class="text-sm space-y-2">
+						{#each data.versions as v}
+							<li class="flex items-start justify-between gap-2 pb-2 border-b border-border-subtle last:border-0 last:pb-0">
+								<div class="min-w-0 flex-1">
+									<div class="text-body">v{v.version} — {formatBytes(v.sizeBytes)}{v.width && v.height ? `, ${v.width}x${v.height}` : ''}</div>
+									<div class="text-xs text-faint">{new Date(v.archivedAt).toLocaleString()} {v.username ? `· ${v.username}` : ''}</div>
+								</div>
+								{#if canManageMedia}
+									<button
+										type="button"
+										onclick={() => restoreVersion(v.version)}
+										class="shrink-0 text-xs text-link hover:underline"
+									>
+										Restore
+									</button>
+								{/if}
+							</li>
+						{/each}
+					</ul>
+				</div>
+			{/if}
 
 			<div class="bg-surface border border-border p-4">
 				<h3 class="text-sm font-semibold text-body mb-3">Used in {data.usage.length} {data.usage.length === 1 ? 'page' : 'pages'}</h3>

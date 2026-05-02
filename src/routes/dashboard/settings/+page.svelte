@@ -28,6 +28,7 @@
 	let wordbookName = $state(initialSettings.wordbook_name ?? 'Wordbook')
 	let wordbookEnabled = $state(initialSettings.wordbook_enabled !== 'false')
 	let calendarEnabled = $state(initialSettings.calendar_enabled !== 'false')
+	let stripExifOnUpload = $state(initialSettings.strip_exif_on_upload !== 'false')
 
 	let saving = $state(false)
 	let saveError = $state('')
@@ -48,6 +49,7 @@
 			wordbookName,
 			wordbookEnabled,
 			calendarEnabled,
+			stripExifOnUpload,
 		})
 	}
 
@@ -69,6 +71,7 @@
 		wordbookName = initialSettings.wordbook_name ?? 'Wordbook'
 		wordbookEnabled = initialSettings.wordbook_enabled !== 'false'
 		calendarEnabled = initialSettings.calendar_enabled !== 'false'
+		stripExifOnUpload = initialSettings.strip_exif_on_upload !== 'false'
 		saveError = ''
 	}
 
@@ -92,6 +95,7 @@
 				wordbook_name: wordbookName,
 				wordbook_enabled: String(wordbookEnabled),
 				calendar_enabled: String(calendarEnabled),
+				strip_exif_on_upload: String(stripExifOnUpload),
 			}),
 		})
 		if (response.ok) {
@@ -163,6 +167,18 @@
 			</Checkbox>
 			<Checkbox bind:value={calendarEnabled} label="Calendar">
 				Custom calendar system with moons, eras, and seasons
+			</Checkbox>
+		</div>
+	</section>
+
+	<section class="bg-surface border border-border p-5 space-y-4">
+		<div>
+			<h2 class="text-sm font-semibold text-heading">Media</h2>
+			<p class="text-xs text-faint mt-0.5">How uploads are processed and what metadata is preserved.</p>
+		</div>
+		<div class="flex flex-col gap-3">
+			<Checkbox bind:value={stripExifOnUpload} label="Strip EXIF on upload">
+				Remove camera, GPS, and other EXIF/IPTC/XMP metadata from uploaded photos. Privacy-preserving for any image taken on a phone. SVGs are unaffected.
 			</Checkbox>
 		</div>
 	</section>

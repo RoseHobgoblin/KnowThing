@@ -1,8 +1,18 @@
 <script lang="ts">
+	import { page } from '$app/stores'
 	import { mediaLightbox } from './mediaLightbox.svelte.ts'
 	import InlineMarkup from '$lib/renderer/InlineMarkup.svelte'
 
 	const current = $derived(mediaLightbox.current)
+	const pathname = $derived($page.url.pathname)
+
+	let lastPathname = pathname
+	$effect(() => {
+		if (pathname !== lastPathname) {
+			lastPathname = pathname
+			mediaLightbox.syncFromHash()
+		}
+	})
 
 	function close() {
 		mediaLightbox.close()

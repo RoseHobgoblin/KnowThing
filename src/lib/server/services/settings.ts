@@ -9,6 +9,7 @@ const VALID_KEYS = new Set([
 	'nav_calendar_label', 'nav_search_label',
 	'wordbook_name', 'wordbook_enabled', 'calendar_enabled',
 	'text_direction', 'logo_url',
+	'strip_exif_on_upload',
 ])
 
 export async function getSiteSettings() {

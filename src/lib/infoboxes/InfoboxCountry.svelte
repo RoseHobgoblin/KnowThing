@@ -58,7 +58,7 @@
 								caption={flagCaption}
 								displayWidth={150}
 								sizes="150px"
-								class="max-w-[150px] h-auto border border-border-subtle"
+								class="w-[150px] h-auto border border-border-subtle"
 							/>
 							{#if flagCaption}
 								<figcaption class="text-xs text-dim text-center">
@@ -75,7 +75,7 @@
 								caption={coatCaption}
 								displayWidth={100}
 								sizes="100px"
-								class="max-w-[100px] h-auto"
+								class="w-[100px] h-auto"
 							/>
 							{#if coatCaption}
 								<figcaption class="text-xs text-dim text-center">

@@ -183,6 +183,27 @@ describe('extractImagesFromAst', () => {
 		const ast = parseWikitext('[[File:flag.png|thumb]] and [[File:map.jpg]]')
 		expect(extractImagesFromAst(ast)).toEqual(['flag.png', 'map.jpg'])
 	})
+
+	it('extracts image filenames from template arguments', () => {
+		const ast = parseWikitext(
+			'{{Infobox country\n| image_flag = Flag_of_Onchera.svg\n| image_coat = Coat.png\n| capital = Amallu\n}}',
+		)
+		expect(extractImagesFromAst(ast).sort()).toEqual(['Coat.png', 'Flag_of_Onchera.svg'])
+	})
+
+	it('ignores free-form text in template arguments', () => {
+		const ast = parseWikitext(
+			'{{Infobox country\n| capital = Amallu (see ref.png in section)\n| image_flag = Foo.svg\n}}',
+		)
+		expect(extractImagesFromAst(ast)).toEqual(['Foo.svg'])
+	})
+
+	it('deduplicates images that appear in both forms', () => {
+		const ast = parseWikitext(
+			'[[File:flag.png|thumb]]\n{{Infobox country|image_flag=flag.png}}',
+		)
+		expect(extractImagesFromAst(ast)).toEqual(['flag.png'])
+	})
 })
 
 describe('stripMarkup', () => {

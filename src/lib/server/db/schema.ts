@@ -221,6 +221,24 @@ export const mediaHistory = pgTable(
 	table => [index('idx_media_history_filename').on(table.filename)],
 )
 
+export const mediaVersions = pgTable(
+	'media_versions',
+	{
+		id: serial('id').primaryKey(),
+		filename: text('filename').notNull(),
+		version: integer('version').notNull(),
+		filepath: text('filepath').notNull(),
+		mimeType: text('mime_type'),
+		width: integer('width'),
+		height: integer('height'),
+		sizeBytes: integer('size_bytes'),
+		hash: text('hash'),
+		uploadedBy: integer('uploaded_by').references(() => users.id),
+		archivedAt: timestamp('archived_at', { withTimezone: true }).defaultNow().notNull(),
+	},
+	table => [index('idx_media_versions_filename').on(table.filename)],
+)
+
 export const mediaCategories = pgTable(
 	'media_categories',
 	{
