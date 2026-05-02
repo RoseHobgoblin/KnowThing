@@ -106,19 +106,50 @@ export function extractInfoboxFromRefs(ast: WikiNode): { type: string, slug: str
 }
 
 /**
- * Walk a pre-parsed AST and find the first infobox's `image` field.
- * Returns the literal `image=` arg when set; otherwise the `from=` slug so the
- * caller can look it up in pre-resolved structured data.
+ * Image field aliases per infobox subtype, in priority order.
+ * Mirrors what the Svelte Infobox* components pass to `getField`, so the card
+ * extractor picks the same image the page would render.
  */
-export function extractInfoboxImageRef(ast: WikiNode): { image?: string, fromSlug?: string } | null {
-	let result: { image?: string, fromSlug?: string } | null = null
+const INFOBOX_IMAGE_FIELDS: Record<string, string[]> = {
+	country: ['image_flag', 'flag', 'image'],
+	former_country: ['image_flag', 'image'],
+	settlement: ['image_skyline', 'image'],
+	officeholder: ['image', 'smallimage'],
+}
+const DEFAULT_INFOBOX_IMAGE_FIELDS = ['image']
+
+export function getInfoboxImageFields(subtype: string): string[] {
+	return INFOBOX_IMAGE_FIELDS[subtype] ?? DEFAULT_INFOBOX_IMAGE_FIELDS
+}
+
+function infoboxSubtypeFromName(name: string): string {
+	const match = name.match(/^infobox\s+(.+)$/i)
+	return match?.[1]?.trim().toLowerCase().replaceAll(/\s+/g, '_') ?? 'generic'
+}
+
+/**
+ * Walk a pre-parsed AST and find the first infobox's image field.
+ * Returns the literal image arg when one of the subtype's image fields is set;
+ * otherwise the `from=` slug + subtype so the caller can look up the image in
+ * pre-resolved structured data using the same field-priority list.
+ */
+export function extractInfoboxImageRef(
+	ast: WikiNode,
+): { image?: string, fromSlug?: string, subtype?: string } | null {
+	let result: { image?: string, fromSlug?: string, subtype?: string } | null = null
 	walkNodes([ast], (node) => {
 		if (result) return
 		if (node.type === 'template' && node.name.toLowerCase().startsWith('infobox')) {
-			const imageArg = node.args.find(a => a.name?.toLowerCase().trim() === 'image')?.value?.trim()
+			const subtype = infoboxSubtypeFromName(node.name)
+			const fields = getInfoboxImageFields(subtype)
+			let image: string | undefined
+			for (const field of fields) {
+				const value = node.args.find(a => a.name?.toLowerCase().trim() === field)?.value?.trim()
+				if (value) { image = value; break }
+			}
 			const fromArg = node.args.find(a => a.name?.toLowerCase().trim() === 'from')?.value?.trim()
-			if (imageArg) result = { image: imageArg }
-			else if (fromArg) result = { fromSlug: fromArg }
+			if (image) result = { image }
+			else if (fromArg) result = { fromSlug: fromArg, subtype }
 		}
 	})
 	return result

@@ -7,6 +7,7 @@ import {
 	extractInfoboxFromRefs,
 	extractInfoboxImageRef,
 	extractSummaryFromAst,
+	getInfoboxImageFields,
 } from '$lib/parser/index.js'
 import { resolveAllStructuredData } from '$lib/server/structured-data.js'
 import type { WikiNode } from '$lib/parser/types.js'
@@ -56,8 +57,12 @@ async function resolveCardImage(ast: WikiNode): Promise<string | null> {
 		const fromRefs = extractInfoboxFromRefs(ast)
 		const resolved = await resolveAllStructuredData(fromRefs)
 		const fields = resolved.get(infoboxRef.fromSlug)
-		const image = fields?.get('image')
-		if (image) return image
+		if (fields) {
+			for (const field of getInfoboxImageFields(infoboxRef.subtype ?? 'generic')) {
+				const value = fields.get(field)
+				if (value) return value
+			}
+		}
 	}
 	return extractImagesFromAst(ast)[0] ?? null
 }
@@ -72,8 +77,14 @@ export function resolveCardImageSync(
 ): string | null {
 	const infoboxRef = extractInfoboxImageRef(ast)
 	if (infoboxRef?.image) return infoboxRef.image
-	if (infoboxRef?.fromSlug && structuredData?.[infoboxRef.fromSlug]?.image) {
-		return structuredData[infoboxRef.fromSlug].image
+	if (infoboxRef?.fromSlug) {
+		const fields = structuredData?.[infoboxRef.fromSlug]
+		if (fields) {
+			for (const field of getInfoboxImageFields(infoboxRef.subtype ?? 'generic')) {
+				const value = fields[field]
+				if (value) return value
+			}
+		}
 	}
 	return extractImagesFromAst(ast)[0] ?? null
 }
