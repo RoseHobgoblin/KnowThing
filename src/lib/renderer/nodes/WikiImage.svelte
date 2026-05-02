@@ -43,6 +43,7 @@
 		<MediaImage
 			{filename}
 			{alt}
+			caption={caption?.text ?? ''}
 			displayWidth={displayWidth}
 			sizes={imageSizes}
 			class="block h-auto w-full"
@@ -55,6 +56,7 @@
 	<MediaImage
 		{filename}
 		{alt}
+		caption={caption?.text ?? ''}
 		displayWidth={width?.value}
 		sizes={inlineSizes}
 		class="know-image inline-block h-auto max-w-full"

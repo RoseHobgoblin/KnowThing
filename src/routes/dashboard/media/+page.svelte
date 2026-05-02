@@ -286,7 +286,7 @@
 		<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
 			{#each files as file}
 				<a
-					href="/dashboard/media/{encodeURIComponent(file.filename)}"
+					href="/media/{encodeURIComponent(file.filename)}"
 					class="
 						group bg-surface border border-border overflow-hidden transition-all
 						hover:border-accent-border hover:shadow-md
@@ -320,7 +320,7 @@
 	{:else}
 		<div class="bg-surface border border-border divide-y divide-border-subtle">
 			{#each files as file}
-				<a href="/dashboard/media/{encodeURIComponent(file.filename)}" class="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-accent-subtle/30">
+				<a href="/media/{encodeURIComponent(file.filename)}" class="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-accent-subtle/30">
 					<div class="
 						size-12 bg-raised flex items-center justify-center shrink-0 overflow-hidden
 					">

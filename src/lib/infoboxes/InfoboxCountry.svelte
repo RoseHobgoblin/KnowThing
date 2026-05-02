@@ -4,13 +4,24 @@
 	import InfoboxShell from './InfoboxShell.svelte'
 	import InfoboxRow from './InfoboxRow.svelte'
 	import InfoboxSection from './InfoboxSection.svelte'
+	import MediaImage from '$lib/components/MediaImage.svelte'
+	import InlineMarkup from '$lib/renderer/InlineMarkup.svelte'
 
 	let { fields }: { fields: FieldMap } = $props()
 
 	const title = getField(fields, 'conventional_long_name', 'name', 'common_name') ?? ''
 	const nativeName = getField(fields, 'native_name') ?? ''
-	const image = getField(fields, 'image_flag', 'flag', 'image') ?? ''
-	const imageCaption = getField(fields, 'alt_flag', 'flag_caption') ?? ''
+
+	const flagImage = getField(fields, 'image_flag', 'flag') ?? ''
+	const flagCaption = getField(fields, 'flag_caption', 'flag_type') ?? (flagImage ? 'Flag' : '')
+	const flagAlt = getField(fields, 'alt_flag', 'flag_alt') ?? flagCaption
+
+	const coatImage = getField(fields, 'image_coat', 'image_symbol', 'coat_of_arms') ?? ''
+	const coatCaption = getField(fields, 'symbol_type') ?? (coatImage ? 'Coat of arms' : '')
+	const coatAlt = getField(fields, 'alt_coat', 'coat_alt', 'alt_symbol') ?? coatCaption
+
+	const fallbackImage = !flagImage && !coatImage ? (getField(fields, 'image') ?? '') : ''
+	const fallbackCaption = fallbackImage ? (getField(fields, 'caption') ?? '') : ''
 	const motto = getField(fields, 'national_motto', 'motto') ?? ''
 	const anthem = getField(fields, 'national_anthem', 'anthem') ?? ''
 	const capital = getField(fields, 'capital') ?? ''
@@ -30,11 +41,54 @@
 </script>
 
 <InfoboxShell
-	{title}
+	title={title}
 	subtitle={nativeName}
-	{image}
-	{imageCaption}
+	image={fallbackImage}
+	imageCaption={fallbackCaption}
 >
+	{#if flagImage || coatImage}
+		<tr>
+			<td colspan="2" class="p-3 border-b border-border-subtle">
+				<div class="flex items-start justify-center gap-4 flex-wrap">
+					{#if flagImage}
+						<figure class="flex flex-col items-center gap-1 m-0">
+							<MediaImage
+								filename={flagImage}
+								alt={flagAlt}
+								caption={flagCaption}
+								displayWidth={150}
+								sizes="150px"
+								class="max-w-[150px] h-auto border border-border-subtle"
+							/>
+							{#if flagCaption}
+								<figcaption class="text-xs text-dim text-center">
+									<InlineMarkup text={flagCaption} />
+								</figcaption>
+							{/if}
+						</figure>
+					{/if}
+					{#if coatImage}
+						<figure class="flex flex-col items-center gap-1 m-0">
+							<MediaImage
+								filename={coatImage}
+								alt={coatAlt}
+								caption={coatCaption}
+								displayWidth={100}
+								sizes="100px"
+								class="max-w-[100px] h-auto"
+							/>
+							{#if coatCaption}
+								<figcaption class="text-xs text-dim text-center">
+									<InlineMarkup text={coatCaption} />
+								</figcaption>
+							{/if}
+						</figure>
+					{/if}
+				</div>
+			</td>
+		</tr>
+	{/if}
+
 	{#if motto}
 		<InfoboxRow label="Motto" value={motto} />
 	{/if}

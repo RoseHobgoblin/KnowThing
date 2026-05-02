@@ -51,6 +51,7 @@
 					<MediaImage
 						filename={image}
 						alt={imageCaption || image}
+						caption={imageCaption}
 						displayWidth={320}
 						sizes="(max-width: 640px) calc(100vw - 3rem), 320px"
 						class="max-w-full h-auto mx-auto"

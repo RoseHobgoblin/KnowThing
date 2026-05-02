@@ -157,6 +157,16 @@ export async function uploadMediaFile(userId: number, file: File) {
 				.png()
 				.toFile(join(RASTER_DIR, `${filename}.png`))
 			hasRaster = true
+
+			for (const size of THUMB_SIZES) {
+				await sharp(buffer, { density: 192 })
+					.resize(size, undefined, { withoutEnlargement: false })
+					.png()
+					.toFile(join(THUMB_DIR, `${size}_${filename}.png`))
+				if (size === 150) hasThumb150 = true
+				if (size === 300) hasThumb300 = true
+				if (size === 600) hasThumb600 = true
+			}
 		} catch (cause) {
 			// SVG may reference external fonts/assets sharp can't resolve — article
 			// keeps the crisp SVG, share cards just won't have an image for this one.

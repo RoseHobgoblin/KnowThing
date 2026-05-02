@@ -16,48 +16,60 @@ const THUMB_DIR = join(UPLOAD_DIR, 'thumbs')
 const RASTER_DIR = join(UPLOAD_DIR, 'rasters')
 const VALID_WIDTHS = new Set([150, 300, 600])
 
+const PNG_HEADERS = {
+	'Content-Type': 'image/png',
+	'Cache-Control': 'public, max-age=31536000, immutable',
+}
+
 /** GET /api/media/:filename — serve file or thumbnail */
 export const GET: RequestHandler = async ({ params, url }) => {
 	const filename = params.filename
 	const requestedWidth = Number.parseInt(url.searchParams.get('w') || '0')
+	const wantsSvg = url.searchParams.get('format') === 'svg'
 
 	const record = await findMediaRecord(filename)
 	if (!record) throw error(404, 'File not found')
 
-	// Raster fallback for SVGs — used by social share cards, which can't embed SVG.
-	if (url.searchParams.has('raster') && record.hasRaster) {
-		try {
-			const buffer = await readFile(join(RASTER_DIR, `${filename}.png`))
-			return new Response(buffer, {
-				headers: {
-					'Content-Type': 'image/png',
-					'Cache-Control': 'public, max-age=31536000, immutable',
-				},
-			})
-		} catch {
-			// Fall through to original if raster is missing on disk.
+	const isSvg = record.mimeType === 'image/svg+xml'
+	const sizedThumbAvailable =
+		requestedWidth && VALID_WIDTHS.has(requestedWidth) &&
+		((requestedWidth === 150 && record.hasThumb150) ||
+			(requestedWidth === 300 && record.hasThumb300) ||
+			(requestedWidth === 600 && record.hasThumb600))
+
+	// SVG sources: default to PNG raster output, opt out with ?format=svg.
+	if (isSvg && !wantsSvg) {
+		if (sizedThumbAvailable) {
+			try {
+				const buffer = await readFile(join(THUMB_DIR, `${requestedWidth}_${filename}.png`))
+				return new Response(buffer, { headers: PNG_HEADERS })
+			} catch {
+				// Fall through to raster.
+			}
+		}
+		if (record.hasRaster) {
+			try {
+				const buffer = await readFile(join(RASTER_DIR, `${filename}.png`))
+				return new Response(buffer, { headers: PNG_HEADERS })
+			} catch {
+				// Fall through to original SVG.
+			}
 		}
 	}
 
-	if (requestedWidth && VALID_WIDTHS.has(requestedWidth)) {
-		const hasThumb =
-			(requestedWidth === 150 && record.hasThumb150) ||
-			(requestedWidth === 300 && record.hasThumb300) ||
-			(requestedWidth === 600 && record.hasThumb600)
-
-		if (hasThumb) {
-			try {
-				const buffer = await readFile(join(THUMB_DIR, `${requestedWidth}_${filename}`))
-				return new Response(buffer, {
-					headers: {
-						'Content-Type': record.mimeType || 'application/octet-stream',
-						'Cache-Control': 'public, max-age=31536000, immutable',
-						'Vary': 'Accept',
-					},
-				})
-			} catch {
-				// Fall back to original when the expected thumbnail is missing on disk.
-			}
+	// Non-SVG sized thumb (existing behavior).
+	if (!isSvg && sizedThumbAvailable) {
+		try {
+			const buffer = await readFile(join(THUMB_DIR, `${requestedWidth}_${filename}`))
+			return new Response(buffer, {
+				headers: {
+					'Content-Type': record.mimeType || 'application/octet-stream',
+					'Cache-Control': 'public, max-age=31536000, immutable',
+					'Vary': 'Accept',
+				},
+			})
+		} catch {
+			// Fall back to original.
 		}
 	}
 

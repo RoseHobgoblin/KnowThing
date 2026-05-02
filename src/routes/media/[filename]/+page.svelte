@@ -115,10 +115,10 @@
 
 <div class="space-y-6">
 	<nav class="text-sm text-dim">
-		<a href="/dashboard" class="hover:text-link">Dashboard</a>
-		<span class="mx-1">></span>
-		<a href="/dashboard/media" class="hover:text-link">Media</a>
-		<span class="mx-1">></span>
+		{#if canManageMedia}
+			<a href="/dashboard/media" class="hover:text-link">Media</a>
+			<span class="mx-1">></span>
+		{/if}
 		<span class="text-secondary">{data.file.filename}</span>
 	</nav>
 
@@ -160,43 +160,47 @@
 				{/if}
 			</div>
 
-			<div class="bg-surface border border-border p-4 mt-4 space-y-4">
-				<RecordModeBanner
-					modeLabel="Configure Media"
-					title="File Details"
-					description="Edit metadata, categories, and usage-facing details for this file."
-				/>
+			{#if canManageMedia}
+				<div class="bg-surface border border-border p-4 mt-4 space-y-4">
+					<RecordModeBanner
+						modeLabel="Configure Media"
+						title="File Details"
+						description="Edit metadata, categories, and usage-facing details for this file."
+					/>
 
-				{#if saveError}
-					<FormNotice title="Media details were not saved" message={saveError} />
-				{/if}
-
-				<div class="space-y-3">
-					<div>
-						<label for="desc" class="block text-xs font-medium text-secondary mb-1">Description</label>
-						<textarea
-							id="desc"
-							bind:value={description}
-							rows={3}
-							class="w-full px-3 py-2 border border-border-strong text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-							placeholder="Describe this file..."
-						></textarea>
-					</div>
-					<div>
-						<Input
-							id="cats"
-							label="Categories"
-							hint="Comma-separated"
-							type="text"
-							bind:value={categoriesInput}
-							placeholder="flags, maps, portraits"
-						/>
-					</div>
-					{#if !canManageMedia}
-						<p class="text-xs text-faint">Editor role required to change file details.</p>
+					{#if saveError}
+						<FormNotice title="Media details were not saved" message={saveError} />
 					{/if}
+
+					<div class="space-y-3">
+						<div>
+							<label for="desc" class="block text-xs font-medium text-secondary mb-1">Description</label>
+							<textarea
+								id="desc"
+								bind:value={description}
+								rows={3}
+								class="w-full px-3 py-2 border border-border-strong text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+								placeholder="Describe this file..."
+							></textarea>
+						</div>
+						<div>
+							<Input
+								id="cats"
+								label="Categories"
+								hint="Comma-separated"
+								type="text"
+								bind:value={categoriesInput}
+								placeholder="flags, maps, portraits"
+							/>
+						</div>
+					</div>
 				</div>
-			</div>
+			{:else if data.file.description}
+				<div class="bg-surface border border-border p-4 mt-4">
+					<h3 class="text-sm font-semibold text-body mb-2">Description</h3>
+					<p class="text-sm text-body whitespace-pre-wrap">{data.file.description}</p>
+				</div>
+			{/if}
 		</div>
 
 		<div class="space-y-4">
@@ -243,18 +247,23 @@
 			<div class="bg-surface border border-border p-4">
 				<h3 class="text-sm font-semibold text-body mb-3">Actions</h3>
 				<div class="space-y-2">
-					<button onclick={copyWikitext} class="w-full text-left px-3 py-2 text-sm text-link transition-colors hover:bg-accent-subtle">
-						{copied ? 'Copied!' : 'Copy wikitext'}
-					</button>
+					{#if canManageMedia}
+						<button onclick={copyWikitext} class="w-full text-left px-3 py-2 text-sm text-link transition-colors hover:bg-accent-subtle">
+							{copied ? 'Copied!' : 'Copy wikitext'}
+						</button>
+					{/if}
 					<a href="/api/media/{data.file.filename}" target="_blank" class="block px-3 py-2 text-sm text-secondary transition-colors hover:bg-page">
 						View full size ->
 					</a>
+					{#if data.file.mimeType === 'image/svg+xml'}
+						<a href="/api/media/{data.file.filename}?format=svg" target="_blank" download class="block px-3 py-2 text-sm text-secondary transition-colors hover:bg-page">
+							Download original SVG ->
+						</a>
+					{/if}
 					{#if canManageMedia}
 						<button onclick={deleteFile} class="w-full text-left px-3 py-2 text-sm text-error transition-colors hover:bg-error-bg">
 							Delete file{data.usage.length > 0 ? ` (used in ${data.usage.length} pages)` : ''}
 						</button>
-					{:else if permissions.isAuthenticated}
-						<p class="px-3 py-2 text-xs text-faint">Editor role required to delete files.</p>
 					{/if}
 				</div>
 			</div>

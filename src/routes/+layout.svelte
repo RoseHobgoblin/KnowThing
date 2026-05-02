@@ -5,6 +5,7 @@
 	import { normalizePermissions } from '$lib/permissions.js'
 	import SearchBar from '$lib/components/SearchBar.svelte'
 	import Notifications from '$lib/components/ui/Notifications.svelte'
+	import MediaLightbox from '$lib/components/MediaLightbox.svelte'
 	import type { LayoutData } from './$types.js'
 	import House from 'phosphor-svelte/lib/House'
 	import PlusCircle from 'phosphor-svelte/lib/PlusCircle'
@@ -226,3 +227,4 @@
 </Tooltip.Provider>
 
 <Notifications />
+<MediaLightbox />

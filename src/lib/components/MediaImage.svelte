@@ -1,18 +1,24 @@
 <script lang="ts">
+	import { mediaLightbox } from './mediaLightbox.svelte.ts'
+
 	let {
 		filename,
 		alt = '',
+		caption = '',
 		displayWidth,
 		sizes,
 		class: className = '',
 		loading = 'lazy',
+		linkable = true,
 	}: {
 		filename: string
 		alt?: string
+		caption?: string
 		displayWidth?: number
 		sizes?: string
 		class?: string
 		loading?: 'eager' | 'lazy'
+		linkable?: boolean
 	} = $props()
 
 	const encodedFilename = $derived(encodeURIComponent(filename))
@@ -28,14 +34,39 @@
 	const resolvedSizes = $derived(
 		sizes ?? (displayWidth ? `${displayWidth}px` : '(max-width: 640px) calc(100vw - 3rem), 600px'),
 	)
+
+	function onclick(event: MouseEvent) {
+		if (event.button !== 0 || event.ctrlKey || event.shiftKey || event.metaKey || event.altKey) return
+		event.preventDefault()
+		mediaLightbox.open(filename, alt, caption)
+	}
 </script>
 
-<img
-	src={source}
-	srcset={srcset}
-	sizes={resolvedSizes}
-	{alt}
-	{loading}
-	decoding="async"
-	class={className}
-/>
+{#if linkable}
+	<a
+		href="/media/{encodedFilename}"
+		{onclick}
+		class="contents"
+		data-caption={caption}
+	>
+		<img
+			src={source}
+			srcset={srcset}
+			sizes={resolvedSizes}
+			{alt}
+			{loading}
+			decoding="async"
+			class={className}
+		/>
+	</a>
+{:else}
+	<img
+		src={source}
+		srcset={srcset}
+		sizes={resolvedSizes}
+		{alt}
+		{loading}
+		decoding="async"
+		class={className}
+	/>
+{/if}

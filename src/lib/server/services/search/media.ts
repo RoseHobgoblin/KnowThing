@@ -100,7 +100,7 @@ export async function searchMediaUnified(params: MediaSearchParams): Promise<{
 		results: files.map((file) => ({
 			kind: 'media',
 			title: file.filename,
-			href: `/dashboard/media/${encodeURIComponent(file.filename)}`,
+			href: `/media/${encodeURIComponent(file.filename)}`,
 			badge: 'Media',
 			snippet: file.description ?? '',
 			meta: [
