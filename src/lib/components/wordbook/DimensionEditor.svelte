@@ -8,6 +8,7 @@
 	import { PARTS_OF_SPEECH } from './constants.js'
 	import { generateCellKeys, cellKeyLabel } from '$lib/wordbook/cell-keys.js'
 	import { applyStem } from '$lib/wordbook/inflection-pattern.js'
+	import { DIMENSION_PRESETS, CLASS_PRESETS, type DimensionPreset, type ClassPreset } from './dimension-presets.js'
 
 	let { languageSlug, dimensions = [], classes = [], ruleCounts = {} }: {
 		languageSlug: string
@@ -40,7 +41,6 @@
 
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
 
-	// Sectioning: dimensions and classes grouped by POS that has either
 	const allPos = $derived.by(() => {
 		const seen: Record<string, true> = {}
 		const order: string[] = []
@@ -62,10 +62,59 @@
 	let newDimSort = $state<string>('0')
 	let addingDim = $state(false)
 
+	function applyDimensionPreset(preset: DimensionPreset) {
+		newDimPos = preset.pos
+		newDimName = preset.name
+		newDimValues = preset.values.join(', ')
+		// If a dimension already takes that axis on this POS, auto-pick the next free one.
+		const taken = new Set(dimsByPos(preset.pos).map(d => d.sortOrder))
+		const free = [0, 1, 2].find(n => !taken.has(n)) ?? preset.sortOrder
+		newDimSort = String(free)
+	}
+
+	// Hide Display-as picker for the very first dimension on a POS — Rows is the
+	// only meaningful choice. Surface it (with a hint) once another dimension exists.
+	const existingSorts = $derived(new Set(dimsByPos(newDimPos).map(d => d.sortOrder)))
+	const showDisplayAs = $derived(existingSorts.size > 0)
+	const displayAsHint = $derived.by(() => {
+		const taken = [...existingSorts].toSorted()
+		const labels = taken.map(sortLabel).join(', ')
+		return labels ? `${labels} already taken on ${newDimPos}` : ''
+	})
+
+	$effect(() => {
+		// Auto-default Display-as when POS changes: pick the first free axis.
+		if (!showAddDim) return
+		const taken = new Set(dimsByPos(newDimPos).map(d => d.sortOrder))
+		if (!taken.has(Number(newDimSort))) return // current pick is still free
+		const free = [0, 1, 2].find(n => !taken.has(n)) ?? 0
+		newDimSort = String(free)
+	})
+
+	// Live preview of the values the user is typing
+	const newDimValuesParsed = $derived(
+		newDimValues.split(',').map(v => v.trim()).filter(Boolean),
+	)
+	const newDimAxis = $derived(sortLabel(Number(newDimSort) || 0))
+	const newDimShapeLine = $derived.by(() => {
+		const vals = newDimValuesParsed
+		if (vals.length === 0) return ''
+		const otherDims = dimsByPos(newDimPos).filter(d => d.sortOrder !== Number(newDimSort))
+		const otherCells = otherDims.length > 0
+			? otherDims.reduce((n, d) => n * d.dimValues.length, 1)
+			: 0
+		if (otherCells > 0) {
+			const total = otherCells * vals.length
+			return `${newDimAxis.toLowerCase()}: ${vals.join(' · ')} — table will have ${total} cells`
+		}
+		return `${newDimAxis.toLowerCase()}: ${vals.join(' · ')}`
+	})
+
 	async function addDimension(event: SubmitEvent) {
 		event.preventDefault()
 		if (!newDimName.trim() || !newDimValues.trim()) return
 		addingDim = true
+		const sortOrder = showDisplayAs ? Number(newDimSort) || 0 : 0
 		const response = await fetch(`/api/languages/${languageSlug}/inflections/dimensions`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
@@ -73,7 +122,7 @@
 				partOfSpeech: newDimPos,
 				name: newDimName.trim(),
 				values: newDimValues.split(',').map(v => v.trim()).filter(Boolean),
-				sortOrder: Number(newDimSort) || 0,
+				sortOrder,
 			}),
 		})
 		if (response.ok) {
@@ -81,6 +130,28 @@
 			newDimName = ''
 			newDimValues = ''
 			showAddDim = false
+			invalidateAll()
+		} else {
+			pushError('Failed to create dimension')
+		}
+		addingDim = false
+	}
+
+	async function quickAddPreset(preset: DimensionPreset) {
+		// One-click empty-state CTA — POSTs without opening the form.
+		addingDim = true
+		const response = await fetch(`/api/languages/${languageSlug}/inflections/dimensions`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				partOfSpeech: preset.pos,
+				name: preset.name,
+				values: preset.values,
+				sortOrder: preset.sortOrder,
+			}),
+		})
+		if (response.ok) {
+			pushSuccess(`Added ${preset.name} for ${preset.pos}`)
 			invalidateAll()
 		} else {
 			pushError('Failed to create dimension')
@@ -106,6 +177,26 @@
 	let newClassName = $state('')
 	let newClassDesc = $state('')
 	let addingClass = $state(false)
+
+	function applyClassPreset(preset: ClassPreset) {
+		newClassPos = preset.pos
+		newClassName = preset.name
+		newClassDesc = preset.description
+	}
+
+	// Cell skeleton for the currently chosen POS in the class form
+	const newClassCells = $derived(cellKeysForPos(newClassPos))
+	const newClassCellsHint = $derived.by(() => {
+		const cells = newClassCells
+		const dims = dimsByPos(newClassPos)
+		if (dims.length === 0) return null
+		return {
+			count: cells.length,
+			labels: cells.slice(0, 6).map(cellKeyLabel),
+			truncated: cells.length > 6,
+			dimNames: dims.map(d => d.name).join(' × '),
+		}
+	})
 
 	async function addClass(event: SubmitEvent) {
 		event.preventDefault()
@@ -196,7 +287,6 @@
 		invalidateAll()
 	}
 
-	// Preview ribbon — first non-empty rule, applied to previewStem
 	const previewRibbon = $derived.by(() => {
 		const first = editingRules.find(r => r.pattern.trim())
 		if (!first) return ''
@@ -219,8 +309,24 @@
 		</div>
 
 		{#if showAddDim}
-			<form onsubmit={addDimension} class="p-3 bg-page border border-border space-y-2">
+			<form onsubmit={addDimension} class="p-3 bg-page border-l-2 border-l-accent border-y border-r border-border space-y-2">
 				<div class="text-xs font-medium text-dim mb-1">New dimension</div>
+
+				<!-- Click-to-fill chips -->
+				<div class="flex flex-wrap items-center gap-1.5 text-xs">
+					<span class="text-faint">Try one — click to fill:</span>
+					{#each DIMENSION_PRESETS as preset (preset.label)}
+						<button
+							type="button"
+							onclick={() => applyDimensionPreset(preset)}
+							class="
+								px-2 py-0.5 border border-border-subtle bg-surface text-secondary transition-colors
+								hover:border-accent-border hover:bg-accent-subtle hover:text-accent
+							"
+						>{preset.label}</button>
+					{/each}
+				</div>
+
 				<div class="flex gap-2 flex-wrap">
 					<Select
 						type="single"
@@ -229,20 +335,33 @@
 						size="sm"
 					/>
 					<Input bind:value={newDimName} placeholder="Name (e.g. Number, Case, Tense)" required containerClass="flex-1 min-w-[160px]" />
-					<div class="flex items-center gap-2">
-						<span class="text-xs text-dim whitespace-nowrap">Display as:</span>
-						<Select
-							type="single"
-							bind:value={newDimSort}
-							items={SORT_OPTIONS}
-							size="sm"
-						/>
-					</div>
+					{#if showDisplayAs}
+						<div class="flex items-center gap-2">
+							<span class="text-xs text-dim whitespace-nowrap">Display as:</span>
+							<Select
+								type="single"
+								bind:value={newDimSort}
+								items={SORT_OPTIONS}
+								size="sm"
+							/>
+						</div>
+					{/if}
 				</div>
+
+				{#if showDisplayAs && displayAsHint}
+					<p class="text-xs text-faint -mt-1">{displayAsHint}</p>
+				{/if}
+
 				<Input bind:value={newDimValues} placeholder="Values, comma-separated" required containerClass="w-full" />
-				<p class="text-xs text-faint">
-					Examples: Number → <code class="bg-surface-dim px-1 rounded-sm">singular, plural</code> · Case → <code class="bg-surface-dim px-1 rounded-sm">nominative, accusative, genitive, dative</code> · Tense → <code class="bg-surface-dim px-1 rounded-sm">present, past, future</code>
-				</p>
+
+				{#if newDimShapeLine}
+					<p class="text-xs text-secondary">
+						<span class="text-faint">Your table will have</span> {newDimShapeLine}
+					</p>
+				{:else}
+					<p class="text-xs text-faint">Type at least one value, e.g. <code class="bg-surface-dim px-1 rounded-sm">singular, plural</code>.</p>
+				{/if}
+
 				<div class="flex gap-2">
 					<button type="submit" disabled={addingDim} class="px-3 py-1 bg-accent text-surface text-xs hover:bg-accent-hover disabled:opacity-50">Add</button>
 					<button type="button" onclick={() => showAddDim = false} class="text-xs text-faint">Cancel</button>
@@ -250,9 +369,25 @@
 			</form>
 		{/if}
 
-		{#if dimensions.length === 0}
-			<p class="text-xs text-faint">No dimensions yet. Start with one — e.g. <code class="bg-surface-dim px-1 rounded-sm">Number</code> for nouns.</p>
-		{:else}
+		{#if dimensions.length === 0 && !showAddDim}
+			<div class="space-y-2">
+				<p class="text-xs text-faint">No dimensions yet. Pick a starter, or open the form for full control:</p>
+				<div class="flex flex-wrap gap-1.5">
+					{#each DIMENSION_PRESETS.slice(0, 4) as preset (preset.label)}
+						<button
+							type="button"
+							disabled={addingDim}
+							onclick={() => quickAddPreset(preset)}
+							class="
+								px-2 py-1 border border-accent-border bg-accent-subtle text-xs text-accent transition-colors
+								hover:bg-accent hover:text-surface
+								disabled:opacity-50
+							"
+						>+ {preset.label}</button>
+					{/each}
+				</div>
+			</div>
+		{:else if dimensions.length > 0}
 			<div class="space-y-3">
 				{#each allPos.filter(p => dimsByPos(p).length > 0) as pos (pos)}
 					<div>
@@ -284,8 +419,23 @@
 		</div>
 
 		{#if showAddClass}
-			<form onsubmit={addClass} class="p-3 bg-page border border-border space-y-2">
+			<form onsubmit={addClass} class="p-3 bg-page border-l-2 border-l-accent-secondary border-y border-r border-border space-y-2">
 				<div class="text-xs font-medium text-dim mb-1">New paradigm class</div>
+
+				<div class="flex flex-wrap items-center gap-1.5 text-xs">
+					<span class="text-faint">Try one — click to fill:</span>
+					{#each CLASS_PRESETS as preset (preset.label)}
+						<button
+							type="button"
+							onclick={() => applyClassPreset(preset)}
+							class="
+								px-2 py-0.5 border border-border-subtle bg-surface text-secondary transition-colors
+								hover:border-accent-border hover:bg-accent-subtle hover:text-accent
+							"
+						>{preset.label}</button>
+					{/each}
+				</div>
+
 				<div class="flex gap-2 flex-wrap">
 					<Select
 						type="single"
@@ -296,6 +446,28 @@
 					<Input bind:value={newClassName} placeholder="Name (e.g. Regular, Class I, Vowel-stem)" required containerClass="flex-1 min-w-[180px]" />
 				</div>
 				<Input bind:value={newClassDesc} placeholder="Description (optional)" containerClass="w-full" />
+
+				{#if newClassCellsHint}
+					<p class="text-xs text-secondary">
+						<span class="text-faint">This class will have</span> {newClassCellsHint.count} cell{newClassCellsHint.count === 1 ? '' : 's'}:
+						<span class="font-mono text-faint">{newClassCellsHint.labels.join(' · ')}{newClassCellsHint.truncated ? ' …' : ''}</span>
+						<span class="text-faint">(from {newClassCellsHint.dimNames})</span>
+					</p>
+				{:else}
+					<p class="text-xs text-faint">
+						No dimensions for <strong>{newClassPos}</strong> yet. The class will have nothing to inflect until you
+						<button
+							type="button"
+							onclick={() => {
+								showAddClass = false
+								showAddDim = true
+								newDimPos = newClassPos
+							}}
+							class="text-link hover:underline"
+						>add a dimension</button>.
+					</p>
+				{/if}
+
 				<div class="flex gap-2">
 					<button type="submit" disabled={addingClass} class="px-3 py-1 bg-accent text-surface text-xs hover:bg-accent-hover disabled:opacity-50">Add</button>
 					<button type="button" onclick={() => showAddClass = false} class="text-xs text-faint">Cancel</button>
@@ -303,9 +475,9 @@
 			</form>
 		{/if}
 
-		{#if classes.length === 0}
+		{#if classes.length === 0 && !showAddClass}
 			<p class="text-xs text-faint">No classes yet. Add one — e.g. <code class="bg-surface-dim px-1 rounded-sm">Regular</code> for nouns. Then click it to define rules.</p>
-		{:else}
+		{:else if classes.length > 0}
 			<div class="space-y-3">
 				{#each allPos.filter(p => classes.some(c => c.partOfSpeech === p)) as pos (pos)}
 					{@const totalCells = cellKeysForPos(pos).length}
@@ -413,12 +585,6 @@
 			</div>
 		{/if}
 	</section>
-
-	{#if dimensions.length === 0 && classes.length === 0}
-		<p class="text-xs text-faint">
-			No inflection system yet. Start with <strong>1. Dimensions</strong> above — define what varies (Number, Case, Tense), then make a paradigm class with rules for each cell. The worked example at the top shows the finished pipeline.
-		</p>
-	{/if}
 </div>
 
 <ConfirmDialog bind:this={confirmDialog} />
