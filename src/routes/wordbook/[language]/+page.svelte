@@ -4,7 +4,7 @@
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import AlphabetNav from '$lib/components/wordbook/AlphabetNav.svelte'
 	import WordEntry from '$lib/components/wordbook/WordEntry.svelte'
-	import DimensionEditor from '$lib/components/wordbook/DimensionEditor.svelte'
+	import InflectionSummary from '$lib/components/wordbook/InflectionSummary.svelte'
 	import { createKnowContext } from '$lib/renderer/context.js'
 
 	let { data }: { data: PageData } = $props()
@@ -63,8 +63,6 @@
 	title={data.language.name}
 >
 	{#snippet actions()}
-		<a href="/wordbook/{data.language.slug}/phonology" class="text-sm text-faint hover:text-link hover:underline">Phonology</a>
-		<a href="/wordbook/{data.language.slug}/orthography" class="text-sm text-faint hover:text-link hover:underline">Orthography</a>
 		{#if canManageWordbook}
 			<a href="/wordbook/contribute?language={data.language.slug}" class="text-sm text-link hover:text-link-hover hover:underline">+ Add word</a>
 			<a href="/wordbook/contribute/language/{data.language.slug}" class="text-sm text-faint hover:text-link hover:underline">Edit language</a>
@@ -143,13 +141,16 @@
 		</div>
 	{/if}
 
-	<!-- Inflection system -->
+	<!-- Inflection system (read-only summary) -->
 	{#if data.inflectionDimensions.length > 0 || canManageWordbook}
-		<DimensionEditor
-			languageSlug={data.language.slug}
-			dimensions={data.inflectionDimensions}
-			classes={data.paradigmClasses}
-		/>
+		<div class="mb-4">
+			<InflectionSummary
+				languageSlug={data.language.slug}
+				dimensions={data.inflectionDimensions}
+				classes={data.paradigmClasses}
+				canEdit={canManageWordbook}
+			/>
+		</div>
 	{/if}
 
 	<!-- Alphabet nav -->

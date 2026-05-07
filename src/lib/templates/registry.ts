@@ -21,6 +21,10 @@ import DateTpl from './builtins/Date.svelte'
 import Footnote from './builtins/Footnote.svelte'
 import ShortFootnote from './builtins/ShortFootnote.svelte'
 import Notelist from './builtins/Notelist.svelte'
+import WikiList from './builtins/WikiList.svelte'
+import NativeName from './builtins/NativeName.svelte'
+import Marriage from './builtins/Marriage.svelte'
+import CollapsibleList from './builtins/CollapsibleList.svelte'
 import SystemMap from './builtins/SystemMap.svelte'
 import PhonemeGrid from '$lib/renderer/structured/PhonemeGrid.svelte'
 import PhonologySection from '$lib/renderer/structured/PhonologySection.svelte'
@@ -58,6 +62,19 @@ export const BUILTIN_TEMPLATES: Record<string, BuiltinEntry> = {
 	'big': { component: InlineTag, staticProps: { variant: 'big' } },
 	'sup': { component: InlineTag, staticProps: { variant: 'sup' } },
 	'sub': { component: InlineTag, staticProps: { variant: 'sub' } },
+	'nobold': { component: InlineTag, staticProps: { variant: 'nobold' } },
+	'nbsp': { component: InlineTag, staticProps: { variant: 'nbsp' } },
+	'hanging indent': { component: InlineTag, staticProps: { variant: 'hanging-indent' } },
+	'ubl': { component: WikiList, staticProps: { variant: 'unbulleted' } },
+	'unbulleted list': { component: WikiList, staticProps: { variant: 'unbulleted' } },
+	'plainlist': { component: WikiList, staticProps: { variant: 'unbulleted' } },
+	'hlist': { component: WikiList, staticProps: { variant: 'horizontal' } },
+	'flatlist': { component: WikiList, staticProps: { variant: 'horizontal' } },
+	'br separated entries': { component: WikiList, staticProps: { variant: 'br-separated' } },
+	'native name': { component: NativeName },
+	'marriage': { component: Marriage },
+	'collapsible list': { component: CollapsibleList },
+	'collapsed list': { component: CollapsibleList },
 	'clear': { component: Clear },
 	'anchor': { component: Anchor, staticProps: { visible: false } },
 	'visible anchor': { component: Anchor, staticProps: { visible: true } },

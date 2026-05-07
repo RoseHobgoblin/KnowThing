@@ -4,6 +4,7 @@
 	import Select from '$lib/components/ui/Select.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import Input from '$lib/components/ui/Input.svelte'
+	import HelpBlock from '$lib/components/ui/HelpBlock.svelte'
 	import { PARTS_OF_SPEECH } from './constants.js'
 	import { generateCellKeys, cellKeyLabel } from '$lib/wordbook/cell-keys.js'
 
@@ -40,8 +41,6 @@
 	}
 
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
-
-	let showHelp = $state(false)
 
 	// Add dimension form
 	let showAddDim = $state(false)
@@ -194,23 +193,19 @@
 	<div class="flex items-center justify-between mb-3">
 		<div class="flex items-center gap-2">
 			<h3 class="text-sm font-semibold text-body">Inflection System</h3>
-			<button onclick={() => showHelp = !showHelp} class="text-xs text-faint hover:text-link border border-border-subtle rounded px-1.5 py-0.5">{showHelp ? 'Hide help' : '?'}</button>
+			<HelpBlock title="?">
+				<p><strong>Dimensions</strong> are axes of variation — like <em>Case</em> (nominative, accusative...) or <em>Number</em> (singular, plural). Each dimension applies to a part of speech.</p>
+				<p><strong>Why dimensions matter:</strong> they define the table's axes. A noun with <em>Case × Number</em> shows a 2D table; adding <em>Definiteness</em> makes it 3D. Each dimension's <strong>sort order</strong> picks whether its values become rows (0), columns (1), or section groups (2+).</p>
+				<p><strong>Paradigm classes</strong> group words that inflect the same way (e.g. "Class I regular nouns"). Every word in a class shares the same set of rules.</p>
+				<p><strong>Rules</strong> define the pattern for each cell. Use <code class="bg-surface-dim px-1 rounded">{'{'+'stem}'}</code> as a placeholder for the word's stem. Example: <code class="bg-surface-dim px-1 rounded">{'{'+'stem}n'}</code> means "add -n to the stem".</p>
+				<p class="text-faint"><strong>Workflow:</strong> Add dimensions → Create a class → Click the class name to add rules → On a word's edit page, assign the class + set the stem.</p>
+			</HelpBlock>
 		</div>
 		<div class="flex gap-2">
 			<button onclick={() => showAddDim = !showAddDim} class="text-xs text-link hover:text-link-hover hover:underline">+ Dimension</button>
 			<button onclick={() => showAddClass = !showAddClass} class="text-xs text-link hover:text-link-hover hover:underline">+ Class</button>
 		</div>
 	</div>
-
-	{#if showHelp}
-		<div class="mb-4 p-3 bg-page border border-border-subtle text-xs text-secondary space-y-2">
-			<p><strong>Dimensions</strong> are axes of variation — like <em>Case</em> (nominative, accusative...) or <em>Number</em> (singular, plural). Each dimension applies to a part of speech.</p>
-			<p><strong>Sort order</strong> controls table layout: <code class="bg-surface-dim px-1 rounded">0</code> = table rows, <code class="bg-surface-dim px-1 rounded">1</code> = columns, <code class="bg-surface-dim px-1 rounded">2+</code> = grouped sections.</p>
-			<p><strong>Paradigm classes</strong> group words that inflect the same way (e.g. "Class I regular nouns").</p>
-			<p><strong>Rules</strong> define the pattern for each cell. Use <code class="bg-surface-dim px-1 rounded">{'{'+'stem}'}</code> as a placeholder for the word's stem. Example: <code class="bg-surface-dim px-1 rounded">{'{'+'stem}n'}</code> means "add -n to the stem".</p>
-			<p class="text-faint"><strong>Workflow:</strong> Add dimensions → Create a class → Click the class name to add rules → Go to a word page and assign the class + set the stem.</p>
-		</div>
-	{/if}
 
 	<!-- Add dimension form -->
 	{#if showAddDim}

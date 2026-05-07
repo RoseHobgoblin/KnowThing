@@ -9,7 +9,6 @@
 	import TagPill from '$lib/components/wordbook/TagPill.svelte'
 	import EtymologySection from '$lib/components/wordbook/EtymologySection.svelte'
 	import InflectionTable from '$lib/components/wordbook/InflectionTable.svelte'
-	import InflectionEditor from '$lib/components/wordbook/InflectionEditor.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
@@ -242,14 +241,13 @@
 					stem={hom.inflection.stem}
 					hasInflection={hom.inflection.hasInflection}
 				/>
-				{#if canManageWordbook}
-					<InflectionEditor
-						entryId={entry.id}
-						languageSlug={data.language.slug}
-						partOfSpeech={hom.definitions[0]?.partOfSpeech || ''}
-						inflection={hom.inflection}
-						availableClasses={data.availableClasses}
-					/>
+				{#if canManageWordbook && (hom.inflection.dimensions.length > 0 || data.availableClasses.length > 0)}
+					<a
+						href="/wordbook/contribute/{entry.id}?tab=inflection"
+						class="mt-2 inline-block text-xs text-link hover:text-link-hover hover:underline"
+					>
+						{hom.inflection.hasInflection ? 'Edit inflection' : '+ Set up inflection'}
+					</a>
 				{/if}
 
 				<!-- Tags -->

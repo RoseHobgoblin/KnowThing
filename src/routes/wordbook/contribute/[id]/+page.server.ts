@@ -2,6 +2,8 @@ import type { PageServerLoad } from './$types.js'
 import { redirect, error } from '@sveltejs/kit'
 import { getEntryWithDefinitions } from '$lib/server/services/wordbook.js'
 import { listLanguageOptions } from '$lib/server/services/languages.js'
+import { listClassesForLanguage } from '$lib/server/services/inflections.js'
+import { getInflectionTable } from '$lib/server/wordbook/inflection.js'
 
 export const load: PageServerLoad = async ({ locals, params }) => {
 	if (!locals.user) throw redirect(302, '/auth/login')
@@ -12,5 +14,16 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	const { entry, definitions: defs } = await getEntryWithDefinitions(id)
 	const langs = await listLanguageOptions()
 
-	return { entry, definitions: defs, languages: langs }
+	const [availableClasses, inflection] = await Promise.all([
+		listClassesForLanguage(entry.languageId),
+		getInflectionTable(id),
+	])
+
+	return {
+		entry,
+		definitions: defs,
+		languages: langs,
+		availableClasses,
+		inflection,
+	}
 }

@@ -4,6 +4,7 @@
 	import Select from '$lib/components/ui/Select.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import Input from '$lib/components/ui/Input.svelte'
+	import HelpBlock from '$lib/components/ui/HelpBlock.svelte'
 	import { generateCellKeys, cellKeyLabel } from '$lib/wordbook/cell-keys.js'
 
 	let {
@@ -118,7 +119,14 @@
 {#if editing}
 	<div class="mt-4 p-4 bg-raised border border-border space-y-3">
 		<div class="flex items-center justify-between">
-			<h4 class="text-xs font-medium uppercase tracking-wide text-dim">Set up inflection</h4>
+			<div class="flex items-center gap-2">
+				<h4 class="text-xs font-medium uppercase tracking-wide text-dim">Set up inflection</h4>
+				<HelpBlock title="?">
+					<p>A <strong>paradigm class</strong> is a group of words that all inflect the same way (declension/conjugation pattern). Pick the class that matches this word, then enter its <strong>stem</strong> — the unchanging part the rules attach to.</p>
+					<p>Cells where the language's regular rule doesn't fit can be filled in as <strong>overrides</strong> for irregular forms.</p>
+					<p class="text-faint">Example: in a class with rule <code class="bg-surface-dim px-1 rounded">{'{'+'stem}us'}</code> for nominative singular, a word with stem <code class="bg-surface-dim px-1 rounded">equ</code> produces <code class="bg-surface-dim px-1 rounded">equus</code>. If this word is irregular and the actual form is <code class="bg-surface-dim px-1 rounded">equos</code>, set an override on the <code class="bg-surface-dim px-1 rounded">nom_sg</code> cell.</p>
+				</HelpBlock>
+			</div>
 			<div class="flex gap-2">
 				{#if inflection.hasInflection}
 					<button onclick={removeInflection} class="text-xs text-error hover:underline">Remove</button>
@@ -149,16 +157,16 @@
 					<div class="p-2 bg-warning-bg border border-warning-border text-xs text-body">
 						{#if availableClasses.length > 0}
 							No paradigm classes for <strong>{partOfSpeech || 'this part of speech'}</strong>.
-							Classes exist for other parts of speech — check the
-							<a href="/wordbook/{languageSlug}" class="text-link hover:underline">language page</a>.
+							Classes exist for other parts of speech — see
+							<a href="/wordbook/contribute/language/{languageSlug}?tab=inflections" class="text-link hover:underline">Inflections</a>.
 						{:else if inflection.dimensions.length > 0}
 							No paradigm classes defined yet.
-							<a href="/wordbook/{languageSlug}" class="text-link hover:underline">Create a class on the language page</a>,
+							<a href="/wordbook/contribute/language/{languageSlug}?tab=inflections" class="text-link hover:underline">Create a class</a>,
 							then come back to assign it.
 						{:else}
 							No inflection system set up for this language.
-							<a href="/wordbook/{languageSlug}" class="text-link hover:underline">Go to the language page</a>
-							to add dimensions (e.g. Case, Number) and paradigm classes first.
+							<a href="/wordbook/contribute/language/{languageSlug}?tab=inflections" class="text-link hover:underline">Add dimensions</a>
+							(e.g. Case, Number) and paradigm classes first.
 						{/if}
 					</div>
 				{/if}

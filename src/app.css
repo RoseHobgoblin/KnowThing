@@ -234,6 +234,55 @@ h1, h2, h3, h4, h5, h6 {
 	background: var(--color-raised);
 }
 
+/* ── Wiki list helpers (ubl / hlist / collapsible) ────────── */
+
+.ub-list {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+}
+
+.ub-list > li {
+	margin: 0;
+	padding: 0;
+}
+
+.h-list {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+	display: inline;
+}
+
+.h-list > li {
+	display: inline;
+}
+
+.h-list > li + li::before {
+	content: " · ";
+	padding: 0 0.25em;
+	color: var(--color-dim);
+}
+
+.hanging-indent {
+	padding-left: 1.6em;
+	text-indent: -1.6em;
+}
+
+.cl-details > .cl-summary {
+	cursor: pointer;
+	font-style: italic;
+	color: var(--color-link);
+}
+
+.cl-details > .cl-summary:hover {
+	color: var(--color-link-hover);
+}
+
+.cl-body {
+	margin-top: 0.25rem;
+}
+
 /* ── Mobile responsive ────────────────────────────────────── */
 
 @media (max-width: 640px) {
