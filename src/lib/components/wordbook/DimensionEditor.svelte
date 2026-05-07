@@ -42,10 +42,16 @@
 
 	// Sectioning: dimensions and classes grouped by POS that has either
 	const allPos = $derived.by(() => {
-		const set = new Set<string>()
-		for (const d of dimensions) set.add(d.partOfSpeech)
-		for (const c of classes) set.add(c.partOfSpeech)
-		return [...set]
+		const seen: Record<string, true> = {}
+		const order: string[] = []
+		const visit = (pos: string) => {
+			if (seen[pos]) return
+			seen[pos] = true
+			order.push(pos)
+		}
+		for (const d of dimensions) visit(d.partOfSpeech)
+		for (const c of classes) visit(c.partOfSpeech)
+		return order
 	})
 
 	// ── Add dimension form ─────────────────────────────────────────────
@@ -72,7 +78,9 @@
 		})
 		if (response.ok) {
 			pushSuccess('Dimension created')
-			newDimName = ''; newDimValues = ''; showAddDim = false
+			newDimName = ''
+			newDimValues = ''
+			showAddDim = false
 			invalidateAll()
 		} else {
 			pushError('Failed to create dimension')
@@ -114,7 +122,9 @@
 		})
 		if (response.ok) {
 			pushSuccess('Paradigm class created')
-			newClassName = ''; newClassDesc = ''; showAddClass = false
+			newClassName = ''
+			newClassDesc = ''
+			showAddClass = false
 			invalidateAll()
 		} else {
 			pushError('Failed to create paradigm class')
@@ -186,8 +196,6 @@
 		invalidateAll()
 	}
 
-	const inputClass = 'px-3 py-1.5 border border-border-strong text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent'
-
 	// Preview ribbon — first non-empty rule, applied to previewStem
 	const previewRibbon = $derived.by(() => {
 		const first = editingRules.find(r => r.pattern.trim())
@@ -207,7 +215,7 @@
 				<h3 class="text-sm font-semibold text-body">1. Dimensions</h3>
 				<p class="text-xs text-faint mt-0.5">What axes does morphology vary on? E.g. nouns vary by Number; verbs vary by Tense and Person.</p>
 			</div>
-			<button onclick={() => showAddDim = !showAddDim} class="text-xs text-link hover:text-link-hover hover:underline whitespace-nowrap">+ Dimension</button>
+			<button onclick={() => showAddDim = !showAddDim} class="text-xs text-link whitespace-nowrap hover:text-link-hover hover:underline">+ Dimension</button>
 		</div>
 
 		{#if showAddDim}
@@ -272,7 +280,7 @@
 				<h3 class="text-sm font-semibold text-body">2. Paradigm classes</h3>
 				<p class="text-xs text-faint mt-0.5">Group words that inflect identically. <em>cat</em> and <em>dog</em> share rules; <em>mouse</em> needs its own class or overrides.</p>
 			</div>
-			<button onclick={() => showAddClass = !showAddClass} class="text-xs text-link hover:text-link-hover hover:underline whitespace-nowrap">+ Class</button>
+			<button onclick={() => showAddClass = !showAddClass} class="text-xs text-link whitespace-nowrap hover:text-link-hover hover:underline">+ Class</button>
 		</div>
 
 		{#if showAddClass}

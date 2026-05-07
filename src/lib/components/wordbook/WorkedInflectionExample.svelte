@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { cn } from '$lib/utils'
+
 	let { compact = false }: { compact?: boolean } = $props()
 
 	type Variant = {
@@ -63,12 +65,12 @@
 			<button
 				type="button"
 				onclick={() => mode = 'real'}
-				class="px-2 py-0.5 transition-colors {mode === 'real' ? 'bg-accent text-surface' : 'text-faint hover:text-link'}"
+				class={cn('px-2 py-0.5 transition-colors', mode === 'real' ? 'bg-accent text-surface' : 'text-faint hover:text-link')}
 			>English</button>
 			<button
 				type="button"
 				onclick={() => mode = 'conlang'}
-				class="px-2 py-0.5 transition-colors {mode === 'conlang' ? 'bg-accent text-surface' : 'text-faint hover:text-link'}"
+				class={cn('px-2 py-0.5 transition-colors', mode === 'conlang' ? 'bg-accent text-surface' : 'text-faint hover:text-link')}
 			>Conlang</button>
 		</div>
 	</div>
@@ -79,7 +81,7 @@
 				With class <strong>{variant.className}</strong> and stem <code class="bg-surface-dim px-1 rounded-sm font-mono">{variant.stem}</code>, the rules generate:
 			</div>
 			<div class="font-mono text-faint">
-				{#each variant.applied as cell, i (cell.cell)}{i > 0 ? ' · ' : ''}{cell.form}{/each}
+				{#each variant.applied as cell, index (cell.cell)}{index > 0 ? ' · ' : ''}{cell.form}{/each}
 			</div>
 			<div class="text-faint pt-1">
 				If <em>{variant.irregular.word}</em>'s {variant.irregular.cell} is irregular (<code class="bg-surface-dim px-1 rounded-sm font-mono">{variant.irregular.actual}</code> instead of <code class="bg-surface-dim px-1 rounded-sm font-mono">{variant.irregular.expected}</code>), set it as an override.
@@ -89,7 +91,7 @@
 		<div class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2">
 			<div class="font-semibold text-dim">1. Dimension</div>
 			<div>
-				{#each variant.dimensions as dim, i (dim.name)}{i > 0 ? ', ' : ''}<strong>{dim.name}</strong> = [{dim.values.join(', ')}] (for <em>{dim.pos}</em>){/each}
+				{#each variant.dimensions as dim, index (dim.name)}{index > 0 ? ', ' : ''}<strong>{dim.name}</strong> = [{dim.values.join(', ')}] (for <em>{dim.pos}</em>){/each}
 			</div>
 
 			<div class="font-semibold text-dim">2. Class</div>
@@ -105,7 +107,7 @@
 			<div class="font-semibold text-dim">4. Applied</div>
 			<div>
 				Stem <code class="bg-surface-dim px-1 rounded-sm font-mono">{variant.stem}</code> →
-				<span class="font-mono">{#each variant.applied as cell, i (cell.cell)}{i > 0 ? ', ' : ''}{cell.form}{/each}</span>
+				<span class="font-mono">{#each variant.applied as cell, index (cell.cell)}{index > 0 ? ', ' : ''}{cell.form}{/each}</span>
 			</div>
 		</div>
 
