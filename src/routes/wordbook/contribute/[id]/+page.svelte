@@ -140,6 +140,7 @@
 			/>
 			<InflectionEditor
 				entryId={data.entry.id}
+				word={data.entry.word}
 				{languageSlug}
 				partOfSpeech={firstPos}
 				inflection={data.inflection}

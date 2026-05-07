@@ -4,17 +4,20 @@
 	import Select from '$lib/components/ui/Select.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import Input from '$lib/components/ui/Input.svelte'
-	import HelpBlock from '$lib/components/ui/HelpBlock.svelte'
+	import WorkedInflectionExample from './WorkedInflectionExample.svelte'
 	import { generateCellKeys, cellKeyLabel } from '$lib/wordbook/cell-keys.js'
+	import { applyStem } from '$lib/wordbook/inflection-pattern.js'
 
 	let {
 		entryId,
+		word = '',
 		inflection,
 		availableClasses = [],
 		languageSlug = '',
 		partOfSpeech = '',
 	}: {
 		entryId: number
+		word?: string
 		languageSlug?: string
 		partOfSpeech?: string
 		inflection: {
@@ -28,11 +31,10 @@
 		availableClasses: Array<{ id: number, name: string, partOfSpeech: string }>
 	} = $props()
 
-	// Filter classes to only show those matching this word's POS
 	const filteredClasses = $derived(
 		partOfSpeech
 			? availableClasses.filter(c => c.partOfSpeech === partOfSpeech)
-			: availableClasses
+			: availableClasses,
 	)
 
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
@@ -43,6 +45,35 @@
 	let overrides = $state<Record<string, string>>({})
 	let saving = $state(false)
 	let error = $state('')
+
+	// Rules for the currently selected class — fetched on demand for live preview
+	let selectedClassRules = $state<Record<string, string>>({})
+	let loadingRules = $state(false)
+
+	async function loadClassRules(classId: number | null) {
+		if (classId === null) {
+			selectedClassRules = {}
+			return
+		}
+		loadingRules = true
+		try {
+			const response = await fetch(`/api/languages/${languageSlug}/inflections/classes/${classId}`)
+			if (!response.ok) {
+				selectedClassRules = {}
+				return
+			}
+			const data = await response.json()
+			const rules: Record<string, string> = {}
+			for (const r of data.rules || []) rules[r.cellKey] = r.pattern
+			selectedClassRules = rules
+		} finally {
+			loadingRules = false
+		}
+	}
+
+	$effect(() => {
+		if (editing) loadClassRules(selectedClassId)
+	})
 
 	function startEditing() {
 		selectedClassId = null
@@ -60,9 +91,8 @@
 	async function save() {
 		saving = true
 		error = ''
-
 		try {
-			const res = await fetch(`/api/wordbook/${entryId}/inflection`, {
+			const response = await fetch(`/api/wordbook/${entryId}/inflection`, {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -73,12 +103,10 @@
 					),
 				}),
 			})
-
-			if (!res.ok) {
-				const data = await res.json()
+			if (!response.ok) {
+				const data = await response.json()
 				throw new Error(data.error || 'Failed to save')
 			}
-
 			pushSuccess('Inflection saved')
 			editing = false
 			invalidateAll()
@@ -94,12 +122,12 @@
 		const ok = await confirmDialog.confirm('Remove inflection', 'Remove inflection data for this entry?', 'Remove', 'Cancel')
 		if (!ok) return
 		saving = true
-		const res = await fetch(`/api/wordbook/${entryId}/inflection`, {
+		const response = await fetch(`/api/wordbook/${entryId}/inflection`, {
 			method: 'PUT',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ classId: null, stem: null, overrides: {} }),
 		})
-		if (res.ok) {
+		if (response.ok) {
 			pushSuccess('Inflection removed')
 		} else {
 			pushError('Failed to remove inflection')
@@ -110,8 +138,47 @@
 	}
 
 	const cellKeys = $derived(
-		generateCellKeys(inflection.dimensions.map(d => ({ values: d.values, sortOrder: d.sortOrder })))
+		generateCellKeys(inflection.dimensions.map(d => ({ values: d.values, sortOrder: d.sortOrder }))),
 	)
+
+	// Smart stem placeholder: try to strip the longest non-{stem} suffix
+	// from any rule pattern off the headword.
+	const stemPlaceholder = $derived.by(() => {
+		if (!word) return 'e.g. cat'
+		const patterns = Object.values(selectedClassRules)
+		if (patterns.length === 0) return word
+		let best = word
+		for (const pattern of patterns) {
+			const idx = pattern.indexOf('{stem}')
+			if (idx === -1) continue
+			const suffix = pattern.slice(idx + '{stem}'.length)
+			if (suffix && word.endsWith(suffix)) {
+				const candidate = word.slice(0, word.length - suffix.length)
+				if (candidate.length < best.length && candidate.length > 0) best = candidate
+			}
+		}
+		return best
+	})
+
+	// Live preview: apply rules to the current stem (or placeholder fallback)
+	const previewStem = $derived(stem.trim() || stemPlaceholder)
+	const livePreview = $derived.by(() => {
+		const out: Array<{ cell: string, form: string }> = []
+		for (const key of cellKeys) {
+			const override = overrides[key]?.trim()
+			const pattern = selectedClassRules[key]
+			if (override) out.push({ cell: key, form: override })
+			else if (pattern) out.push({ cell: key, form: applyStem(pattern, previewStem) })
+		}
+		return out
+	})
+
+	// What the rule alone would generate for an override row
+	function ruleWouldBe(key: string): string {
+		const pattern = selectedClassRules[key]
+		if (!pattern) return ''
+		return applyStem(pattern, previewStem)
+	}
 
 	const inputClass = 'px-2 py-1 border border-border-strong text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent'
 </script>
@@ -119,14 +186,7 @@
 {#if editing}
 	<div class="mt-4 p-4 bg-raised border border-border space-y-3">
 		<div class="flex items-center justify-between">
-			<div class="flex items-center gap-2">
-				<h4 class="text-xs font-medium uppercase tracking-wide text-dim">Set up inflection</h4>
-				<HelpBlock title="?">
-					<p>A <strong>paradigm class</strong> is a group of words that all inflect the same way (declension/conjugation pattern). Pick the class that matches this word, then enter its <strong>stem</strong> — the unchanging part the rules attach to.</p>
-					<p>Cells where the language's regular rule doesn't fit can be filled in as <strong>overrides</strong> for irregular forms.</p>
-					<p class="text-faint">Example: in a class with rule <code class="bg-surface-dim px-1 rounded">{'{'+'stem}us'}</code> for nominative singular, a word with stem <code class="bg-surface-dim px-1 rounded">equ</code> produces <code class="bg-surface-dim px-1 rounded">equus</code>. If this word is irregular and the actual form is <code class="bg-surface-dim px-1 rounded">equos</code>, set an override on the <code class="bg-surface-dim px-1 rounded">nom_sg</code> cell.</p>
-				</HelpBlock>
-			</div>
+			<h4 class="text-xs font-medium uppercase tracking-wide text-dim">Set up inflection</h4>
 			<div class="flex gap-2">
 				{#if inflection.hasInflection}
 					<button onclick={removeInflection} class="text-xs text-error hover:underline">Remove</button>
@@ -135,6 +195,8 @@
 			</div>
 		</div>
 
+		<WorkedInflectionExample compact />
+
 		{#if error}
 			<div class="p-2 bg-error-bg border border-error-border text-error text-xs">{error}</div>
 		{/if}
@@ -142,7 +204,7 @@
 		<div class="flex gap-3 flex-wrap">
 			<!-- Paradigm class -->
 			<div class="flex-1 min-w-[200px]">
-				<label class="block text-xs font-medium text-secondary mb-1">Paradigm Class</label>
+				<label class="block text-xs font-medium text-secondary mb-1">Paradigm class</label>
 				{#if filteredClasses.length > 0}
 					<Select
 						type="single"
@@ -152,7 +214,7 @@
 						items={filteredClasses.map(cls => ({ value: String(cls.id), label: cls.name }))}
 						containerClass="w-full"
 					/>
-					<p class="text-xs text-faint mt-1">Select a class to auto-generate forms from its rules.</p>
+					<p class="text-xs text-faint mt-1">Picks the rule set. Forms below auto-generate from the class's rules + the stem.</p>
 				{:else}
 					<div class="p-2 bg-warning-bg border border-warning-border text-xs text-body">
 						{#if availableClasses.length > 0}
@@ -175,21 +237,35 @@
 			<!-- Stem -->
 			<div class="flex-1 min-w-[150px]">
 				<label class="block text-xs font-medium text-secondary mb-1">Stem</label>
-				<Input bind:value={stem} containerClass="w-full" placeholder="e.g. tsid" />
-				<p class="text-xs text-faint mt-1">The base form that rules transform. Usually the word minus its ending.</p>
+				<Input bind:value={stem} containerClass="w-full" placeholder={`e.g. ${stemPlaceholder}`} />
+				<p class="text-xs text-faint mt-1">The unchanging part the rules attach to — usually the word minus its ending.</p>
 			</div>
 		</div>
+
+		{#if selectedClassId !== null && livePreview.length > 0}
+			<div class="p-2 bg-page border border-border-subtle">
+				<div class="text-xs text-dim mb-1">Will generate:</div>
+				<div class="text-xs font-mono text-body flex flex-wrap gap-x-3 gap-y-0.5">
+					{#each livePreview as cell (cell.cell)}
+						<span><span class="text-faint">{cellKeyLabel(cell.cell)}:</span> {cell.form}</span>
+					{/each}
+				</div>
+			</div>
+		{:else if selectedClassId !== null && loadingRules}
+			<div class="text-xs text-faint">Loading class rules…</div>
+		{/if}
 
 		<!-- Override grid -->
 		{#if cellKeys.length > 0}
 			<div>
 				<label class="block text-xs font-medium text-secondary mb-1">
-					Overrides
+					Irregular forms (overrides)
 				</label>
-				<p class="text-xs text-faint mb-2">Leave blank to use the class rule. Fill in to override with an irregular form.</p>
+				<p class="text-xs text-faint mb-2">Leave blank to use the class rule. Fill a cell only when this word breaks the pattern.</p>
 				<div class="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
-					{#each cellKeys as key}
-						{@const generated = inflection.forms[key] || ''}
+					{#each cellKeys as key (key)}
+						{@const generated = ruleWouldBe(key)}
+						{@const hasOverride = (overrides[key] ?? '').trim().length > 0}
 						<div class="flex items-center gap-2">
 							<span class="text-xs text-faint w-32 truncate" title={key}>{cellKeyLabel(key)}</span>
 							<input
@@ -205,8 +281,11 @@
 									}
 								}}
 								placeholder={generated || '—'}
-								class="flex-1 {inputClass} text-xs {overrides[key] ? 'border-accent bg-accent-subtle' : ''}"
+								class="flex-1 {inputClass} text-xs {hasOverride ? 'border-accent bg-accent-subtle' : ''}"
 							/>
+							{#if hasOverride && generated}
+								<span class="text-xs text-faint whitespace-nowrap" title="Rule would generate this">would be: {generated}</span>
+							{/if}
 						</div>
 					{/each}
 				</div>
@@ -218,7 +297,7 @@
 			disabled={saving}
 			class="px-4 py-1.5 bg-accent text-surface text-sm font-medium transition-colors hover:bg-accent-hover disabled:opacity-50"
 		>
-			{saving ? 'Saving...' : 'Save Inflection'}
+			{saving ? 'Saving…' : 'Save inflection'}
 		</button>
 	</div>
 {:else if !inflection.hasInflection}

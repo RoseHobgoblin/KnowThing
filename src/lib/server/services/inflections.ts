@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit'
-import { and, asc, eq, notInArray } from 'drizzle-orm'
+import { and, asc, count, eq, notInArray } from 'drizzle-orm'
 import type { z } from 'zod'
 import { db } from '$lib/server/db/index.js'
 import {
@@ -31,6 +31,18 @@ async function assertLanguage(slug: string) {
 export async function getInflectionsForLanguage(slug: string) {
 	const lang = await assertLanguage(slug)
 	return getInflectionsByLanguageId(lang.id)
+}
+
+export async function countRulesByClass(languageId: number): Promise<Record<number, number>> {
+	const rows = await db
+		.select({ classId: paradigmRules.classId, n: count() })
+		.from(paradigmRules)
+		.innerJoin(paradigmClasses, eq(paradigmRules.classId, paradigmClasses.id))
+		.where(eq(paradigmClasses.languageId, languageId))
+		.groupBy(paradigmRules.classId)
+	const map: Record<number, number> = {}
+	for (const r of rows) map[r.classId] = Number(r.n)
+	return map
 }
 
 export async function listClassesForLanguage(languageId: number) {

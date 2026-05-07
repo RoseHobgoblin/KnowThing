@@ -118,6 +118,7 @@
 			languageSlug={data.language.slug}
 			dimensions={data.inflectionDimensions}
 			classes={data.paradigmClasses}
+			ruleCounts={data.paradigmRuleCounts}
 		/>
 	{/if}
 </ArticleShell>
