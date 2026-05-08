@@ -7,15 +7,22 @@ import type { WikiNode } from '$lib/parser/types.js'
 
 export type ContentEffectsDatabase = Pick<typeof db, 'delete' | 'insert' | 'select' | 'update'>
 
+export type EntitySource = { kind: string, entityId: number }
+
 /**
  * After saving content, update derived tables: links, categories, media_usage.
  * Returns the plain_text for FTS indexing and the parsed AST for caching.
+ *
+ * The source can be either a Know-domain content_records row (numeric id) or
+ * a structured-entity row (`{ kind, entityId }`). Categories and media_usage
+ * still key on `contentRecordId` and so are only refreshed for know sources.
  */
 export async function updateContentEffects(
 	database: ContentEffectsDatabase,
 	contentRecordId: number,
 	content: string,
 	sourceDomain: string = 'know',
+	entitySource?: EntitySource,
 ): Promise<{ plainText: string, ast: WikiNode }> {
 	const ast = parseWikitext(content)
 	const linkTargets = extractLinksFromAst(ast).map(t => slugify(t))
@@ -24,8 +31,15 @@ export async function updateContentEffects(
 	const images = extractImagesFromAst(ast)
 	const plainText = extractPlainTextFromAst(ast)
 
-	// Update links
-	await database.delete(contentLinks).where(eq(contentLinks.sourceId, contentRecordId))
+	const sourceKind = entitySource?.kind ?? 'know'
+	const sourceEntityId = entitySource?.entityId ?? contentRecordId
+
+	// Update links — clear all rows from this source first, then reinsert.
+	await database.delete(contentLinks).where(and(
+		eq(contentLinks.sourceKind, sourceKind),
+		eq(contentLinks.sourceEntityId, sourceEntityId),
+	))
+
 	if (linkTargets.length > 0) {
 		// Resolve target IDs within the source domain so internal links stay domain-relative.
 		const targetRecords = await database
@@ -37,7 +51,9 @@ export async function updateContentEffects(
 
 		await database.insert(contentLinks).values(
 			linkTargets.map(target => ({
-				sourceId: contentRecordId,
+				sourceId: sourceKind === 'know' ? contentRecordId : null,
+				sourceKind,
+				sourceEntityId,
 				targetDomain: sourceDomain,
 				targetSlug: target,
 				targetId: slugToId.get(target.toLowerCase()) ?? null,
@@ -45,9 +61,10 @@ export async function updateContentEffects(
 		).onConflictDoNothing()
 	}
 
-	// Store cross-domain links, resolving targetId where possible
+	// Store cross-domain / namespaced links. Identifiers are stored verbatim
+	// (case-insensitive matching is the responsibility of the resolver).
 	if (domainLinks.length > 0) {
-		const domainSlugPairs = domainLinks.map(({ domain, target }) => ({ domain, slug: slugify(target) }))
+		const domainSlugPairs = domainLinks.map(({ domain, target }) => ({ domain, slug: target.trim() }))
 
 		// Batch-resolve targets across domains
 		const domainTargetRecords = await database
@@ -62,7 +79,9 @@ export async function updateContentEffects(
 
 		await database.insert(contentLinks).values(
 			domainSlugPairs.map(({ domain, slug: targetSlug }) => ({
-				sourceId: contentRecordId,
+				sourceId: sourceKind === 'know' ? contentRecordId : null,
+				sourceKind,
+				sourceEntityId,
 				targetDomain: domain,
 				targetSlug,
 				targetId: domainSlugToId.get(`${domain}:${targetSlug.toLowerCase()}`) ?? null,
@@ -70,20 +89,23 @@ export async function updateContentEffects(
 		).onConflictDoNothing()
 	}
 
-	// Update categories
-	await database.delete(contentCategories).where(eq(contentCategories.contentRecordId, contentRecordId))
-	if (cats.length > 0) {
-		await database.insert(contentCategories).values(
-			cats.map(category => ({ contentRecordId, category })),
-		).onConflictDoNothing()
-	}
+	// Categories and media_usage still key on contentRecordId, so they only
+	// apply to know-domain sources for now (Phase 7 generalises categories via
+	// entity_categories).
+	if (sourceKind === 'know') {
+		await database.delete(contentCategories).where(eq(contentCategories.contentRecordId, contentRecordId))
+		if (cats.length > 0) {
+			await database.insert(contentCategories).values(
+				cats.map(category => ({ contentRecordId, category })),
+			).onConflictDoNothing()
+		}
 
-	// Update media usage
-	await database.delete(contentMediaUsage).where(eq(contentMediaUsage.contentRecordId, contentRecordId))
-	if (images.length > 0) {
-		await database.insert(contentMediaUsage).values(
-			images.map(filename => ({ contentRecordId, filename })),
-		).onConflictDoNothing()
+		await database.delete(contentMediaUsage).where(eq(contentMediaUsage.contentRecordId, contentRecordId))
+		if (images.length > 0) {
+			await database.insert(contentMediaUsage).values(
+				images.map(filename => ({ contentRecordId, filename })),
+			).onConflictDoNothing()
+		}
 	}
 
 	return { plainText, ast }

@@ -1,5 +1,5 @@
 import { db } from './db/index.js'
-import { contentLinks, contentRecords } from './db/schema.js'
+import { contentLinks, contentRecords, stars, planetaryBodies, starSystems } from './db/schema.js'
 import { eq, sql, and, inArray } from 'drizzle-orm'
 
 export interface ResolvedLink {
@@ -10,17 +10,26 @@ export interface ResolvedLink {
 /** All content domains — unresolved links in one domain fall through to the others */
 const ALL_DOMAINS = ['know', 'celestial', 'calendar']
 
+export type EntitySource =
+	| { kind: 'know', contentRecordId: number }
+	| { kind: 'star' | 'planet' | 'system' | 'language' | 'lexicon' | 'calendar' | 'category' | 'country' | 'map', entityId: number }
+
 /**
- * For a given content record, fetch its outbound links from the content_links
- * table and resolve each to an href + existence flag by joining content_records.
+ * For a given content record OR structured-entity source, fetch its outbound
+ * links from `content_links` and resolve each to an href + existence flag.
  *
  * For unresolved links in any domain, falls through to check all other domains.
  *
  * Returns a Map keyed by "domain:slug" (lowercase, e.g. "know:onchera").
+ *
+ * Accepts either a legacy numeric `contentRecordId` (= source_kind 'know') or
+ * a `{ kind, ... }` discriminated union for entity-sourced links.
  */
-export async function getResolvedLinks(sourceId: number): Promise<Map<string, ResolvedLink>> {
-	// Join on (domain, slug) instead of targetId so existence is always checked
-	// live — stale targetId values can't cause phantom red links.
+export async function getResolvedLinks(source: number | EntitySource): Promise<Map<string, ResolvedLink>> {
+	const src: EntitySource = typeof source === 'number'
+		? { kind: 'know', contentRecordId: source }
+		: source
+
 	const rows = await db
 		.select({
 			targetDomain: contentLinks.targetDomain,
@@ -34,7 +43,10 @@ export async function getResolvedLinks(sourceId: number): Promise<Map<string, Re
 			eq(contentRecords.domain, contentLinks.targetDomain),
 			sql`LOWER(${contentRecords.slug}) = LOWER(${contentLinks.targetSlug})`,
 		))
-		.where(eq(contentLinks.sourceId, sourceId))
+		.where(and(
+			eq(contentLinks.sourceKind, src.kind),
+			eq(contentLinks.sourceEntityId, src.kind === 'know' ? src.contentRecordId : src.entityId),
+		))
 
 	const result = new Map<string, ResolvedLink>()
 
@@ -84,6 +96,40 @@ export async function getResolvedLinks(sourceId: number): Promise<Map<string, Re
 					href: buildHref(match.domain, match.slug, match.parentPath),
 					exists: true,
 				})
+			}
+		}
+
+		// Structured-entity fallthrough: anything still unresolved that targets
+		// 'celestial' may live in stars/planetary_bodies/star_systems now that
+		// Phase 4 has dropped the celestial content_records shadow rows. Probe
+		// those tables before giving up.
+		const stillUnresolved = unresolvedEntries.filter(({ domain, slug }) =>
+			!result.get(`${domain}:${slug}`)?.exists,
+		)
+		const celestialSlugs = [...new Set(
+			stillUnresolved.filter(e => e.domain === 'celestial').map(e => e.slug),
+		)]
+		if (celestialSlugs.length > 0) {
+			const slugList = sql.join(celestialSlugs.map(s => sql`${s}`), sql`, `)
+			const matches = await db.execute(sql`
+				SELECT slug FROM stars            WHERE LOWER(slug) IN (${slugList})
+				UNION ALL
+				SELECT slug FROM planetary_bodies WHERE LOWER(slug) IN (${slugList})
+				UNION ALL
+				SELECT slug FROM star_systems     WHERE LOWER(slug) IN (${slugList})
+			`)
+			const known = new Map<string, string>()
+			for (const row of matches as unknown as Array<{ slug: string }>) {
+				known.set(row.slug.toLowerCase(), row.slug)
+			}
+			for (const { slug } of stillUnresolved.filter(e => e.domain === 'celestial')) {
+				const canonical = known.get(slug)
+				if (canonical) {
+					result.set(`celestial:${slug}`, {
+						href: buildHref('celestial', canonical, null),
+						exists: true,
+					})
+				}
 			}
 		}
 	}

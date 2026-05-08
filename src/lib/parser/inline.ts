@@ -1,4 +1,6 @@
 import type { WikiNode, TemplateArg as TemplateArgument, ImageOption, GalleryItem } from './types.js'
+import { canonicalizeNamespace } from '../namespaces/registry.js'
+import { parseWordbookPath } from '../sections/wordbook-path.js'
 
 /**
  * Parse inline wikitext markup into WikiNode[].
@@ -443,7 +445,22 @@ function parseInternalLink(input: string, start: number): ParseResult<WikiNode> 
 	const parts = splitLinkParts(inner)
 	const target = parts[0]?.trim() || ''
 
-	// Category: prefix
+	// Leading-colon namespace link: [[:Category:Foo]] (link to category page,
+	// rather than `[[Category:Foo]]` which TAGS the page). MediaWiki idiom.
+	if (target.startsWith(':')) {
+		const stripped = target.slice(1).trim()
+		const colon = stripped.indexOf(':')
+		if (colon > 0) {
+			const ns = canonicalizeNamespace(stripped.slice(0, colon))
+			const identifier = stripped.slice(colon + 1).trim()
+			if (ns && identifier) {
+				const display = parts.length > 1 ? parseInline(parts.slice(1).join('|')) : null
+				return { node: { type: 'namespace_link', namespace: ns, identifier, display }, end: index }
+			}
+		}
+	}
+
+	// Category: prefix — tags the page (NOT a link); the link form uses [[:Category:Foo]] above.
 	if (/^category:/i.test(target)) {
 		const catName = target.replace(/^category:\s*/i, '')
 		return { node: { type: 'category', name: catName }, end: index }
@@ -483,7 +500,22 @@ function parseInternalLink(input: string, start: number): ParseResult<WikiNode> 
 		return { node: { type: 'image', filename, options }, end: index }
 	}
 
-	// Wordbook link: [[wb:language:word]] or [[wb:language:word|display]]
+	// Wordbook section link: [[Wordbook/Lang]] or [[Wordbook/Lang/Word]] (case-insensitive prefix)
+	const wbPath = parseWordbookPath(target)
+	if (wbPath) {
+		const display = parts.length > 1 ? parseInline(parts.slice(1).join('|')) : null
+		return {
+			node: {
+				type: 'wordbook_link',
+				language: wbPath.language.toLowerCase(),
+				word: wbPath.word ?? '',
+				display,
+			},
+			end: index,
+		}
+	}
+
+	// Legacy wordbook link: [[wb:language:word]] or [[wb:language:word|display]]
 	if (/^wb:/i.test(target)) {
 		const wbTarget = target.replace(/^wb:\s*/i, '')
 		const colonIndex = wbTarget.indexOf(':')
@@ -495,14 +527,14 @@ function parseInternalLink(input: string, start: number): ParseResult<WikiNode> 
 		}
 	}
 
-	// Cross-domain link: [[domain:target]] or [[domain:target|display]]
-	if (/^[a-z][\da-z]*:/i.test(target)) {
-		const colonIndex = target.indexOf(':')
-		const domain = target.slice(0, colonIndex).trim().toLowerCase()
-		const domainTarget = target.slice(colonIndex + 1).trim()
-		if (domainTarget) {
+	// Namespaced link: [[Namespace:Identifier]] (case-insensitive, registry-driven)
+	const colonIdx = target.indexOf(':')
+	if (colonIdx > 0) {
+		const ns = canonicalizeNamespace(target.slice(0, colonIdx))
+		const identifier = target.slice(colonIdx + 1).trim()
+		if (ns && identifier) {
 			const display = parts.length > 1 ? parseInline(parts.slice(1).join('|')) : null
-			return { node: { type: 'domain_link' as const, domain, target: domainTarget, display }, end: index }
+			return { node: { type: 'namespace_link', namespace: ns, identifier, display }, end: index }
 		}
 	}
 

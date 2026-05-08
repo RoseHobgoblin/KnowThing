@@ -108,18 +108,22 @@ export const contentRevisions = pgTable(
 export const contentLinks = pgTable(
 	'content_links',
 	{
+		// Legacy: nullable now; entity-sourced links leave this NULL.
 		sourceId: integer('source_id')
-			.references(() => contentRecords.id, { onDelete: 'cascade' })
-			.notNull(),
+			.references(() => contentRecords.id, { onDelete: 'cascade' }),
+		// Generalised source: 'know' | 'star' | 'planet' | 'system' | 'language' | 'lexicon' | 'calendar' | 'category' | 'country' | 'map' | …
+		sourceKind: text('source_kind').notNull().default('know'),
+		sourceEntityId: integer('source_entity_id').notNull(),
 		targetDomain: text('target_domain').notNull(),
 		targetSlug: text('target_slug').notNull(),
 		targetId: integer('target_id')
 			.references(() => contentRecords.id, { onDelete: 'set null' }),
 	},
 	table => [
-		primaryKey({ columns: [table.sourceId, table.targetDomain, table.targetSlug] }),
+		primaryKey({ columns: [table.sourceKind, table.sourceEntityId, table.targetDomain, table.targetSlug] }),
 		index('idx_clinks_target').on(table.targetId),
 		index('idx_clinks_target_slug').on(table.targetDomain, table.targetSlug),
+		index('idx_clinks_source_entity').on(table.sourceKind, table.sourceEntityId),
 	],
 )
 
@@ -175,6 +179,11 @@ export const calendars = pgTable('calendars', {
 	isPrimary: boolean('is_primary').default(false).notNull(),
 	staticData: jsonb('static_data').notNull(),
 	planetId: integer('planet_id').references(() => planetaryBodies.id, { onDelete: 'set null' }),
+	body: text('body').notNull().default(''),
+	bodyParsedAst: jsonb('body_parsed_ast'),
+	bodyPlainText: text('body_plain_text').notNull().default(''),
+	bodySizeBytes: integer('body_size_bytes').notNull().default(0),
+	bodyUpdatedAt: timestamp('body_updated_at', { withTimezone: true }),
 })
 
 // ============================================================================
@@ -267,9 +276,15 @@ export const languages = pgTable(
 		family: text('family'),
 		color: text('color').default('#d97706'),
 		description: text('description'),
+		// DEPRECATED: removed in Phase 9 of the namespace migration.
 		pageSlug: text('page_slug'),
 		parentLanguageId: integer('parent_language_id'),
 		languageType: text('language_type').notNull().default('language'), // 'proto', 'language', 'historical'
+		body: text('body').notNull().default(''),
+		bodyParsedAst: jsonb('body_parsed_ast'),
+		bodyPlainText: text('body_plain_text').notNull().default(''),
+		bodySizeBytes: integer('body_size_bytes').notNull().default(0),
+		bodyUpdatedAt: timestamp('body_updated_at', { withTimezone: true }),
 		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 	},
@@ -371,9 +386,16 @@ export const lexicon = pgTable(
 		pronunciation: text('pronunciation'),
 		etymology: text('etymology'),
 		notes: text('notes'),
+		// DEPRECATED: removed in Phase 9 of the namespace migration.
 		pageSlug: text('page_slug'),
 		tags: text('tags').array().default([]),
 		homographNumber: integer('homograph_number').notNull().default(1),
+		description: text('description').default(''),
+		body: text('body').notNull().default(''),
+		bodyParsedAst: jsonb('body_parsed_ast'),
+		bodyPlainText: text('body_plain_text').notNull().default(''),
+		bodySizeBytes: integer('body_size_bytes').notNull().default(0),
+		bodyUpdatedAt: timestamp('body_updated_at', { withTimezone: true }),
 		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 	},
@@ -469,10 +491,16 @@ export const starSystems = pgTable(
 		id: serial('id').primaryKey(),
 		name: text('name').notNull(),
 		slug: text('slug').unique().notNull(),
+		// DEPRECATED: removed in Phase 9 of the namespace migration.
 		pageSlug: text('page_slug'),
 		systemType: text('system_type').default('single'),
 		description: text('description').default(''),
 		extra: jsonb('extra').default({}),
+		body: text('body').notNull().default(''),
+		bodyParsedAst: jsonb('body_parsed_ast'),
+		bodyPlainText: text('body_plain_text').notNull().default(''),
+		bodySizeBytes: integer('body_size_bytes').notNull().default(0),
+		bodyUpdatedAt: timestamp('body_updated_at', { withTimezone: true }),
 		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 	},
@@ -487,6 +515,7 @@ export const stars = pgTable(
 		id: serial('id').primaryKey(),
 		name: text('name').notNull(),
 		slug: text('slug').unique().notNull(),
+		// DEPRECATED: removed in Phase 9 of the namespace migration.
 		pageSlug: text('page_slug'),
 
 		spectralType: text('spectral_type'),
@@ -517,6 +546,11 @@ export const stars = pgTable(
 
 		extra: jsonb('extra').default({}),
 		description: text('description').default(''),
+		body: text('body').notNull().default(''),
+		bodyParsedAst: jsonb('body_parsed_ast'),
+		bodyPlainText: text('body_plain_text').notNull().default(''),
+		bodySizeBytes: integer('body_size_bytes').notNull().default(0),
+		bodyUpdatedAt: timestamp('body_updated_at', { withTimezone: true }),
 		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 	},
@@ -534,6 +568,7 @@ export const planetaryBodies = pgTable(
 		bodyType: text('body_type').notNull().default('planet'),
 		starId: integer('star_id').references(() => stars.id, { onDelete: 'set null' }),
 		parentId: integer('parent_id'),
+		// DEPRECATED: removed in Phase 9 of the namespace migration.
 		pageSlug: text('page_slug'),
 
 		massKg: doublePrecision('mass_kg'),
@@ -563,6 +598,11 @@ export const planetaryBodies = pgTable(
 
 		extra: jsonb('extra').default({}),
 		description: text('description').default(''),
+		body: text('body').notNull().default(''),
+		bodyParsedAst: jsonb('body_parsed_ast'),
+		bodyPlainText: text('body_plain_text').notNull().default(''),
+		bodySizeBytes: integer('body_size_bytes').notNull().default(0),
+		bodyUpdatedAt: timestamp('body_updated_at', { withTimezone: true }),
 		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 	},
@@ -591,6 +631,11 @@ export const worldMaps = pgTable(
 		event: text('event'),
 		linkedPageSlug: text('linked_page_slug'),
 		description: text('description').default(''),
+		body: text('body').notNull().default(''),
+		bodyParsedAst: jsonb('body_parsed_ast'),
+		bodyPlainText: text('body_plain_text').notNull().default(''),
+		bodySizeBytes: integer('body_size_bytes').notNull().default(0),
+		bodyUpdatedAt: timestamp('body_updated_at', { withTimezone: true }),
 		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 	},
@@ -605,11 +650,19 @@ export const countries = pgTable(
 		id: serial('id').primaryKey(),
 		name: text('name').notNull(),
 		slug: text('slug').unique().notNull(),
+		// DEPRECATED: removed in Phase 9 of the namespace migration.
+		// NOT NULL until Phase 9 first drops the constraint, then drops the column.
 		pageSlug: text('page_slug').notNull(),
 		capital: text('capital'),
 		governance: text('governance'),
 		color: text('color'),
 		extra: jsonb('extra').default({}),
+		description: text('description').default(''),
+		body: text('body').notNull().default(''),
+		bodyParsedAst: jsonb('body_parsed_ast'),
+		bodyPlainText: text('body_plain_text').notNull().default(''),
+		bodySizeBytes: integer('body_size_bytes').notNull().default(0),
+		bodyUpdatedAt: timestamp('body_updated_at', { withTimezone: true }),
 		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 	},
@@ -735,5 +788,59 @@ export const inflectedForms = pgTable(
 	table => [
 		index('idx_inflected_forms_form').on(table.form),
 		index('idx_inflected_forms_entry').on(table.entryId),
+	],
+)
+
+// ============================================================================
+// Namespace migration scaffolding (Phase 1 — additive). Wired up by later
+// phases. See docs/MIGRATION-PHASE-0-AUDIT.md and the migration plan.
+// ============================================================================
+
+export const categories = pgTable(
+	'categories',
+	{
+		id: serial('id').primaryKey(),
+		slug: text('slug').unique().notNull(),
+		title: text('title').notNull(),
+		body: text('body').notNull().default(''),
+		bodyParsedAst: jsonb('body_parsed_ast'),
+		bodyPlainText: text('body_plain_text').notNull().default(''),
+		bodySizeBytes: integer('body_size_bytes').notNull().default(0),
+		bodyUpdatedAt: timestamp('body_updated_at', { withTimezone: true }),
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+	},
+	table => [
+		index('idx_categories_slug').on(sql`LOWER(${table.slug})`),
+	],
+)
+
+export const entityRevisions = pgTable(
+	'entity_revisions',
+	{
+		id: serial('id').primaryKey(),
+		entityType: text('entity_type').notNull(),
+		entityId: integer('entity_id').notNull(),
+		title: text('title').notNull(),
+		snapshot: jsonb('snapshot').notNull(),
+		editSummary: text('edit_summary'),
+		userId: integer('user_id').references(() => users.id, { onDelete: 'set null' }),
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+	},
+	table => [
+		index('idx_entity_revisions_entity').on(table.entityType, table.entityId, table.createdAt),
+	],
+)
+
+export const entityCategories = pgTable(
+	'entity_categories',
+	{
+		entityType: text('entity_type').notNull(),
+		entityId: integer('entity_id').notNull(),
+		category: text('category').notNull(),
+	},
+	table => [
+		primaryKey({ columns: [table.entityType, table.entityId, table.category] }),
+		index('idx_entity_categories_cat').on(table.category),
 	],
 )

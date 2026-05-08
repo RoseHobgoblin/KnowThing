@@ -16,8 +16,8 @@ import {
 	listAllSystemRefs,
 	listSiblingBodies,
 } from '$lib/server/services/celestial-registry.js'
-import { loadArticlePage } from '$lib/server/services/article-loader.js'
-import { articleSaveAction } from '$lib/server/services/article-actions.js'
+import { loadEntityBody } from '$lib/server/services/entity-article-loader.js'
+import { entitySaveAction } from '$lib/server/services/entity-actions.js'
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const pathSegments = params.path.split('/')
@@ -41,11 +41,11 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	const system = await findSystemBySlugOrPageSlug(slug)
 	if (system) {
 		if (system.slug !== slug && !isEditMode) throw redirect(301, `/celestial/${system.slug}`)
-		const article = await loadArticlePage({
-			domain: 'celestial',
-			slug: system.slug,
-			title: system.name,
-			parentPath: null,
+		const article = await loadEntityBody({
+			kind: 'system',
+			entityId: system.id,
+			body: system.body ?? '',
+			bodyParsedAst: system.bodyParsedAst,
 		})
 		const systemStars = [...await getStarsForSystemMap(system.id)] as unknown as MapBody[]
 		const systemBodies = [...await getBodiesForSystemMap(system.id)] as unknown as MapBody[]
@@ -73,11 +73,11 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		if (canonicalPath !== inputPath && !isEditMode) throw redirect(301, canonicalPath)
 
 		const allSystems = await listAllSystemRefs()
-		const article = await loadArticlePage({
-			domain: 'celestial',
-			slug: star.slug,
-			title: star.name,
-			parentPath: parentSystem?.slug ?? null,
+		const article = await loadEntityBody({
+			kind: 'star',
+			entityId: star.id,
+			body: star.body ?? '',
+			bodyParsedAst: star.bodyParsedAst,
 		})
 		const parentCrumbs: { label: string, href: string }[] = []
 		if (parentSystem) parentCrumbs.push({ label: parentSystem.name, href: `/celestial/${parentSystem.slug}` })
@@ -110,11 +110,11 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 		const allStars = await listAllStarRefs()
 		const siblings = planet.starId ? await listSiblingBodies(planet.starId) : []
-		const article = await loadArticlePage({
-			domain: 'celestial',
-			slug: planet.slug,
-			title: planet.name,
-			parentPath: parentSystem?.slug ?? null,
+		const article = await loadEntityBody({
+			kind: 'planet',
+			entityId: planet.id,
+			body: planet.body ?? '',
+			bodyParsedAst: planet.bodyParsedAst,
 		})
 		const infoboxFields = await resolveStructuredData('planet', planet.slug)
 		return {
@@ -134,5 +134,5 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 }
 
 export const actions: Actions = {
-	default: articleSaveAction(),
+	default: entitySaveAction(),
 }

@@ -33,12 +33,28 @@ export function extractLinksFromAst(ast: WikiNode): string[] {
 
 /**
  * Walk a pre-parsed AST and collect all cross-domain link targets.
+ *
+ * Includes:
+ *  - new `namespace_link` nodes (preferred form)
+ *  - legacy `domain_link` nodes (still found in cached parsedAst until Phase 9)
+ *  - `wordbook_link` nodes (Wordbook is a slash-path section, but its
+ *    backlinks need tracking through content_links the same way)
+ *
+ * Domain naming convention for content_links:
+ *   - namespace_link → lowercased namespace key ('celestial', 'category', …)
+ *   - wordbook_link  → 'wordbook'; targetSlug is `${language}/${word}` (or
+ *                       just `${language}` for language-only links)
  */
 export function extractDomainLinksFromAst(ast: WikiNode): { domain: string, target: string }[] {
 	const links: { domain: string, target: string }[] = []
 	walkNodes([ast], (node) => {
-		if (node.type === 'domain_link') {
+		if (node.type === 'namespace_link') {
+			links.push({ domain: node.namespace.toLowerCase(), target: node.identifier })
+		} else if (node.type === 'domain_link') {
 			links.push({ domain: node.domain, target: node.target })
+		} else if (node.type === 'wordbook_link') {
+			const target = node.word ? `${node.language}/${node.word}` : node.language
+			links.push({ domain: 'wordbook', target })
 		}
 	})
 	return links
@@ -275,6 +291,8 @@ function getChildren(node: WikiNode): WikiNode[] {
 			return node.items.flatMap(item => [...item.term, ...item.definition])
 		case 'internal_link':
 		case 'domain_link':
+		case 'namespace_link':
+		case 'wordbook_link':
 			return node.display || []
 		case 'table':
 			return node.rows.flatMap(row => row.cells.flatMap(cell => cell.children))

@@ -5,6 +5,9 @@ import {
 	contentLinks,
 	contentRecords,
 	contentRevisions,
+	planetaryBodies,
+	starSystems,
+	stars,
 	users,
 } from '$lib/server/db/schema.js'
 import { db } from '$lib/server/db/index.js'
@@ -189,5 +192,32 @@ export async function findPageInAnyDomain(slug: string) {
 		.from(contentRecords)
 		.where(sql`LOWER(${contentRecords.slug}) = LOWER(${slug})`)
 		.limit(1)
-	return record ?? null
+	if (record) return record
+
+	// Phase 4+: structured entities own their pages. Probe the celestial
+	// tables when content_records misses, so /know/Therne still redirects to
+	// /celestial/therne after the celestial shadow rows have been dropped.
+	const lower = slug.toLowerCase()
+	const [system] = await db
+		.select({ slug: starSystems.slug })
+		.from(starSystems)
+		.where(sql`LOWER(${starSystems.slug}) = ${lower} OR LOWER(${starSystems.pageSlug}) = ${lower}`)
+		.limit(1)
+	if (system) return { domain: 'celestial', slug: system.slug, parentPath: null }
+
+	const [star] = await db
+		.select({ slug: stars.slug })
+		.from(stars)
+		.where(sql`LOWER(${stars.slug}) = ${lower} OR LOWER(${stars.pageSlug}) = ${lower}`)
+		.limit(1)
+	if (star) return { domain: 'celestial', slug: star.slug, parentPath: null }
+
+	const [planet] = await db
+		.select({ slug: planetaryBodies.slug })
+		.from(planetaryBodies)
+		.where(sql`LOWER(${planetaryBodies.slug}) = ${lower} OR LOWER(${planetaryBodies.pageSlug}) = ${lower}`)
+		.limit(1)
+	if (planet) return { domain: 'celestial', slug: planet.slug, parentPath: null }
+
+	return null
 }
