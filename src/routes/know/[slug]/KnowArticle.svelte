@@ -20,6 +20,7 @@
 		categories,
 		updatedAt,
 		wordbookMatch,
+		languageMatch,
 		structuredData: rawStructuredData,
 		structuredCollections,
 		systemMaps,
@@ -32,6 +33,7 @@
 		categories: string[]
 		updatedAt: string | Date | null
 		wordbookMatch: { word: string, languageSlug: string, languageName: string } | null
+		languageMatch: { languageSlug: string, languageName: string } | null
 		structuredData: Record<string, Record<string, string>> | null
 		structuredCollections: Record<string, Record<string, unknown>[]> | null
 		systemMaps: Record<string, unknown> | null
@@ -90,6 +92,17 @@
 					class="text-link transition-colors hover:text-link-hover"
 				>
 					See <em>{wordbookMatch.word}</em> in {wordbookMatch.languageName}
+				</a>
+			</div>
+		{/if}
+		{#if languageMatch}
+			<div class="flex items-center gap-2 mt-1.5 text-xs">
+				<Badge variant="info">Wordbook</Badge>
+				<a
+					href="/Wordbook/{languageMatch.languageSlug}"
+					class="text-link transition-colors hover:text-link-hover"
+				>
+					See <em>{languageMatch.languageName}</em> in the wordbook
 				</a>
 			</div>
 		{/if}

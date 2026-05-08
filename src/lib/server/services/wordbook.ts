@@ -331,6 +331,24 @@ export async function findWordbookMatchByTitle(title: string) {
 	return matches[0] ?? null
 }
 
+/**
+ * If a Know article's slug matches a language row's `page_slug` (i.e. this
+ * Know article *is* the language's encyclopedia article), return that
+ * language's wordbook ref so KnowArticle can show a "Wordbook" tag linking
+ * back to the dictionary entry.
+ */
+export async function findLanguageMatchByPageSlug(slug: string) {
+	const [match] = await db
+		.select({
+			languageSlug: languages.slug,
+			languageName: languages.name,
+		})
+		.from(languages)
+		.where(sql`LOWER(${languages.pageSlug}) = LOWER(${slug})`)
+		.limit(1)
+	return match ?? null
+}
+
 export async function listEntryVariants(entryId: number) {
 	return db
 		.select({

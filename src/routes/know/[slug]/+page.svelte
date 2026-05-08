@@ -72,6 +72,7 @@
 			categories={data.categories}
 			updatedAt={data.updatedAt}
 			wordbookMatch={data.wordbookMatch}
+			languageMatch={data.languageMatch}
 			structuredData={data.structuredData ?? null}
 			structuredCollections={data.structuredCollections ?? null}
 			systemMaps={data.systemMaps ?? null}

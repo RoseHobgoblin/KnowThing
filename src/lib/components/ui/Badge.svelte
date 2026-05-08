@@ -16,7 +16,7 @@
 		accent: 'bg-accent text-surface',
 		success: 'bg-success-bg text-success border border-success-border',
 		error: 'bg-error-bg text-error border border-error-border',
-		info: 'bg-accent-subtle text-accent-light',
+		info: 'bg-accent text-accent-light',
 	}
 </script>
 
