@@ -14,8 +14,6 @@ import {
 	applyNameUpdate,
 	deleteCelestialEntity,
 } from '$lib/server/celestial/update-helpers.js'
-import { ensurePlanetaryBodyContentRecord } from '$lib/server/services/celestial-content.js'
-
 type CreateBodyInput = z.infer<typeof createPlanetaryBodySchema>
 type UpdateBodyInput = z.infer<typeof updatePlanetaryBodySchema>
 
@@ -133,8 +131,6 @@ export async function createBody(data: CreateBodyInput) {
 			})
 			.returning()
 
-		await ensurePlanetaryBodyContentRecord(tx, inserted)
-
 		const [updated] = await tx.select().from(planetaryBodies).where(eq(planetaryBodies.id, inserted.id))
 		return updated ?? inserted
 	})
@@ -204,8 +200,6 @@ export async function updateBody(slug: string, data: UpdateBodyInput) {
 	const updated = await db.transaction(async (tx) => {
 		const [saved] = await tx.update(planetaryBodies).set(setClause).where(eq(planetaryBodies.slug, slug)).returning()
 		if (!saved) return null
-
-		await ensurePlanetaryBodyContentRecord(tx, saved)
 
 		const [refetched] = await tx.select().from(planetaryBodies).where(eq(planetaryBodies.id, saved.id))
 		return refetched ?? saved

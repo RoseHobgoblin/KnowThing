@@ -1,7 +1,7 @@
 import { error } from '@sveltejs/kit'
 import { db } from '$lib/server/db/index.js'
 import { eq } from 'drizzle-orm'
-import { deleteCelestialContentRecord } from '$lib/server/services/celestial-content.js'
+import { deleteContentByDomainSlug } from '$lib/server/services/content-records.js'
 import { urlSlugify } from '$lib/utils/slugify.js'
 import type { PgTable, PgColumn } from 'drizzle-orm/pg-core'
 
@@ -52,14 +52,14 @@ export async function deleteCelestialEntity(
 	entityName: string,
 ): Promise<{ success: true }> {
 	const deleted = await db.transaction(async (tx) => {
-		const [removed] = await (tx as any)
+		const [removed] = await tx
 			.delete(table)
 			.where(eq(slugColumn, slug))
-			.returning()
+			.returning() as Array<{ slug?: string }>
 
 		if (!removed) return null
 
-		await deleteCelestialContentRecord(tx, removed.contentRecordId)
+		if (removed.slug) await deleteContentByDomainSlug(tx, 'celestial', removed.slug)
 		return removed
 	})
 

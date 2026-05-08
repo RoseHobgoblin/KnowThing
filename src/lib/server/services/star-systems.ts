@@ -5,7 +5,6 @@ import { db } from '$lib/server/db/index.js'
 import { starSystems } from '$lib/server/db/schema.js'
 import type { createSystemSchema, updateSystemSchema } from '$lib/celestial/schema.js'
 import { deleteCelestialEntity } from '$lib/server/celestial/update-helpers.js'
-import { ensureSystemContentRecord } from '$lib/server/services/celestial-content.js'
 
 type CreateSystemInput = z.infer<typeof createSystemSchema>
 type UpdateSystemInput = z.infer<typeof updateSystemSchema>
@@ -52,8 +51,6 @@ export async function createSystem(data: CreateSystemInput) {
 			})
 			.returning()
 
-		await ensureSystemContentRecord(tx, created)
-
 		const [updated] = await tx.select().from(starSystems).where(eq(starSystems.id, created.id))
 		return updated ?? created
 	})
@@ -70,8 +67,6 @@ export async function updateSystem(slug: string, data: UpdateSystemInput) {
 	const updated = await db.transaction(async (tx) => {
 		const [saved] = await tx.update(starSystems).set(setClause).where(eq(starSystems.slug, slug)).returning()
 		if (!saved) return null
-
-		await ensureSystemContentRecord(tx, saved)
 
 		const [refetched] = await tx.select().from(starSystems).where(eq(starSystems.id, saved.id))
 		return refetched ?? saved

@@ -23,3 +23,7 @@ SvelteKit 2 with Svelte 5 (runes), TypeScript strict, Drizzle ORM on PostgreSQL,
 - NEVER let raw Postgres errors reach the client — return `json({ error }, { status })`
 - NEVER hardcode hex colors — use `@theme` tokens from `app.css`
 - API mutations MUST validate with Zod, use transactions for multi-step writes, and return structured errors
+
+
+## Prod
+- `ssh -p 1488 debian@51.83.199.99` Use it as you need it.

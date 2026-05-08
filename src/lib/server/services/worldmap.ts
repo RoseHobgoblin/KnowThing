@@ -562,7 +562,6 @@ export async function assignWorldMapRegionsToKnowPages(
 					.update(countries)
 					.set({
 						pageSlug: 'NOTHING',
-						contentRecordId: null,
 						name: 'NOTHING',
 						updatedAt: new Date(),
 					})
@@ -579,7 +578,6 @@ export async function assignWorldMapRegionsToKnowPages(
 				.update(countries)
 				.set({
 					pageSlug: page.slug,
-					contentRecordId: page.id,
 					name: page.title,
 					updatedAt: new Date(),
 				})

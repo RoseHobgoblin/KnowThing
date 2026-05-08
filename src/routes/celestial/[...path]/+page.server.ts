@@ -1,14 +1,9 @@
-import { error, fail, redirect } from '@sveltejs/kit'
+import { error, redirect } from '@sveltejs/kit'
 import type { Actions, PageServerLoad } from './$types.js'
 import type { MapBody } from '$lib/celestial/SystemMap.svelte'
 import { hasRole } from '$lib/server/auth.js'
-import { requireEditor } from '$lib/server/guards.js'
 import { resolveStructuredData } from '$lib/server/structured-data.js'
-import { saveCelestialContent } from '$lib/server/services/celestial-content.js'
 import {
-	ensureBodyContent,
-	ensureStarContent,
-	ensureSystemContent,
 	findPlanetBySlugOrPageSlug,
 	findStarBySlugOrPageSlug,
 	findSystemBySlugOrPageSlug,
@@ -20,8 +15,9 @@ import {
 	listAllStarRefs,
 	listAllSystemRefs,
 	listSiblingBodies,
-	loadCelestialContent,
 } from '$lib/server/services/celestial-registry.js'
+import { loadArticlePage } from '$lib/server/services/article-loader.js'
+import { articleSaveAction } from '$lib/server/services/article-actions.js'
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const pathSegments = params.path.split('/')
@@ -45,8 +41,12 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	const system = await findSystemBySlugOrPageSlug(slug)
 	if (system) {
 		if (system.slug !== slug && !isEditMode) throw redirect(301, `/celestial/${system.slug}`)
-		const contentRecordId = system.contentRecordId ?? await ensureSystemContent(system)
-		const content = await loadCelestialContent(contentRecordId)
+		const article = await loadArticlePage({
+			domain: 'celestial',
+			slug: system.slug,
+			title: system.name,
+			parentPath: null,
+		})
 		const systemStars = [...await getStarsForSystemMap(system.id)] as unknown as MapBody[]
 		const systemBodies = [...await getBodiesForSystemMap(system.id)] as unknown as MapBody[]
 		const systemCalendars = await getCalendarsForSystem(system.id)
@@ -61,7 +61,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			systemCalendars,
 			infoboxFields: infoboxFields ? Object.fromEntries(infoboxFields) : null,
 			parentCrumbs: [] as { label: string, href: string }[],
-			...content,
+			...article,
 		}
 	}
 
@@ -73,8 +73,12 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		if (canonicalPath !== inputPath && !isEditMode) throw redirect(301, canonicalPath)
 
 		const allSystems = await listAllSystemRefs()
-		const contentRecordId = star.contentRecordId ?? await ensureStarContent(star)
-		const content = await loadCelestialContent(contentRecordId)
+		const article = await loadArticlePage({
+			domain: 'celestial',
+			slug: star.slug,
+			title: star.name,
+			parentPath: parentSystem?.slug ?? null,
+		})
 		const parentCrumbs: { label: string, href: string }[] = []
 		if (parentSystem) parentCrumbs.push({ label: parentSystem.name, href: `/celestial/${parentSystem.slug}` })
 		const infoboxFields = await resolveStructuredData('star', star.slug)
@@ -86,7 +90,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			isConfigureMode,
 			parentCrumbs,
 			infoboxFields: infoboxFields ? Object.fromEntries(infoboxFields) : null,
-			...content,
+			...article,
 		}
 	}
 
@@ -106,8 +110,12 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 		const allStars = await listAllStarRefs()
 		const siblings = planet.starId ? await listSiblingBodies(planet.starId) : []
-		const contentRecordId = planet.contentRecordId ?? await ensureBodyContent(planet)
-		const content = await loadCelestialContent(contentRecordId)
+		const article = await loadArticlePage({
+			domain: 'celestial',
+			slug: planet.slug,
+			title: planet.name,
+			parentPath: parentSystem?.slug ?? null,
+		})
 		const infoboxFields = await resolveStructuredData('planet', planet.slug)
 		return {
 			kind: 'planet' as const,
@@ -118,7 +126,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			isConfigureMode,
 			parentCrumbs,
 			infoboxFields: infoboxFields ? Object.fromEntries(infoboxFields) : null,
-			...content,
+			...article,
 		}
 	}
 
@@ -126,23 +134,5 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 }
 
 export const actions: Actions = {
-	default: async (event) => {
-		const user = requireEditor(event)
-		const formData = await event.request.formData()
-		const contentRecordId = Number(formData.get('contentRecordId'))
-		const content = formData.get('content')?.toString() || ''
-		const editSummary = formData.get('summary')?.toString() || ''
-
-		if (!contentRecordId) return fail(400, { error: 'Missing content record ID' })
-
-		try {
-			const result = await saveCelestialContent({ contentRecordId, content, editSummary, userId: user.id })
-			if (!result.ok) return fail(result.status, { error: result.error })
-		} catch {
-			return fail(500, { error: 'Failed to save article changes' })
-		}
-
-		const viewPath = event.url.pathname.replace(/\/(edit|configure)$/, '')
-		throw redirect(302, viewPath)
-	},
+	default: articleSaveAction(),
 }

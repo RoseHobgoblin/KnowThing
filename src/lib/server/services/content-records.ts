@@ -17,24 +17,43 @@ function byteLength(content: string): number {
 	return new TextEncoder().encode(content).length
 }
 
-export async function loadContentRecord(contentRecordId: number | null): Promise<{
+export interface LoadedContent {
 	wikiContent: string
 	ast: WikiNode | null
 	contentRecordId: number | null
 	rawContent?: string
-}> {
-	if (!contentRecordId) {
-		return { wikiContent: '', ast: null, contentRecordId: null }
-	}
+}
+
+const EMPTY_CONTENT: LoadedContent = { wikiContent: '', ast: null, contentRecordId: null }
+
+export async function loadContentRecord(contentRecordId: number | null): Promise<LoadedContent> {
+	if (!contentRecordId) return EMPTY_CONTENT
 
 	const [record] = await db
 		.select({ id: contentRecords.id, content: contentRecords.content, parsedAst: contentRecords.parsedAst })
 		.from(contentRecords)
 		.where(eq(contentRecords.id, contentRecordId))
 
-	if (!record) {
-		return { wikiContent: '', ast: null, contentRecordId: null }
+	if (!record) return EMPTY_CONTENT
+
+	return {
+		wikiContent: record.content,
+		ast: record.parsedAst as WikiNode | null,
+		contentRecordId: record.id,
+		rawContent: record.content,
 	}
+}
+
+export async function loadContentByDomainSlug(domain: string, slug: string): Promise<LoadedContent> {
+	const [record] = await db
+		.select({ id: contentRecords.id, content: contentRecords.content, parsedAst: contentRecords.parsedAst })
+		.from(contentRecords)
+		.where(and(
+			eq(contentRecords.domain, domain),
+			sql`LOWER(${contentRecords.slug}) = LOWER(${slug})`,
+		))
+
+	if (!record) return EMPTY_CONTENT
 
 	return {
 		wikiContent: record.content,
@@ -297,4 +316,22 @@ export async function deleteContentRecord(
 
 	await deleteContentEffects(database, contentRecordId)
 	await database.delete(contentRecords).where(eq(contentRecords.id, contentRecordId))
+}
+
+export async function deleteContentByDomainSlug(
+	database: ContentRecordsDatabase,
+	domain: string,
+	slug: string,
+): Promise<void> {
+	const [record] = await database
+		.select({ id: contentRecords.id })
+		.from(contentRecords)
+		.where(and(
+			eq(contentRecords.domain, domain),
+			sql`LOWER(${contentRecords.slug}) = LOWER(${slug})`,
+		))
+	if (!record) return
+
+	await deleteContentEffects(database, record.id)
+	await database.delete(contentRecords).where(eq(contentRecords.id, record.id))
 }

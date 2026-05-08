@@ -2,7 +2,7 @@ import { error } from '@sveltejs/kit'
 import { and, eq, sql } from 'drizzle-orm'
 import type { z } from 'zod'
 import { db } from '$lib/server/db/index.js'
-import { contentRecords, worldMaps } from '$lib/server/db/schema.js'
+import { worldMaps } from '$lib/server/db/schema.js'
 import type { createWorldMapSchema, updateWorldMapSchema } from '$lib/worldmap/schema.js'
 
 type CreateMapInput = z.infer<typeof createWorldMapSchema>
@@ -180,7 +180,6 @@ export async function getMapBySlug(slug: string) {
 			wm.event AS "event",
 			wm.linked_page_slug AS "linkedPageSlug",
 			wm.description,
-			wm.content_record_id AS "contentRecordId",
 			wm.created_at AS "createdAt",
 			wm.updated_at AS "updatedAt",
 			(SELECT COUNT(*)::int FROM world_map_regions r WHERE r.map_id = wm.id) AS "regionCount",
@@ -195,19 +194,6 @@ export async function getMapBySlug(slug: string) {
 	return map
 }
 
-async function resolveLinkedPage(linkedPageSlug: string) {
-	const [record] = await db
-		.select({ id: contentRecords.id })
-		.from(contentRecords)
-		.where(and(
-			eq(contentRecords.domain, 'know'),
-			eq(contentRecords.slug, linkedPageSlug),
-		))
-
-	if (!record) throw error(400, `Linked wiki page not found: ${linkedPageSlug}`)
-	return record.id
-}
-
 export async function createMap(data: CreateMapInput) {
 	const normalizedSlug = data.slug.trim().toLowerCase()
 	const [existing] = await db
@@ -218,8 +204,6 @@ export async function createMap(data: CreateMapInput) {
 	if (existing) throw error(409, 'A map with this slug already exists')
 
 	const linkedPageSlug = data.linkedPageSlug?.trim() || null
-	let contentRecordId = data.contentRecordId ?? null
-	if (linkedPageSlug) contentRecordId = await resolveLinkedPage(linkedPageSlug)
 
 	const [map] = await db
 		.insert(worldMaps)
@@ -234,7 +218,6 @@ export async function createMap(data: CreateMapInput) {
 			event: data.event?.trim() || null,
 			linkedPageSlug,
 			description: data.description?.trim() || '',
-			contentRecordId,
 		})
 		.returning()
 	return map
@@ -260,13 +243,9 @@ export async function updateMap(slug: string, data: UpdateMapInput) {
 		if (conflict) throw error(409, 'A map with this slug already exists')
 	}
 
-	let nextLinkedPageSlug: string | null | undefined
-	let nextContentRecordId = data.contentRecordId
-
-	if (data.linkedPageSlug !== undefined) {
-		nextLinkedPageSlug = data.linkedPageSlug?.trim() || null
-		nextContentRecordId = nextLinkedPageSlug ? await resolveLinkedPage(nextLinkedPageSlug) : null
-	}
+	const nextLinkedPageSlug = data.linkedPageSlug !== undefined
+		? (data.linkedPageSlug?.trim() || null)
+		: undefined
 
 	const [updated] = await db
 		.update(worldMaps)
@@ -281,7 +260,6 @@ export async function updateMap(slug: string, data: UpdateMapInput) {
 			event: data.event?.trim() || (data.event === null ? null : undefined),
 			linkedPageSlug: nextLinkedPageSlug,
 			description: data.description?.trim(),
-			contentRecordId: nextContentRecordId,
 			updatedAt: new Date(),
 		})
 		.where(eq(worldMaps.id, current.id))

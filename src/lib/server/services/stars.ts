@@ -10,8 +10,6 @@ import {
 	applyFieldUpdates,
 	applyNameUpdate,
 } from '$lib/server/celestial/update-helpers.js'
-import { ensureStarContentRecord, syncBodiesForStar } from '$lib/server/services/celestial-content.js'
-
 type CreateStarInput = z.infer<typeof createStarSchema>
 type UpdateStarInput = z.infer<typeof updateStarSchema>
 
@@ -108,8 +106,6 @@ export async function createStar(data: CreateStarInput) {
 			})
 			.returning()
 
-		await ensureStarContentRecord(tx, created)
-
 		const [updated] = await tx.select().from(stars).where(eq(stars.id, created.id))
 		return updated ?? created
 	})
@@ -168,9 +164,6 @@ export async function updateStar(slug: string, data: UpdateStarInput) {
 	const updated = await db.transaction(async (tx) => {
 		const [saved] = await tx.update(stars).set(setClause).where(eq(stars.slug, slug)).returning()
 		if (!saved) return null
-
-		await ensureStarContentRecord(tx, saved)
-		await syncBodiesForStar(tx, saved.id)
 
 		const [refetched] = await tx.select().from(stars).where(eq(stars.id, saved.id))
 		return refetched ?? saved

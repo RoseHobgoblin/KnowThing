@@ -6,7 +6,6 @@ export const createCountrySchema = z.object({
 	name: z.string().min(1).max(120),
 	slug: z.string().min(1).max(120),
 	pageSlug: z.string().min(1).max(200),
-	contentRecordId: z.number().int().positive().nullable().optional(),
 	capital: z.string().max(120).nullable().optional(),
 	governance: z.string().max(120).nullable().optional(),
 	color: hexColor.nullable().optional(),
@@ -29,7 +28,6 @@ export const createWorldMapSchema = z.object({
 	event: z.string().max(200).nullable().optional(),
 	linkedPageSlug: z.string().max(200).nullable().optional(),
 	description: z.string().max(2000).optional(),
-	contentRecordId: z.number().int().positive().nullable().optional(),
 })
 
 export const updateWorldMapSchema = createWorldMapSchema.partial().refine(

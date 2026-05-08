@@ -1,19 +1,10 @@
 import { eq, sql } from 'drizzle-orm'
 import { db } from '$lib/server/db/index.js'
 import {
-	contentRecords,
 	planetaryBodies,
 	starSystems,
 	stars,
 } from '$lib/server/db/schema.js'
-import { parseWikitext } from '$lib/parser/index.js'
-import type { WikiNode } from '$lib/parser/types.js'
-import { getResolvedLinks, serializeResolvedLinks } from '$lib/server/resolved-links.js'
-import {
-	ensurePlanetaryBodyContentRecord,
-	ensureStarContentRecord,
-	ensureSystemContentRecord,
-} from '$lib/server/services/celestial-content.js'
 
 export async function listSystemsForRegistry() {
 	return db.execute(sql`
@@ -129,52 +120,6 @@ export async function listSiblingBodies(starId: number) {
 		})
 		.from(planetaryBodies)
 		.where(eq(planetaryBodies.starId, starId))
-}
-
-export async function ensureSystemContent(system: Parameters<typeof ensureSystemContentRecord>[1]) {
-	return ensureSystemContentRecord(db, system)
-}
-
-export async function ensureStarContent(star: Parameters<typeof ensureStarContentRecord>[1]) {
-	return ensureStarContentRecord(db, star)
-}
-
-export async function ensureBodyContent(body: Parameters<typeof ensurePlanetaryBodyContentRecord>[1]) {
-	return ensurePlanetaryBodyContentRecord(db, body)
-}
-
-export async function loadCelestialContent(contentRecordId: number | null) {
-	if (!contentRecordId) {
-		return {
-			wikiContent: '',
-			ast: null as WikiNode | null,
-			contentRecordId: null as number | null,
-			resolvedLinks: {} as Record<string, { href: string, exists: boolean }>,
-		}
-	}
-
-	const [record] = await db
-		.select({ id: contentRecords.id, content: contentRecords.content, parsedAst: contentRecords.parsedAst })
-		.from(contentRecords)
-		.where(eq(contentRecords.id, contentRecordId))
-
-	if (!record) {
-		return {
-			wikiContent: '',
-			ast: null as WikiNode | null,
-			contentRecordId: null as number | null,
-			resolvedLinks: {} as Record<string, { href: string, exists: boolean }>,
-		}
-	}
-
-	const ast = (record.parsedAst as WikiNode) ?? (record.content ? parseWikitext(record.content) : null)
-	const links = await getResolvedLinks(record.id)
-	return {
-		wikiContent: record.content,
-		ast,
-		contentRecordId: record.id,
-		resolvedLinks: serializeResolvedLinks(links),
-	}
 }
 
 export async function listBodiesForRegistry() {

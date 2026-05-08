@@ -1,17 +1,15 @@
-import { error, fail, redirect } from '@sveltejs/kit'
+import { error, redirect } from '@sveltejs/kit'
 import type { Actions, PageServerLoad } from './$types.js'
-import { parseWikitext } from '$lib/parser/index.js'
 import { hasRole } from '$lib/server/auth.js'
-import { requireEditor } from '$lib/server/guards.js'
 import type { CalendarConfig, StaticCalendarData } from '$lib/calendar/types.js'
 import { resolveDisplay } from '$lib/calendar/date-math.js'
 import {
 	type Calendar,
 	findCalendarBySlugCaseInsensitive,
 	listAllCalendars,
-	loadCalendarContent,
-	saveCalendarContent,
 } from '$lib/server/services/calendar.js'
+import { loadArticlePage } from '$lib/server/services/article-loader.js'
+import { articleSaveAction } from '$lib/server/services/article-actions.js'
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const pathSegments = (params.path || '').split('/').filter(Boolean)
@@ -51,41 +49,26 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	const config = buildCalendarConfig(cal)
 	const resolved = resolveDisplay(config)
 
-	const loaded = await loadCalendarContent(cal.contentRecordId)
-	const ast = (loaded.ast as import('$lib/parser/types.js').WikiNode | null)
-		?? (loaded.wikiContent ? parseWikitext(loaded.wikiContent) : null)
+	const article = await loadArticlePage({
+		domain: 'calendar',
+		slug: cal.slug,
+		title: cal.name,
+	})
 
 	return {
 		mode: (isConfigure ? 'configure' : 'detail') as 'configure' | 'detail',
 		calendar: cal,
 		config,
 		resolved,
-		wikiContent: loaded.wikiContent,
-		ast,
-		contentRecordId: loaded.contentRecordId,
+		wikiContent: article.wikiContent,
+		ast: article.ast,
+		contentRecordId: article.contentRecordId,
+		resolvedLinks: article.resolvedLinks,
 	}
 }
 
 export const actions: Actions = {
-	default: async (event) => {
-		const user = requireEditor(event)
-		const formData = await event.request.formData()
-		const contentRecordId = Number(formData.get('contentRecordId'))
-		const content = formData.get('content')?.toString() || ''
-		const editSummary = formData.get('summary')?.toString() || ''
-
-		if (!contentRecordId) return fail(400, { error: 'Missing content record ID' })
-
-		try {
-			const result = await saveCalendarContent({ contentRecordId, content, editSummary, userId: user.id })
-			if (!result.ok) return fail(result.status, { error: result.error })
-		} catch {
-			return fail(500, { error: 'Failed to save article changes' })
-		}
-
-		const viewPath = event.url.pathname.replace(/\/configure$/, '')
-		throw redirect(302, viewPath)
-	},
+	default: articleSaveAction({ editSuffix: /\/configure$/ }),
 }
 
 function buildCalendarConfig(cal: Calendar): CalendarConfig {

@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm'
 import {
 	pgTable,
 	serial,
@@ -9,6 +10,7 @@ import {
 	jsonb,
 	primaryKey,
 	index,
+	uniqueIndex,
 } from 'drizzle-orm/pg-core'
 
 // ============================================================================
@@ -77,7 +79,7 @@ export const contentRecords = pgTable(
 		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 	},
 	table => [
-		index('idx_cr_domain_slug').on(table.domain, table.slug),
+		uniqueIndex('uq_cr_domain_slug').on(table.domain, sql`LOWER(${table.slug})`),
 		index('idx_cr_domain').on(table.domain),
 		index('idx_cr_updated').on(table.updatedAt),
 	],
@@ -173,7 +175,6 @@ export const calendars = pgTable('calendars', {
 	isPrimary: boolean('is_primary').default(false).notNull(),
 	staticData: jsonb('static_data').notNull(),
 	planetId: integer('planet_id').references(() => planetaryBodies.id, { onDelete: 'set null' }),
-	contentRecordId: integer('content_record_id').references(() => contentRecords.id, { onDelete: 'set null' }),
 })
 
 // ============================================================================
@@ -470,7 +471,6 @@ export const starSystems = pgTable(
 		slug: text('slug').unique().notNull(),
 		pageSlug: text('page_slug'),
 		systemType: text('system_type').default('single'),
-		contentRecordId: integer('content_record_id').references(() => contentRecords.id, { onDelete: 'set null' }),
 		description: text('description').default(''),
 		extra: jsonb('extra').default({}),
 		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
@@ -513,7 +513,6 @@ export const stars = pgTable(
 		companion: text('companion'),
 		parentStarId: integer('parent_star_id'),
 		systemId: integer('system_id').references(() => starSystems.id, { onDelete: 'set null' }),
-		contentRecordId: integer('content_record_id').references(() => contentRecords.id, { onDelete: 'set null' }),
 		epochPhase: doublePrecision('epoch_phase').default(0),
 
 		extra: jsonb('extra').default({}),
@@ -535,7 +534,6 @@ export const planetaryBodies = pgTable(
 		bodyType: text('body_type').notNull().default('planet'),
 		starId: integer('star_id').references(() => stars.id, { onDelete: 'set null' }),
 		parentId: integer('parent_id'),
-		contentRecordId: integer('content_record_id').references(() => contentRecords.id, { onDelete: 'set null' }),
 		pageSlug: text('page_slug'),
 
 		massKg: doublePrecision('mass_kg'),
@@ -593,7 +591,6 @@ export const worldMaps = pgTable(
 		event: text('event'),
 		linkedPageSlug: text('linked_page_slug'),
 		description: text('description').default(''),
-		contentRecordId: integer('content_record_id').references(() => contentRecords.id, { onDelete: 'set null' }),
 		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 	},
@@ -609,7 +606,6 @@ export const countries = pgTable(
 		name: text('name').notNull(),
 		slug: text('slug').unique().notNull(),
 		pageSlug: text('page_slug').notNull(),
-		contentRecordId: integer('content_record_id').references(() => contentRecords.id, { onDelete: 'set null' }),
 		capital: text('capital'),
 		governance: text('governance'),
 		color: text('color'),

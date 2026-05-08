@@ -5,9 +5,7 @@ import { db } from '$lib/server/db/index.js'
 import { calendars } from '$lib/server/db/schema.js'
 import {
 	createContentRecord,
-	deleteContentRecord,
-	loadContentRecord,
-	saveContentRecord,
+	deleteContentByDomainSlug,
 } from '$lib/server/services/content-records.js'
 import { urlSlugify } from '$lib/utils/slugify.js'
 import type {
@@ -27,21 +25,6 @@ export async function listAllCalendars() {
 export async function findCalendarBySlugCaseInsensitive(slug: string) {
 	const [cal] = await db.select().from(calendars).where(sql`LOWER(${calendars.slug}) = LOWER(${slug})`)
 	return cal ?? null
-}
-
-export async function loadCalendarContent(contentRecordId: number | null) {
-	return loadContentRecord(contentRecordId)
-}
-
-export async function saveCalendarContent(input: {
-	contentRecordId: number
-	content: string
-	editSummary: string
-	userId: number
-}) {
-	const result = await db.transaction(tx => saveContentRecord(tx, input))
-	if (!result.ok) return { ok: false as const, status: result.status, error: result.error }
-	return { ok: true as const }
 }
 
 export async function listCalendars() {
@@ -85,7 +68,7 @@ export async function createCalendar(data: CreateCalendarInput) {
 			await tx.update(calendars).set({ isPrimary: false }).where(eq(calendars.isPrimary, true))
 		}
 
-		const contentRecord = await createContentRecord(tx, {
+		await createContentRecord(tx, {
 			domain: 'calendar',
 			slug,
 			title: trimmedName,
@@ -102,7 +85,6 @@ export async function createCalendar(data: CreateCalendarInput) {
 				description: description?.trim() || '',
 				isPrimary: isPrimary ?? false,
 				staticData,
-				contentRecordId: contentRecord.id,
 			})
 			.returning()
 
@@ -140,7 +122,7 @@ export async function deleteCalendar(id: number) {
 	if (!cal) throw error(404, 'Calendar not found')
 
 	return db.transaction(async (tx) => {
-		await deleteContentRecord(tx, cal.contentRecordId)
+		await deleteContentByDomainSlug(tx, 'calendar', cal.slug)
 		await tx.delete(calendars).where(eq(calendars.id, id))
 		return { success: true }
 	})
