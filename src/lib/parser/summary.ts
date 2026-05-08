@@ -81,11 +81,17 @@ function nodeToText(node: WikiNode): string {
 				: ''
 			return display.length > 0 ? display : node.target
 		}
+		case 'namespace_link': {
+			const display = node.display && node.display.length > 0
+				? node.display.map(nodeToText).join('')
+				: ''
+			return display.length > 0 ? display : node.identifier
+		}
 		case 'wordbook_link': {
 			const display = node.display && node.display.length > 0
 				? node.display.map(nodeToText).join('')
 				: ''
-			return display.length > 0 ? display : node.word
+			return display.length > 0 ? display : (node.word || node.language)
 		}
 		case 'external_link':
 			return node.display ?? node.url

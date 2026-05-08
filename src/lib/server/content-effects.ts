@@ -38,6 +38,8 @@ export async function updateContentEffects(
 		await database.insert(contentLinks).values(
 			linkTargets.map(target => ({
 				sourceId: contentRecordId,
+				sourceKind: 'know',
+				sourceEntityId: contentRecordId,
 				targetDomain: sourceDomain,
 				targetSlug: target,
 				targetId: slugToId.get(target.toLowerCase()) ?? null,
@@ -45,9 +47,10 @@ export async function updateContentEffects(
 		).onConflictDoNothing()
 	}
 
-	// Store cross-domain links, resolving targetId where possible
+	// Store cross-domain / namespaced links. Identifiers are stored verbatim
+	// (case-insensitive matching is the responsibility of the resolver).
 	if (domainLinks.length > 0) {
-		const domainSlugPairs = domainLinks.map(({ domain, target }) => ({ domain, slug: slugify(target) }))
+		const domainSlugPairs = domainLinks.map(({ domain, target }) => ({ domain, slug: target.trim() }))
 
 		// Batch-resolve targets across domains
 		const domainTargetRecords = await database
@@ -63,6 +66,8 @@ export async function updateContentEffects(
 		await database.insert(contentLinks).values(
 			domainSlugPairs.map(({ domain, slug: targetSlug }) => ({
 				sourceId: contentRecordId,
+				sourceKind: 'know',
+				sourceEntityId: contentRecordId,
 				targetDomain: domain,
 				targetSlug,
 				targetId: domainSlugToId.get(`${domain}:${targetSlug.toLowerCase()}`) ?? null,

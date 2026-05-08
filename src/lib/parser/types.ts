@@ -17,6 +17,7 @@ export type WikiNode =
 	| InternalLinkNode
 	| WordbookLinkNode
 	| DomainLinkNode
+	| NamespaceLinkNode
 	| ExternalLinkNode
 	| TemplateNode
 	| ImageNode
@@ -108,10 +109,23 @@ export interface WordbookLinkNode {
 	word: string
 	display: WikiNode[] | null
 }
+/** @deprecated Use NamespaceLinkNode. Retained until Phase 9. */
 export interface DomainLinkNode {
 	type: 'domain_link'
 	domain: string
 	target: string
+	display: WikiNode[] | null
+}
+/**
+ * Namespaced link such as `[[Celestial:Therne]]` or `[[:Category:Foo]]`.
+ * The `namespace` is canonical TitleCase (matched against the registry at
+ * parse time); `identifier` is the rest of the target verbatim — for
+ * `Category:Foo/Bar` the identifier is `Foo/Bar`.
+ */
+export interface NamespaceLinkNode {
+	type: 'namespace_link'
+	namespace: string
+	identifier: string
 	display: WikiNode[] | null
 }
 export interface ExternalLinkNode {
