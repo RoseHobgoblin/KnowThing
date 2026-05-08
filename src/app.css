@@ -121,7 +121,14 @@ h1, h2, h3, h4, h5, h6 {
 	color: var(--color-heading);
 }
 
-/* Gold rule under headings in article content */
+/* Gold rule under headings in article content. `display: flow-root`
+   establishes a block formatting context so the heading's box (and its
+   border-bottom) shrinks to fit alongside any right-floated infobox
+   instead of running behind it. */
+.know-article :is(h2, h3, h4, h5, h6) {
+	display: flow-root;
+}
+
 .know-article h2 {
 	border-bottom: 1px solid var(--color-border-strong);
 	padding-bottom: 0.375rem;
