@@ -164,7 +164,9 @@
 			}
 		}} class="flex flex-col h-[calc(100vh-5rem)]">
 			<input type="hidden" name="content" value={content} />
-			<input type="hidden" name="contentRecordId" value={data.contentRecordId ?? ''} />
+			<input type="hidden" name="entityKind" value={kind} />
+			<input type="hidden" name="entityId" value={raw.id} />
+			<input type="hidden" name="title" value={raw.name} />
 			<input type="hidden" name="summary" value={editSummary} />
 
 			{#if saveError}
