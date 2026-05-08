@@ -13,7 +13,38 @@ export interface Breadcrumb {
 
 // ── Know (wiki articles) ───────────────────────────────────────────────
 
-export function knowBreadcrumbs(title: string): Breadcrumb[] {
+export interface KnowBreadcrumbContext {
+	/** This Know article IS the encyclopedia article for a wordbook lexicon entry. */
+	wordbookMatch?: { word: string, languageSlug: string, languageName: string } | null
+	/** This Know article IS the encyclopedia article for a wordbook language. */
+	languageMatch?: { languageSlug: string, languageName: string } | null
+	/** Wordbook section label (from siteConfig); only used when a match is present. */
+	wordbookName?: string
+}
+
+export function knowBreadcrumbs(title: string, ctx: KnowBreadcrumbContext = {}): Breadcrumb[] {
+	const wbName = ctx.wordbookName ?? 'Wordbook'
+
+	if (ctx.wordbookMatch) {
+		return [
+			{ label: wbName, href: '/Wordbook' },
+			{ label: ctx.wordbookMatch.languageName, href: `/Wordbook/${ctx.wordbookMatch.languageSlug}` },
+			{
+				label: ctx.wordbookMatch.word,
+				href: `/Wordbook/${ctx.wordbookMatch.languageSlug}/${encodeURIComponent(ctx.wordbookMatch.word)}`,
+			},
+			{ label: title },
+		]
+	}
+
+	if (ctx.languageMatch) {
+		return [
+			{ label: wbName, href: '/Wordbook' },
+			{ label: ctx.languageMatch.languageName, href: `/Wordbook/${ctx.languageMatch.languageSlug}` },
+			{ label: title },
+		]
+	}
+
 	return [{ label: title }]
 }
 

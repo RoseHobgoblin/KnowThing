@@ -43,6 +43,7 @@
 
 	const isAdmin = $derived($page.data.isAdmin)
 	const permissions = $derived($page.data.permissions)
+	const wbName = $derived($page.data.siteConfig?.wordbookName ?? 'Wordbook')
 
 	// Build render context — this component is keyed by slug, so context rebuilds on navigation
 	function buildStructuredData(raw: Record<string, Record<string, string>> | null) {
@@ -67,7 +68,7 @@
 </script>
 
 <ArticleShell
-	breadcrumbs={knowBreadcrumbs(title)}
+	breadcrumbs={knowBreadcrumbs(title, { wordbookMatch, languageMatch, wordbookName: wbName })}
 	{title}
 >
 	{#snippet actions()}
