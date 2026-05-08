@@ -15,7 +15,10 @@
 	import Badge from '$lib/components/ui/Badge.svelte'
 	import { PARTS_OF_SPEECH, POS_COLORS } from '$lib/components/wordbook/constants.js'
 	import InlineMarkup from '$lib/renderer/InlineMarkup.svelte'
+	import WikiNodeComponent from '$lib/renderer/WikiNode.svelte'
 	import { createKnowContext } from '$lib/renderer/context.js'
+	import { parseWikitext } from '$lib/parser/index.js'
+	import type { WikiNode } from '$lib/parser/types.js'
 	import PencilSimple from 'phosphor-svelte/lib/PencilSimple'
 	import Trash from 'phosphor-svelte/lib/Trash'
 	import { wordbookWordBreadcrumbs } from '$lib/utils/breadcrumbs.js'
@@ -26,10 +29,18 @@
 	const layoutData = $derived($page.data)
 
 	createKnowContext({
+		resolvedLinks: new Map(Object.entries(data.resolvedLinks ?? {})),
 		mediaBaseUrl: '/api/media',
-		pageBaseUrl: '/know',
+		pageBaseUrl: '/wordbook',
+		sourceDomain: 'wordbook',
 		calendarDate: layoutData.calendarDate ?? null,
 	})
+
+	function bodyAstFor(entry: { body?: string, bodyParsedAst?: unknown }): WikiNode | null {
+		const cached = entry.bodyParsedAst as WikiNode | null | undefined
+		if (cached) return cached
+		return entry.body ? parseWikitext(entry.body) : null
+	}
 	const permissions = $derived(layoutData.permissions)
 	const isAuthenticated = $derived(permissions.isAuthenticated)
 	const canManageWordbook = $derived(permissions.canManageWordbook)
@@ -259,13 +270,14 @@
 					</div>
 				{/if}
 
-				<!-- Wiki link -->
-				{#if entry.pageSlug}
-					<div class="mt-3 pt-3 border-t border-border-subtle">
-						<a href="/know/{entry.pageSlug}" class="text-sm text-link hover:text-link-hover hover:underline">
-							See also: {entry.pageSlug.replaceAll('_', ' ')} →
-						</a>
-					</div>
+				<!-- Inline body prose -->
+				{#if entry.body && entry.body.length > 0}
+					{@const ast = bodyAstFor(entry)}
+					{#if ast}
+						<article class="know-article mt-3 pt-3 border-t border-border-subtle">
+							<WikiNodeComponent node={ast} />
+						</article>
+					{/if}
 				{/if}
 			</div>
 		</div>

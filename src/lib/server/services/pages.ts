@@ -1,10 +1,13 @@
 import { error } from '@sveltejs/kit'
 import { and, desc, eq, sql } from 'drizzle-orm'
 import {
+	calendars,
 	contentCategories,
 	contentLinks,
 	contentRecords,
 	contentRevisions,
+	languages,
+	lexicon,
 	planetaryBodies,
 	starSystems,
 	stars,
@@ -218,6 +221,36 @@ export async function findPageInAnyDomain(slug: string) {
 		.where(sql`LOWER(${planetaryBodies.slug}) = ${lower} OR LOWER(${planetaryBodies.pageSlug}) = ${lower}`)
 		.limit(1)
 	if (planet) return { domain: 'celestial', slug: planet.slug, parentPath: null }
+
+	// Wordbook languages — surface as /wordbook/<slug>.
+	const [language] = await db
+		.select({ slug: languages.slug })
+		.from(languages)
+		.where(sql`LOWER(${languages.slug}) = ${lower} OR LOWER(${languages.pageSlug}) = ${lower}`)
+		.limit(1)
+	if (language) return { domain: 'wordbook', slug: language.slug, parentPath: null }
+
+	// Wordbook lexicon — surface as /wordbook/<lang>/<word>.
+	const [word] = await db
+		.select({ word: lexicon.word, languageId: lexicon.languageId })
+		.from(lexicon)
+		.where(sql`LOWER(${lexicon.word}) = ${lower} OR LOWER(${lexicon.pageSlug}) = ${lower}`)
+		.limit(1)
+	if (word) {
+		const [parentLang] = await db
+			.select({ slug: languages.slug })
+			.from(languages)
+			.where(eq(languages.id, word.languageId))
+			.limit(1)
+		if (parentLang) return { domain: 'wordbook', slug: word.word, parentPath: parentLang.slug }
+	}
+
+	const [calendar] = await db
+		.select({ slug: calendars.slug })
+		.from(calendars)
+		.where(sql`LOWER(${calendars.slug}) = ${lower}`)
+		.limit(1)
+	if (calendar) return { domain: 'calendar', slug: calendar.slug, parentPath: null }
 
 	return null
 }

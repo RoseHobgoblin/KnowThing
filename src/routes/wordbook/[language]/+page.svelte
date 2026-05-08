@@ -5,7 +5,10 @@
 	import AlphabetNav from '$lib/components/wordbook/AlphabetNav.svelte'
 	import WordEntry from '$lib/components/wordbook/WordEntry.svelte'
 	import InflectionSummary from '$lib/components/wordbook/InflectionSummary.svelte'
+	import WikiNodeComponent from '$lib/renderer/WikiNode.svelte'
 	import { createKnowContext } from '$lib/renderer/context.js'
+	import { parseWikitext } from '$lib/parser/index.js'
+	import type { WikiNode } from '$lib/parser/types.js'
 
 	let { data }: { data: PageData } = $props()
 
@@ -22,9 +25,20 @@
 	)
 
 	createKnowContext({
+		resolvedLinks: new Map(Object.entries(data.resolvedLinks ?? {})),
 		mediaBaseUrl: '/api/media',
-		pageBaseUrl: '/know',
+		pageBaseUrl: '/wordbook',
+		sourceDomain: 'wordbook',
 		calendarDate: $page.data.calendarDate ?? null,
+	})
+
+	// Render the language's prose body (parsed AST cached on the row, falls back
+	// to a fresh parse if the cache is stale).
+	const bodyAst = $derived.by((): WikiNode | null => {
+		const cached = data.language.bodyParsedAst as WikiNode | null | undefined
+		if (cached) return cached
+		const raw = data.language.body
+		return raw ? parseWikitext(raw) : null
 	})
 
 	// Group entries by first letter
@@ -93,10 +107,10 @@
 		<p class="text-secondary leading-relaxed mb-4">{data.language.description}</p>
 	{/if}
 
-	{#if data.language.pageSlug}
-		<a href="/know/{data.language.pageSlug}" class="inline-block mb-4 text-sm text-link hover:text-link-hover hover:underline">
-			Read the full article →
-		</a>
+	{#if bodyAst}
+		<article class="know-article mb-6">
+			<WikiNodeComponent node={bodyAst} />
+		</article>
 	{/if}
 
 	<!-- Child languages -->

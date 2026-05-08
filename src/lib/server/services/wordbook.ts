@@ -132,6 +132,8 @@ type LanguageWithFamily = {
 	pageSlug?: string | null
 	parentLanguageId?: number | null
 	languageType?: string | null
+	body?: string
+	bodyParsedAst?: unknown
 	wordCount: number
 }
 
@@ -181,6 +183,7 @@ export async function getLanguageWithFamily(slug: string) {
 			l.color, l.description, l.page_slug AS "pageSlug",
 			l.parent_language_id AS "parentLanguageId",
 			l.language_type AS "languageType",
+			l.body, l.body_parsed_ast AS "bodyParsedAst",
 			(SELECT COUNT(*)::int FROM lexicon WHERE language_id = l.id) AS "wordCount"
 		FROM languages l
 		WHERE LOWER(l.slug) = LOWER(${slug})
@@ -276,6 +279,8 @@ export async function listHomographs(languageId: number, word: string) {
 			pageSlug: lexicon.pageSlug,
 			tags: lexicon.tags,
 			homographNumber: lexicon.homographNumber,
+			body: lexicon.body,
+			bodyParsedAst: lexicon.bodyParsedAst,
 			createdAt: lexicon.createdAt,
 			updatedAt: lexicon.updatedAt,
 		})

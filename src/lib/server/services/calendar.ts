@@ -3,10 +3,7 @@ import { asc, eq, sql } from 'drizzle-orm'
 import type { z } from 'zod'
 import { db } from '$lib/server/db/index.js'
 import { calendars } from '$lib/server/db/schema.js'
-import {
-	createContentRecord,
-	deleteContentByDomainSlug,
-} from '$lib/server/services/content-records.js'
+import { deleteContentByDomainSlug } from '$lib/server/services/content-records.js'
 import { urlSlugify } from '$lib/utils/slugify.js'
 import type {
 	createCalendarSchema,
@@ -67,15 +64,6 @@ export async function createCalendar(data: CreateCalendarInput) {
 		if (isPrimary) {
 			await tx.update(calendars).set({ isPrimary: false }).where(eq(calendars.isPrimary, true))
 		}
-
-		await createContentRecord(tx, {
-			domain: 'calendar',
-			slug,
-			title: trimmedName,
-			content: '',
-			editSummary: 'Calendar created',
-			userId: null,
-		})
 
 		const [cal] = await tx
 			.insert(calendars)

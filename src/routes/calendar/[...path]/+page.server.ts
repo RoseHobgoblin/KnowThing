@@ -8,8 +8,8 @@ import {
 	findCalendarBySlugCaseInsensitive,
 	listAllCalendars,
 } from '$lib/server/services/calendar.js'
-import { loadArticlePage } from '$lib/server/services/article-loader.js'
-import { articleSaveAction } from '$lib/server/services/article-actions.js'
+import { loadEntityBody } from '$lib/server/services/entity-article-loader.js'
+import { entitySaveAction } from '$lib/server/services/entity-actions.js'
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const pathSegments = (params.path || '').split('/').filter(Boolean)
@@ -49,10 +49,11 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	const config = buildCalendarConfig(cal)
 	const resolved = resolveDisplay(config)
 
-	const article = await loadArticlePage({
-		domain: 'calendar',
-		slug: cal.slug,
-		title: cal.name,
+	const article = await loadEntityBody({
+		kind: 'calendar',
+		entityId: cal.id,
+		body: cal.body ?? '',
+		bodyParsedAst: cal.bodyParsedAst,
 	})
 
 	return {
@@ -68,7 +69,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 }
 
 export const actions: Actions = {
-	default: articleSaveAction({ editSuffix: /\/configure$/ }),
+	default: entitySaveAction({ editSuffix: /\/configure$/ }),
 }
 
 function buildCalendarConfig(cal: Calendar): CalendarConfig {

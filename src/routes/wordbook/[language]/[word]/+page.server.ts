@@ -9,6 +9,7 @@ import {
 	listVariantsForEntries,
 } from '$lib/server/services/wordbook.js'
 import { listClassesForLanguage } from '$lib/server/services/inflections.js'
+import { getResolvedLinks, serializeResolvedLinks } from '$lib/server/resolved-links.js'
 
 function groupBy<T>(items: T[], keyFn: (item: T) => number): Map<number, T[]> {
 	const map = new Map<number, T[]>()
@@ -64,11 +65,23 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	const availableClasses = await listClassesForLanguage(lang.id)
 
+	// Resolved links for whichever entry has a body. If multiple homographs have
+	// bodies (rare), we just merge their link maps — they share a wordbook
+	// namespace anyway.
+	const linkMaps = await Promise.all(
+		homographs
+			.filter(h => h.entry.body && h.entry.body.length > 0)
+			.map(h => getResolvedLinks({ kind: 'lexicon', entityId: h.entry.id })),
+	)
+	const resolvedLinks: Record<string, { href: string, exists: boolean }> = {}
+	for (const m of linkMaps) Object.assign(resolvedLinks, serializeResolvedLinks(m))
+
 	return {
 		word: entries[0].word,
 		language: lang,
 		homographs,
 		isMultipleHomographs: entries.length > 1,
 		availableClasses,
+		resolvedLinks,
 	}
 }

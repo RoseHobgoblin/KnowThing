@@ -1,5 +1,5 @@
 import { db } from './db/index.js'
-import { contentLinks, contentRecords, stars, planetaryBodies, starSystems } from './db/schema.js'
+import { calendars, contentLinks, contentRecords, languages, lexicon, planetaryBodies, starSystems, stars } from './db/schema.js'
 import { eq, sql, and, inArray } from 'drizzle-orm'
 
 export interface ResolvedLink {
@@ -99,42 +99,125 @@ export async function getResolvedLinks(source: number | EntitySource): Promise<M
 			}
 		}
 
-		// Structured-entity fallthrough: anything still unresolved that targets
-		// 'celestial' may live in stars/planetary_bodies/star_systems now that
-		// Phase 4 has dropped the celestial content_records shadow rows. Probe
-		// those tables before giving up.
+		// Structured-entity fallthrough: any link still unresolved may target a
+		// row in a structured table (post-Phase-4+ the shadow content_records
+		// for these domains are gone). Probe each domain's tables.
 		const stillUnresolved = unresolvedEntries.filter(({ domain, slug }) =>
 			!result.get(`${domain}:${slug}`)?.exists,
 		)
-		const celestialSlugs = [...new Set(
-			stillUnresolved.filter(e => e.domain === 'celestial').map(e => e.slug),
-		)]
-		if (celestialSlugs.length > 0) {
-			const slugList = sql.join(celestialSlugs.map(s => sql`${s}`), sql`, `)
-			const matches = await db.execute(sql`
-				SELECT slug FROM stars            WHERE LOWER(slug) IN (${slugList})
-				UNION ALL
-				SELECT slug FROM planetary_bodies WHERE LOWER(slug) IN (${slugList})
-				UNION ALL
-				SELECT slug FROM star_systems     WHERE LOWER(slug) IN (${slugList})
-			`)
-			const known = new Map<string, string>()
-			for (const row of matches as unknown as Array<{ slug: string }>) {
-				known.set(row.slug.toLowerCase(), row.slug)
-			}
-			for (const { slug } of stillUnresolved.filter(e => e.domain === 'celestial')) {
-				const canonical = known.get(slug)
+		await resolveCelestialFallthrough(stillUnresolved, result)
+		await resolveCalendarFallthrough(stillUnresolved, result)
+		await resolveWordbookFallthrough(stillUnresolved, result)
+	}
+
+	return result
+}
+
+async function resolveCelestialFallthrough(
+	unresolved: { domain: string, slug: string }[],
+	result: Map<string, ResolvedLink>,
+): Promise<void> {
+	const slugs = [...new Set(unresolved.filter(e => e.domain === 'celestial').map(e => e.slug))]
+	if (slugs.length === 0) return
+	const matches = await db.execute(sql`
+		SELECT slug FROM ${stars}            WHERE LOWER(slug) IN ${sql`(${sql.join(slugs.map(s => sql`${s}`), sql`, `)})`}
+		UNION ALL
+		SELECT slug FROM ${planetaryBodies} WHERE LOWER(slug) IN ${sql`(${sql.join(slugs.map(s => sql`${s}`), sql`, `)})`}
+		UNION ALL
+		SELECT slug FROM ${starSystems}     WHERE LOWER(slug) IN ${sql`(${sql.join(slugs.map(s => sql`${s}`), sql`, `)})`}
+	`)
+	const known = new Map<string, string>()
+	for (const row of matches as unknown as Array<{ slug: string }>) {
+		known.set(row.slug.toLowerCase(), row.slug)
+	}
+	for (const { slug } of unresolved.filter(e => e.domain === 'celestial')) {
+		const canonical = known.get(slug)
+		if (canonical) result.set(`celestial:${slug}`, { href: buildHref('celestial', canonical, null), exists: true })
+	}
+}
+
+async function resolveCalendarFallthrough(
+	unresolved: { domain: string, slug: string }[],
+	result: Map<string, ResolvedLink>,
+): Promise<void> {
+	const slugs = [...new Set(unresolved.filter(e => e.domain === 'calendar').map(e => e.slug))]
+	if (slugs.length === 0) return
+	const matches = await db
+		.select({ slug: calendars.slug })
+		.from(calendars)
+		.where(inArray(sql`LOWER(${calendars.slug})`, slugs))
+	const known = new Map<string, string>()
+	for (const row of matches) known.set(row.slug.toLowerCase(), row.slug)
+	for (const { slug } of unresolved.filter(e => e.domain === 'calendar')) {
+		const canonical = known.get(slug)
+		if (canonical) result.set(`calendar:${slug}`, { href: buildHref('calendar', canonical, null), exists: true })
+	}
+}
+
+/**
+ * Wordbook targets are stored in `content_links` either as `<lang>` (a
+ * language link) or `<lang>/<word>` (a lexicon link, slash form).
+ */
+async function resolveWordbookFallthrough(
+	unresolved: { domain: string, slug: string }[],
+	result: Map<string, ResolvedLink>,
+): Promise<void> {
+	const wbEntries = unresolved.filter(e => e.domain === 'wordbook')
+	if (wbEntries.length === 0) return
+
+	const langEntries = wbEntries.filter(e => !e.slug.includes('/'))
+	const wordEntries = wbEntries.filter(e => e.slug.includes('/'))
+
+	if (langEntries.length > 0) {
+		const slugs = [...new Set(langEntries.map(e => e.slug))]
+		const langMatches = await db
+			.select({ slug: languages.slug })
+			.from(languages)
+			.where(inArray(sql`LOWER(${languages.slug})`, slugs))
+		const known = new Map<string, string>()
+		for (const r of langMatches) known.set(r.slug.toLowerCase(), r.slug)
+		for (const { slug } of langEntries) {
+			const canonical = known.get(slug)
+			if (canonical) result.set(`wordbook:${slug}`, { href: `/wordbook/${canonical}`, exists: true })
+		}
+	}
+
+	if (wordEntries.length > 0) {
+		// Each entry slug is `<lang>/<word>`. Resolve in batches by language.
+		const byLang = new Map<string, string[]>()
+		for (const { slug } of wordEntries) {
+			const idx = slug.indexOf('/')
+			const langSlug = slug.slice(0, idx)
+			const word = slug.slice(idx + 1)
+			if (!byLang.has(langSlug)) byLang.set(langSlug, [])
+			byLang.get(langSlug)!.push(word)
+		}
+		const langSlugs = [...byLang.keys()]
+		const langs = await db
+			.select({ id: languages.id, slug: languages.slug })
+			.from(languages)
+			.where(inArray(sql`LOWER(${languages.slug})`, langSlugs))
+		const langBySlug = new Map(langs.map(l => [l.slug.toLowerCase(), l]))
+
+		for (const [langSlug, words] of byLang) {
+			const lang = langBySlug.get(langSlug)
+			if (!lang) continue
+			const found = await db
+				.select({ word: lexicon.word })
+				.from(lexicon)
+				.where(and(eq(lexicon.languageId, lang.id), inArray(sql`LOWER(${lexicon.word})`, words)))
+			const knownWords = new Map(found.map(r => [r.word.toLowerCase(), r.word]))
+			for (const word of words) {
+				const canonical = knownWords.get(word)
 				if (canonical) {
-					result.set(`celestial:${slug}`, {
-						href: buildHref('celestial', canonical, null),
+					result.set(`wordbook:${langSlug}/${word}`, {
+						href: `/wordbook/${lang.slug}/${encodeURIComponent(canonical)}`,
 						exists: true,
 					})
 				}
 			}
 		}
 	}
-
-	return result
 }
 
 function buildHref(domain: string, slug: string, parentPath: string | null | undefined): string {

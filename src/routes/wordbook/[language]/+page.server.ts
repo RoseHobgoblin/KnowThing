@@ -8,6 +8,7 @@ import {
 	listActiveLetters,
 	listLanguageEntries,
 } from '$lib/server/services/wordbook.js'
+import { getResolvedLinks, serializeResolvedLinks } from '$lib/server/resolved-links.js'
 
 export const load: PageServerLoad = async ({ params, url }) => {
 	const lang = await getLanguageWithFamily(params.language)
@@ -29,6 +30,7 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	const letter = url.searchParams.get('letter') || ''
 	const entries = await listLanguageEntries(lang.id, letter || null)
 	const activeLetters = await listActiveLetters(lang.id)
+	const resolvedLinks = await getResolvedLinks({ kind: 'language', entityId: lang.id })
 
 	return {
 		language: lang,
@@ -40,5 +42,6 @@ export const load: PageServerLoad = async ({ params, url }) => {
 		paradigmClasses: inflections.classes,
 		activeLetters,
 		currentLetter: letter,
+		resolvedLinks: serializeResolvedLinks(resolvedLinks),
 	}
 }
