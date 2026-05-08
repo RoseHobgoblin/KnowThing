@@ -9,6 +9,7 @@
 	import { DEFAULT_MAP_SETTINGS } from '$lib/celestial/map-settings.js'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import Badge from '$lib/components/ui/Badge.svelte'
+	import { createKnowContext } from '$lib/renderer/context.js'
 	import CelestialConfigureStar from '$lib/components/celestial/CelestialConfigureStar.svelte'
 	import CelestialConfigureBody from '$lib/components/celestial/CelestialConfigureBody.svelte'
 	import { celestialPathBreadcrumbs } from '$lib/utils/breadcrumbs.js'
@@ -28,6 +29,15 @@
 		if ($page.data.permissions !== undefined) {
 			stablePermissions = normalizePermissions($page.data.permissions)
 		}
+	})
+
+	// Infobox values can include wikilinks; the renderer expects a Know context.
+	createKnowContext({
+		resolvedLinks: new Map(),
+		mediaBaseUrl: '/api/media',
+		pageBaseUrl: '/know',
+		sourceDomain: 'celestial',
+		calendarDate: $page.data.calendarDate ?? null,
 	})
 
 	// System map state
