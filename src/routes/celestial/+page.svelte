@@ -12,7 +12,7 @@
 	import { urlSlugify } from '$lib/utils/slugify.js'
 	import { celestialPresets } from '$lib/celestial/presets.js'
 	import type { CelestialPreset, BodyPreset } from '$lib/celestial/presets.js'
-	import { celestialBreadcrumbs } from '$lib/utils/breadcrumbs.js'
+	import { celestialRegistryBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import SunDim from 'phosphor-svelte/lib/SunDim'
 	import StarIcon from 'phosphor-svelte/lib/Star'
 	import Planet from 'phosphor-svelte/lib/Planet'
@@ -270,7 +270,7 @@
 </svelte:head>
 
 <ArticleShell
-	breadcrumbs={celestialBreadcrumbs()}
+	breadcrumbs={celestialRegistryBreadcrumbs()}
 	title="Celestial Registry"
 >
 
