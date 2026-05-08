@@ -15,10 +15,7 @@
 	import Badge from '$lib/components/ui/Badge.svelte'
 	import { PARTS_OF_SPEECH, POS_COLORS } from '$lib/components/wordbook/constants.js'
 	import InlineMarkup from '$lib/renderer/InlineMarkup.svelte'
-	import WikiNodeComponent from '$lib/renderer/WikiNode.svelte'
 	import { createKnowContext } from '$lib/renderer/context.js'
-	import { parseWikitext } from '$lib/parser/index.js'
-	import type { WikiNode } from '$lib/parser/types.js'
 	import PencilSimple from 'phosphor-svelte/lib/PencilSimple'
 	import Trash from 'phosphor-svelte/lib/Trash'
 	import { wordbookWordBreadcrumbs } from '$lib/utils/breadcrumbs.js'
@@ -35,12 +32,6 @@
 		sourceDomain: 'wordbook',
 		calendarDate: layoutData.calendarDate ?? null,
 	})
-
-	function bodyAstFor(entry: { body?: string, bodyParsedAst?: unknown }): WikiNode | null {
-		const cached = entry.bodyParsedAst as WikiNode | null | undefined
-		if (cached) return cached
-		return entry.body ? parseWikitext(entry.body) : null
-	}
 	const permissions = $derived(layoutData.permissions)
 	const isAuthenticated = $derived(permissions.isAuthenticated)
 	const canManageWordbook = $derived(permissions.canManageWordbook)
@@ -135,7 +126,6 @@
 	{#snippet actions()}
 		{#if canManageWordbook && data.homographs[0]}
 			<a href="/Wordbook/contribute/{data.homographs[0].entry.id}" class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover"><PencilSimple size={14} weight="fill" />Edit</a>
-			<a href="/Wordbook/{data.language.slug}/{encodeURIComponent(data.word)}/edit{data.isMultipleHomographs ? `?h=${data.homographs[0].entry.homographNumber}` : ''}" class="text-sm text-link hover:text-link-hover hover:underline">Edit article</a>
 			{#if isAdmin}
 				<button onclick={() => deleteEntry(data.homographs[0].entry.id)} class="text-error transition-colors flex items-center gap-1 hover:text-error-hover"><Trash size={14} weight="fill" />Delete</button>
 			{/if}
@@ -271,14 +261,13 @@
 					</div>
 				{/if}
 
-				<!-- Inline body prose -->
-				{#if entry.body && entry.body.length > 0}
-					{@const ast = bodyAstFor(entry)}
-					{#if ast}
-						<article class="know-article mt-3 pt-3 border-t border-border-subtle">
-							<WikiNodeComponent node={ast} />
-						</article>
-					{/if}
+				<!-- "See full article" link if a Know article exists -->
+				{#if entry.pageSlug}
+					<div class="mt-3 pt-3 border-t border-border-subtle">
+						<a href="/know/{entry.pageSlug}" class="text-sm text-link hover:text-link-hover hover:underline">
+							Read the full article →
+						</a>
+					</div>
 				{/if}
 			</div>
 		</div>
