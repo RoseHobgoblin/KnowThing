@@ -30,7 +30,6 @@
 		{ id: 'rotation', label: 'Rotation' },
 		{ id: 'orbit', label: 'Orbit' },
 		{ id: 'observation', label: 'Observation' },
-		{ id: 'article', label: 'Article' },
 	]
 	let activeTab = $state('identity')
 
@@ -413,25 +412,6 @@
 				globalThis.history.replaceState({}, '', globalThis.location.pathname.replace(initialStar.slug, saved.slug))
 			}
 
-			if (content !== initialWikiContent) {
-				if (!contentRecordId) {
-					saveError = 'Article content is not attached to this star yet. Reload and try again.'
-					pushError(saveError)
-					return
-				}
-				const formData = new FormData()
-				formData.set('contentRecordId', String(contentRecordId))
-				formData.set('content', content)
-				formData.set('summary', editSummary)
-				const articleRes = await fetch(window.location.pathname, { method: 'POST', body: formData })
-				if (!articleRes.ok) {
-					const payload = await articleRes.json().catch(() => ({}))
-					saveError = payload.error || 'Failed to save article content'
-					pushError(saveError)
-					return
-				}
-			}
-
 			savedAt = new Date()
 			initialSnapshot = currentSnapshot
 			editSummary = ''
@@ -579,37 +559,21 @@
 					<Input label="Angular Diameter" bind:value={angularDiameter} placeholder="31.46 arcmin" hint="Apparent size in the sky from a reference point. The Sun is ~31.5 arcminutes from Earth." />
 				</div>
 			</section>
-		{:else if activeTab === 'article'}
-			<ConfigureFooter
-				initialContent={initialWikiContent}
-				bind:content
-				bind:editSummary
-				cancelHref={viewPath}
-				{saving}
+		{/if}
+
+		<div class="space-y-3">
+			<StickyActionBar
 				dirty={isDirty}
+				{saving}
 				error={saveError}
 				{savedAt}
+				saveType="button"
 				onsave={save}
 				onsaveandexit={saveAndExit}
 				ondiscard={resetDraft}
+				cancelHref={viewPath}
 			/>
-		{/if}
-
-		{#if activeTab !== 'article'}
-			<div class="space-y-3">
-				<StickyActionBar
-					dirty={isDirty}
-					{saving}
-					error={saveError}
-					{savedAt}
-					saveType="button"
-					onsave={save}
-					onsaveandexit={saveAndExit}
-					ondiscard={resetDraft}
-					cancelHref={viewPath}
-				/>
-			</div>
-		{/if}
+		</div>
 
 		{#if permissions.canManageSettings}
 			<section class="border border-error-border bg-error-subtle/40 p-5 space-y-3">

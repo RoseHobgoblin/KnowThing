@@ -31,7 +31,6 @@
 		{ id: 'orbit', label: 'Orbit' },
 		{ id: 'rotation', label: 'Rotation' },
 		{ id: 'observation', label: 'Observation' },
-		{ id: 'article', label: 'Article' },
 	]
 	let activeTab = $state('identity')
 
@@ -464,24 +463,6 @@
 				globalThis.history.replaceState({}, '', globalThis.location.pathname.replace(initialBody.slug, saved.slug))
 			}
 
-			if (content !== initialWikiContent) {
-				if (!contentRecordId) {
-					saveError = 'Article content is not attached to this body yet. Reload and try again.'
-					pushError(saveError)
-					return
-				}
-				const formData = new FormData()
-				formData.set('contentRecordId', String(contentRecordId))
-				formData.set('content', content)
-				formData.set('summary', editSummary)
-				const articleResponse = await fetch(globalThis.location.pathname, { method: 'POST', body: formData })
-				if (!articleResponse.ok) {
-					const payload = await articleResponse.json().catch(() => ({}))
-					saveError = payload.error || 'Failed to save article content'
-					pushError(saveError)
-					return
-				}
-			}
 
 			savedAt = new Date()
 			initialSnapshot = currentSnapshot
@@ -625,37 +606,21 @@
 					<Checkbox bind:value={hasRings} label="Has rings" />
 				</div>
 			</section>
-		{:else if activeTab === 'article'}
-			<ConfigureFooter
-				initialContent={initialWikiContent}
-				bind:content
-				bind:editSummary
-				cancelHref={viewPath}
-				{saving}
+		{/if}
+
+		<div class="space-y-3">
+			<StickyActionBar
 				dirty={isDirty}
+				{saving}
 				error={saveError}
 				{savedAt}
+				saveType="button"
 				onsave={save}
 				onsaveandexit={saveAndExit}
 				ondiscard={resetDraft}
+				cancelHref={viewPath}
 			/>
-		{/if}
-
-		{#if activeTab !== 'article'}
-			<div class="space-y-3">
-				<StickyActionBar
-					dirty={isDirty}
-					{saving}
-					error={saveError}
-					{savedAt}
-					saveType="button"
-					onsave={save}
-					onsaveandexit={saveAndExit}
-					ondiscard={resetDraft}
-					cancelHref={viewPath}
-				/>
-			</div>
-		{/if}
+		</div>
 
 		{#if permissions.canManageSettings}
 			<section class="border border-error-border bg-error-subtle/40 p-5 space-y-3">

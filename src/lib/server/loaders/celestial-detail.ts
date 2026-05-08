@@ -16,17 +16,19 @@ import {
 	listAllSystemRefs,
 	listSiblingBodies,
 } from '$lib/server/services/celestial-registry.js'
-import { loadEntityBody } from '$lib/server/services/entity-article-loader.js'
+import { findPageCaseInsensitive } from '$lib/server/services/pages.js'
 
 export interface CelestialDetailContext {
 	identifier: string
-	mode: 'view' | 'edit' | 'configure'
+	mode: 'view' | 'configure'
 	user: { id: number, role: string } | null
-	loginRedirectPath: string // already-encoded path for /auth/login?redirect=<this>
-	canonicalize: (slug: string) => string // builds the canonical view URL from a slug
+	loginRedirectPath: string
+	canonicalize: (slug: string) => string
 }
 
 export type ParentCrumb = { label: string, href: string }
+
+export type KnowMatch = { slug: string, title: string } | null
 
 export type CelestialDetailData =
 	| (CelestialBaseData & {
@@ -49,32 +51,29 @@ export type CelestialDetailData =
 	})
 
 interface CelestialBaseData {
-	isEditMode: boolean
+	isEditMode: false
 	isConfigureMode: boolean
 	parentCrumbs: ParentCrumb[]
 	infoboxFields: Record<string, string> | null
-	wikiContent: string
-	ast: unknown
-	contentRecordId: number | null
-	resolvedLinks: Record<string, { href: string, exists: boolean }>
+	knowMatch: KnowMatch
 }
 
 /**
- * Shared celestial detail loader. Resolves the input identifier (slug or
- * pageSlug) against system → star → planet, returns the discriminated data
- * shape used by both the canonical `/Celestial:Slug` route and the legacy
- * `/celestial/[...path]` redirect stub.
- *
- * Throws SvelteKit redirects on:
- *  - login required for edit/configure
- *  - non-editor user attempting edit/configure (sent back to view)
- *  - canonical-slug mismatch (sent to canonical URL)
- *  - 404 if not found in any celestial table
+ * Find the matching Know article for a celestial entity. Prefer page_slug,
+ * fall back to the entity's slug. Returns null if no Know article exists.
  */
+async function findKnowMatch(pageSlug: string | null, entitySlug: string): Promise<KnowMatch> {
+	const candidate = pageSlug || entitySlug
+	if (!candidate) return null
+	const record = await findPageCaseInsensitive('know', candidate)
+	if (!record) return null
+	return { slug: record.slug, title: record.title }
+}
+
 export async function loadCelestialDetail(ctx: CelestialDetailContext): Promise<CelestialDetailData> {
 	const { identifier, mode, user, loginRedirectPath, canonicalize } = ctx
 
-	if (mode !== 'view') {
+	if (mode === 'configure') {
 		if (!user) {
 			throw redirect(302, `/auth/login?redirect=${encodeURIComponent(loginRedirectPath)}`)
 		}
@@ -83,69 +82,58 @@ export async function loadCelestialDetail(ctx: CelestialDetailContext): Promise<
 		}
 	}
 
-	const isEditMode = mode === 'edit'
 	const isConfigureMode = mode === 'configure'
 
 	const system = await findSystemBySlugOrPageSlug(identifier)
 	if (system) {
-		if (system.slug !== identifier && !isEditMode) {
+		if (system.slug !== identifier) {
 			throw redirect(301, canonicalize(system.slug))
 		}
-		const article = await loadEntityBody({
-			kind: 'system',
-			entityId: system.id,
-			body: system.body ?? '',
-			bodyParsedAst: system.bodyParsedAst,
-		})
 		const systemStars = [...await getStarsForSystemMap(system.id)] as unknown as MapBody[]
 		const systemBodies = [...await getBodiesForSystemMap(system.id)] as unknown as MapBody[]
 		const systemCalendars = await getCalendarsForSystem(system.id)
 		const infoboxFields = await resolveStructuredData('system', system.slug)
+		const knowMatch = await findKnowMatch(system.pageSlug ?? null, system.slug)
 		return {
 			kind: 'system',
 			body: system,
-			isEditMode,
+			isEditMode: false,
 			isConfigureMode,
 			systemStars,
 			systemBodies,
 			systemCalendars,
 			infoboxFields: infoboxFields ? Object.fromEntries(infoboxFields) : null,
 			parentCrumbs: [],
-			...article,
+			knowMatch,
 		}
 	}
 
 	const star = await findStarBySlugOrPageSlug(identifier)
 	if (star) {
-		if (star.slug !== identifier && !isEditMode) {
+		if (star.slug !== identifier) {
 			throw redirect(301, canonicalize(star.slug))
 		}
 		const parentSystem = star.systemId ? await getStarSystemRef(star.systemId) : null
 		const allSystems = await listAllSystemRefs()
-		const article = await loadEntityBody({
-			kind: 'star',
-			entityId: star.id,
-			body: star.body ?? '',
-			bodyParsedAst: star.bodyParsedAst,
-		})
 		const parentCrumbs: ParentCrumb[] = []
 		if (parentSystem) parentCrumbs.push({ label: parentSystem.name, href: canonicalize(parentSystem.slug) })
 		const infoboxFields = await resolveStructuredData('star', star.slug)
+		const knowMatch = await findKnowMatch(star.pageSlug ?? null, star.slug)
 		return {
 			kind: 'star',
 			body: star,
 			allSystems,
-			isEditMode,
+			isEditMode: false,
 			isConfigureMode,
 			parentCrumbs,
 			infoboxFields: infoboxFields ? Object.fromEntries(infoboxFields) : null,
-			...article,
+			knowMatch,
 		}
 	}
 
 	const planet = await findPlanetBySlugOrPageSlug(identifier)
 	if (planet) {
-		if (planet.slug !== identifier && !isEditMode) {
+		if (planet.slug !== identifier) {
 			throw redirect(301, canonicalize(planet.slug))
 		}
 		let parentSystem: { name: string, slug: string } | null = null
@@ -158,28 +146,22 @@ export async function loadCelestialDetail(ctx: CelestialDetailContext): Promise<
 
 		const allStars = await listAllStarRefs()
 		const siblings = planet.starId ? await listSiblingBodies(planet.starId) : []
-		const article = await loadEntityBody({
-			kind: 'planet',
-			entityId: planet.id,
-			body: planet.body ?? '',
-			bodyParsedAst: planet.bodyParsedAst,
-		})
 		const infoboxFields = await resolveStructuredData('planet', planet.slug)
+		const knowMatch = await findKnowMatch(planet.pageSlug ?? null, planet.slug)
 		return {
 			kind: 'planet',
 			body: planet,
 			allStars,
 			siblings,
-			isEditMode,
+			isEditMode: false,
 			isConfigureMode,
 			parentCrumbs,
 			infoboxFields: infoboxFields ? Object.fromEntries(infoboxFields) : null,
-			...article,
+			knowMatch,
 		}
 	}
 
 	throw error(404, 'Celestial body not found')
 }
 
-// Suppress unused-import warning when Cookies is referenced only in JSDoc.
 export type _Cookies = Cookies

@@ -21,6 +21,7 @@
 		updatedAt,
 		wordbookMatch,
 		languageMatch,
+		celestialMatch,
 		structuredData: rawStructuredData,
 		structuredCollections,
 		systemMaps,
@@ -34,6 +35,7 @@
 		updatedAt: string | Date | null
 		wordbookMatch: { word: string, languageSlug: string, languageName: string } | null
 		languageMatch: { languageSlug: string, languageName: string } | null
+		celestialMatch: { kind: 'system' | 'star' | 'planet', slug: string, name: string } | null
 		structuredData: Record<string, Record<string, string>> | null
 		structuredCollections: Record<string, Record<string, unknown>[]> | null
 		systemMaps: Record<string, unknown> | null
@@ -104,6 +106,17 @@
 					class="text-link transition-colors hover:text-link-hover"
 				>
 					See <em>{languageMatch.languageName}</em> in the wordbook
+				</a>
+			</div>
+		{/if}
+		{#if celestialMatch}
+			<div class="flex items-center gap-2 mt-1.5 text-xs">
+				<Badge variant="info">Celestial</Badge>
+				<a
+					href="/Celestial:{celestialMatch.slug}"
+					class="text-link transition-colors hover:text-link-hover"
+				>
+					See <em>{celestialMatch.name}</em> in the Celestial Registry
 				</a>
 			</div>
 		{/if}

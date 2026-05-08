@@ -7,6 +7,7 @@ import { lookupMediaInfo, resolveCardImageSync } from '$lib/server/services/page
 import { findPageCaseInsensitive, findPageInAnyDomain } from '$lib/server/services/pages.js'
 import { buildHref } from '$lib/server/resolved-links.js'
 import { findLanguageMatchByPageSlug, findWordbookMatchByTitle } from '$lib/server/services/wordbook.js'
+import { findCelestialMatchByPageSlug } from '$lib/server/services/celestial-registry.js'
 
 export const load: PageServerLoad = async ({ params }) => {
 	const record = await findPageCaseInsensitive('know', params.slug)
@@ -77,6 +78,7 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	const wordbookMatch = await findWordbookMatchByTitle(record.title)
 	const languageMatch = await findLanguageMatchByPageSlug(record.slug)
+	const celestialMatch = await findCelestialMatchByPageSlug(record.slug)
 
 	const description = extractSummaryFromAst(ast, { maxLength: 200 })
 	const cardImage = resolveCardImageSync(ast, structuredData)
@@ -93,6 +95,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		updatedAt: record.updatedAt,
 		wordbookMatch,
 		languageMatch,
+		celestialMatch,
 		structuredData,
 		structuredCollections,
 		systemMaps,

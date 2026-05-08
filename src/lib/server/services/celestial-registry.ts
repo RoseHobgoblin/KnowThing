@@ -67,6 +67,31 @@ export async function resolveCelestialCanonicalSlug(slug: string): Promise<strin
 	return (row as unknown as { slug?: string })?.slug ?? null
 }
 
+/**
+ * Find a celestial entity whose `page_slug` (or `slug`) matches a given Know
+ * article slug. Used by the /know/[slug] view to surface a "See in Celestial
+ * Registry" badge on articles that double as the prose for a celestial entity.
+ */
+export async function findCelestialMatchByPageSlug(slug: string): Promise<
+	{ kind: 'system' | 'star' | 'planet', slug: string, name: string } | null
+> {
+	const lower = slug.toLowerCase()
+	const [row] = await db.execute(sql`
+		SELECT 'system' AS kind, slug, name FROM star_systems
+		WHERE LOWER(page_slug) = ${lower} OR LOWER(slug) = ${lower}
+		UNION ALL
+		SELECT 'star' AS kind, slug, name FROM stars
+		WHERE LOWER(page_slug) = ${lower} OR LOWER(slug) = ${lower}
+		UNION ALL
+		SELECT 'planet' AS kind, slug, name FROM planetary_bodies
+		WHERE LOWER(page_slug) = ${lower} OR LOWER(slug) = ${lower}
+		LIMIT 1
+	`)
+	if (!row) return null
+	const r = row as unknown as { kind: 'system' | 'star' | 'planet', slug: string, name: string }
+	return { kind: r.kind, slug: r.slug, name: r.name }
+}
+
 export async function getStarsForSystemMap(systemId: number) {
 	return db.execute(sql`
 		SELECT id, name, slug, spectral_type AS "spectralType", color,

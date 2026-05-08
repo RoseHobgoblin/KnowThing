@@ -73,6 +73,7 @@
 			updatedAt={data.updatedAt}
 			wordbookMatch={data.wordbookMatch}
 			languageMatch={data.languageMatch}
+			celestialMatch={data.celestialMatch}
 			structuredData={data.structuredData ?? null}
 			structuredCollections={data.structuredCollections ?? null}
 			systemMaps={data.systemMaps ?? null}

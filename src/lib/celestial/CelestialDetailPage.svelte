@@ -1,8 +1,4 @@
 <script lang="ts">
-	import { untrack } from 'svelte'
-	import { enhance } from '$app/forms'
-	import WikiNodeComponent from '$lib/renderer/WikiNode.svelte'
-	import { createKnowContext } from '$lib/renderer/context.js'
 	import { page } from '$app/stores'
 	import { normalizePermissions } from '$lib/permissions.js'
 	import InfoboxStar from '$lib/infoboxes/InfoboxStar.svelte'
@@ -12,49 +8,26 @@
 	import SystemSidebar from '$lib/celestial/SystemSidebar.svelte'
 	import { DEFAULT_MAP_SETTINGS } from '$lib/celestial/map-settings.js'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
+	import Badge from '$lib/components/ui/Badge.svelte'
 	import CelestialConfigureStar from '$lib/components/celestial/CelestialConfigureStar.svelte'
 	import CelestialConfigureBody from '$lib/components/celestial/CelestialConfigureBody.svelte'
 	import { celestialPathBreadcrumbs } from '$lib/utils/breadcrumbs.js'
-	import PencilSimpleIcon from 'phosphor-svelte/lib/PencilSimpleIcon'
 	import GearSixIcon from 'phosphor-svelte/lib/GearSixIcon'
-	import Editor from '$lib/components/Editor.svelte'
-	import LivePreview from '$lib/components/LivePreview.svelte'
-	import SaveStatusBadge from '$lib/components/editor/SaveStatusBadge.svelte'
-	import UnsavedChangesGuard from '$lib/components/editor/UnsavedChangesGuard.svelte'
-	import FormNotice from '$lib/components/editor/FormNotice.svelte'
-	import Input from '$lib/components/ui/Input.svelte'
-	import StickyActionBar from '$lib/components/editor/StickyActionBar.svelte'
-	import type { WikiNode } from '$lib/parser/types.js'
-	import { cn } from '$lib/utils'
 	import type { CelestialDetailData } from '$lib/server/loaders/celestial-detail.js'
 
-	type ActionShape = { error?: string } | null
+	let { data }: { data: CelestialDetailData } = $props()
 
-	let { data, form, basePath }: { data: CelestialDetailData, form: ActionShape, basePath: string } = $props()
-
-	const initialWikiContent = untrack(() => data.wikiContent ?? '')
 	const kind = $derived(data.kind)
 	let stablePermissions = $state(normalizePermissions($page.data.permissions))
 	const permissions = $derived(stablePermissions)
-	const isEditMode = $derived(data.isEditMode)
 	const isConfigureMode = $derived(data.isConfigureMode)
 	const raw = $derived(data.body as any)
-	const ast = $derived(data.ast as WikiNode | null)
-
-	const layoutData = $derived($page.data)
+	const knowMatch = $derived(data.knowMatch)
 
 	$effect(() => {
 		if ($page.data.permissions !== undefined) {
 			stablePermissions = normalizePermissions($page.data.permissions)
 		}
-	})
-
-	createKnowContext({
-		resolvedLinks: new Map(Object.entries(data.resolvedLinks ?? {})),
-		mediaBaseUrl: '/api/media',
-		pageBaseUrl: basePath,
-		sourceDomain: 'celestial',
-		calendarDate: layoutData.calendarDate ?? null,
 	})
 
 	// System map state
@@ -65,7 +38,6 @@
 	let mapFollow = $state(DEFAULT_MAP_SETTINGS.follow)
 	let mapSelectedId = $state<`star:${number}` | `body:${number}` | null>(null)
 
-	// Resolve selected body for sidebar detail
 	const selectedBody = $derived.by(() => {
 		if (mapSelectedId == null) return null
 		const [k, rawId] = mapSelectedId.split(':')
@@ -75,7 +47,6 @@
 		return null
 	})
 
-	// Build calendar configs for the date scrubber (system view only)
 	const systemCalendarConfigs = $derived.by(() => {
 		if (data.kind !== 'system') return []
 		if (!data.systemCalendars) return []
@@ -93,56 +64,26 @@
 		}))
 	})
 
-	// Edit mode state
-	let content = $state(initialWikiContent)
-	let showPreview = $state(true)
-	let editSummary = $state('')
-	let saving = $state(false)
-
-	// View / edit / configure paths derive from basePath (the canonical entity URL).
-	const viewPath = basePath
-	const editPath = `${basePath}/edit`
-	const configurePath = `${basePath}/configure`
-
+	const configurePath = $derived(`/Celestial:${raw.slug}/configure`)
 	const parentCrumbs = $derived(data.parentCrumbs ?? [])
 
-	// Strip infobox templates from the AST — the celestial page renders its own infobox from structured data
-	function stripInfoboxes(node: WikiNode): WikiNode | null {
-		if (node.type === 'template' && node.name.toLowerCase().startsWith('infobox')) return null
-		if ('children' in node && Array.isArray(node.children)) {
-			const filtered = node.children.map(stripInfoboxes).filter(Boolean) as WikiNode[]
-			return { ...node, children: filtered }
-		}
-		return node
-	}
-
-	const strippedAst = $derived(ast ? stripInfoboxes(ast) : null)
-
-	// Infobox fields from server — resolved via structured-data.ts (same mapper as from=slug)
 	const infoboxFields = $derived.by(() =>
 		data.infoboxFields
 			? new Map(Object.entries(data.infoboxFields))
 			: new Map([['name', raw.name ?? '']]),
 	)
-	const isDirty = $derived(content !== initialWikiContent || editSummary.trim().length > 0)
-	const saveError = $derived(form?.error ?? '')
-
-	function resetArticleDraft() {
-		content = initialWikiContent
-		editSummary = ''
-	}
 </script>
 
 <svelte:head>
-	<title>{isEditMode ? 'Editing ' : ''}{raw.name} — Celestial — KnowThing</title>
+	<title>{raw.name} — Celestial — KnowThing</title>
 </svelte:head>
 
 {#if isConfigureMode && data.kind === 'star'}
 	<CelestialConfigureStar
 		star={raw}
 		allSystems={data.allSystems ?? []}
-		wikiContent={data.wikiContent ?? ''}
-		contentRecordId={data.contentRecordId ?? null}
+		wikiContent=""
+		contentRecordId={null}
 		{parentCrumbs}
 	/>
 {:else if isConfigureMode && data.kind === 'planet'}
@@ -150,196 +91,100 @@
 		body={raw}
 		allStars={data.allStars ?? []}
 		siblings={data.siblings ?? []}
-		wikiContent={data.wikiContent ?? ''}
-		contentRecordId={data.contentRecordId ?? null}
+		wikiContent=""
+		contentRecordId={null}
 		{parentCrumbs}
 	/>
-{:else if isEditMode}
-	<!-- EDIT MODE -->
-	<div>
-		<UnsavedChangesGuard when={isDirty && !saving} />
-		<form method="POST" use:enhance={() => {
-			saving = true
-			return async ({ update }) => {
-				saving = false
-				await update()
-			}
-		}} class="flex flex-col h-[calc(100vh-5rem)]">
-			<input type="hidden" name="content" value={content} />
-			<input type="hidden" name="entityKind" value={kind} />
-			<input type="hidden" name="entityId" value={raw.id} />
-			<input type="hidden" name="title" value={raw.name} />
-			<input type="hidden" name="summary" value={editSummary} />
-
-			{#if saveError}
-				<div class="px-6 pt-4">
-					<FormNotice title="Article changes were not saved" message={saveError} />
-				</div>
-			{/if}
-
-			<!-- Top bar -->
-			<div class="flex items-center justify-between px-6 py-2 bg-surface border-b border-border">
-				<h1 class="text-sm font-bold text-secondary truncate">
-					Editing: <span class="text-heading">{raw.name}</span>
-				</h1>
-				<div class="flex items-center gap-2">
-					<SaveStatusBadge dirty={isDirty} {saving} error={saveError} />
-					<button
-						type="button"
-						onclick={() => (showPreview = !showPreview)}
-						class={cn('px-3 py-1 border border-border text-xs text-secondary hover:bg-raised', showPreview && 'bg-accent-subtle border-accent-border text-accent')}
-					>
-						{showPreview ? 'Hide preview' : 'Show preview'}
-					</button>
-				</div>
-			</div>
-
-			<!-- Editor + Preview -->
-			<div class="flex-1 flex flex-col min-h-0 md:flex-row">
-				<div class={cn('flex-1 min-h-0 min-w-0 overflow-hidden', showPreview && 'h-1/2 md:h-auto')}>
-					<Editor value={data.wikiContent ?? ''} onchange={v => (content = v)} />
-				</div>
-
-				{#if showPreview}
-					<div class="w-full h-1/2 border-l border-border bg-surface flex flex-col min-h-0 shrink-0 md:w-[45%] md:max-w-2xl md:h-auto">
-						<div class="bg-raised px-6 py-1.5 text-xs font-medium text-faint border-b border-border-subtle uppercase tracking-wide">Preview</div>
-						<div class="flex-1 overflow-y-auto px-6 py-4">
-							<LivePreview {content} domain="celestial" />
-						</div>
-					</div>
-				{/if}
-			</div>
-
-			<div class="space-y-3 border-t border-border bg-surface px-6 py-3">
-				<Input
-					type="text"
-					bind:value={editSummary}
-					placeholder="Edit summary (optional)"
-				/>
-				<StickyActionBar
-					dirty={isDirty}
-					{saving}
-					error={saveError}
-					saveType="submit"
-					ondiscard={resetArticleDraft}
-					cancelHref={viewPath}
-				/>
-			</div>
-		</form>
-	</div>
 {:else}
-	<!-- VIEW MODE -->
 	<ArticleShell
 		breadcrumbs={celestialPathBreadcrumbs(parentCrumbs, raw.name)}
 		title={raw.name}
 	>
 		{#snippet actions()}
-			{#if permissions.canEditContent || permissions.canConfigureCelestial}
-				{#if kind !== 'system' && permissions.canConfigureCelestial}
-					<a href={configurePath} class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover">
-						<GearSixIcon size={14} weight="fill" />Configure
-					</a>
-				{/if}
-				{#if permissions.canEditContent}
-					<a href={editPath} class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover">
-						<PencilSimpleIcon size={14} weight="fill" />Edit
-					</a>
-				{/if}
-			{:else if permissions.isAuthenticated}
+			{#if kind !== 'system' && permissions.canConfigureCelestial}
+				<a href={configurePath} class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover">
+					<GearSixIcon size={14} weight="fill" />Configure
+				</a>
+			{:else if permissions.isAuthenticated && !permissions.canConfigureCelestial}
 				<span class="text-faint text-sm">View only. Editor role required for celestial changes.</span>
 			{/if}
 		{/snippet}
-			{#if kind === 'system' && data.kind === 'system'}
-				<!-- System: two-column layout -->
-				<div class="grid grid-cols-1 gap-4 md:grid-cols-[1fr_280px]">
-					<!-- Map + Controls -->
-					<div class="border border-border-subtle overflow-hidden">
-						{#if data.systemStars && data.systemStars.length > 0}
-							<MapControls
-								bind:scale={mapScale}
-								bind:labels={mapLabels}
-								bind:trails={mapTrails}
-								bind:follow={mapFollow}
-								hasSelection={mapSelectedId != null}
-							/>
-							<SystemMap
-								systemName={raw.name}
-								stars={data.systemStars}
-								bodies={data.systemBodies ?? []}
-								{currentAbsoluteDay}
-								scale={mapScale}
-								labels={mapLabels}
-								trails={mapTrails}
-								follow={mapFollow}
-								bind:selectedId={mapSelectedId}
-							/>
-						{:else}
-							<div class="flex items-center justify-center h-64 text-dim border border-border-subtle">
-								No stars registered in this system.
-							</div>
-						{/if}
-					</div>
 
-					<!-- Sidebar -->
-					<div class="border-l border-border-subtle pl-4 hidden md:block">
-						<SystemSidebar
-							system={raw}
-							stars={data.systemStars ?? []}
-							bodies={data.systemBodies ?? []}
-							systemSlug={raw.slug}
-							calendars={systemCalendarConfigs}
-							bind:currentAbsoluteDay
-							{selectedBody}
-						/>
-					</div>
-
-					<!-- Mobile sidebar (no border, below map) -->
-					<div class="md:hidden">
-						<SystemSidebar
-							system={raw}
-							stars={data.systemStars ?? []}
-							bodies={data.systemBodies ?? []}
-							systemSlug={raw.slug}
-							calendars={systemCalendarConfigs}
-							bind:currentAbsoluteDay
-							{selectedBody}
-						/>
-					</div>
+		{#snippet badges()}
+			{#if knowMatch}
+				<div class="flex items-center gap-2 mt-1.5 text-xs">
+					<Badge variant="info">Encyclopedia</Badge>
+					<a
+						href="/know/{knowMatch.slug}"
+						class="text-link transition-colors hover:text-link-hover"
+					>
+						See <em>{knowMatch.title}</em> in the encyclopedia
+					</a>
 				</div>
+			{/if}
+		{/snippet}
 
-				<!-- Prose below the two-column section -->
-				{#if strippedAst}
-					<section class="space-y-3 mt-4">
-						<article class="know-article">
-							<WikiNodeComponent node={strippedAst} />
-						</article>
-					</section>
-				{:else if !data.wikiContent}
-					<div class="border border-border-subtle bg-raised p-4 mt-4">
-						<p class="text-dim italic">No article content yet.</p>
-					</div>
-				{/if}
-			{:else}
-				<!-- Star/Planet: standard infobox + prose layout -->
-				<div class="space-y-4">
-					{#if kind === 'star'}
-						<InfoboxStar fields={infoboxFields} />
+		{#if kind === 'system' && data.kind === 'system'}
+			<div class="grid grid-cols-1 gap-4 md:grid-cols-[1fr_280px]">
+				<div class="border border-border-subtle overflow-hidden">
+					{#if data.systemStars && data.systemStars.length > 0}
+						<MapControls
+							bind:scale={mapScale}
+							bind:labels={mapLabels}
+							bind:trails={mapTrails}
+							bind:follow={mapFollow}
+							hasSelection={mapSelectedId != null}
+						/>
+						<SystemMap
+							systemName={raw.name}
+							stars={data.systemStars}
+							bodies={data.systemBodies ?? []}
+							{currentAbsoluteDay}
+							scale={mapScale}
+							labels={mapLabels}
+							trails={mapTrails}
+							follow={mapFollow}
+							bind:selectedId={mapSelectedId}
+						/>
 					{:else}
-						<InfoboxPlanet fields={infoboxFields} />
-					{/if}
-
-					{#if strippedAst}
-						<section class="space-y-3">
-							<article class="know-article">
-								<WikiNodeComponent node={strippedAst} />
-							</article>
-						</section>
-					{:else if !data.wikiContent}
-						<div class="border border-border-subtle bg-raised p-4">
-							<p class="text-dim italic">No article content yet.</p>
+						<div class="flex items-center justify-center h-64 text-dim border border-border-subtle">
+							No stars registered in this system.
 						</div>
 					{/if}
 				</div>
-			{/if}
+
+				<div class="border-l border-border-subtle pl-4 hidden md:block">
+					<SystemSidebar
+						system={raw}
+						stars={data.systemStars ?? []}
+						bodies={data.systemBodies ?? []}
+						systemSlug={raw.slug}
+						calendars={systemCalendarConfigs}
+						bind:currentAbsoluteDay
+						{selectedBody}
+					/>
+				</div>
+
+				<div class="md:hidden">
+					<SystemSidebar
+						system={raw}
+						stars={data.systemStars ?? []}
+						bodies={data.systemBodies ?? []}
+						systemSlug={raw.slug}
+						calendars={systemCalendarConfigs}
+						bind:currentAbsoluteDay
+						{selectedBody}
+					/>
+				</div>
+			</div>
+		{:else}
+			<div class="space-y-4">
+				{#if kind === 'star'}
+					<InfoboxStar fields={infoboxFields} />
+				{:else}
+					<InfoboxPlanet fields={infoboxFields} />
+				{/if}
+			</div>
+		{/if}
 	</ArticleShell>
 {/if}

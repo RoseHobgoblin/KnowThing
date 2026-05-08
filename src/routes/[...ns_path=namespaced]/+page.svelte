@@ -1,11 +1,11 @@
 <script lang="ts">
-	import type { ActionData, PageData } from './$types.js'
+	import type { PageData } from './$types.js'
 	import CelestialDetailPage from '$lib/celestial/CelestialDetailPage.svelte'
 	import CalendarDetail from '$lib/components/calendar/CalendarDetail.svelte'
 	import CalendarConfigure from '$lib/components/calendar/CalendarConfigure.svelte'
 	import type { WikiNode } from '$lib/parser/types.js'
 
-	let { data, form }: { data: PageData, form: ActionData } = $props()
+	let { data }: { data: PageData } = $props()
 
 	const headTitle = $derived.by(() => {
 		if (data.namespace === 'Calendar') {
@@ -22,11 +22,7 @@
 </svelte:head>
 
 {#if data.namespace === 'Celestial'}
-	<CelestialDetailPage
-		data={data}
-		form={form ?? null}
-		basePath={`/Celestial:${data.body.slug}`}
-	/>
+	<CelestialDetailPage data={data} />
 {:else if data.namespace === 'Calendar'}
 	{#if data.mode === 'configure'}
 		<CalendarConfigure

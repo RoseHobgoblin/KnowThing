@@ -31,9 +31,10 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 	switch (ns) {
 		case 'Celestial': {
+			if (mode === 'edit') throw error(404, 'Celestial pages no longer have articles. Edit at /know/<slug> instead.')
 			const data = await loadCelestialDetail({
 				identifier,
-				mode: (mode === 'edit' || mode === 'configure') ? mode : 'view',
+				mode: mode === 'configure' ? 'configure' : 'view',
 				user: locals.user,
 				loginRedirectPath: `/Celestial:${identifier}${suffix}`,
 				canonicalize: (slug) => `/Celestial:${slug}`,
