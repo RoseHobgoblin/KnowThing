@@ -79,6 +79,7 @@
 	{#snippet actions()}
 		{#if canManageWordbook}
 			<a href="/wordbook/contribute?language={data.language.slug}" class="text-sm text-link hover:text-link-hover hover:underline">+ Add word</a>
+			<a href="/wordbook/{data.language.slug}/edit" class="text-sm text-link hover:text-link-hover hover:underline">Edit article</a>
 			<a href="/wordbook/contribute/language/{data.language.slug}" class="text-sm text-faint hover:text-link hover:underline">Edit language</a>
 		{:else if isAuthenticated}
 			<span class="text-faint text-sm">View only. Editor role required for wordbook changes.</span>

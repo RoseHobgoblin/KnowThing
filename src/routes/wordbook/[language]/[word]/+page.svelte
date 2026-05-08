@@ -135,6 +135,7 @@
 	{#snippet actions()}
 		{#if canManageWordbook && data.homographs[0]}
 			<a href="/wordbook/contribute/{data.homographs[0].entry.id}" class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover"><PencilSimple size={14} weight="fill" />Edit</a>
+			<a href="/wordbook/{data.language.slug}/{encodeURIComponent(data.word)}/edit{data.isMultipleHomographs ? `?h=${data.homographs[0].entry.homographNumber}` : ''}" class="text-sm text-link hover:text-link-hover hover:underline">Edit article</a>
 			{#if isAdmin}
 				<button onclick={() => deleteEntry(data.homographs[0].entry.id)} class="text-error transition-colors flex items-center gap-1 hover:text-error-hover"><Trash size={14} weight="fill" />Delete</button>
 			{/if}
