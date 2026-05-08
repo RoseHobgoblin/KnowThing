@@ -8,11 +8,10 @@
 	import SystemSidebar from '$lib/celestial/SystemSidebar.svelte'
 	import { DEFAULT_MAP_SETTINGS } from '$lib/celestial/map-settings.js'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
-	import Badge from '$lib/components/ui/Badge.svelte'
 	import { createKnowContext } from '$lib/renderer/context.js'
 	import CelestialConfigureStar from '$lib/components/celestial/CelestialConfigureStar.svelte'
 	import CelestialConfigureBody from '$lib/components/celestial/CelestialConfigureBody.svelte'
-	import { celestialPathBreadcrumbs } from '$lib/utils/breadcrumbs.js'
+	import { celestialBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import GearSixIcon from 'phosphor-svelte/lib/GearSixIcon'
 	import type { CelestialDetailData } from '$lib/server/loaders/celestial-detail.js'
 
@@ -23,7 +22,6 @@
 	const permissions = $derived(stablePermissions)
 	const isConfigureMode = $derived(data.isConfigureMode)
 	const raw = $derived(data.body as any)
-	const knowMatch = $derived(data.knowMatch)
 
 	$effect(() => {
 		if ($page.data.permissions !== undefined) {
@@ -75,7 +73,6 @@
 	})
 
 	const configurePath = $derived(`/Celestial:${raw.slug}/configure`)
-	const parentCrumbs = $derived(data.parentCrumbs ?? [])
 
 	const infoboxFields = $derived.by(() =>
 		data.infoboxFields
@@ -94,7 +91,6 @@
 		allSystems={data.allSystems ?? []}
 		wikiContent=""
 		contentRecordId={null}
-		{parentCrumbs}
 	/>
 {:else if isConfigureMode && data.kind === 'planet'}
 	<CelestialConfigureBody
@@ -103,11 +99,10 @@
 		siblings={data.siblings ?? []}
 		wikiContent=""
 		contentRecordId={null}
-		{parentCrumbs}
 	/>
 {:else}
 	<ArticleShell
-		breadcrumbs={celestialPathBreadcrumbs(parentCrumbs, raw.name)}
+		breadcrumbs={celestialBreadcrumbs(raw.name)}
 		title={raw.name}
 	>
 		{#snippet actions()}
@@ -117,20 +112,6 @@
 				</a>
 			{:else if permissions.isAuthenticated && !permissions.canConfigureCelestial}
 				<span class="text-faint text-sm">View only. Editor role required for celestial changes.</span>
-			{/if}
-		{/snippet}
-
-		{#snippet badges()}
-			{#if knowMatch}
-				<div class="flex items-center gap-2 mt-1.5 text-xs">
-					<Badge variant="info">Encyclopedia</Badge>
-					<a
-						href="/know/{knowMatch.slug}"
-						class="text-link transition-colors hover:text-link-hover"
-					>
-						See <em>{knowMatch.title}</em> in the encyclopedia
-					</a>
-				</div>
 			{/if}
 		{/snippet}
 

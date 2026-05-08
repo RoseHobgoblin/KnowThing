@@ -17,7 +17,6 @@
 	import Checkbox from '$lib/components/ui/Checkbox.svelte'
 	import Tooltip from '$lib/components/ui/Tooltip.svelte'
 	import CalendarWidget from '$lib/calendar/CalendarWidget.svelte'
-	import ConfigureFooter from '$lib/components/ConfigureFooter.svelte'
 	import { calendarConfigureBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import UnsavedChangesGuard from '$lib/components/editor/UnsavedChangesGuard.svelte'
 	import SaveStatusBadge from '$lib/components/editor/SaveStatusBadge.svelte'
@@ -187,27 +186,21 @@
 		{ id: 'eras', label: 'Eras' },
 		{ id: 'moons', label: 'Moons' },
 		{ id: 'seasons', label: 'Seasons' },
-		{ id: 'article', label: 'Article' },
 	]
 	let activeTab = $state('identity')
 
 	let {
 		calendar,
 		config,
-		wikiContent,
-		contentRecordId,
 	}: {
 		calendar: { id: number, slug: string, name: string, description: string | null }
 		config: CalendarConfig
-		wikiContent: string
-		contentRecordId: number | null
 	} = $props()
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
 	const viewPath = `/Calendar:${calendar.slug}`
 
 	// Snapshot initial config for form state — intentionally not reactive
 	const initialConfig = $state.snapshot(untrack(() => config))
-	const initialWikiContent = untrack(() => wikiContent ?? '')
 	const sd = initialConfig.static_data
 
 	// ── Form state (scalars) ────────────────────────────────
@@ -231,8 +224,6 @@
 
 	let leapDays = $state<DraftLeapDay[]>(draftLeapDays(sd))
 
-	// Capture initial content for editor — intentionally not reactive
-	let content = $state(initialWikiContent)
 	let editSummary = $state('')
 	let saving = $state(false)
 	let saveError = $state('')
@@ -303,7 +294,7 @@
 	const totalDaysInYear = $derived(months.reduce((sum, m) => sum + m.length, 0))
 	const dayLengthHours = $derived(Math.round((dayLengthSeconds / 3600) * 100) / 100)
 	const currentStaticData = $derived(JSON.stringify(previewConfig.static_data))
-	const isDirty = $derived(currentStaticData !== initialStaticData || content !== initialWikiContent || editSummary.trim().length > 0)
+	const isDirty = $derived(currentStaticData !== initialStaticData || editSummary.trim().length > 0)
 	let stablePermissions = $state(normalizePermissions($page.data.permissions))
 	const permissions = $derived(stablePermissions)
 	const validationIssues = $derived.by(() => {
@@ -331,7 +322,6 @@
 		moons = draftMoons(sd)
 		seasons = draftSeasons(sd)
 		leapDays = draftLeapDays(sd)
-		content = initialWikiContent
 		editSummary = ''
 		saveError = ''
 	}
@@ -355,25 +345,6 @@
 				saveError = body.error || 'Failed to save calendar configuration'
 				pushError(saveError)
 				return
-			}
-
-			if (content !== initialWikiContent) {
-				if (!contentRecordId) {
-					saveError = 'Article content is not attached to this calendar yet. Reload and try again.'
-					pushError(saveError)
-					return
-				}
-				const formData = new FormData()
-				formData.set('contentRecordId', String(contentRecordId))
-				formData.set('content', content)
-				formData.set('summary', editSummary)
-				const articleRes = await fetch(globalThis.location.pathname, { method: 'POST', body: formData })
-				if (!articleRes.ok) {
-					const payload = await articleRes.json().catch(() => ({}))
-					saveError = payload.error || 'Failed to save article content'
-					pushError(saveError)
-					return
-				}
 			}
 
 			savedAt = new Date()
@@ -639,25 +610,10 @@
 					</div>
 				{/each}
 			</section>
-		{:else if activeTab === 'article'}
-			<ConfigureFooter
-				initialContent={wikiContent ?? ''}
-				bind:content
-				bind:editSummary
-				cancelHref={viewPath}
-				{saving}
-				dirty={isDirty}
-				error={saveError}
-				{savedAt}
-				onsave={save}
-				onsaveandexit={saveAndExit}
-				ondiscard={resetDraft}
-			/>
 		{/if}
 
-		{#if activeTab !== 'article'}
-			<div class="space-y-3">
-				<StickyActionBar
+		<div class="space-y-3">
+			<StickyActionBar
 					dirty={isDirty}
 					{saving}
 					error={saveError}
@@ -669,7 +625,6 @@
 					cancelHref={viewPath}
 				/>
 			</div>
-		{/if}
 
 		{#if permissions.canManageSettings}
 			<section class="border border-error-border bg-error-subtle/40 p-5 space-y-3">

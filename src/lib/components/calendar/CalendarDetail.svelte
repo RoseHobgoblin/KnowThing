@@ -1,10 +1,7 @@
 <script lang="ts">
 	import type { CalendarConfig, ResolvedDate } from '$lib/calendar/types.js'
-	import type { WikiNode } from '$lib/parser/types.js'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import CalendarWidget from '$lib/calendar/CalendarWidget.svelte'
-	import WikiNodeComponent from '$lib/renderer/WikiNode.svelte'
-	import { createKnowContext } from '$lib/renderer/context.js'
 	import { page } from '$app/stores'
 	import { normalizePermissions } from '$lib/permissions.js'
 	import GearSixIcon from 'phosphor-svelte/lib/GearSixIcon'
@@ -14,14 +11,10 @@
 		calendar,
 		config,
 		resolved,
-		wikiContent,
-		ast,
 	}: {
 		calendar: { id: number, slug: string, name: string, description: string | null }
 		config: CalendarConfig
 		resolved: ResolvedDate | null
-		wikiContent: string
-		ast: WikiNode | null
 	} = $props()
 
 	let stablePermissions = $state(normalizePermissions($page.data.permissions))
@@ -31,14 +24,6 @@
 		if ($page.data.permissions !== undefined) {
 			stablePermissions = normalizePermissions($page.data.permissions)
 		}
-	})
-	const layoutData = $derived($page.data)
-
-	createKnowContext({
-		mediaBaseUrl: '/api/media',
-		pageBaseUrl: '/calendar',
-		sourceDomain: 'calendar',
-		calendarDate: layoutData.calendarDate ?? null,
 	})
 </script>
 
@@ -104,16 +89,4 @@
 			</div>
 		</div>
 	</details>
-
-	{#if ast}
-		<section class="space-y-3">
-			<article class="know-article">
-				<WikiNodeComponent node={ast} />
-			</article>
-		</section>
-	{:else if !wikiContent}
-		<div class="border border-border-subtle bg-raised p-4">
-			<p class="text-dim italic">No article content yet.</p>
-		</div>
-	{/if}
 </ArticleShell>

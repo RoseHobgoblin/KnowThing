@@ -134,13 +134,13 @@
 		allSystems,
 		wikiContent,
 		contentRecordId,
-		parentCrumbs,
+		parentCrumbs = [],
 	}: {
 		star: StarRecord
 		allSystems: CelestialSystemOption[]
 		wikiContent: string
 		contentRecordId: number | null
-		parentCrumbs: CelestialCrumb[]
+		parentCrumbs?: CelestialCrumb[]
 	} = $props()
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
 

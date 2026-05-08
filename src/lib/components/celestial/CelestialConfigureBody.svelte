@@ -154,14 +154,14 @@
 		siblings,
 		wikiContent,
 		contentRecordId,
-		parentCrumbs,
+		parentCrumbs = [],
 	}: {
 		body: BodyRecord
 		allStars: CelestialStarOption[]
 		siblings: CelestialBodyOption[]
 		wikiContent: string
 		contentRecordId: number | null
-		parentCrumbs: CelestialCrumb[]
+		parentCrumbs?: CelestialCrumb[]
 	} = $props()
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
 

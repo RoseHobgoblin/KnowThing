@@ -6,7 +6,6 @@ import {
 	type Calendar,
 	findCalendarBySlugCaseInsensitive,
 } from '$lib/server/services/calendar.js'
-import { loadEntityBody } from '$lib/server/services/entity-article-loader.js'
 
 export interface CalendarDetailContext {
 	identifier: string
@@ -21,10 +20,6 @@ export interface CalendarDetailData {
 	calendar: Calendar
 	config: CalendarConfig
 	resolved: ReturnType<typeof resolveDisplay>
-	wikiContent: string
-	ast: unknown
-	contentRecordId: number | null
-	resolvedLinks: Record<string, { href: string, exists: boolean }>
 }
 
 export async function loadCalendarDetail(ctx: CalendarDetailContext): Promise<CalendarDetailData> {
@@ -49,22 +44,11 @@ export async function loadCalendarDetail(ctx: CalendarDetailContext): Promise<Ca
 	const config = buildCalendarConfig(cal)
 	const resolved = resolveDisplay(config)
 
-	const article = await loadEntityBody({
-		kind: 'calendar',
-		entityId: cal.id,
-		body: cal.body ?? '',
-		bodyParsedAst: cal.bodyParsedAst,
-	})
-
 	return {
 		mode: mode === 'configure' ? 'configure' : 'detail',
 		calendar: cal,
 		config,
 		resolved,
-		wikiContent: article.wikiContent,
-		ast: article.ast,
-		contentRecordId: article.contentRecordId,
-		resolvedLinks: article.resolvedLinks,
 	}
 }
 

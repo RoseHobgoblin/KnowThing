@@ -9,14 +9,11 @@ import {
 	findSystemBySlugOrPageSlug,
 	getBodiesForSystemMap,
 	getCalendarsForSystem,
-	getStarSystemId,
-	getStarSystemRef,
 	getStarsForSystemMap,
 	listAllStarRefs,
 	listAllSystemRefs,
 	listSiblingBodies,
 } from '$lib/server/services/celestial-registry.js'
-import { findPageCaseInsensitive } from '$lib/server/services/pages.js'
 
 export interface CelestialDetailContext {
 	identifier: string
@@ -25,10 +22,6 @@ export interface CelestialDetailContext {
 	loginRedirectPath: string
 	canonicalize: (slug: string) => string
 }
-
-export type ParentCrumb = { label: string, href: string }
-
-export type KnowMatch = { slug: string, title: string } | null
 
 export type CelestialDetailData =
 	| (CelestialBaseData & {
@@ -53,21 +46,7 @@ export type CelestialDetailData =
 interface CelestialBaseData {
 	isEditMode: false
 	isConfigureMode: boolean
-	parentCrumbs: ParentCrumb[]
 	infoboxFields: Record<string, string> | null
-	knowMatch: KnowMatch
-}
-
-/**
- * Find the matching Know article for a celestial entity. Prefer page_slug,
- * fall back to the entity's slug. Returns null if no Know article exists.
- */
-async function findKnowMatch(pageSlug: string | null, entitySlug: string): Promise<KnowMatch> {
-	const candidate = pageSlug || entitySlug
-	if (!candidate) return null
-	const record = await findPageCaseInsensitive('know', candidate)
-	if (!record) return null
-	return { slug: record.slug, title: record.title }
 }
 
 export async function loadCelestialDetail(ctx: CelestialDetailContext): Promise<CelestialDetailData> {
@@ -93,7 +72,6 @@ export async function loadCelestialDetail(ctx: CelestialDetailContext): Promise<
 		const systemBodies = [...await getBodiesForSystemMap(system.id)] as unknown as MapBody[]
 		const systemCalendars = await getCalendarsForSystem(system.id)
 		const infoboxFields = await resolveStructuredData('system', system.slug)
-		const knowMatch = await findKnowMatch(system.pageSlug ?? null, system.slug)
 		return {
 			kind: 'system',
 			body: system,
@@ -103,8 +81,6 @@ export async function loadCelestialDetail(ctx: CelestialDetailContext): Promise<
 			systemBodies,
 			systemCalendars,
 			infoboxFields: infoboxFields ? Object.fromEntries(infoboxFields) : null,
-			parentCrumbs: [],
-			knowMatch,
 		}
 	}
 
@@ -113,21 +89,15 @@ export async function loadCelestialDetail(ctx: CelestialDetailContext): Promise<
 		if (star.slug !== identifier) {
 			throw redirect(301, canonicalize(star.slug))
 		}
-		const parentSystem = star.systemId ? await getStarSystemRef(star.systemId) : null
 		const allSystems = await listAllSystemRefs()
-		const parentCrumbs: ParentCrumb[] = []
-		if (parentSystem) parentCrumbs.push({ label: parentSystem.name, href: canonicalize(parentSystem.slug) })
 		const infoboxFields = await resolveStructuredData('star', star.slug)
-		const knowMatch = await findKnowMatch(star.pageSlug ?? null, star.slug)
 		return {
 			kind: 'star',
 			body: star,
 			allSystems,
 			isEditMode: false,
 			isConfigureMode,
-			parentCrumbs,
 			infoboxFields: infoboxFields ? Object.fromEntries(infoboxFields) : null,
-			knowMatch,
 		}
 	}
 
@@ -136,18 +106,9 @@ export async function loadCelestialDetail(ctx: CelestialDetailContext): Promise<
 		if (planet.slug !== identifier) {
 			throw redirect(301, canonicalize(planet.slug))
 		}
-		let parentSystem: { name: string, slug: string } | null = null
-		if (planet.starId) {
-			const systemId = await getStarSystemId(planet.starId)
-			if (systemId) parentSystem = await getStarSystemRef(systemId)
-		}
-		const parentCrumbs: ParentCrumb[] = []
-		if (parentSystem) parentCrumbs.push({ label: parentSystem.name, href: canonicalize(parentSystem.slug) })
-
 		const allStars = await listAllStarRefs()
 		const siblings = planet.starId ? await listSiblingBodies(planet.starId) : []
 		const infoboxFields = await resolveStructuredData('planet', planet.slug)
-		const knowMatch = await findKnowMatch(planet.pageSlug ?? null, planet.slug)
 		return {
 			kind: 'planet',
 			body: planet,
@@ -155,9 +116,7 @@ export async function loadCelestialDetail(ctx: CelestialDetailContext): Promise<
 			siblings,
 			isEditMode: false,
 			isConfigureMode,
-			parentCrumbs,
 			infoboxFields: infoboxFields ? Object.fromEntries(infoboxFields) : null,
-			knowMatch,
 		}
 	}
 

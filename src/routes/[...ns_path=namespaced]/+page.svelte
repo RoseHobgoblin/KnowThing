@@ -3,7 +3,6 @@
 	import CelestialDetailPage from '$lib/celestial/CelestialDetailPage.svelte'
 	import CalendarDetail from '$lib/components/calendar/CalendarDetail.svelte'
 	import CalendarConfigure from '$lib/components/calendar/CalendarConfigure.svelte'
-	import type { WikiNode } from '$lib/parser/types.js'
 
 	let { data }: { data: PageData } = $props()
 
@@ -28,16 +27,12 @@
 		<CalendarConfigure
 			calendar={data.calendar}
 			config={data.config}
-			wikiContent={data.wikiContent}
-			contentRecordId={data.contentRecordId}
 		/>
 	{:else}
 		<CalendarDetail
 			calendar={data.calendar}
 			config={data.config}
 			resolved={data.resolved}
-			wikiContent={data.wikiContent}
-			ast={data.ast as WikiNode | null}
 		/>
 	{/if}
 {/if}

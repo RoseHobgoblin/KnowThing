@@ -120,56 +120,43 @@ export function wordbookEditLanguageBreadcrumbs(
 
 // ── Celestial ──────────────────────────────────────────────────────────
 
-export function celestialBreadcrumbs(): Breadcrumb[] {
+/** Hub breadcrumb (e.g. /celestial) */
+export function celestialRegistryBreadcrumbs(): Breadcrumb[] {
 	return [{ label: 'Celestial Registry' }]
 }
 
-export function celestialPathBreadcrumbs(
-	pathSegments: { label: string, href: string }[],
-	name: string,
-): Breadcrumb[] {
-	return [
-		{ label: 'Celestial Registry', href: '/celestial' },
-		...pathSegments,
-		{ label: name },
-	]
+/** Single-crumb namespaced form: e.g. "Celestial:Sun". */
+export function celestialBreadcrumbs(name: string): Breadcrumb[] {
+	return [{ label: `Celestial:${name.replaceAll(/\s+/g, '_')}` }]
 }
 
 export function celestialConfigureBreadcrumbs(
-	parentCrumbs: { label: string, href: string }[],
+	_parentCrumbs: { label: string, href: string }[],
 	body: { name: string, slug: string },
 ): Breadcrumb[] {
-	// Celestial canonical URLs are flat /Celestial:Slug (no parent path).
-	const viewHref = `/Celestial:${body.slug}`
 	return [
-		{ label: 'Celestial Registry', href: '/celestial' },
-		...parentCrumbs,
-		{ label: body.name, href: viewHref },
+		{ label: `Celestial:${body.name.replaceAll(/\s+/g, '_')}`, href: `/Celestial:${body.slug}` },
 		{ label: 'Configure' },
 	]
 }
 
 // ── Calendar ───────────────────────────────────────────────────────────
 
+/** Hub breadcrumb (e.g. /calendar). */
 export function calendarBreadcrumbs(): Breadcrumb[] {
 	return [{ label: 'Calendar' }]
 }
 
-export function calendarDetailBreadcrumbs(
-	name: string,
-): Breadcrumb[] {
-	return [
-		{ label: 'Calendar', href: '/calendar' },
-		{ label: name },
-	]
+/** Single-crumb namespaced form: e.g. "Calendar:Iron_Flowers". */
+export function calendarDetailBreadcrumbs(name: string): Breadcrumb[] {
+	return [{ label: `Calendar:${name.replaceAll(/\s+/g, '_')}` }]
 }
 
 export function calendarConfigureBreadcrumbs(
 	calendar: { name: string, slug: string },
 ): Breadcrumb[] {
 	return [
-		{ label: 'Calendar', href: '/calendar' },
-		{ label: calendar.name, href: `/Calendar:${calendar.slug}` },
+		{ label: `Calendar:${calendar.name.replaceAll(/\s+/g, '_')}`, href: `/Calendar:${calendar.slug}` },
 		{ label: 'Configure' },
 	]
 }
