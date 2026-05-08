@@ -86,7 +86,7 @@
 			<div class="flex items-center gap-2 mt-1.5 text-xs">
 				<Badge variant="info">Wordbook</Badge>
 				<a
-					href="/wordbook/{wordbookMatch.languageSlug}/{encodeURIComponent(wordbookMatch.word)}"
+					href="/Wordbook/{wordbookMatch.languageSlug}/{encodeURIComponent(wordbookMatch.word)}"
 					class="text-link transition-colors hover:text-link-hover"
 				>
 					See <em>{wordbookMatch.word}</em> in {wordbookMatch.languageName}

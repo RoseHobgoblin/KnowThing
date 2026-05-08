@@ -71,7 +71,7 @@
 		<nav class="flex-1 overflow-y-auto px-2 py-3 space-y-1">
 			<a href="/" class="{linkClass} {isActive('/') && currentPath === '/' ? activeClass : inactiveClass}"><House size={16} weight="fill" />{sc?.navWikiLabel ?? 'Main Page'}</a>
 			{#if sc?.wordbookEnabled !== false}
-				<a href="/wordbook" class="{linkClass} {isActive('/wordbook') ? activeClass : inactiveClass}"><BookOpen size={16} weight="fill" />{sc?.navWordbookLabel ?? 'Wordbook'}</a>
+				<a href="/Wordbook" class="{linkClass} {isActive('/Wordbook') ? activeClass : inactiveClass}"><BookOpen size={16} weight="fill" />{sc?.navWordbookLabel ?? 'Wordbook'}</a>
 			{/if}
 			{#if sc?.calendarEnabled !== false}
 				<a href="/calendar" class="{linkClass} {isActive('/calendar') ? activeClass : inactiveClass}"><CalendarBlank size={16} weight="fill" />{sc?.navCalendarLabel ?? 'Calendar'}</a>
@@ -162,7 +162,7 @@
 				<nav class="px-2 py-3 space-y-1">
 					<a href="/" onclick={navClick} class="{linkClass} {isActive('/') && currentPath === '/' ? activeClass : inactiveClass}"><House size={16} weight="fill" />{sc?.navWikiLabel ?? 'Main Page'}</a>
 					{#if sc?.wordbookEnabled !== false}
-						<a href="/wordbook" onclick={navClick} class="{linkClass} {isActive('/wordbook') ? activeClass : inactiveClass}"><BookOpen size={16} weight="fill" />{sc?.navWordbookLabel ?? 'Wordbook'}</a>
+						<a href="/Wordbook" onclick={navClick} class="{linkClass} {isActive('/Wordbook') ? activeClass : inactiveClass}"><BookOpen size={16} weight="fill" />{sc?.navWordbookLabel ?? 'Wordbook'}</a>
 					{/if}
 					{#if sc?.calendarEnabled !== false}
 						<a href="/calendar" onclick={navClick} class="{linkClass} {isActive('/calendar') ? activeClass : inactiveClass}"><CalendarBlank size={16} weight="fill" />{sc?.navCalendarLabel ?? 'Calendar'}</a>

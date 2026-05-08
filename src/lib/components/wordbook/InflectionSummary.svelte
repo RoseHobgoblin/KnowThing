@@ -32,7 +32,7 @@
 		<h3 class="text-sm font-semibold text-body">Inflection System</h3>
 		{#if canEdit}
 			<a
-				href="/wordbook/contribute/language/{languageSlug}?tab=inflections"
+				href="/Wordbook/contribute/language/{languageSlug}?tab=inflections"
 				class="text-xs text-link hover:text-link-hover hover:underline"
 			>Edit</a>
 		{/if}
@@ -42,7 +42,7 @@
 		<p class="text-xs text-faint">
 			No inflection dimensions defined yet.
 			{#if canEdit}
-				<a href="/wordbook/contribute/language/{languageSlug}?tab=inflections" class="text-link hover:underline">Set one up</a>
+				<a href="/Wordbook/contribute/language/{languageSlug}?tab=inflections" class="text-link hover:underline">Set one up</a>
 				to enable declension/conjugation tables.
 			{/if}
 		</p>

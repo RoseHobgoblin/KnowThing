@@ -52,7 +52,7 @@
 			throw new Error(error.error || 'Failed to update language')
 		}
 		pushSuccess('Language updated')
-		goto(`/wordbook/${data.language.slug}`)
+		goto(`/Wordbook/${data.language.slug}`)
 	}
 </script>
 

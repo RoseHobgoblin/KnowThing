@@ -14,9 +14,8 @@
 		const domainKey = node.namespace.toLowerCase()
 		const link = ctx.resolvedLinks.get(`${domainKey}:${node.identifier.toLowerCase()}`)
 		if (link) return link
-		// Fallback: deterministic legacy /<domain>/<identifier> URL until Phase 3
-		// flips the URL builder to emit /<Namespace>:<Identifier>.
-		return { href: `/${domainKey}/${encodeURIComponent(node.identifier)}`, exists: false }
+		// Fallback: deterministic canonical /<Namespace>:<Identifier> URL.
+		return { href: `/${node.namespace}:${encodeURIComponent(node.identifier)}`, exists: false }
 	})
 
 	const href = $derived(resolved.href)

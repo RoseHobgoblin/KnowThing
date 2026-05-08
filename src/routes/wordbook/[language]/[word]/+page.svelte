@@ -31,7 +31,7 @@
 	createKnowContext({
 		resolvedLinks: new Map(Object.entries(data.resolvedLinks ?? {})),
 		mediaBaseUrl: '/api/media',
-		pageBaseUrl: '/wordbook',
+		pageBaseUrl: '/Wordbook',
 		sourceDomain: 'wordbook',
 		calendarDate: layoutData.calendarDate ?? null,
 	})
@@ -106,7 +106,7 @@
 		const res = await fetch(`/api/wordbook/${entryId}`, { method: 'DELETE' })
 		if (res.ok) {
 			pushSuccess(`"${data.word}" deleted`)
-			goto(`/wordbook/${data.language.slug}`)
+			goto(`/Wordbook/${data.language.slug}`)
 		} else {
 			pushError('Failed to delete word')
 		}
@@ -134,8 +134,8 @@
 >
 	{#snippet actions()}
 		{#if canManageWordbook && data.homographs[0]}
-			<a href="/wordbook/contribute/{data.homographs[0].entry.id}" class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover"><PencilSimple size={14} weight="fill" />Edit</a>
-			<a href="/wordbook/{data.language.slug}/{encodeURIComponent(data.word)}/edit{data.isMultipleHomographs ? `?h=${data.homographs[0].entry.homographNumber}` : ''}" class="text-sm text-link hover:text-link-hover hover:underline">Edit article</a>
+			<a href="/Wordbook/contribute/{data.homographs[0].entry.id}" class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover"><PencilSimple size={14} weight="fill" />Edit</a>
+			<a href="/Wordbook/{data.language.slug}/{encodeURIComponent(data.word)}/edit{data.isMultipleHomographs ? `?h=${data.homographs[0].entry.homographNumber}` : ''}" class="text-sm text-link hover:text-link-hover hover:underline">Edit article</a>
 			{#if isAdmin}
 				<button onclick={() => deleteEntry(data.homographs[0].entry.id)} class="text-error transition-colors flex items-center gap-1 hover:text-error-hover"><Trash size={14} weight="fill" />Delete</button>
 			{/if}
@@ -255,7 +255,7 @@
 				/>
 				{#if canManageWordbook && (hom.inflection.dimensions.length > 0 || data.availableClasses.length > 0)}
 					<a
-						href="/wordbook/contribute/{entry.id}?tab=inflection"
+						href="/Wordbook/contribute/{entry.id}?tab=inflection"
 						class="mt-2 inline-block text-xs text-link hover:text-link-hover hover:underline"
 					>
 						{hom.inflection.hasInflection ? 'Edit inflection' : '+ Set up inflection'}

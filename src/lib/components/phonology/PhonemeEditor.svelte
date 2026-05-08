@@ -575,7 +575,7 @@
 				{:else if linkedGraphemes.length === 0}
 					<div class="text-xs text-faint italic">
 						No graphemes map to this phoneme yet.
-						<a href="/wordbook/contribute/language/{languageSlug}?tab=orthography" class="text-link hover:underline">Open orthography →</a>
+						<a href="/Wordbook/contribute/language/{languageSlug}?tab=orthography" class="text-link hover:underline">Open orthography →</a>
 					</div>
 				{:else}
 					<div class="flex flex-wrap gap-1.5 items-center">
@@ -587,7 +587,7 @@
 								{/if}
 							</span>
 						{/each}
-						<a href="/wordbook/contribute/language/{languageSlug}?tab=orthography" class="text-xs text-link ml-1 hover:underline">edit →</a>
+						<a href="/Wordbook/contribute/language/{languageSlug}?tab=orthography" class="text-xs text-link ml-1 hover:underline">edit →</a>
 					</div>
 				{/if}
 			</div>

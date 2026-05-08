@@ -17,7 +17,7 @@ export const load: PageServerLoad = async ({ params, url }) => {
 
 	if (lang.slug !== params.language) {
 		const query = url.searchParams.toString()
-		redirect(301, `/wordbook/${lang.slug}${query ? `?${query}` : ''}`)
+		redirect(301, `/Wordbook/${lang.slug}${query ? `?${query}` : ''}`)
 	}
 
 	const [ancestryChain, children, dialects, inflections] = await Promise.all([

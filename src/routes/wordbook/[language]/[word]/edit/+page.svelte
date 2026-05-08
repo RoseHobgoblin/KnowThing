@@ -88,7 +88,7 @@
 					{submitting ? 'Saving...' : 'Save'}
 				</button>
 				<a
-					href="/wordbook/{data.languageSlug}/{encodeURIComponent(data.word)}"
+					href="/Wordbook/{data.languageSlug}/{encodeURIComponent(data.word)}"
 					class="flex-1 text-center px-5 py-2 border border-border text-secondary text-sm sm:flex-none hover:bg-raised"
 				>
 					Cancel

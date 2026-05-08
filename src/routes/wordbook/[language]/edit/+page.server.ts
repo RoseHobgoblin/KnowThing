@@ -6,17 +6,17 @@ import { entitySaveAction } from '$lib/server/services/entity-actions.js'
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	if (!locals.user) {
-		throw redirect(302, `/auth/login?redirect=${encodeURIComponent(`/wordbook/${params.language}/edit`)}`)
+		throw redirect(302, `/auth/login?redirect=${encodeURIComponent(`/Wordbook/${params.language}/edit`)}`)
 	}
 	if (!hasRole(locals.user.role, 'editor')) {
-		throw redirect(302, `/wordbook/${params.language}`)
+		throw redirect(302, `/Wordbook/${params.language}`)
 	}
 
 	const lang = await getLanguageWithFamily(params.language)
 	if (!lang) error(404, 'Language not found')
 
 	if (lang.slug !== params.language) {
-		redirect(301, `/wordbook/${lang.slug}/edit`)
+		redirect(301, `/Wordbook/${lang.slug}/edit`)
 	}
 
 	return {

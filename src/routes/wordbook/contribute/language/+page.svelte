@@ -23,7 +23,7 @@
 		}
 		const lang = await res.json()
 		pushSuccess('Language created')
-		goto(`/wordbook/${lang.slug}`)
+		goto(`/Wordbook/${lang.slug}`)
 	}
 </script>
 

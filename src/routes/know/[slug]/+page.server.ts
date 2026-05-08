@@ -5,6 +5,7 @@ import { resolveAllStructuredData, resolveAllStructuredCollections, resolveAllSy
 import { getResolvedLinks, serializeResolvedLinks } from '$lib/server/resolved-links.js'
 import { lookupMediaInfo, resolveCardImageSync } from '$lib/server/services/page-card.js'
 import { findPageCaseInsensitive, findPageInAnyDomain } from '$lib/server/services/pages.js'
+import { buildHref } from '$lib/server/resolved-links.js'
 import { findWordbookMatchByTitle } from '$lib/server/services/wordbook.js'
 
 export const load: PageServerLoad = async ({ params }) => {
@@ -20,10 +21,14 @@ export const load: PageServerLoad = async ({ params }) => {
 		const otherDomain = await findPageInAnyDomain(params.slug)
 
 		if (otherDomain) {
-			const path = otherDomain.parentPath
-				? `/${otherDomain.domain}/${otherDomain.parentPath}/${otherDomain.slug}`
-				: `/${otherDomain.domain}/${otherDomain.slug}`
-			redirect(301, path)
+			// For wordbook lexicon entries, the resolver returns
+			// { domain: 'wordbook', slug: <word>, parentPath: <langSlug> } — the
+			// shared buildHref expects target_slug already in `<lang>/<word>`
+			// shape, so combine here.
+			const slugForBuild = otherDomain.domain === 'wordbook' && otherDomain.parentPath
+				? `${otherDomain.parentPath}/${otherDomain.slug}`
+				: otherDomain.slug
+			redirect(301, buildHref(otherDomain.domain, slugForBuild, otherDomain.domain === 'wordbook' ? null : otherDomain.parentPath))
 		}
 
 		const normalizedSlug = params.slug[0].toUpperCase() + params.slug.slice(1)

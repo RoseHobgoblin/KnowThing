@@ -203,7 +203,7 @@
 		contentRecordId: number | null
 	} = $props()
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
-	const viewPath = `/calendar/${calendar.slug}`
+	const viewPath = `/Calendar:${calendar.slug}`
 
 	// Snapshot initial config for form state — intentionally not reactive
 	const initialConfig = $state.snapshot(untrack(() => config))

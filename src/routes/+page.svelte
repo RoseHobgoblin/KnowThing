@@ -84,7 +84,7 @@
 
 			{#if data.randomWord}
 				<a
-					href="/wordbook/{data.randomWord.languageSlug}/{encodeURIComponent(data.randomWord.word)}"
+					href="/Wordbook/{data.randomWord.languageSlug}/{encodeURIComponent(data.randomWord.word)}"
 					class="block bg-surface border border-border p-5 transition-colors hover:border-accent-border group"
 				>
 					<h2 class="text-xs font-semibold text-faint uppercase tracking-wider mb-2">From the {sc?.wordbookName ?? 'Wordbook'}</h2>

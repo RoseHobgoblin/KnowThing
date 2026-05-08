@@ -27,7 +27,7 @@
 </script>
 
 <!-- Compact: search result / list item -->
-<a href="/wordbook/{entry.languageSlug}/{encodeURIComponent(entry.word)}" class="block p-4 transition-colors hover:bg-accent-subtle/30">
+<a href="/Wordbook/{entry.languageSlug}/{encodeURIComponent(entry.word)}" class="block p-4 transition-colors hover:bg-accent-subtle/30">
 	<div class="flex items-baseline gap-2 flex-wrap">
 		<span class="text-lg font-semibold text-heading">{entry.word}</span>
 		{#if entry.pronunciation}

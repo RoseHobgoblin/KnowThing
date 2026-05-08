@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { untrack } from 'svelte'
-	import type { ActionData, PageData } from './$types.js'
 	import { enhance } from '$app/forms'
 	import WikiNodeComponent from '$lib/renderer/WikiNode.svelte'
 	import { createKnowContext } from '$lib/renderer/context.js'
@@ -27,8 +26,11 @@
 	import StickyActionBar from '$lib/components/editor/StickyActionBar.svelte'
 	import type { WikiNode } from '$lib/parser/types.js'
 	import { cn } from '$lib/utils'
+	import type { CelestialDetailData } from '$lib/server/loaders/celestial-detail.js'
 
-	let { data, form }: { data: PageData, form: ActionData } = $props()
+	type ActionShape = { error?: string } | null
+
+	let { data, form, basePath }: { data: CelestialDetailData, form: ActionShape, basePath: string } = $props()
 
 	const initialWikiContent = untrack(() => data.wikiContent ?? '')
 	const kind = $derived(data.kind)
@@ -50,7 +52,7 @@
 	createKnowContext({
 		resolvedLinks: new Map(Object.entries(data.resolvedLinks ?? {})),
 		mediaBaseUrl: '/api/media',
-		pageBaseUrl: '/celestial',
+		pageBaseUrl: basePath,
 		sourceDomain: 'celestial',
 		calendarDate: layoutData.calendarDate ?? null,
 	})
@@ -66,15 +68,16 @@
 	// Resolve selected body for sidebar detail
 	const selectedBody = $derived.by(() => {
 		if (mapSelectedId == null) return null
-		const [kind, rawId] = mapSelectedId.split(':')
+		const [k, rawId] = mapSelectedId.split(':')
 		const numericId = Number(rawId)
-		if (kind === 'star') return (data.systemStars ?? []).find(b => b.id === numericId) ?? null
-		if (kind === 'body') return (data.systemBodies ?? []).find(b => b.id === numericId) ?? null
+		if (k === 'star' && data.kind === 'system') return (data.systemStars ?? []).find(b => b.id === numericId) ?? null
+		if (k === 'body' && data.kind === 'system') return (data.systemBodies ?? []).find(b => b.id === numericId) ?? null
 		return null
 	})
 
-	// Build calendar configs for the date scrubber
+	// Build calendar configs for the date scrubber (system view only)
 	const systemCalendarConfigs = $derived.by(() => {
+		if (data.kind !== 'system') return []
 		if (!data.systemCalendars) return []
 		return (data.systemCalendars as any[]).map((c: any) => ({
 			id: c.id,
@@ -96,13 +99,12 @@
 	let editSummary = $state('')
 	let saving = $state(false)
 
-	// Build the current path without /edit or /configure for cancel link
-	const viewPath = $derived($page.url.pathname.replace(/\/(edit|configure)$/, ''))
-	const editPath = $derived(viewPath + '/edit')
-	const configurePath = $derived(viewPath + '/configure')
+	// View / edit / configure paths derive from basePath (the canonical entity URL).
+	const viewPath = basePath
+	const editPath = `${basePath}/edit`
+	const configurePath = `${basePath}/configure`
 
-	// Breadcrumb parents resolved server-side from DB (proper names, not URL slugs)
-	const parentCrumbs = $derived(((data as any).parentCrumbs ?? []) as { label: string, href: string }[])
+	const parentCrumbs = $derived(data.parentCrumbs ?? [])
 
 	// Strip infobox templates from the AST — the celestial page renders its own infobox from structured data
 	function stripInfoboxes(node: WikiNode): WikiNode | null {
@@ -135,19 +137,19 @@
 	<title>{isEditMode ? 'Editing ' : ''}{raw.name} — Celestial — KnowThing</title>
 </svelte:head>
 
-{#if isConfigureMode && kind === 'star'}
+{#if isConfigureMode && data.kind === 'star'}
 	<CelestialConfigureStar
 		star={raw}
-		allSystems={(data as any).allSystems ?? []}
+		allSystems={data.allSystems ?? []}
 		wikiContent={data.wikiContent ?? ''}
 		contentRecordId={data.contentRecordId ?? null}
 		{parentCrumbs}
 	/>
-{:else if isConfigureMode && kind === 'planet'}
+{:else if isConfigureMode && data.kind === 'planet'}
 	<CelestialConfigureBody
 		body={raw}
-		allStars={(data as any).allStars ?? []}
-		siblings={(data as any).siblings ?? []}
+		allStars={data.allStars ?? []}
+		siblings={data.siblings ?? []}
 		wikiContent={data.wikiContent ?? ''}
 		contentRecordId={data.contentRecordId ?? null}
 		{parentCrumbs}
@@ -247,7 +249,7 @@
 				<span class="text-faint text-sm">View only. Editor role required for celestial changes.</span>
 			{/if}
 		{/snippet}
-			{#if kind === 'system'}
+			{#if kind === 'system' && data.kind === 'system'}
 				<!-- System: two-column layout -->
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-[1fr_280px]">
 					<!-- Map + Controls -->

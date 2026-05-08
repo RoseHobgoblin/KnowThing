@@ -12,8 +12,12 @@
 	// Look up from the per-page resolved links map (populated server-side).
 	// The server already resolves cross-domain fallthrough, so one lookup suffices.
 	const resolved = $derived.by(() => {
-		return ctx.resolvedLinks.get(`${ctx.sourceDomain}:${slug.toLowerCase()}`)
-			?? { href: `${ctx.pageBaseUrl}/${slug}`, exists: false }
+		const found = ctx.resolvedLinks.get(`${ctx.sourceDomain}:${slug.toLowerCase()}`)
+		if (found) return found
+		// Redlinks land in Know (the default namespace) so the user can create
+		// the article. Colon-namespace base URLs like `/Celestial:Therne/Foo`
+		// would be gibberish — don't concatenate.
+		return { href: `/know/${slug}`, exists: false }
 	})
 
 	const href = $derived(resolved.href)

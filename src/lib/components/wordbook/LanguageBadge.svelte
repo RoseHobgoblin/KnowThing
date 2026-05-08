@@ -4,7 +4,7 @@
 </script>
 
 <a
-	href="/wordbook/{slug}"
+	href="/Wordbook/{slug}"
 	class="
 		inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium transition-colors
 		hover:opacity-80

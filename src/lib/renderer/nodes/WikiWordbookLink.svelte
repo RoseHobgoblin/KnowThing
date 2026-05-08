@@ -5,11 +5,11 @@
 	let { node }: { node: WordbookLinkNode } = $props()
 
 	// Empty word → language-level link [[Wordbook/Lang]]; otherwise word link.
-	// URL stays at the existing /wordbook/... path until Phase 3 flips
-	// canonical URLs to /Wordbook/... TitleCase.
+	// Canonical URL is TitleCase /Wordbook/...; the `reroute` hook in
+	// `src/hooks.ts` rewrites incoming requests to the lowercase route tree.
 	const href = $derived.by(() => node.word
-		? `/wordbook/${encodeURIComponent(node.language)}/${encodeURIComponent(node.word)}`
-		: `/wordbook/${encodeURIComponent(node.language)}`)
+		? `/Wordbook/${encodeURIComponent(node.language)}/${encodeURIComponent(node.word)}`
+		: `/Wordbook/${encodeURIComponent(node.language)}`)
 	const titleAttribute = $derived(node.word
 		? `Wordbook: ${node.word} (${node.language})`
 		: `Wordbook: ${node.language}`)

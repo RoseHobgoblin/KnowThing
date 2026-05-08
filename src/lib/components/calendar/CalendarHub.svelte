@@ -71,7 +71,7 @@
 				const cal = await res.json()
 				pushSuccess(`Created "${cal.name}"`)
 				newCalendarName = ''
-				if (cal.slug) goto(`/calendar/${cal.slug}`)
+				if (cal.slug) goto(`/Calendar:${cal.slug}`)
 				else invalidateAll()
 			} else {
 				const body = await res.json().catch(() => ({}))
@@ -107,7 +107,7 @@
 						<p class="text-sm text-secondary">Season: <span class="text-body">{resolved.season_name}</span></p>
 					{/if}
 				</div>
-				<a href="/calendar/{primary.slug}" class="inline-block mt-1 text-sm text-link font-medium transition-colors hover:text-link-hover">View full page →</a>
+				<a href="/Calendar:{primary.slug}" class="inline-block mt-1 text-sm text-link font-medium transition-colors hover:text-link-hover">View full page →</a>
 			</div>
 		</div>
 	{/if}
@@ -116,7 +116,7 @@
 		<h2 class="text-sm font-semibold text-heading uppercase tracking-wider mb-3">All Calendars</h2>
 		<div class="space-y-1.5">
 			{#each calendars as cal (cal.id)}
-				<a href="/calendar/{cal.slug}" class="
+				<a href="/Calendar:{cal.slug}" class="
 					flex items-center justify-between px-4 py-3 bg-raised border border-border-subtle
 					transition-colors group
 					hover:border-border hover:bg-surface

@@ -11,7 +11,7 @@
 </script>
 
 <a
-	href="/wordbook/{slug}"
+	href="/Wordbook/{slug}"
 	class="
 		block bg-surface border border-border transition-all overflow-hidden group
 		hover:border-accent-border hover:shadow-md

@@ -30,7 +30,7 @@ export function wordbookLanguageBreadcrumbs(
 	language: { name: string },
 ): Breadcrumb[] {
 	return [
-		{ label: wordbookName, href: '/wordbook' },
+		{ label: wordbookName, href: '/Wordbook' },
 		{ label: language.name },
 	]
 }
@@ -41,8 +41,8 @@ export function wordbookWordBreadcrumbs(
 	word: string,
 ): Breadcrumb[] {
 	return [
-		{ label: wordbookName, href: '/wordbook' },
-		{ label: language.name, href: `/wordbook/${language.slug}` },
+		{ label: wordbookName, href: '/Wordbook' },
+		{ label: language.name, href: `/Wordbook/${language.slug}` },
 		{ label: word },
 	]
 }
@@ -51,7 +51,7 @@ export function wordbookContributeBreadcrumbs(
 	wordbookName: string,
 ): Breadcrumb[] {
 	return [
-		{ label: wordbookName, href: '/wordbook' },
+		{ label: wordbookName, href: '/Wordbook' },
 		{ label: 'Add Word' },
 	]
 }
@@ -61,7 +61,7 @@ export function wordbookEditBreadcrumbs(
 	word: string,
 ): Breadcrumb[] {
 	return [
-		{ label: wordbookName, href: '/wordbook' },
+		{ label: wordbookName, href: '/Wordbook' },
 		{ label: word },
 		{ label: 'Edit' },
 	]
@@ -71,7 +71,7 @@ export function wordbookAddLanguageBreadcrumbs(
 	wordbookName: string,
 ): Breadcrumb[] {
 	return [
-		{ label: wordbookName, href: '/wordbook' },
+		{ label: wordbookName, href: '/Wordbook' },
 		{ label: 'Add Language' },
 	]
 }
@@ -81,8 +81,8 @@ export function wordbookEditLanguageBreadcrumbs(
 	language: { name: string, slug: string },
 ): Breadcrumb[] {
 	return [
-		{ label: wordbookName, href: '/wordbook' },
-		{ label: language.name, href: `/wordbook/${language.slug}` },
+		{ label: wordbookName, href: '/Wordbook' },
+		{ label: language.name, href: `/Wordbook/${language.slug}` },
 		{ label: 'Edit' },
 	]
 }
@@ -108,9 +108,8 @@ export function celestialConfigureBreadcrumbs(
 	parentCrumbs: { label: string, href: string }[],
 	body: { name: string, slug: string },
 ): Breadcrumb[] {
-	const viewHref = parentCrumbs.length > 0
-		? `${parentCrumbs.at(-1)!.href}/${body.slug}`
-		: `/celestial/${body.slug}`
+	// Celestial canonical URLs are flat /Celestial:Slug (no parent path).
+	const viewHref = `/Celestial:${body.slug}`
 	return [
 		{ label: 'Celestial Registry', href: '/celestial' },
 		...parentCrumbs,
@@ -139,7 +138,7 @@ export function calendarConfigureBreadcrumbs(
 ): Breadcrumb[] {
 	return [
 		{ label: 'Calendar', href: '/calendar' },
-		{ label: calendar.name, href: `/calendar/${calendar.slug}` },
+		{ label: calendar.name, href: `/Calendar:${calendar.slug}` },
 		{ label: 'Configure' },
 	]
 }

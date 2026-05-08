@@ -18,7 +18,7 @@
 	<div class="flex items-center gap-2 py-1 {depth > 0 ? 'ml-4 pl-3 border-l border-border' : ''}">
 		<span class="size-2 shrink-0" style="background-color: {n.color || 'var(--color-accent)'}"></span>
 		<a
-			href="/wordbook/{n.slug}"
+			href="/Wordbook/{n.slug}"
 			class="text-sm transition-colors hover:text-link {n.slug === currentSlug ? 'font-bold text-link' : 'text-secondary'}"
 		>
 			{n.name}

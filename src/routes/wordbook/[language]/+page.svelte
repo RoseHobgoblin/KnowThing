@@ -27,7 +27,7 @@
 	createKnowContext({
 		resolvedLinks: new Map(Object.entries(data.resolvedLinks ?? {})),
 		mediaBaseUrl: '/api/media',
-		pageBaseUrl: '/wordbook',
+		pageBaseUrl: '/Wordbook',
 		sourceDomain: 'wordbook',
 		calendarDate: $page.data.calendarDate ?? null,
 	})
@@ -56,8 +56,8 @@
 
 	// Build breadcrumbs from ancestry chain
 	const breadcrumbs = $derived([
-		{ label: wbName, href: '/wordbook' },
-		...data.ancestryChain.slice(0, -1).map((a: any) => ({ label: a.name, href: `/wordbook/${a.slug}` })),
+		{ label: wbName, href: '/Wordbook' },
+		...data.ancestryChain.slice(0, -1).map((a: any) => ({ label: a.name, href: `/Wordbook/${a.slug}` })),
 		{ label: data.language.name },
 	])
 </script>
@@ -78,9 +78,9 @@
 >
 	{#snippet actions()}
 		{#if canManageWordbook}
-			<a href="/wordbook/contribute?language={data.language.slug}" class="text-sm text-link hover:text-link-hover hover:underline">+ Add word</a>
-			<a href="/wordbook/{data.language.slug}/edit" class="text-sm text-link hover:text-link-hover hover:underline">Edit article</a>
-			<a href="/wordbook/contribute/language/{data.language.slug}" class="text-sm text-faint hover:text-link hover:underline">Edit language</a>
+			<a href="/Wordbook/contribute?language={data.language.slug}" class="text-sm text-link hover:text-link-hover hover:underline">+ Add word</a>
+			<a href="/Wordbook/{data.language.slug}/edit" class="text-sm text-link hover:text-link-hover hover:underline">Edit article</a>
+			<a href="/Wordbook/contribute/language/{data.language.slug}" class="text-sm text-faint hover:text-link hover:underline">Edit language</a>
 		{:else if isAuthenticated}
 			<span class="text-faint text-sm">View only. Editor role required for wordbook changes.</span>
 		{/if}
@@ -120,7 +120,7 @@
 			<h3 class="text-sm font-semibold text-body mb-2">Descendant languages</h3>
 			<div class="flex flex-wrap gap-2">
 				{#each data.children as child}
-					<a href="/wordbook/{child.slug}" class="
+					<a href="/Wordbook/{child.slug}" class="
 						inline-flex items-center gap-1.5 px-3 py-1.5 border border-border text-sm
 						transition-colors
 						hover:border-accent-border hover:bg-accent-subtle
@@ -173,7 +173,7 @@
 		<AlphabetNav
 			activeLetters={data.activeLetters}
 			currentLetter={data.currentLetter}
-			baseUrl="/wordbook/{data.language.slug}"
+			baseUrl="/Wordbook/{data.language.slug}"
 		/>
 	</div>
 
@@ -197,7 +197,7 @@
 				<p class="text-lg mb-2">No words yet</p>
 				{#if canManageWordbook}
 					<p class="text-sm">
-						<a href="/wordbook/contribute?language={data.language.slug}" class="text-link hover:underline">Add the first word</a>
+						<a href="/Wordbook/contribute?language={data.language.slug}" class="text-link hover:underline">Add the first word</a>
 					</p>
 				{/if}
 			{/if}

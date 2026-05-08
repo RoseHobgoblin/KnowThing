@@ -286,12 +286,12 @@
 					<div class="flex items-center justify-between px-4 py-3 bg-raised border-b border-border-subtle">
 						<div class="flex items-center gap-2">
 							<SunDim size={20} weight="fill" class="text-accent" />
-							<a href="/celestial/{system.slug}" class="text-heading font-bold text-lg transition-colors hover:text-link">{system.name}</a>
+							<a href="/Celestial:{system.slug}" class="text-heading font-bold text-lg transition-colors hover:text-link">{system.name}</a>
 							<span class="text-xs text-faint">{system.systemType} · {system.starCount} {system.starCount === 1 ? 'star' : 'stars'} · {system.planetCount} {system.planetCount === 1 ? 'planet' : 'planets'}</span>
 						</div>
 						{#if permissions.canEditContent}
 							<div class="flex items-center gap-3 text-xs">
-								<a href="/celestial/{system.slug}/edit" class="text-link transition-colors flex items-center gap-1 hover:text-link-hover"><PencilSimple size={12} weight="fill" />Edit</a>
+								<a href="/Celestial:{system.slug}/edit" class="text-link transition-colors flex items-center gap-1 hover:text-link-hover"><PencilSimple size={12} weight="fill" />Edit</a>
 								<button onclick={() => deleteItem('system', system.slug, system.name)} class="text-error transition-colors hover:text-error-hover">Delete</button>
 							</div>
 						{/if}
@@ -303,14 +303,14 @@
 							<div class="flex items-center justify-between px-4 py-2.5">
 								<div class="flex items-center gap-2 ml-2">
 									<StarIcon size={14} weight="fill" class="text-secondary" />
-									<a href="/celestial/{system.slug}/{star.slug}" class="text-heading font-semibold transition-colors hover:text-link">{star.name}</a>
+									<a href="/Celestial:{star.slug}" class="text-heading font-semibold transition-colors hover:text-link">{star.name}</a>
 									{#if star.spectralType}
 										<span class="text-xs text-faint">({star.spectralType})</span>
 									{/if}
 								</div>
 								{#if permissions.canConfigureCelestial}
 									<div class="flex items-center gap-3 text-xs">
-										<a href="/celestial/{system.slug}/{star.slug}/configure" class="text-link transition-colors flex items-center gap-1 hover:text-link-hover"><GearSix size={12} weight="fill" />Configure</a>
+										<a href="/Celestial:{star.slug}/configure" class="text-link transition-colors flex items-center gap-1 hover:text-link-hover"><GearSix size={12} weight="fill" />Configure</a>
 										<button onclick={() => deleteItem('star', star.slug, star.name)} class="text-error transition-colors hover:text-error-hover" aria-label="Delete {star.name}"><X size={12} weight="bold" /></button>
 									</div>
 								{/if}
@@ -321,7 +321,7 @@
 								<div class="flex items-center justify-between px-4 py-1.5 ml-8">
 									<div class="flex items-center gap-2">
 										<Planet size={12} class="text-dim" />
-										<a href="/celestial/{system.slug}/{planet.slug}" class="text-body text-sm transition-colors hover:text-link">{planet.name}</a>
+										<a href="/Celestial:{planet.slug}" class="text-body text-sm transition-colors hover:text-link">{planet.name}</a>
 										<span class="text-xs text-faint">({planet.bodyType})</span>
 										{#if planet.moonCount > 0}
 											<span class="text-xs text-dim">· {planet.moonCount} {planet.moonCount === 1 ? 'satellite' : 'satellites'}</span>
@@ -329,7 +329,7 @@
 									</div>
 									{#if permissions.canConfigureCelestial}
 										<div class="flex items-center gap-3 text-xs">
-											<a href="/celestial/{system.slug}/{planet.slug}/configure" class="text-link transition-colors flex items-center gap-1 hover:text-link-hover"><GearSix size={12} weight="fill" />Configure</a>
+											<a href="/Celestial:{planet.slug}/configure" class="text-link transition-colors flex items-center gap-1 hover:text-link-hover"><GearSix size={12} weight="fill" />Configure</a>
 											<button onclick={() => deleteItem('body', planet.slug, planet.name)} class="text-error transition-colors hover:text-error-hover" aria-label="Delete {planet.name}"><X size={12} weight="bold" /></button>
 										</div>
 									{/if}
@@ -338,11 +338,11 @@
 									<div class="flex items-center justify-between px-4 py-1 ml-14">
 										<div class="flex items-center gap-2">
 											<Moon size={10} class="text-faint" />
-											<a href="/celestial/{system.slug}/{moon.slug}" class="text-xs text-secondary transition-colors hover:text-link">{moon.name}</a>
+											<a href="/Celestial:{moon.slug}" class="text-xs text-secondary transition-colors hover:text-link">{moon.name}</a>
 										</div>
 										{#if permissions.canConfigureCelestial}
 											<div class="flex items-center gap-3 text-xs">
-												<a href="/celestial/{system.slug}/{moon.slug}/configure" class="text-link transition-colors flex items-center gap-1 hover:text-link-hover"><GearSix size={12} weight="fill" />Configure</a>
+												<a href="/Celestial:{moon.slug}/configure" class="text-link transition-colors flex items-center gap-1 hover:text-link-hover"><GearSix size={12} weight="fill" />Configure</a>
 												<button onclick={() => deleteItem('body', moon.slug, moon.name)} class="text-error transition-colors hover:text-error-hover" aria-label="Delete {moon.name}"><X size={12} weight="bold" /></button>
 											</div>
 										{/if}
@@ -368,7 +368,7 @@
 								{/if}
 							</div>
 							{#if permissions.canConfigureCelestial}
-								<a href="/celestial/{star.slug}/configure" class="text-xs text-link flex items-center gap-1 transition-colors hover:text-link-hover"><GearSix size={12} weight="fill" />Configure</a>
+								<a href="/Celestial:{star.slug}/configure" class="text-xs text-link flex items-center gap-1 transition-colors hover:text-link-hover"><GearSix size={12} weight="fill" />Configure</a>
 							{/if}
 						</div>
 					{/each}
@@ -387,7 +387,7 @@
 								<span class="text-xs text-faint">({body.bodyType})</span>
 							</div>
 							{#if permissions.canConfigureCelestial}
-								<a href="/celestial/{body.slug}/configure" class="text-xs text-link flex items-center gap-1 transition-colors hover:text-link-hover"><GearSix size={12} weight="fill" />Configure</a>
+								<a href="/Celestial:{body.slug}/configure" class="text-xs text-link flex items-center gap-1 transition-colors hover:text-link-hover"><GearSix size={12} weight="fill" />Configure</a>
 							{/if}
 						</div>
 					{/each}

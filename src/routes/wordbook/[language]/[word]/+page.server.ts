@@ -32,7 +32,7 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	const storedWord = entries[0].word
 	if (decodeURIComponent(params.word) !== storedWord) {
-		redirect(301, `/wordbook/${params.language}/${encodeURIComponent(storedWord)}`)
+		redirect(301, `/Wordbook/${params.language}/${encodeURIComponent(storedWord)}`)
 	}
 
 	const entryIds = entries.map(e => e.id)

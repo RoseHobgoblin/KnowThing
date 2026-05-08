@@ -82,9 +82,9 @@
 		pushSuccess('Word updated')
 		const lang = data.languages.find(l => l.id === formData.languageId)
 		if (lang) {
-			goto(`/wordbook/${lang.slug}/${encodeURIComponent(String(formData.word))}`)
+			goto(`/Wordbook/${lang.slug}/${encodeURIComponent(String(formData.word))}`)
 		} else {
-			goto('/wordbook')
+			goto('/Wordbook')
 		}
 	}
 </script>

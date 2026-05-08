@@ -220,14 +220,14 @@
 						{#if availableClasses.length > 0}
 							No paradigm classes for <strong>{partOfSpeech || 'this part of speech'}</strong>.
 							Classes exist for other parts of speech — see
-							<a href="/wordbook/contribute/language/{languageSlug}?tab=inflections" class="text-link hover:underline">Inflections</a>.
+							<a href="/Wordbook/contribute/language/{languageSlug}?tab=inflections" class="text-link hover:underline">Inflections</a>.
 						{:else if inflection.dimensions.length > 0}
 							No paradigm classes defined yet.
-							<a href="/wordbook/contribute/language/{languageSlug}?tab=inflections" class="text-link hover:underline">Create a class</a>,
+							<a href="/Wordbook/contribute/language/{languageSlug}?tab=inflections" class="text-link hover:underline">Create a class</a>,
 							then come back to assign it.
 						{:else}
 							No inflection system set up for this language.
-							<a href="/wordbook/contribute/language/{languageSlug}?tab=inflections" class="text-link hover:underline">Add dimensions</a>
+							<a href="/Wordbook/contribute/language/{languageSlug}?tab=inflections" class="text-link hover:underline">Add dimensions</a>
 							(e.g. Case, Number) and paradigm classes first.
 						{/if}
 					</div>

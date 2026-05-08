@@ -71,7 +71,7 @@
 	</form>
 
 	<div class="mb-6">
-		<a href="/wordbook/contribute" class="text-sm text-link hover:text-link-hover hover:underline">+ Add word</a>
+		<a href="/Wordbook/contribute" class="text-sm text-link hover:text-link-hover hover:underline">+ Add word</a>
 	</div>
 
 	<!-- Languages -->
@@ -79,7 +79,7 @@
 		<section class="mb-6">
 			<div class="flex items-center justify-between mb-3">
 				<h2 class="text-lg font-semibold text-body">Languages</h2>
-				<a href="/wordbook/contribute/language" class="text-sm text-link hover:text-link-hover hover:underline">+ Add language</a>
+				<a href="/Wordbook/contribute/language" class="text-sm text-link hover:text-link-hover hover:underline">+ Add language</a>
 			</div>
 			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 				{#each data.languages as lang (lang.slug)}
@@ -99,7 +99,7 @@
 		<div class="text-center py-12 text-faint">
 			<p class="text-lg mb-2">No languages yet</p>
 			<p class="text-sm">
-				<a href="/wordbook/contribute/language" class="text-link hover:underline">Add a language</a> to get started.
+				<a href="/Wordbook/contribute/language" class="text-link hover:underline">Add a language</a> to get started.
 			</p>
 		</div>
 	{/if}

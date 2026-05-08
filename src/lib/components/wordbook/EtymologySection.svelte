@@ -177,7 +177,7 @@
 	<div class="flex items-baseline gap-2 text-sm mb-1.5 group/rel">
 		<span class="text-faint">{arrow}</span>
 		<span class="text-dim text-xs">{label}</span>
-		<a href="/wordbook/{entry.languageSlug}/{encodeURIComponent(entry.word)}" class="font-medium text-link italic hover:text-link-hover hover:underline">{entry.word}</a>
+		<a href="/Wordbook/{entry.languageSlug}/{encodeURIComponent(entry.word)}" class="font-medium text-link italic hover:text-link-hover hover:underline">{entry.word}</a>
 		<span class="text-faint text-xs">({entry.languageName})</span>
 		{#if entry.definition}
 			<span class="text-dim text-xs">"{entry.definition}"</span>
@@ -280,7 +280,7 @@
 					<span class="text-faint text-xs">→</span>
 				{/if}
 				<a
-					href="/wordbook/{step.languageSlug}/{encodeURIComponent(step.word)}"
+					href="/Wordbook/{step.languageSlug}/{encodeURIComponent(step.word)}"
 					class="inline-flex items-center gap-1 px-2 py-0.5 bg-page text-link transition-colors hover:bg-accent-subtle hover:text-link-hover"
 					title={step.definition}
 				>
@@ -307,7 +307,7 @@
 					<span class="text-dim text-xs">compound of</span>
 					{#each direct.compoundOf as entry, index}
 						{#if index > 0}<span class="text-faint">+</span>{/if}
-						<a href="/wordbook/{entry.languageSlug}/{encodeURIComponent(entry.word)}" class="font-medium text-link italic hover:text-link-hover hover:underline">{entry.word}</a>
+						<a href="/Wordbook/{entry.languageSlug}/{encodeURIComponent(entry.word)}" class="font-medium text-link italic hover:text-link-hover hover:underline">{entry.word}</a>
 						<span class="text-dim text-xs">({entry.definition})</span>
 						{#if isAuthenticated}
 							<button onclick={() => deleteRelation(entry.relationId)} disabled={deleting === entry.relationId} class="text-xs text-error hover:text-error-hover {deleting === entry.relationId ? 'opacity-50' : ''}" title="Remove">✕</button>
@@ -370,7 +370,7 @@
 							<span class="text-dim min-w-20">{lang.name}:</span>
 							{#each lang.words as w, index}
 								{#if index > 0}<span class="text-faint">,</span>{/if}
-								<a href="/wordbook/{lang.slug}/{encodeURIComponent(w.word)}" class="text-link italic hover:text-link-hover hover:underline">{w.word}</a>
+								<a href="/Wordbook/{lang.slug}/{encodeURIComponent(w.word)}" class="text-link italic hover:text-link-hover hover:underline">{w.word}</a>
 								<span class="text-faint text-xs">({w.definition})</span>
 							{/each}
 						</div>

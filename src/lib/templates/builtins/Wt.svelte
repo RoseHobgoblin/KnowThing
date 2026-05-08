@@ -9,7 +9,7 @@
 
 {#if word && lang}
 	<a
-		href="/wordbook/{encodeURIComponent(lang.toLowerCase())}/{encodeURIComponent(word)}"
+		href="/Wordbook/{encodeURIComponent(lang.toLowerCase())}/{encodeURIComponent(word)}"
 		class="
 			italic text-link border-b border-dotted border-accent-border transition-colors
 			hover:text-link-hover hover:border-accent-hover

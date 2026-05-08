@@ -48,7 +48,7 @@
 >
 	{#snippet actions()}
 		{#if permissions.canConfigureCalendar}
-			<a href="/calendar/{calendar.slug}/configure" class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover">
+			<a href="/Calendar:{calendar.slug}/configure" class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover">
 				<GearSixIcon size={14} weight="fill" />Configure
 			</a>
 		{:else if permissions.isAuthenticated}

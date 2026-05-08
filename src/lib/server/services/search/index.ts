@@ -1,6 +1,7 @@
 import { countPageSearchResults, searchPagesRaw } from './pages.js'
 import { countWordbookSearchResults, searchWordbookEntries } from './wordbook.js'
 import { searchMediaUnified } from './media.js'
+import { buildHref } from '../../resolved-links.js'
 import type { UnifiedSearchParams, UnifiedSearchResponse, UnifiedSearchResult } from './types.js'
 
 export async function searchUnified(params: UnifiedSearchParams): Promise<UnifiedSearchResponse> {
@@ -92,19 +93,21 @@ async function searchPages(params: UnifiedSearchParams): Promise<UnifiedSearchRe
 		headlineMinWords: 20,
 	})
 
-	return results.map((result) => ({
-		kind: 'page',
-		title: result.title,
-		href: result.domain === 'know'
-			? `/know/${result.slug}`
-			: result.parentPath
-				? `/${result.domain}/${result.parentPath}/${result.slug}`
-				: `/${result.domain}/${result.slug}`,
-		badge: 'Page',
-		snippet: String(result.snippet ?? ''),
-		meta: [domainLabel(result.domain)],
-		rank: normalizePageRank(result.title, params.q, Number(result.rank)),
-	}))
+	return results.map((result) => {
+		const slugForBuild = result.domain === 'wordbook' && result.parentPath
+			? `${result.parentPath}/${result.slug}`
+			: result.slug
+		const parentPath = result.domain === 'wordbook' ? null : result.parentPath
+		return {
+			kind: 'page' as const,
+			title: result.title,
+			href: buildHref(result.domain, slugForBuild, parentPath),
+			badge: 'Page',
+			snippet: String(result.snippet ?? ''),
+			meta: [domainLabel(result.domain)],
+			rank: normalizePageRank(result.title, params.q, Number(result.rank)),
+		}
+	})
 }
 
 async function searchWords(params: UnifiedSearchParams): Promise<UnifiedSearchResult[]> {
@@ -120,7 +123,7 @@ async function searchWords(params: UnifiedSearchParams): Promise<UnifiedSearchRe
 	return results.map((result) => ({
 		kind: 'word',
 		title: result.word,
-		href: `/wordbook/${result.languageSlug}/${encodeURIComponent(result.word)}`,
+		href: `/Wordbook/${result.languageSlug}/${encodeURIComponent(result.word)}`,
 		badge: 'Word',
 		snippet: result.definition ?? '',
 		meta: [result.languageName, result.partOfSpeech].filter(Boolean) as string[],

@@ -5,12 +5,12 @@ import { getLanguageBySlug, listHomographs } from '$lib/server/services/wordbook
 import { entitySaveAction } from '$lib/server/services/entity-actions.js'
 
 export const load: PageServerLoad = async ({ params, locals, url }) => {
-	const editPath = `/wordbook/${params.language}/${params.word}/edit`
+	const editPath = `/Wordbook/${params.language}/${params.word}/edit`
 	if (!locals.user) {
 		throw redirect(302, `/auth/login?redirect=${encodeURIComponent(editPath)}`)
 	}
 	if (!hasRole(locals.user.role, 'editor')) {
-		throw redirect(302, `/wordbook/${params.language}/${params.word}`)
+		throw redirect(302, `/Wordbook/${params.language}/${params.word}`)
 	}
 
 	const word = decodeURIComponent(params.word).normalize('NFC')

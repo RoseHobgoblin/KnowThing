@@ -85,7 +85,7 @@
 					{submitting ? 'Saving...' : 'Save'}
 				</button>
 				<a
-					href="/wordbook/{data.slug}"
+					href="/Wordbook/{data.slug}"
 					class="flex-1 text-center px-5 py-2 border border-border text-secondary text-sm sm:flex-none hover:bg-raised"
 				>
 					Cancel

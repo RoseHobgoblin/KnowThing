@@ -136,6 +136,10 @@ async function resolveCelestialFallthrough(
 	}
 }
 
+// Public so other modules (e.g. /know/[slug] cross-domain redirect) can build
+// canonical URLs the same way wikilinks do.
+export { buildHref }
+
 async function resolveCalendarFallthrough(
 	unresolved: { domain: string, slug: string }[],
 	result: Map<string, ResolvedLink>,
@@ -178,7 +182,7 @@ async function resolveWordbookFallthrough(
 		for (const r of langMatches) known.set(r.slug.toLowerCase(), r.slug)
 		for (const { slug } of langEntries) {
 			const canonical = known.get(slug)
-			if (canonical) result.set(`wordbook:${slug}`, { href: `/wordbook/${canonical}`, exists: true })
+			if (canonical) result.set(`wordbook:${slug}`, { href: `/Wordbook/${canonical}`, exists: true })
 		}
 	}
 
@@ -211,7 +215,7 @@ async function resolveWordbookFallthrough(
 				const canonical = knownWords.get(word)
 				if (canonical) {
 					result.set(`wordbook:${langSlug}/${word}`, {
-						href: `/wordbook/${lang.slug}/${encodeURIComponent(canonical)}`,
+						href: `/Wordbook/${lang.slug}/${encodeURIComponent(canonical)}`,
 						exists: true,
 					})
 				}
@@ -221,12 +225,12 @@ async function resolveWordbookFallthrough(
 }
 
 function buildHref(domain: string, slug: string, parentPath: string | null | undefined): string {
-	if (domain === 'know') {
-		return `/know/${slug}`
-	}
-	if (parentPath) {
-		return `/${domain}/${parentPath}/${slug}`
-	}
+	if (domain === 'know')      return `/know/${slug}`
+	if (domain === 'celestial') return `/Celestial:${encodeURI(slug)}`
+	if (domain === 'calendar')  return `/Calendar:${encodeURI(slug)}`
+	// `wordbook` slugs are stored in `<lang>` or `<lang>/<word>` form already.
+	if (domain === 'wordbook')  return `/Wordbook/${slug}`
+	if (parentPath) return `/${domain}/${parentPath}/${slug}`
 	return `/${domain}/${slug}`
 }
 

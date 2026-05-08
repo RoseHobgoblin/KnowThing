@@ -27,9 +27,9 @@
 		pushSuccess('Word created')
 		const lang = data.languages.find(l => l.id === formData.languageId)
 		if (lang) {
-			goto(`/wordbook/${lang.slug}/${encodeURIComponent(entry.word)}`)
+			goto(`/Wordbook/${lang.slug}/${encodeURIComponent(entry.word)}`)
 		} else {
-			goto('/wordbook')
+			goto('/Wordbook')
 		}
 	}
 </script>
@@ -43,13 +43,13 @@
 	title="Add a Word"
 >
 	{#snippet actions()}
-		<a href="/wordbook/contribute/language" class="text-link hover:underline">+ New language</a>
+		<a href="/Wordbook/contribute/language" class="text-link hover:underline">+ New language</a>
 	{/snippet}
 
 	{#if data.languages.length === 0}
 		<div class="p-6 bg-accent-subtle border border-accent-border text-center">
 			<p class="text-accent-text mb-2">No languages have been created yet.</p>
-			<a href="/wordbook/contribute/language" class="text-link font-medium hover:underline">Create a language first →</a>
+			<a href="/Wordbook/contribute/language" class="text-link font-medium hover:underline">Create a language first →</a>
 		</div>
 	{:else}
 		<EntryForm

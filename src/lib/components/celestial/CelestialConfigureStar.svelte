@@ -150,9 +150,8 @@
 	const initialWikiContent = untrack(() => wikiContent ?? '')
 	const initialDraft = buildInitialStarDraft(initialStar, initialWikiContent)
 
-	const viewPath = $derived.by(() => initialParentCrumbs.length > 0
-		? `${initialParentCrumbs.at(-1)!.href}/${initialStar.slug}`
-		: `/celestial/${initialStar.slug}`)
+	// Celestial canonical URLs are flat /Celestial:Slug — parent path is for breadcrumbs only.
+	const viewPath = $derived(`/Celestial:${initialStar.slug}`)
 
 	let name = $state(initialDraft.name)
 	let slug = $state(initialDraft.slug)

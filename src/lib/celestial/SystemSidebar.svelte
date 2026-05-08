@@ -121,7 +121,7 @@
 					{/if}
 				</div>
 				<a
-					href="/celestial/{systemSlug}/{selectedBody.slug}"
+					href="/Celestial:{selectedBody.slug}"
 					class="block text-link text-xs mt-2 transition-colors hover:text-link-hover"
 				>View details</a>
 			</div>
@@ -135,7 +135,7 @@
 			{#each stars as star (star.id)}
 				{@const isPrimary = !star.parentStarId}
 				<a
-					href="/celestial/{systemSlug}/{star.slug}"
+					href="/Celestial:{star.slug}"
 					class="flex items-center gap-2 px-1.5 py-1 transition-colors hover:bg-raised"
 				>
 					<Star
@@ -153,7 +153,7 @@
 				<!-- Planets under this star -->
 				{#each planetsForStar(star.id) as planet (planet.id)}
 					<a
-						href="/celestial/{systemSlug}/{planet.slug}"
+						href="/Celestial:{planet.slug}"
 						class="flex items-center gap-2 px-1.5 py-1 ml-4 transition-colors hover:bg-raised"
 					>
 						<svelte:component
@@ -170,7 +170,7 @@
 					<!-- Moons -->
 					{#each moonsForBody(planet.id) as moon (moon.id)}
 						<a
-							href="/celestial/{systemSlug}/{moon.slug}"
+							href="/Celestial:{moon.slug}"
 							class="flex items-center gap-2 px-1.5 py-0.5 ml-8 transition-colors hover:bg-raised"
 						>
 							<Moon size={12} weight="fill" class="shrink-0 text-dim" />

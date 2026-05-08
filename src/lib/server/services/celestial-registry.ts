@@ -49,6 +49,24 @@ export async function findPlanetBySlugOrPageSlug(slug: string) {
 	return planet ?? null
 }
 
+/**
+ * Resolve any celestial input slug (real slug or legacy `pageSlug`) to its
+ * canonical row slug across all three tables. Used by the legacy
+ * `/celestial/[...path]` 308 redirect stub.
+ */
+export async function resolveCelestialCanonicalSlug(slug: string): Promise<string | null> {
+	const lower = slug.toLowerCase()
+	const [row] = await db.execute(sql`
+		SELECT slug FROM star_systems WHERE LOWER(slug) = ${lower} OR LOWER(page_slug) = ${lower}
+		UNION ALL
+		SELECT slug FROM stars WHERE LOWER(slug) = ${lower} OR LOWER(page_slug) = ${lower}
+		UNION ALL
+		SELECT slug FROM planetary_bodies WHERE LOWER(slug) = ${lower} OR LOWER(page_slug) = ${lower}
+		LIMIT 1
+	`)
+	return (row as unknown as { slug?: string })?.slug ?? null
+}
+
 export async function getStarsForSystemMap(systemId: number) {
 	return db.execute(sql`
 		SELECT id, name, slug, spectral_type AS "spectralType", color,
