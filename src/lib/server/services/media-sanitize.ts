@@ -43,9 +43,33 @@ const PDF = Buffer.from('%PDF-', 'ascii')
  */
 export async function verifyMimeType(buffer: Buffer, claimed: string): Promise<void> {
 	if (claimed === 'image/svg+xml') {
-		const text = buffer.subarray(0, 1024).toString('utf8').trim().toLowerCase()
-		const looksLikeXml = text.startsWith('<?xml') || text.startsWith('<svg') || text.startsWith('<!doctype svg')
-		if (!looksLikeXml || !buffer.toString('utf8', 0, 4096).toLowerCase().includes('<svg')) {
+		// Scan the first 4KB for an <svg root, allowing leading whitespace,
+		// XML/processing-instruction prologues, comments, and DOCTYPEs (in any
+		// order) — exporters from Illustrator/Figma/Inkscape often emit those
+		// before the <svg element.
+		const head = buffer.toString('utf8', 0, 4096).toLowerCase()
+		let i = 0
+		while (i < head.length) {
+			const ch = head.charCodeAt(i)
+			if (ch === 0x09 || ch === 0x0a || ch === 0x0d || ch === 0x20 || ch === 0xfeff) { i++; continue }
+			if (head.startsWith('<?', i)) {
+				const end = head.indexOf('?>', i + 2)
+				if (end < 0) break
+				i = end + 2; continue
+			}
+			if (head.startsWith('<!--', i)) {
+				const end = head.indexOf('-->', i + 4)
+				if (end < 0) break
+				i = end + 3; continue
+			}
+			if (head.startsWith('<!doctype', i)) {
+				const end = head.indexOf('>', i + 9)
+				if (end < 0) break
+				i = end + 1; continue
+			}
+			break
+		}
+		if (!head.startsWith('<svg', i)) {
 			throw error(400, 'File does not appear to be a valid SVG.')
 		}
 		return
