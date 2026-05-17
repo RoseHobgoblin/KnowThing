@@ -12,7 +12,7 @@ import {
 	getStarsForSystemMap,
 	listAllStarRefs,
 	listAllSystemRefs,
-	listSiblingBodies,
+	listAllBodyRefs,
 } from '$lib/server/services/celestial-registry.js'
 
 export interface CelestialDetailContext {
@@ -40,7 +40,7 @@ export type CelestialDetailData =
 		kind: 'planet'
 		body: Awaited<ReturnType<typeof findPlanetBySlugOrPageSlug>>
 		allStars: Awaited<ReturnType<typeof listAllStarRefs>>
-		siblings: Awaited<ReturnType<typeof listSiblingBodies>>
+		siblings: Awaited<ReturnType<typeof listAllBodyRefs>>
 	})
 
 interface CelestialBaseData {
@@ -107,7 +107,7 @@ export async function loadCelestialDetail(ctx: CelestialDetailContext): Promise<
 			throw redirect(301, canonicalize(planet.slug))
 		}
 		const allStars = await listAllStarRefs()
-		const siblings = planet.starId ? await listSiblingBodies(planet.starId) : []
+		const siblings = await listAllBodyRefs()
 		const infoboxFields = await resolveStructuredData('planet', planet.slug)
 		return {
 			kind: 'planet',

@@ -129,16 +129,18 @@ export async function listAllStarRefs() {
 	return db.select({ id: stars.id, name: stars.name, slug: stars.slug, massKg: stars.massKg }).from(stars).orderBy(stars.name)
 }
 
-export async function listSiblingBodies(starId: number) {
+export async function listAllBodyRefs() {
 	return db
 		.select({
 			id: planetaryBodies.id,
 			name: planetaryBodies.name,
 			slug: planetaryBodies.slug,
 			massKg: planetaryBodies.massKg,
+			starId: planetaryBodies.starId,
+			parentId: planetaryBodies.parentId,
 		})
 		.from(planetaryBodies)
-		.where(eq(planetaryBodies.starId, starId))
+		.orderBy(planetaryBodies.name)
 }
 
 export async function listBodiesForRegistry() {

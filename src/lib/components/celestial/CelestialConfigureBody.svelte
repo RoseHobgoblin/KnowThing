@@ -37,7 +37,7 @@
 	type CelestialCrumb = { label: string, href: string }
 	type BodyType = 'planet' | 'asteroid' | 'ring_system'
 	type CelestialStarOption = { id: number, name: string, slug: string, massKg?: number | null }
-	type CelestialBodyOption = { id: number, name: string, slug: string, massKg?: number | null }
+	type CelestialBodyOption = { id: number, name: string, slug: string, massKg?: number | null, starId?: number | null, parentId?: number | null }
 	type BodyRecord = {
 		id: number
 		name: string
@@ -355,12 +355,45 @@
 		...allStars.map(starOption => ({ value: String(starOption.id), label: starOption.name })),
 	])
 
+	// Descendants of this body are not valid parents (would create a cycle).
+	const descendantIds = $derived.by(() => {
+		const childrenByParent = new Map<number, number[]>()
+		for (const sibling of siblings) {
+			if (sibling.parentId == null) continue
+			const list = childrenByParent.get(sibling.parentId) ?? []
+			list.push(sibling.id)
+			childrenByParent.set(sibling.parentId, list)
+		}
+		const result = new Set<number>([initialBody.id])
+		const stack = [initialBody.id]
+		while (stack.length > 0) {
+			const next = stack.pop()!
+			for (const childId of childrenByParent.get(next) ?? []) {
+				if (!result.has(childId)) {
+					result.add(childId)
+					stack.push(childId)
+				}
+			}
+		}
+		return result
+	})
+
 	const parentItems = $derived<Array<{ value: string, label: string }>>([
-		{ value: '', label: 'None (orbits star directly)' },
+		{ value: '', label: starIdString ? 'None (orbits star directly)' : 'None' },
 		...siblings
-			.filter(sibling => sibling.id !== initialBody.id)
+			.filter(sibling => !descendantIds.has(sibling.id))
+			.filter(sibling => starIdString
+				? String(sibling.starId ?? '') === starIdString
+				: sibling.starId == null)
 			.map(sibling => ({ value: String(sibling.id), label: sibling.name })),
 	])
+
+	// If the currently selected parent is no longer valid (different star or now a descendant), clear it.
+	$effect(() => {
+		if (!parentIdString) return
+		const stillValid = parentItems.some(item => item.value === parentIdString)
+		if (!stillValid) parentIdString = ''
+	})
 
 	$effect(() => {
 		if ($page.data.permissions !== undefined) {

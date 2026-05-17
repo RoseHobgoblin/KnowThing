@@ -79,7 +79,21 @@
 	let newBodyName = $state('')
 	let newBodyType = $state('planet')
 	let newBodyStarId = $state<string | undefined>(undefined)
+	let newBodyParentId = $state<string | undefined>(undefined)
 	let creating = $state(false)
+
+	const newBodyParentOptions = $derived(
+		newBodyStarId
+			? bodies.filter((body) => body.starId === Number(newBodyStarId))
+			: [],
+	)
+
+	$effect(() => {
+		if (!newBodyParentId) return
+		if (!newBodyParentOptions.some((body) => String(body.id) === newBodyParentId)) {
+			newBodyParentId = undefined
+		}
+	})
 
 	function starsForSystem(systemId: number) {
 		return stars.filter((star) => star.systemId === systemId)
@@ -160,12 +174,14 @@
 					slug: slugify(newBodyName),
 					bodyType: newBodyType,
 					starId: newBodyStarId ? Number(newBodyStarId) : null,
+					parentId: newBodyParentId ? Number(newBodyParentId) : null,
 				}),
 			})
 			if (res.ok) {
 				pushSuccess(`${newBodyName} created`)
 				newBodyName = ''
 				newBodyStarId = undefined
+				newBodyParentId = undefined
 				invalidateAll()
 			} else {
 				const error = await res.json()
@@ -440,6 +456,7 @@
 
 			<section class="bg-surface border border-border p-5 space-y-3">
 				<h2 class="text-sm font-semibold text-heading">Add Body</h2>
+				<p class="text-xs text-faint">Pick a parent body to create a moon or ring system; leave empty for a planet that orbits the star directly.</p>
 				<div class="flex gap-3 items-end flex-wrap">
 					<Input label="Name" bind:value={newBodyName} placeholder="e.g. Earth" containerClass="flex-1 min-w-40" />
 					<Select
@@ -449,6 +466,7 @@
 						items={[
 							{ value: 'planet', label: 'Planet' },
 							{ value: 'asteroid', label: 'Asteroid' },
+							{ value: 'ring_system', label: 'Ring System' },
 						]}
 					/>
 					<Select
@@ -458,7 +476,15 @@
 						placeholder="None"
 						items={stars.map((star) => ({ value: String(star.id), label: star.name }))}
 					/>
-					<Button onclick={createBody} disabled={!newBodyName.trim()} loading={creating}>Add</Button>
+					<Select
+						type="single"
+						label="Orbits Body"
+						bind:value={newBodyParentId}
+						placeholder={newBodyStarId ? 'None (orbits star)' : 'Pick a star first'}
+						disabled={!newBodyStarId || newBodyParentOptions.length === 0}
+						items={newBodyParentOptions.map((body) => ({ value: String(body.id), label: body.name }))}
+					/>
+					<Button onclick={createBody} disabled={!newBodyName.trim() || (newBodyType === 'ring_system' && !newBodyParentId)} loading={creating}>Add</Button>
 				</div>
 			</section>
 		</div>
