@@ -48,7 +48,7 @@
 		{#if breadcrumbs.length > 0}
 			<nav aria-label="Breadcrumb">
 				<ol class="flex flex-wrap items-center text-xs font-semibold uppercase tracking-wider mb-1">
-					<li>
+					<li class="flex items-center">
 						<a href="/" aria-label={rootLabel} class="text-link transition-colors hover:text-link-hover inline-flex items-center"><HouseIcon weight="fill"/></a>
 					</li>
 					{#each parentCrumbs as crumb (crumb.label)}
