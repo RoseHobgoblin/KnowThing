@@ -26,6 +26,8 @@
 
 	const currentCrumb = $derived(breadcrumbs.at(-1))
 	const parentCrumbs = $derived(breadcrumbs.slice(0, -1))
+	const currentLabel = $derived(currentCrumb?.label ?? title)
+	const currentColon = $derived(currentCrumb?.namespaceHref ? currentLabel.indexOf(':') : -1)
 
 	const jsonLd = $derived(
 		breadcrumbs.length > 0
@@ -47,12 +49,15 @@
 			<nav aria-label="Breadcrumb">
 				<ol class="flex flex-wrap items-center text-xs font-semibold uppercase tracking-wider mb-1">
 					<li>
-						<a href="/" aria-label={rootLabel} class="text-link transition-colors hover:text-link-hover inline-flex items-center"><HouseIcon size={14} weight="fill" /></a>
+						<a href="/" aria-label={rootLabel} class="text-link transition-colors hover:text-link-hover inline-flex items-center"><HouseIcon weight="fill"/></a>
 					</li>
 					{#each parentCrumbs as crumb (crumb.label)}
+						{@const colon = crumb.namespaceHref ? crumb.label.indexOf(':') : -1}
 						<li class="flex items-center">
 							<span class="text-faint mx-1" aria-hidden="true">/</span>
-							{#if crumb.href}
+							{#if colon > 0}
+								<a href={crumb.namespaceHref} class="text-link transition-colors hover:text-link-hover">{crumb.label.slice(0, colon)}</a><span class="text-faint">{crumb.label.slice(colon)}</span>
+							{:else if crumb.href}
 								<a href={crumb.href} class="text-link transition-colors hover:text-link-hover">{crumb.label}</a>
 							{:else}
 								<span class="text-faint">{crumb.label}</span>
@@ -61,7 +66,11 @@
 					{/each}
 					<li class="flex items-center" aria-current="page">
 						<span class="text-faint mx-1" aria-hidden="true">/</span>
-						<span class="text-accent">{currentCrumb?.label ?? title}</span>
+						{#if currentColon > 0 && currentCrumb}
+							<a href={currentCrumb.namespaceHref} class="text-link transition-colors hover:text-link-hover">{currentLabel.slice(0, currentColon)}</a><span class="text-accent">{currentLabel.slice(currentColon)}</span>
+						{:else}
+							<span class="text-accent">{currentLabel}</span>
+						{/if}
 					</li>
 				</ol>
 			</nav>

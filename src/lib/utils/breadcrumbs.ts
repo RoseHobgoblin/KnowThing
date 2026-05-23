@@ -9,6 +9,11 @@
 export interface Breadcrumb {
 	label: string
 	href?: string
+	/**
+	 * For namespaced labels like "Celestial:Therne": link only the prefix
+	 * before the first ":" to this href; render the colon and the rest inert.
+	 */
+	namespaceHref?: string
 }
 
 // ── Know (wiki articles) ───────────────────────────────────────────────
@@ -108,7 +113,7 @@ export function celestialRegistryBreadcrumbs(): Breadcrumb[] {
 
 /** Single-crumb namespaced form: e.g. "Celestial:Sun". */
 export function celestialBreadcrumbs(name: string): Breadcrumb[] {
-	return [{ label: `Celestial:${name.replaceAll(/\s+/g, '_')}` }]
+	return [{ label: `Celestial:${name.replaceAll(/\s+/g, '_')}`, namespaceHref: '/celestial' }]
 }
 
 export function celestialConfigureBreadcrumbs(
@@ -116,7 +121,7 @@ export function celestialConfigureBreadcrumbs(
 	body: { name: string, slug: string },
 ): Breadcrumb[] {
 	return [
-		{ label: `Celestial:${body.name.replaceAll(/\s+/g, '_')}`, href: `/Celestial:${body.slug}` },
+		{ label: `Celestial:${body.name.replaceAll(/\s+/g, '_')}`, href: `/Celestial:${body.slug}`, namespaceHref: '/celestial' },
 		{ label: 'Configure' },
 	]
 }
@@ -130,14 +135,14 @@ export function calendarBreadcrumbs(): Breadcrumb[] {
 
 /** Single-crumb namespaced form: e.g. "Calendar:Iron_Flowers". */
 export function calendarDetailBreadcrumbs(name: string): Breadcrumb[] {
-	return [{ label: `Calendar:${name.replaceAll(/\s+/g, '_')}` }]
+	return [{ label: `Calendar:${name.replaceAll(/\s+/g, '_')}`, namespaceHref: '/calendar' }]
 }
 
 export function calendarConfigureBreadcrumbs(
 	calendar: { name: string, slug: string },
 ): Breadcrumb[] {
 	return [
-		{ label: `Calendar:${calendar.name.replaceAll(/\s+/g, '_')}`, href: `/Calendar:${calendar.slug}` },
+		{ label: `Calendar:${calendar.name.replaceAll(/\s+/g, '_')}`, href: `/Calendar:${calendar.slug}`, namespaceHref: '/calendar' },
 		{ label: 'Configure' },
 	]
 }
