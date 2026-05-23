@@ -56,7 +56,7 @@
 						<li class="flex items-center">
 							<span class="text-faint mx-1" aria-hidden="true">/</span>
 							{#if colon > 0}
-								<a href={crumb.namespaceHref} class="text-link transition-colors hover:text-link-hover">{crumb.label.slice(0, colon)}</a><span class="text-faint">{crumb.label.slice(colon)}</span>
+								<a href={crumb.namespaceHref} class="text-link transition-colors hover:text-link-hover">{crumb.label.slice(0, colon)}</a><span class="text-faint">:</span><span class="text-faint">{crumb.label.slice(colon + 1)}</span>
 							{:else if crumb.href}
 								<a href={crumb.href} class="text-link transition-colors hover:text-link-hover">{crumb.label}</a>
 							{:else}
@@ -67,7 +67,7 @@
 					<li class="flex items-center" aria-current="page">
 						<span class="text-faint mx-1" aria-hidden="true">/</span>
 						{#if currentColon > 0 && currentCrumb}
-							<a href={currentCrumb.namespaceHref} class="text-link transition-colors hover:text-link-hover">{currentLabel.slice(0, currentColon)}</a><span class="text-accent">{currentLabel.slice(currentColon)}</span>
+							<a href={currentCrumb.namespaceHref} class="text-link transition-colors hover:text-link-hover">{currentLabel.slice(0, currentColon)}</a><span class="text-faint">:</span><span class="text-accent">{currentLabel.slice(currentColon + 1)}</span>
 						{:else}
 							<span class="text-accent">{currentLabel}</span>
 						{/if}

@@ -108,7 +108,7 @@ export function wordbookEditLanguageBreadcrumbs(
 
 /** Hub breadcrumb (e.g. /celestial) */
 export function celestialRegistryBreadcrumbs(): Breadcrumb[] {
-	return [{ label: 'Celestial Registry' }]
+	return [{ label: 'Celestial' }]
 }
 
 /** Single-crumb namespaced form: e.g. "Celestial:Sun". */
