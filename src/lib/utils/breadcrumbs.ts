@@ -22,30 +22,11 @@ export interface KnowBreadcrumbContext {
 	wordbookName?: string
 }
 
-export function knowBreadcrumbs(title: string, ctx: KnowBreadcrumbContext = {}): Breadcrumb[] {
-	const wbName = ctx.wordbookName ?? 'Wordbook'
-
-	if (ctx.wordbookMatch) {
-		return [
-			{ label: wbName, href: '/Wordbook' },
-			{ label: ctx.wordbookMatch.languageName, href: `/Wordbook/${ctx.wordbookMatch.languageSlug}` },
-			{
-				label: ctx.wordbookMatch.word,
-				href: `/Wordbook/${ctx.wordbookMatch.languageSlug}/${encodeURIComponent(ctx.wordbookMatch.word)}`,
-			},
-			{ label: title },
-		]
-	}
-
-	if (ctx.languageMatch) {
-		return [
-			{ label: wbName, href: '/Wordbook' },
-			{ label: ctx.languageMatch.languageName, href: `/Wordbook/${ctx.languageMatch.languageSlug}` },
-			{ label: title },
-		]
-	}
-
-	return [{ label: title }]
+export function knowBreadcrumbs(title: string, _ctx: KnowBreadcrumbContext = {}): Breadcrumb[] {
+	return [
+		{ label: 'know' },
+		{ label: title.replaceAll(/\s+/g, '_') },
+	]
 }
 
 // ── Wordbook ───────────────────────────────────────────────────────────

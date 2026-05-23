@@ -3,6 +3,7 @@
 	import type { Breadcrumb } from '$lib/utils/breadcrumbs.js'
 	import { breadcrumbJsonLd } from '$lib/utils/breadcrumbs.js'
 	import { page } from '$app/stores'
+	import HouseIcon from 'phosphor-svelte/lib/HouseIcon'
 
 	let {
 		breadcrumbs = [],
@@ -46,7 +47,7 @@
 			<nav aria-label="Breadcrumb">
 				<ol class="flex flex-wrap items-center text-xs font-semibold uppercase tracking-wider mb-1">
 					<li>
-						<a href="/" class="text-link transition-colors hover:text-link-hover">{rootLabel}</a>
+						<a href="/" aria-label={rootLabel} class="text-link transition-colors hover:text-link-hover inline-flex items-center"><HouseIcon size={14} weight="fill" /></a>
 					</li>
 					{#each parentCrumbs as crumb (crumb.label)}
 						<li class="flex items-center">
