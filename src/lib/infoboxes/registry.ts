@@ -3,6 +3,8 @@ import type { InfoboxSchema } from './schemas/types.js'
 import type { Component } from 'svelte'
 
 import { religionSchema } from './schemas/religion.js'
+import { personSchema } from './schemas/person.js'
+import { genericSchema } from './schemas/generic.js'
 
 import InfoboxCountry from './InfoboxCountry.svelte'
 import InfoboxFormerCountry from './InfoboxFormerCountry.svelte'
@@ -10,11 +12,9 @@ import InfoboxLanguage from './InfoboxLanguage.svelte'
 import InfoboxSettlement from './InfoboxSettlement.svelte'
 import InfoboxRoyalty from './InfoboxRoyalty.svelte'
 import InfoboxOfficeholder from './InfoboxOfficeholder.svelte'
-import InfoboxPerson from './InfoboxPerson.svelte'
 import InfoboxStar from './InfoboxStar.svelte'
 import InfoboxPlanet from './InfoboxPlanet.svelte'
 import InfoboxSystem from './InfoboxSystem.svelte'
-import InfoboxGeneric from './InfoboxGeneric.svelte'
 
 export type InfoboxComponent = Component<{ fields: FieldMap }>
 
@@ -29,12 +29,12 @@ export const INFOBOX_ENTRIES: Record<InfoboxType, InfoboxEntry> = {
 	settlement: { kind: 'component', component: InfoboxSettlement },
 	royalty: { kind: 'component', component: InfoboxRoyalty },
 	officeholder: { kind: 'component', component: InfoboxOfficeholder },
-	person: { kind: 'component', component: InfoboxPerson },
+	person: { kind: 'schema', schema: personSchema },
 	religion: { kind: 'schema', schema: religionSchema },
 	star: { kind: 'component', component: InfoboxStar },
 	planet: { kind: 'component', component: InfoboxPlanet },
 	system: { kind: 'component', component: InfoboxSystem },
-	generic: { kind: 'component', component: InfoboxGeneric },
+	generic: { kind: 'schema', schema: genericSchema },
 }
 
 export { detectInfoboxType } from './detect.js'
