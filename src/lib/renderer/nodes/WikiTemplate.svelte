@@ -10,32 +10,9 @@
 	import { formatArgs } from '$lib/templates/args.js'
 	import { SvelteMap } from 'svelte/reactivity'
 
-	import InfoboxCountry from '$lib/infoboxes/InfoboxCountry.svelte'
-	import InfoboxFormerCountry from '$lib/infoboxes/InfoboxFormerCountry.svelte'
-	import InfoboxLanguage from '$lib/infoboxes/InfoboxLanguage.svelte'
-	import InfoboxSettlement from '$lib/infoboxes/InfoboxSettlement.svelte'
-	import InfoboxRoyalty from '$lib/infoboxes/InfoboxRoyalty.svelte'
-	import InfoboxOfficeholder from '$lib/infoboxes/InfoboxOfficeholder.svelte'
-	import InfoboxPerson from '$lib/infoboxes/InfoboxPerson.svelte'
-	import InfoboxReligion from '$lib/infoboxes/InfoboxReligion.svelte'
-	import InfoboxStar from '$lib/infoboxes/InfoboxStar.svelte'
-	import InfoboxPlanet from '$lib/infoboxes/InfoboxPlanet.svelte'
-	import InfoboxSystem from '$lib/infoboxes/InfoboxSystem.svelte'
+	import { INFOBOX_ENTRIES } from '$lib/infoboxes/registry.js'
 	import InfoboxGeneric from '$lib/infoboxes/InfoboxGeneric.svelte'
-
-	const INFOBOX_COMPONENTS: Record<string, typeof InfoboxGeneric> = {
-		country: InfoboxCountry,
-		former_country: InfoboxFormerCountry,
-		language: InfoboxLanguage,
-		settlement: InfoboxSettlement,
-		royalty: InfoboxRoyalty,
-		officeholder: InfoboxOfficeholder,
-		person: InfoboxPerson,
-		religion: InfoboxReligion,
-		star: InfoboxStar,
-		planet: InfoboxPlanet,
-		system: InfoboxSystem,
-	}
+	import InfoboxRenderer from '$lib/infoboxes/InfoboxRenderer.svelte'
 
 	let { name, args }: { name: string, args: TemplateArg[] } = $props()
 
@@ -93,8 +70,15 @@
 {#if resolution.kind === 'text'}
 	{resolution.value}
 {:else if resolution.kind === 'infobox'}
-	{@const InfoboxComponent = INFOBOX_COMPONENTS[resolution.infoboxType] || InfoboxGeneric}
-	<InfoboxComponent fields={resolution.fields} />
+	{@const entry = INFOBOX_ENTRIES[resolution.infoboxType]}
+	{#if entry?.kind === 'schema'}
+		<InfoboxRenderer schema={entry.schema} fields={resolution.fields} />
+	{:else if entry?.kind === 'component'}
+		{@const InfoboxComponent = entry.component}
+		<InfoboxComponent fields={resolution.fields} />
+	{:else}
+		<InfoboxGeneric fields={resolution.fields} />
+	{/if}
 {:else if resolution.kind === 'builtin'}
 	{@const Comp = resolution.entry.component}
 	<Comp {args} {...resolution.entry.staticProps ?? {}} />

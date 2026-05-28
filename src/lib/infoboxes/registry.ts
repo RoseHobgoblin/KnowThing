@@ -1,27 +1,40 @@
-import type { InfoboxType } from './types.js'
+import type { InfoboxType, FieldMap } from './types.js'
+import type { InfoboxSchema } from './schemas/types.js'
 import type { Component } from 'svelte'
 
-// Lazy imports — each component is only loaded when its type is detected
-const INFOBOX_COMPONENTS: Record<InfoboxType, () => Promise<{ default: Component<{ fields: import('./types.js').FieldMap }> }>> = {
-	country: () => import('./InfoboxCountry.svelte'),
-	former_country: () => import('./InfoboxFormerCountry.svelte'),
-	language: () => import('./InfoboxLanguage.svelte'),
-	settlement: () => import('./InfoboxSettlement.svelte'),
-	royalty: () => import('./InfoboxRoyalty.svelte'),
-	officeholder: () => import('./InfoboxOfficeholder.svelte'),
-	person: () => import('./InfoboxPerson.svelte'),
-	religion: () => import('./InfoboxReligion.svelte'),
-	star: () => import('./InfoboxStar.svelte'),
-	planet: () => import('./InfoboxPlanet.svelte'),
-	system: () => import('./InfoboxSystem.svelte'),
-	generic: () => import('./InfoboxGeneric.svelte'),
-}
+import { religionSchema } from './schemas/religion.js'
 
-/** Get the component for a given infobox type (lazy-loaded) */
-export async function getInfoboxComponent(type: InfoboxType) {
-	const loader = INFOBOX_COMPONENTS[type]
-	const module_ = await loader()
-	return module_.default
+import InfoboxCountry from './InfoboxCountry.svelte'
+import InfoboxFormerCountry from './InfoboxFormerCountry.svelte'
+import InfoboxLanguage from './InfoboxLanguage.svelte'
+import InfoboxSettlement from './InfoboxSettlement.svelte'
+import InfoboxRoyalty from './InfoboxRoyalty.svelte'
+import InfoboxOfficeholder from './InfoboxOfficeholder.svelte'
+import InfoboxPerson from './InfoboxPerson.svelte'
+import InfoboxStar from './InfoboxStar.svelte'
+import InfoboxPlanet from './InfoboxPlanet.svelte'
+import InfoboxSystem from './InfoboxSystem.svelte'
+import InfoboxGeneric from './InfoboxGeneric.svelte'
+
+export type InfoboxComponent = Component<{ fields: FieldMap }>
+
+export type InfoboxEntry =
+	| { kind: 'schema', schema: InfoboxSchema }
+	| { kind: 'component', component: InfoboxComponent }
+
+export const INFOBOX_ENTRIES: Record<InfoboxType, InfoboxEntry> = {
+	country: { kind: 'component', component: InfoboxCountry },
+	former_country: { kind: 'component', component: InfoboxFormerCountry },
+	language: { kind: 'component', component: InfoboxLanguage },
+	settlement: { kind: 'component', component: InfoboxSettlement },
+	royalty: { kind: 'component', component: InfoboxRoyalty },
+	officeholder: { kind: 'component', component: InfoboxOfficeholder },
+	person: { kind: 'component', component: InfoboxPerson },
+	religion: { kind: 'schema', schema: religionSchema },
+	star: { kind: 'component', component: InfoboxStar },
+	planet: { kind: 'component', component: InfoboxPlanet },
+	system: { kind: 'component', component: InfoboxSystem },
+	generic: { kind: 'component', component: InfoboxGeneric },
 }
 
 export { detectInfoboxType } from './detect.js'
