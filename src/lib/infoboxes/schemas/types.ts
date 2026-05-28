@@ -2,12 +2,28 @@ import type { FieldMap } from '../types.js'
 import type { InfoboxType } from '../types.js'
 
 /** A composed value receives the suffix string ('' for the base block, '2', '3', … inside repeat sections). */
-export type InfoboxRowSpec = {
+export type StaticRow = {
 	label: string
 	keys?: string[]
 	compose?: (fields: FieldMap, suffix: string) => string
-	/** Default label/value to use when the resolved label is empty. Only meaningful inside a repeat section's discoverable rows. */
-	fallbackLabel?: string
+}
+
+/**
+ * Pair pattern: for index 0..max, look up `${labelKey}${index}` for the label and `${valueKey}${index}` for the value.
+ * Index 0 uses no suffix. Emits one row per index where both resolve to non-empty.
+ */
+export type PairRow = {
+	pair: {
+		labelKey: string
+		valueKey: string
+		max: number
+	}
+}
+
+export type InfoboxRowSpec = StaticRow | PairRow
+
+export function isPairRow(row: InfoboxRowSpec): row is PairRow {
+	return 'pair' in row
 }
 
 export type StaticSection = {
@@ -30,14 +46,30 @@ export type RepeatSection = {
 
 export type InfoboxSection = StaticSection | RepeatSection
 
+/**
+ * A header image rendered side-by-side with sibling header images (e.g. Country's flag + coat of arms).
+ * If any HeaderImageSpec resolves to a filename, the schema's plain `image` slot is suppressed in favor of this header row.
+ */
+export type HeaderImageSpec = {
+	fileKeys: string[]
+	captionKeys?: string[]
+	altKeys?: string[]
+	defaultCaption?: string
+	width?: number
+}
+
 export type InfoboxSchema = {
 	id: InfoboxType
 	title: string[]
 	/** Overrides title resolution when present. */
 	titleCompose?: (fields: FieldMap) => string
 	subtitle?: string[]
+	/** Overrides subtitle resolution when present. */
+	subtitleCompose?: (fields: FieldMap) => string
 	image: string[]
 	caption: string[]
+	/** When any of these resolve, they render as a side-by-side header row and the plain `image` is suppressed. */
+	headerImages?: HeaderImageSpec[]
 	sections: InfoboxSection[]
 	/** Extra keys that the schema consumes via `compose` or `titleCompose`; excluded from the fallback list. */
 	extraKeys?: string[]
@@ -64,18 +96,31 @@ export function knownKeys(schema: InfoboxSchema): Set<string> {
 	for (const key of schema.image) add(key)
 	for (const key of schema.caption) add(key)
 	for (const key of schema.extraKeys ?? []) add(key)
+	for (const image of schema.headerImages ?? []) {
+		for (const key of image.fileKeys) add(key)
+		for (const key of image.captionKeys ?? []) add(key)
+		for (const key of image.altKeys ?? []) add(key)
+	}
+
+	const addRowKeys = (row: InfoboxRowSpec, sectionSuffixMax: number | null) => {
+		if (isPairRow(row)) {
+			addWithSuffix(row.pair.labelKey, row.pair.max)
+			addWithSuffix(row.pair.valueKey, row.pair.max)
+			return
+		}
+		for (const key of row.keys ?? []) {
+			if (sectionSuffixMax !== null) addWithSuffix(key, sectionSuffixMax)
+			else add(key)
+		}
+	}
 
 	for (const section of schema.sections) {
 		if (isRepeatSection(section)) {
 			const max = section.repeat.max
 			addWithSuffix(section.repeat.discoverKey, max)
-			for (const row of section.rows) {
-				for (const key of row.keys ?? []) addWithSuffix(key, max)
-			}
+			for (const row of section.rows) addRowKeys(row, max)
 		} else {
-			for (const row of section.rows) {
-				for (const key of row.keys ?? []) add(key)
-			}
+			for (const row of section.rows) addRowKeys(row, null)
 		}
 	}
 	return out

@@ -7,11 +7,11 @@ import { personSchema } from './schemas/person.js'
 import { genericSchema } from './schemas/generic.js'
 import { officeholderSchema } from './schemas/officeholder.js'
 import { royaltySchema } from './schemas/royalty.js'
+import { formerCountrySchema } from './schemas/former-country.js'
+import { settlementSchema } from './schemas/settlement.js'
+import { countrySchema } from './schemas/country.js'
 
-import InfoboxCountry from './InfoboxCountry.svelte'
-import InfoboxFormerCountry from './InfoboxFormerCountry.svelte'
 import InfoboxLanguage from './InfoboxLanguage.svelte'
-import InfoboxSettlement from './InfoboxSettlement.svelte'
 import InfoboxStar from './InfoboxStar.svelte'
 import InfoboxPlanet from './InfoboxPlanet.svelte'
 import InfoboxSystem from './InfoboxSystem.svelte'
@@ -23,10 +23,10 @@ export type InfoboxEntry =
 	| { kind: 'component', component: InfoboxComponent }
 
 export const INFOBOX_ENTRIES: Record<InfoboxType, InfoboxEntry> = {
-	country: { kind: 'component', component: InfoboxCountry },
-	former_country: { kind: 'component', component: InfoboxFormerCountry },
+	country: { kind: 'schema', schema: countrySchema },
+	former_country: { kind: 'schema', schema: formerCountrySchema },
 	language: { kind: 'component', component: InfoboxLanguage },
-	settlement: { kind: 'component', component: InfoboxSettlement },
+	settlement: { kind: 'schema', schema: settlementSchema },
 	royalty: { kind: 'schema', schema: royaltySchema },
 	officeholder: { kind: 'schema', schema: officeholderSchema },
 	person: { kind: 'schema', schema: personSchema },

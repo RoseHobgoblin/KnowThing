@@ -11,7 +11,7 @@
 	import { SvelteMap } from 'svelte/reactivity'
 
 	import { INFOBOX_ENTRIES } from '$lib/infoboxes/registry.js'
-	import InfoboxGeneric from '$lib/infoboxes/InfoboxGeneric.svelte'
+	import { genericSchema } from '$lib/infoboxes/schemas/generic.js'
 	import InfoboxRenderer from '$lib/infoboxes/InfoboxRenderer.svelte'
 
 	let { name, args }: { name: string, args: TemplateArg[] } = $props()
@@ -77,7 +77,7 @@
 		{@const InfoboxComponent = entry.component}
 		<InfoboxComponent fields={resolution.fields} />
 	{:else}
-		<InfoboxGeneric fields={resolution.fields} />
+		<InfoboxRenderer schema={genericSchema} fields={resolution.fields} />
 	{/if}
 {:else if resolution.kind === 'builtin'}
 	{@const Comp = resolution.entry.component}
