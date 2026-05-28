@@ -16,6 +16,8 @@ export const settlementSchema: InfoboxSchema = {
 	extraKeys: [
 		'settlement_type', 'type', 'native_name', 'other_name',
 		'population_as_of',
+		'area_total_km2', 'area_km2', 'elevation_m',
+		'population_total', 'population', 'population_density_km2',
 	],
 	sections: [
 		{

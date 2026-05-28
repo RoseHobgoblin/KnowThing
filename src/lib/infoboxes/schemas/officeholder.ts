@@ -13,10 +13,7 @@ export const officeholderSchema: InfoboxSchema = {
 	subtitle: ['native_name'],
 	image: ['image', 'smallimage'],
 	caption: ['caption'],
-	extraKeys: [
-		'honorific_prefix', 'honorific_suffix',
-		'birth_date', 'birth_place', 'death_date', 'death_place',
-	],
+	extraKeys: ['honorific_prefix', 'honorific_suffix'],
 	sections: [
 		{
 			repeat: { discoverKey: 'office', max: 16 },
@@ -24,6 +21,7 @@ export const officeholderSchema: InfoboxSchema = {
 				{ label: 'Order', keys: ['order'] },
 				{
 					label: 'In office',
+					consumes: ['term_start', 'term_end'],
 					compose: (fields, suffix) => {
 						const start = getField(fields, `term_start${suffix}`) ?? ''
 						const end = getField(fields, `term_end${suffix}`) ?? ''
@@ -43,20 +41,27 @@ export const officeholderSchema: InfoboxSchema = {
 			rows: [
 				{
 					label: 'Born',
+					consumes: ['birth_date', 'born', 'birth_place'],
 					compose: (fields) => {
-						const date = getField(fields, 'birth_date') ?? ''
+						const date = getField(fields, 'birth_date', 'born') ?? ''
 						const place = getField(fields, 'birth_place') ?? ''
 						return date ? `${date}${place ? `, ${place}` : ''}` : ''
 					},
 				},
 				{
 					label: 'Died',
+					consumes: ['death_date', 'died', 'death_place'],
 					compose: (fields) => {
-						const date = getField(fields, 'death_date') ?? ''
+						const date = getField(fields, 'death_date', 'died') ?? ''
 						const place = getField(fields, 'death_place') ?? ''
 						return date ? `${date}${place ? `, ${place}` : ''}` : ''
 					},
 				},
+				{ label: 'Burial', keys: ['burial', 'burial_place'] },
+				{ label: 'Clan', keys: ['clan'] },
+				{ label: 'Father', keys: ['father', 'parents'] },
+				{ label: 'Mother', keys: ['mother'] },
+				{ label: 'Religion', keys: ['religion'] },
 			],
 		},
 	],

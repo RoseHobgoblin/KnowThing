@@ -26,6 +26,8 @@ export const countrySchema: InfoboxSchema = {
 	extraKeys: [
 		'population_census', 'population', 'population_estimate',
 		'population_census_year', 'population_year', 'population_estimate_year',
+		'area_km2', 'area',
+		'largest_city', 'largest_settlement',
 	],
 	sections: [
 		{

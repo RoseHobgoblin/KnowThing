@@ -6,6 +6,8 @@ export type StaticRow = {
 	label: string
 	keys?: string[]
 	compose?: (fields: FieldMap, suffix: string) => string
+	/** Keys the `compose` function reads. Tracked for the fallback list so they don't leak. Suffix-expanded inside repeat sections. */
+	consumes?: string[]
 }
 
 /**
@@ -109,6 +111,10 @@ export function knownKeys(schema: InfoboxSchema): Set<string> {
 			return
 		}
 		for (const key of row.keys ?? []) {
+			if (sectionSuffixMax !== null) addWithSuffix(key, sectionSuffixMax)
+			else add(key)
+		}
+		for (const key of row.consumes ?? []) {
 			if (sectionSuffixMax !== null) addWithSuffix(key, sectionSuffixMax)
 			else add(key)
 		}
