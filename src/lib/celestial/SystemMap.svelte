@@ -195,11 +195,11 @@
 		return { x: cx - focusOffset + a * Math.cos(angle), y: cy + b * Math.sin(angle) }
 	}
 
-	function parentKeyForBody(body: MapBody, primaryStarId: number | null, starIds: Set<number>): EntityKey | null {
-		if (body.parentId != null) {
-			if (starIds.has(body.parentId)) return `star:${body.parentId}` as EntityKey
-			return `body:${body.parentId}` as EntityKey
-		}
+	function parentKeyForBody(body: MapBody, primaryStarId: number | null, _starIds: Set<number>): EntityKey | null {
+		// planetaryBodies.parentId always references another planetary body, never a star.
+		// Star and body ids share no namespace, so don't check starIds here — numeric collisions
+		// between a body id and a star id were rerouting moons under the wrong star.
+		if (body.parentId != null) return `body:${body.parentId}` as EntityKey
 		if (body.starId != null && body.starId !== primaryStarId) return `star:${body.starId}` as EntityKey
 		return null
 	}
@@ -241,10 +241,9 @@
 				if (parentStar) ids.add(keyForBody(parentStar, true))
 			}
 			if (selectedBody.parentId) {
+				// parentId always references a planetary body — never a star.
 				const parentBody = bodies.find(body => body.id === selectedBody.parentId)
 				if (parentBody) ids.add(keyForBody(parentBody, false))
-				const parentStar = stars.find(star => star.id === selectedBody.parentId)
-				if (parentStar) ids.add(keyForBody(parentStar, true))
 			}
 			for (const child of bodies) {
 				if (child.parentId === selectedBody.id) ids.add(keyForBody(child, false))
