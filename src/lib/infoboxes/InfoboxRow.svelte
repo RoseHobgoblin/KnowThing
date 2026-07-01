@@ -11,7 +11,7 @@
 </script>
 
 {#if value}
-	<tr class="border-t border-border-subtle">
+	<tr>
 		<th class="infobox-label">
 			<InlineMarkup text={label} />
 		</th>

@@ -89,7 +89,7 @@
 <InfoboxShell {title} {subtitle} {image} {imageCaption}>
 	{#if hasHeaderImages}
 		<tr>
-			<td colspan="2" class="p-3 border-b border-border-subtle">
+			<td colspan="2" class="p-3">
 				<div class="flex items-start justify-center gap-4 flex-wrap">
 					{#each resolvedHeaderImages as img}
 						<figure class="flex flex-col items-center gap-1 m-0" style="width: {img.width}px;">

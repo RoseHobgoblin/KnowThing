@@ -47,7 +47,7 @@
 		{/if}
 		{#if image}
 			<tr>
-				<td colspan="2" class="text-center p-3 border-b border-border-subtle">
+				<td colspan="2" class="text-center p-3">
 					<MediaImage
 						filename={image}
 						alt={imageCaption || image}

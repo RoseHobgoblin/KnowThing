@@ -4,7 +4,7 @@
 	let { title }: { title: string } = $props()
 </script>
 
-<tr class="border-t border-border">
+<tr >
 	<th colspan="2" class="infobox-section">
 		<InlineMarkup text={title} />
 	</th>
