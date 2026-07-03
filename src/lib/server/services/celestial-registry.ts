@@ -1,6 +1,8 @@
-import { eq, and, isNull, sql } from 'drizzle-orm'
+import { eq, and, inArray, isNull, sql } from 'drizzle-orm'
 import { db } from '$lib/server/db/index.js'
 import {
+	contentLinks,
+	contentRecords,
 	planetaryBodies,
 	starSystems,
 	stars,
@@ -154,6 +156,33 @@ export async function listAllBodyRefs() {
 		})
 		.from(planetaryBodies)
 		.orderBy(planetaryBodies.name)
+}
+
+/**
+ * Wiki pages that link to a celestial body (its "referenced by" / backlinks).
+ * Reads the persisted `content_links` graph — matched on slug since celestial
+ * entities have no shadow row in `content_records` to resolve against.
+ *
+ * We count links in both the `celestial` namespace (explicit `[[Celestial:X]]`)
+ * and the bare `know` namespace (`[[X]]`): a celestial body and its same-slug
+ * Know lore article are the same subject, so a link to either references the body.
+ * The join to `content_records` limits sources to article-backed pages, and the
+ * DISTINCT collapses an article that links both ways into one entry.
+ */
+export async function getBacklinksForCelestial(slug: string) {
+	return db
+		.selectDistinct({
+			slug: contentRecords.slug,
+			title: contentRecords.title,
+			domain: contentRecords.domain,
+		})
+		.from(contentLinks)
+		.innerJoin(contentRecords, eq(contentLinks.sourceId, contentRecords.id))
+		.where(and(
+			inArray(contentLinks.targetDomain, ['celestial', 'know']),
+			sql`LOWER(${contentLinks.targetSlug}) = LOWER(${slug})`,
+		))
+		.orderBy(contentRecords.title)
 }
 
 /** Direct planets of a star (parentId null), ordered by orbital distance. */

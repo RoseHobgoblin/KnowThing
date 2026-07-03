@@ -9,6 +9,7 @@ import {
 	findPlanetBySlugOrPageSlug,
 	findStarBySlugOrPageSlug,
 	findSystemBySlugOrPageSlug,
+	getBacklinksForCelestial,
 	getBodiesForSystemMap,
 	getCalendarsForSystem,
 	getStarsForSystemMap,
@@ -55,6 +56,7 @@ interface CelestialBaseData {
 	isEditMode: false
 	isConfigureMode: boolean
 	infoboxFields: Record<string, string> | null
+	backlinks: Awaited<ReturnType<typeof getBacklinksForCelestial>>
 }
 
 export async function loadCelestialDetail(ctx: CelestialDetailContext): Promise<CelestialDetailData> {
@@ -80,6 +82,7 @@ export async function loadCelestialDetail(ctx: CelestialDetailContext): Promise<
 		const systemBodies = [...await getBodiesForSystemMap(system.id)] as unknown as MapBody[]
 		const systemCalendars = await getCalendarsForSystem(system.id)
 		const infoboxFields = await resolveStructuredData('system', system.slug)
+		const backlinks = await getBacklinksForCelestial(system.slug)
 		return {
 			kind: 'system',
 			body: system,
@@ -89,6 +92,7 @@ export async function loadCelestialDetail(ctx: CelestialDetailContext): Promise<
 			systemBodies,
 			systemCalendars,
 			infoboxFields: infoboxFields ? Object.fromEntries(infoboxFields) : null,
+			backlinks,
 		}
 	}
 
@@ -97,8 +101,8 @@ export async function loadCelestialDetail(ctx: CelestialDetailContext): Promise<
 		if (star.slug !== identifier) {
 			throw redirect(301, canonicalize(star.slug))
 		}
-		const [allSystems, allStars, rawModel, systemPlanets] = await Promise.all([
-			listAllSystemRefs(), listAllStarRefs(), resolveCelestialModel('star', star.slug), getPlanetsForStar(star.id),
+		const [allSystems, allStars, rawModel, systemPlanets, backlinks] = await Promise.all([
+			listAllSystemRefs(), listAllStarRefs(), resolveCelestialModel('star', star.slug), getPlanetsForStar(star.id), getBacklinksForCelestial(star.slug),
 		])
 		// The infobox (for Know-article embeds) is one projection of the model —
 		// derive it here rather than re-fetching, so there's one source of truth.
@@ -114,6 +118,7 @@ export async function loadCelestialDetail(ctx: CelestialDetailContext): Promise<
 			isEditMode: false,
 			isConfigureMode,
 			infoboxFields: infoboxFields ? Object.fromEntries(infoboxFields) : null,
+			backlinks,
 		}
 	}
 
@@ -122,8 +127,8 @@ export async function loadCelestialDetail(ctx: CelestialDetailContext): Promise<
 		if (planet.slug !== identifier) {
 			throw redirect(301, canonicalize(planet.slug))
 		}
-		const [allStars, siblings, rawModel] = await Promise.all([
-			listAllStarRefs(), listAllBodyRefs(), resolveCelestialModel('planet', planet.slug),
+		const [allStars, siblings, rawModel, backlinks] = await Promise.all([
+			listAllStarRefs(), listAllBodyRefs(), resolveCelestialModel('planet', planet.slug), getBacklinksForCelestial(planet.slug),
 		])
 		const model = rawModel?.kind === 'planet' ? rawModel : null
 		const infoboxFields = model ? planetInfoboxFields(model) : null
@@ -140,6 +145,7 @@ export async function loadCelestialDetail(ctx: CelestialDetailContext): Promise<
 			isEditMode: false,
 			isConfigureMode,
 			infoboxFields: infoboxFields ? Object.fromEntries(infoboxFields) : null,
+			backlinks,
 		}
 	}
 

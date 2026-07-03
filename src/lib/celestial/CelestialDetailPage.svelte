@@ -4,6 +4,7 @@
 	import CelestialStatGrid from '$lib/celestial/CelestialStatGrid.svelte'
 	import CelestialFactSheet from '$lib/celestial/CelestialFactSheet.svelte'
 	import CelestialContextPanel from '$lib/celestial/CelestialContextPanel.svelte'
+	import CelestialBacklinks from '$lib/celestial/CelestialBacklinks.svelte'
 	import SystemMap from '$lib/celestial/SystemMap.svelte'
 	import MapControls from '$lib/celestial/MapControls.svelte'
 	import SystemSidebar from '$lib/celestial/SystemSidebar.svelte'
@@ -173,7 +174,7 @@
 					{/if}
 				</div>
 
-				<div class="md:border-l md:border-border-subtle md:pl-4">
+				<div class="space-y-4 md:border-l md:border-border-subtle md:pl-4">
 					<SystemSidebar
 						system={raw}
 						stars={data.systemStars ?? []}
@@ -183,6 +184,7 @@
 						bind:currentAbsoluteDay
 						{selectedBody}
 					/>
+					<CelestialBacklinks links={data.backlinks} />
 				</div>
 			</div>
 		{:else if (data.kind === 'star' || data.kind === 'planet') && data.model}
@@ -192,13 +194,16 @@
 					<div class="min-w-0">
 						<CelestialFactSheet model={data.model} />
 					</div>
-					<CelestialContextPanel
-						model={data.model}
-						bodies={contextBodies}
-						moons={contextMoons}
-						hz={contextHz}
-						selfAu={contextSelfAu}
-					/>
+					<div class="space-y-4">
+						<CelestialContextPanel
+							model={data.model}
+							bodies={contextBodies}
+							moons={contextMoons}
+							hz={contextHz}
+							selfAu={contextSelfAu}
+						/>
+						<CelestialBacklinks links={data.backlinks} />
+					</div>
 				</div>
 			</div>
 		{:else}
