@@ -19,7 +19,7 @@
 </script>
 
 <script lang="ts">
-	import { resolveColor } from './colors.js'
+	import { resolveColor, colorWithAlpha } from './colors.js'
 	import { meanAnomaly, solveKeplerE } from './orbit.js'
 	import type { ScaleMode, LabelMode, TrailMode } from './map-settings.js'
 
@@ -135,6 +135,9 @@
 	let panOffset = $state({ x: 0, y: 0 })
 	let isDragging = $state(false)
 	let dragStart: { x: number, y: number, panX: number, panY: number } | null = null
+	// Tracks whether the current press turned into a pan, so the trailing click that
+	// fires on mouseup doesn't clear the selection after a drag on empty space.
+	let pointerMoved = false
 	const isViewMoved = $derived(zoomLevel !== 1 || panOffset.x !== 0 || panOffset.y !== 0)
 
 	function keyForBody(body: MapBody, isStar: boolean): EntityKey {
@@ -336,11 +339,12 @@
 
 		for (const body of bodies) {
 			const key = keyForBody(body, false)
+			// parentId always references another planetary body, never a star, so it must
+			// not be compared against a star id (their id spaces overlap → wrong routing).
 			const orbitsPrimaryStarDirectly =
 				body.semiMajorAxisAu != null
 				&& (
 					(body.starId != null && body.starId === primaryStarId && body.parentId == null)
-					|| body.parentId === primaryStarId
 					|| (body.starId == null && body.parentId == null)
 				)
 			if (orbitsPrimaryStarDirectly && !seen.has(key)) {
@@ -744,18 +748,18 @@
 			const centerY = CENTER + scene.cameraOffset.y
 
 			const ambient = context.createRadialGradient(centerX, centerY, 0, centerX, centerY, CENTER * 0.85)
-			ambient.addColorStop(0, `${primaryColor}10`)
-			ambient.addColorStop(0.4, `${primaryColor}05`)
-			ambient.addColorStop(1, `${primaryColor}00`)
+			ambient.addColorStop(0, colorWithAlpha(primaryColor, 0.06))
+			ambient.addColorStop(0.4, colorWithAlpha(primaryColor, 0.02))
+			ambient.addColorStop(1, colorWithAlpha(primaryColor, 0))
 			context.fillStyle = ambient
 			context.beginPath()
 			context.arc(centerX, centerY, CENTER * 0.85, 0, Math.PI * 2)
 			context.fill()
 
 			const inner = context.createRadialGradient(centerX, centerY, 0, centerX, centerY, 40)
-			inner.addColorStop(0, `${primaryColor}66`)
-			inner.addColorStop(0.3, `${primaryColor}26`)
-			inner.addColorStop(1, `${primaryColor}00`)
+			inner.addColorStop(0, colorWithAlpha(primaryColor, 0.4))
+			inner.addColorStop(0.3, colorWithAlpha(primaryColor, 0.15))
+			inner.addColorStop(1, colorWithAlpha(primaryColor, 0))
 			context.fillStyle = inner
 			context.beginPath()
 			context.arc(centerX, centerY, 40, 0, Math.PI * 2)
@@ -801,9 +805,9 @@
 			if (position.body.isStar) {
 				const glow = context.createRadialGradient(position.x, position.y, 0, position.x, position.y, 30)
 				const color = resolveColor(position.body.color, '#FFE088')
-				glow.addColorStop(0, `${color}4d`)
-				glow.addColorStop(0.3, `${color}1a`)
-				glow.addColorStop(1, `${color}00`)
+				glow.addColorStop(0, colorWithAlpha(color, 0.3))
+				glow.addColorStop(0.3, colorWithAlpha(color, 0.1))
+				glow.addColorStop(1, colorWithAlpha(color, 0))
 				context.save()
 				context.globalAlpha = bodyOpacity(key)
 				context.fillStyle = glow
@@ -868,9 +872,9 @@
 			if (satellite.body.isStar) {
 				const starColor = resolveColor(satellite.body.color, '#FFE088')
 				const glow = context.createRadialGradient(satellite.x, satellite.y, 0, satellite.x, satellite.y, 20)
-				glow.addColorStop(0, `${starColor}4d`)
-				glow.addColorStop(0.3, `${starColor}1a`)
-				glow.addColorStop(1, `${starColor}00`)
+				glow.addColorStop(0, colorWithAlpha(starColor, 0.3))
+				glow.addColorStop(0.3, colorWithAlpha(starColor, 0.1))
+				glow.addColorStop(1, colorWithAlpha(starColor, 0))
 				context.save()
 				context.globalAlpha = bodyOpacity(key)
 				context.fillStyle = glow
@@ -1099,6 +1103,7 @@
 		if (isDragging && dragStart) {
 			const rect = canvasElement?.getBoundingClientRect()
 			if (!rect) return
+			if (Math.abs(event.clientX - dragStart.x) + Math.abs(event.clientY - dragStart.y) > 3) pointerMoved = true
 			const pxScale = SIZE / rect.width
 			panOffset = {
 				x: dragStart.panX + (event.clientX - dragStart.x) * pxScale / zoomLevel,
@@ -1123,6 +1128,7 @@
 		const point = eventPoint(event)
 		if (point && hitTest(point)) return
 		isDragging = true
+		pointerMoved = false
 		dragStart = {
 			x: event.clientX,
 			y: event.clientY,
@@ -1137,6 +1143,11 @@
 	}
 
 	function handleClick(event: MouseEvent) {
+		// A drag on empty space ends with a click event — don't treat it as a deselect.
+		if (pointerMoved) {
+			pointerMoved = false
+			return
+		}
 		const point = eventPoint(event)
 		if (!point) return
 		const target = hitTest(point)

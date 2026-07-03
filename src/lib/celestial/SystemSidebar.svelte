@@ -2,7 +2,8 @@
 	import type { MapBody } from './SystemMap.svelte'
 	import type { CalendarConfig } from '$lib/calendar/types.js'
 	import { resolveColor } from './colors.js'
-	import { resolveDisplay, absoluteDay, dateFromAbsolute } from '$lib/calendar/date-math.js'
+	import { deriveSystemType } from './compute.js'
+	import { resolveDisplay, dateFromAbsolute } from '$lib/calendar/date-math.js'
 	import Select from '$lib/components/ui/Select.svelte'
 	import CalendarWidget from '$lib/calendar/CalendarWidget.svelte'
 	import Star from 'phosphor-svelte/lib/Star'
@@ -21,7 +22,14 @@
 		currentAbsoluteDay = $bindable(0),
 		selectedBody = null,
 	}: {
-		system: { name: string, systemType?: string | null, system_type?: string | null }
+		system: {
+			name: string
+			systemType?: string | null
+			system_type?: string | null
+			distanceLy?: number | null
+			formationAge?: string | null
+			designations?: string | null
+		}
 		stars: MapBody[]
 		bodies: MapBody[]
 		systemSlug: string
@@ -35,7 +43,7 @@
 	const currentDate = $derived(selectedCalendar ? dateFromAbsolute(selectedCalendar.static_data, currentAbsoluteDay) : null)
 	const resolved = $derived(selectedCalendar && currentDate ? resolveDisplay(selectedCalendar, currentDate) : null)
 
-	const systemType = $derived(system.systemType ?? system.system_type ?? 'single')
+	const systemType = $derived(deriveSystemType(stars.length, system.systemType ?? system.system_type))
 	const primaryStar = $derived(stars.find(s => !s.parentStarId) ?? stars[0])
 
 	function planetsForStar(starId: number) {
@@ -83,6 +91,24 @@
 				<div class="flex justify-between">
 					<span>Bodies</span>
 					<span class="text-body font-medium">{totalBodies}</span>
+				</div>
+			{/if}
+			{#if system.distanceLy != null}
+				<div class="flex justify-between">
+					<span>Distance</span>
+					<span class="text-body font-medium">{system.distanceLy.toLocaleString('en-US', { maximumFractionDigits: 2 })} ly</span>
+				</div>
+			{/if}
+			{#if system.formationAge}
+				<div class="flex justify-between gap-4">
+					<span>Age</span>
+					<span class="text-body font-medium text-right">{system.formationAge}</span>
+				</div>
+			{/if}
+			{#if system.designations}
+				<div class="flex justify-between gap-4">
+					<span>Designations</span>
+					<span class="text-body font-medium text-right">{system.designations}</span>
 				</div>
 			{/if}
 		</div>
