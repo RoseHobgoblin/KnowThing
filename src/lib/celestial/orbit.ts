@@ -26,6 +26,9 @@ export function meanAnomaly(
  */
 export function solveKeplerE(M: number, ecc: number): number {
 	if (ecc < 1e-12) return M
+	// Guard against unbound/degenerate orbits (e ≥ 1) that would divide by zero
+	// below. The data layer rejects these, but legacy rows might still carry them.
+	if (ecc >= 1) ecc = 0.999
 	let E = M + ecc * Math.sin(M) // good initial guess
 	for (let step = 0; step < 15; step++) {
 		const dE = (E - ecc * Math.sin(E) - M) / (1 - ecc * Math.cos(E))
