@@ -92,13 +92,11 @@ export function validateBodyPhysics(params: {
 		warnings.push({ field: 'orbitalPeriodDays', message: 'Orbital period must be positive', severity: 'impossible' })
 	}
 
-	// Rotation vs orbit: tidally impossible?
-	if (rotationPeriodS != null && orbitalPeriodDays != null) {
-		const orbitalS = orbitalPeriodDays * 86_400
-		// A rotation faster than ~1 hour is likely to tear the body apart
-		if (rotationPeriodS < 3600 && massKg != null && massKg > 1e20) {
-			warnings.push({ field: 'rotationPeriodS', message: 'Rotation period under 1 hour — centrifugal forces would likely exceed gravity for a body this massive', severity: 'warning' })
-		}
+	// Rotational break-up: a rotation faster than ~1 hour would tear a massive body
+	// apart. This depends only on spin and mass, not on the orbit, so don't gate it
+	// on an orbital period being present (a newly-created body often has none yet).
+	if (rotationPeriodS != null && rotationPeriodS < 3600 && massKg != null && massKg > 1e20) {
+		warnings.push({ field: 'rotationPeriodS', message: 'Rotation period under 1 hour — centrifugal forces would likely exceed gravity for a body this massive', severity: 'warning' })
 	}
 
 	// Axial tilt

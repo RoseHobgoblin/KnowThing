@@ -65,6 +65,33 @@ export async function getChildren(bodyId: number) {
 		.where(eq(planetaryBodies.parentId, bodyId))
 }
 
+/**
+ * Check whether making `parentStarId` the parent of `starId` would create a
+ * companion cycle — i.e. `starId` already sits at or above `parentStarId` in the
+ * parent_star_id chain. Walks up from the prospective parent; a hit means the
+ * link closes a loop. Mirrors `isDescendant` for the star hierarchy so multi-hop
+ * cycles (A→B→C→A), not just direct 2-cycles, are rejected.
+ */
+export async function starCycleWouldForm(starId: number, parentStarId: number): Promise<boolean> {
+	if (starId === parentStarId) return true
+
+	const result = await db.execute(sql`
+		WITH RECURSIVE ancestry AS (
+			SELECT id, parent_star_id, 0 AS depth
+			FROM stars
+			WHERE id = ${parentStarId}
+			UNION ALL
+			SELECT s.id, s.parent_star_id, a.depth + 1
+			FROM ancestry a
+			JOIN stars s ON s.id = a.parent_star_id
+			WHERE a.depth < 10
+		)
+		SELECT 1 FROM ancestry WHERE id = ${starId} LIMIT 1
+	`)
+
+	return result.length > 0
+}
+
 /** Check if targetId is a descendant of bodyId (circular reference prevention) */
 export async function isDescendant(bodyId: number, targetId: number): Promise<boolean> {
 	if (bodyId === targetId) return true

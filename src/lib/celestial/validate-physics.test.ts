@@ -63,6 +63,20 @@ describe('validateBodyPhysics — Hill-sphere containment', () => {
 	})
 })
 
+describe('validateBodyPhysics — rotational break-up', () => {
+	it('flags a fast-spinning massive body even with no orbital period entered', () => {
+		// Regression: the warning used to be gated behind orbitalPeriodDays != null,
+		// so a newly-created body (no period yet) never got the check.
+		const warnings = body({ rotationPeriodS: 1800, massKg: EARTH_MASS, orbitalPeriodDays: null })
+		expect(warnings.some(w => w.field === 'rotationPeriodS' && /under 1 hour/.test(w.message))).toBe(true)
+	})
+
+	it('does not flag a slow rotator', () => {
+		const warnings = body({ rotationPeriodS: 86_400, massKg: EARTH_MASS })
+		expect(warnings.some(w => w.field === 'rotationPeriodS')).toBe(false)
+	})
+})
+
 describe('validateStarPhysics — temperature vs spectral class', () => {
 	it('flags a G-class star that is far too hot', () => {
 		const warnings = validateStarPhysics({

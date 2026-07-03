@@ -1,4 +1,4 @@
-import { eq, and, inArray, isNull, sql } from 'drizzle-orm'
+import { eq, and, isNull, sql } from 'drizzle-orm'
 import { db } from '$lib/server/db/index.js'
 import {
 	contentLinks,
@@ -124,11 +124,11 @@ export async function getStarSystemId(starId: number) {
 	return parentStar?.systemId ?? null
 }
 
-export async function listAllSystemRefs() {
+export async function listAllSystemReferences() {
 	return db.select({ id: starSystems.id, name: starSystems.name }).from(starSystems).orderBy(starSystems.name)
 }
 
-export async function listAllStarRefs() {
+export async function listAllStarReferences() {
 	return db
 		.select({
 			id: stars.id,
@@ -142,7 +142,7 @@ export async function listAllStarRefs() {
 		.orderBy(stars.name)
 }
 
-export async function listAllBodyRefs() {
+export async function listAllBodyReferences() {
 	return db
 		.select({
 			id: planetaryBodies.id,
@@ -164,11 +164,13 @@ export async function listAllBodyRefs() {
  * Reads the persisted `content_links` graph — matched on slug since celestial
  * entities have no shadow row in `content_records` to resolve against.
  *
- * We count links in both the `celestial` namespace (explicit `[[Celestial:X]]`)
- * and the bare `know` namespace (`[[X]]`): a celestial body and its same-slug
- * Know lore article are the same subject, so a link to either references the body.
- * The join to `content_records` limits sources to article-backed pages, and the
- * DISTINCT collapses an article that links both ways into one entry.
+ * Match only the `celestial` namespace (explicit `[[Celestial:X]]`). Bare
+ * `[[X]]` links live in the default `know` namespace and are NOT counted: with
+ * no shadow record there is no subject identity, only slug equality, so a Know
+ * article that merely shares a slug (body "Mercury" vs. the deity/element) would
+ * surface as a false backlink. The prose migration already repoints genuinely
+ * celestial-intended links into the `celestial` namespace, so this stays complete.
+ * The join to `content_records` limits sources to article-backed pages.
  */
 export async function getBacklinksForCelestial(slug: string) {
 	return db
@@ -180,10 +182,27 @@ export async function getBacklinksForCelestial(slug: string) {
 		.from(contentLinks)
 		.innerJoin(contentRecords, eq(contentLinks.sourceId, contentRecords.id))
 		.where(and(
-			inArray(contentLinks.targetDomain, ['celestial', 'know']),
+			eq(contentLinks.targetDomain, 'celestial'),
 			sql`LOWER(${contentLinks.targetSlug}) = LOWER(${slug})`,
 		))
 		.orderBy(contentRecords.title)
+}
+
+/**
+ * Just the columns needed to derive a star's habitable zone, by id. Lets a
+ * planet page compute its parent star's HZ without building the star's full
+ * model (which would run discarded planet/satellite COUNT subqueries).
+ */
+export async function getStarHzInputs(starId: number) {
+	const [row] = await db
+		.select({
+			luminosityW: stars.luminosityW,
+			radiusM: stars.radiusM,
+			temperatureK: stars.temperatureK,
+		})
+		.from(stars)
+		.where(eq(stars.id, starId))
+	return row ?? null
 }
 
 /** Direct planets of a star (parentId null), ordered by orbital distance. */

@@ -5,9 +5,11 @@ import {
 	computeEscapeVelocity,
 	computeOrbitalPeriodDays,
 	computeHabitableZoneAu,
+	computeHillSphereAu,
 	computeLuminosity,
 	deriveBodyOrbitalFields,
 	deriveBodyFields,
+	deriveHabitableZoneAu,
 	deriveSystemType,
 } from './compute.js'
 
@@ -52,6 +54,42 @@ describe('computeLuminosity + habitable zone', () => {
 		const hz = computeHabitableZoneAu(SOLAR_LUMINOSITY_W)
 		expect(hz.inner).toBeLessThan(1)
 		expect(hz.outer).toBeGreaterThan(1)
+	})
+})
+
+describe('computeHillSphereAu', () => {
+	it('applies the (1 − e) periapsis factor for eccentric orbits', () => {
+		const circular = computeHillSphereAu(1, EARTH_MASS_KG, SOLAR_MASS_KG)
+		const eccentric = computeHillSphereAu(1, EARTH_MASS_KG, SOLAR_MASS_KG, 0.25)
+		expect(eccentric).toBeCloseTo(circular * 0.75, 10)
+	})
+
+	it('treats a null/omitted/out-of-range eccentricity as circular', () => {
+		const circular = computeHillSphereAu(1, EARTH_MASS_KG, SOLAR_MASS_KG)
+		expect(computeHillSphereAu(1, EARTH_MASS_KG, SOLAR_MASS_KG, null)).toBe(circular)
+		expect(computeHillSphereAu(1, EARTH_MASS_KG, SOLAR_MASS_KG, 1)).toBe(circular)
+		expect(computeHillSphereAu(1, EARTH_MASS_KG, SOLAR_MASS_KG, -0.3)).toBe(circular)
+	})
+})
+
+describe('deriveHabitableZoneAu', () => {
+	it('uses explicit luminosity when present', () => {
+		const hz = deriveHabitableZoneAu(SOLAR_LUMINOSITY_W, null, null)
+		expect(hz).not.toBeNull()
+		expect(hz!.inner).toBeLessThan(1)
+		expect(hz!.outer).toBeGreaterThan(1)
+	})
+
+	it('falls back to Stefan-Boltzmann from radius + temperature', () => {
+		const hz = deriveHabitableZoneAu(null, 6.9634e8, 5778)
+		expect(hz).not.toBeNull()
+		expect(hz!.inner).toBeLessThan(1.2)
+		expect(hz!.outer).toBeGreaterThan(0.9)
+	})
+
+	it('is null when neither luminosity nor radius+temperature is available', () => {
+		expect(deriveHabitableZoneAu(null, null, null)).toBeNull()
+		expect(deriveHabitableZoneAu(null, 6.9634e8, null)).toBeNull()
 	})
 })
 

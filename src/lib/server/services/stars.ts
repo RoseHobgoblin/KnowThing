@@ -3,8 +3,9 @@ import { eq, sql } from 'drizzle-orm'
 import type { z } from 'zod'
 import { db } from '$lib/server/db/index.js'
 import { stars, starSystems } from '$lib/server/db/schema.js'
-import { createStarSchema, type updateStarSchema } from '$lib/celestial/schema.js'
+import { createStarSchema, legacySafeEccentricity, type updateStarSchema } from '$lib/celestial/schema.js'
 import { computeLuminosity, computeOrbitalPeriodDays } from '$lib/celestial/compute.js'
+import { starCycleWouldForm } from '$lib/server/celestial/tree.js'
 import {
 	deleteCelestialEntity,
 	applyFieldUpdates,
@@ -16,7 +17,11 @@ type CreateStarInput = z.infer<typeof createStarSchema>
 type UpdateStarInput = z.infer<typeof updateStarSchema>
 
 function assertMergedStarValid(current: typeof stars.$inferSelect, patch: UpdateStarInput) {
-	const merged = createStarSchema.safeParse({ ...current, ...patch })
+	const merged = createStarSchema.safeParse({
+		...current,
+		eccentricity: legacySafeEccentricity(current.eccentricity),
+		...patch,
+	})
 	if (!merged.success) {
 		throw error(400, merged.error.issues[0].message)
 	}
@@ -40,7 +45,7 @@ export async function getStarBySlug(slug: string) {
 		FROM stars s
 		WHERE s.slug = ${slug}
 	`)
-	if (!result.length) throw error(404, 'Star not found')
+	if (result.length === 0) throw error(404, 'Star not found')
 	return result[0]
 }
 
@@ -124,11 +129,15 @@ export async function updateStar(slug: string, data: UpdateStarInput) {
 	if (data.parentStarId != null) {
 		if (data.parentStarId === current.id) throw error(400, 'A star cannot orbit itself')
 		const [parent] = await db
-			.select({ id: stars.id, parentStarId: stars.parentStarId })
+			.select({ id: stars.id })
 			.from(stars)
 			.where(eq(stars.id, data.parentStarId))
 		if (!parent) throw error(400, 'Parent star not found')
-		if (parent.parentStarId === current.id) throw error(400, 'These stars cannot orbit each other')
+		// Walk the full parent chain, not just the direct parent, so a multi-hop
+		// companion cycle (A→B→C→A) can't form.
+		if (await starCycleWouldForm(current.id, data.parentStarId)) {
+			throw error(400, 'These stars cannot orbit each other (circular reference)')
+		}
 	}
 
 	const setClause: Record<string, unknown> = { updatedAt: new Date() }
@@ -152,19 +161,19 @@ export async function updateStar(slug: string, data: UpdateStarInput) {
 	// Route "lock to override" fields into the extra overflow, preserving other keys.
 	setClause.extra = mergeOverrideExtras(setClause.extra ?? current.extra, data as Record<string, unknown>, STAR_OVERRIDE_MAP)
 
-	const finalRadiusM = data.radiusM !== undefined ? data.radiusM : current.radiusM
-	const finalTempK = data.temperatureK !== undefined ? data.temperatureK : current.temperatureK
+	const finalRadiusM = data.radiusM === undefined ? current.radiusM : data.radiusM
+	const finalTemporaryK = data.temperatureK === undefined ? current.temperatureK : data.temperatureK
 	// Only (re)derive luminosity when it has never been set or when the inputs actually
 	// change — otherwise a partial patch of an unrelated field would clobber a stored value.
-	const radiusOrTempChanged = data.radiusM !== undefined || data.temperatureK !== undefined
-	if (data.luminosityW === undefined && (current.luminosityW == null || radiusOrTempChanged)
-		&& finalRadiusM != null && finalTempK != null && finalRadiusM > 0 && finalTempK > 0) {
-		setClause.luminosityW = computeLuminosity(finalRadiusM, finalTempK)
+	const radiusOrTemporaryChanged = data.radiusM !== undefined || data.temperatureK !== undefined
+	if (data.luminosityW === undefined && (current.luminosityW == null || radiusOrTemporaryChanged)
+		&& finalRadiusM != null && finalTemporaryK != null && finalRadiusM > 0 && finalTemporaryK > 0) {
+		setClause.luminosityW = computeLuminosity(finalRadiusM, finalTemporaryK)
 	}
 
-	const finalMassKg = data.massKg !== undefined ? data.massKg : current.massKg
-	const finalAu = data.semiMajorAxisAu !== undefined ? data.semiMajorAxisAu : current.semiMajorAxisAu
-	const finalOrbitalDays = data.orbitalPeriodDays !== undefined ? data.orbitalPeriodDays : current.orbitalPeriodDays
+	const finalMassKg = data.massKg === undefined ? current.massKg : data.massKg
+	const finalAu = data.semiMajorAxisAu === undefined ? current.semiMajorAxisAu : data.semiMajorAxisAu
+	const finalOrbitalDays = data.orbitalPeriodDays === undefined ? current.orbitalPeriodDays : data.orbitalPeriodDays
 	if (finalOrbitalDays == null && finalAu != null && finalAu > 0 && current.parentStarId != null) {
 		const [parentStar] = await db.select({ massKg: stars.massKg }).from(stars).where(eq(stars.id, current.parentStarId))
 		if (parentStar?.massKg) {
