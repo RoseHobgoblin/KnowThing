@@ -3,7 +3,6 @@
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import Input from '$lib/components/ui/Input.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
-	import ConfigureFooter from '$lib/components/ConfigureFooter.svelte'
 	import { celestialConfigureBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import { goto } from '$app/navigation'
@@ -35,7 +34,9 @@
 
 	type CelestialCrumb = { label: string, href: string }
 	type CelestialSystemOption = { id: number, name: string }
+	type CelestialStarOption = { id: number, name: string, systemId?: number | null }
 	type StarRecord = {
+		id?: number
 		name: string
 		slug: string
 		spectralType?: string | null
@@ -66,7 +67,9 @@
 		metallicity?: string | null
 		companion?: string | null
 		systemId?: number | null
+		parentStarId?: number | null
 		description?: string | null
+		extra?: Record<string, unknown> | null
 	}
 
 	type StarDraftSnapshot = {
@@ -94,6 +97,7 @@
 		metallicity: string
 		companion: string
 		systemIdStr: string
+		parentStarIdStr: string
 		description: string
 		content: string
 	}
@@ -124,6 +128,7 @@
 			metallicity: starRecord.metallicity ?? '',
 			companion: starRecord.companion ?? '',
 			systemIdStr: starRecord.systemId ? String(starRecord.systemId) : '',
+			parentStarIdStr: starRecord.parentStarId ? String(starRecord.parentStarId) : '',
 			description: starRecord.description ?? '',
 			content: articleContent,
 		}
@@ -132,12 +137,14 @@
 	let {
 		star,
 		allSystems,
+		allStars = [],
 		wikiContent,
 		contentRecordId,
 		parentCrumbs = [],
 	}: {
 		star: StarRecord
 		allSystems: CelestialSystemOption[]
+		allStars?: CelestialStarOption[]
 		wikiContent: string
 		contentRecordId: number | null
 		parentCrumbs?: CelestialCrumb[]
@@ -148,6 +155,15 @@
 	const initialParentCrumbs = $state.snapshot(untrack(() => parentCrumbs))
 	const initialWikiContent = untrack(() => wikiContent ?? '')
 	const initialDraft = buildInitialStarDraft(initialStar, initialWikiContent)
+
+	// Hydrate "lock to override" fields from the persisted `extra` overflow so the
+	// override UI round-trips instead of resetting on every reload.
+	const initialExtra = (initialStar.extra ?? {}) as Record<string, unknown>
+	const extraString = (key: string) => (typeof initialExtra[key] === 'string' ? (initialExtra[key] as string) : null)
+	const initialDensityOverride = extraString('density')
+	const initialGravityOverride = extraString('surface_gravity')
+	const initialEscapeOverride = extraString('escape_velocity')
+	const initialLuminosityOverride = extraString('luminosity')
 
 	// Celestial canonical URLs are flat /Celestial:Slug — parent path is for breadcrumbs only.
 	const viewPath = $derived(`/Celestial:${initialStar.slug}`)
@@ -180,17 +196,18 @@
 	let companion = $state(initialDraft.companion)
 
 	let systemIdStr = $state(initialDraft.systemIdStr)
+	let parentStarIdStr = $state(initialDraft.parentStarIdStr)
 	let description = $state(initialDraft.description)
 
 	// Lock states for overridable derived fields
-	let densityUnlocked = $state(false)
-	let densityOverride = $state<string | null>(null)
-	let gravityUnlocked = $state(false)
-	let gravityOverride = $state<string | null>(null)
-	let escapeUnlocked = $state(false)
-	let escapeOverride = $state<string | null>(null)
-	let luminosityUnlocked = $state(false)
-	let luminosityOverride = $state<string | null>(null)
+	let densityUnlocked = $state(initialDensityOverride != null)
+	let densityOverride = $state<string | null>(initialDensityOverride)
+	let gravityUnlocked = $state(initialGravityOverride != null)
+	let gravityOverride = $state<string | null>(initialGravityOverride)
+	let escapeUnlocked = $state(initialEscapeOverride != null)
+	let escapeOverride = $state<string | null>(initialEscapeOverride)
+	let luminosityUnlocked = $state(initialLuminosityOverride != null)
+	let luminosityOverride = $state<string | null>(initialLuminosityOverride)
 
 	// Always-derived display fields
 	const massDisplay = $derived(massKg ? formatMass(massKg) : null)
@@ -247,7 +264,39 @@
 	let saving = $state(false)
 	let saveError = $state('')
 	let savedAt = $state<Date | null>(null)
-	let initialSnapshot = JSON.stringify(initialDraft)
+	// initialSnapshot MUST mirror currentSnapshot's exact key set and order, or the
+	// form reads as permanently dirty and the unsaved-changes guard fires on exit.
+	let initialSnapshot = JSON.stringify({
+		name: initialDraft.name,
+		slug: initialDraft.slug,
+		spectralType: initialDraft.spectralType,
+		massKg: initialDraft.massKg,
+		radiusM: initialDraft.radiusM,
+		luminosityW: initialDraft.luminosityW,
+		luminosityVisual: initialDraft.luminosityVisual,
+		temperatureK: initialDraft.temperatureK,
+		age: initialDraft.age,
+		color: initialDraft.color,
+		rotationPeriodS: initialDraft.rotationPeriodS,
+		axialTilt: initialDraft.axialTilt,
+		orbitalPeriodDays: initialDraft.orbitalPeriodDays,
+		semiMajorAxisAu: initialDraft.semiMajorAxisAu,
+		eccentricity: initialDraft.eccentricity,
+		epochPhase: initialDraft.epochPhase,
+		apparentMagnitude: initialDraft.apparentMagnitude,
+		absoluteMagnitude: initialDraft.absoluteMagnitude,
+		angularDiameter: initialDraft.angularDiameter,
+		metallicity: initialDraft.metallicity,
+		companion: initialDraft.companion,
+		systemIdStr: initialDraft.systemIdStr,
+		parentStarIdStr: initialDraft.parentStarIdStr,
+		description: initialDraft.description,
+		densityUnlocked: initialDensityOverride != null, densityOverride: initialDensityOverride,
+		gravityUnlocked: initialGravityOverride != null, gravityOverride: initialGravityOverride,
+		escapeUnlocked: initialEscapeOverride != null, escapeOverride: initialEscapeOverride,
+		luminosityUnlocked: initialLuminosityOverride != null, luminosityOverride: initialLuminosityOverride,
+		content: initialDraft.content,
+	})
 	const currentSnapshot = $derived(JSON.stringify({
 		name,
 		slug,
@@ -271,6 +320,7 @@
 		metallicity,
 		companion,
 		systemIdStr,
+		parentStarIdStr,
 		description,
 		densityUnlocked, densityOverride,
 		gravityUnlocked, gravityOverride,
@@ -298,6 +348,7 @@
 			angularDiameter: angularDiameter || null,
 			companion: companion || null,
 			systemId: systemIdStr ? Number(systemIdStr) : null,
+			parentStarId: parentStarIdStr ? Number(parentStarIdStr) : null,
 			description,
 		})
 
@@ -309,6 +360,22 @@
 		{ value: '', label: 'None' },
 		...allSystems.map(system => ({ value: String(system.id), label: system.name })),
 	])
+
+	// A companion star orbits another star in the same system; you can't be your own
+	// parent, and the pair must share a system.
+	const parentStarItems = $derived<Array<{ value: string, label: string }>>([
+		{ value: '', label: 'None (primary star)' },
+		...allStars
+			.filter(option => option.id !== initialStar.id)
+			.filter(option => (systemIdStr ? String(option.systemId ?? '') === systemIdStr : false))
+			.map(option => ({ value: String(option.id), label: option.name })),
+	])
+
+	// Clear an orphaned parent selection when the system changes out from under it.
+	$effect(() => {
+		if (!parentStarIdStr) return
+		if (!parentStarItems.some(item => item.value === parentStarIdStr)) parentStarIdStr = ''
+	})
 
 	$effect(() => {
 		if ($page.data.permissions !== undefined) {
@@ -341,16 +408,17 @@
 		metallicity = initialDraft.metallicity
 		companion = initialDraft.companion
 		systemIdStr = initialDraft.systemIdStr
+		parentStarIdStr = initialDraft.parentStarIdStr
 		description = initialDraft.description
 		content = initialDraft.content
-		densityUnlocked = false
-		densityOverride = null
-		gravityUnlocked = false
-		gravityOverride = null
-		escapeUnlocked = false
-		escapeOverride = null
-		luminosityUnlocked = false
-		luminosityOverride = null
+		densityUnlocked = initialDensityOverride != null
+		densityOverride = initialDensityOverride
+		gravityUnlocked = initialGravityOverride != null
+		gravityOverride = initialGravityOverride
+		escapeUnlocked = initialEscapeOverride != null
+		escapeOverride = initialEscapeOverride
+		luminosityUnlocked = initialLuminosityOverride != null
+		luminosityOverride = initialLuminosityOverride
 		editSummary = ''
 		saveError = ''
 	}
@@ -374,10 +442,10 @@
 					mass: massDisplay,
 					radiusM,
 					radius: radiusDisplay,
-					density: densityUnlocked ? densityOverride : undefined,
-					surfaceGravity: gravityUnlocked ? gravityOverride : undefined,
-					escapeVelocity: escapeUnlocked ? escapeOverride : undefined,
-					luminosity: luminosityUnlocked ? luminosityOverride : undefined,
+					density: densityUnlocked ? densityOverride : null,
+					surfaceGravity: gravityUnlocked ? gravityOverride : null,
+					escapeVelocity: escapeUnlocked ? escapeOverride : null,
+					luminosity: luminosityUnlocked ? luminosityOverride : null,
 					luminosityW,
 					luminosityVisual: luminosityVisual || null,
 					temperature: tempDisplay,
@@ -540,7 +608,13 @@
 			<section class="bg-raised border border-border-subtle p-5 space-y-4">
 				<p class="text-xs text-faint">For binary or multiple star systems. Leave blank for single stars.</p>
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-					<Input label="Companion" bind:value={companion} placeholder="Binary partner name" hint="Display name of the binary partner. Informational only — the actual orbital relationship is set via the parent star field." />
+					<Select
+						label="Orbits Star"
+						type="single"
+						bind:value={parentStarIdStr}
+						items={parentStarItems}
+					/>
+					<Input label="Companion" bind:value={companion} placeholder="Binary partner name" hint="Display name of the binary partner, shown in the infobox. The orbital hierarchy itself is set by the “Orbits Star” field." />
 					<Input label="Orbital Period (days)" type="number" bind:value={orbitalPeriodDays} step="any" placeholder="79.91" hint="Orbital period in days for binary/multiple systems. Leave blank to auto-derive from semi-major axis and combined mass." />
 					<DerivedField label="Orbital Period" value={computedDisplay.orbitalPeriod} hint="Human-readable period, formatted from the days value." />
 					<Input label="Semi-major Axis (AU)" type="number" bind:value={semiMajorAxisAu} step="any" placeholder="23.4" hint="Half the longest diameter of the binary orbit, in AU. Determines the orbit size on the system map." error={semiMajorAxisAu !== null && semiMajorAxisAu < 0 ? 'Must be 0 or greater' : ''} />

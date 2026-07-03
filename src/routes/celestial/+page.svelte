@@ -12,13 +12,13 @@
 	import { urlSlugify } from '$lib/utils/slugify.js'
 	import { celestialPresets } from '$lib/celestial/presets.js'
 	import type { CelestialPreset, BodyPreset } from '$lib/celestial/presets.js'
+	import { deriveSystemType } from '$lib/celestial/compute.js'
 	import { celestialRegistryBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import SunDim from 'phosphor-svelte/lib/SunDim'
 	import StarIcon from 'phosphor-svelte/lib/Star'
 	import Planet from 'phosphor-svelte/lib/Planet'
 	import Moon from 'phosphor-svelte/lib/Moon'
 	import GearSix from 'phosphor-svelte/lib/GearSix'
-	import PencilSimple from 'phosphor-svelte/lib/PencilSimple'
 	import X from 'phosphor-svelte/lib/X'
 
 	let { data }: { data: PageData } = $props()
@@ -303,11 +303,11 @@
 						<div class="flex items-center gap-2">
 							<SunDim size={20} weight="fill" class="text-accent" />
 							<a href="/Celestial:{system.slug}" class="text-heading font-bold text-lg transition-colors hover:text-link">{system.name}</a>
-							<span class="text-xs text-faint">{system.systemType} · {system.starCount} {system.starCount === 1 ? 'star' : 'stars'} · {system.planetCount} {system.planetCount === 1 ? 'planet' : 'planets'}</span>
+							<span class="text-xs text-faint">{deriveSystemType(system.starCount, system.systemType)} · {system.starCount} {system.starCount === 1 ? 'star' : 'stars'} · {system.planetCount} {system.planetCount === 1 ? 'planet' : 'planets'}</span>
 						</div>
-						{#if permissions.canEditContent}
+						{#if permissions.canConfigureCelestial}
 							<div class="flex items-center gap-3 text-xs">
-								<a href="/Celestial:{system.slug}/edit" class="text-link transition-colors flex items-center gap-1 hover:text-link-hover"><PencilSimple size={12} weight="fill" />Edit</a>
+								<a href="/Celestial:{system.slug}/configure" class="text-link transition-colors flex items-center gap-1 hover:text-link-hover"><GearSix size={12} weight="fill" />Configure</a>
 								<button onclick={() => deleteItem('system', system.slug, system.name)} class="text-error transition-colors hover:text-error-hover">Delete</button>
 							</div>
 						{/if}

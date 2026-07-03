@@ -4,7 +4,6 @@
 	import Input from '$lib/components/ui/Input.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
 	import Checkbox from '$lib/components/ui/Checkbox.svelte'
-	import ConfigureFooter from '$lib/components/ConfigureFooter.svelte'
 	import { celestialConfigureBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import { goto } from '$app/navigation'
@@ -73,6 +72,7 @@
 		albedo?: string | null
 		satellites?: number | null
 		hasRings?: boolean | null
+		extra?: Record<string, unknown> | null
 	}
 
 	type BodyDraftSnapshot = {
@@ -170,6 +170,13 @@
 	const initialWikiContent = untrack(() => wikiContent ?? '')
 	const initialDraft = buildInitialBodyDraft(initialBody, initialWikiContent)
 
+	// Hydrate "lock to override" fields from persisted `extra` so overrides round-trip.
+	const initialExtra = (initialBody.extra ?? {}) as Record<string, unknown>
+	const extraString = (key: string) => (typeof initialExtra[key] === 'string' ? (initialExtra[key] as string) : null)
+	const initialDensityOverride = extraString('density')
+	const initialGravityOverride = extraString('surface_gravity')
+	const initialEscapeOverride = extraString('escape_velocity')
+
 	// Celestial canonical URLs are flat /Celestial:Slug — parent path is for breadcrumbs only.
 	const viewPath = $derived(`/Celestial:${initialBody.slug}`)
 
@@ -205,12 +212,12 @@
 	let hasRings = $state(initialDraft.hasRings)
 
 	// Lock states for overridable derived fields
-	let densityUnlocked = $state(false)
-	let densityOverride = $state<string | null>(null)
-	let gravityUnlocked = $state(false)
-	let gravityOverride = $state<string | null>(null)
-	let escapeUnlocked = $state(false)
-	let escapeOverride = $state<string | null>(null)
+	let densityUnlocked = $state(initialDensityOverride != null)
+	let densityOverride = $state<string | null>(initialDensityOverride)
+	let gravityUnlocked = $state(initialGravityOverride != null)
+	let gravityOverride = $state<string | null>(initialGravityOverride)
+	let escapeUnlocked = $state(initialEscapeOverride != null)
+	let escapeOverride = $state<string | null>(initialEscapeOverride)
 	let periodUnlocked = $state(initialDraft.orbitalPeriodDays != null)
 	let periodOverride = $state<number | string | null>(initialDraft.orbitalPeriodDays)
 
@@ -246,12 +253,12 @@
 	let savedAt = $state<Date | null>(null)
 	let initialSnapshot = $state(serializeDirtySnapshot({
 		...initialDraft,
-		densityUnlocked: false,
-		densityOverride: null,
-		gravityUnlocked: false,
-		gravityOverride: null,
-		escapeUnlocked: false,
-		escapeOverride: null,
+		densityUnlocked: initialDensityOverride != null,
+		densityOverride: initialDensityOverride,
+		gravityUnlocked: initialGravityOverride != null,
+		gravityOverride: initialGravityOverride,
+		escapeUnlocked: initialEscapeOverride != null,
+		escapeOverride: initialEscapeOverride,
 		periodUnlocked: initialDraft.orbitalPeriodDays != null,
 		periodOverride: initialDraft.orbitalPeriodDays,
 	}))
@@ -427,12 +434,12 @@
 		albedo = initialDraft.albedo
 		hasRings = initialDraft.hasRings
 		content = initialDraft.content
-		densityUnlocked = false
-		densityOverride = null
-		gravityUnlocked = false
-		gravityOverride = null
-		escapeUnlocked = false
-		escapeOverride = null
+		densityUnlocked = initialDensityOverride != null
+		densityOverride = initialDensityOverride
+		gravityUnlocked = initialGravityOverride != null
+		gravityOverride = initialGravityOverride
+		escapeUnlocked = initialEscapeOverride != null
+		escapeOverride = initialEscapeOverride
 		periodUnlocked = initialDraft.orbitalPeriodDays != null
 		periodOverride = initialDraft.orbitalPeriodDays
 		editSummary = ''
@@ -461,9 +468,9 @@
 					mass: massDisplay,
 					radiusM,
 					radius: radiusDisplay,
-					density: densityUnlocked ? densityOverride : undefined,
-					surfaceGravity: gravityUnlocked ? gravityOverride : undefined,
-					escapeVelocity: escapeUnlocked ? escapeOverride : undefined,
+					density: densityUnlocked ? densityOverride : null,
+					surfaceGravity: gravityUnlocked ? gravityOverride : null,
+					escapeVelocity: escapeUnlocked ? escapeOverride : null,
 					temperature: temperature || null,
 					age: age || null,
 					composition: composition || null,
