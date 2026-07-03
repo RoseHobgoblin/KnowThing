@@ -217,7 +217,7 @@
 	// Auto-computed from numeric inputs
 	const computedPhysical = $derived(deriveBodyFields(massKg, radiusM))
 	const computedOrbital = $derived(deriveStarOrbitalFields(semiMajorAxisAu, eccentricity))
-	const physicsWarnings = $derived(validateStarPhysics({ massKg, radiusM, semiMajorAxisAu, eccentricity }))
+	const physicsWarnings = $derived(validateStarPhysics({ massKg, radiusM, semiMajorAxisAu, eccentricity, temperatureK, spectralType }))
 	const computedDisplay = $derived(deriveDisplayStrings(orbitalPeriodDays, semiMajorAxisAu, rotationPeriodS))
 	const derivedLuminosityW = $derived(
 		radiusM != null && temperatureK != null && radiusM > 0 && temperatureK > 0

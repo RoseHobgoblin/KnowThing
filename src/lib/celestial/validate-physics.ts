@@ -14,9 +14,19 @@ export interface PhysicsWarning {
 const EARTH_MASS = 5.972e24
 const JUPITER_MASS = 1.898e27
 const SOLAR_MASS = 1.989e30
-const EARTH_RADIUS = 6.371e6
-const JUPITER_RADIUS = 6.9911e7
-const SOLAR_RADIUS = 6.9634e8
+
+/** A neighbouring body's orbit, for cross-checking overlapping paths. */
+export interface SiblingOrbit {
+	name: string
+	semiMajorAxisAu: number
+	eccentricity: number | null
+}
+
+/** Radial [periapsis, apoapsis] band of an orbit; a circular orbit collapses to [a, a]. */
+function orbitalBand(semiMajorAxisAu: number, eccentricity: number | null): [number, number] {
+	const ecc = eccentricity != null && eccentricity > 0 && eccentricity < 1 ? eccentricity : 0
+	return [semiMajorAxisAu * (1 - ecc), semiMajorAxisAu * (1 + ecc)]
+}
 
 export function validateBodyPhysics(params: {
 	massKg: number | null
@@ -28,9 +38,15 @@ export function validateBodyPhysics(params: {
 	axialTilt: number | null
 	bodyType: string | null
 	isSatellite: boolean
+	/** Sibling planets sharing the same star, for orbit-crossing detection. */
+	siblingOrbits?: SiblingOrbit[]
+	/** Parent body's Hill-sphere radius in AU, for satellite containment. */
+	parentHillAu?: number | null
 }): PhysicsWarning[] {
 	const warnings: PhysicsWarning[] = []
 	const { massKg, radiusM, orbitalPeriodDays, semiMajorAxisAu, eccentricity, rotationPeriodS, axialTilt, bodyType, isSatellite } = params
+	const siblingOrbits = params.siblingOrbits ?? []
+	const parentHillAu = params.parentHillAu ?? null
 
 	if (massKg != null && massKg <= 0) {
 		warnings.push({ field: 'massKg', message: 'Mass must be positive', severity: 'impossible' })
@@ -90,7 +106,46 @@ export function validateBodyPhysics(params: {
 		warnings.push({ field: 'axialTilt', message: 'Axial tilt should be 0–360°', severity: 'warning' })
 	}
 
+	// Orbit crossing: does this planet's radial band overlap a sibling's? Crossing
+	// paths are dynamically unstable unless the pair is locked in a resonance.
+	if (!isSatellite && semiMajorAxisAu != null && semiMajorAxisAu > 0) {
+		const [peri, apo] = orbitalBand(semiMajorAxisAu, eccentricity)
+		for (const sibling of siblingOrbits) {
+			if (sibling.semiMajorAxisAu <= 0) continue
+			const [sPeri, sApo] = orbitalBand(sibling.semiMajorAxisAu, sibling.eccentricity)
+			if (peri <= sApo && sPeri <= apo) {
+				warnings.push({
+					field: 'semiMajorAxisAu',
+					message: `Orbit overlaps ${sibling.name}'s (their distance ranges cross) — dynamically unstable unless the two are in orbital resonance`,
+					severity: 'warning',
+				})
+			}
+		}
+	}
+
+	// Satellite containment: a moon orbiting beyond its parent's Hill sphere is not
+	// gravitationally bound to the parent and would be stripped away by the star.
+	if (isSatellite && semiMajorAxisAu != null && semiMajorAxisAu > 0 && parentHillAu != null && parentHillAu > 0 && semiMajorAxisAu > parentHillAu) {
+		warnings.push({
+			field: 'semiMajorAxisAu',
+			message: `Orbit (${semiMajorAxisAu.toFixed(4)} AU from its parent) lies beyond the parent's Hill sphere (~${parentHillAu.toFixed(4)} AU) — it would not stay bound`,
+			severity: 'warning',
+		})
+	}
+
 	return warnings
+}
+
+// Main-sequence Morgan–Keenan temperature bands (K). Bounds are approximate — a
+// star just outside a band is a hint, not an error.
+const SPECTRAL_TEMP_RANGES: Record<string, [number, number]> = {
+	O: [30_000, 60_000],
+	B: [10_000, 30_000],
+	A: [7500, 10_000],
+	F: [6000, 7500],
+	G: [5200, 6000],
+	K: [3700, 5200],
+	M: [2400, 3700],
 }
 
 export function validateStarPhysics(params: {
@@ -98,9 +153,11 @@ export function validateStarPhysics(params: {
 	radiusM: number | null
 	semiMajorAxisAu: number | null
 	eccentricity: number | null
+	temperatureK?: number | null
+	spectralType?: string | null
 }): PhysicsWarning[] {
 	const warnings: PhysicsWarning[] = []
-	const { massKg, radiusM, semiMajorAxisAu, eccentricity } = params
+	const { massKg, radiusM, semiMajorAxisAu, eccentricity, temperatureK, spectralType } = params
 
 	if (massKg != null && massKg <= 0) {
 		warnings.push({ field: 'massKg', message: 'Mass must be positive', severity: 'impossible' })
@@ -120,6 +177,24 @@ export function validateStarPhysics(params: {
 
 	if (eccentricity != null && eccentricity >= 1) {
 		warnings.push({ field: 'eccentricity', message: 'Eccentricity ≥ 1 means an unbound orbit', severity: 'impossible' })
+	}
+
+	// Temperature vs spectral class: the leading MK letter names a temperature band.
+	// Flag a temperature that contradicts the class (a "cool O-star", etc.).
+	if (temperatureK != null && temperatureK > 0 && spectralType) {
+		const letter = spectralType.trim().charAt(0).toUpperCase()
+		const range = SPECTRAL_TEMP_RANGES[letter]
+		if (range) {
+			const [min, max] = range
+			// 10% slack so a star right at a boundary doesn't nag.
+			if (temperatureK < min * 0.9 || temperatureK > max * 1.1) {
+				warnings.push({
+					field: 'temperatureK',
+					message: `Temperature ${Math.round(temperatureK).toLocaleString('en-US')} K contradicts spectral class ${letter} (${min.toLocaleString('en-US')}–${max.toLocaleString('en-US')} K)`,
+					severity: 'warning',
+				})
+			}
+		}
 	}
 
 	return warnings

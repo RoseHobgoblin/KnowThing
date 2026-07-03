@@ -15,7 +15,7 @@
 	import { updatePlanetaryBodySchema } from '$lib/celestial/schema.js'
 	import { summarizeZodIssues } from '$lib/utils.js'
 	import { getBodyPresets, type BodyPreset } from '$lib/celestial/presets.js'
-	import { deriveBodyFields, deriveBodyOrbitalFields, deriveDisplayStrings } from '$lib/celestial/compute.js'
+	import { deriveBodyFields, deriveBodyOrbitalFields, deriveDisplayStrings, computeHillSphereAu } from '$lib/celestial/compute.js'
 	import { validateBodyPhysics } from '$lib/celestial/validate-physics.js'
 	import TabNavigation from '$lib/components/ui/TabNavigation.svelte'
 	import StickyActionBar from '$lib/components/editor/StickyActionBar.svelte'
@@ -36,7 +36,7 @@
 	type CelestialCrumb = { label: string, href: string }
 	type BodyType = 'planet' | 'asteroid' | 'ring_system'
 	type CelestialStarOption = { id: number, name: string, slug: string, massKg?: number | null }
-	type CelestialBodyOption = { id: number, name: string, slug: string, massKg?: number | null, starId?: number | null, parentId?: number | null }
+	type CelestialBodyOption = { id: number, name: string, slug: string, massKg?: number | null, starId?: number | null, parentId?: number | null, semiMajorAxisAu?: number | null, eccentricity?: number | null }
 	type BodyRecord = {
 		id: number
 		name: string
@@ -268,7 +268,29 @@
 
 	// Auto-computed derived fields
 	const computedPhysical = $derived(deriveBodyFields(massKg, radiusM))
-	const physicsWarnings = $derived(validateBodyPhysics({ massKg, radiusM, orbitalPeriodDays, semiMajorAxisAu, eccentricity, rotationPeriodS, axialTilt, bodyType, isSatellite: !!parentIdString }))
+
+	// Planets sharing this body's star (each orbiting the star directly), for
+	// orbit-crossing detection. Moons are checked for Hill-sphere containment instead.
+	const siblingOrbits = $derived.by(() => {
+		if (parentIdString) return []
+		return siblings
+			.filter(s => s.id !== initialBody.id
+				&& s.parentId == null
+				&& String(s.starId ?? '') === starIdString
+				&& s.semiMajorAxisAu != null)
+			.map(s => ({ name: s.name, semiMajorAxisAu: s.semiMajorAxisAu as number, eccentricity: s.eccentricity ?? null }))
+	})
+
+	// The parent body's Hill sphere (AU), so a moon orbiting beyond it can be flagged.
+	const parentHillAu = $derived.by(() => {
+		if (!parentIdString) return null
+		const parent = siblings.find(s => String(s.id) === parentIdString)
+		const star = allStars.find(s => String(s.id) === starIdString)
+		if (!parent?.massKg || !parent?.semiMajorAxisAu || !star?.massKg) return null
+		return computeHillSphereAu(parent.semiMajorAxisAu, parent.massKg, star.massKg)
+	})
+
+	const physicsWarnings = $derived(validateBodyPhysics({ massKg, radiusM, orbitalPeriodDays, semiMajorAxisAu, eccentricity, rotationPeriodS, axialTilt, bodyType, isSatellite: !!parentIdString, siblingOrbits, parentHillAu }))
 
 	const parentMassKg = $derived.by(() => {
 		if (parentIdString) {

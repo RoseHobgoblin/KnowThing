@@ -152,6 +152,7 @@ export async function listAllBodyRefs() {
 			starId: planetaryBodies.starId,
 			parentId: planetaryBodies.parentId,
 			semiMajorAxisAu: planetaryBodies.semiMajorAxisAu,
+			eccentricity: planetaryBodies.eccentricity,
 			bodyType: planetaryBodies.bodyType,
 		})
 		.from(planetaryBodies)
