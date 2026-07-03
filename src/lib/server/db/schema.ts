@@ -11,6 +11,7 @@ import {
 	primaryKey,
 	index,
 	uniqueIndex,
+	type AnyPgColumn,
 } from 'drizzle-orm/pg-core'
 
 // ============================================================================
@@ -495,6 +496,15 @@ export const starSystems = pgTable(
 		pageSlug: text('page_slug'),
 		systemType: text('system_type').default('single'),
 		description: text('description').default(''),
+
+		// Placement & metadata — genuinely system-level, not derivable from children.
+		distanceLy: doublePrecision('distance_ly'),
+		galacticX: doublePrecision('galactic_x'),
+		galacticY: doublePrecision('galactic_y'),
+		galacticZ: doublePrecision('galactic_z'),
+		formationAge: text('formation_age'),
+		designations: text('designations'),
+
 		extra: jsonb('extra').default({}),
 		body: text('body').notNull().default(''),
 		bodyParsedAst: jsonb('body_parsed_ast'),
@@ -540,7 +550,7 @@ export const stars = pgTable(
 
 		metallicity: text('metallicity'),
 		companion: text('companion'),
-		parentStarId: integer('parent_star_id'),
+		parentStarId: integer('parent_star_id').references((): AnyPgColumn => stars.id, { onDelete: 'set null' }),
 		systemId: integer('system_id').references(() => starSystems.id, { onDelete: 'set null' }),
 		epochPhase: doublePrecision('epoch_phase').default(0),
 
@@ -567,7 +577,7 @@ export const planetaryBodies = pgTable(
 		slug: text('slug').unique().notNull(),
 		bodyType: text('body_type').notNull().default('planet'),
 		starId: integer('star_id').references(() => stars.id, { onDelete: 'set null' }),
-		parentId: integer('parent_id'),
+		parentId: integer('parent_id').references((): AnyPgColumn => planetaryBodies.id, { onDelete: 'set null' }),
 		// DEPRECATED: removed in Phase 9 of the namespace migration.
 		pageSlug: text('page_slug'),
 
