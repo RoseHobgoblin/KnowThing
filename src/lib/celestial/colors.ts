@@ -19,6 +19,28 @@ export function resolveColor(color: string | null | undefined, fallback: string)
 	return COLOR_MAP[color.toLowerCase()] ?? fallback
 }
 
+/** Representative color per Morgan–Keenan spectral class (leading letter). */
+const SPECTRAL_CLASS_COLOR: Record<string, string> = {
+	O: '#9BB0FF',
+	B: '#AABFFF',
+	A: '#CAD7FF',
+	F: '#F8F7FF',
+	G: '#FFF4EA',
+	K: '#FFD2A1',
+	M: '#FFCC6F',
+}
+
+/**
+ * Best-effort display color for a star: its explicit color field if set, else a
+ * color derived from its spectral class, else a warm default. Also accepts a bare
+ * class letter (e.g. 'G') as the spectral type, for class swatches.
+ */
+export function spectralColor(spectralType: string | null | undefined, colorField?: string | null): string {
+	if (colorField) return resolveColor(colorField, '#FFE088')
+	const cls = spectralType?.trim()?.[0]?.toUpperCase()
+	return (cls ? SPECTRAL_CLASS_COLOR[cls] : undefined) ?? '#FFE088'
+}
+
 /** Parse a resolved color into [r, g, b] (0–255), or null if it can't be parsed. */
 function toRgb(color: string): [number, number, number] | null {
 	let c = color.trim()
