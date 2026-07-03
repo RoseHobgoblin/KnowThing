@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte'
 	import { page } from '$app/stores'
 	import { normalizePermissions } from '$lib/permissions.js'
 	import CelestialStatGrid from '$lib/celestial/CelestialStatGrid.svelte'
@@ -11,7 +12,8 @@
 	import DateScrubber from '$lib/celestial/DateScrubber.svelte'
 	import { DEFAULT_MAP_SETTINGS } from '$lib/celestial/map-settings.js'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
-	import { createKnowContext } from '$lib/renderer/context.js'
+	import { SvelteMap } from 'svelte/reactivity'
+	import { createKnowContext, slugify, type ResolvedLink } from '$lib/renderer/context.js'
 	import CelestialConfigureStar from '$lib/components/celestial/CelestialConfigureStar.svelte'
 	import CelestialConfigureBody from '$lib/components/celestial/CelestialConfigureBody.svelte'
 	import CelestialConfigureSystem from '$lib/components/celestial/CelestialConfigureSystem.svelte'
@@ -33,9 +35,40 @@
 		}
 	})
 
-	// Infobox values can include wikilinks; the renderer expects a Know context.
+	// Fact-sheet values linkify a body's relationships as `[[slug|name]]`. Those
+	// targets are real, resolved celestial entities — but the renderer paints any
+	// wikilink it can't find in `resolvedLinks` as a red (missing) link pointing at
+	// `/know/<slug>`. Seed the map from the model so they render live and route to
+	// the correct `/Celestial:<slug>` page. A reactive map keeps this correct as the
+	// component is reused across client-side navigation between celestial pages.
+	function celestialLinkEntries(d: CelestialDetailData): [string, ResolvedLink][] {
+		const entries: [string, ResolvedLink][] = []
+		const add = (ref: { slug: string } | null | undefined) => {
+			// Key matches WikiInternalLink's lookup: `${sourceDomain}:${slugify(target).toLowerCase()}`.
+			if (ref?.slug) entries.push([`celestial:${slugify(ref.slug).toLowerCase()}`, { href: `/Celestial:${ref.slug}`, exists: true }])
+		}
+		if (d.kind === 'planet' && d.model) {
+			add(d.model.satelliteOf)
+			add(d.model.star)
+			add(d.model.parentBody)
+		} else if (d.kind === 'star' && d.model) {
+			add(d.model.companionOf)
+		}
+		return entries
+	}
+
+	// Seed synchronously so SSR and the first paint render live links (no red flash),
+	// then keep it current across client-side navigation.
+	const resolvedLinks = new SvelteMap<string, ResolvedLink>(untrack(() => celestialLinkEntries(data)))
+
+	$effect(() => {
+		resolvedLinks.clear()
+		for (const [key, value] of celestialLinkEntries(data)) resolvedLinks.set(key, value)
+	})
+
+	// Fact-sheet values can include wikilinks; the renderer expects a Know context.
 	createKnowContext({
-		resolvedLinks: new Map(),
+		resolvedLinks,
 		mediaBaseUrl: '/api/media',
 		pageBaseUrl: '/know',
 		sourceDomain: 'celestial',
