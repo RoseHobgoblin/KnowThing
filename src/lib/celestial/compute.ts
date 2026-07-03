@@ -42,9 +42,15 @@ export function computeOrbitalVelocity(semiMajorAxisAu: number, orbitalPeriodDay
 	return (2 * Math.PI * a) / (orbitalPeriodDays * 86_400)
 }
 
-/** Hill sphere radius: r_H ≈ a × (m / 3M)^(1/3) → AU */
-export function computeHillSphereAu(semiMajorAxisAu: number, bodyMassKg: number, parentMassKg: number): number {
-	return semiMajorAxisAu * Math.cbrt(bodyMassKg / (3 * parentMassKg))
+/**
+ * Hill sphere radius: r_H ≈ a(1 − e) × (m / 3M)^(1/3) → AU.
+ * The (1 − e) periapsis factor matters for eccentric orbits — the sphere is
+ * smallest (and containment tightest) at closest approach. A null or
+ * out-of-range eccentricity is treated as a circular orbit.
+ */
+export function computeHillSphereAu(semiMajorAxisAu: number, bodyMassKg: number, parentMassKg: number, eccentricity: number | null = null): number {
+	const ecc = eccentricity != null && eccentricity > 0 && eccentricity < 1 ? eccentricity : 0
+	return semiMajorAxisAu * (1 - ecc) * Math.cbrt(bodyMassKg / (3 * parentMassKg))
 }
 
 /** Roche limit (rigid body): d ≈ R_parent × (2 × ρ_parent / ρ_sat)^(1/3) → metres */
@@ -59,6 +65,26 @@ export function computeHabitableZoneAu(luminosityW: number): { inner: number, ou
 		inner: Math.sqrt(lSolar / 1.1),
 		outer: Math.sqrt(lSolar / 0.53),
 	}
+}
+
+/**
+ * Habitable-zone bounds from a star's raw luminosity inputs — explicit
+ * luminosity, else Stefan-Boltzmann from radius + temperature. Mirrors the
+ * luminosity fallback in `deriveStar`, so a lightweight query (just these three
+ * columns) can derive the HZ without building a whole star model. Null if
+ * neither luminosity nor radius+temperature is available.
+ */
+export function deriveHabitableZoneAu(
+	luminosityW: number | null,
+	radiusM: number | null,
+	temperatureK: number | null,
+): { inner: number, outer: number } | null {
+	const lum = luminosityW != null && luminosityW > 0
+		? luminosityW
+		: (radiusM != null && temperatureK != null && radiusM > 0 && temperatureK > 0
+			? computeLuminosity(radiusM, temperatureK)
+			: null)
+	return lum != null && lum > 0 ? computeHabitableZoneAu(lum) : null
 }
 
 /** periastron = a(1-e) in AU */
@@ -226,6 +252,7 @@ export function deriveBodyOrbitalFields(
 	orbitalPeriodDays: number | null,
 	bodyMassKg: number | null,
 	parentMassKg: number | null,
+	eccentricity: number | null = null,
 ): BodyDerivedOrbitalFields {
 	let period = orbitalPeriodDays
 
@@ -240,7 +267,7 @@ export function deriveBodyOrbitalFields(
 
 	const hillSphere = semiMajorAxisAu != null && bodyMassKg != null && parentMassKg != null
 		&& semiMajorAxisAu > 0 && bodyMassKg > 0 && parentMassKg > 0
-		? formatHillSphere(computeHillSphereAu(semiMajorAxisAu, bodyMassKg, parentMassKg))
+		? formatHillSphere(computeHillSphereAu(semiMajorAxisAu, bodyMassKg, parentMassKg, eccentricity))
 		: null
 
 	return { orbitalPeriodDays: period, orbitalVelocity, hillSphere }

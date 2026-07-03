@@ -5,6 +5,7 @@ import { db } from '$lib/server/db/index.js'
 import { planetaryBodies, stars } from '$lib/server/db/schema.js'
 import {
 	createPlanetaryBodySchema,
+	legacySafeEccentricity,
 	type updatePlanetaryBodySchema,
 } from '$lib/celestial/schema.js'
 import { deriveBodyOrbitalFields } from '$lib/celestial/compute.js'
@@ -96,7 +97,7 @@ export async function createBody(data: CreateBodyInput) {
 	}
 
 	const parentMassKg = await resolveParentMass(data.parentId ?? null, data.starId ?? null)
-	const orbital = deriveBodyOrbitalFields(data.semiMajorAxisAu ?? null, data.orbitalPeriodDays ?? null, data.massKg ?? null, parentMassKg)
+	const orbital = deriveBodyOrbitalFields(data.semiMajorAxisAu ?? null, data.orbitalPeriodDays ?? null, data.massKg ?? null, parentMassKg, data.eccentricity ?? null)
 	const effectivePeriodDays = data.orbitalPeriodDays ?? orbital.orbitalPeriodDays
 
 	return db.transaction(async (tx) => {
@@ -142,7 +143,11 @@ export async function updateBody(slug: string, data: UpdateBodyInput) {
 	const [current] = await db.select().from(planetaryBodies).where(eq(planetaryBodies.slug, slug))
 	if (!current) throw error(404, 'Body not found')
 
-	const merged = createPlanetaryBodySchema.safeParse({ ...current, ...data })
+	const merged = createPlanetaryBodySchema.safeParse({
+		...current,
+		eccentricity: legacySafeEccentricity(current.eccentricity),
+		...data,
+	})
 	if (!merged.success) throw error(400, merged.error.issues[0].message)
 
 	if (data.parentId != null && await isDescendant(current.id, data.parentId)) {
@@ -190,7 +195,8 @@ export async function updateBody(slug: string, data: UpdateBodyInput) {
 
 	const finalAu = data.semiMajorAxisAu === undefined ? current.semiMajorAxisAu : data.semiMajorAxisAu
 	const finalOrbitalDays = data.orbitalPeriodDays === undefined ? current.orbitalPeriodDays : data.orbitalPeriodDays
-	const orbital = deriveBodyOrbitalFields(finalAu, finalOrbitalDays, finalMassKg, parentMassKg)
+	const finalEccentricity = data.eccentricity === undefined ? current.eccentricity : data.eccentricity
+	const orbital = deriveBodyOrbitalFields(finalAu, finalOrbitalDays, finalMassKg, parentMassKg, finalEccentricity)
 	const effectivePeriodDays = finalOrbitalDays ?? orbital.orbitalPeriodDays
 	if (data.orbitalPeriodDays !== undefined) {
 		// Explicit custom period, or null ("auto") → persist the Kepler-derived value

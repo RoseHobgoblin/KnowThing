@@ -171,6 +171,7 @@ export interface StarModel {
 
 	// Orbital (binary/multiple).
 	semiMajorAxisAu: number | null
+	orbitalPeriodDays: number | null
 	eccentricity: number | null
 	periastronAu: number | null
 	apastronAu: number | null
@@ -315,6 +316,7 @@ export function deriveStar(row: StarRow, relations: StarRelations = {}): StarMod
 		escapeVelocityMs: massKg != null && radiusM != null ? computeEscapeVelocity(massKg, radiusM) : null,
 
 		semiMajorAxisAu,
+		orbitalPeriodDays: row.orbitalPeriodDays ?? null,
 		eccentricity,
 		periastronAu: semiMajorAxisAu != null && eccentricity != null ? computePeriastron(semiMajorAxisAu, eccentricity) : null,
 		apastronAu: semiMajorAxisAu != null && eccentricity != null ? computeApastron(semiMajorAxisAu, eccentricity) : null,

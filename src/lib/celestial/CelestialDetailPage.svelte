@@ -80,9 +80,12 @@
 	function computeInitialDay(): number {
 		const cal = data.kind === 'system' ? (data.systemCalendars as any[] | undefined)?.[0] : null
 		const sd = cal?.staticData as Record<string, unknown> | undefined
-		const dayLengthMs = ((sd?.day_length_seconds as number) ?? 86_400) * 1000
+		// Guard against a non-positive/NaN day length (user-editable calendar data):
+		// `?? 86_400` only covers null/undefined, so a stored 0 would divide to Infinity.
+		const rawDayLength = sd?.day_length_seconds as number | undefined
+		const dayLengthSeconds = typeof rawDayLength === 'number' && rawDayLength > 0 ? rawDayLength : 86_400
 		const epochOffset = (sd?.epoch_offset as number) ?? 0
-		return Math.floor(Date.now() / dayLengthMs) + epochOffset
+		return Math.floor(Date.now() / (dayLengthSeconds * 1000)) + epochOffset
 	}
 	let currentAbsoluteDay = $state(computeInitialDay())
 	let mapScale = $state(DEFAULT_MAP_SETTINGS.scale)
@@ -90,6 +93,20 @@
 	let mapTrails = $state(DEFAULT_MAP_SETTINGS.trails)
 	let mapFollow = $state(DEFAULT_MAP_SETTINGS.follow)
 	let mapSelectedId = $state<`star:${number}` | `body:${number}` | null>(null)
+
+	// This component instance is reused across client-side navigation between
+	// celestial pages. computeInitialDay() reads `data`, so this effect re-runs
+	// when the loaded entity changes — reseeding the map's in-world "now" and
+	// clearing a selection carried over from the previous system. The writes are
+	// untracked and target state this effect doesn't read, so a user's scrubbing
+	// or map selection within a page is never clobbered.
+	$effect(() => {
+		const day = computeInitialDay()
+		untrack(() => {
+			currentAbsoluteDay = day
+			mapSelectedId = null
+		})
+	})
 
 	const selectedBody = $derived.by(() => {
 		if (mapSelectedId == null) return null
@@ -119,10 +136,17 @@
 
 	const configurePath = $derived(`/Celestial:${raw.slug}/configure`)
 
-	// Context-panel data: a star's planets; a planet's sibling planets + its moons.
+	// A moon (planet-kind body with a parent body) orbits its parent, not the star.
+	const isSatellite = $derived(data.kind === 'planet' && raw.parentId != null)
+
+	// Context-panel data: a star's planets; a planet's sibling planets + its moons;
+	// a moon's co-moons (the other satellites of the same parent).
 	const contextBodies = $derived.by(() => {
 		if (data.kind === 'star') return data.systemPlanets ?? []
 		if (data.kind === 'planet') {
+			if (isSatellite) {
+				return (data.siblings ?? []).filter(b => b.parentId === raw.parentId && b.id !== raw.id)
+			}
 			return (data.siblings ?? []).filter(b => b.starId === raw.starId && b.parentId == null && b.id !== raw.id)
 		}
 		return []
@@ -130,12 +154,15 @@
 	const contextMoons = $derived.by(() =>
 		data.kind === 'planet' ? (data.siblings ?? []).filter(b => b.parentId === raw.id) : [],
 	)
+	// Habitable zone and the self-distance dot are heliocentric — only meaningful
+	// for a planet orbiting the star directly. A moon's semiMajorAxisAu is relative
+	// to its parent body, so plotting it on the star's HZ axis would be nonsense.
 	const contextHz = $derived(
 		data.kind === 'star'
 			? data.model?.habitableZoneAu ?? null
-			: (data.kind === 'planet' ? data.parentStarHz : null),
+			: (data.kind === 'planet' && !isSatellite ? data.parentStarHz : null),
 	)
-	const contextSelfAu = $derived(data.kind === 'planet' ? data.model?.semiMajorAxisAu ?? null : null)
+	const contextSelfAu = $derived(data.kind === 'planet' && !isSatellite ? data.model?.semiMajorAxisAu ?? null : null)
 </script>
 
 <svelte:head>

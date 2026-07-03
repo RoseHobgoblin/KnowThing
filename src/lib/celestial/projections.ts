@@ -125,6 +125,7 @@ export function starInfoboxFields(model: StarModel): FieldMap {
 	if (model.densityKgM3 != null) setDerived(f, 'density', formatDensity(model.densityKgM3))
 	if (model.gravityMs2 != null) setDerived(f, 'surface_gravity', formatSurfaceGravity(model.gravityMs2))
 	if (model.escapeVelocityMs != null) setDerived(f, 'escape_velocity', formatEscapeVelocity(model.escapeVelocityMs))
+	if (model.orbitalPeriodDays != null) setDerived(f, 'orbital_period', formatPeriod(model.orbitalPeriodDays * 86_400))
 	if (model.semiMajorAxisAu != null) setDerived(f, 'semi_major_axis', formatAuAsKm(model.semiMajorAxisAu))
 	if (model.rotationPeriodS != null) setDerived(f, 'rotation_period', formatPeriod(model.rotationPeriodS))
 	if (model.temperatureK != null) setDerived(f, 'temperature', formatTemperatureK(model.temperatureK))
@@ -237,7 +238,7 @@ const PLANET_SECTIONS: SectionSpec[] = [
 const STAR_SECTIONS: SectionSpec[] = [
 	{ title: 'Stellar', fields: [['spectral_type', 'Spectral type'], ['mass', 'Mass'], ['radius', 'Radius'], ['temperature', 'Temperature'], ['luminosity', 'Luminosity'], ['luminosity_visual', 'Visual luminosity'], ['density', 'Density'], ['surface_gravity', 'Surface gravity'], ['escape_velocity', 'Escape velocity'], ['metallicity', 'Metallicity'], ['color', 'Color'], ['age', 'Age']] },
 	{ title: 'Environment', fields: [['habitable_zone', 'Habitable zone']] },
-	{ title: 'Orbit', fields: [['companion', 'Companion'], ['companion_of', 'Orbits'], ['semi_major_axis', 'Semi-major axis'], ['eccentricity', 'Eccentricity'], ['periastron', 'Periastron'], ['apastron', 'Apastron']] },
+	{ title: 'Orbit', fields: [['companion', 'Companion'], ['companion_of', 'Orbits'], ['orbital_period', 'Orbital period'], ['semi_major_axis', 'Semi-major axis'], ['eccentricity', 'Eccentricity'], ['periastron', 'Periastron'], ['apastron', 'Apastron']] },
 	{ title: 'Rotation', fields: [['rotation_period', 'Rotation period'], ['axial_tilt', 'Axial tilt'], ['equatorial_velocity', 'Equatorial velocity']] },
 	{ title: 'Observation', fields: [['apparent_magnitude', 'Apparent magnitude'], ['absolute_magnitude', 'Absolute magnitude'], ['angular_diameter', 'Angular diameter']] },
 	{ title: 'System', fields: [['planets', 'Planets'], ['known_satellites', 'Known satellites']] },

@@ -287,7 +287,7 @@
 		const parent = siblings.find(s => String(s.id) === parentIdString)
 		const star = allStars.find(s => String(s.id) === starIdString)
 		if (!parent?.massKg || !parent?.semiMajorAxisAu || !star?.massKg) return null
-		return computeHillSphereAu(parent.semiMajorAxisAu, parent.massKg, star.massKg)
+		return computeHillSphereAu(parent.semiMajorAxisAu, parent.massKg, star.massKg, parent.eccentricity ?? null)
 	})
 
 	const physicsWarnings = $derived(validateBodyPhysics({ massKg, radiusM, orbitalPeriodDays, semiMajorAxisAu, eccentricity, rotationPeriodS, axialTilt, bodyType, isSatellite: !!parentIdString, siblingOrbits, parentHillAu }))
@@ -303,7 +303,7 @@
 		}
 		return null
 	})
-	const computedOrbital = $derived(deriveBodyOrbitalFields(semiMajorAxisAu, periodUnlocked ? orbitalPeriodDays : null, massKg, parentMassKg))
+	const computedOrbital = $derived(deriveBodyOrbitalFields(semiMajorAxisAu, periodUnlocked ? orbitalPeriodDays : null, massKg, parentMassKg, eccentricity))
 	const keplerPeriodDays = $derived(computedOrbital.orbitalPeriodDays)
 	const effectivePeriodDays = $derived(periodUnlocked ? orbitalPeriodDays : keplerPeriodDays)
 	const keplerPeriodDisplay = $derived(keplerPeriodDays ? `${keplerPeriodDays.toFixed(3)} days` : null)

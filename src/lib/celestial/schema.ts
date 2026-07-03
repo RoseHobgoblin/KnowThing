@@ -5,6 +5,22 @@ const nullableUnitIntervalSchema = z.number().min(0).max(1).nullish()
 // and e = 1 makes the Kepler solver divide by zero — reject it at the data layer.
 const nullableEccentricitySchema = z.number().min(0).lt(1).nullish()
 
+/**
+ * Clamp a *stored* eccentricity into the bound-orbit range for merge
+ * re-validation. Updates re-parse the whole `{...current, ...patch}` row with
+ * the create schema; without this, a legacy row saved at e = 1 (permitted before
+ * the bound was tightened to `.lt(1)`) would fail validation on every edit — even
+ * one that never touches eccentricity — freezing the row. Only the validation
+ * snapshot is sanitized; the stored column is left untouched until the user sets a
+ * new value. Mirrors the e ≥ 1 render-time clamp in orbit.ts.
+ */
+export function legacySafeEccentricity(value: number | null | undefined): number | null {
+	if (value == null) return null
+	if (value >= 1) return 0.999
+	if (value < 0) return 0
+	return value
+}
+
 // Optional display-string overrides for otherwise auto-derived fields. Persisted
 // into the `extra` JSONB so the "lock to override" UI actually sticks.
 const overrideString = z.string().nullish()
