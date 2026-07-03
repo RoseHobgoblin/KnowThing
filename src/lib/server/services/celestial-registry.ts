@@ -1,4 +1,4 @@
-import { eq, sql } from 'drizzle-orm'
+import { eq, and, isNull, sql } from 'drizzle-orm'
 import { db } from '$lib/server/db/index.js'
 import {
 	planetaryBodies,
@@ -73,6 +73,7 @@ export async function getStarsForSystemMap(systemId: number) {
 		SELECT id, name, slug, spectral_type AS "spectralType", color,
 			page_slug AS "pageSlug", semi_major_axis_au AS "semiMajorAxisAu",
 			eccentricity, parent_star_id AS "parentStarId",
+			orbital_period_days AS "orbitalPeriodDays",
 			epoch_phase AS "epochPhase"
 		FROM stars WHERE system_id = ${systemId}
 		ORDER BY parent_star_id NULLS FIRST, name
@@ -126,7 +127,17 @@ export async function listAllSystemRefs() {
 }
 
 export async function listAllStarRefs() {
-	return db.select({ id: stars.id, name: stars.name, slug: stars.slug, massKg: stars.massKg }).from(stars).orderBy(stars.name)
+	return db
+		.select({
+			id: stars.id,
+			name: stars.name,
+			slug: stars.slug,
+			massKg: stars.massKg,
+			systemId: stars.systemId,
+			parentStarId: stars.parentStarId,
+		})
+		.from(stars)
+		.orderBy(stars.name)
 }
 
 export async function listAllBodyRefs() {
@@ -138,9 +149,26 @@ export async function listAllBodyRefs() {
 			massKg: planetaryBodies.massKg,
 			starId: planetaryBodies.starId,
 			parentId: planetaryBodies.parentId,
+			semiMajorAxisAu: planetaryBodies.semiMajorAxisAu,
+			bodyType: planetaryBodies.bodyType,
 		})
 		.from(planetaryBodies)
 		.orderBy(planetaryBodies.name)
+}
+
+/** Direct planets of a star (parentId null), ordered by orbital distance. */
+export async function getPlanetsForStar(starId: number) {
+	return db
+		.select({
+			id: planetaryBodies.id,
+			name: planetaryBodies.name,
+			slug: planetaryBodies.slug,
+			semiMajorAxisAu: planetaryBodies.semiMajorAxisAu,
+			bodyType: planetaryBodies.bodyType,
+		})
+		.from(planetaryBodies)
+		.where(and(eq(planetaryBodies.starId, starId), isNull(planetaryBodies.parentId)))
+		.orderBy(planetaryBodies.semiMajorAxisAu)
 }
 
 export async function listBodiesForRegistry() {

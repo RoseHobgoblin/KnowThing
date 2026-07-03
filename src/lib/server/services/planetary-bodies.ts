@@ -13,6 +13,8 @@ import {
 	applyFieldUpdates,
 	applyNameUpdate,
 	deleteCelestialEntity,
+	mergeOverrideExtras,
+	BODY_OVERRIDE_MAP,
 } from '$lib/server/celestial/update-helpers.js'
 type CreateBodyInput = z.infer<typeof createPlanetaryBodySchema>
 type UpdateBodyInput = z.infer<typeof updatePlanetaryBodySchema>
@@ -126,7 +128,7 @@ export async function createBody(data: CreateBodyInput) {
 				albedo: data.albedo?.trim() || null,
 				satellites: data.satellites ?? null,
 				hasRings: data.hasRings ?? false,
-				extra: data.extra ?? {},
+				extra: mergeOverrideExtras(data.extra, data as Record<string, unknown>, BODY_OVERRIDE_MAP),
 				description: data.description?.trim() || '',
 			})
 			.returning()
@@ -167,7 +169,9 @@ export async function updateBody(slug: string, data: UpdateBodyInput) {
 		data as Record<string, unknown>,
 		['pageSlug', 'temperature', 'age', 'composition', 'atmosphere',
 			'surfacePressure', 'apparentMagnitude', 'angularDiameter', 'albedo'],
-		['massKg', 'radiusM', 'orbitalPeriodDays', 'semiMajorAxisAu',
+		// orbitalPeriodDays is handled explicitly below so an "auto" (null) value
+		// persists the Kepler-derived period instead of nulling the column.
+		['massKg', 'radiusM', 'semiMajorAxisAu',
 			'eccentricity', 'inclination', 'epochPhase', 'rotationPeriodS',
 			'axialTilt', 'starId', 'parentId', 'satellites'],
 	)
@@ -175,6 +179,9 @@ export async function updateBody(slug: string, data: UpdateBodyInput) {
 	if (data.hasRings !== undefined) setClause.hasRings = data.hasRings ?? false
 	if (data.extra !== undefined) setClause.extra = data.extra ?? {}
 	if (data.description !== undefined) setClause.description = data.description?.trim() || ''
+
+	// Route "lock to override" fields into the extra overflow, preserving other keys.
+	setClause.extra = mergeOverrideExtras(setClause.extra ?? current.extra, data as Record<string, unknown>, BODY_OVERRIDE_MAP)
 
 	const finalMassKg = data.massKg === undefined ? current.massKg : data.massKg
 	const finalStarId = data.starId === undefined ? current.starId : data.starId
@@ -185,7 +192,12 @@ export async function updateBody(slug: string, data: UpdateBodyInput) {
 	const finalOrbitalDays = data.orbitalPeriodDays === undefined ? current.orbitalPeriodDays : data.orbitalPeriodDays
 	const orbital = deriveBodyOrbitalFields(finalAu, finalOrbitalDays, finalMassKg, parentMassKg)
 	const effectivePeriodDays = finalOrbitalDays ?? orbital.orbitalPeriodDays
-	if (data.orbitalPeriodDays === undefined && effectivePeriodDays != null && current.orbitalPeriodDays == null) {
+	if (data.orbitalPeriodDays !== undefined) {
+		// Explicit custom period, or null ("auto") → persist the Kepler-derived value
+		// so the map animation and infobox velocity have a concrete period to work from.
+		setClause.orbitalPeriodDays = data.orbitalPeriodDays ?? orbital.orbitalPeriodDays ?? null
+	} else if (effectivePeriodDays != null && current.orbitalPeriodDays == null) {
+		// Field untouched, but a period can now be derived (e.g. mass was just added).
 		setClause.orbitalPeriodDays = effectivePeriodDays
 	}
 
