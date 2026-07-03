@@ -3,14 +3,12 @@ import { stars, planetaryBodies, starSystems, phonemes, languages, graphemes, gr
 import { eq, and, sql, asc, inArray } from 'drizzle-orm'
 import type { FieldMap } from '$lib/infoboxes/types.js'
 import type { MapBody } from '$lib/celestial/SystemMap.svelte'
+import { deriveSystemType } from '$lib/celestial/compute.js'
 import {
-	computePeriastron, computeApastron, formatAu,
-	computeOrbitalVelocity, formatOrbitalVelocity,
-	computeOrbitalPeriodDays, formatPeriod,
-	computeHabitableZoneAu,
-	formatMass, formatRadius, formatTemperatureK, formatLuminosity,
-	formatAuAsKm, deriveBodyFields,
-} from '$lib/celestial/compute.js'
+	derivePlanet, deriveStar,
+	type PlanetModel, type StarModel, type PlanetRow, type StarRow,
+} from '$lib/celestial/models.js'
+import { planetInfoboxFields, starInfoboxFields } from '$lib/celestial/projections.js'
 
 export interface SystemMapData {
 	systemName: string
@@ -19,66 +17,65 @@ export interface SystemMapData {
 }
 
 /**
- * Convert a DB row to a FieldMap by mapping camelCase fields to snake_case keys.
- * Filters out null/undefined/empty values. Merges `extra` JSONB overflow.
+ * Fetch a planet's relations (parent star + parent body, with masses) and build
+ * the typed model. The model — not a FieldMap — is the canonical representation;
+ * every consumer projects from it.
  */
-function rowToFieldMap(row: Record<string, unknown>, fieldNames: string[]): FieldMap {
-	const map = new Map<string, string>()
+async function buildPlanetModel(row: PlanetRow & { starId?: number | null, parentId?: number | null }): Promise<PlanetModel> {
+	let star: { name: string, slug: string, massKg: number | null } | null = null
+	let parentBody: { name: string, slug: string, massKg: number | null } | null = null
 
-	for (const field of fieldNames) {
-		const value = row[field]
-		if (value != null && value !== '') {
-			// Convert camelCase to snake_case for FieldMap keys
-			const key = field.replaceAll(/[A-Z]/g, letter => `_${letter.toLowerCase()}`)
-			map.set(key, String(value))
-		}
+	if (row.parentId != null) {
+		const [parent] = await db.select({ name: planetaryBodies.name, slug: planetaryBodies.slug, massKg: planetaryBodies.massKg })
+			.from(planetaryBodies).where(eq(planetaryBodies.id, row.parentId))
+		parentBody = parent ?? null
+	}
+	if (row.starId != null) {
+		const [s] = await db.select({ name: stars.name, slug: stars.slug, massKg: stars.massKg })
+			.from(stars).where(eq(stars.id, row.starId))
+		star = s ?? null
 	}
 
-	// Merge extra JSONB fields
-	const extra = row.extra as Record<string, unknown> | undefined
-	if (extra) {
-		for (const [k, v] of Object.entries(extra)) {
-			if (v != null && v !== '') {
-				map.set(k, String(v))
-			}
-		}
+	return derivePlanet(row, { star, parentBody })
+}
+
+/** Fetch a star's relations (parent star + planet/satellite counts) and build the model. */
+async function buildStarModel(row: StarRow & { id: number, parentStarId?: number | null }): Promise<StarModel> {
+	let parentStar: { name: string, slug: string } | null = null
+	if (row.parentStarId != null) {
+		const [parent] = await db.select({ name: stars.name, slug: stars.slug })
+			.from(stars).where(eq(stars.id, row.parentStarId))
+		parentStar = parent ?? null
 	}
 
-	return map
+	const [counts] = await db.execute(sql`
+		SELECT
+			(SELECT COUNT(*) FROM planetary_bodies WHERE star_id = ${row.id} AND parent_id IS NULL)::int AS planets,
+			(SELECT COUNT(*) FROM planetary_bodies WHERE star_id = ${row.id} AND parent_id IS NOT NULL)::int AS satellites
+	`)
+	const c = counts as unknown as { planets?: number, satellites?: number } | undefined
+
+	return deriveStar(row, {
+		parentStar,
+		planetCount: c?.planets ?? 0,
+		satelliteCount: c?.satellites ?? 0,
+	})
 }
 
-const STAR_FIELDS = [
-	'name', 'spectralType', 'luminosityVisual',
-	'age', 'color', 'metallicity',
-	'apparentMagnitude', 'absoluteMagnitude',
-	'angularDiameter', 'companion', 'description',
-]
-
-const PLANETARY_BODY_FIELDS = [
-	'name', 'bodyType', 'temperature', 'age', 'composition', 'atmosphere',
-	'surfacePressure', 'apparentMagnitude', 'angularDiameter', 'albedo',
-	'description',
-]
-
-interface NumericRow {
-	massKg: number | null
-	radiusM: number | null
-	orbitalPeriodDays: number | null
-	semiMajorAxisAu: number | null
-	rotationPeriodS: number | null
-}
-
-/** Compute display strings from numeric values and insert into a FieldMap. */
-function addDerivedDisplayFields(fields: FieldMap, row: NumericRow): void {
-	if (row.massKg != null && row.massKg > 0) fields.set('mass', formatMass(row.massKg))
-	if (row.radiusM != null && row.radiusM > 0) fields.set('radius', formatRadius(row.radiusM))
-	const phys = deriveBodyFields(row.massKg ?? null, row.radiusM ?? null)
-	if (phys.density) fields.set('density', phys.density)
-	if (phys.surfaceGravity) fields.set('surface_gravity', phys.surfaceGravity)
-	if (phys.escapeVelocity) fields.set('escape_velocity', phys.escapeVelocity)
-	if (row.orbitalPeriodDays != null && row.orbitalPeriodDays > 0) fields.set('orbital_period', formatPeriod(row.orbitalPeriodDays * 86_400))
-	if (row.semiMajorAxisAu != null && row.semiMajorAxisAu > 0) fields.set('semi_major_axis', formatAuAsKm(row.semiMajorAxisAu))
-	if (row.rotationPeriodS != null && row.rotationPeriodS > 0) fields.set('rotation_period', formatPeriod(row.rotationPeriodS))
+/**
+ * Resolve the typed model for a celestial entity — the model-layer entry point
+ * used by pages/consumers that want structured data rather than infobox fields.
+ */
+export async function resolveCelestialModel(type: string, slug: string): Promise<PlanetModel | StarModel | null> {
+	if (type === 'star') {
+		const [row] = await db.select().from(stars).where(eq(stars.slug, slug))
+		return row ? buildStarModel(row) : null
+	}
+	if (type === 'planet' || type === 'celestial' || type === 'celestial body') {
+		const [row] = await db.select().from(planetaryBodies).where(eq(planetaryBodies.slug, slug))
+		return row ? buildPlanetModel(row) : null
+	}
+	return null
 }
 
 /** Domain mapper registry: infobox type → table query + field mapper */
@@ -86,112 +83,12 @@ const DOMAIN_RESOLVERS: Record<string, (slug: string) => Promise<FieldMap | null
 	star: async (slug) => {
 		const [row] = await db.select().from(stars).where(eq(stars.slug, slug))
 		if (!row) return null
-		const fields = rowToFieldMap(row as unknown as Record<string, unknown>, STAR_FIELDS)
-		addDerivedDisplayFields(fields, row)
-		if (row.temperatureK != null && row.temperatureK > 0) fields.set('temperature', formatTemperatureK(row.temperatureK))
-		if (row.luminosityW != null && row.luminosityW > 0) fields.set('luminosity', formatLuminosity(row.luminosityW))
-		if (row.semiMajorAxisAu != null && row.eccentricity != null) {
-			fields.set('periastron', formatAu(computePeriastron(row.semiMajorAxisAu, row.eccentricity)))
-			fields.set('apastron', formatAu(computeApastron(row.semiMajorAxisAu, row.eccentricity)))
-		}
-		if (row.eccentricity != null) fields.set('eccentricity', String(row.eccentricity))
-		if (row.axialTilt != null) fields.set('axial_tilt', String(row.axialTilt))
-
-		// Parent star context for companions
-		if (row.parentStarId != null) {
-			const [parent] = await db.select({ name: stars.name, slug: stars.slug })
-				.from(stars).where(eq(stars.id, row.parentStarId))
-			if (parent) {
-				fields.set('companion_of', parent.name)
-				fields.set('companion_of_slug', parent.slug)
-			}
-		}
-
-		// Habitable zone from luminosity
-		if (row.luminosityW != null && row.luminosityW > 0) {
-			const hz = computeHabitableZoneAu(row.luminosityW)
-			fields.set('habitable_zone', `${hz.inner.toFixed(2)} – ${hz.outer.toFixed(2)} AU`)
-		}
-
-		// Equatorial rotation velocity
-		if (row.radiusM != null && row.rotationPeriodS != null && row.radiusM > 0 && row.rotationPeriodS > 0) {
-			const eqVel = (2 * Math.PI * row.radiusM) / row.rotationPeriodS
-			fields.set('equatorial_velocity', `${(eqVel / 1000).toFixed(2)} km/s`)
-		}
-
-		// Planet count
-		const [counts] = await db.execute(sql`
-			SELECT
-				(SELECT COUNT(*) FROM planetary_bodies WHERE star_id = ${row.id} AND parent_id IS NULL)::int AS planets,
-				(SELECT COUNT(*) FROM planetary_bodies WHERE star_id = ${row.id} AND parent_id IS NOT NULL)::int AS satellites
-		`)
-		const c = counts as any
-		if (c?.planets) fields.set('planets', String(c.planets))
-		if (c?.satellites) fields.set('known_satellites', String(c.satellites))
-
-		return fields
+		return starInfoboxFields(await buildStarModel(row))
 	},
 	planet: async (slug) => {
 		const [row] = await db.select().from(planetaryBodies).where(eq(planetaryBodies.slug, slug))
 		if (!row) return null
-		const fields = rowToFieldMap(row as unknown as Record<string, unknown>, PLANETARY_BODY_FIELDS)
-		addDerivedDisplayFields(fields, row)
-		if (row.eccentricity != null) fields.set('eccentricity', String(row.eccentricity))
-		if (row.axialTilt != null) fields.set('axial_tilt', String(row.axialTilt))
-		if (row.inclination != null) fields.set('inclination', String(row.inclination))
-		if (row.satellites != null) fields.set('satellites', String(row.satellites))
-		if (row.hasRings) fields.set('has_rings', 'yes')
-
-		// Parent body context
-		if (row.parentId != null) {
-			const [parent] = await db.select({ name: planetaryBodies.name, slug: planetaryBodies.slug })
-				.from(planetaryBodies).where(eq(planetaryBodies.id, row.parentId))
-			if (parent) {
-				fields.set('satellite_of', parent.name)
-				fields.set('satellite_of_slug', parent.slug)
-			}
-		}
-
-		// Parent star name
-		if (row.starId != null) {
-			const [star] = await db.select({ name: stars.name, slug: stars.slug, massKg: stars.massKg })
-				.from(stars).where(eq(stars.id, row.starId))
-			if (star) {
-				if (!row.parentId) fields.set('satellite_of', star.name)
-				fields.set('parent_star', star.name)
-				fields.set('parent_star_slug', star.slug)
-
-				// Kepler-derived orbital period if not stored
-				if (row.orbitalPeriodDays == null && row.semiMajorAxisAu != null && star.massKg != null) {
-					const period = computeOrbitalPeriodDays(row.semiMajorAxisAu, star.massKg)
-					fields.set('orbital_period', formatPeriod(period * 86_400))
-				}
-			}
-		}
-
-		// Computed orbital fields
-		if (row.semiMajorAxisAu != null && row.eccentricity != null) {
-			fields.set('periapsis', formatAu(computePeriastron(row.semiMajorAxisAu, row.eccentricity)))
-			fields.set('apoapsis', formatAu(computeApastron(row.semiMajorAxisAu, row.eccentricity)))
-		}
-		if (row.semiMajorAxisAu != null && row.orbitalPeriodDays != null && row.orbitalPeriodDays > 0) {
-			fields.set('orbital_velocity', formatOrbitalVelocity(computeOrbitalVelocity(row.semiMajorAxisAu, row.orbitalPeriodDays)))
-		}
-
-		// Computed physical fields from radius
-		if (row.radiusM != null && row.radiusM > 0) {
-			const r = row.radiusM
-			fields.set('circumference', `${((2 * Math.PI * r) / 1000).toLocaleString('en-US', { maximumFractionDigits: 0 })} km`)
-			fields.set('surface_area', `${((4 * Math.PI * r * r) / 1e6).toExponential(3)} km²`)
-			fields.set('volume', `${((4 / 3 * Math.PI * r * r * r) / 1e9).toExponential(3)} km³`)
-
-			if (row.rotationPeriodS != null && row.rotationPeriodS > 0) {
-				const eqVel = (2 * Math.PI * r) / row.rotationPeriodS
-				fields.set('equatorial_velocity', `${eqVel.toFixed(eqVel >= 100 ? 0 : 1)} m/s`)
-			}
-		}
-
-		return fields
+		return planetInfoboxFields(await buildPlanetModel(row))
 	},
 }
 
@@ -218,7 +115,10 @@ DOMAIN_RESOLVERS['system'] = async (slug) => {
 			(SELECT COUNT(*) FROM planetary_bodies pb JOIN stars s ON s.id = pb.star_id WHERE s.system_id = ${system.id} AND pb.parent_id IS NOT NULL)::int AS satellites
 	`)
 
-	const fields = new Map<string, string>([['name', system.name], ['system_type', system.systemType ?? 'single']])
+	const fields = new Map<string, string>([
+		['name', system.name],
+		['system_type', deriveSystemType(systemStars.length, system.systemType)],
+	])
 
 	// Stars list
 	const starNames = (systemStars as any[]).map((s: any) => {
@@ -231,6 +131,15 @@ DOMAIN_RESOLVERS['system'] = async (slug) => {
 	const c = counts as any
 	if (c?.planets) fields.set('planets', String(c.planets))
 	if (c?.satellites) fields.set('satellites', String(c.satellites))
+
+	// System-level placement / metadata (non-derivable, edited via the system configure form)
+	if (system.distanceLy != null) fields.set('distance', `${system.distanceLy.toLocaleString('en-US', { maximumFractionDigits: 2 })} ly`)
+	if (system.galacticX != null && system.galacticY != null && system.galacticZ != null) {
+		const fmt = (n: number) => n.toLocaleString('en-US', { maximumFractionDigits: 1 })
+		fields.set('coordinates', `(${fmt(system.galacticX)}, ${fmt(system.galacticY)}, ${fmt(system.galacticZ)}) ly`)
+	}
+	if (system.formationAge) fields.set('formation_age', system.formationAge)
+	if (system.designations) fields.set('designations', system.designations)
 
 	if (system.description) fields.set('description', system.description)
 
@@ -257,7 +166,8 @@ export async function resolveSystemMapData(slug: string): Promise<SystemMapData 
 	const systemStars = await db.execute(sql`
 		SELECT id, name, slug, spectral_type AS "spectralType", color,
 			page_slug AS "pageSlug", semi_major_axis_au AS "semiMajorAxisAu",
-			eccentricity, parent_star_id AS "parentStarId"
+			eccentricity, parent_star_id AS "parentStarId",
+			orbital_period_days AS "orbitalPeriodDays", epoch_phase AS "epochPhase"
 		FROM stars WHERE system_id = ${system.id}
 		ORDER BY parent_star_id NULLS FIRST, name
 	`)
@@ -266,6 +176,7 @@ export async function resolveSystemMapData(slug: string): Promise<SystemMapData 
 		SELECT pb.id, pb.name, pb.slug, pb.body_type AS "bodyType",
 			pb.page_slug AS "pageSlug", pb.semi_major_axis_au AS "semiMajorAxisAu",
 			pb.eccentricity, pb.star_id AS "starId", pb.parent_id AS "parentId",
+			pb.orbital_period_days AS "orbitalPeriodDays", pb.epoch_phase AS "epochPhase",
 			(SELECT COUNT(*) FROM planetary_bodies m WHERE m.parent_id = pb.id)::int AS "moonCount"
 		FROM planetary_bodies pb
 		JOIN stars s ON s.id = pb.star_id

@@ -12,7 +12,7 @@ export const GET: RequestHandler = async ({ params }) => {
 
 /** PUT /api/planetary-bodies/:slug */
 export const PUT: RequestHandler = async (event) => {
-	requireRole(event, 'admin')
+	requireRole(event, 'editor')
 
 	const data = await parseBody(event.request, updatePlanetaryBodySchema)
 	if (data instanceof Response) return data

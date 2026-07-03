@@ -2,14 +2,18 @@ import { error, redirect } from '@sveltejs/kit'
 import type { Cookies } from '@sveltejs/kit'
 import type { MapBody } from '$lib/celestial/SystemMap.svelte'
 import { hasRole } from '$lib/server/auth.js'
-import { resolveStructuredData } from '$lib/server/structured-data.js'
+import { resolveStructuredData, resolveCelestialModel } from '$lib/server/structured-data.js'
+import { planetInfoboxFields, starInfoboxFields } from '$lib/celestial/projections.js'
+import type { PlanetModel, StarModel } from '$lib/celestial/models.js'
 import {
 	findPlanetBySlugOrPageSlug,
 	findStarBySlugOrPageSlug,
 	findSystemBySlugOrPageSlug,
+	getBacklinksForCelestial,
 	getBodiesForSystemMap,
 	getCalendarsForSystem,
 	getStarsForSystemMap,
+	getPlanetsForStar,
 	listAllStarRefs,
 	listAllSystemRefs,
 	listAllBodyRefs,
@@ -35,18 +39,24 @@ export type CelestialDetailData =
 		kind: 'star'
 		body: Awaited<ReturnType<typeof findStarBySlugOrPageSlug>>
 		allSystems: Awaited<ReturnType<typeof listAllSystemRefs>>
+		allStars: Awaited<ReturnType<typeof listAllStarRefs>>
+		model: StarModel | null
+		systemPlanets: Awaited<ReturnType<typeof getPlanetsForStar>>
 	})
 	| (CelestialBaseData & {
 		kind: 'planet'
 		body: Awaited<ReturnType<typeof findPlanetBySlugOrPageSlug>>
 		allStars: Awaited<ReturnType<typeof listAllStarRefs>>
 		siblings: Awaited<ReturnType<typeof listAllBodyRefs>>
+		model: PlanetModel | null
+		parentStarHz: { inner: number, outer: number } | null
 	})
 
 interface CelestialBaseData {
 	isEditMode: false
 	isConfigureMode: boolean
 	infoboxFields: Record<string, string> | null
+	backlinks: Awaited<ReturnType<typeof getBacklinksForCelestial>>
 }
 
 export async function loadCelestialDetail(ctx: CelestialDetailContext): Promise<CelestialDetailData> {
@@ -72,6 +82,7 @@ export async function loadCelestialDetail(ctx: CelestialDetailContext): Promise<
 		const systemBodies = [...await getBodiesForSystemMap(system.id)] as unknown as MapBody[]
 		const systemCalendars = await getCalendarsForSystem(system.id)
 		const infoboxFields = await resolveStructuredData('system', system.slug)
+		const backlinks = await getBacklinksForCelestial(system.slug)
 		return {
 			kind: 'system',
 			body: system,
@@ -81,6 +92,7 @@ export async function loadCelestialDetail(ctx: CelestialDetailContext): Promise<
 			systemBodies,
 			systemCalendars,
 			infoboxFields: infoboxFields ? Object.fromEntries(infoboxFields) : null,
+			backlinks,
 		}
 	}
 
@@ -89,15 +101,24 @@ export async function loadCelestialDetail(ctx: CelestialDetailContext): Promise<
 		if (star.slug !== identifier) {
 			throw redirect(301, canonicalize(star.slug))
 		}
-		const allSystems = await listAllSystemRefs()
-		const infoboxFields = await resolveStructuredData('star', star.slug)
+		const [allSystems, allStars, rawModel, systemPlanets, backlinks] = await Promise.all([
+			listAllSystemRefs(), listAllStarRefs(), resolveCelestialModel('star', star.slug), getPlanetsForStar(star.id), getBacklinksForCelestial(star.slug),
+		])
+		// The infobox (for Know-article embeds) is one projection of the model —
+		// derive it here rather than re-fetching, so there's one source of truth.
+		const model = rawModel?.kind === 'star' ? rawModel : null
+		const infoboxFields = model ? starInfoboxFields(model) : null
 		return {
 			kind: 'star',
 			body: star,
 			allSystems,
+			allStars,
+			model,
+			systemPlanets,
 			isEditMode: false,
 			isConfigureMode,
 			infoboxFields: infoboxFields ? Object.fromEntries(infoboxFields) : null,
+			backlinks,
 		}
 	}
 
@@ -106,17 +127,25 @@ export async function loadCelestialDetail(ctx: CelestialDetailContext): Promise<
 		if (planet.slug !== identifier) {
 			throw redirect(301, canonicalize(planet.slug))
 		}
-		const allStars = await listAllStarRefs()
-		const siblings = await listAllBodyRefs()
-		const infoboxFields = await resolveStructuredData('planet', planet.slug)
+		const [allStars, siblings, rawModel, backlinks] = await Promise.all([
+			listAllStarRefs(), listAllBodyRefs(), resolveCelestialModel('planet', planet.slug), getBacklinksForCelestial(planet.slug),
+		])
+		const model = rawModel?.kind === 'planet' ? rawModel : null
+		const infoboxFields = model ? planetInfoboxFields(model) : null
+		// The parent star's habitable zone, so a planet can show whether it sits in it.
+		const parentStarModel = model?.star ? await resolveCelestialModel('star', model.star.slug) : null
+		const parentStarHz = parentStarModel?.kind === 'star' ? parentStarModel.habitableZoneAu : null
 		return {
 			kind: 'planet',
 			body: planet,
 			allStars,
 			siblings,
+			model,
+			parentStarHz,
 			isEditMode: false,
 			isConfigureMode,
 			infoboxFields: infoboxFields ? Object.fromEntries(infoboxFields) : null,
+			backlinks,
 		}
 	}
 

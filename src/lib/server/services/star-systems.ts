@@ -47,6 +47,12 @@ export async function createSystem(data: CreateSystemInput) {
 				pageSlug: data.pageSlug?.trim() || null,
 				systemType: data.systemType,
 				description: data.description?.trim() || '',
+				distanceLy: data.distanceLy ?? null,
+				galacticX: data.galacticX ?? null,
+				galacticY: data.galacticY ?? null,
+				galacticZ: data.galacticZ ?? null,
+				formationAge: data.formationAge?.trim() || null,
+				designations: data.designations?.trim() || null,
 				extra: data.extra ?? {},
 			})
 			.returning()
@@ -62,6 +68,12 @@ export async function updateSystem(slug: string, data: UpdateSystemInput) {
 	if (data.pageSlug !== undefined) setClause.pageSlug = data.pageSlug?.trim() || null
 	if (data.systemType !== undefined) setClause.systemType = data.systemType
 	if (data.description !== undefined) setClause.description = data.description?.trim() || ''
+	if (data.distanceLy !== undefined) setClause.distanceLy = data.distanceLy ?? null
+	if (data.galacticX !== undefined) setClause.galacticX = data.galacticX ?? null
+	if (data.galacticY !== undefined) setClause.galacticY = data.galacticY ?? null
+	if (data.galacticZ !== undefined) setClause.galacticZ = data.galacticZ ?? null
+	if (data.formationAge !== undefined) setClause.formationAge = data.formationAge?.trim() || null
+	if (data.designations !== undefined) setClause.designations = data.designations?.trim() || null
 	if (data.extra !== undefined) setClause.extra = data.extra ?? {}
 
 	const updated = await db.transaction(async (tx) => {

@@ -9,6 +9,8 @@ import {
 	deleteCelestialEntity,
 	applyFieldUpdates,
 	applyNameUpdate,
+	mergeOverrideExtras,
+	STAR_OVERRIDE_MAP,
 } from '$lib/server/celestial/update-helpers.js'
 type CreateStarInput = z.infer<typeof createStarSchema>
 type UpdateStarInput = z.infer<typeof updateStarSchema>
@@ -101,7 +103,7 @@ export async function createStar(data: CreateStarInput) {
 				parentStarId: data.parentStarId ?? null,
 				systemId: data.systemId ?? null,
 				epochPhase: data.epochPhase ?? null,
-				extra: data.extra ?? {},
+				extra: mergeOverrideExtras(data.extra, data as Record<string, unknown>, STAR_OVERRIDE_MAP),
 				description: data.description?.trim() || '',
 			})
 			.returning()
@@ -121,7 +123,12 @@ export async function updateStar(slug: string, data: UpdateStarInput) {
 
 	if (data.parentStarId != null) {
 		if (data.parentStarId === current.id) throw error(400, 'A star cannot orbit itself')
-		await assertParentStarExists(data.parentStarId)
+		const [parent] = await db
+			.select({ id: stars.id, parentStarId: stars.parentStarId })
+			.from(stars)
+			.where(eq(stars.id, data.parentStarId))
+		if (!parent) throw error(400, 'Parent star not found')
+		if (parent.parentStarId === current.id) throw error(400, 'These stars cannot orbit each other')
 	}
 
 	const setClause: Record<string, unknown> = { updatedAt: new Date() }
@@ -142,9 +149,16 @@ export async function updateStar(slug: string, data: UpdateStarInput) {
 	if (data.extra !== undefined) setClause.extra = data.extra ?? {}
 	if (data.description !== undefined) setClause.description = data.description?.trim() || ''
 
+	// Route "lock to override" fields into the extra overflow, preserving other keys.
+	setClause.extra = mergeOverrideExtras(setClause.extra ?? current.extra, data as Record<string, unknown>, STAR_OVERRIDE_MAP)
+
 	const finalRadiusM = data.radiusM !== undefined ? data.radiusM : current.radiusM
 	const finalTempK = data.temperatureK !== undefined ? data.temperatureK : current.temperatureK
-	if (data.luminosityW === undefined && finalRadiusM != null && finalTempK != null && finalRadiusM > 0 && finalTempK > 0) {
+	// Only (re)derive luminosity when it has never been set or when the inputs actually
+	// change — otherwise a partial patch of an unrelated field would clobber a stored value.
+	const radiusOrTempChanged = data.radiusM !== undefined || data.temperatureK !== undefined
+	if (data.luminosityW === undefined && (current.luminosityW == null || radiusOrTempChanged)
+		&& finalRadiusM != null && finalTempK != null && finalRadiusM > 0 && finalTempK > 0) {
 		setClause.luminosityW = computeLuminosity(finalRadiusM, finalTempK)
 	}
 

@@ -1,16 +1,22 @@
 <script lang="ts">
+	import { untrack } from 'svelte'
 	import { page } from '$app/stores'
 	import { normalizePermissions } from '$lib/permissions.js'
-	import InfoboxStar from '$lib/infoboxes/InfoboxStar.svelte'
-	import InfoboxPlanet from '$lib/infoboxes/InfoboxPlanet.svelte'
+	import CelestialStatGrid from '$lib/celestial/CelestialStatGrid.svelte'
+	import CelestialFactSheet from '$lib/celestial/CelestialFactSheet.svelte'
+	import CelestialContextPanel from '$lib/celestial/CelestialContextPanel.svelte'
+	import CelestialBacklinks from '$lib/celestial/CelestialBacklinks.svelte'
 	import SystemMap from '$lib/celestial/SystemMap.svelte'
 	import MapControls from '$lib/celestial/MapControls.svelte'
 	import SystemSidebar from '$lib/celestial/SystemSidebar.svelte'
+	import DateScrubber from '$lib/celestial/DateScrubber.svelte'
 	import { DEFAULT_MAP_SETTINGS } from '$lib/celestial/map-settings.js'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
-	import { createKnowContext } from '$lib/renderer/context.js'
+	import { SvelteMap } from 'svelte/reactivity'
+	import { createKnowContext, slugify, type ResolvedLink } from '$lib/renderer/context.js'
 	import CelestialConfigureStar from '$lib/components/celestial/CelestialConfigureStar.svelte'
 	import CelestialConfigureBody from '$lib/components/celestial/CelestialConfigureBody.svelte'
+	import CelestialConfigureSystem from '$lib/components/celestial/CelestialConfigureSystem.svelte'
 	import { celestialBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import GearSixIcon from 'phosphor-svelte/lib/GearSixIcon'
 	import type { CelestialDetailData } from '$lib/server/loaders/celestial-detail.js'
@@ -29,17 +35,56 @@
 		}
 	})
 
-	// Infobox values can include wikilinks; the renderer expects a Know context.
+	// Fact-sheet values linkify a body's relationships as `[[slug|name]]`. Those
+	// targets are real, resolved celestial entities — but the renderer paints any
+	// wikilink it can't find in `resolvedLinks` as a red (missing) link pointing at
+	// `/know/<slug>`. Seed the map from the model so they render live and route to
+	// the correct `/Celestial:<slug>` page. A reactive map keeps this correct as the
+	// component is reused across client-side navigation between celestial pages.
+	function celestialLinkEntries(d: CelestialDetailData): [string, ResolvedLink][] {
+		const entries: [string, ResolvedLink][] = []
+		const add = (ref: { slug: string } | null | undefined) => {
+			// Key matches WikiInternalLink's lookup: `${sourceDomain}:${slugify(target).toLowerCase()}`.
+			if (ref?.slug) entries.push([`celestial:${slugify(ref.slug).toLowerCase()}`, { href: `/Celestial:${ref.slug}`, exists: true }])
+		}
+		if (d.kind === 'planet' && d.model) {
+			add(d.model.satelliteOf)
+			add(d.model.star)
+			add(d.model.parentBody)
+		} else if (d.kind === 'star' && d.model) {
+			add(d.model.companionOf)
+		}
+		return entries
+	}
+
+	// Seed synchronously so SSR and the first paint render live links (no red flash),
+	// then keep it current across client-side navigation.
+	const resolvedLinks = new SvelteMap<string, ResolvedLink>(untrack(() => celestialLinkEntries(data)))
+
+	$effect(() => {
+		resolvedLinks.clear()
+		for (const [key, value] of celestialLinkEntries(data)) resolvedLinks.set(key, value)
+	})
+
+	// Fact-sheet values can include wikilinks; the renderer expects a Know context.
 	createKnowContext({
-		resolvedLinks: new Map(),
+		resolvedLinks,
 		mediaBaseUrl: '/api/media',
 		pageBaseUrl: '/know',
 		sourceDomain: 'celestial',
 		calendarDate: $page.data.calendarDate ?? null,
 	})
 
-	// System map state
-	let currentAbsoluteDay = $state(Math.floor(Date.now() / 86_400_000))
+	// System map state. Seed the in-world day from the first system calendar's epoch
+	// and day length so the map opens on a plausible "now" rather than a raw Unix day.
+	function computeInitialDay(): number {
+		const cal = data.kind === 'system' ? (data.systemCalendars as any[] | undefined)?.[0] : null
+		const sd = cal?.staticData as Record<string, unknown> | undefined
+		const dayLengthMs = ((sd?.day_length_seconds as number) ?? 86_400) * 1000
+		const epochOffset = (sd?.epoch_offset as number) ?? 0
+		return Math.floor(Date.now() / dayLengthMs) + epochOffset
+	}
+	let currentAbsoluteDay = $state(computeInitialDay())
 	let mapScale = $state(DEFAULT_MAP_SETTINGS.scale)
 	let mapLabels = $state(DEFAULT_MAP_SETTINGS.labels)
 	let mapTrails = $state(DEFAULT_MAP_SETTINGS.trails)
@@ -74,11 +119,23 @@
 
 	const configurePath = $derived(`/Celestial:${raw.slug}/configure`)
 
-	const infoboxFields = $derived.by(() =>
-		data.infoboxFields
-			? new Map(Object.entries(data.infoboxFields))
-			: new Map([['name', raw.name ?? '']]),
+	// Context-panel data: a star's planets; a planet's sibling planets + its moons.
+	const contextBodies = $derived.by(() => {
+		if (data.kind === 'star') return data.systemPlanets ?? []
+		if (data.kind === 'planet') {
+			return (data.siblings ?? []).filter(b => b.starId === raw.starId && b.parentId == null && b.id !== raw.id)
+		}
+		return []
+	})
+	const contextMoons = $derived.by(() =>
+		data.kind === 'planet' ? (data.siblings ?? []).filter(b => b.parentId === raw.id) : [],
 	)
+	const contextHz = $derived(
+		data.kind === 'star'
+			? data.model?.habitableZoneAu ?? null
+			: (data.kind === 'planet' ? data.parentStarHz : null),
+	)
+	const contextSelfAu = $derived(data.kind === 'planet' ? data.model?.semiMajorAxisAu ?? null : null)
 </script>
 
 <svelte:head>
@@ -89,6 +146,7 @@
 	<CelestialConfigureStar
 		star={raw}
 		allSystems={data.allSystems ?? []}
+		allStars={data.allStars ?? []}
 		wikiContent=""
 		contentRecordId={null}
 	/>
@@ -100,13 +158,15 @@
 		wikiContent=""
 		contentRecordId={null}
 	/>
+{:else if isConfigureMode && data.kind === 'system'}
+	<CelestialConfigureSystem system={raw} />
 {:else}
 	<ArticleShell
 		breadcrumbs={celestialBreadcrumbs(raw.name)}
 		title={raw.name}
 	>
 		{#snippet actions()}
-			{#if kind !== 'system' && permissions.canConfigureCelestial}
+			{#if permissions.canConfigureCelestial}
 				<a href={configurePath} class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover">
 					<GearSixIcon size={14} weight="fill" />Configure
 				</a>
@@ -137,6 +197,9 @@
 							follow={mapFollow}
 							bind:selectedId={mapSelectedId}
 						/>
+						{#if systemCalendarConfigs.length > 0}
+							<DateScrubber calendars={systemCalendarConfigs} bind:currentAbsoluteDay />
+						{/if}
 					{:else}
 						<div class="flex items-center justify-center h-64 text-dim border border-border-subtle">
 							No stars registered in this system.
@@ -144,7 +207,7 @@
 					{/if}
 				</div>
 
-				<div class="border-l border-border-subtle pl-4 hidden md:block">
+				<div class="space-y-4 md:border-l md:border-border-subtle md:pl-4">
 					<SystemSidebar
 						system={raw}
 						stars={data.systemStars ?? []}
@@ -154,28 +217,30 @@
 						bind:currentAbsoluteDay
 						{selectedBody}
 					/>
+					<CelestialBacklinks links={data.backlinks} />
 				</div>
-
-				<div class="md:hidden">
-					<SystemSidebar
-						system={raw}
-						stars={data.systemStars ?? []}
-						bodies={data.systemBodies ?? []}
-						systemSlug={raw.slug}
-						calendars={systemCalendarConfigs}
-						bind:currentAbsoluteDay
-						{selectedBody}
-					/>
+			</div>
+		{:else if (data.kind === 'star' || data.kind === 'planet') && data.model}
+			<div class="space-y-4">
+				<CelestialStatGrid model={data.model} />
+				<div class="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_300px] lg:items-start">
+					<div class="min-w-0">
+						<CelestialFactSheet model={data.model} />
+					</div>
+					<div class="space-y-4">
+						<CelestialContextPanel
+							model={data.model}
+							bodies={contextBodies}
+							moons={contextMoons}
+							hz={contextHz}
+							selfAu={contextSelfAu}
+						/>
+						<CelestialBacklinks links={data.backlinks} />
+					</div>
 				</div>
 			</div>
 		{:else}
-			<div class="space-y-4">
-				{#if kind === 'star'}
-					<InfoboxStar fields={infoboxFields} />
-				{:else}
-					<InfoboxPlanet fields={infoboxFields} />
-				{/if}
-			</div>
+			<p class="text-dim">No data available for this entity.</p>
 		{/if}
 	</ArticleShell>
 {/if}

@@ -1,6 +1,8 @@
-import { eq, sql } from 'drizzle-orm'
+import { eq, and, inArray, isNull, sql } from 'drizzle-orm'
 import { db } from '$lib/server/db/index.js'
 import {
+	contentLinks,
+	contentRecords,
 	planetaryBodies,
 	starSystems,
 	stars,
@@ -73,6 +75,7 @@ export async function getStarsForSystemMap(systemId: number) {
 		SELECT id, name, slug, spectral_type AS "spectralType", color,
 			page_slug AS "pageSlug", semi_major_axis_au AS "semiMajorAxisAu",
 			eccentricity, parent_star_id AS "parentStarId",
+			orbital_period_days AS "orbitalPeriodDays",
 			epoch_phase AS "epochPhase"
 		FROM stars WHERE system_id = ${systemId}
 		ORDER BY parent_star_id NULLS FIRST, name
@@ -126,7 +129,17 @@ export async function listAllSystemRefs() {
 }
 
 export async function listAllStarRefs() {
-	return db.select({ id: stars.id, name: stars.name, slug: stars.slug, massKg: stars.massKg }).from(stars).orderBy(stars.name)
+	return db
+		.select({
+			id: stars.id,
+			name: stars.name,
+			slug: stars.slug,
+			massKg: stars.massKg,
+			systemId: stars.systemId,
+			parentStarId: stars.parentStarId,
+		})
+		.from(stars)
+		.orderBy(stars.name)
 }
 
 export async function listAllBodyRefs() {
@@ -138,9 +151,54 @@ export async function listAllBodyRefs() {
 			massKg: planetaryBodies.massKg,
 			starId: planetaryBodies.starId,
 			parentId: planetaryBodies.parentId,
+			semiMajorAxisAu: planetaryBodies.semiMajorAxisAu,
+			eccentricity: planetaryBodies.eccentricity,
+			bodyType: planetaryBodies.bodyType,
 		})
 		.from(planetaryBodies)
 		.orderBy(planetaryBodies.name)
+}
+
+/**
+ * Wiki pages that link to a celestial body (its "referenced by" / backlinks).
+ * Reads the persisted `content_links` graph — matched on slug since celestial
+ * entities have no shadow row in `content_records` to resolve against.
+ *
+ * We count links in both the `celestial` namespace (explicit `[[Celestial:X]]`)
+ * and the bare `know` namespace (`[[X]]`): a celestial body and its same-slug
+ * Know lore article are the same subject, so a link to either references the body.
+ * The join to `content_records` limits sources to article-backed pages, and the
+ * DISTINCT collapses an article that links both ways into one entry.
+ */
+export async function getBacklinksForCelestial(slug: string) {
+	return db
+		.selectDistinct({
+			slug: contentRecords.slug,
+			title: contentRecords.title,
+			domain: contentRecords.domain,
+		})
+		.from(contentLinks)
+		.innerJoin(contentRecords, eq(contentLinks.sourceId, contentRecords.id))
+		.where(and(
+			inArray(contentLinks.targetDomain, ['celestial', 'know']),
+			sql`LOWER(${contentLinks.targetSlug}) = LOWER(${slug})`,
+		))
+		.orderBy(contentRecords.title)
+}
+
+/** Direct planets of a star (parentId null), ordered by orbital distance. */
+export async function getPlanetsForStar(starId: number) {
+	return db
+		.select({
+			id: planetaryBodies.id,
+			name: planetaryBodies.name,
+			slug: planetaryBodies.slug,
+			semiMajorAxisAu: planetaryBodies.semiMajorAxisAu,
+			bodyType: planetaryBodies.bodyType,
+		})
+		.from(planetaryBodies)
+		.where(and(eq(planetaryBodies.starId, starId), isNull(planetaryBodies.parentId)))
+		.orderBy(planetaryBodies.semiMajorAxisAu)
 }
 
 export async function listBodiesForRegistry() {

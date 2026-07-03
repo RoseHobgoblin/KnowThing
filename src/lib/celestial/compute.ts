@@ -76,6 +76,21 @@ export function computeLuminosity(radiusM: number, temperatureK: number): number
 	return 4 * Math.PI * radiusM ** 2 * STEFAN_BOLTZMANN * temperatureK ** 4
 }
 
+// ---- System type ----
+
+const SYSTEM_TYPE_BY_COUNT = ['single', 'single', 'binary', 'trinary'] as const
+
+/**
+ * Derive the canonical system type from the number of stars in the system.
+ * The type is a name for the star count, not an independent fact — deriving it
+ * keeps it from drifting out of sync (e.g. "trinary" on a 2-star system).
+ * Falls back to a stored stub only when no stars are catalogued yet.
+ */
+export function deriveSystemType(starCount: number, stored?: string | null): string {
+	if (starCount <= 0) return stored ?? 'single'
+	return SYSTEM_TYPE_BY_COUNT[starCount] ?? 'multiple'
+}
+
 // ---- Display formatters ----
 
 /** Format density in g/cm³ */

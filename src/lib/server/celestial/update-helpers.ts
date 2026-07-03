@@ -43,6 +43,39 @@ export function applyFieldUpdates(
 }
 
 /**
+ * Merge "lock to override" display-string fields into the `extra` JSONB overflow.
+ * A non-empty string sets the override; null/empty/undefined clears it. Non-override
+ * keys already in `baseExtra` are preserved. `mapping` is dataField → extra key.
+ */
+export function mergeOverrideExtras(
+	baseExtra: unknown,
+	data: Record<string, unknown>,
+	mapping: Record<string, string>,
+): Record<string, unknown> {
+	const extra: Record<string, unknown> = { ...(baseExtra as Record<string, unknown> | null) }
+	for (const [field, key] of Object.entries(mapping)) {
+		if (data[field] === undefined) continue
+		const value = data[field]
+		if (typeof value === 'string' && value.trim() !== '') extra[key] = value.trim()
+		else delete extra[key]
+	}
+	return extra
+}
+
+export const STAR_OVERRIDE_MAP = {
+	density: 'density',
+	surfaceGravity: 'surface_gravity',
+	escapeVelocity: 'escape_velocity',
+	luminosity: 'luminosity',
+} as const
+
+export const BODY_OVERRIDE_MAP = {
+	density: 'density',
+	surfaceGravity: 'surface_gravity',
+	escapeVelocity: 'escape_velocity',
+} as const
+
+/**
  * Delete a celestial entity and clean up its content record. Throws 404 if not found.
  */
 export async function deleteCelestialEntity(

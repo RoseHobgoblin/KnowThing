@@ -12,7 +12,7 @@ export const GET: RequestHandler = async () => {
 
 /** POST /api/stars — create a star */
 export const POST: RequestHandler = async (event) => {
-	requireRole(event, 'admin')
+	requireRole(event, 'editor')
 
 	const data = await parseBody(event.request, createStarSchema)
 	if (data instanceof Response) return data
