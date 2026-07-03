@@ -12,7 +12,7 @@ export const GET: RequestHandler = async ({ params }) => {
 
 /** PUT /api/star-systems/:slug */
 export const PUT: RequestHandler = async (event) => {
-	requireRole(event, 'admin')
+	requireRole(event, 'editor')
 
 	const data = await parseBody(event.request, updateSystemSchema)
 	if (data instanceof Response) return data
