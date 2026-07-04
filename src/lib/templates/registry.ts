@@ -28,6 +28,7 @@ import CollapsibleList from './builtins/CollapsibleList.svelte'
 import SystemMap from './builtins/SystemMap.svelte'
 import PhonemeGrid from '$lib/renderer/structured/PhonemeGrid.svelte'
 import PhonologySection from '$lib/renderer/structured/PhonologySection.svelte'
+import DiphthongList from '$lib/renderer/structured/DiphthongList.svelte'
 import OrthographyTable from '$lib/renderer/structured/OrthographyTable.svelte'
 
 /**
@@ -89,6 +90,7 @@ export const BUILTIN_TEMPLATES: Record<string, BuiltinEntry> = {
 	'system map': { component: SystemMap },
 	'consonants': { component: PhonemeGrid, staticProps: { type: 'consonant' } },
 	'vowels': { component: PhonemeGrid, staticProps: { type: 'vowel' } },
+	'diphthongs': { component: DiphthongList },
 	'phonology': { component: PhonologySection },
 	'orthography': { component: OrthographyTable },
 }

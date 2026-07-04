@@ -15,6 +15,7 @@
 	import Badge from '$lib/components/ui/Badge.svelte'
 	import { PARTS_OF_SPEECH, POS_COLORS } from '$lib/components/wordbook/constants.js'
 	import InlineMarkup from '$lib/renderer/InlineMarkup.svelte'
+	import WikiNodeComponent from '$lib/renderer/WikiNode.svelte'
 	import { createKnowContext } from '$lib/renderer/context.js'
 	import PencilSimple from 'phosphor-svelte/lib/PencilSimple'
 	import Trash from 'phosphor-svelte/lib/Trash'
@@ -31,6 +32,7 @@
 		pageBaseUrl: '/Wordbook',
 		sourceDomain: 'wordbook',
 		calendarDate: layoutData.calendarDate ?? null,
+		structuredCollections: data.structuredCollections ?? null,
 	})
 	const permissions = $derived(layoutData.permissions)
 	const isAuthenticated = $derived(permissions.isAuthenticated)
@@ -259,6 +261,13 @@
 							<TagPill {tag} language={data.language.slug} />
 						{/each}
 					</div>
+				{/if}
+
+				<!-- Entry wiki body — was fetched-but-never-rendered before -->
+				{#if hom.bodyAst}
+					<article class="know-article mt-4 pt-3 border-t border-border-subtle">
+						<WikiNodeComponent node={hom.bodyAst} />
+					</article>
 				{/if}
 
 				<!-- "See full article" link if a Know article exists -->

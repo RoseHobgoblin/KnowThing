@@ -199,21 +199,25 @@ export async function getLanguageWithFamily(slug: string) {
 }
 
 export async function listRecentEntries(limit: number) {
-	return db
-		.select({
-			id: lexicon.id,
-			word: lexicon.word,
-			pronunciation: lexicon.pronunciation,
-			definition: sql<string>`(SELECT definition FROM definitions WHERE entry_id = ${lexicon.id} ORDER BY sense_number LIMIT 1)`.as('definition'),
-			partOfSpeech: sql<string>`(SELECT part_of_speech FROM definitions WHERE entry_id = ${lexicon.id} ORDER BY sense_number LIMIT 1)`.as('part_of_speech'),
-			languageName: languages.name,
-			languageSlug: languages.slug,
-			languageColor: languages.color,
-		})
-		.from(lexicon)
-		.innerJoin(languages, eq(lexicon.languageId, languages.id))
-		.orderBy(desc(lexicon.createdAt))
-		.limit(limit)
+	// LATERAL replaces the two correlated first-definition subqueries per row.
+	const rows = await db.execute(sql`
+		SELECT l.id, l.word, l.pronunciation,
+			fd.definition, fd.part_of_speech AS "partOfSpeech",
+			lang.name AS "languageName", lang.slug AS "languageSlug", lang.color AS "languageColor"
+		FROM lexicon l
+		JOIN languages lang ON lang.id = l.language_id
+		LEFT JOIN LATERAL (
+			SELECT definition, part_of_speech FROM definitions d
+			WHERE d.entry_id = l.id ORDER BY sense_number LIMIT 1
+		) fd ON true
+		ORDER BY l.created_at DESC
+		LIMIT ${limit}
+	`)
+	return rows as unknown as Array<{
+		id: number, word: string, pronunciation: string | null,
+		definition: string | null, partOfSpeech: string | null,
+		languageName: string, languageSlug: string, languageColor: string | null,
+	}>
 }
 
 export async function getTotalWordCount() {
@@ -221,40 +225,59 @@ export async function getTotalWordCount() {
 	return Number(total)
 }
 
-export async function listLanguageEntries(languageId: number, letter: string | null) {
-	const conditions = [eq(lexicon.languageId, languageId)]
-	if (letter) {
-		conditions.push(sql`LOWER(LEFT(${lexicon.word}, 1)) = ${letter.toLowerCase()}`)
-	}
+/** Accent-folded first-letter bucket: "é" → E; non-alphabetic → '#'. */
+const LETTER_BUCKET_SQL = sql`
+	CASE WHEN UPPER(LEFT(unaccent(l.word), 1)) ~ '[[:alpha:]]'
+		THEN UPPER(LEFT(unaccent(l.word), 1))
+		ELSE '#'
+	END`
 
-	return db
-		.select({
-			id: lexicon.id,
-			word: lexicon.word,
-			pronunciation: lexicon.pronunciation,
-			tags: lexicon.tags,
-			languageName: languages.name,
-			languageSlug: languages.slug,
-			languageColor: languages.color,
-			definition: sql<string>`(SELECT definition FROM definitions WHERE entry_id = ${lexicon.id} ORDER BY sense_number LIMIT 1)`.as('definition'),
-			partOfSpeech: sql<string>`(SELECT part_of_speech FROM definitions WHERE entry_id = ${lexicon.id} ORDER BY sense_number LIMIT 1)`.as('part_of_speech'),
-		})
-		.from(lexicon)
-		.innerJoin(languages, eq(lexicon.languageId, languages.id))
-		.where(and(...conditions))
-		.orderBy(asc(lexicon.word))
-		.limit(500)
+export interface LanguageEntriesPage {
+	entries: Array<{
+		id: number, word: string, pronunciation: string | null, tags: string[] | null,
+		languageName: string, languageSlug: string, languageColor: string | null,
+		definition: string | null, partOfSpeech: string | null,
+	}>
+	total: number
+}
+
+export async function listLanguageEntries(
+	languageId: number,
+	letter: string | null,
+	pagination: { limit: number, offset: number } = { limit: 200, offset: 0 },
+): Promise<LanguageEntriesPage> {
+	const letterClause = letter
+		? sql`AND ${LETTER_BUCKET_SQL} = ${letter.toUpperCase()}`
+		: sql``
+
+	const rows = await db.execute(sql`
+		SELECT l.id, l.word, l.pronunciation, l.tags,
+			lang.name AS "languageName", lang.slug AS "languageSlug", lang.color AS "languageColor",
+			fd.definition, fd.part_of_speech AS "partOfSpeech",
+			COUNT(*) OVER()::int AS __total
+		FROM lexicon l
+		JOIN languages lang ON lang.id = l.language_id
+		LEFT JOIN LATERAL (
+			SELECT definition, part_of_speech FROM definitions d
+			WHERE d.entry_id = l.id ORDER BY sense_number LIMIT 1
+		) fd ON true
+		WHERE l.language_id = ${languageId} ${letterClause}
+		ORDER BY l.word COLLATE "und-x-icu", l.homograph_number
+		LIMIT ${pagination.limit} OFFSET ${pagination.offset}
+	`) as unknown as Array<LanguageEntriesPage['entries'][number] & { __total: number }>
+
+	const total = rows.length > 0 ? Number(rows[0].__total) : 0
+	return { entries: rows.map(({ __total, ...entry }) => entry), total }
 }
 
 export async function listActiveLetters(languageId: number) {
-	const rows = await db
-		.select({
-			letter: sql<string>`DISTINCT UPPER(LEFT(${lexicon.word}, 1))`.as('letter'),
-		})
-		.from(lexicon)
-		.where(eq(lexicon.languageId, languageId))
-		.orderBy(sql`letter`)
-	return rows.map(r => r.letter)
+	const rows = await db.execute(sql`
+		SELECT DISTINCT ${LETTER_BUCKET_SQL} AS letter
+		FROM lexicon l
+		WHERE l.language_id = ${languageId}
+		ORDER BY letter
+	`)
+	return (rows as unknown as Array<{ letter: string }>).map(r => r.letter)
 }
 
 export async function getLanguageBySlug(slug: string) {

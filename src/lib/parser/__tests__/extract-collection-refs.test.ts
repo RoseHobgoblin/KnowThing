@@ -8,12 +8,19 @@ describe('extractCollectionRefs', () => {
 		expect(extractCollectionReferences(ast)).toEqual([{ type: 'consonants', slug: 'oncheran' }])
 	})
 
-	it('finds {{vowels|slug}} and {{phonology|slug}}', () => {
+	it('finds {{vowels|slug}} and expands {{phonology|slug}} into consonants + vowels + diphthongs', () => {
 		const ast = parse('{{vowels|oncheran}}\n\n{{phonology|qeren}}')
 		expect(extractCollectionReferences(ast)).toEqual([
 			{ type: 'vowels', slug: 'oncheran' },
-			{ type: 'phonology', slug: 'qeren' },
+			{ type: 'consonants', slug: 'qeren' },
+			{ type: 'vowels', slug: 'qeren' },
+			{ type: 'diphthongs', slug: 'qeren' },
 		])
+	})
+
+	it('finds {{diphthongs|slug}}', () => {
+		const ast = parse('{{diphthongs|oncheran}}')
+		expect(extractCollectionReferences(ast)).toEqual([{ type: 'diphthongs', slug: 'oncheran' }])
 	})
 
 	it('is case-insensitive for the template name', () => {

@@ -68,7 +68,7 @@
 </script>
 
 <ArticleShell
-	breadcrumbs={knowBreadcrumbs(title, { wordbookMatch, languageMatch, wordbookName: wbName })}
+	breadcrumbs={knowBreadcrumbs(title)}
 	{title}
 >
 	{#snippet actions()}
@@ -87,7 +87,7 @@
 	{#snippet badges()}
 		{#if wordbookMatch}
 			<div class="flex items-center gap-2 mt-1.5 text-xs">
-				<Badge variant="info">Wordbook</Badge>
+				<Badge variant="info">{wbName}</Badge>
 				<a
 					href="/Wordbook/{wordbookMatch.languageSlug}/{encodeURIComponent(wordbookMatch.word)}"
 					class="text-link transition-colors hover:text-link-hover"
@@ -98,12 +98,12 @@
 		{/if}
 		{#if languageMatch}
 			<div class="flex items-center gap-2 mt-1.5 text-xs">
-				<Badge variant="info">Wordbook</Badge>
+				<Badge variant="info">{wbName}</Badge>
 				<a
 					href="/Wordbook/{languageMatch.languageSlug}"
 					class="text-link transition-colors hover:text-link-hover"
 				>
-					See <em>{languageMatch.languageName}</em> in the wordbook
+					See <em>{languageMatch.languageName}</em> in the {wbName.toLowerCase()}
 				</a>
 			</div>
 		{/if}

@@ -204,7 +204,7 @@ export function extractInfoboxImageRef(
  * `consonants:<slug>` and `vowels:<slug>` collections respectively — so it fans
  * out into those two refs rather than a lone `phonology:<slug>` that nothing reads.
  */
-const COLLECTION_TEMPLATE_NAMES = new Set(['consonants', 'vowels', 'phonology', 'orthography'])
+const COLLECTION_TEMPLATE_NAMES = new Set(['consonants', 'vowels', 'diphthongs', 'phonology', 'orthography'])
 
 export function extractCollectionRefs(ast: WikiNode): { type: string, slug: string }[] {
 	const refs: { type: string, slug: string }[] = []
@@ -215,7 +215,11 @@ export function extractCollectionRefs(ast: WikiNode): { type: string, slug: stri
 				const slug = node.args[0]?.value?.trim()
 				if (!slug) return
 				if (name === 'phonology') {
-					refs.push({ type: 'consonants', slug }, { type: 'vowels', slug })
+					refs.push(
+						{ type: 'consonants', slug },
+						{ type: 'vowels', slug },
+						{ type: 'diphthongs', slug },
+					)
 				} else {
 					refs.push({ type: name, slug })
 				}

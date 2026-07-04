@@ -10,6 +10,9 @@ import {
 } from '$lib/server/services/wordbook.js'
 import { listClassesForLanguage } from '$lib/server/services/inflections.js'
 import { getResolvedLinks, serializeResolvedLinks } from '$lib/server/resolved-links.js'
+import { extractCollectionRefs, parseWikitext } from '$lib/parser/index.js'
+import { resolveAllStructuredCollections } from '$lib/server/structured-data.js'
+import type { WikiNode } from '$lib/parser/types.js'
 
 function groupBy<T>(items: T[], keyFn: (item: T) => number): Map<number, T[]> {
 	const map = new Map<number, T[]>()
@@ -51,17 +54,25 @@ export const load: PageServerLoad = async ({ params }) => {
 	const defsByEntry = groupBy(allDefs, d => d.entryId)
 	const variantsByEntry = groupBy(allVariants, v => v.entryId)
 
-	const homographs = entries.map((entry, index) => ({
-		entry,
-		definitions: defsByEntry.get(entry.id) || [],
-		variants: variantsByEntry.get(entry.id) || [],
-		inflection: allInflections[index],
-		relations: {
-			direct: etymologyResults[index][0],
-			cognates: etymologyResults[index][1],
-			etymologyChain: etymologyResults[index][2],
-		},
-	}))
+	const homographs = entries.map((entry, index) => {
+		// Entry wiki bodies render on this page; cached AST when available.
+		const body = (entry.body ?? '').trim()
+		const bodyAst: WikiNode | null = body
+			? ((entry.bodyParsedAst as WikiNode) ?? parseWikitext(body))
+			: null
+		return {
+			entry,
+			bodyAst,
+			definitions: defsByEntry.get(entry.id) || [],
+			variants: variantsByEntry.get(entry.id) || [],
+			inflection: allInflections[index],
+			relations: {
+				direct: etymologyResults[index][0],
+				cognates: etymologyResults[index][1],
+				etymologyChain: etymologyResults[index][2],
+			},
+		}
+	})
 
 	const availableClasses = await listClassesForLanguage(lang.id)
 
@@ -76,6 +87,14 @@ export const load: PageServerLoad = async ({ params }) => {
 	const resolvedLinks: Record<string, { href: string, exists: boolean }> = {}
 	for (const m of linkMaps) Object.assign(resolvedLinks, serializeResolvedLinks(m))
 
+	// Structured collections referenced by any homograph body (rare but legal).
+	const collectionRefs = homographs.flatMap(h => (h.bodyAst ? extractCollectionRefs(h.bodyAst) : []))
+	let structuredCollections: Record<string, Record<string, unknown>[]> | null = null
+	if (collectionRefs.length > 0) {
+		const resolved = await resolveAllStructuredCollections(collectionRefs)
+		if (resolved.size > 0) structuredCollections = Object.fromEntries(resolved)
+	}
+
 	return {
 		word: entries[0].word,
 		language: lang,
@@ -83,5 +102,6 @@ export const load: PageServerLoad = async ({ params }) => {
 		isMultipleHomographs: entries.length > 1,
 		availableClasses,
 		resolvedLinks,
+		structuredCollections,
 	}
 }

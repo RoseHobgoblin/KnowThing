@@ -341,7 +341,7 @@ export async function resolveAllStructuredData(
 export type StructuredCollection = Record<string, unknown>[]
 export interface CollectionRef { type: string, slug: string }
 
-async function loadPhonemesByType(slug: string, phonemeType: 'consonant' | 'vowel'): Promise<StructuredCollection | null> {
+async function loadPhonemesByType(slug: string, phonemeType: 'consonant' | 'vowel' | 'diphthong'): Promise<StructuredCollection | null> {
 	const [lang] = await db.select({ id: languages.id }).from(languages).where(eq(languages.slug, slug))
 	if (!lang) return null
 	const rows = await db
@@ -400,6 +400,7 @@ export const COLLECTION_RESOLVERS: Record<
 > = {
 	consonants: slug => loadPhonemesByType(slug, 'consonant'),
 	vowels: slug => loadPhonemesByType(slug, 'vowel'),
+	diphthongs: slug => loadPhonemesByType(slug, 'diphthong'),
 	orthography: loadOrthography,
 }
 
