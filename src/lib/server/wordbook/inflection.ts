@@ -162,9 +162,13 @@ export async function rebuildInflectedForms(entryId: number, executor: DbExecuto
 	}
 }
 
-/** Rebuild all entries for a paradigm class — atomically, in one transaction. */
-export async function rebuildClassForms(classId: number): Promise<void> {
-	await db.transaction(async (tx) => {
+/**
+ * Rebuild all entries for a paradigm class. Pass the caller's transaction to
+ * make the rebuild atomic with the caller's writes; without one, it opens its
+ * own transaction.
+ */
+export async function rebuildClassForms(classId: number, executor?: DbExecutor): Promise<void> {
+	const run = async (tx: DbExecutor) => {
 		const entries = await tx
 			.select({ entryId: lexiconInflections.entryId })
 			.from(lexiconInflections)
@@ -192,7 +196,13 @@ export async function rebuildClassForms(classId: number): Promise<void> {
 				)
 			}
 		}
-	})
+	}
+
+	if (executor) {
+		await run(executor)
+	} else {
+		await db.transaction(run)
+	}
 }
 
 /** Look up which headword an inflected form belongs to */

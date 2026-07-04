@@ -352,17 +352,6 @@ async function loadPhonemesByType(slug: string, phonemeType: 'consonant' | 'vowe
 	return rows as unknown as StructuredCollection
 }
 
-async function loadPhonology(slug: string): Promise<StructuredCollection | null> {
-	const [lang] = await db.select({ id: languages.id }).from(languages).where(eq(languages.slug, slug))
-	if (!lang) return null
-	const rows = await db
-		.select()
-		.from(phonemes)
-		.where(eq(phonemes.languageId, lang.id))
-		.orderBy(asc(phonemes.type), asc(phonemes.sortOrder), asc(phonemes.id))
-	return rows as unknown as StructuredCollection
-}
-
 async function loadOrthography(slug: string): Promise<StructuredCollection | null> {
 	const [lang] = await db.select({ id: languages.id }).from(languages).where(eq(languages.slug, slug))
 	if (!lang) return null
@@ -403,13 +392,14 @@ async function loadOrthography(slug: string): Promise<StructuredCollection | nul
 	return rows.map(r => ({ ...r, phonemes: byId.get(r.id) ?? [] })) as unknown as StructuredCollection
 }
 
+// Note: there is deliberately no 'phonology' resolver — {{Phonology|slug}}
+// fans out into consonants+vowels refs at extraction time (parser/index.ts).
 export const COLLECTION_RESOLVERS: Record<
 	string,
 	(slug: string) => Promise<StructuredCollection | null>
 > = {
 	consonants: slug => loadPhonemesByType(slug, 'consonant'),
 	vowels: slug => loadPhonemesByType(slug, 'vowel'),
-	phonology: loadPhonology,
 	orthography: loadOrthography,
 }
 

@@ -125,6 +125,13 @@ export async function getDirectRelations(entryId: number): Promise<DirectRelatio
 
 // ── Ancestry / Root Finding ─────────────────────────────────────────
 
+/**
+ * NOTE on `compound_of`: deliberately excluded from ancestry/cognate/chain
+ * recursion here and below. A compound has multiple parents, so following it
+ * would make every word sharing one compound member a "cognate" — linguistic
+ * nonsense. Compound links surface only as direct relations
+ * (compoundOf / compoundsUsing in getDirectRelations above).
+ */
 export async function findRoots(entryId: number): Promise<number[]> {
 	const result = await db.execute(sql`
 		WITH RECURSIVE ancestors AS (

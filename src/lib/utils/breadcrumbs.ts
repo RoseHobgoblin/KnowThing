@@ -42,16 +42,6 @@ export function wordbookBreadcrumbs(
 	return [{ label: wordbookName }]
 }
 
-export function wordbookLanguageBreadcrumbs(
-	wordbookName: string,
-	language: { name: string },
-): Breadcrumb[] {
-	return [
-		{ label: wordbookName, href: '/Wordbook' },
-		{ label: language.name },
-	]
-}
-
 export function wordbookWordBreadcrumbs(
 	wordbookName: string,
 	language: { name: string, slug: string },

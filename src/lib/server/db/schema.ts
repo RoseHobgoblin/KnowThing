@@ -404,7 +404,6 @@ export const lexicon = pgTable(
 		pageSlug: text('page_slug'),
 		tags: text('tags').array().default([]),
 		homographNumber: integer('homograph_number').notNull().default(1),
-		description: text('description').default(''),
 		body: text('body').notNull().default(''),
 		bodyParsedAst: jsonb('body_parsed_ast'),
 		bodyPlainText: text('body_plain_text').notNull().default(''),
@@ -460,7 +459,6 @@ export const definitions = pgTable(
 		definition: text('definition').notNull(),
 		usageExample: text('usage_example'),
 		usageTranslation: text('usage_translation'),
-		dialectId: integer('dialect_id').references(() => languageDialects.id, { onDelete: 'set null' }),
 		// Generated column (migration 0006). Never write from app code.
 		searchVector: tsvector('search_vector'),
 		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),

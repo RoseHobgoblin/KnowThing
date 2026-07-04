@@ -98,28 +98,31 @@ export async function getParadigmClass(classId: number) {
 }
 
 export async function updateParadigmClass(classId: number, data: UpdateParadigmClassInput) {
-	if (data.name || data.description !== undefined) {
-		await db.update(paradigmClasses).set({
-			...(data.name && { name: data.name.trim() }),
-			...(data.description !== undefined && { description: data.description?.trim() || null }),
-		}).where(eq(paradigmClasses.id, classId))
-	}
-
-	if (data.rules) {
-		await db.delete(paradigmRules).where(eq(paradigmRules.classId, classId))
-		const validRules = data.rules.filter(r => r.cellKey?.trim() && r.pattern?.trim())
-		if (validRules.length > 0) {
-			await db.insert(paradigmRules).values(
-				validRules.map(r => ({
-					classId,
-					cellKey: r.cellKey.trim(),
-					pattern: r.pattern.trim(),
-				})),
-			)
+	await db.transaction(async (tx) => {
+		if (data.name || data.description !== undefined) {
+			await tx.update(paradigmClasses).set({
+				...(data.name && { name: data.name.trim() }),
+				...(data.description !== undefined && { description: data.description?.trim() || null }),
+			}).where(eq(paradigmClasses.id, classId))
 		}
 
-		await rebuildClassForms(classId)
-	}
+		if (data.rules) {
+			await tx.delete(paradigmRules).where(eq(paradigmRules.classId, classId))
+			const validRules = data.rules.filter(r => r.cellKey?.trim() && r.pattern?.trim())
+			// Last-wins dedup on cellKey — the DB now enforces uniqueness
+			// (uq_paradigm_rules_class_cell), so collapse duplicates up front
+			// instead of failing the whole write.
+			const byCell = new Map<string, string>()
+			for (const rule of validRules) byCell.set(rule.cellKey.trim(), rule.pattern.trim())
+			if (byCell.size > 0) {
+				await tx.insert(paradigmRules).values(
+					[...byCell.entries()].map(([cellKey, pattern]) => ({ classId, cellKey, pattern })),
+				)
+			}
+
+			await rebuildClassForms(classId, tx)
+		}
+	})
 
 	return { success: true }
 }
@@ -133,76 +136,129 @@ export async function deleteParadigmClass(classId: number) {
 export async function createDimension(slug: string, data: CreateDimensionInput) {
 	const lang = await assertLanguage(slug)
 
-	const [dim] = await db
-		.insert(inflectionDimensions)
-		.values({
-			languageId: lang.id,
-			partOfSpeech: data.partOfSpeech.trim(),
-			name: data.name.trim(),
-			dimValues: data.values.map(v => v.trim()),
-			sortOrder: data.sortOrder ?? 0,
-		})
-		.returning()
-	return dim
+	return db.transaction(async (tx) => {
+		const [dim] = await tx
+			.insert(inflectionDimensions)
+			.values({
+				languageId: lang.id,
+				partOfSpeech: data.partOfSpeech.trim(),
+				name: data.name.trim(),
+				dimValues: data.values.map(v => v.trim()),
+				sortOrder: data.sortOrder ?? 0,
+			})
+			.returning()
+
+		// Reject (with a clean 400, rolling back) if this dimension pushes the
+		// paradigm past the cell cap — previously a plain Error → raw 500.
+		const dims = await tx
+			.select({ dimValues: inflectionDimensions.dimValues, sortOrder: inflectionDimensions.sortOrder })
+			.from(inflectionDimensions)
+			.where(and(
+				eq(inflectionDimensions.languageId, lang.id),
+				eq(inflectionDimensions.partOfSpeech, data.partOfSpeech.trim()),
+			))
+		safeCellKeys(dims.map(d => ({ values: d.dimValues, sortOrder: d.sortOrder })))
+
+		return dim
+	})
 }
 
-export async function updateDimension(dimId: number, data: UpdateDimensionInput) {
-	const [updated] = await db
-		.update(inflectionDimensions)
-		.set({
-			...(data.name && { name: data.name.trim() }),
-			...(data.values && { dimValues: data.values.map(v => v.trim()) }),
-			...(data.sortOrder !== undefined && { sortOrder: data.sortOrder }),
-		})
-		.where(eq(inflectionDimensions.id, dimId))
-		.returning()
+type DatabaseExecutor = Pick<typeof db, 'select' | 'insert' | 'update' | 'delete' | 'execute'>
 
-	if (!updated) throw error(404, 'Dimension not found')
-	return updated
+/** generateCellKeys throws a plain Error at the 1000-cell cap — surface it as a 400. */
+function safeCellKeys(dims: Array<{ values: string[], sortOrder: number }>): string[] {
+	try {
+		return generateCellKeys(dims)
+	} catch (caught) {
+		throw error(400, caught instanceof Error ? caught.message : 'Too many paradigm cells')
+	}
 }
 
-export async function deleteDimension(dimId: number) {
-	const [dim] = await db.select().from(inflectionDimensions).where(eq(inflectionDimensions.id, dimId))
-	if (!dim) throw error(404, 'Dimension not found')
-
-	await db.delete(inflectionDimensions).where(eq(inflectionDimensions.id, dimId))
-
-	const remainingDims = await db
+/**
+ * After a dimension's values/order change (or a dimension is deleted), rules
+ * keyed by now-invalid cellKeys are dead weight and their forms are stale.
+ * Prune them and rebuild every affected class, inside the caller's tx.
+ */
+async function pruneStaleRulesAndRebuild(
+	tx: DatabaseExecutor,
+	languageId: number,
+	partOfSpeech: string,
+) {
+	const remainingDims = await tx
 		.select({ dimValues: inflectionDimensions.dimValues, sortOrder: inflectionDimensions.sortOrder })
 		.from(inflectionDimensions)
 		.where(and(
-			eq(inflectionDimensions.languageId, dim.languageId),
-			eq(inflectionDimensions.partOfSpeech, dim.partOfSpeech),
+			eq(inflectionDimensions.languageId, languageId),
+			eq(inflectionDimensions.partOfSpeech, partOfSpeech),
 		))
 		.orderBy(asc(inflectionDimensions.sortOrder))
 
-	const classes = await db
+	const classes = await tx
 		.select({ id: paradigmClasses.id })
 		.from(paradigmClasses)
 		.where(and(
-			eq(paradigmClasses.languageId, dim.languageId),
-			eq(paradigmClasses.partOfSpeech, dim.partOfSpeech),
+			eq(paradigmClasses.languageId, languageId),
+			eq(paradigmClasses.partOfSpeech, partOfSpeech),
 		))
 
-	if (classes.length > 0) {
-		const validKeys = remainingDims.length > 0
-			? generateCellKeys(remainingDims.map(d => ({ values: d.dimValues, sortOrder: d.sortOrder })))
-			: []
+	if (classes.length === 0) return
 
-		for (const cls of classes) {
-			if (validKeys.length === 0) {
-				await db.delete(paradigmRules).where(eq(paradigmRules.classId, cls.id))
-			} else {
-				await db.delete(paradigmRules).where(
-					and(
-						eq(paradigmRules.classId, cls.id),
-						notInArray(paradigmRules.cellKey, validKeys),
-					),
-				)
-			}
-			await rebuildClassForms(cls.id)
+	const validKeys = remainingDims.length > 0
+		? safeCellKeys(remainingDims.map(d => ({ values: d.dimValues, sortOrder: d.sortOrder })))
+		: []
+
+	for (const cls of classes) {
+		if (validKeys.length === 0) {
+			await tx.delete(paradigmRules).where(eq(paradigmRules.classId, cls.id))
+		} else {
+			await tx.delete(paradigmRules).where(
+				and(
+					eq(paradigmRules.classId, cls.id),
+					notInArray(paradigmRules.cellKey, validKeys),
+				),
+			)
 		}
+		await rebuildClassForms(cls.id, tx)
 	}
+}
+
+export async function updateDimension(dimId: number, data: UpdateDimensionInput) {
+	return db.transaction(async (tx) => {
+		const [current] = await tx.select().from(inflectionDimensions).where(eq(inflectionDimensions.id, dimId))
+		if (!current) throw error(404, 'Dimension not found')
+
+		const [updated] = await tx
+			.update(inflectionDimensions)
+			.set({
+				...(data.name && { name: data.name.trim() }),
+				...(data.values && { dimValues: data.values.map(v => v.trim()) }),
+				...(data.sortOrder !== undefined && { sortOrder: data.sortOrder }),
+			})
+			.where(eq(inflectionDimensions.id, dimId))
+			.returning()
+
+		// cellKeys derive from dimension values *and* their sort order, so a
+		// change to either invalidates rules; prune + rebuild (previously this
+		// silently orphaned rules and their materialized forms).
+		const valuesChanged = data.values !== undefined
+			&& JSON.stringify(data.values.map(v => v.trim())) !== JSON.stringify(current.dimValues)
+		const orderChanged = data.sortOrder !== undefined && data.sortOrder !== current.sortOrder
+		if (valuesChanged || orderChanged) {
+			await pruneStaleRulesAndRebuild(tx, current.languageId, current.partOfSpeech)
+		}
+
+		return updated
+	})
+}
+
+export async function deleteDimension(dimId: number) {
+	await db.transaction(async (tx) => {
+		const [dim] = await tx.select().from(inflectionDimensions).where(eq(inflectionDimensions.id, dimId))
+		if (!dim) throw error(404, 'Dimension not found')
+
+		await tx.delete(inflectionDimensions).where(eq(inflectionDimensions.id, dimId))
+		await pruneStaleRulesAndRebuild(tx, dim.languageId, dim.partOfSpeech)
+	})
 
 	return { success: true }
 }

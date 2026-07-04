@@ -10,6 +10,7 @@ import {
 	lexiconRelations,
 	lexiconRevisions,
 	lexiconVariants,
+	users,
 } from '$lib/server/db/schema.js'
 import { getInflectionTable, rebuildInflectedForms } from '$lib/server/wordbook/inflection.js'
 
@@ -871,4 +872,172 @@ export async function updateEntryInflection(
 	})
 
 	return getInflectionTable(entryId)
+}
+
+// ── Revision history ────────────────────────────────────────────
+
+/** List an entry's revisions, newest first (metadata only, no snapshots). */
+export async function listEntryRevisions(entryId: number) {
+	await assertEntry(entryId)
+	return db
+		.select({
+			id: lexiconRevisions.id,
+			editSummary: lexiconRevisions.editSummary,
+			createdAt: lexiconRevisions.createdAt,
+			userId: lexiconRevisions.userId,
+			username: users.username,
+		})
+		.from(lexiconRevisions)
+		.leftJoin(users, eq(lexiconRevisions.userId, users.id))
+		.where(eq(lexiconRevisions.entryId, entryId))
+		.orderBy(desc(lexiconRevisions.createdAt), desc(lexiconRevisions.id))
+}
+
+/** Fetch one revision with its full snapshot. */
+export async function getEntryRevision(entryId: number, revisionId: number) {
+	const [revision] = await db
+		.select()
+		.from(lexiconRevisions)
+		.where(and(eq(lexiconRevisions.id, revisionId), eq(lexiconRevisions.entryId, entryId)))
+	if (!revision) throw error(404, 'Revision not found')
+	return revision
+}
+
+type RevisionSnapshot = {
+	word?: string
+	languageId?: number
+	pronunciation?: string | null
+	etymology?: string | null
+	notes?: string | null
+	pageSlug?: string | null
+	tags?: string[] | null
+	definitions?: Array<{
+		senseNumber?: number
+		partOfSpeech?: string | null
+		definition: string
+		usageExample?: string | null
+		usageTranslation?: string | null
+		dialectId?: number | null
+	}>
+	variants?: Array<{ dialectId: number, pronunciation?: string | null, spelling?: string | null, notes?: string | null }>
+	relations?: Array<{ targetId: number, relationType: string, notes?: string | null }>
+	inflection?: { classId?: number | null, stem?: string | null, overrides?: Record<string, string> } | null
+}
+
+/**
+ * Restore an entry to a prior revision. The current state is snapshotted
+ * first ("Restored to revision N" then appears in history with the pre-restore
+ * state one step back). Old-style snapshots without variants/relations/
+ * inflection leave those aspects untouched. Relations/variants whose targets
+ * or dialects no longer exist are silently dropped.
+ */
+export async function restoreEntryRevision(entryId: number, revisionId: number, userId: number) {
+	return db.transaction(async (tx) => {
+		const current = await assertEntry(entryId, tx)
+		const revision = await getEntryRevision(entryId, revisionId)
+		const snapshot = revision.snapshot as RevisionSnapshot
+
+		await snapshotEntry(entryId, userId, `Restored to revision ${revisionId}`, tx)
+
+		// Headword fields — homograph identity re-resolved if word/language differ.
+		const nextWord = (snapshot.word ?? current.word).trim()
+		const nextLanguageId = snapshot.languageId ?? current.languageId
+		const identityChanged = nextWord.toLowerCase() !== current.word.toLowerCase()
+			|| nextLanguageId !== current.languageId
+		const homographNumber = identityChanged
+			? await resolveHomographNumber(tx, nextWord, nextLanguageId, false, entryId)
+			: current.homographNumber
+
+		await tx
+			.update(lexicon)
+			.set({
+				word: nextWord,
+				languageId: nextLanguageId,
+				homographNumber,
+				pronunciation: snapshot.pronunciation ?? null,
+				etymology: snapshot.etymology ?? null,
+				notes: snapshot.notes ?? null,
+				pageSlug: snapshot.pageSlug ?? null,
+				tags: snapshot.tags ?? [],
+				updatedAt: new Date(),
+			})
+			.where(eq(lexicon.id, entryId))
+
+		// Definitions — full replace from snapshot.
+		if (snapshot.definitions && snapshot.definitions.length > 0) {
+			await tx.delete(definitions).where(eq(definitions.entryId, entryId))
+			await tx.insert(definitions).values(
+				snapshot.definitions.map((definition, index) => ({
+					entryId,
+					senseNumber: index + 1,
+					partOfSpeech: definition.partOfSpeech ?? null,
+					definition: definition.definition,
+					usageExample: definition.usageExample ?? null,
+					usageTranslation: definition.usageTranslation ?? null,
+				})),
+			)
+		}
+
+		// Variants — only in new-style snapshots; filter to still-existing dialects.
+		if (snapshot.variants) {
+			await tx.delete(lexiconVariants).where(eq(lexiconVariants.entryId, entryId))
+			const dialectIds = [...new Set(snapshot.variants.map(variant => variant.dialectId))]
+			if (dialectIds.length > 0) {
+				const alive = await tx
+					.select({ id: languageDialects.id })
+					.from(languageDialects)
+					.where(inArray(languageDialects.id, dialectIds))
+				const aliveIds = new Set(alive.map(dialect => dialect.id))
+				const rows = snapshot.variants.filter(variant => aliveIds.has(variant.dialectId))
+				if (rows.length > 0) {
+					await tx.insert(lexiconVariants).values(rows.map(variant => ({
+						entryId,
+						dialectId: variant.dialectId,
+						pronunciation: variant.pronunciation ?? null,
+						spelling: variant.spelling ?? null,
+						notes: variant.notes ?? null,
+					})))
+				}
+			}
+		}
+
+		// Relations — only in new-style snapshots; filter to still-existing targets.
+		if (snapshot.relations) {
+			await tx.delete(lexiconRelations).where(eq(lexiconRelations.sourceId, entryId))
+			const targetIds = [...new Set(snapshot.relations.map(relation => relation.targetId))]
+			if (targetIds.length > 0) {
+				const alive = await tx
+					.select({ id: lexicon.id })
+					.from(lexicon)
+					.where(inArray(lexicon.id, targetIds))
+				const aliveIds = new Set(alive.map(target => target.id))
+				const rows = snapshot.relations.filter(relation =>
+					aliveIds.has(relation.targetId) && VALID_RELATION_TYPES.has(relation.relationType))
+				if (rows.length > 0) {
+					await tx.insert(lexiconRelations).values(rows.map(relation => ({
+						sourceId: entryId,
+						targetId: relation.targetId,
+						relationType: relation.relationType,
+						notes: relation.notes ?? null,
+					}))).onConflictDoNothing()
+				}
+			}
+		}
+
+		// Inflection — only in new-style snapshots (null means "had none").
+		if (snapshot.inflection !== undefined) {
+			await tx.delete(lexiconInflections).where(eq(lexiconInflections.entryId, entryId))
+			if (snapshot.inflection) {
+				await tx.insert(lexiconInflections).values({
+					entryId,
+					classId: snapshot.inflection.classId ?? null,
+					stem: snapshot.inflection.stem ?? null,
+					overrides: snapshot.inflection.overrides ?? {},
+				})
+			}
+			await rebuildInflectedForms(entryId, tx)
+		}
+
+		return { success: true, restoredFrom: revisionId }
+	})
 }
