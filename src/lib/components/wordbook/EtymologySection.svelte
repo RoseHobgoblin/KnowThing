@@ -45,7 +45,7 @@
 		cognates = [],
 		etymologyChain = [],
 		narrativeEtymology = '',
-		isAuthenticated = false,
+		canEdit = false,
 	}: {
 		entryId: number
 		direct: {
@@ -59,7 +59,7 @@
 		cognates?: CognateGroup[]
 		etymologyChain?: EtymologyStep[]
 		narrativeEtymology?: string
-		isAuthenticated?: boolean
+		canEdit?: boolean
 	} = $props()
 
 	const hasAnyContent = $derived(
@@ -72,7 +72,7 @@
 		cognates.length > 0 ||
 		etymologyChain.length > 1 ||
 		!!narrativeEtymology ||
-		isAuthenticated,
+		canEdit,
 	)
 
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
@@ -185,7 +185,7 @@
 		{#if entry.relationNotes}
 			<span class="text-faint text-xs">— {entry.relationNotes}</span>
 		{/if}
-		{#if isAuthenticated}
+		{#if canEdit}
 			<button
 				onclick={() => deleteRelation(entry.relationId)}
 				disabled={deleting === entry.relationId}
@@ -309,7 +309,7 @@
 						{#if index > 0}<span class="text-faint">+</span>{/if}
 						<a href="/Wordbook/{entry.languageSlug}/{encodeURIComponent(entry.word)}" class="font-medium text-link italic hover:text-link-hover hover:underline">{entry.word}</a>
 						<span class="text-dim text-xs">({entry.definition})</span>
-						{#if isAuthenticated}
+						{#if canEdit}
 							<button onclick={() => deleteRelation(entry.relationId)} disabled={deleting === entry.relationId} class="text-xs text-error hover:text-error-hover {deleting === entry.relationId ? 'opacity-50' : ''}" title="Remove">✕</button>
 						{/if}
 					{/each}
@@ -381,7 +381,7 @@
 	{/if}
 
 	<!-- Add relation -->
-	{#if isAuthenticated}
+	{#if canEdit}
 		{#if showForm}
 			{@render addRelationForm()}
 		{:else}
@@ -392,7 +392,7 @@
 	{/if}
 
 </div>
-{:else if isAuthenticated}
+{:else if canEdit}
 	<div class="py-4">
 		<p class="text-sm text-faint mb-3">No etymological relations yet.</p>
 		{#if showForm}

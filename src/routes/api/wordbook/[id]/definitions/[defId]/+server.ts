@@ -2,7 +2,8 @@ import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
 import { deleteEntryDefinition, updateEntryDefinition } from '$lib/server/services/wordbook.js'
-import { handleServiceCall } from '$lib/server/utils.js'
+import { updateDefinitionSchema } from '$lib/server/http/wordbook/schemas.js'
+import { handleServiceCall, parseBody } from '$lib/server/utils.js'
 
 /** PUT /api/wordbook/:id/definitions/:defId — edit a sense */
 export const PUT: RequestHandler = async (event) => {
@@ -10,18 +11,13 @@ export const PUT: RequestHandler = async (event) => {
 
 	const entryId = Number.parseInt(event.params.id)
 	const defId = Number.parseInt(event.params.defId)
-	if (isNaN(entryId) || isNaN(defId)) return json({ error: 'Invalid definition ID' }, { status: 400 })
+	if (Number.isNaN(entryId) || Number.isNaN(defId)) return json({ error: 'Invalid definition ID' }, { status: 400 })
 
-	const body = await event.request.json()
-	const { partOfSpeech, definition, usageExample, usageTranslation } = body as {
-		partOfSpeech?: string
-		definition?: string
-		usageExample?: string
-		usageTranslation?: string
-	}
+	const data = await parseBody(event.request, updateDefinitionSchema)
+	if (data instanceof Response) return data
 
 	return handleServiceCall(async () => {
-		const updated = await updateEntryDefinition(entryId, defId, { partOfSpeech, definition, usageExample, usageTranslation }, user.id)
+		const updated = await updateEntryDefinition(entryId, defId, data, user.id)
 		return json(updated)
 	})
 }
@@ -32,7 +28,7 @@ export const DELETE: RequestHandler = async (event) => {
 
 	const entryId = Number.parseInt(event.params.id)
 	const defId = Number.parseInt(event.params.defId)
-	if (isNaN(entryId) || isNaN(defId)) return json({ error: 'Invalid ID' }, { status: 400 })
+	if (Number.isNaN(entryId) || Number.isNaN(defId)) return json({ error: 'Invalid ID' }, { status: 400 })
 
 	return handleServiceCall(async () => {
 		await deleteEntryDefinition(entryId, defId, user.id)

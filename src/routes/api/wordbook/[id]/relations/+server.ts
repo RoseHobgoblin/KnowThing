@@ -3,11 +3,12 @@ import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
 import { computeCognates, getDirectRelations, getEtymologyChain } from '$lib/server/wordbook/etymology.js'
 import { addEntryRelation, getEntryLanguageId } from '$lib/server/services/wordbook.js'
-import { handleServiceCall } from '$lib/server/utils.js'
+import { addRelationSchema } from '$lib/server/http/wordbook/schemas.js'
+import { handleServiceCall, parseBody } from '$lib/server/utils.js'
 
 function parseId(raw: string) {
 	const id = Number.parseInt(raw)
-	if (isNaN(id)) return null
+	if (Number.isNaN(id)) return null
 	return id
 }
 
@@ -29,19 +30,15 @@ export const GET: RequestHandler = async ({ params }) => {
 
 /** POST /api/wordbook/:id/relations — add a relation */
 export const POST: RequestHandler = async (event) => {
-	requireRole(event, 'editor')
+	const user = requireRole(event, 'editor')
 	const id = parseId(event.params.id)
 	if (id == null) return json({ error: 'Invalid ID' }, { status: 400 })
 
-	const body = await event.request.json()
-	const { targetId, relationType, notes } = body as {
-		targetId: number
-		relationType: string
-		notes?: string
-	}
+	const data = await parseBody(event.request, addRelationSchema)
+	if (data instanceof Response) return data
 
 	return handleServiceCall(async () => {
-		const relation = await addEntryRelation(id, { targetId, relationType, notes })
+		const relation = await addEntryRelation(id, data, user.id)
 		return json(relation, { status: 201 })
 	})
 }

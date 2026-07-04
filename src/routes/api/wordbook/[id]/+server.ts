@@ -11,7 +11,7 @@ import { updateWordSchema } from '$lib/server/http/wordbook/schemas.js'
 
 function parseId(raw: string) {
 	const id = Number.parseInt(raw)
-	if (isNaN(id)) return null
+	if (Number.isNaN(id)) return null
 	return id
 }
 
@@ -35,11 +35,13 @@ export const PUT: RequestHandler = async (event) => {
 	return handleServiceCall(async () => json(await updateWordbookEntry(id, data, user.id)))
 }
 
-/** DELETE /api/wordbook/:id — delete entire entry */
+/** DELETE /api/wordbook/:id — delete entire entry.
+ * Editor-tier like every other entry mutation (rationalized from admin): the
+ * final revision snapshot survives the delete, so this is recoverable. */
 export const DELETE: RequestHandler = async (event) => {
-	requireRole(event, 'admin')
+	const user = requireRole(event, 'editor')
 	const id = parseId(event.params.id)
 	if (id == null) return json({ error: 'Invalid ID' }, { status: 400 })
 
-	return handleServiceCall(async () => json(await deleteWordbookEntry(id)))
+	return handleServiceCall(async () => json(await deleteWordbookEntry(id, user.id)))
 }

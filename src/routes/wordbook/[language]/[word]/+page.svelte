@@ -281,7 +281,7 @@
 					cognates={relations.cognates}
 					etymologyChain={relations.etymologyChain}
 					narrativeEtymology={entry.etymology || ''}
-					{isAuthenticated}
+					canEdit={canManageWordbook}
 				/>
 			</div>
 		{/if}

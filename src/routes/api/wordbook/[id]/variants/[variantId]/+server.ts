@@ -6,14 +6,14 @@ import { handleServiceCall } from '$lib/server/utils.js'
 
 /** DELETE /api/wordbook/:id/variants/:variantId */
 export const DELETE: RequestHandler = async (event) => {
-	requireRole(event, 'editor')
+	const user = requireRole(event, 'editor')
 
 	const entryId = Number.parseInt(event.params.id)
 	const variantId = Number.parseInt(event.params.variantId)
-	if (isNaN(entryId) || isNaN(variantId)) return json({ error: 'Invalid variant ID' }, { status: 400 })
+	if (Number.isNaN(entryId) || Number.isNaN(variantId)) return json({ error: 'Invalid variant ID' }, { status: 400 })
 
 	return handleServiceCall(async () => {
-		await deleteEntryVariant(entryId, variantId)
+		await deleteEntryVariant(entryId, variantId, user.id)
 		return json({ success: true })
 	})
 }

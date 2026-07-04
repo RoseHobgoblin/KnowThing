@@ -1,5 +1,6 @@
 import type { PageServerLoad } from './$types.js'
 import { redirect, error } from '@sveltejs/kit'
+import { hasRole } from '$lib/server/auth.js'
 import { getEntryWithDefinitions } from '$lib/server/services/wordbook.js'
 import { listLanguageOptions } from '$lib/server/services/languages.js'
 import { listClassesForLanguage } from '$lib/server/services/inflections.js'
@@ -7,6 +8,7 @@ import { getInflectionTable } from '$lib/server/wordbook/inflection.js'
 
 export const load: PageServerLoad = async ({ locals, params }) => {
 	if (!locals.user) throw redirect(302, '/auth/login')
+	if (!hasRole(locals.user.role, 'editor')) throw error(403, 'Editor role required to contribute to the wordbook')
 
 	const id = Number.parseInt(params.id)
 	if (isNaN(id)) throw error(400, 'Invalid ID')

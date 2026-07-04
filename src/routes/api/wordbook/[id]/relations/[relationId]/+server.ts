@@ -6,14 +6,14 @@ import { handleServiceCall } from '$lib/server/utils.js'
 
 /** DELETE /api/wordbook/:id/relations/:relationId */
 export const DELETE: RequestHandler = async (event) => {
-	requireRole(event, 'editor')
+	const user = requireRole(event, 'editor')
 
 	const entryId = Number.parseInt(event.params.id)
 	const relationId = Number.parseInt(event.params.relationId)
-	if (isNaN(entryId) || isNaN(relationId)) return json({ error: 'Invalid relation ID' }, { status: 400 })
+	if (Number.isNaN(entryId) || Number.isNaN(relationId)) return json({ error: 'Invalid relation ID' }, { status: 400 })
 
 	return handleServiceCall(async () => {
-		await deleteEntryRelation(entryId, relationId)
+		await deleteEntryRelation(entryId, relationId, user.id)
 		return json({ success: true })
 	})
 }
