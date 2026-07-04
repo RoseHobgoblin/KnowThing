@@ -2,11 +2,12 @@ import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
 import { addEntryVariant, listEntryVariants } from '$lib/server/services/wordbook.js'
-import { handleServiceCall } from '$lib/server/utils.js'
+import { addVariantSchema } from '$lib/server/http/wordbook/schemas.js'
+import { handleServiceCall, parseBody } from '$lib/server/utils.js'
 
 function parseId(raw: string) {
 	const id = Number.parseInt(raw)
-	if (isNaN(id)) return null
+	if (Number.isNaN(id)) return null
 	return id
 }
 
@@ -20,20 +21,15 @@ export const GET: RequestHandler = async ({ params }) => {
 
 /** POST /api/wordbook/:id/variants */
 export const POST: RequestHandler = async (event) => {
-	requireRole(event, 'editor')
+	const user = requireRole(event, 'editor')
 	const entryId = parseId(event.params.id)
 	if (entryId == null) return json({ error: 'Invalid ID' }, { status: 400 })
 
-	const body = await event.request.json()
-	const { dialectId, pronunciation, spelling, notes } = body as {
-		dialectId: number
-		pronunciation?: string
-		spelling?: string
-		notes?: string
-	}
+	const data = await parseBody(event.request, addVariantSchema)
+	if (data instanceof Response) return data
 
 	return handleServiceCall(async () => {
-		const variant = await addEntryVariant(entryId, { dialectId, pronunciation, spelling, notes })
+		const variant = await addEntryVariant(entryId, data, user.id)
 		return json(variant, { status: 201 })
 	})
 }

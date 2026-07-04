@@ -26,7 +26,7 @@ export const actions: Actions = {
 			await moveKnowPage({ slug: oldSlug, newTitle, newSlug, userId: user.id })
 		} catch (error_: unknown) {
 			if (isHttpError(error_) && error_.status === 409) {
-				return fail(409, { error: error_.body?.message ?? error_.message, title: newTitle, slug: newSlug })
+				return fail(409, { error: error_.body?.message ?? 'Request failed', title: newTitle, slug: newSlug })
 			}
 			throw error_
 		}

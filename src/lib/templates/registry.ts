@@ -28,6 +28,7 @@ import CollapsibleList from './builtins/CollapsibleList.svelte'
 import SystemMap from './builtins/SystemMap.svelte'
 import PhonemeGrid from '$lib/renderer/structured/PhonemeGrid.svelte'
 import PhonologySection from '$lib/renderer/structured/PhonologySection.svelte'
+import DiphthongList from '$lib/renderer/structured/DiphthongList.svelte'
 import OrthographyTable from '$lib/renderer/structured/OrthographyTable.svelte'
 
 /**
@@ -37,7 +38,12 @@ import OrthographyTable from '$lib/renderer/structured/OrthographyTable.svelte'
  * The dispatcher passes `args` at render time.
  */
 export interface BuiltinEntry {
-	component: Component<{ args: TemplateArg[] } & Record<string, unknown>>
+	// Loosely typed by necessity: entries supply their own required props
+	// (e.g. Hatnote's `variant`) via staticProps, merged by the dispatcher at
+	// render time — that per-entry pairing can't be expressed in a single
+	// registry-wide Component<Props> type.
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	component: Component<any>
 	staticProps?: Record<string, unknown>
 }
 
@@ -89,6 +95,7 @@ export const BUILTIN_TEMPLATES: Record<string, BuiltinEntry> = {
 	'system map': { component: SystemMap },
 	'consonants': { component: PhonemeGrid, staticProps: { type: 'consonant' } },
 	'vowels': { component: PhonemeGrid, staticProps: { type: 'vowel' } },
+	'diphthongs': { component: DiphthongList },
 	'phonology': { component: PhonologySection },
 	'orthography': { component: OrthographyTable },
 }

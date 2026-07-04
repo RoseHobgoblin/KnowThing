@@ -17,17 +17,11 @@ export interface Breadcrumb {
 }
 
 // ── Know (wiki articles) ───────────────────────────────────────────────
+// Note: the Know→Wordbook backlink is rendered as in-article panels by
+// KnowArticle (wordbookMatch/languageMatch), not as breadcrumbs — a Know
+// article isn't hierarchically *under* the Wordbook.
 
-export interface KnowBreadcrumbContext {
-	/** This Know article IS the encyclopedia article for a wordbook lexicon entry. */
-	wordbookMatch?: { word: string, languageSlug: string, languageName: string } | null
-	/** This Know article IS the encyclopedia article for a wordbook language. */
-	languageMatch?: { languageSlug: string, languageName: string } | null
-	/** Wordbook section label (from siteConfig); only used when a match is present. */
-	wordbookName?: string
-}
-
-export function knowBreadcrumbs(title: string, _ctx: KnowBreadcrumbContext = {}): Breadcrumb[] {
+export function knowBreadcrumbs(title: string): Breadcrumb[] {
 	return [
 		{ label: 'know' },
 		{ label: title.replaceAll(/\s+/g, '_') },
@@ -40,16 +34,6 @@ export function wordbookBreadcrumbs(
 	wordbookName: string,
 ): Breadcrumb[] {
 	return [{ label: wordbookName }]
-}
-
-export function wordbookLanguageBreadcrumbs(
-	wordbookName: string,
-	language: { name: string },
-): Breadcrumb[] {
-	return [
-		{ label: wordbookName, href: '/Wordbook' },
-		{ label: language.name },
-	]
 }
 
 export function wordbookWordBreadcrumbs(

@@ -10,6 +10,7 @@ import {
 	lexiconRelations,
 	lexiconRevisions,
 	lexiconVariants,
+	users,
 } from '$lib/server/db/schema.js'
 import { getInflectionTable, rebuildInflectedForms } from '$lib/server/wordbook/inflection.js'
 
@@ -96,10 +97,16 @@ export async function getWordbookEntry(entryId: number) {
 	return { ...entry, definitions: defs }
 }
 
-export async function deleteWordbookEntry(entryId: number) {
-	const [deleted] = await db.delete(lexicon).where(eq(lexicon.id, entryId)).returning()
-	if (!deleted) throw error(404, 'Entry not found')
-	return { success: true }
+export async function deleteWordbookEntry(entryId: number, userId: number) {
+	return db.transaction(async (tx) => {
+		await assertEntry(entryId, tx)
+		// Final snapshot survives the delete: lexicon_revisions.entry_id is
+		// ON DELETE SET NULL (migration 0036), so the audit trail outlives the entry.
+		await snapshotEntry(entryId, userId, 'Entry deleted', tx)
+		const [deleted] = await tx.delete(lexicon).where(eq(lexicon.id, entryId)).returning()
+		if (!deleted) throw error(404, 'Entry not found')
+		return { success: true }
+	})
 }
 
 export async function listWordbookTags() {
@@ -192,21 +199,25 @@ export async function getLanguageWithFamily(slug: string) {
 }
 
 export async function listRecentEntries(limit: number) {
-	return db
-		.select({
-			id: lexicon.id,
-			word: lexicon.word,
-			pronunciation: lexicon.pronunciation,
-			definition: sql<string>`(SELECT definition FROM definitions WHERE entry_id = ${lexicon.id} ORDER BY sense_number LIMIT 1)`.as('definition'),
-			partOfSpeech: sql<string>`(SELECT part_of_speech FROM definitions WHERE entry_id = ${lexicon.id} ORDER BY sense_number LIMIT 1)`.as('part_of_speech'),
-			languageName: languages.name,
-			languageSlug: languages.slug,
-			languageColor: languages.color,
-		})
-		.from(lexicon)
-		.innerJoin(languages, eq(lexicon.languageId, languages.id))
-		.orderBy(desc(lexicon.createdAt))
-		.limit(limit)
+	// LATERAL replaces the two correlated first-definition subqueries per row.
+	const rows = await db.execute(sql`
+		SELECT l.id, l.word, l.pronunciation,
+			fd.definition, fd.part_of_speech AS "partOfSpeech",
+			lang.name AS "languageName", lang.slug AS "languageSlug", lang.color AS "languageColor"
+		FROM lexicon l
+		JOIN languages lang ON lang.id = l.language_id
+		LEFT JOIN LATERAL (
+			SELECT definition, part_of_speech FROM definitions d
+			WHERE d.entry_id = l.id ORDER BY sense_number LIMIT 1
+		) fd ON true
+		ORDER BY l.created_at DESC
+		LIMIT ${limit}
+	`)
+	return rows as unknown as Array<{
+		id: number, word: string, pronunciation: string | null,
+		definition: string | null, partOfSpeech: string | null,
+		languageName: string, languageSlug: string, languageColor: string | null,
+	}>
 }
 
 export async function getTotalWordCount() {
@@ -214,40 +225,59 @@ export async function getTotalWordCount() {
 	return Number(total)
 }
 
-export async function listLanguageEntries(languageId: number, letter: string | null) {
-	const conditions = [eq(lexicon.languageId, languageId)]
-	if (letter) {
-		conditions.push(sql`LOWER(LEFT(${lexicon.word}, 1)) = ${letter.toLowerCase()}`)
-	}
+/** Accent-folded first-letter bucket: "é" → E; non-alphabetic → '#'. */
+const LETTER_BUCKET_SQL = sql`
+	CASE WHEN UPPER(LEFT(unaccent(l.word), 1)) ~ '[[:alpha:]]'
+		THEN UPPER(LEFT(unaccent(l.word), 1))
+		ELSE '#'
+	END`
 
-	return db
-		.select({
-			id: lexicon.id,
-			word: lexicon.word,
-			pronunciation: lexicon.pronunciation,
-			tags: lexicon.tags,
-			languageName: languages.name,
-			languageSlug: languages.slug,
-			languageColor: languages.color,
-			definition: sql<string>`(SELECT definition FROM definitions WHERE entry_id = ${lexicon.id} ORDER BY sense_number LIMIT 1)`.as('definition'),
-			partOfSpeech: sql<string>`(SELECT part_of_speech FROM definitions WHERE entry_id = ${lexicon.id} ORDER BY sense_number LIMIT 1)`.as('part_of_speech'),
-		})
-		.from(lexicon)
-		.innerJoin(languages, eq(lexicon.languageId, languages.id))
-		.where(and(...conditions))
-		.orderBy(asc(lexicon.word))
-		.limit(500)
+export interface LanguageEntriesPage {
+	entries: Array<{
+		id: number, word: string, pronunciation: string | null, tags: string[] | null,
+		languageName: string, languageSlug: string, languageColor: string | null,
+		definition: string | null, partOfSpeech: string | null,
+	}>
+	total: number
+}
+
+export async function listLanguageEntries(
+	languageId: number,
+	letter: string | null,
+	pagination: { limit: number, offset: number } = { limit: 200, offset: 0 },
+): Promise<LanguageEntriesPage> {
+	const letterClause = letter
+		? sql`AND ${LETTER_BUCKET_SQL} = ${letter.toUpperCase()}`
+		: sql``
+
+	const rows = await db.execute(sql`
+		SELECT l.id, l.word, l.pronunciation, l.tags,
+			lang.name AS "languageName", lang.slug AS "languageSlug", lang.color AS "languageColor",
+			fd.definition, fd.part_of_speech AS "partOfSpeech",
+			COUNT(*) OVER()::int AS __total
+		FROM lexicon l
+		JOIN languages lang ON lang.id = l.language_id
+		LEFT JOIN LATERAL (
+			SELECT definition, part_of_speech FROM definitions d
+			WHERE d.entry_id = l.id ORDER BY sense_number LIMIT 1
+		) fd ON true
+		WHERE l.language_id = ${languageId} ${letterClause}
+		ORDER BY l.word COLLATE "und-x-icu", l.homograph_number
+		LIMIT ${pagination.limit} OFFSET ${pagination.offset}
+	`) as unknown as Array<LanguageEntriesPage['entries'][number] & { __total: number }>
+
+	const total = rows.length > 0 ? Number(rows[0].__total) : 0
+	return { entries: rows.map(({ __total, ...entry }) => entry), total }
 }
 
 export async function listActiveLetters(languageId: number) {
-	const rows = await db
-		.select({
-			letter: sql<string>`DISTINCT UPPER(LEFT(${lexicon.word}, 1))`.as('letter'),
-		})
-		.from(lexicon)
-		.where(eq(lexicon.languageId, languageId))
-		.orderBy(sql`letter`)
-	return rows.map(r => r.letter)
+	const rows = await db.execute(sql`
+		SELECT DISTINCT ${LETTER_BUCKET_SQL} AS letter
+		FROM lexicon l
+		WHERE l.language_id = ${languageId}
+		ORDER BY letter
+	`)
+	return (rows as unknown as Array<{ letter: string }>).map(r => r.letter)
 }
 
 export async function getLanguageBySlug(slug: string) {
@@ -305,6 +335,7 @@ export async function listVariantsForEntries(entryIds: number[]) {
 		.select({
 			id: lexiconVariants.id,
 			entryId: lexiconVariants.entryId,
+			dialectId: lexiconVariants.dialectId,
 			pronunciation: lexiconVariants.pronunciation,
 			spelling: lexiconVariants.spelling,
 			notes: lexiconVariants.notes,
@@ -366,31 +397,98 @@ export async function listEntryVariants(entryId: number) {
 		.where(eq(lexiconVariants.entryId, entryId))
 }
 
-async function getEntry(entryId: number) {
-	const [entry] = await db.select().from(lexicon).where(eq(lexicon.id, entryId))
+/** Either the root db or a transaction — snapshot/assert helpers accept both. */
+type DatabaseExecutor = Pick<typeof db, 'select' | 'insert' | 'update' | 'delete' | 'execute'>
+
+async function getEntry(entryId: number, executor: DatabaseExecutor = db) {
+	const [entry] = await executor.select().from(lexicon).where(eq(lexicon.id, entryId))
 	return entry ?? null
 }
 
-async function assertEntry(entryId: number) {
-	const entry = await getEntry(entryId)
+async function assertEntry(entryId: number, executor: DatabaseExecutor = db) {
+	const entry = await getEntry(entryId, executor)
 	if (!entry) throw error(404, 'Entry not found')
 	return entry
 }
 
-async function snapshotEntry(entryId: number, userId: number, summary: string) {
-	const entry = await assertEntry(entryId)
-	const entryDefinitions = await db
-		.select()
-		.from(definitions)
-		.where(eq(definitions.entryId, entryId))
-		.orderBy(asc(definitions.senseNumber))
+/**
+ * Write a full revision snapshot of an entry: headword row + definitions +
+ * variants + relations + inflection assignment. Runs on the caller's executor
+ * so it commits (or rolls back) atomically with the mutation it precedes.
+ */
+async function snapshotEntry(entryId: number, userId: number, summary: string, executor: DatabaseExecutor = db) {
+	const entry = await assertEntry(entryId, executor)
+	const [entryDefinitions, entryVariants, entryRelations, [entryInflection]] = await Promise.all([
+		executor
+			.select()
+			.from(definitions)
+			.where(eq(definitions.entryId, entryId))
+			.orderBy(asc(definitions.senseNumber)),
+		executor
+			.select()
+			.from(lexiconVariants)
+			.where(eq(lexiconVariants.entryId, entryId)),
+		executor
+			.select()
+			.from(lexiconRelations)
+			.where(eq(lexiconRelations.sourceId, entryId)),
+		executor
+			.select()
+			.from(lexiconInflections)
+			.where(eq(lexiconInflections.entryId, entryId)),
+	])
 
-	await db.insert(lexiconRevisions).values({
+	// Strip the trigger-maintained tsvector — recomputed on restore, dead weight in JSON.
+	const { searchVector: _searchVector, ...entrySnapshot } = entry
+	await executor.insert(lexiconRevisions).values({
 		entryId,
-		snapshot: { ...entry, definitions: entryDefinitions },
+		snapshot: {
+			...entrySnapshot,
+			definitions: entryDefinitions.map(({ searchVector: _dv, ...rest }) => rest),
+			variants: entryVariants,
+			relations: entryRelations,
+			inflection: entryInflection ?? null,
+		},
 		editSummary: summary,
 		userId,
 	})
+}
+
+/**
+ * Compute the homograph number for (word, languageId), excluding `excludeId`.
+ * MUST run inside the caller's transaction; the CI unique index
+ * (migration 0036) backstops races.
+ */
+async function resolveHomographNumber(
+	tx: DatabaseExecutor,
+	word: string,
+	languageId: number,
+	isHomograph: boolean | undefined,
+	excludeId?: number,
+): Promise<number> {
+	const conditions = [
+		sql`LOWER(${lexicon.word}) = LOWER(${word})`,
+		eq(lexicon.languageId, languageId),
+	]
+	if (excludeId !== undefined) conditions.push(sql`${lexicon.id} <> ${excludeId}`)
+
+	const existing = await tx
+		.select({ id: lexicon.id, homographNumber: lexicon.homographNumber })
+		.from(lexicon)
+		.where(and(...conditions))
+
+	if (existing.length === 0) return 1
+
+	if (!isHomograph) {
+		const [language] = await tx
+			.select({ name: languages.name })
+			.from(languages)
+			.where(eq(languages.id, languageId))
+
+		throw error(409, `"${word}" already exists in ${language?.name || 'this language'}. Add a definition to the existing entry, or set isHomograph: true to create a separate homograph.`)
+	}
+
+	return Math.max(...existing.map(entry => entry.homographNumber)) + 1
 }
 
 export async function createWordbookEntry(input: CreateWordbookEntryInput) {
@@ -398,26 +496,9 @@ export async function createWordbookEntry(input: CreateWordbookEntryInput) {
 	const normalizedDefinitions = normalizeDefinitions(input.defs, input.definition)
 	const normalizedTags = normalizeTags(input.tags) ?? []
 
-	const existing = await db
-		.select({ id: lexicon.id, homographNumber: lexicon.homographNumber })
-		.from(lexicon)
-		.where(and(sql`LOWER(${lexicon.word}) = LOWER(${word})`, eq(lexicon.languageId, input.languageId)))
-
-	let homographNumber = 1
-	if (existing.length > 0) {
-		if (!input.isHomograph) {
-			const [language] = await db
-				.select({ name: languages.name })
-				.from(languages)
-				.where(eq(languages.id, input.languageId))
-
-			throw error(409, `"${word}" already exists in ${language?.name || 'this language'}. Add a definition to the existing entry, or set isHomograph: true to create a separate homograph.`)
-		}
-
-		homographNumber = Math.max(...existing.map(entry => entry.homographNumber)) + 1
-	}
-
 	return db.transaction(async (tx) => {
+		const homographNumber = await resolveHomographNumber(tx, word, input.languageId, input.isHomograph)
+
 		const [entry] = await tx
 			.insert(lexicon)
 			.values({
@@ -432,25 +513,36 @@ export async function createWordbookEntry(input: CreateWordbookEntryInput) {
 			})
 			.returning()
 
-		for (let index = 0; index < normalizedDefinitions.length; index++) {
-			const definition = normalizedDefinitions[index]
-			await tx.insert(definitions).values({
-				entryId: entry.id,
-				senseNumber: index + 1,
-				partOfSpeech: definition.partOfSpeech,
-				definition: definition.definition,
-				usageExample: definition.usageExample,
-				usageTranslation: definition.usageTranslation,
-			})
+		if (normalizedDefinitions.length > 0) {
+			await tx.insert(definitions).values(
+				normalizedDefinitions.map((definition, index) => ({
+					entryId: entry.id,
+					senseNumber: index + 1,
+					partOfSpeech: definition.partOfSpeech,
+					definition: definition.definition,
+					usageExample: definition.usageExample,
+					usageTranslation: definition.usageTranslation,
+				})),
+			)
 		}
-
-		await tx.update(lexicon).set({ updatedAt: new Date() }).where(eq(lexicon.id, entry.id))
 
 		const validRelations = (input.relations || []).filter(relation =>
 			relation.targetId && VALID_RELATION_TYPES.has(relation.relationType),
 		)
 
 		if (validRelations.length > 0) {
+			// Validate targets exist up front → clean 400 instead of an FK 500.
+			const targetIds = [...new Set(validRelations.map(relation => relation.targetId))]
+			const found = await tx
+				.select({ id: lexicon.id })
+				.from(lexicon)
+				.where(inArray(lexicon.id, targetIds))
+			if (found.length !== targetIds.length) {
+				const foundIds = new Set(found.map(row => row.id))
+				const missing = targetIds.filter(id => !foundIds.has(id))
+				throw error(400, `Relation target(s) not found: ${missing.join(', ')}`)
+			}
+
 			await tx.insert(lexiconRelations).values(
 				validRelations.map(relation => ({
 					sourceId: entry.id,
@@ -478,48 +570,62 @@ export async function updateWordbookEntry(
 	},
 	userId: number,
 ) {
-	await assertEntry(entryId)
-	await snapshotEntry(entryId, userId, 'Headword updated')
-
 	const normalizedTags = normalizeTags(updates.tags)
 
-	const [updated] = await db
-		.update(lexicon)
-		.set({
-			...(updates.word !== undefined && { word: updates.word.trim() }),
-			...(updates.languageId !== undefined && { languageId: updates.languageId }),
-			...(updates.pronunciation !== undefined && { pronunciation: updates.pronunciation?.trim() || null }),
-			...(updates.etymology !== undefined && { etymology: updates.etymology?.trim() || null }),
-			...(updates.notes !== undefined && { notes: updates.notes?.trim() || null }),
-			...(updates.pageSlug !== undefined && { pageSlug: updates.pageSlug?.trim() || null }),
-			...(normalizedTags !== undefined && { tags: normalizedTags }),
-			updatedAt: new Date(),
-		})
-		.where(eq(lexicon.id, entryId))
-		.returning()
+	return db.transaction(async (tx) => {
+		const current = await assertEntry(entryId, tx)
+		await snapshotEntry(entryId, userId, 'Headword updated', tx)
 
-	return updated
+		// Renaming or moving language re-runs homograph resolution so the
+		// create-time guard can't be bypassed via update.
+		const nextWord = updates.word === undefined ? current.word : updates.word.trim()
+		const nextLanguageId = updates.languageId ?? current.languageId
+		const identityChanged = nextWord.toLowerCase() !== current.word.toLowerCase()
+			|| nextLanguageId !== current.languageId
+
+		let homographNumber = current.homographNumber
+		if (identityChanged) {
+			homographNumber = await resolveHomographNumber(tx, nextWord, nextLanguageId, false, entryId)
+		}
+
+		const [updated] = await tx
+			.update(lexicon)
+			.set({
+				...(updates.word !== undefined && { word: nextWord }),
+				...(updates.languageId !== undefined && { languageId: nextLanguageId }),
+				...(identityChanged && { homographNumber }),
+				...(updates.pronunciation !== undefined && { pronunciation: updates.pronunciation?.trim() || null }),
+				...(updates.etymology !== undefined && { etymology: updates.etymology?.trim() || null }),
+				...(updates.notes !== undefined && { notes: updates.notes?.trim() || null }),
+				...(updates.pageSlug !== undefined && { pageSlug: updates.pageSlug?.trim() || null }),
+				...(normalizedTags !== undefined && { tags: normalizedTags }),
+				updatedAt: new Date(),
+			})
+			.where(eq(lexicon.id, entryId))
+			.returning()
+
+		return updated
+	})
 }
 
 export async function replaceEntryDefinitions(entryId: number, defs: WordbookDefinitionInput[], userId: number) {
-	await assertEntry(entryId)
 	const normalizedDefinitions = normalizeDefinitions(defs)
-	await snapshotEntry(entryId, userId, 'Definitions updated')
 
 	await db.transaction(async (tx) => {
+		await assertEntry(entryId, tx)
+		await snapshotEntry(entryId, userId, 'Definitions updated', tx)
 		await tx.delete(definitions).where(eq(definitions.entryId, entryId))
 
-		for (let index = 0; index < normalizedDefinitions.length; index++) {
-			const definition = normalizedDefinitions[index]
-			await tx.insert(definitions).values({
+		await tx.insert(definitions).values(
+			normalizedDefinitions.map((definition, index) => ({
 				entryId,
 				senseNumber: index + 1,
 				partOfSpeech: definition.partOfSpeech,
 				definition: definition.definition,
 				usageExample: definition.usageExample,
 				usageTranslation: definition.usageTranslation,
-			})
-		}
+			})),
+		)
 
 		await tx.update(lexicon).set({ updatedAt: new Date() }).where(eq(lexicon.id, entryId))
 	})
@@ -527,31 +633,35 @@ export async function replaceEntryDefinitions(entryId: number, defs: WordbookDef
 	return { success: true, count: normalizedDefinitions.length }
 }
 
-export async function addEntryDefinition(entryId: number, definition: WordbookDefinitionInput) {
-	await assertEntry(entryId)
+export async function addEntryDefinition(entryId: number, definition: WordbookDefinitionInput, userId: number) {
 	if (!definition.definition?.trim()) {
 		throw error(400, 'Definition is required')
 	}
 
-	const [{ max }] = await db
-		.select({ max: sql<number>`COALESCE(MAX(sense_number), 0)` })
-		.from(definitions)
-		.where(eq(definitions.entryId, entryId))
+	return db.transaction(async (tx) => {
+		await assertEntry(entryId, tx)
+		await snapshotEntry(entryId, userId, 'Definition added', tx)
 
-	const [created] = await db
-		.insert(definitions)
-		.values({
-			entryId,
-			senseNumber: Number(max) + 1,
-			partOfSpeech: definition.partOfSpeech?.trim() || null,
-			definition: definition.definition.trim(),
-			usageExample: definition.usageExample?.trim() || null,
-			usageTranslation: definition.usageTranslation?.trim() || null,
-		})
-		.returning()
+		const [{ max }] = await tx
+			.select({ max: sql<number>`COALESCE(MAX(sense_number), 0)` })
+			.from(definitions)
+			.where(eq(definitions.entryId, entryId))
 
-	await db.update(lexicon).set({ updatedAt: new Date() }).where(eq(lexicon.id, entryId))
-	return created
+		const [created] = await tx
+			.insert(definitions)
+			.values({
+				entryId,
+				senseNumber: Number(max) + 1,
+				partOfSpeech: definition.partOfSpeech?.trim() || null,
+				definition: definition.definition.trim(),
+				usageExample: definition.usageExample?.trim() || null,
+				usageTranslation: definition.usageTranslation?.trim() || null,
+			})
+			.returning()
+
+		await tx.update(lexicon).set({ updatedAt: new Date() }).where(eq(lexicon.id, entryId))
+		return created
+	})
 }
 
 export async function updateEntryDefinition(
@@ -560,42 +670,44 @@ export async function updateEntryDefinition(
 	updates: Partial<WordbookDefinitionInput>,
 	userId: number,
 ) {
-	await assertEntry(entryId)
-	await snapshotEntry(entryId, userId, 'Definition updated')
+	return db.transaction(async (tx) => {
+		await assertEntry(entryId, tx)
+		await snapshotEntry(entryId, userId, 'Definition updated', tx)
 
-	const [updated] = await db
-		.update(definitions)
-		.set({
-			...(updates.partOfSpeech !== undefined && { partOfSpeech: updates.partOfSpeech?.trim() || null }),
-			...(updates.definition !== undefined && { definition: updates.definition.trim() }),
-			...(updates.usageExample !== undefined && { usageExample: updates.usageExample?.trim() || null }),
-			...(updates.usageTranslation !== undefined && { usageTranslation: updates.usageTranslation?.trim() || null }),
-		})
-		.where(and(eq(definitions.id, definitionId), eq(definitions.entryId, entryId)))
-		.returning()
+		const [updated] = await tx
+			.update(definitions)
+			.set({
+				...(updates.partOfSpeech !== undefined && { partOfSpeech: updates.partOfSpeech?.trim() || null }),
+				...(updates.definition !== undefined && { definition: updates.definition.trim() }),
+				...(updates.usageExample !== undefined && { usageExample: updates.usageExample?.trim() || null }),
+				...(updates.usageTranslation !== undefined && { usageTranslation: updates.usageTranslation?.trim() || null }),
+			})
+			.where(and(eq(definitions.id, definitionId), eq(definitions.entryId, entryId)))
+			.returning()
 
-	if (!updated) throw error(404, 'Definition not found')
+		if (!updated) throw error(404, 'Definition not found')
 
-	await db.update(lexicon).set({ updatedAt: new Date() }).where(eq(lexicon.id, entryId))
-	return updated
+		await tx.update(lexicon).set({ updatedAt: new Date() }).where(eq(lexicon.id, entryId))
+		return updated
+	})
 }
 
 export async function deleteEntryDefinition(entryId: number, definitionId: number, userId: number) {
-	await assertEntry(entryId)
-
-	const entryDefinitions = await db
-		.select({ id: definitions.id })
-		.from(definitions)
-		.where(eq(definitions.entryId, entryId))
-		.orderBy(asc(definitions.senseNumber))
-
-	if (entryDefinitions.length <= 1) {
-		throw error(400, 'Cannot delete the last definition. Delete the entire entry instead.')
-	}
-
-	await snapshotEntry(entryId, userId, 'Definition deleted')
-
 	await db.transaction(async (tx) => {
+		await assertEntry(entryId, tx)
+
+		const entryDefinitions = await tx
+			.select({ id: definitions.id })
+			.from(definitions)
+			.where(eq(definitions.entryId, entryId))
+			.orderBy(asc(definitions.senseNumber))
+
+		if (entryDefinitions.length <= 1) {
+			throw error(400, 'Cannot delete the last definition. Delete the entire entry instead.')
+		}
+
+		await snapshotEntry(entryId, userId, 'Definition deleted', tx)
+
 		const [deleted] = await tx
 			.delete(definitions)
 			.where(and(eq(definitions.id, definitionId), eq(definitions.entryId, entryId)))
@@ -623,9 +735,8 @@ export async function deleteEntryDefinition(entryId: number, definitionId: numbe
 export async function addEntryRelation(
 	entryId: number,
 	relation: { targetId: number, relationType: string, notes?: string },
+	userId: number,
 ) {
-	await assertEntry(entryId)
-
 	if (!relation.targetId || !relation.relationType) {
 		throw error(400, 'targetId and relationType are required')
 	}
@@ -636,118 +747,321 @@ export async function addEntryRelation(
 		throw error(400, 'Cannot relate an entry to itself')
 	}
 
-	const target = await getEntry(relation.targetId)
-	if (!target) throw error(404, 'Target entry not found')
+	return db.transaction(async (tx) => {
+		await assertEntry(entryId, tx)
 
-	const [created] = await db
-		.insert(lexiconRelations)
-		.values({
-			sourceId: entryId,
-			targetId: relation.targetId,
-			relationType: relation.relationType,
-			notes: relation.notes?.trim() || null,
-		})
-		.returning()
+		const target = await getEntry(relation.targetId, tx)
+		if (!target) throw error(404, 'Target entry not found')
 
-	await db.update(lexicon).set({ updatedAt: new Date() }).where(eq(lexicon.id, entryId))
-	return created
+		const [duplicate] = await tx
+			.select({ id: lexiconRelations.id })
+			.from(lexiconRelations)
+			.where(and(
+				eq(lexiconRelations.sourceId, entryId),
+				eq(lexiconRelations.targetId, relation.targetId),
+				eq(lexiconRelations.relationType, relation.relationType),
+			))
+		if (duplicate) throw error(409, 'This relation already exists')
+
+		await snapshotEntry(entryId, userId, 'Relation added', tx)
+
+		const [created] = await tx
+			.insert(lexiconRelations)
+			.values({
+				sourceId: entryId,
+				targetId: relation.targetId,
+				relationType: relation.relationType,
+				notes: relation.notes?.trim() || null,
+			})
+			.returning()
+
+		await tx.update(lexicon).set({ updatedAt: new Date() }).where(eq(lexicon.id, entryId))
+		return created
+	})
 }
 
-export async function deleteEntryRelation(entryId: number, relationId: number) {
-	await assertEntry(entryId)
+export async function deleteEntryRelation(entryId: number, relationId: number, userId: number) {
+	await db.transaction(async (tx) => {
+		await assertEntry(entryId, tx)
+		await snapshotEntry(entryId, userId, 'Relation removed', tx)
 
-	const [deleted] = await db
-		.delete(lexiconRelations)
-		.where(and(eq(lexiconRelations.id, relationId), eq(lexiconRelations.sourceId, entryId)))
-		.returning()
+		const [deleted] = await tx
+			.delete(lexiconRelations)
+			.where(and(eq(lexiconRelations.id, relationId), eq(lexiconRelations.sourceId, entryId)))
+			.returning()
 
-	if (!deleted) throw error(404, 'Relation not found')
-	await db.update(lexicon).set({ updatedAt: new Date() }).where(eq(lexicon.id, entryId))
+		if (!deleted) throw error(404, 'Relation not found')
+		await tx.update(lexicon).set({ updatedAt: new Date() }).where(eq(lexicon.id, entryId))
+	})
 }
 
 export async function addEntryVariant(
 	entryId: number,
 	variant: { dialectId: number, pronunciation?: string, spelling?: string, notes?: string },
+	userId: number,
 ) {
-	await assertEntry(entryId)
-
 	if (!variant.dialectId) throw error(400, 'dialectId is required')
 	if (!variant.pronunciation?.trim() && !variant.spelling?.trim()) {
 		throw error(400, 'At least pronunciation or spelling is required')
 	}
 
-	const [dialect] = await db
-		.select({ id: languageDialects.id })
-		.from(languageDialects)
-		.where(eq(languageDialects.id, variant.dialectId))
-	if (!dialect) throw error(404, 'Dialect not found')
+	return db.transaction(async (tx) => {
+		const entry = await assertEntry(entryId, tx)
 
-	const [existing] = await db
-		.select({ id: lexiconVariants.id })
-		.from(lexiconVariants)
-		.where(and(eq(lexiconVariants.entryId, entryId), eq(lexiconVariants.dialectId, variant.dialectId)))
+		const [dialect] = await tx
+			.select({ id: languageDialects.id, languageId: languageDialects.languageId })
+			.from(languageDialects)
+			.where(eq(languageDialects.id, variant.dialectId))
+		if (!dialect) throw error(404, 'Dialect not found')
+		if (dialect.languageId !== entry.languageId) {
+			throw error(400, 'Dialect belongs to a different language than this entry')
+		}
 
-	if (existing) {
-		throw error(409, 'A variant for this dialect already exists. Edit it instead.')
-	}
+		const [existing] = await tx
+			.select({ id: lexiconVariants.id })
+			.from(lexiconVariants)
+			.where(and(eq(lexiconVariants.entryId, entryId), eq(lexiconVariants.dialectId, variant.dialectId)))
 
-	const [created] = await db
-		.insert(lexiconVariants)
-		.values({
-			entryId,
-			dialectId: variant.dialectId,
-			pronunciation: variant.pronunciation?.trim() || null,
-			spelling: variant.spelling?.trim() || null,
-			notes: variant.notes?.trim() || null,
-		})
-		.returning()
+		if (existing) {
+			throw error(409, 'A variant for this dialect already exists. Edit it instead.')
+		}
 
-	await db.update(lexicon).set({ updatedAt: new Date() }).where(eq(lexicon.id, entryId))
-	return created
+		await snapshotEntry(entryId, userId, 'Variant added', tx)
+
+		const [created] = await tx
+			.insert(lexiconVariants)
+			.values({
+				entryId,
+				dialectId: variant.dialectId,
+				pronunciation: variant.pronunciation?.trim() || null,
+				spelling: variant.spelling?.trim() || null,
+				notes: variant.notes?.trim() || null,
+			})
+			.returning()
+
+		await tx.update(lexicon).set({ updatedAt: new Date() }).where(eq(lexicon.id, entryId))
+		return created
+	})
 }
 
-export async function deleteEntryVariant(entryId: number, variantId: number) {
-	await assertEntry(entryId)
+export async function deleteEntryVariant(entryId: number, variantId: number, userId: number) {
+	await db.transaction(async (tx) => {
+		await assertEntry(entryId, tx)
+		await snapshotEntry(entryId, userId, 'Variant removed', tx)
 
-	const [deleted] = await db
-		.delete(lexiconVariants)
-		.where(and(eq(lexiconVariants.id, variantId), eq(lexiconVariants.entryId, entryId)))
-		.returning()
+		const [deleted] = await tx
+			.delete(lexiconVariants)
+			.where(and(eq(lexiconVariants.id, variantId), eq(lexiconVariants.entryId, entryId)))
+			.returning()
 
-	if (!deleted) throw error(404, 'Variant not found')
-	await db.update(lexicon).set({ updatedAt: new Date() }).where(eq(lexicon.id, entryId))
+		if (!deleted) throw error(404, 'Variant not found')
+		await tx.update(lexicon).set({ updatedAt: new Date() }).where(eq(lexicon.id, entryId))
+	})
 }
 
 export async function updateEntryInflection(
 	entryId: number,
-	updates: { classId?: number | null, stem?: string, overrides?: Record<string, string> },
+	updates: { classId?: number | null, stem?: string | null, overrides?: Record<string, string> },
+	userId: number,
 ) {
-	await assertEntry(entryId)
+	await db.transaction(async (tx) => {
+		await assertEntry(entryId, tx)
+		await snapshotEntry(entryId, userId, 'Inflection updated', tx)
 
-	const [existing] = await db
-		.select()
-		.from(lexiconInflections)
-		.where(eq(lexiconInflections.entryId, entryId))
-
-	if (existing) {
-		await db
-			.update(lexiconInflections)
-			.set({
-				...(updates.classId !== undefined && { classId: updates.classId || null }),
-				...(updates.stem !== undefined && { stem: updates.stem?.trim() || null }),
-				...(updates.overrides !== undefined && { overrides: updates.overrides }),
-			})
+		const [existing] = await tx
+			.select()
+			.from(lexiconInflections)
 			.where(eq(lexiconInflections.entryId, entryId))
-	} else {
-		await db.insert(lexiconInflections).values({
-			entryId,
-			classId: updates.classId || null,
-			stem: updates.stem?.trim() || null,
-			overrides: updates.overrides || {},
-		})
-	}
 
-	await db.update(lexicon).set({ updatedAt: new Date() }).where(eq(lexicon.id, entryId))
-	await rebuildInflectedForms(entryId)
+		if (existing) {
+			await tx
+				.update(lexiconInflections)
+				.set({
+					...(updates.classId !== undefined && { classId: updates.classId || null }),
+					...(updates.stem !== undefined && { stem: updates.stem?.trim() || null }),
+					...(updates.overrides !== undefined && { overrides: updates.overrides }),
+				})
+				.where(eq(lexiconInflections.entryId, entryId))
+		} else {
+			await tx.insert(lexiconInflections).values({
+				entryId,
+				classId: updates.classId || null,
+				stem: updates.stem?.trim() || null,
+				overrides: updates.overrides || {},
+			})
+		}
+
+		await tx.update(lexicon).set({ updatedAt: new Date() }).where(eq(lexicon.id, entryId))
+		await rebuildInflectedForms(entryId, tx)
+	})
+
 	return getInflectionTable(entryId)
+}
+
+// ── Revision history ────────────────────────────────────────────
+
+/** List an entry's revisions, newest first (metadata only, no snapshots). */
+export async function listEntryRevisions(entryId: number) {
+	await assertEntry(entryId)
+	return db
+		.select({
+			id: lexiconRevisions.id,
+			editSummary: lexiconRevisions.editSummary,
+			createdAt: lexiconRevisions.createdAt,
+			userId: lexiconRevisions.userId,
+			username: users.username,
+		})
+		.from(lexiconRevisions)
+		.leftJoin(users, eq(lexiconRevisions.userId, users.id))
+		.where(eq(lexiconRevisions.entryId, entryId))
+		.orderBy(desc(lexiconRevisions.createdAt), desc(lexiconRevisions.id))
+}
+
+/** Fetch one revision with its full snapshot. */
+export async function getEntryRevision(entryId: number, revisionId: number) {
+	const [revision] = await db
+		.select()
+		.from(lexiconRevisions)
+		.where(and(eq(lexiconRevisions.id, revisionId), eq(lexiconRevisions.entryId, entryId)))
+	if (!revision) throw error(404, 'Revision not found')
+	return revision
+}
+
+type RevisionSnapshot = {
+	word?: string
+	languageId?: number
+	pronunciation?: string | null
+	etymology?: string | null
+	notes?: string | null
+	pageSlug?: string | null
+	tags?: string[] | null
+	definitions?: Array<{
+		senseNumber?: number
+		partOfSpeech?: string | null
+		definition: string
+		usageExample?: string | null
+		usageTranslation?: string | null
+		dialectId?: number | null
+	}>
+	variants?: Array<{ dialectId: number, pronunciation?: string | null, spelling?: string | null, notes?: string | null }>
+	relations?: Array<{ targetId: number, relationType: string, notes?: string | null }>
+	inflection?: { classId?: number | null, stem?: string | null, overrides?: Record<string, string> } | null
+}
+
+/**
+ * Restore an entry to a prior revision. The current state is snapshotted
+ * first ("Restored to revision N" then appears in history with the pre-restore
+ * state one step back). Old-style snapshots without variants/relations/
+ * inflection leave those aspects untouched. Relations/variants whose targets
+ * or dialects no longer exist are silently dropped.
+ */
+export async function restoreEntryRevision(entryId: number, revisionId: number, userId: number) {
+	return db.transaction(async (tx) => {
+		const current = await assertEntry(entryId, tx)
+		const revision = await getEntryRevision(entryId, revisionId)
+		const snapshot = revision.snapshot as RevisionSnapshot
+
+		await snapshotEntry(entryId, userId, `Restored to revision ${revisionId}`, tx)
+
+		// Headword fields — homograph identity re-resolved if word/language differ.
+		const nextWord = (snapshot.word ?? current.word).trim()
+		const nextLanguageId = snapshot.languageId ?? current.languageId
+		const identityChanged = nextWord.toLowerCase() !== current.word.toLowerCase()
+			|| nextLanguageId !== current.languageId
+		const homographNumber = identityChanged
+			? await resolveHomographNumber(tx, nextWord, nextLanguageId, false, entryId)
+			: current.homographNumber
+
+		await tx
+			.update(lexicon)
+			.set({
+				word: nextWord,
+				languageId: nextLanguageId,
+				homographNumber,
+				pronunciation: snapshot.pronunciation ?? null,
+				etymology: snapshot.etymology ?? null,
+				notes: snapshot.notes ?? null,
+				pageSlug: snapshot.pageSlug ?? null,
+				tags: snapshot.tags ?? [],
+				updatedAt: new Date(),
+			})
+			.where(eq(lexicon.id, entryId))
+
+		// Definitions — full replace from snapshot.
+		if (snapshot.definitions && snapshot.definitions.length > 0) {
+			await tx.delete(definitions).where(eq(definitions.entryId, entryId))
+			await tx.insert(definitions).values(
+				snapshot.definitions.map((definition, index) => ({
+					entryId,
+					senseNumber: index + 1,
+					partOfSpeech: definition.partOfSpeech ?? null,
+					definition: definition.definition,
+					usageExample: definition.usageExample ?? null,
+					usageTranslation: definition.usageTranslation ?? null,
+				})),
+			)
+		}
+
+		// Variants — only in new-style snapshots; filter to still-existing dialects.
+		if (snapshot.variants) {
+			await tx.delete(lexiconVariants).where(eq(lexiconVariants.entryId, entryId))
+			const dialectIds = [...new Set(snapshot.variants.map(variant => variant.dialectId))]
+			if (dialectIds.length > 0) {
+				const alive = await tx
+					.select({ id: languageDialects.id })
+					.from(languageDialects)
+					.where(inArray(languageDialects.id, dialectIds))
+				const aliveIds = new Set(alive.map(dialect => dialect.id))
+				const rows = snapshot.variants.filter(variant => aliveIds.has(variant.dialectId))
+				if (rows.length > 0) {
+					await tx.insert(lexiconVariants).values(rows.map(variant => ({
+						entryId,
+						dialectId: variant.dialectId,
+						pronunciation: variant.pronunciation ?? null,
+						spelling: variant.spelling ?? null,
+						notes: variant.notes ?? null,
+					})))
+				}
+			}
+		}
+
+		// Relations — only in new-style snapshots; filter to still-existing targets.
+		if (snapshot.relations) {
+			await tx.delete(lexiconRelations).where(eq(lexiconRelations.sourceId, entryId))
+			const targetIds = [...new Set(snapshot.relations.map(relation => relation.targetId))]
+			if (targetIds.length > 0) {
+				const alive = await tx
+					.select({ id: lexicon.id })
+					.from(lexicon)
+					.where(inArray(lexicon.id, targetIds))
+				const aliveIds = new Set(alive.map(target => target.id))
+				const rows = snapshot.relations.filter(relation =>
+					aliveIds.has(relation.targetId) && VALID_RELATION_TYPES.has(relation.relationType))
+				if (rows.length > 0) {
+					await tx.insert(lexiconRelations).values(rows.map(relation => ({
+						sourceId: entryId,
+						targetId: relation.targetId,
+						relationType: relation.relationType,
+						notes: relation.notes ?? null,
+					}))).onConflictDoNothing()
+				}
+			}
+		}
+
+		// Inflection — only in new-style snapshots (null means "had none").
+		if (snapshot.inflection !== undefined) {
+			await tx.delete(lexiconInflections).where(eq(lexiconInflections.entryId, entryId))
+			if (snapshot.inflection) {
+				await tx.insert(lexiconInflections).values({
+					entryId,
+					classId: snapshot.inflection.classId ?? null,
+					stem: snapshot.inflection.stem ?? null,
+					overrides: snapshot.inflection.overrides ?? {},
+				})
+			}
+			await rebuildInflectedForms(entryId, tx)
+		}
+
+		return { success: true, restoredFrom: revisionId }
+	})
 }

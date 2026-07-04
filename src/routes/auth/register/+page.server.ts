@@ -39,7 +39,7 @@ export const actions: Actions = {
 			setSessionCookie(event, result.token)
 		} catch (error: unknown) {
 			if (isHttpError(error)) {
-				return fail(error.status, { error: error.body?.message ?? error.message, username })
+				return fail(error.status, { error: error.body?.message ?? 'Request failed', username })
 			}
 			const message = error instanceof Error ? error.message : 'Unknown error'
 			if (message.includes('Registration code was just used')) {

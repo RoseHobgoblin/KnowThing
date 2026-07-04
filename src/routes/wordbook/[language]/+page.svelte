@@ -5,6 +5,7 @@
 	import AlphabetNav from '$lib/components/wordbook/AlphabetNav.svelte'
 	import WordEntry from '$lib/components/wordbook/WordEntry.svelte'
 	import InflectionSummary from '$lib/components/wordbook/InflectionSummary.svelte'
+	import WikiNodeComponent from '$lib/renderer/WikiNode.svelte'
 	import { createKnowContext } from '$lib/renderer/context.js'
 
 	let { data }: { data: PageData } = $props()
@@ -17,8 +18,7 @@
 	const siteName = $derived(layoutData.siteConfig?.siteName ?? 'KnowThing')
 	const description = $derived(
 		data.language.description
-			? data.language.description
-			: `${Number(data.language.wordCount)} ${Number(data.language.wordCount) === 1 ? 'word' : 'words'} in ${data.language.name}.`,
+		|| `${Number(data.language.wordCount)} ${Number(data.language.wordCount) === 1 ? 'word' : 'words'} in ${data.language.name}.`,
 	)
 
 	createKnowContext({
@@ -27,20 +27,45 @@
 		pageBaseUrl: '/Wordbook',
 		sourceDomain: 'wordbook',
 		calendarDate: $page.data.calendarDate ?? null,
+		structuredCollections: data.structuredCollections ?? null,
 	})
 
-	// Group entries by first letter
+	// Group entries by accent-folded first grapheme (matches the server's
+	// unaccent bucketing): "é" → E, digraph-safe via Intl.Segmenter, and
+	// anything non-alphabetic lands in '#'.
+	const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' })
+	function letterBucket(word: string): string {
+		const iterated = segmenter.segment(word.trim())[Symbol.iterator]().next()
+		if (iterated.done) return '#'
+		const grapheme = iterated.value.segment
+		const folded = grapheme.normalize('NFD').replaceAll(/\p{M}/gu, '') || grapheme
+		const upper = folded.toLocaleUpperCase()
+		return /\p{L}/u.test(upper) ? upper : '#'
+	}
+
 	function groupByLetter(entries: typeof data.entries) {
 		const groups: Record<string, typeof entries> = {}
 		for (const entry of entries) {
-			const letter = entry.word[0].toUpperCase()
+			const letter = letterBucket(entry.word)
 			if (!groups[letter]) groups[letter] = []
 			groups[letter].push(entry)
 		}
-		return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b))
+		// '#' (non-alphabetic) sorts last, letters by locale order.
+		return Object.entries(groups).toSorted(([a], [b]) => {
+			if (a === '#') return 1
+			if (b === '#') return -1
+			return a.localeCompare(b)
+		})
 	}
 
 	const grouped = $derived(groupByLetter(data.entries))
+	const totalPages = $derived(Math.max(1, Math.ceil(data.entriesTotal / data.entriesPageSize)))
+	function pageHref(page: number) {
+		const parts: string[] = []
+		if (data.currentLetter) parts.push(`letter=${encodeURIComponent(data.currentLetter)}`)
+		if (page > 1) parts.push(`page=${page}`)
+		return `/Wordbook/${data.language.slug}${parts.length > 0 ? `?${parts.join('&')}` : ''}`
+	}
 
 	// Build breadcrumbs from ancestry chain
 	const breadcrumbs = $derived([
@@ -100,6 +125,16 @@
 			href="/know/{data.language.pageSlug}"
 			class="inline-block mb-4 text-sm text-link hover:text-link-hover hover:underline"
 		>Read the full article →</a>
+	{/if}
+
+	<!--
+		Wiki body: prose + {{Consonants}}/{{Vowels}}/{{Orthography}} grids render
+		right here — no more entering data that only a Know article could display.
+	-->
+	{#if data.bodyAst}
+		<article class="know-article mb-6">
+			<WikiNodeComponent node={data.bodyAst} />
+		</article>
 	{/if}
 
 	<!-- Child languages -->
@@ -177,6 +212,21 @@
 				</div>
 			</section>
 		{/each}
+
+		{#if totalPages > 1}
+			<nav class="flex items-center justify-center gap-3 text-sm mb-4" aria-label="Entry pages">
+				{#if data.entriesPage > 1}
+					<a href={pageHref(data.entriesPage - 1)} class="text-link hover:text-link-hover hover:underline">← Previous</a>
+				{/if}
+				<span class="text-dim">
+					Page {data.entriesPage} of {totalPages}
+					<span class="text-faint">({data.entriesTotal} words)</span>
+				</span>
+				{#if data.entriesPage < totalPages}
+					<a href={pageHref(data.entriesPage + 1)} class="text-link hover:text-link-hover hover:underline">Next →</a>
+				{/if}
+			</nav>
+		{/if}
 	{:else}
 		<div class="text-center py-12 text-faint">
 			{#if data.currentLetter}

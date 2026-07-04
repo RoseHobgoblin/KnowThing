@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
 import { parseBody, handleServiceCall } from '$lib/server/utils.js'
 import { updateLanguageSchema } from '$lib/server/http/languages/schemas.js'
-import { getLanguageBySlug, updateLanguage } from '$lib/server/services/languages.js'
+import { deleteLanguage, getLanguageBySlug, updateLanguage } from '$lib/server/services/languages.js'
 
 /** GET /api/languages/:slug — with inherited family from ancestors */
 export const GET: RequestHandler = async ({ params }) => {
@@ -17,4 +17,10 @@ export const PUT: RequestHandler = async (event) => {
 	if (data instanceof Response) return data
 
 	return handleServiceCall(async () => json(await updateLanguage(event.params.slug, data)))
+}
+
+/** DELETE /api/languages/:slug — refuses while entries or descendants exist */
+export const DELETE: RequestHandler = async (event) => {
+	requireRole(event, 'admin')
+	return handleServiceCall(async () => json(await deleteLanguage(event.params.slug)))
 }

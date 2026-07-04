@@ -18,7 +18,7 @@ export function generateCellKeys(dimensions: DimensionLike[]): string[] {
 		throw new Error(`Too many inflection cells (${total}). Maximum is ${MAX_CELL_KEYS}. Reduce dimension values.`)
 	}
 
-	const sorted = [...dimensions].sort((a, b) => a.sortOrder - b.sortOrder)
+	const sorted = [...dimensions].toSorted((a, b) => a.sortOrder - b.sortOrder)
 
 	function cartesian(dimIndex: number): string[] {
 		if (dimIndex >= sorted.length) return ['']
@@ -38,4 +38,14 @@ export function generateCellKeys(dimensions: DimensionLike[]): string[] {
 /** Format a cell key for display: "nominative.singular" → "nominative · singular" */
 export function cellKeyLabel(key: string): string {
 	return key.split('.').join(' · ')
+}
+
+/**
+ * Apply a paradigm pattern to a stem: "{stem}n" + "tsida" → "tsidan".
+ * A pattern without the {stem} token is a literal (irregular) form.
+ * Pure — shared by the server engine and the editor previews.
+ */
+export function applyPattern(pattern: string, stem: string): string {
+	if (!pattern.includes('{stem}')) return pattern
+	return pattern.replaceAll('{stem}', stem)
 }

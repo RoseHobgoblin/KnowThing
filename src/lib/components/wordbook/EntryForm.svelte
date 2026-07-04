@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onDestroy, untrack } from 'svelte'
+	import { SvelteMap } from 'svelte/reactivity'
 	import { PARTS_OF_SPEECH } from './constants.js'
 	import Input from '$lib/components/ui/Input.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
@@ -12,6 +13,7 @@
 		initial = {},
 		initialDefinitions = [],
 		submitLabel = 'Save Entry',
+		relationsManagedAt = null,
 		onsubmit,
 	}: {
 		languages: Array<{ id: number, name: string, slug: string }>
@@ -31,6 +33,12 @@
 			usageTranslation?: string | null
 		}>
 		submitLabel?: string
+		/**
+		 * Edit mode: existing relations are managed on the word page
+		 * (EtymologySection) — the create-time widget here would silently
+		 * discard them. When set, the widget is replaced by a pointer link.
+		 */
+		relationsManagedAt?: string | null
 		onsubmit: (data: Record<string, unknown>) => Promise<void>
 	} = $props()
 	const initialEntry = $state.snapshot(untrack(() => initial))
@@ -57,8 +65,8 @@
 	type EtymRow = { relationType: string, targetId: number | null, query: string, results: Array<{ id: number, word: string, definition: string, languageName: string, languageSlug: string }>, showDropdown: boolean }
 
 	let word = $state(initialValues.word)
-	let languageIdStr = $state(initialValues.languageIdStr)
-	let languageId = $derived(Number(languageIdStr) || 0)
+	let languageIdString = $state(initialValues.languageIdStr)
+	let languageId = $derived(Number(languageIdString) || 0)
 	let pronunciation = $state(initialValues.pronunciation)
 	let etymology = $state(initialValues.etymology)
 	let notes = $state(initialValues.notes)
@@ -70,9 +78,9 @@
 	let defs = $state<DefRow[]>(initialDefRows)
 
 	let etymRows = $state<EtymRow[]>([])
-	let searchTimeouts = new Map<number, ReturnType<typeof setTimeout>>()
+	const searchTimeouts = new SvelteMap<number, ReturnType<typeof setTimeout>>()
 
-	const currentSnapshot = $derived(JSON.stringify({ word, languageIdStr, pronunciation, etymology, notes, pageSlug, tagsInput, defs, etymRows }))
+	const currentSnapshot = $derived(JSON.stringify({ word, languageIdStr: languageIdString, pronunciation, etymology, notes, pageSlug, tagsInput, defs, etymRows }))
 	const initialSnapshot = JSON.stringify({
 		...initialValues,
 		defs: initialDefRows,
@@ -93,8 +101,17 @@
 		defs = defs.filter((_, index_) => index_ !== index)
 	}
 
+	/** Keyboard-accessible sense reorder; sense numbers are re-derived on save. */
+	function moveDefinition(index: number, delta: -1 | 1) {
+		const target = index + delta
+		if (target < 0 || target >= defs.length) return
+		const next = [...defs]
+		;[next[index], next[target]] = [next[target], next[index]]
+		defs = next
+	}
+
 	function addEtymRow() {
-		etymRows = [...etymRows, { relationType: 'derived_from', targetId: null, query: '', results: [], showDropdown: false }]
+		etymRows.push({ relationType: 'derived_from', targetId: null, query: '', results: [], showDropdown: false })
 	}
 
 	function removeEtymRow(index: number) {
@@ -129,7 +146,7 @@
 
 	function resetForm() {
 		word = initialValues.word
-		languageIdStr = initialValues.languageIdStr
+		languageIdString = initialValues.languageIdStr
 		pronunciation = initialValues.pronunciation
 		etymology = initialValues.etymology
 		notes = initialValues.notes
@@ -198,7 +215,7 @@
 
 	<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 		<Input label="Word" bind:value={word} required placeholder="kirathar" error={!word.trim() && error ? 'Word is required' : ''} />
-		<Select label="Language" bind:value={languageIdStr} type="single" items={languageItems} required placeholder="Select language..." />
+		<Select label="Language" bind:value={languageIdString} type="single" items={languageItems} required placeholder="Select language..." />
 		<Input label="Pronunciation (IPA)" bind:value={pronunciation} placeholder="/ki.ra.thar/" />
 		<Input label="Tags" bind:value={tagsInput} placeholder="religion, astronomy" />
 	</div>
@@ -214,7 +231,23 @@
 				{#if defs.length > 1}
 					<div class="flex items-center justify-between mb-2">
 						<span class="text-xs font-medium text-faint">Definition {index + 1}</span>
-						<button type="button" onclick={() => removeDefinition(index)} class="text-xs text-error hover:text-error-hover">Remove</button>
+						<span class="flex items-center gap-2">
+							<button
+								type="button"
+								onclick={() => moveDefinition(index, -1)}
+								disabled={index === 0}
+								aria-label="Move definition {index + 1} up"
+								class="text-xs text-link hover:text-link-hover disabled:opacity-30 disabled:cursor-default"
+							>↑</button>
+							<button
+								type="button"
+								onclick={() => moveDefinition(index, 1)}
+								disabled={index === defs.length - 1}
+								aria-label="Move definition {index + 1} down"
+								class="text-xs text-link hover:text-link-hover disabled:opacity-30 disabled:cursor-default"
+							>↓</button>
+							<button type="button" onclick={() => removeDefinition(index)} class="text-xs text-error hover:text-error-hover">Remove</button>
+						</span>
 					</div>
 				{/if}
 				<div class="grid grid-cols-1 gap-3 mb-2 md:grid-cols-4">
@@ -238,6 +271,15 @@
 		<Input label="Editorial Notes" bind:value={notes} placeholder="Needs verification..." />
 	</div>
 
+	{#if relationsManagedAt}
+		<div>
+			<div class={labelClass}>Etymology Links</div>
+			<p class="text-xs text-faint">
+				Relations for this entry are managed in the Etymology section of
+				<a href={relationsManagedAt} class="text-link hover:text-link-hover hover:underline">the word page</a>.
+			</p>
+		</div>
+	{:else}
 	<div>
 		<div class="flex items-center justify-between mb-2">
 			<div class={labelClass}>Etymology Links</div>
@@ -257,7 +299,12 @@
 						onfocus={() => { if (row.results.length > 0) row.showDropdown = true }}
 						onblur={() => setTimeout(() => row.showDropdown = false, 200)}
 						placeholder="Search for a word..."
-						class="w-full px-3 py-1.5 text-sm text-body bg-surface border border-border-strong outline-none transition-colors placeholder:text-faint hover:border-border focus:ring-2 focus:ring-accent focus:border-accent-border {row.targetId ? 'border-success-border bg-success-bg' : ''}"
+						class="
+							w-full px-3 py-1.5 text-sm text-body bg-surface border border-border-strong outline-none transition-colors
+							placeholder:text-faint
+							hover:border-border
+							focus:ring-2 focus:ring-accent focus:border-accent-border
+							{row.targetId ? 'border-success-border bg-success-bg' : ''}"
 					/>
 					{#if row.showDropdown}
 						<div class="absolute z-10 top-full inset-x-0 mt-1 bg-surface border border-border shadow-lg max-h-40 overflow-y-auto">
@@ -274,6 +321,7 @@
 			</div>
 		{/each}
 	</div>
+	{/if}
 
 	<StickyActionBar
 		dirty={isDirty}

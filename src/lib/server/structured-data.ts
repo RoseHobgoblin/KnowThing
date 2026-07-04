@@ -1,5 +1,5 @@
 import { db } from './db/index.js'
-import { stars, planetaryBodies, starSystems, phonemes, languages, graphemes, graphemePhonemes } from './db/schema.js'
+import { stars, planetaryBodies, starSystems, phonemes, languages, languageDialects, lexicon, definitions, graphemes, graphemePhonemes } from './db/schema.js'
 import { eq, and, sql, asc, inArray } from 'drizzle-orm'
 import type { FieldMap } from '$lib/infoboxes/types.js'
 import type { MapBody } from '$lib/celestial/SystemMap.svelte'
@@ -156,6 +156,100 @@ DOMAIN_RESOLVERS['system'] = async (slug) => {
 DOMAIN_RESOLVERS['star system'] = DOMAIN_RESOLVERS['system']
 DOMAIN_RESOLVERS['planetary system'] = DOMAIN_RESOLVERS['system']
 
+// Languages — {{Infobox language|from=<language-slug>}} pulls the structured
+// languages row (+ ancestry chain + dialects) so Know infoboxes stop drifting
+// from the Wordbook. Hand-typed args still override any pulled field.
+DOMAIN_RESOLVERS['language'] = async (slug) => {
+	const [lang] = await db.select().from(languages).where(eq(languages.slug, slug.toLowerCase()))
+	if (!lang) return null
+
+	const fields = new Map<string, string>([['name', lang.name]])
+	if (lang.nativeName) fields.set('nativename', lang.nativeName)
+	if (lang.script) fields.set('script', lang.script)
+	if (lang.family) fields.set('family', lang.family)
+	if (lang.color) fields.set('familycolor', lang.color)
+
+	// Walk the parent chain (proto → … → parent) into ancestor1..N, linking
+	// each ancestor's Wordbook page.
+	const ancestors: string[] = []
+	let parentId = lang.parentLanguageId
+	for (let depth = 0; parentId != null && depth < 10; depth++) {
+		const [parent] = await db
+			.select({
+				id: languages.id,
+				name: languages.name,
+				slug: languages.slug,
+				parentLanguageId: languages.parentLanguageId,
+				family: languages.family,
+			})
+			.from(languages)
+			.where(eq(languages.id, parentId))
+		if (!parent) break
+		ancestors.unshift(`[[Wordbook/${parent.slug}|${parent.name}]]`)
+		// Inherit family from the nearest ancestor that declares one.
+		if (!fields.has('family') && parent.family) fields.set('family', parent.family)
+		parentId = parent.parentLanguageId
+	}
+	for (const [index, ancestor] of ancestors.entries()) {
+		fields.set(`ancestor${index + 1}`, ancestor)
+	}
+	if (ancestors.length > 0 && lang.languageType !== 'proto') {
+		fields.set('protoname', ancestors[0].replace(/\[\[[^|]*\|([^\]]*)]]/, '$1'))
+	}
+
+	const dialects = await db
+		.select({ name: languageDialects.name })
+		.from(languageDialects)
+		.where(eq(languageDialects.languageId, lang.id))
+	for (const [index, dialect] of dialects.entries()) {
+		fields.set(`ld${index + 1}`, dialect.name)
+	}
+
+	return fields
+}
+DOMAIN_RESOLVERS['conlang'] = DOMAIN_RESOLVERS['language']
+
+// Lexicon entries — {{Infobox word|from=<language-slug>:<word>}}.
+// Renders via the generic infobox (no dedicated word schema yet).
+DOMAIN_RESOLVERS['word'] = async (ref) => {
+	const [langSlug, ...wordParts] = ref.split(':')
+	const word = wordParts.join(':').trim()
+	if (!langSlug || !word) return null
+
+	const [lang] = await db
+		.select({ id: languages.id, name: languages.name, slug: languages.slug })
+		.from(languages)
+		.where(eq(languages.slug, langSlug.toLowerCase()))
+	if (!lang) return null
+
+	const [entry] = await db
+		.select()
+		.from(lexicon)
+		.where(and(eq(lexicon.languageId, lang.id), sql`LOWER(${lexicon.word}) = LOWER(${word})`))
+		.orderBy(asc(lexicon.homographNumber))
+	if (!entry) return null
+
+	const fields = new Map<string, string>([
+		['name', entry.word],
+		['language', `[[Wordbook/${lang.slug}|${lang.name}]]`],
+	])
+	if (entry.pronunciation) fields.set('pronunciation', entry.pronunciation)
+	if (entry.etymology) fields.set('etymology', entry.etymology)
+	if (entry.tags && entry.tags.length > 0) fields.set('tags', entry.tags.join(', '))
+
+	const defs = await db
+		.select({ partOfSpeech: definitions.partOfSpeech, definition: definitions.definition })
+		.from(definitions)
+		.where(eq(definitions.entryId, entry.id))
+		.orderBy(asc(definitions.senseNumber))
+	if (defs.length > 0) {
+		if (defs[0].partOfSpeech) fields.set('part_of_speech', defs[0].partOfSpeech)
+		fields.set('definition', defs.map((d, i) => (defs.length > 1 ? `${i + 1}. ${d.definition}` : d.definition)).join('<br>'))
+	}
+
+	return fields
+}
+
 /**
  * Fetch full system map data for rendering {{System map|slug}}.
  */
@@ -247,7 +341,7 @@ export async function resolveAllStructuredData(
 export type StructuredCollection = Record<string, unknown>[]
 export interface CollectionRef { type: string, slug: string }
 
-async function loadPhonemesByType(slug: string, phonemeType: 'consonant' | 'vowel'): Promise<StructuredCollection | null> {
+async function loadPhonemesByType(slug: string, phonemeType: 'consonant' | 'vowel' | 'diphthong'): Promise<StructuredCollection | null> {
 	const [lang] = await db.select({ id: languages.id }).from(languages).where(eq(languages.slug, slug))
 	if (!lang) return null
 	const rows = await db
@@ -255,17 +349,6 @@ async function loadPhonemesByType(slug: string, phonemeType: 'consonant' | 'vowe
 		.from(phonemes)
 		.where(and(eq(phonemes.languageId, lang.id), eq(phonemes.type, phonemeType)))
 		.orderBy(asc(phonemes.sortOrder), asc(phonemes.id))
-	return rows as unknown as StructuredCollection
-}
-
-async function loadPhonology(slug: string): Promise<StructuredCollection | null> {
-	const [lang] = await db.select({ id: languages.id }).from(languages).where(eq(languages.slug, slug))
-	if (!lang) return null
-	const rows = await db
-		.select()
-		.from(phonemes)
-		.where(eq(phonemes.languageId, lang.id))
-		.orderBy(asc(phonemes.type), asc(phonemes.sortOrder), asc(phonemes.id))
 	return rows as unknown as StructuredCollection
 }
 
@@ -309,13 +392,15 @@ async function loadOrthography(slug: string): Promise<StructuredCollection | nul
 	return rows.map(r => ({ ...r, phonemes: byId.get(r.id) ?? [] })) as unknown as StructuredCollection
 }
 
+// Note: there is deliberately no 'phonology' resolver — {{Phonology|slug}}
+// fans out into consonants+vowels refs at extraction time (parser/index.ts).
 export const COLLECTION_RESOLVERS: Record<
 	string,
 	(slug: string) => Promise<StructuredCollection | null>
 > = {
 	consonants: slug => loadPhonemesByType(slug, 'consonant'),
 	vowels: slug => loadPhonemesByType(slug, 'vowel'),
-	phonology: loadPhonology,
+	diphthongs: slug => loadPhonemesByType(slug, 'diphthong'),
 	orthography: loadOrthography,
 }
 

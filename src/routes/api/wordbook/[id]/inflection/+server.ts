@@ -3,32 +3,28 @@ import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
 import { getInflectionTable } from '$lib/server/wordbook/inflection.js'
 import { updateEntryInflection } from '$lib/server/services/wordbook.js'
-import { handleServiceCall } from '$lib/server/utils.js'
+import { updateInflectionSchema } from '$lib/server/http/wordbook/schemas.js'
+import { handleServiceCall, parseBody } from '$lib/server/utils.js'
 
 /** GET /api/wordbook/:id/inflection — get inflection table */
 export const GET: RequestHandler = async ({ params }) => {
 	const entryId = Number.parseInt(params.id)
-	if (isNaN(entryId)) return json({ error: 'Invalid ID' }, { status: 400 })
+	if (Number.isNaN(entryId)) return json({ error: 'Invalid ID' }, { status: 400 })
 
-	const table = await getInflectionTable(entryId)
-	return json(table)
+	return handleServiceCall(async () => json(await getInflectionTable(entryId)))
 }
 
 /** PUT /api/wordbook/:id/inflection — set class + stem + overrides */
 export const PUT: RequestHandler = async (event) => {
-	requireRole(event, 'editor')
+	const user = requireRole(event, 'editor')
 	const entryId = Number.parseInt(event.params.id)
-	if (isNaN(entryId)) return json({ error: 'Invalid ID' }, { status: 400 })
+	if (Number.isNaN(entryId)) return json({ error: 'Invalid ID' }, { status: 400 })
 
-	const body = await event.request.json()
-	const { classId, stem, overrides } = body as {
-		classId?: number | null
-		stem?: string
-		overrides?: Record<string, string>
-	}
+	const data = await parseBody(event.request, updateInflectionSchema)
+	if (data instanceof Response) return data
 
 	return handleServiceCall(async () => {
-		const table = await updateEntryInflection(entryId, { classId, stem, overrides })
+		const table = await updateEntryInflection(entryId, data, user.id)
 		return json(table)
 	})
 }

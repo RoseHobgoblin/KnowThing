@@ -8,6 +8,7 @@
 	import LanguageBadge from '$lib/components/wordbook/LanguageBadge.svelte'
 	import TagPill from '$lib/components/wordbook/TagPill.svelte'
 	import EtymologySection from '$lib/components/wordbook/EtymologySection.svelte'
+	import VariantManager from '$lib/components/wordbook/VariantManager.svelte'
 	import InflectionTable from '$lib/components/wordbook/InflectionTable.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
@@ -15,6 +16,7 @@
 	import Badge from '$lib/components/ui/Badge.svelte'
 	import { PARTS_OF_SPEECH, POS_COLORS } from '$lib/components/wordbook/constants.js'
 	import InlineMarkup from '$lib/renderer/InlineMarkup.svelte'
+	import WikiNodeComponent from '$lib/renderer/WikiNode.svelte'
 	import { createKnowContext } from '$lib/renderer/context.js'
 	import PencilSimple from 'phosphor-svelte/lib/PencilSimple'
 	import Trash from 'phosphor-svelte/lib/Trash'
@@ -31,6 +33,7 @@
 		pageBaseUrl: '/Wordbook',
 		sourceDomain: 'wordbook',
 		calendarDate: layoutData.calendarDate ?? null,
+		structuredCollections: data.structuredCollections ?? null,
 	})
 	const permissions = $derived(layoutData.permissions)
 	const isAuthenticated = $derived(permissions.isAuthenticated)
@@ -66,7 +69,10 @@
 			})
 			if (res.ok) {
 				pushSuccess('Definition added')
-				newPos = ''; newDef = ''; newUsage = ''; newTranslation = ''
+				newPos = ''
+				newDef = ''
+				newUsage = ''
+				newTranslation = ''
 				addingSenseFor = null
 				invalidateAll()
 			} else {
@@ -158,22 +164,13 @@
 					</h2>
 				{/if}
 
-				<!-- Dialect variants -->
-				{#if variants.length > 0}
-					<div class="mb-3 space-y-0.5">
-						{#each variants as variant}
-							<div class="flex items-baseline gap-2 text-sm">
-								<span class="text-dim min-w-24 text-xs font-medium">{variant.dialectName}:</span>
-								{#if variant.pronunciation}
-									<span class="text-faint font-mono text-xs">{variant.pronunciation}</span>
-								{/if}
-								{#if variant.spelling}
-									<span class="text-secondary italic">"{variant.spelling}"</span>
-								{/if}
-							</div>
-						{/each}
-					</div>
-				{/if}
+				<!-- Dialect variants (editable for editors) -->
+				<VariantManager
+					entryId={entry.id}
+					languageSlug={data.language.slug}
+					{variants}
+					canEdit={canManageWordbook}
+				/>
 
 				<!-- Definitions -->
 				<div class="divide-y divide-border-subtle">
@@ -184,7 +181,7 @@
 									<span class="text-xs font-bold text-faint">{index + 1}.</span>
 								{/if}
 								{#if def.partOfSpeech}
-									<Badge class={posColors[def.partOfSpeech] || ''}>{def.partOfSpeech}</Badge>
+									<Badge class={posColors[def.partOfSpeech.toLowerCase()] || ''}>{def.partOfSpeech}</Badge>
 								{/if}
 								{#if canManageWordbook && defs.length > 1}
 									<button onclick={() => deleteSense(entry.id, def.id)} class="text-error text-xs opacity-0 transition-opacity ml-auto hover:text-error-hover group-hover:opacity-100">×</button>
@@ -261,6 +258,13 @@
 					</div>
 				{/if}
 
+				<!-- Entry wiki body — was fetched-but-never-rendered before -->
+				{#if hom.bodyAst}
+					<article class="know-article mt-4 pt-3 border-t border-border-subtle">
+						<WikiNodeComponent node={hom.bodyAst} />
+					</article>
+				{/if}
+
 				<!-- "See full article" link if a Know article exists -->
 				{#if entry.pageSlug}
 					<div class="mt-3 pt-3 border-t border-border-subtle">
@@ -281,7 +285,7 @@
 					cognates={relations.cognates}
 					etymologyChain={relations.etymologyChain}
 					narrativeEtymology={entry.etymology || ''}
-					{isAuthenticated}
+					canEdit={canManageWordbook}
 				/>
 			</div>
 		{/if}

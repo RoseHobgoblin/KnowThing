@@ -11,8 +11,20 @@ import {
 	primaryKey,
 	index,
 	uniqueIndex,
+	unique,
+	customType,
 	type AnyPgColumn,
 } from 'drizzle-orm/pg-core'
+
+/**
+ * Postgres tsvector. Maintained by DB triggers (see drizzle/0006, 0040) —
+ * declared here so the ORM knows the FTS layer exists; never written from app code.
+ */
+const tsvector = customType<{ data: string }>({
+	dataType() {
+		return 'tsvector'
+	},
+})
 
 // ============================================================================
 // Users & Auth
@@ -309,6 +321,7 @@ export const languageDialects = pgTable(
 	},
 	table => [
 		index('idx_dialects_language').on(table.languageId),
+		unique('uq_language_dialects_lang_slug').on(table.languageId, table.slug),
 	],
 )
 
@@ -391,18 +404,28 @@ export const lexicon = pgTable(
 		pageSlug: text('page_slug'),
 		tags: text('tags').array().default([]),
 		homographNumber: integer('homograph_number').notNull().default(1),
-		description: text('description').default(''),
 		body: text('body').notNull().default(''),
 		bodyParsedAst: jsonb('body_parsed_ast'),
 		bodyPlainText: text('body_plain_text').notNull().default(''),
 		bodySizeBytes: integer('body_size_bytes').notNull().default(0),
 		bodyUpdatedAt: timestamp('body_updated_at', { withTimezone: true }),
+		// Trigger-maintained (trg_lexicon_search): word A, definitions B,
+		// etymology+pronunciation C, body_plain_text D. Never write from app code.
+		searchVector: tsvector('search_vector'),
 		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 	},
 	table => [
 		index('idx_lexicon_word').on(table.word),
 		index('idx_lexicon_language').on(table.languageId),
+		index('idx_lexicon_search').using('gin', table.searchVector),
+		index('idx_lexicon_tags').using('gin', table.tags),
+		// Case-insensitive homograph identity (migration 0036)
+		uniqueIndex('lexicon_word_lang_hom_ci_unique').on(
+			table.languageId,
+			sql`LOWER(${table.word})`,
+			table.homographNumber,
+		),
 	],
 )
 
@@ -410,9 +433,10 @@ export const lexiconRevisions = pgTable(
 	'lexicon_revisions',
 	{
 		id: serial('id').primaryKey(),
+		// Nullable + SET NULL (migration 0036): revision history survives entry
+		// deletion; the snapshot JSON retains the old id/word/language.
 		entryId: integer('entry_id')
-			.references(() => lexicon.id, { onDelete: 'cascade' })
-			.notNull(),
+			.references(() => lexicon.id, { onDelete: 'set null' }),
 		snapshot: jsonb('snapshot').notNull(),
 		editSummary: text('edit_summary'),
 		userId: integer('user_id').references(() => users.id),
@@ -435,7 +459,8 @@ export const definitions = pgTable(
 		definition: text('definition').notNull(),
 		usageExample: text('usage_example'),
 		usageTranslation: text('usage_translation'),
-		dialectId: integer('dialect_id').references(() => languageDialects.id, { onDelete: 'set null' }),
+		// Generated column (migration 0006). Never write from app code.
+		searchVector: tsvector('search_vector'),
 		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 	},
 	table => [
@@ -459,6 +484,7 @@ export const lexiconVariants = pgTable(
 	},
 	table => [
 		index('idx_variants_entry').on(table.entryId),
+		unique('uq_lexicon_variants_entry_dialect').on(table.entryId, table.dialectId),
 	],
 )
 
@@ -479,6 +505,7 @@ export const lexiconRelations = pgTable(
 	table => [
 		index('idx_lexrel_source').on(table.sourceId),
 		index('idx_lexrel_target').on(table.targetId),
+		unique('uq_lexicon_relations_edge').on(table.sourceId, table.targetId, table.relationType),
 	],
 )
 
@@ -764,6 +791,7 @@ export const paradigmRules = pgTable(
 	},
 	table => [
 		index('idx_paradigm_rules_class').on(table.classId),
+		unique('uq_paradigm_rules_class_cell').on(table.classId, table.cellKey),
 	],
 )
 
@@ -798,6 +826,7 @@ export const inflectedForms = pgTable(
 	table => [
 		index('idx_inflected_forms_form').on(table.form),
 		index('idx_inflected_forms_entry').on(table.entryId),
+		unique('uq_inflected_forms_entry_cell').on(table.entryId, table.cellKey),
 	],
 )
 

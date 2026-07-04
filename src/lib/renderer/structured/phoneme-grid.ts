@@ -57,14 +57,19 @@ export function buildPhonemeGrid(
 	const columnSet = new Set<string>()
 	const rowMap = new Map<string, Set<string | undefined>>()
 
+	// Geminates don't get their own row (a "plosive (geminate)" manner clone
+	// conflates length with manner): they share their plain counterpart's cell
+	// and render after it — the conventional "p pː" presentation.
+	const effectiveSubtype = (r: PhonemeRow) =>
+		r.subtype === 'geminate' ? undefined : (r.subtype ?? undefined)
+
 	for (const r of data) {
 		const col = (r[colKey] ?? '') as string
 		if (col) columnSet.add(col)
 		const header = (r[rowKey] ?? '') as string
-		const subtype = r.subtype ?? undefined
 		if (header) {
 			const subs = rowMap.get(header) ?? new Set<string | undefined>()
-			subs.add(subtype)
+			subs.add(effectiveSubtype(r))
 			rowMap.set(header, subs)
 		}
 	}
@@ -72,13 +77,18 @@ export function buildPhonemeGrid(
 	const columns = [...columnSet].toSorted(colComparator)
 	const rowPairs: { header: string, subtype?: string }[] = []
 	for (const header of [...rowMap.keys()].toSorted(rowComparator)) {
-		const subs = [...(rowMap.get(header) ?? [])].toSorted((a, b) => {
-			if (a === undefined && b === undefined) return 0
-			if (a === undefined) return -1
-			if (b === undefined) return 1
-			return subtypeComparator(a, b)
-		})
-		for (const sub of subs) rowPairs.push({ header, subtype: sub })
+		// Array.prototype.sort NEVER calls the comparator for undefined elements
+		// (they're hoisted to the end by spec) — so sort on a null sentinel to
+		// keep the plain (no-subtype) row first.
+		const subs = [...(rowMap.get(header) ?? [])]
+			.map(sub => sub ?? null)
+			.toSorted((a, b) => {
+				if (a === null && b === null) return 0
+				if (a === null) return -1
+				if (b === null) return 1
+				return subtypeComparator(a, b)
+			})
+		for (const sub of subs) rowPairs.push({ header, subtype: sub ?? undefined })
 	}
 
 	const cells = new Map<string, PhonemeRow[]>()
@@ -87,7 +97,7 @@ export function buildPhonemeGrid(
 	for (const r of data) {
 		const col = (r[colKey] ?? '') as string
 		const header = (r[rowKey] ?? '') as string
-		const subtype = r.subtype ?? undefined
+		const subtype = effectiveSubtype(r)
 		if (col && header) {
 			const cellKey = `${header} ${subtype ?? ''} ${col}`
 			const list = cells.get(cellKey) ?? []
@@ -101,12 +111,15 @@ export function buildPhonemeGrid(
 	}
 
 	// Within a cell: voiceless before voiced (consonant convention), unrounded
-	// before rounded (vowel convention). Wikipedia-style IPA chart ordering.
+	// before rounded (vowel convention), plain before geminate.
+	// Wikipedia-style IPA chart ordering.
 	for (const list of cells.values()) {
 		list.sort((a, b) => {
 			const voicingOrder: Record<string, number> = { voiceless: 0, voiced: 1 }
 			const voicingDelta = (voicingOrder[a.voicing ?? ''] ?? 2) - (voicingOrder[b.voicing ?? ''] ?? 2)
 			if (voicingDelta !== 0) return voicingDelta
+			const geminateDelta = (a.subtype === 'geminate' ? 1 : 0) - (b.subtype === 'geminate' ? 1 : 0)
+			if (geminateDelta !== 0) return geminateDelta
 			const roundA = a.rounded === true ? 1 : (a.rounded === false ? 0 : 2)
 			const roundB = b.rounded === true ? 1 : (b.rounded === false ? 0 : 2)
 			return roundA - roundB

@@ -8,8 +8,11 @@ import {
 	lexicon,
 	languages,
 } from '$lib/server/db/schema.js'
-import { eq, and, asc, sql } from 'drizzle-orm'
-import { generateCellKeys } from '$lib/wordbook/cell-keys.js'
+import { eq, and, asc, sql, inArray } from 'drizzle-orm'
+import { applyPattern, generateCellKeys } from '$lib/wordbook/cell-keys.js'
+
+/** Either the root db or a transaction — lets rebuilds run atomically inside callers' txs. */
+export type DbExecutor = Pick<typeof db, 'select' | 'insert' | 'update' | 'delete' | 'execute'>
 
 // ── Types ───────────────────────────────────────────────────────
 
@@ -29,22 +32,15 @@ export interface InflectionTable {
 	hasInflection: boolean
 }
 
-// Re-export for consumers
-export { generateCellKeys } from '$lib/wordbook/cell-keys.js'
-
-// ── Pattern application ─────────────────────────────────────────
-
-/** Apply a pattern to a stem: "{stem}n" + "tsida" → "tsidan" */
-export function applyPattern(pattern: string, stem: string): string {
-	if (!pattern.includes('{stem}')) return pattern // literal override
-	return pattern.replaceAll('{stem}', stem)
-}
+// Re-export for consumers (applyPattern lives in the shared lib — it's pure
+// and also drives editor previews)
+export { applyPattern, generateCellKeys } from '$lib/wordbook/cell-keys.js'
 
 // ── Data loading ────────────────────────────────────────────────
 
 /** Get dimensions for a language+POS */
-export async function getDimensions(languageId: number, partOfSpeech: string): Promise<Dimension[]> {
-	const dims = await db
+export async function getDimensions(languageId: number, partOfSpeech: string, executor: DbExecutor = db): Promise<Dimension[]> {
+	const dims = await executor
 		.select()
 		.from(inflectionDimensions)
 		.where(and(
@@ -62,8 +58,8 @@ export async function getDimensions(languageId: number, partOfSpeech: string): P
 }
 
 /** Get paradigm rules as a map */
-async function getRulesMap(classId: number): Promise<Record<string, string>> {
-	const rules = await db
+async function getRulesMap(classId: number, executor: DbExecutor = db): Promise<Record<string, string>> {
+	const rules = await executor
 		.select({ cellKey: paradigmRules.cellKey, pattern: paradigmRules.pattern })
 		.from(paradigmRules)
 		.where(eq(paradigmRules.classId, classId))
@@ -76,9 +72,9 @@ async function getRulesMap(classId: number): Promise<Record<string, string>> {
 }
 
 /** Get the full inflection table for an entry */
-export async function getInflectionTable(entryId: number): Promise<InflectionTable> {
+export async function getInflectionTable(entryId: number, executor: DbExecutor = db): Promise<InflectionTable> {
 	// Get entry's language and POS (from first definition)
-	const [entry] = await db
+	const [entry] = await executor
 		.select({ languageId: lexicon.languageId })
 		.from(lexicon)
 		.where(eq(lexicon.id, entryId))
@@ -86,7 +82,7 @@ export async function getInflectionTable(entryId: number): Promise<InflectionTab
 	if (!entry) return { dimensions: [], forms: {}, overrides: {}, className: null, stem: null, hasInflection: false }
 
 	// Get inflection assignment
-	const [infl] = await db
+	const [infl] = await executor
 		.select()
 		.from(lexiconInflections)
 		.where(eq(lexiconInflections.entryId, entryId))
@@ -94,13 +90,13 @@ export async function getInflectionTable(entryId: number): Promise<InflectionTab
 	if (!infl) return { dimensions: [], forms: {}, overrides: {}, className: null, stem: null, hasInflection: false }
 
 	// Get POS from the first definition (for dimension lookup)
-	const [firstDef] = await db.execute(sql`
+	const [firstDef] = await executor.execute(sql`
 		SELECT part_of_speech FROM definitions WHERE entry_id = ${entryId} ORDER BY sense_number LIMIT 1
 	`)
 	const pos = (firstDef as any)?.part_of_speech || 'noun'
 
 	// Get dimensions
-	const dimensions = await getDimensions(entry.languageId, pos)
+	const dimensions = await getDimensions(entry.languageId, pos, executor)
 	if (dimensions.length === 0) return { dimensions: [], forms: {}, overrides: {}, className: null, stem: infl.stem, hasInflection: true }
 
 	// Generate all cell keys
@@ -110,8 +106,8 @@ export async function getInflectionTable(entryId: number): Promise<InflectionTab
 	let rules: Record<string, string> = {}
 	let className: string | null = null
 	if (infl.classId) {
-		rules = await getRulesMap(infl.classId)
-		const [cls] = await db.select({ name: paradigmClasses.name }).from(paradigmClasses).where(eq(paradigmClasses.id, infl.classId))
+		rules = await getRulesMap(infl.classId, executor)
+		const [cls] = await executor.select({ name: paradigmClasses.name }).from(paradigmClasses).where(eq(paradigmClasses.id, infl.classId))
 		className = cls?.name || null
 	}
 
@@ -133,41 +129,72 @@ export async function getInflectionTable(entryId: number): Promise<InflectionTab
 // ── Index management ────────────────────────────────────────────
 
 /** Rebuild the inflected_forms search index for an entry */
-export async function rebuildInflectedForms(entryId: number): Promise<void> {
-	const table = await getInflectionTable(entryId)
+export async function rebuildInflectedForms(entryId: number, executor: DbExecutor = db): Promise<void> {
+	const table = await getInflectionTable(entryId, executor)
 	if (!table.hasInflection) {
-		await db.delete(inflectedForms).where(eq(inflectedForms.entryId, entryId))
+		await executor.delete(inflectedForms).where(eq(inflectedForms.entryId, entryId))
 		return
 	}
 
 	const overrideKeys = new Set(Object.keys(table.overrides))
 
-	// Delete existing
-	await db.delete(inflectedForms).where(eq(inflectedForms.entryId, entryId))
+	// Delete existing, then insert all forms (uniqueness on (entry_id, cell_key)
+	// is enforced by the DB — see migration 0036)
+	await executor.delete(inflectedForms).where(eq(inflectedForms.entryId, entryId))
 
-	// Insert all forms
 	const entries = Object.entries(table.forms).filter(([_, form]) => form.trim())
 	if (entries.length > 0) {
-		await db.insert(inflectedForms).values(
+		await executor.insert(inflectedForms).values(
 			entries.map(([cellKey, form]) => ({
 				entryId,
 				form,
 				cellKey,
 				isOverride: overrideKeys.has(cellKey),
 			})),
-		).onConflictDoNothing()
+		)
 	}
 }
 
-/** Rebuild all entries for a paradigm class */
-export async function rebuildClassForms(classId: number): Promise<void> {
-	const entries = await db
-		.select({ entryId: lexiconInflections.entryId })
-		.from(lexiconInflections)
-		.where(eq(lexiconInflections.classId, classId))
+/**
+ * Rebuild all entries for a paradigm class. Pass the caller's transaction to
+ * make the rebuild atomic with the caller's writes; without one, it opens its
+ * own transaction.
+ */
+export async function rebuildClassForms(classId: number, executor?: DbExecutor): Promise<void> {
+	const run = async (tx: DbExecutor) => {
+		const entries = await tx
+			.select({ entryId: lexiconInflections.entryId })
+			.from(lexiconInflections)
+			.where(eq(lexiconInflections.classId, classId))
 
-	for (const e of entries) {
-		await rebuildInflectedForms(e.entryId)
+		if (entries.length === 0) return
+		const ids = entries.map(e => e.entryId)
+
+		// One bulk delete instead of N per-entry deletes
+		await tx.delete(inflectedForms).where(inArray(inflectedForms.entryId, ids))
+
+		for (const e of entries) {
+			const table = await getInflectionTable(e.entryId, tx)
+			if (!table.hasInflection) continue
+			const overrideKeys = new Set(Object.keys(table.overrides))
+			const rows = Object.entries(table.forms).filter(([_, form]) => form.trim())
+			if (rows.length > 0) {
+				await tx.insert(inflectedForms).values(
+					rows.map(([cellKey, form]) => ({
+						entryId: e.entryId,
+						form,
+						cellKey,
+						isOverride: overrideKeys.has(cellKey),
+					})),
+				)
+			}
+		}
+	}
+
+	if (executor) {
+		await run(executor)
+	} else {
+		await db.transaction(run)
 	}
 }
 
