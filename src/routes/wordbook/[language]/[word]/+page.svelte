@@ -184,7 +184,7 @@
 									<span class="text-xs font-bold text-faint">{index + 1}.</span>
 								{/if}
 								{#if def.partOfSpeech}
-									<Badge class={posColors[def.partOfSpeech] || ''}>{def.partOfSpeech}</Badge>
+									<Badge class={posColors[def.partOfSpeech.toLowerCase()] || ''}>{def.partOfSpeech}</Badge>
 								{/if}
 								{#if canManageWordbook && defs.length > 1}
 									<button onclick={() => deleteSense(entry.id, def.id)} class="text-error text-xs opacity-0 transition-opacity ml-auto hover:text-error-hover group-hover:opacity-100">×</button>

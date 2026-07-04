@@ -44,6 +44,8 @@ export function extractLinksFromAst(ast: WikiNode): string[] {
  *   - namespace_link → lowercased namespace key ('celestial', 'category', …)
  *   - wordbook_link  → 'wordbook'; targetSlug is `${language}/${word}` (or
  *                       just `${language}` for language-only links)
+ *   - {{wt|word|lang}} templates → 'wordbook' with `${lang}/${word}`, so
+ *     inline word mentions get backlink tracking and red-link resolution too
  */
 export function extractDomainLinksFromAst(ast: WikiNode): { domain: string, target: string }[] {
 	const links: { domain: string, target: string }[] = []
@@ -55,6 +57,12 @@ export function extractDomainLinksFromAst(ast: WikiNode): { domain: string, targ
 		} else if (node.type === 'wordbook_link') {
 			const target = node.word ? `${node.language}/${node.word}` : node.language
 			links.push({ domain: 'wordbook', target })
+		} else if (node.type === 'template' && node.name.toLowerCase().trim() === 'wt') {
+			const word = node.args[0]?.value?.trim()
+			const lang = node.args[1]?.value?.trim()
+			if (word && lang) {
+				links.push({ domain: 'wordbook', target: `${lang.toLowerCase()}/${word}` })
+			}
 		}
 	})
 	return links
@@ -189,8 +197,12 @@ export function extractInfoboxImageRef(
 
 /**
  * Walk a pre-parsed AST and find collection-shaped structured-data templates:
- * {{consonants|slug}}, {{vowels|slug}}, {{phonology|slug}}.
+ * {{consonants|slug}}, {{vowels|slug}}, {{phonology|slug}}, {{orthography|slug}}.
  * Returns the refs to pre-fetch via resolveAllStructuredCollections.
+ *
+ * {{phonology|slug}} renders both a consonant and a vowel grid, which read the
+ * `consonants:<slug>` and `vowels:<slug>` collections respectively — so it fans
+ * out into those two refs rather than a lone `phonology:<slug>` that nothing reads.
  */
 const COLLECTION_TEMPLATE_NAMES = new Set(['consonants', 'vowels', 'phonology', 'orthography'])
 
@@ -201,7 +213,12 @@ export function extractCollectionRefs(ast: WikiNode): { type: string, slug: stri
 			const name = node.name.toLowerCase().trim()
 			if (COLLECTION_TEMPLATE_NAMES.has(name)) {
 				const slug = node.args[0]?.value?.trim()
-				if (slug) refs.push({ type: name, slug })
+				if (!slug) return
+				if (name === 'phonology') {
+					refs.push({ type: 'consonants', slug }, { type: 'vowels', slug })
+				} else {
+					refs.push({ type: name, slug })
+				}
 			}
 		}
 	})

@@ -67,9 +67,30 @@ export async function searchUnified(params: UnifiedSearchParams): Promise<Unifie
 				searchPages({ ...params, limit: fetchLimit, offset: 0 }),
 				searchWords({ ...params, limit: fetchLimit, offset: 0 }),
 			])
-			const merged = [...pageResults, ...wordResults, ...mediaResults.results]
+
+			// A lexicon entry can surface via BOTH the pages union (badge "Page",
+			// body snippet) and the wordbook search (badge "Word", definition
+			// snippet). Dedup on canonical href: the Word result wins (richer
+			// badge/snippet) but inherits the higher rank of the pair.
+			const byHref = new Map<string, UnifiedSearchResult>()
+			let duplicates = 0
+			for (const result of [...wordResults, ...pageResults, ...mediaResults.results]) {
+				const key = result.href.toLowerCase()
+				const existing = byHref.get(key)
+				if (existing) {
+					duplicates++
+					if (result.rank > existing.rank) existing.rank = result.rank
+					continue
+				}
+				byHref.set(key, result)
+			}
+
+			const merged = [...byHref.values()]
 				.sort((a, b) => b.rank - a.rank || a.title.localeCompare(b.title))
-			const total = pagesTotal + wordsTotal + mediaResults.total
+			// Totals overlap the same way; correct by the duplicates we can see.
+			// (Beyond the fetch window the residual overlap is negligible and
+			// only affects the page count, never which results render.)
+			const total = Math.max(merged.length, pagesTotal + wordsTotal + mediaResults.total - duplicates)
 
 			return {
 				query: params,
