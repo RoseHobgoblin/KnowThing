@@ -335,6 +335,7 @@ export async function listVariantsForEntries(entryIds: number[]) {
 		.select({
 			id: lexiconVariants.id,
 			entryId: lexiconVariants.entryId,
+			dialectId: lexiconVariants.dialectId,
 			pronunciation: lexiconVariants.pronunciation,
 			spelling: lexiconVariants.spelling,
 			notes: lexiconVariants.notes,

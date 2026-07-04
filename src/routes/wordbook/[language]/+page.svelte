@@ -18,8 +18,7 @@
 	const siteName = $derived(layoutData.siteConfig?.siteName ?? 'KnowThing')
 	const description = $derived(
 		data.language.description
-			? data.language.description
-			: `${Number(data.language.wordCount)} ${Number(data.language.wordCount) === 1 ? 'word' : 'words'} in ${data.language.name}.`,
+		|| `${Number(data.language.wordCount)} ${Number(data.language.wordCount) === 1 ? 'word' : 'words'} in ${data.language.name}.`,
 	)
 
 	createKnowContext({
@@ -52,7 +51,7 @@
 			groups[letter].push(entry)
 		}
 		// '#' (non-alphabetic) sorts last, letters by locale order.
-		return Object.entries(groups).sort(([a], [b]) => {
+		return Object.entries(groups).toSorted(([a], [b]) => {
 			if (a === '#') return 1
 			if (b === '#') return -1
 			return a.localeCompare(b)
@@ -62,11 +61,10 @@
 	const grouped = $derived(groupByLetter(data.entries))
 	const totalPages = $derived(Math.max(1, Math.ceil(data.entriesTotal / data.entriesPageSize)))
 	function pageHref(page: number) {
-		const params = new URLSearchParams()
-		if (data.currentLetter) params.set('letter', data.currentLetter)
-		if (page > 1) params.set('page', String(page))
-		const qs = params.toString()
-		return `/Wordbook/${data.language.slug}${qs ? `?${qs}` : ''}`
+		const parts: string[] = []
+		if (data.currentLetter) parts.push(`letter=${encodeURIComponent(data.currentLetter)}`)
+		if (page > 1) parts.push(`page=${page}`)
+		return `/Wordbook/${data.language.slug}${parts.length > 0 ? `?${parts.join('&')}` : ''}`
 	}
 
 	// Build breadcrumbs from ancestry chain
@@ -129,9 +127,10 @@
 		>Read the full article →</a>
 	{/if}
 
-	<!-- Wiki body: prose + {{Consonants}}/{{Vowels}}/{{Orthography}} grids
-	     render right here — no more entering data that only a Know article
-	     could display. -->
+	<!--
+		Wiki body: prose + {{Consonants}}/{{Vowels}}/{{Orthography}} grids render
+		right here — no more entering data that only a Know article could display.
+	-->
 	{#if data.bodyAst}
 		<article class="know-article mb-6">
 			<WikiNodeComponent node={data.bodyAst} />

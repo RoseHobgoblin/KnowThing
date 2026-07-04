@@ -26,7 +26,7 @@ export const actions: Actions = {
 			record = await createKnowPage({ title, content, userId: user.id })
 		} catch (error: unknown) {
 			if (isHttpError(error) && error.status === 409) {
-				return fail(409, { error: error.body?.message ?? error.message, title, content })
+				return fail(409, { error: error.body?.message ?? 'Request failed', title, content })
 			}
 			const message = error instanceof Error ? error.message : ''
 			if (message.includes('unique') || message.includes('duplicate')) {

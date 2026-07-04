@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit'
-import { asc, eq, ne } from 'drizzle-orm'
+import { asc, eq, ne, sql } from 'drizzle-orm'
 import type { z } from 'zod'
 import { db } from '$lib/server/db/index.js'
 import { languages } from '$lib/server/db/schema.js'
@@ -64,6 +64,36 @@ export async function createLanguage(data: CreateLanguageInput) {
 		})
 		.returning()
 	return lang
+}
+
+/**
+ * Delete a language. Refuses while entries or descendant languages exist —
+ * a language cascade-deletes its lexicon, so emptying it must be explicit.
+ */
+export async function deleteLanguage(slug: string) {
+	return db.transaction(async (tx) => {
+		const [lang] = await tx.select({ id: languages.id }).from(languages).where(eq(languages.slug, slug))
+		if (!lang) throw error(404, 'Language not found')
+
+		const [{ wordCount }] = await tx.execute(
+			sql`SELECT COUNT(*)::int AS "wordCount" FROM lexicon WHERE language_id = ${lang.id}`,
+		) as unknown as [{ wordCount: number }]
+		if (Number(wordCount) > 0) {
+			throw error(409, `This language still has ${wordCount} ${Number(wordCount) === 1 ? 'entry' : 'entries'}. Move or delete them first.`)
+		}
+
+		const [child] = await tx
+			.select({ id: languages.id })
+			.from(languages)
+			.where(eq(languages.parentLanguageId, lang.id))
+			.limit(1)
+		if (child) {
+			throw error(409, 'This language has descendant languages. Reparent or delete them first.')
+		}
+
+		await tx.delete(languages).where(eq(languages.id, lang.id))
+		return { success: true }
+	})
 }
 
 export async function updateLanguage(slug: string, data: UpdateLanguageInput) {

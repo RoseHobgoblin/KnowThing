@@ -4,6 +4,7 @@
 	import { page } from '$app/stores'
 	import { pushSuccess } from '$lib/notifications.svelte'
 	import LanguageForm from '$lib/components/wordbook/LanguageForm.svelte'
+	import LanguageAdminPanels from '$lib/components/wordbook/LanguageAdminPanels.svelte'
 	import DimensionEditor from '$lib/components/wordbook/DimensionEditor.svelte'
 	import PhonemeEditor from '$lib/components/phonology/PhonemeEditor.svelte'
 	import GraphemeEditor from '$lib/components/phonology/GraphemeEditor.svelte'
@@ -90,6 +91,15 @@
 			onsubmit={handleDetailsSubmit}
 			submitLabel="Save Changes"
 		/>
+
+		<div class="mt-6">
+			<LanguageAdminPanels
+				languageSlug={data.language.slug}
+				languageName={data.language.name}
+				dialects={data.dialects}
+				isAdmin={$page.data.isAdmin}
+			/>
+		</div>
 	{:else if activeTab === 'phonology'}
 		<div class="space-y-3">
 			<HelpBlock title="What is a phoneme?" open>

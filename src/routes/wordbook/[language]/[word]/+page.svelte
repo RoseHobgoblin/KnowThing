@@ -8,6 +8,7 @@
 	import LanguageBadge from '$lib/components/wordbook/LanguageBadge.svelte'
 	import TagPill from '$lib/components/wordbook/TagPill.svelte'
 	import EtymologySection from '$lib/components/wordbook/EtymologySection.svelte'
+	import VariantManager from '$lib/components/wordbook/VariantManager.svelte'
 	import InflectionTable from '$lib/components/wordbook/InflectionTable.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
@@ -68,7 +69,10 @@
 			})
 			if (res.ok) {
 				pushSuccess('Definition added')
-				newPos = ''; newDef = ''; newUsage = ''; newTranslation = ''
+				newPos = ''
+				newDef = ''
+				newUsage = ''
+				newTranslation = ''
 				addingSenseFor = null
 				invalidateAll()
 			} else {
@@ -160,22 +164,13 @@
 					</h2>
 				{/if}
 
-				<!-- Dialect variants -->
-				{#if variants.length > 0}
-					<div class="mb-3 space-y-0.5">
-						{#each variants as variant}
-							<div class="flex items-baseline gap-2 text-sm">
-								<span class="text-dim min-w-24 text-xs font-medium">{variant.dialectName}:</span>
-								{#if variant.pronunciation}
-									<span class="text-faint font-mono text-xs">{variant.pronunciation}</span>
-								{/if}
-								{#if variant.spelling}
-									<span class="text-secondary italic">"{variant.spelling}"</span>
-								{/if}
-							</div>
-						{/each}
-					</div>
-				{/if}
+				<!-- Dialect variants (editable for editors) -->
+				<VariantManager
+					entryId={entry.id}
+					languageSlug={data.language.slug}
+					{variants}
+					canEdit={canManageWordbook}
+				/>
 
 				<!-- Definitions -->
 				<div class="divide-y divide-border-subtle">

@@ -125,6 +125,9 @@
 				usageExample: d.usageExample,
 				usageTranslation: d.usageTranslation,
 			}))}
+			relationsManagedAt={languageSlug
+				? `/Wordbook/${languageSlug}/${encodeURIComponent(data.entry.word)}`
+				: '/Wordbook'}
 			onsubmit={handleSubmit}
 			submitLabel="Save Changes"
 		/>

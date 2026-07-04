@@ -77,13 +77,18 @@ export function buildPhonemeGrid(
 	const columns = [...columnSet].toSorted(colComparator)
 	const rowPairs: { header: string, subtype?: string }[] = []
 	for (const header of [...rowMap.keys()].toSorted(rowComparator)) {
-		const subs = [...(rowMap.get(header) ?? [])].toSorted((a, b) => {
-			if (a === undefined && b === undefined) return 0
-			if (a === undefined) return -1
-			if (b === undefined) return 1
-			return subtypeComparator(a, b)
-		})
-		for (const sub of subs) rowPairs.push({ header, subtype: sub })
+		// Array.prototype.sort NEVER calls the comparator for undefined elements
+		// (they're hoisted to the end by spec) — so sort on a null sentinel to
+		// keep the plain (no-subtype) row first.
+		const subs = [...(rowMap.get(header) ?? [])]
+			.map(sub => sub ?? null)
+			.toSorted((a, b) => {
+				if (a === null && b === null) return 0
+				if (a === null) return -1
+				if (b === null) return 1
+				return subtypeComparator(a, b)
+			})
+		for (const sub of subs) rowPairs.push({ header, subtype: sub ?? undefined })
 	}
 
 	const cells = new Map<string, PhonemeRow[]>()

@@ -5,6 +5,7 @@ import {
 	getLanguageRowBySlug,
 	listLanguageOptionsExcluding,
 } from '$lib/server/services/languages.js'
+import { listDialectsByLanguageId } from '$lib/server/services/dialects.js'
 import { listPhonemesByLanguageId, listPhonemeSummaryForLanguage } from '$lib/server/services/phonemes.js'
 import { listGraphemesByLanguageId } from '$lib/server/services/graphemes.js'
 import { countRulesByClass, getInflectionsByLanguageId } from '$lib/server/services/inflections.js'
@@ -18,13 +19,14 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	const lang = await getLanguageRowBySlug(params.slug)
 	if (!lang) throw error(404, 'Language not found')
 
-	const [otherLanguages, phonemes, graphemes, phonemeSummary, inflections, paradigmRuleCounts] = await Promise.all([
+	const [otherLanguages, phonemes, graphemes, phonemeSummary, inflections, paradigmRuleCounts, dialects] = await Promise.all([
 		listLanguageOptionsExcluding(lang.id),
 		listPhonemesByLanguageId(lang.id, null),
 		listGraphemesByLanguageId(lang.id),
 		listPhonemeSummaryForLanguage(lang.id),
 		getInflectionsByLanguageId(lang.id),
 		countRulesByClass(lang.id),
+		listDialectsByLanguageId(lang.id),
 	])
 
 	return {
@@ -36,5 +38,6 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 		inflectionDimensions: inflections.dimensions,
 		paradigmClasses: inflections.classes,
 		paradigmRuleCounts,
+		dialects,
 	}
 }

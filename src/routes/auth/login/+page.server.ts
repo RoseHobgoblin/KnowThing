@@ -36,7 +36,7 @@ export const actions: Actions = {
 			throw redirect(302, result.redirectTo)
 		} catch (err: unknown) {
 			if (isHttpError(err)) {
-				return fail(err.status, { error: err.body?.message ?? err.message, username })
+				return fail(err.status, { error: err.body?.message ?? 'Request failed', username })
 			}
 			throw err
 		}
