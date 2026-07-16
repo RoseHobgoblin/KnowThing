@@ -13,10 +13,12 @@ import { isDescendant } from '$lib/server/celestial/tree.js'
 import {
 	applyFieldUpdates,
 	applyNameUpdate,
+	applySlugUpdate,
 	deleteCelestialEntity,
 	mergeOverrideExtras,
 	BODY_OVERRIDE_MAP,
 } from '$lib/server/celestial/update-helpers.js'
+import { moveContentByDomainSlug } from '$lib/server/services/content-records.js'
 type CreateBodyInput = z.infer<typeof createPlanetaryBodySchema>
 type UpdateBodyInput = z.infer<typeof updatePlanetaryBodySchema>
 
@@ -167,7 +169,15 @@ export async function updateBody(slug: string, data: UpdateBodyInput) {
 	const setClause: Record<string, unknown> = { updatedAt: new Date() }
 
 	if (data.name !== undefined) {
-		await applyNameUpdate(setClause, data.name, current.slug, planetaryBodies, planetaryBodies.id, planetaryBodies.slug)
+		if (data.slug === undefined) {
+			// No explicit slug in the patch — keep the legacy auto-follow behavior.
+			await applyNameUpdate(setClause, data.name, current.slug, planetaryBodies, planetaryBodies.id, planetaryBodies.slug)
+		} else {
+			setClause.name = data.name.trim()
+		}
+	}
+	if (data.slug !== undefined) {
+		await applySlugUpdate(setClause, data.slug, current.slug, planetaryBodies, planetaryBodies.id, planetaryBodies.slug)
 	}
 	applyFieldUpdates(
 		setClause,
@@ -218,6 +228,11 @@ export async function updateBody(slug: string, data: UpdateBodyInput) {
 	const updated = await db.transaction(async (tx) => {
 		const [saved] = await tx.update(planetaryBodies).set(setClause).where(eq(planetaryBodies.slug, slug)).returning()
 		if (!saved) return null
+
+		// Keep any legacy content record keyed to this entity's slug in sync.
+		if (typeof setClause.slug === 'string' && setClause.slug !== current.slug) {
+			await moveContentByDomainSlug(tx, 'celestial', current.slug, setClause.slug)
+		}
 
 		const [refetched] = await tx.select().from(planetaryBodies).where(eq(planetaryBodies.id, saved.id))
 		return refetched ?? saved

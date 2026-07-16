@@ -308,6 +308,26 @@ export async function moveContentRecord(
 	return updated
 }
 
+/**
+ * Re-key a legacy content record when its owning entity's slug changes.
+ * No-op when the domain+slug pair has no content record (post-Phase-4
+ * entities keep their prose on the entity row itself).
+ */
+export async function moveContentByDomainSlug(
+	database: ContentRecordsDatabase,
+	domain: string,
+	oldSlug: string,
+	newSlug: string,
+): Promise<void> {
+	await database
+		.update(contentRecords)
+		.set({ slug: newSlug, updatedAt: new Date() })
+		.where(and(
+			eq(contentRecords.domain, domain),
+			sql`LOWER(${contentRecords.slug}) = LOWER(${oldSlug})`,
+		))
+}
+
 export async function deleteContentRecord(
 	database: ContentRecordsDatabase,
 	contentRecordId: number | null,

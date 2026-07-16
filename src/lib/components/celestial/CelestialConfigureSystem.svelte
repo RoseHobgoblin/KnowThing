@@ -14,7 +14,7 @@
 	import { updateSystemSchema } from '$lib/celestial/schema.js'
 	import { summarizeZodIssues } from '$lib/utils.js'
 	import StickyActionBar from '$lib/components/editor/StickyActionBar.svelte'
-	import DerivedField from '$lib/components/ui/DerivedField.svelte'
+	import { urlSlugify } from '$lib/utils/slugify.js'
 
 	type CelestialCrumb = { label: string, href: string }
 	type SystemRecord = {
@@ -33,6 +33,7 @@
 
 	type SystemDraftSnapshot = {
 		name: string
+		slug: string
 		description: string
 		distanceLy: number | null
 		galacticX: number | null
@@ -45,6 +46,7 @@
 	function buildInitialDraft(record: SystemRecord): SystemDraftSnapshot {
 		return {
 			name: record.name,
+			slug: record.slug,
 			description: record.description ?? '',
 			distanceLy: record.distanceLy ?? null,
 			galacticX: record.galacticX ?? null,
@@ -68,9 +70,20 @@
 	const initialParentCrumbs = $state.snapshot(untrack(() => parentCrumbs))
 	const initialDraft = buildInitialDraft(initialSystem)
 
-	const viewPath = $derived(`/Celestial:${initialSystem.slug}`)
+	// The slug the server currently knows this system by — updated after each save
+	// so consecutive renames PUT to the right URL.
+	let savedSlug = $state(initialSystem.slug)
+	const viewPath = $derived(`/Celestial:${savedSlug}`)
 
 	let name = $state(initialDraft.name)
+	let slug = $state(initialDraft.slug)
+	// Once the slug is edited by hand it stops following the name.
+	let slugEdited = $state(false)
+	const slugError = $derived.by(() => {
+		if (!urlSlugify(slug)) return 'Slug must contain at least one letter or number'
+		if (urlSlugify(slug) !== slug) return 'Use lowercase letters, numbers and hyphens only'
+		return ''
+	})
 	let description = $state(initialDraft.description)
 	let distanceLy = $state<number | null>(initialDraft.distanceLy)
 	let galacticX = $state<number | null>(initialDraft.galacticX)
@@ -90,6 +103,7 @@
 	let initialSnapshot = $state(serialize(initialDraft))
 	const currentSnapshot = $derived(serialize({
 		name,
+		slug,
 		description,
 		distanceLy,
 		galacticX,
@@ -126,6 +140,8 @@
 
 	function resetDraft() {
 		name = initialDraft.name
+		slug = initialDraft.slug
+		slugEdited = false
 		description = initialDraft.description
 		distanceLy = initialDraft.distanceLy
 		galacticX = initialDraft.galacticX
@@ -141,15 +157,20 @@
 			saveError = 'Review the highlighted fields before saving.'
 			return
 		}
+		if (slugError) {
+			saveError = slugError
+			return
+		}
 
 		saving = true
 		saveError = ''
 		try {
-			const response = await fetch(`/api/star-systems/${initialSystem.slug}`, {
+			const response = await fetch(`/api/star-systems/${savedSlug}`, {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					name,
+					slug,
 					description,
 					distanceLy,
 					galacticX,
@@ -164,6 +185,14 @@
 				saveError = payload.error || 'Failed to save system'
 				pushError(saveError)
 				return
+			}
+
+			const saved = await response.json().catch(() => null)
+			if (saved?.slug && saved.slug !== savedSlug) {
+				slug = saved.slug
+				// Update URL without navigation so save-and-exit uses the new slug
+				globalThis.history.replaceState({}, '', globalThis.location.pathname.replace(savedSlug, saved.slug))
+				savedSlug = saved.slug
 			}
 
 			savedAt = new Date()
@@ -191,7 +220,7 @@
 		)
 		if (!ok) return
 
-		const response = await fetch(`/api/star-systems/${initialSystem.slug}`, { method: 'DELETE' })
+		const response = await fetch(`/api/star-systems/${savedSlug}`, { method: 'DELETE' })
 		if (!response.ok) {
 			const payload = await response.json().catch(() => ({}))
 			pushError(payload.error || 'Failed to delete system')
@@ -226,8 +255,8 @@
 
 		<section class="bg-raised border border-border-subtle p-5 space-y-4">
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-				<Input label="Name" bind:value={name} placeholder="System name" />
-				<DerivedField label="Slug" value={initialSystem.slug} hint="URL identifier. Fixed for systems — create a new system to change it." />
+				<Input label="Name" bind:value={name} placeholder="System name" oninput={() => { if (!slugEdited) slug = urlSlugify(name) }} />
+				<Input label="Slug" bind:value={slug} placeholder="system-slug" error={slugError} oninput={() => { slugEdited = true }} hint="URL identifier (/Celestial:slug). Follows the name until edited by hand. Existing [[links]] to the old slug are not redirected." />
 				<Input label="Designations" bind:value={designations} placeholder="Alt. names, catalog IDs" hint="Alternate names or catalogue identifiers, comma-separated." />
 			</div>
 			<Input label="Description" bind:value={description} placeholder="Brief description..." />

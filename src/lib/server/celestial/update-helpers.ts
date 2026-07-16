@@ -25,6 +25,27 @@ export async function applyNameUpdate(
 }
 
 /**
+ * Apply an explicit slug change with normalization and conflict check.
+ * Unlike applyNameUpdate's silent keep-old-slug on collision, an explicitly
+ * requested slug that collides is an error the caller should see.
+ */
+export async function applySlugUpdate(
+	setClause: Record<string, unknown>,
+	requestedSlug: string,
+	currentSlug: string,
+	table: PgTable,
+	idColumn: PgColumn,
+	slugColumn: PgColumn,
+): Promise<void> {
+	const newSlug = urlSlugify(requestedSlug)
+	if (!newSlug) throw error(400, 'Slug must contain at least one letter or number')
+	if (newSlug === currentSlug) return
+	const [conflict] = await db.select({ id: idColumn }).from(table).where(eq(slugColumn, newSlug))
+	if (conflict) throw error(409, 'This slug is already in use')
+	setClause.slug = newSlug
+}
+
+/**
  * Copy fields from parsed Zod data to a setClause object.
  * Text fields get `.trim() || null`, numeric fields get `?? null`.
  */

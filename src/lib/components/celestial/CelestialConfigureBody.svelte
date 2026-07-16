@@ -22,6 +22,7 @@
 	import DerivedField from '$lib/components/ui/DerivedField.svelte'
 	import LockableDerivedField from '$lib/components/ui/LockableDerivedField.svelte'
 	import { formatMass, formatRadius } from '$lib/celestial/compute.js'
+	import { urlSlugify } from '$lib/utils/slugify.js'
 
 	const bodyTabs = [
 		{ id: 'identity', label: 'Identity' },
@@ -177,11 +178,21 @@
 	const initialGravityOverride = extraString('surface_gravity')
 	const initialEscapeOverride = extraString('escape_velocity')
 
+	// The slug the server currently knows this body by — updated after each save
+	// so consecutive renames PUT to the right URL.
+	let savedSlug = $state(initialBody.slug)
 	// Celestial canonical URLs are flat /Celestial:Slug — parent path is for breadcrumbs only.
-	const viewPath = $derived(`/Celestial:${initialBody.slug}`)
+	const viewPath = $derived(`/Celestial:${savedSlug}`)
 
 	let name = $state(initialDraft.name)
 	let slug = $state(initialDraft.slug)
+	// Once the slug is edited by hand it stops following the name.
+	let slugEdited = $state(false)
+	const slugError = $derived.by(() => {
+		if (!urlSlugify(slug)) return 'Slug must contain at least one letter or number'
+		if (urlSlugify(slug) !== slug) return 'Use lowercase letters, numbers and hyphens only'
+		return ''
+	})
 	let bodyType = $state<BodyType>(initialDraft.bodyType)
 	let starIdString = $state(initialDraft.starIdStr)
 	let parentIdString = $state(initialDraft.parentIdStr)
@@ -433,6 +444,7 @@
 	function resetDraft() {
 		name = initialDraft.name
 		slug = initialDraft.slug
+		slugEdited = false
 		bodyType = initialDraft.bodyType
 		starIdString = initialDraft.starIdStr
 		parentIdString = initialDraft.parentIdStr
@@ -473,15 +485,20 @@
 			saveError = 'Review the orbital fields below before saving.'
 			return
 		}
+		if (slugError) {
+			saveError = slugError
+			return
+		}
 
 		saving = true
 		saveError = ''
 		try {
-			const response = await fetch(`/api/planetary-bodies/${initialBody.slug}`, {
+			const response = await fetch(`/api/planetary-bodies/${savedSlug}`, {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					name,
+					slug,
 					bodyType,
 					starId: starIdString ? Number(starIdString) : null,
 					parentId: parentIdString ? Number(parentIdString) : null,
@@ -519,10 +536,11 @@
 			}
 
 			const saved = await response.json().catch(() => null)
-			if (saved?.slug && saved.slug !== initialBody.slug) {
+			if (saved?.slug && saved.slug !== savedSlug) {
 				slug = saved.slug
 				// Update URL without navigation so save-and-exit uses the new slug
-				globalThis.history.replaceState({}, '', globalThis.location.pathname.replace(initialBody.slug, saved.slug))
+				globalThis.history.replaceState({}, '', globalThis.location.pathname.replace(savedSlug, saved.slug))
+				savedSlug = saved.slug
 			}
 
 
@@ -552,7 +570,7 @@
 		)
 		if (!ok) return
 
-		const response = await fetch(`/api/planetary-bodies/${initialBody.slug}`, { method: 'DELETE' })
+		const response = await fetch(`/api/planetary-bodies/${savedSlug}`, { method: 'DELETE' })
 		if (!response.ok) {
 			const payload = await response.json().catch(() => ({}))
 			pushError(payload.error || 'Failed to delete body')
@@ -605,8 +623,8 @@
 		{#if activeTab === 'identity'}
 			<section class="bg-raised border border-border-subtle p-5 space-y-4">
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-					<Input label="Name" bind:value={name} placeholder="Body name" />
-					<DerivedField label="Slug" value={slug} hint="URL identifier. Changes when the body is renamed." />
+					<Input label="Name" bind:value={name} placeholder="Body name" oninput={() => { if (!slugEdited) slug = urlSlugify(name) }} />
+					<Input label="Slug" bind:value={slug} placeholder="body-slug" error={slugError} oninput={() => { slugEdited = true }} hint="URL identifier (/Celestial:slug). Follows the name until edited by hand. Existing [[links]] to the old slug are not redirected." />
 					<Select label="Body Type" type="single" bind:value={bodyType} items={bodyTypeItems} />
 					<Select label="Parent Star" type="single" bind:value={starIdString} items={starItems} />
 				</div>

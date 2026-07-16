@@ -22,6 +22,7 @@
 	import DerivedField from '$lib/components/ui/DerivedField.svelte'
 	import LockableDerivedField from '$lib/components/ui/LockableDerivedField.svelte'
 	import { formatMass, formatRadius, formatTemperatureK } from '$lib/celestial/compute.js'
+	import { urlSlugify } from '$lib/utils/slugify.js'
 
 	const starTabs = [
 		{ id: 'identity', label: 'Identity' },
@@ -165,11 +166,21 @@
 	const initialEscapeOverride = extraString('escape_velocity')
 	const initialLuminosityOverride = extraString('luminosity')
 
+	// The slug the server currently knows this star by — updated after each save
+	// so consecutive renames PUT to the right URL.
+	let savedSlug = $state(initialStar.slug)
 	// Celestial canonical URLs are flat /Celestial:Slug — parent path is for breadcrumbs only.
-	const viewPath = $derived(`/Celestial:${initialStar.slug}`)
+	const viewPath = $derived(`/Celestial:${savedSlug}`)
 
 	let name = $state(initialDraft.name)
 	let slug = $state(initialDraft.slug)
+	// Once the slug is edited by hand it stops following the name.
+	let slugEdited = $state(false)
+	const slugError = $derived.by(() => {
+		if (!urlSlugify(slug)) return 'Slug must contain at least one letter or number'
+		if (urlSlugify(slug) !== slug) return 'Use lowercase letters, numbers and hyphens only'
+		return ''
+	})
 	let spectralType = $state(initialDraft.spectralType)
 	let massKg = $state<number | null>(initialDraft.massKg)
 	let radiusM = $state<number | null>(initialDraft.radiusM)
@@ -386,6 +397,7 @@
 	function resetDraft() {
 		name = initialDraft.name
 		slug = initialDraft.slug
+		slugEdited = false
 		spectralType = initialDraft.spectralType
 		massKg = initialDraft.massKg
 		radiusM = initialDraft.radiusM
@@ -428,15 +440,20 @@
 			saveError = 'Review the orbital fields below before saving.'
 			return
 		}
+		if (slugError) {
+			saveError = slugError
+			return
+		}
 
 		saving = true
 		saveError = ''
 		try {
-			const res = await fetch(`/api/stars/${initialStar.slug}`, {
+			const res = await fetch(`/api/stars/${savedSlug}`, {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					name,
+					slug,
 					spectralType: spectralType || null,
 					massKg,
 					mass: massDisplay,
@@ -475,9 +492,10 @@
 			}
 
 			const saved = await res.json().catch(() => null)
-			if (saved?.slug && saved.slug !== initialStar.slug) {
+			if (saved?.slug && saved.slug !== savedSlug) {
 				slug = saved.slug
-				globalThis.history.replaceState({}, '', globalThis.location.pathname.replace(initialStar.slug, saved.slug))
+				globalThis.history.replaceState({}, '', globalThis.location.pathname.replace(savedSlug, saved.slug))
+				savedSlug = saved.slug
 			}
 
 			savedAt = new Date()
@@ -506,7 +524,7 @@
 		)
 		if (!ok) return
 
-		const response = await fetch(`/api/stars/${initialStar.slug}`, { method: 'DELETE' })
+		const response = await fetch(`/api/stars/${savedSlug}`, { method: 'DELETE' })
 		if (!response.ok) {
 			const body = await response.json().catch(() => ({}))
 			pushError(body.error || 'Failed to delete star')
@@ -566,8 +584,8 @@
 		{#if activeTab === 'identity'}
 			<section class="bg-raised border border-border-subtle p-5 space-y-4">
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-					<Input label="Name" bind:value={name} placeholder="Star name" />
-					<DerivedField label="Slug" value={slug} hint="URL identifier. Changes when the star is renamed." />
+					<Input label="Name" bind:value={name} placeholder="Star name" oninput={() => { if (!slugEdited) slug = urlSlugify(name) }} />
+					<Input label="Slug" bind:value={slug} placeholder="star-slug" error={slugError} oninput={() => { slugEdited = true }} hint="URL identifier (/Celestial:slug). Follows the name until edited by hand. Existing [[links]] to the old slug are not redirected." />
 					<Select label="System" type="single" bind:value={systemIdStr} items={systemItems} />
 					<Input label="Color" bind:value={color} placeholder="Yellow-white" hint="Descriptive color name used for map rendering. Examples: yellow-white, orange-red, blue-white." />
 				</div>

@@ -4,7 +4,8 @@ import type { z } from 'zod'
 import { db } from '$lib/server/db/index.js'
 import { starSystems } from '$lib/server/db/schema.js'
 import type { createSystemSchema, updateSystemSchema } from '$lib/celestial/schema.js'
-import { deleteCelestialEntity } from '$lib/server/celestial/update-helpers.js'
+import { applySlugUpdate, deleteCelestialEntity } from '$lib/server/celestial/update-helpers.js'
+import { moveContentByDomainSlug } from '$lib/server/services/content-records.js'
 
 type CreateSystemInput = z.infer<typeof createSystemSchema>
 type UpdateSystemInput = z.infer<typeof updateSystemSchema>
@@ -65,6 +66,9 @@ export async function createSystem(data: CreateSystemInput) {
 export async function updateSystem(slug: string, data: UpdateSystemInput) {
 	const setClause: Record<string, unknown> = { updatedAt: new Date() }
 	if (data.name !== undefined) setClause.name = data.name.trim()
+	if (data.slug !== undefined) {
+		await applySlugUpdate(setClause, data.slug, slug, starSystems, starSystems.id, starSystems.slug)
+	}
 	if (data.pageSlug !== undefined) setClause.pageSlug = data.pageSlug?.trim() || null
 	if (data.systemType !== undefined) setClause.systemType = data.systemType
 	if (data.description !== undefined) setClause.description = data.description?.trim() || ''
@@ -79,6 +83,11 @@ export async function updateSystem(slug: string, data: UpdateSystemInput) {
 	const updated = await db.transaction(async (tx) => {
 		const [saved] = await tx.update(starSystems).set(setClause).where(eq(starSystems.slug, slug)).returning()
 		if (!saved) return null
+
+		// Keep any legacy content record keyed to this entity's slug in sync.
+		if (typeof setClause.slug === 'string' && setClause.slug !== slug) {
+			await moveContentByDomainSlug(tx, 'celestial', slug, setClause.slug)
+		}
 
 		const [refetched] = await tx.select().from(starSystems).where(eq(starSystems.id, saved.id))
 		return refetched ?? saved

@@ -10,9 +10,11 @@ import {
 	deleteCelestialEntity,
 	applyFieldUpdates,
 	applyNameUpdate,
+	applySlugUpdate,
 	mergeOverrideExtras,
 	STAR_OVERRIDE_MAP,
 } from '$lib/server/celestial/update-helpers.js'
+import { moveContentByDomainSlug } from '$lib/server/services/content-records.js'
 type CreateStarInput = z.infer<typeof createStarSchema>
 type UpdateStarInput = z.infer<typeof updateStarSchema>
 
@@ -143,7 +145,15 @@ export async function updateStar(slug: string, data: UpdateStarInput) {
 	const setClause: Record<string, unknown> = { updatedAt: new Date() }
 
 	if (data.name !== undefined) {
-		await applyNameUpdate(setClause, data.name, current.slug, stars, stars.id, stars.slug)
+		if (data.slug === undefined) {
+			// No explicit slug in the patch — keep the legacy auto-follow behavior.
+			await applyNameUpdate(setClause, data.name, current.slug, stars, stars.id, stars.slug)
+		} else {
+			setClause.name = data.name.trim()
+		}
+	}
+	if (data.slug !== undefined) {
+		await applySlugUpdate(setClause, data.slug, current.slug, stars, stars.id, stars.slug)
 	}
 	applyFieldUpdates(
 		setClause,
@@ -187,6 +197,11 @@ export async function updateStar(slug: string, data: UpdateStarInput) {
 	const updated = await db.transaction(async (tx) => {
 		const [saved] = await tx.update(stars).set(setClause).where(eq(stars.slug, slug)).returning()
 		if (!saved) return null
+
+		// Keep any legacy content record keyed to this entity's slug in sync.
+		if (typeof setClause.slug === 'string' && setClause.slug !== current.slug) {
+			await moveContentByDomainSlug(tx, 'celestial', current.slug, setClause.slug)
+		}
 
 		const [refetched] = await tx.select().from(stars).where(eq(stars.id, saved.id))
 		return refetched ?? saved
