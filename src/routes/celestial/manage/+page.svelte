@@ -9,7 +9,7 @@
 	import { invalidateAll } from '$app/navigation'
 	import { urlSlugify } from '$lib/utils/slugify.js'
 	import { celestialPresets } from '$lib/celestial/presets.js'
-	import type { CelestialPreset, BodyPreset } from '$lib/celestial/presets.js'
+	import type { CelestialPreset } from '$lib/celestial/presets.js'
 	import { deriveSystemType } from '$lib/celestial/compute.js'
 	import { celestialRegistryBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import SunDim from 'phosphor-svelte/lib/SunDim'
@@ -187,91 +187,30 @@
 	let creatingPreset = $state(false)
 	let presetProgress = $state('')
 
+	// One server call seeds the whole system in a single transaction — a
+	// failure part-way rolls everything back instead of orphaning half a system.
 	async function createFromPreset(preset: CelestialPreset) {
 		creatingPreset = true
-		presetProgress = 'Creating system...'
+		presetProgress = `Creating ${preset.system.name}...`
 		try {
-			// 1. Create system
-			const sysRes = await fetch('/api/celestial', {
+			const res = await fetch('/api/celestial/preset', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ kind: 'system', name: preset.system.name, slug: slugify(preset.system.name), systemType: preset.system.systemType }),
+				body: JSON.stringify({ preset: preset.label }),
 			})
-			if (!sysRes.ok) {
-				pushError('Failed to create system')
-				return
+			if (res.ok) {
+				pushSuccess(`Created "${preset.system.name}" with all bodies`)
+				invalidateAll()
+			} else {
+				const data = await res.json().catch(() => ({}))
+				pushError(data.error || 'Failed to create preset')
 			}
-			const sys = await sysRes.json()
-
-			// 2. Create stars
-			for (const starPreset of preset.stars) {
-				presetProgress = `Creating star: ${starPreset.name}...`
-				const starRes = await fetch('/api/celestial', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						kind: 'star',
-						name: starPreset.name, slug: slugify(starPreset.name), parentId: sys.id,
-						spectralType: starPreset.spectralType, mass: starPreset.mass, massKg: starPreset.massKg,
-						radius: starPreset.radius, radiusM: starPreset.radiusM,
-						luminosity: starPreset.luminosity, temperature: starPreset.temperature,
-						age: starPreset.age, color: starPreset.color, apparentMagnitude: starPreset.apparentMagnitude,
-					}),
-				})
-				if (!starRes.ok) {
-					pushError(`Failed to create star: ${starPreset.name}`)
-					continue
-				}
-				const star = await starRes.json()
-
-				// 3. Create bodies under this star
-				for (const bodyPreset of starPreset.bodies) {
-					presetProgress = `Creating ${bodyPreset.bodyType}: ${bodyPreset.name}...`
-					const planetId = await createPresetBody(bodyPreset, star.id, null)
-
-					// 4. Create moons under this body
-					if (planetId && bodyPreset.moons) {
-						for (const moonPreset of bodyPreset.moons) {
-							presetProgress = `Creating moon: ${moonPreset.name}...`
-							await createPresetBody(moonPreset, star.id, planetId)
-						}
-					}
-				}
-			}
-
-			pushSuccess(`Created "${preset.system.name}" with all bodies`)
-			invalidateAll()
 		} catch {
 			pushError('Failed to create preset')
 		} finally {
 			creatingPreset = false
 			presetProgress = ''
 		}
-	}
-
-	async function createPresetBody(body: BodyPreset, starId: number, parentId: number | null): Promise<number | null> {
-		const response = await fetch('/api/celestial', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				kind: 'body',
-				name: body.name, slug: slugify(body.name), bodyType: body.bodyType, parentId: parentId ?? starId,
-				mass: body.mass, massKg: body.massKg, radius: body.radius, radiusM: body.radiusM,
-				temperature: body.temperature,
-				atmosphere: body.atmosphere || null, composition: body.composition,
-				orbitalPeriodDays: body.orbitalPeriodDays,
-				semiMajorAxisAu: body.semiMajorAxisAu, eccentricity: body.eccentricity,
-				inclination: body.inclination,
-				rotationPeriodS: body.rotationPeriodS, axialTilt: body.axialTilt,
-				hasRings: body.hasRings,
-			}),
-		})
-		if (!response.ok) {
-			pushError(`Failed to create: ${body.name}`)
-			return null
-		}
-		const created = await response.json()
-		return created.id
 	}
 
 	async function deleteItem(slug: string, name: string) {

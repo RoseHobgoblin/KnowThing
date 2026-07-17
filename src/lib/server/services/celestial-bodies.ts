@@ -12,6 +12,8 @@ import {
 	type createPlanetaryBodySchema,
 } from '$lib/celestial/schema.js'
 import { validateParentKind, isCelestialKind, type CelestialKind } from '$lib/celestial/parent-rules.js'
+import { celestialPresets, type BodyPreset } from '$lib/celestial/presets.js'
+import { urlSlugify } from '$lib/utils/slugify.js'
 import { computeLuminosity, computeOrbitalPeriodDays, deriveBodyOrbitalFields } from '$lib/celestial/compute.js'
 import { CELESTIAL_TREE_CTE, celestialCycleWouldForm } from '$lib/server/celestial/hierarchy.js'
 import {
@@ -94,14 +96,17 @@ export async function getCelestialBySlug(slug: string) {
 	return result[0]
 }
 
-async function assertSlugAvailable(slug: string) {
-	const [existing] = await db.select({ id: celestialBodies.id }).from(celestialBodies).where(eq(celestialBodies.slug, slug))
+/** db or a transaction — creation helpers run against either. */
+type Dbx = Pick<typeof db, 'delete' | 'insert' | 'select' | 'update'>
+
+async function assertSlugAvailable(dbx: Dbx, slug: string) {
+	const [existing] = await dbx.select({ id: celestialBodies.id }).from(celestialBodies).where(eq(celestialBodies.slug, slug))
 	if (existing) throw error(409, 'A celestial entity with this slug already exists')
 }
 
 /** Load a prospective parent and enforce the kind matrix. Throws 400. */
-async function loadValidatedParent(kind: CelestialKind, parentId: number, bodyType?: string | null) {
-	const [parent] = await db
+async function loadValidatedParent(dbx: Dbx, kind: CelestialKind, parentId: number, bodyType?: string | null) {
+	const [parent] = await dbx
 		.select({ id: celestialBodies.id, kind: celestialBodies.kind, massKg: celestialBodies.massKg })
 		.from(celestialBodies)
 		.where(eq(celestialBodies.id, parentId))
@@ -122,8 +127,13 @@ function assertMergedValid(kind: CelestialKind, current: CelestialRow, patch: Re
 }
 
 export async function createCelestial(kind: CelestialKind, data: CreateCelestialInput) {
+	return db.transaction(async tx => createCelestialIn(tx, kind, data))
+}
+
+/** Create one entity against an executor — lets preset seeding batch several into one transaction. */
+async function createCelestialIn(dbx: Dbx, kind: CelestialKind, data: CreateCelestialInput) {
 	const slug = data.slug.trim().toLowerCase()
-	await assertSlugAvailable(slug)
+	await assertSlugAvailable(dbx, slug)
 
 	const common = {
 		kind,
@@ -135,7 +145,7 @@ export async function createCelestial(kind: CelestialKind, data: CreateCelestial
 
 	if (kind === 'system') {
 		const system = data as CreateSystemInput
-		return insertRow({
+		return insertRow(dbx, {
 			...common,
 			systemType: system.systemType,
 			distanceLy: system.distanceLy ?? null,
@@ -150,7 +160,7 @@ export async function createCelestial(kind: CelestialKind, data: CreateCelestial
 
 	if (kind === 'star') {
 		const star = data as CreateStarInput
-		if (star.parentId != null) await loadValidatedParent('star', star.parentId)
+		if (star.parentId != null) await loadValidatedParent(dbx, 'star', star.parentId)
 
 		// Luminosity: explicit, else Stefan-Boltzmann from radius + temperature.
 		let derivedLuminosityW = star.luminosityW ?? null
@@ -159,7 +169,7 @@ export async function createCelestial(kind: CelestialKind, data: CreateCelestial
 			derivedLuminosityW = computeLuminosity(star.radiusM, star.temperatureK)
 		}
 
-		return insertRow({
+		return insertRow(dbx, {
 			...common,
 			parentId: star.parentId ?? null,
 			spectralType: star.spectralType?.trim() || null,
@@ -187,7 +197,7 @@ export async function createCelestial(kind: CelestialKind, data: CreateCelestial
 
 	const body = data as CreateBodyInput
 	// Zod guarantees parentId for bodies; the parent's kind still needs the DB.
-	const parent = await loadValidatedParent('body', body.parentId!, body.bodyType)
+	const parent = await loadValidatedParent(dbx, 'body', body.parentId!, body.bodyType)
 
 	const orbital = deriveBodyOrbitalFields(
 		body.semiMajorAxisAu ?? null,
@@ -197,7 +207,7 @@ export async function createCelestial(kind: CelestialKind, data: CreateCelestial
 		body.eccentricity ?? null,
 	)
 
-	return insertRow({
+	return insertRow(dbx, {
 		...common,
 		parentId: body.parentId ?? null,
 		bodyType: body.bodyType,
@@ -224,11 +234,75 @@ export async function createCelestial(kind: CelestialKind, data: CreateCelestial
 	})
 }
 
-async function insertRow(values: typeof celestialBodies.$inferInsert) {
+async function insertRow(dbx: Dbx, values: typeof celestialBodies.$inferInsert) {
+	const [created] = await dbx.insert(celestialBodies).values(values).returning()
+	const [refetched] = await dbx.select().from(celestialBodies).where(eq(celestialBodies.id, created.id))
+	return refetched ?? created
+}
+
+/**
+ * Seed a whole preset system (system → stars → bodies → moons) in ONE
+ * transaction — a mid-sequence failure (slug conflict, invalid data) rolls
+ * everything back instead of orphaning a half-built system, which is what the
+ * old one-POST-per-entity client flow did.
+ */
+export async function createCelestialFromPreset(label: string) {
+	const preset = celestialPresets.find(p => p.label === label)
+	if (!preset) throw error(400, `Unknown preset: ${label}`)
+
 	return db.transaction(async (tx) => {
-		const [created] = await tx.insert(celestialBodies).values(values).returning()
-		const [refetched] = await tx.select().from(celestialBodies).where(eq(celestialBodies.id, created.id))
-		return refetched ?? created
+		const system = await createCelestialIn(tx, 'system', CREATE_SCHEMAS.system.parse({
+			name: preset.system.name,
+			slug: urlSlugify(preset.system.name),
+			systemType: preset.system.systemType,
+		}))
+
+		for (const starPreset of preset.stars) {
+			const star = await createCelestialIn(tx, 'star', CREATE_SCHEMAS.star.parse({
+				name: starPreset.name,
+				slug: urlSlugify(starPreset.name),
+				parentId: system.id,
+				spectralType: starPreset.spectralType,
+				massKg: starPreset.massKg,
+				radiusM: starPreset.radiusM,
+				luminosityW: starPreset.luminosityW ?? null,
+				temperatureK: starPreset.temperatureK ?? null,
+				age: starPreset.age,
+				color: starPreset.color,
+				apparentMagnitude: starPreset.apparentMagnitude,
+			}))
+
+			for (const bodyPreset of starPreset.bodies) {
+				const planet = await createCelestialIn(tx, 'body', presetBodyInput(bodyPreset, star.id))
+				for (const moonPreset of bodyPreset.moons ?? []) {
+					await createCelestialIn(tx, 'body', presetBodyInput(moonPreset, planet.id))
+				}
+			}
+		}
+
+		return { name: preset.system.name, slug: system.slug }
+	})
+}
+
+function presetBodyInput(preset: BodyPreset, parentId: number) {
+	return CREATE_SCHEMAS.body.parse({
+		name: preset.name,
+		slug: urlSlugify(preset.name),
+		bodyType: preset.bodyType,
+		parentId,
+		massKg: preset.massKg,
+		radiusM: preset.radiusM,
+		temperature: preset.temperature,
+		atmosphere: preset.atmosphere || null,
+		composition: preset.composition,
+		orbitalPeriodDays: preset.orbitalPeriodDays,
+		semiMajorAxisAu: preset.semiMajorAxisAu,
+		eccentricity: preset.eccentricity,
+		inclination: preset.inclination,
+		rotationPeriodS: preset.rotationPeriodS,
+		axialTilt: preset.axialTilt,
+		satellites: preset.satellites,
+		hasRings: preset.hasRings,
 	})
 }
 
@@ -253,7 +327,7 @@ export async function updateCelestial(slug: string, raw: unknown) {
 
 	if (data.parentId != null) {
 		const bodyType = ('bodyType' in data ? data.bodyType : current.bodyType) as string | null
-		await loadValidatedParent(kind, data.parentId, bodyType)
+		await loadValidatedParent(db, kind, data.parentId, bodyType)
 		if (await celestialCycleWouldForm(current.id, data.parentId)) {
 			throw error(400, 'Cannot set parent to self or a descendant (circular reference)')
 		}

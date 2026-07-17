@@ -3,7 +3,7 @@ import crypto from 'node:crypto'
 import { db } from './db/index.js'
 import { users, sessions, registrationCodes, loginAttempts } from './db/schema.js'
 import { eq, and, gt, sql } from 'drizzle-orm'
-import type { RequestEvent } from '@sveltejs/kit'
+import { error, type RequestEvent } from '@sveltejs/kit'
 
 const SALT_ROUNDS = 12
 const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000 // 30 days
@@ -206,14 +206,16 @@ export function getSessionToken(event: RequestEvent): string | undefined {
 
 // ── Auth guards ─────────────────────────────────────────────
 
-/** Require auth — returns user or throws 401 */
+/**
+ * Require auth — returns user or throws 401.
+ * Throws SvelteKit's HttpError (not a raw Response): endpoints convert it to
+ * the right status code, and handleServiceCall maps it to `{ error }` JSON.
+ * A thrown raw Response is treated as an unexpected error and became a 500.
+ */
 export function requireAuth(event: RequestEvent): AuthUser {
 	const user = event.locals.user
 	if (!user) {
-		throw Response.json({ error: 'Authentication required' }, {
-			status: 401,
-			headers: { 'Content-Type': 'application/json' },
-		})
+		throw error(401, 'Authentication required')
 	}
 	return user
 }
@@ -222,10 +224,7 @@ export function requireAuth(event: RequestEvent): AuthUser {
 export function requireRole(event: RequestEvent, minimumRole: Role): AuthUser {
 	const user = requireAuth(event)
 	if (!hasRole(user.role, minimumRole)) {
-		throw Response.json({ error: 'Insufficient permissions' }, {
-			status: 403,
-			headers: { 'Content-Type': 'application/json' },
-		})
+		throw error(403, 'Insufficient permissions')
 	}
 	return user
 }
