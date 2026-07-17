@@ -4,7 +4,7 @@ import { and, eq, desc } from 'drizzle-orm'
 
 export type EntityKind =
 	| 'star'
-	| 'planet'
+	| 'body'
 	| 'system'
 	| 'language'
 	| 'lexicon'

@@ -1,110 +1,135 @@
-import { eq, and, isNull, sql } from 'drizzle-orm'
+import { eq, and, sql } from 'drizzle-orm'
 import { db } from '$lib/server/db/index.js'
 import {
+	celestialBodies,
 	contentLinks,
 	contentRecords,
-	planetaryBodies,
-	starSystems,
-	stars,
 } from '$lib/server/db/schema.js'
+import { CELESTIAL_TREE_CTE } from '$lib/server/celestial/hierarchy.js'
+
+/**
+ * Read-side registry over the unified `celestial_bodies` table.
+ *
+ * The old three-table columns (`system_id`, `parent_star_id`, `star_id`,
+ * `parent_id`) are derived from the single `parent_id` edge via the
+ * `celestial_tree` CTE so every consumer (SystemMap, configure-form dropdowns,
+ * manage-page grouping) keeps its field shapes:
+ *  - systemId      = root of the parent chain when that root is a system
+ *  - parentStarId  = direct parent when the parent is a star
+ *  - starId        = nearest star ancestor
+ *  - parentId      = direct parent when the parent is a body
+ */
 
 export async function listSystemsForRegistry() {
 	return db.execute(sql`
+		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
 		SELECT
 			ss.id, ss.name, ss.slug, ss.system_type AS "systemType",
 			ss.page_slug AS "pageSlug",
-			(SELECT COUNT(*) FROM stars WHERE system_id = ss.id)::int AS "starCount",
-			(SELECT COUNT(*) FROM planetary_bodies pb JOIN stars s ON s.id = pb.star_id WHERE s.system_id = ss.id)::int AS "planetCount"
-		FROM star_systems ss
+			(SELECT COUNT(*) FROM celestial_tree t WHERE t.root_id = ss.id AND t.kind = 'star')::int AS "starCount",
+			(SELECT COUNT(*) FROM celestial_tree t WHERE t.root_id = ss.id AND t.kind = 'body')::int AS "planetCount"
+		FROM celestial_bodies ss
+		WHERE ss.kind = 'system'
 		ORDER BY ss.name
 	`)
 }
 
 export async function listStarsForRegistry() {
 	return db.execute(sql`
+		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
 		SELECT
 			s.id, s.name, s.slug, s.spectral_type AS "spectralType",
-			s.color, s.page_slug AS "pageSlug", s.system_id AS "systemId",
+			s.color, s.page_slug AS "pageSlug",
+			CASE WHEN t.root_kind = 'system' THEN t.root_id END AS "systemId",
 			s.semi_major_axis_au AS "semiMajorAxisAu", s.eccentricity,
-			s.parent_star_id AS "parentStarId",
-			(SELECT COUNT(*) FROM planetary_bodies WHERE star_id = s.id)::int AS "planetCount"
-		FROM stars s
-		ORDER BY s.parent_star_id NULLS FIRST, s.name
+			CASE WHEN p.kind = 'star' THEN s.parent_id END AS "parentStarId",
+			(SELECT COUNT(*) FROM celestial_tree b WHERE b.kind = 'body' AND b.nearest_star_id = s.id)::int AS "planetCount"
+		FROM celestial_bodies s
+		JOIN celestial_tree t ON t.id = s.id
+		LEFT JOIN celestial_bodies p ON p.id = s.parent_id
+		WHERE s.kind = 'star'
+		ORDER BY "parentStarId" NULLS FIRST, s.name
 	`)
 }
 
-export async function findSystemBySlugOrPageSlug(slug: string) {
-	const [system] = await db.select().from(starSystems)
-		.where(sql`LOWER(${starSystems.slug}) = LOWER(${slug}) OR LOWER(${starSystems.pageSlug}) = LOWER(${slug})`)
-	return system ?? null
+export async function listBodiesForRegistry() {
+	return db.execute(sql`
+		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
+		SELECT
+			pb.id, pb.name, pb.slug, pb.body_type AS "bodyType",
+			t.nearest_star_id AS "starId",
+			CASE WHEN p.kind = 'body' THEN pb.parent_id END AS "parentId",
+			pb.page_slug AS "pageSlug",
+			pb.semi_major_axis_au AS "semiMajorAxisAu", pb.eccentricity,
+			(SELECT COUNT(*) FROM celestial_bodies m WHERE m.parent_id = pb.id AND m.kind = 'body')::int AS "moonCount"
+		FROM celestial_bodies pb
+		JOIN celestial_tree t ON t.id = pb.id
+		LEFT JOIN celestial_bodies p ON p.id = pb.parent_id
+		WHERE pb.kind = 'body'
+		ORDER BY pb.semi_major_axis_au NULLS LAST, pb.name
+	`)
 }
 
-export async function findStarBySlugOrPageSlug(slug: string) {
-	const [star] = await db.select().from(stars)
-		.where(sql`LOWER(${stars.slug}) = LOWER(${slug}) OR LOWER(${stars.pageSlug}) = LOWER(${slug})`)
-	return star ?? null
-}
-
-export async function findPlanetBySlugOrPageSlug(slug: string) {
-	const [planet] = await db.select().from(planetaryBodies)
-		.where(sql`LOWER(${planetaryBodies.slug}) = LOWER(${slug}) OR LOWER(${planetaryBodies.pageSlug}) = LOWER(${slug})`)
-	return planet ?? null
+/** Find any celestial entity by canonical slug or legacy pageSlug. */
+export async function findCelestialBySlugOrPageSlug(slug: string) {
+	const [row] = await db.select().from(celestialBodies)
+		.where(sql`LOWER(${celestialBodies.slug}) = LOWER(${slug}) OR LOWER(${celestialBodies.pageSlug}) = LOWER(${slug})`)
+	return row ?? null
 }
 
 /**
  * Resolve any celestial input slug (real slug or legacy `pageSlug`) to its
- * canonical row slug across all three tables. Used by the legacy
- * `/celestial/[...path]` 308 redirect stub.
+ * canonical row slug. Used by the legacy `/celestial/[...path]` 308 redirect
+ * stub.
  */
 export async function resolveCelestialCanonicalSlug(slug: string): Promise<string | null> {
-	const lower = slug.toLowerCase()
-	const [row] = await db.execute(sql`
-		SELECT slug FROM star_systems WHERE LOWER(slug) = ${lower} OR LOWER(page_slug) = ${lower}
-		UNION ALL
-		SELECT slug FROM stars WHERE LOWER(slug) = ${lower} OR LOWER(page_slug) = ${lower}
-		UNION ALL
-		SELECT slug FROM planetary_bodies WHERE LOWER(slug) = ${lower} OR LOWER(page_slug) = ${lower}
-		LIMIT 1
-	`)
-	return (row as unknown as { slug?: string })?.slug ?? null
+	const row = await findCelestialBySlugOrPageSlug(slug)
+	return row?.slug ?? null
 }
-
 
 export async function getStarsForSystemMap(systemId: number) {
 	return db.execute(sql`
-		SELECT id, name, slug, spectral_type AS "spectralType", color,
-			page_slug AS "pageSlug", semi_major_axis_au AS "semiMajorAxisAu",
-			eccentricity, parent_star_id AS "parentStarId",
-			orbital_period_days AS "orbitalPeriodDays",
-			epoch_phase AS "epochPhase"
-		FROM stars WHERE system_id = ${systemId}
-		ORDER BY parent_star_id NULLS FIRST, name
+		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
+		SELECT s.id, s.name, s.slug, s.spectral_type AS "spectralType", s.color,
+			s.page_slug AS "pageSlug", s.semi_major_axis_au AS "semiMajorAxisAu",
+			s.eccentricity,
+			CASE WHEN p.kind = 'star' THEN s.parent_id END AS "parentStarId",
+			s.orbital_period_days AS "orbitalPeriodDays",
+			s.epoch_phase AS "epochPhase"
+		FROM celestial_bodies s
+		JOIN celestial_tree t ON t.id = s.id
+		LEFT JOIN celestial_bodies p ON p.id = s.parent_id
+		WHERE s.kind = 'star' AND t.root_id = ${systemId}
+		ORDER BY "parentStarId" NULLS FIRST, s.name
 	`)
 }
 
 export async function getBodiesForSystemMap(systemId: number) {
 	return db.execute(sql`
+		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
 		SELECT pb.id, pb.name, pb.slug, pb.body_type AS "bodyType",
 			pb.page_slug AS "pageSlug", pb.semi_major_axis_au AS "semiMajorAxisAu",
-			pb.eccentricity, pb.star_id AS "starId", pb.parent_id AS "parentId",
+			pb.eccentricity,
+			t.nearest_star_id AS "starId",
+			CASE WHEN p.kind = 'body' THEN pb.parent_id END AS "parentId",
 			pb.orbital_period_days AS "orbitalPeriodDays",
 			pb.epoch_phase AS "epochPhase",
-			(SELECT COUNT(*) FROM planetary_bodies m WHERE m.parent_id = pb.id)::int AS "moonCount"
-		FROM planetary_bodies pb
-		JOIN stars s ON s.id = pb.star_id
-		WHERE s.system_id = ${systemId}
+			(SELECT COUNT(*) FROM celestial_bodies m WHERE m.parent_id = pb.id AND m.kind = 'body')::int AS "moonCount"
+		FROM celestial_bodies pb
+		JOIN celestial_tree t ON t.id = pb.id
+		LEFT JOIN celestial_bodies p ON p.id = pb.parent_id
+		WHERE pb.kind = 'body' AND t.root_id = ${systemId}
 		ORDER BY pb.semi_major_axis_au NULLS LAST, pb.name
 	`)
 }
 
 export async function getCalendarsForSystem(systemId: number) {
 	return db.execute(sql`
+		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
 		SELECT c.id, c.name, c.static_data AS "staticData", c.planet_id AS "planetId"
 		FROM calendars c
 		WHERE c.planet_id IN (
-			SELECT pb.id FROM planetary_bodies pb
-			JOIN stars s ON s.id = pb.star_id
-			WHERE s.system_id = ${systemId}
+			SELECT t.id FROM celestial_tree t WHERE t.kind = 'body' AND t.root_id = ${systemId}
 		)
 		OR c.planet_id IS NULL
 		ORDER BY c.name
@@ -113,50 +138,85 @@ export async function getCalendarsForSystem(systemId: number) {
 
 export async function getStarSystemRef(systemId: number) {
 	const [sys] = await db
-		.select({ slug: starSystems.slug, name: starSystems.name })
-		.from(starSystems)
-		.where(eq(starSystems.id, systemId))
+		.select({ slug: celestialBodies.slug, name: celestialBodies.name })
+		.from(celestialBodies)
+		.where(and(eq(celestialBodies.id, systemId), eq(celestialBodies.kind, 'system')))
 	return sys ?? null
 }
 
+/** The system a star belongs to: the root of its parent chain, if a system. */
 export async function getStarSystemId(starId: number) {
-	const [parentStar] = await db.select({ systemId: stars.systemId }).from(stars).where(eq(stars.id, starId))
-	return parentStar?.systemId ?? null
+	const [row] = await db.execute(sql`
+		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
+		SELECT CASE WHEN t.root_kind = 'system' THEN t.root_id END AS "systemId"
+		FROM celestial_tree t WHERE t.id = ${starId}
+	`)
+	return (row as unknown as { systemId?: number | null })?.systemId ?? null
 }
 
 export async function listAllSystemReferences() {
-	return db.select({ id: starSystems.id, name: starSystems.name }).from(starSystems).orderBy(starSystems.name)
+	return db
+		.select({ id: celestialBodies.id, name: celestialBodies.name })
+		.from(celestialBodies)
+		.where(eq(celestialBodies.kind, 'system'))
+		.orderBy(celestialBodies.name)
 }
 
-export async function listAllStarReferences() {
-	return db
-		.select({
-			id: stars.id,
-			name: stars.name,
-			slug: stars.slug,
-			massKg: stars.massKg,
-			systemId: stars.systemId,
-			parentStarId: stars.parentStarId,
-		})
-		.from(stars)
-		.orderBy(stars.name)
+export interface StarReference {
+	id: number
+	name: string
+	slug: string
+	massKg: number | null
+	/** Root of the parent chain when that root is a system. */
+	systemId: number | null
+	/** Direct parent when the parent is a star (companion relationship). */
+	parentStarId: number | null
 }
 
-export async function listAllBodyReferences() {
-	return db
-		.select({
-			id: planetaryBodies.id,
-			name: planetaryBodies.name,
-			slug: planetaryBodies.slug,
-			massKg: planetaryBodies.massKg,
-			starId: planetaryBodies.starId,
-			parentId: planetaryBodies.parentId,
-			semiMajorAxisAu: planetaryBodies.semiMajorAxisAu,
-			eccentricity: planetaryBodies.eccentricity,
-			bodyType: planetaryBodies.bodyType,
-		})
-		.from(planetaryBodies)
-		.orderBy(planetaryBodies.name)
+export async function listAllStarReferences(): Promise<StarReference[]> {
+	const rows = await db.execute(sql`
+		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
+		SELECT s.id, s.name, s.slug, s.mass_kg AS "massKg",
+			CASE WHEN t.root_kind = 'system' THEN t.root_id END AS "systemId",
+			CASE WHEN p.kind = 'star' THEN s.parent_id END AS "parentStarId"
+		FROM celestial_bodies s
+		JOIN celestial_tree t ON t.id = s.id
+		LEFT JOIN celestial_bodies p ON p.id = s.parent_id
+		WHERE s.kind = 'star'
+		ORDER BY s.name
+	`)
+	return rows as unknown as StarReference[]
+}
+
+export interface BodyReference {
+	id: number
+	name: string
+	slug: string
+	massKg: number | null
+	/** Nearest star ancestor. */
+	starId: number | null
+	/** Direct parent when the parent is a body (moon relationship). */
+	parentId: number | null
+	semiMajorAxisAu: number | null
+	eccentricity: number | null
+	bodyType: string | null
+}
+
+export async function listAllBodyReferences(): Promise<BodyReference[]> {
+	const rows = await db.execute(sql`
+		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
+		SELECT pb.id, pb.name, pb.slug, pb.mass_kg AS "massKg",
+			t.nearest_star_id AS "starId",
+			CASE WHEN p.kind = 'body' THEN pb.parent_id END AS "parentId",
+			pb.semi_major_axis_au AS "semiMajorAxisAu", pb.eccentricity,
+			pb.body_type AS "bodyType"
+		FROM celestial_bodies pb
+		JOIN celestial_tree t ON t.id = pb.id
+		LEFT JOIN celestial_bodies p ON p.id = pb.parent_id
+		WHERE pb.kind = 'body'
+		ORDER BY pb.name
+	`)
+	return rows as unknown as BodyReference[]
 }
 
 /**
@@ -196,39 +256,26 @@ export async function getBacklinksForCelestial(slug: string) {
 export async function getStarHzInputs(starId: number) {
 	const [row] = await db
 		.select({
-			luminosityW: stars.luminosityW,
-			radiusM: stars.radiusM,
-			temperatureK: stars.temperatureK,
+			luminosityW: celestialBodies.luminosityW,
+			radiusM: celestialBodies.radiusM,
+			temperatureK: celestialBodies.temperatureK,
 		})
-		.from(stars)
-		.where(eq(stars.id, starId))
+		.from(celestialBodies)
+		.where(and(eq(celestialBodies.id, starId), eq(celestialBodies.kind, 'star')))
 	return row ?? null
 }
 
-/** Direct planets of a star (parentId null), ordered by orbital distance. */
+/** Direct planets of a star (its immediate child bodies), by orbital distance. */
 export async function getPlanetsForStar(starId: number) {
 	return db
 		.select({
-			id: planetaryBodies.id,
-			name: planetaryBodies.name,
-			slug: planetaryBodies.slug,
-			semiMajorAxisAu: planetaryBodies.semiMajorAxisAu,
-			bodyType: planetaryBodies.bodyType,
+			id: celestialBodies.id,
+			name: celestialBodies.name,
+			slug: celestialBodies.slug,
+			semiMajorAxisAu: celestialBodies.semiMajorAxisAu,
+			bodyType: celestialBodies.bodyType,
 		})
-		.from(planetaryBodies)
-		.where(and(eq(planetaryBodies.starId, starId), isNull(planetaryBodies.parentId)))
-		.orderBy(planetaryBodies.semiMajorAxisAu)
-}
-
-export async function listBodiesForRegistry() {
-	return db.execute(sql`
-		SELECT
-			pb.id, pb.name, pb.slug, pb.body_type AS "bodyType",
-			pb.star_id AS "starId", pb.parent_id AS "parentId",
-			pb.page_slug AS "pageSlug",
-			pb.semi_major_axis_au AS "semiMajorAxisAu", pb.eccentricity,
-			(SELECT COUNT(*) FROM planetary_bodies m WHERE m.parent_id = pb.id)::int AS "moonCount"
-		FROM planetary_bodies pb
-		ORDER BY pb.semi_major_axis_au NULLS LAST, pb.name
-	`)
+		.from(celestialBodies)
+		.where(and(eq(celestialBodies.parentId, starId), eq(celestialBodies.kind, 'body')))
+		.orderBy(celestialBodies.semiMajorAxisAu)
 }

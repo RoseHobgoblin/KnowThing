@@ -10,7 +10,7 @@
 import { eq, sql } from 'drizzle-orm'
 import { db } from '$lib/server/db/index.js'
 import {
-	stars, planetaryBodies, starSystems,
+	celestialBodies,
 	languages, lexicon,
 	calendars, categories, countries, worldMaps,
 	contentLinks,
@@ -23,16 +23,19 @@ import type { WikiNode } from '$lib/parser/types.js'
 
 export type EntityKind = EntitySource extends infer T ? T extends { kind: infer K } ? K : never : never
 
+// All three celestial kinds live in the unified celestial_bodies table; the
+// persisted kind string on entity_revisions/content_links matches the row's
+// `kind` column ('planet' was rewritten to 'body' by migration 0043).
 const ENTITY_TABLES = {
-	star:     stars,
-	planet:   planetaryBodies,
-	system:   starSystems,
+	star: celestialBodies,
+	body: celestialBodies,
+	system: celestialBodies,
 	language: languages,
 	lexicon,
 	calendar: calendars,
 	category: categories,
-	country:  countries,
-	map:      worldMaps,
+	country: countries,
+	map: worldMaps,
 } as const
 
 function tableFor(kind: EntityKind) {
@@ -101,7 +104,7 @@ export async function saveEntityBody(
 	database: ContentEffectsDatabase,
 	input: SaveEntityBodyInput,
 ): Promise<SaveEntityBodyResult> {
-	const table = tableFor(input.kind) as typeof stars
+	const table = tableFor(input.kind) as typeof celestialBodies
 
 	// Read existing row for snapshot. Use a generic any-cast since each table
 	// has its own schema but we only need the body fields here.
@@ -158,7 +161,7 @@ export async function saveEntityBody(
  */
 const SOURCE_DOMAIN_FOR_KIND: Partial<Record<EntityKind, string>> = {
 	star: 'celestial',
-	planet: 'celestial',
+	body: 'celestial',
 	system: 'celestial',
 	language: 'wordbook',
 	lexicon: 'wordbook',

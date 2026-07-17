@@ -8,7 +8,7 @@
 
 import { db } from './db/index.js'
 import {
-	stars, planetaryBodies, starSystems,
+	celestialBodies,
 	languages, lexicon,
 	calendars, countries, worldMaps,
 	categories,
@@ -77,16 +77,16 @@ export async function resolveNamespaceTarget(
 
 async function dispatchResolve(ns: NamespaceKey, identifier: string): Promise<ResolvedTarget> {
 	switch (ns) {
-		case 'Celestial':   return resolveCelestial(identifier)
-		case 'Calendar':    return resolveSimple('calendar',  calendars,        identifier)
-		case 'Category':    return resolveSimple('category',  categories,       identifier)
-		case 'Country':     return resolveSimple('country',   countries,        identifier)
-		case 'Map':         return resolveSimple('map',       worldMaps,        identifier)
-		case 'CarveCraft':  return missing(ns, identifier) // Phase 8 wires this up
-		case 'Template':    return resolveTemplate(identifier)
+		case 'Celestial': return resolveCelestial(identifier)
+		case 'Calendar': return resolveSimple('calendar', calendars, identifier)
+		case 'Category': return resolveSimple('category', categories, identifier)
+		case 'Country': return resolveSimple('country', countries, identifier)
+		case 'Map': return resolveSimple('map', worldMaps, identifier)
+		case 'CarveCraft': return missing(ns, identifier) // Phase 8 wires this up
+		case 'Template': return resolveTemplate(identifier)
 		case 'File':
-		case 'Image':       return missing(ns, identifier) // handled by image nodes, not here
-		case 'Special':     return missing(ns, identifier)
+		case 'Image': return missing(ns, identifier) // handled by image nodes, not here
+		case 'Special': return missing(ns, identifier)
 	}
 }
 
@@ -101,55 +101,25 @@ function missing(ns: NamespaceKey, identifier: string): ResolvedTarget {
 
 async function resolveCelestial(identifier: string): Promise<ResolvedTarget> {
 	const lower = identifier.toLowerCase()
-	const [system] = await db
-		.select({ id: starSystems.id, slug: starSystems.slug, name: starSystems.name })
-		.from(starSystems)
-		.where(sql`LOWER(${starSystems.slug}) = ${lower}`)
+	const [entity] = await db
+		.select({ id: celestialBodies.id, slug: celestialBodies.slug, name: celestialBodies.name, kind: celestialBodies.kind })
+		.from(celestialBodies)
+		.where(sql`LOWER(${celestialBodies.slug}) = ${lower}`)
 		.limit(1)
-	if (system) {
-		return {
-			kind: 'celestial-system',
-			href: buildNamespaceHref('Celestial', system.slug),
-			title: system.name,
-			exists: true,
-			entityId: system.id,
-		}
+	if (!entity) return missing('Celestial', identifier)
+	const kind: EntityKind =
+		entity.kind === 'system'
+			? 'celestial-system'
+			: (entity.kind === 'star'
+				? 'celestial-star'
+				: 'celestial-planet')
+	return {
+		kind,
+		href: buildNamespaceHref('Celestial', entity.slug),
+		title: entity.name,
+		exists: true,
+		entityId: entity.id,
 	}
-	const [star] = await db
-		.select({ id: stars.id, slug: stars.slug, name: stars.name })
-		.from(stars)
-		.where(sql`LOWER(${stars.slug}) = ${lower}`)
-		.limit(1)
-	if (star) {
-		return {
-			kind: 'celestial-star',
-			href: buildNamespaceHref('Celestial', star.slug),
-			title: star.name,
-			exists: true,
-			entityId: star.id,
-		}
-	}
-	const [planet] = await db
-		.select({ id: planetaryBodies.id, slug: planetaryBodies.slug, name: planetaryBodies.name })
-		.from(planetaryBodies)
-		.where(sql`LOWER(${planetaryBodies.slug}) = ${lower}`)
-		.limit(1)
-	if (planet) {
-		return {
-			kind: 'celestial-planet',
-			href: buildNamespaceHref('Celestial', planet.slug),
-			title: planet.name,
-			exists: true,
-			entityId: planet.id,
-		}
-	}
-	return missing('Celestial', identifier)
-}
-
-interface SimpleSlugTable {
-	id: typeof stars.id
-	slug: typeof stars.slug
-	name?: typeof stars.name
 }
 
 async function resolveSimple(
@@ -165,15 +135,20 @@ async function resolveSimple(
 		.limit(1)
 	const row = rows[0]
 	const ns: NamespaceKey =
-		kind === 'calendar' ? 'Calendar'
-		: kind === 'category' ? 'Category'
-		: kind === 'country' ? 'Country'
-		: 'Map'
+		kind === 'calendar'
+			? 'Calendar'
+			: kind === 'category'
+				? 'Category'
+				: kind === 'country'
+					? 'Country'
+					: 'Map'
 	if (!row) return missing(ns, identifier)
 	const title =
-		'name' in row && typeof row.name === 'string' ? row.name
-		: 'title' in row && typeof row.title === 'string' ? row.title
-		: identifier
+		'name' in row && typeof row.name === 'string'
+			? row.name
+			: ('title' in row && typeof row.title === 'string'
+				? row.title
+				: identifier)
 	return {
 		kind,
 		href: buildNamespaceHref(ns, row.slug),

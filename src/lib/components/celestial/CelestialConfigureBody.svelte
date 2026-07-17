@@ -357,8 +357,8 @@
 	const validationIssues = $derived.by(() => {
 		const parsed = updatePlanetaryBodySchema.safeParse({
 			bodyType,
-			starId: starIdString ? Number(starIdString) : null,
-			parentId: parentIdString ? Number(parentIdString) : null,
+			// A moon orbits its parent body; a planet orbits the star.
+			parentId: parentIdString ? Number(parentIdString) : (starIdString ? Number(starIdString) : null),
 			description,
 			massKg,
 			radiusM,
@@ -493,15 +493,16 @@
 		saving = true
 		saveError = ''
 		try {
-			const response = await fetch(`/api/planetary-bodies/${savedSlug}`, {
+			const response = await fetch(`/api/celestial/${savedSlug}`, {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					name,
 					slug,
 					bodyType,
-					starId: starIdString ? Number(starIdString) : null,
-					parentId: parentIdString ? Number(parentIdString) : null,
+					// The single hierarchy edge: a moon orbits its parent body, a
+					// planet orbits the star.
+					parentId: parentIdString ? Number(parentIdString) : (starIdString ? Number(starIdString) : null),
 					description,
 					massKg,
 					mass: massDisplay,
@@ -570,7 +571,7 @@
 		)
 		if (!ok) return
 
-		const response = await fetch(`/api/planetary-bodies/${savedSlug}`, { method: 'DELETE' })
+		const response = await fetch(`/api/celestial/${savedSlug}`, { method: 'DELETE' })
 		if (!response.ok) {
 			const payload = await response.json().catch(() => ({}))
 			pushError(payload.error || 'Failed to delete body')

@@ -2,9 +2,26 @@ import { isHttpError, json } from '@sveltejs/kit'
 import type { z } from 'zod'
 
 /**
- * Parse a JSON request body against a Zod schema.
+ * Validate an already-parsed value against a Zod schema.
  * Returns the typed data on success, or a 400 JSON response on failure.
  * All validation issues are reported, not just the first.
+ * Use when one request body must be checked against more than one schema
+ * (e.g. a discriminator lookup followed by the kind-specific schema).
+ */
+export function parseInput<T extends z.ZodTypeAny>(body: unknown, schema: T): z.infer<T> | Response {
+	const parsed = schema.safeParse(body)
+	if (!parsed.success) {
+		const issues = parsed.error.issues.map(issue =>
+			issue.path.length > 0 ? `${issue.path.join('.')}: ${issue.message}` : issue.message,
+		)
+		return json({ error: issues[0], issues }, { status: 400 })
+	}
+	return parsed.data
+}
+
+/**
+ * Parse a JSON request body against a Zod schema.
+ * Returns the typed data on success, or a 400 JSON response on failure.
  */
 export async function parseBody<T extends z.ZodTypeAny>(
 	request: Request,
@@ -16,14 +33,7 @@ export async function parseBody<T extends z.ZodTypeAny>(
 	} catch {
 		return json({ error: 'Invalid JSON body' }, { status: 400 })
 	}
-	const parsed = schema.safeParse(body)
-	if (!parsed.success) {
-		const issues = parsed.error.issues.map(issue =>
-			issue.path.length > 0 ? `${issue.path.join('.')}: ${issue.message}` : issue.message,
-		)
-		return json({ error: issues[0], issues }, { status: 400 })
-	}
-	return parsed.data
+	return parseInput(body, schema)
 }
 
 /** Map well-known Postgres error codes to clean client responses. */

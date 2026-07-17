@@ -165,7 +165,7 @@
 		saving = true
 		saveError = ''
 		try {
-			const response = await fetch(`/api/star-systems/${savedSlug}`, {
+			const response = await fetch(`/api/celestial/${savedSlug}`, {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -220,7 +220,7 @@
 		)
 		if (!ok) return
 
-		const response = await fetch(`/api/star-systems/${savedSlug}`, { method: 'DELETE' })
+		const response = await fetch(`/api/celestial/${savedSlug}`, { method: 'DELETE' })
 		if (!response.ok) {
 			const payload = await response.json().catch(() => ({}))
 			pushError(payload.error || 'Failed to delete system')

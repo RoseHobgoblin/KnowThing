@@ -1,5 +1,5 @@
 import { db } from './db/index.js'
-import { calendars, contentLinks, contentRecords, languages, lexicon, planetaryBodies, starSystems, stars } from './db/schema.js'
+import { calendars, celestialBodies, contentLinks, contentRecords, languages, lexicon } from './db/schema.js'
 import { eq, sql, and, inArray } from 'drizzle-orm'
 
 export interface ResolvedLink {
@@ -12,7 +12,7 @@ const ALL_DOMAINS = ['know', 'celestial', 'calendar']
 
 export type EntitySource =
 	| { kind: 'know', contentRecordId: number }
-	| { kind: 'star' | 'planet' | 'system' | 'language' | 'lexicon' | 'calendar' | 'category' | 'country' | 'map', entityId: number }
+	| { kind: 'star' | 'body' | 'system' | 'language' | 'lexicon' | 'calendar' | 'category' | 'country' | 'map', entityId: number }
 
 /**
  * For a given content record OR structured-entity source, fetch its outbound
@@ -119,15 +119,12 @@ async function resolveCelestialFallthrough(
 ): Promise<void> {
 	const slugs = [...new Set(unresolved.filter(e => e.domain === 'celestial').map(e => e.slug))]
 	if (slugs.length === 0) return
-	const matches = await db.execute(sql`
-		SELECT slug FROM ${stars}            WHERE LOWER(slug) IN ${sql`(${sql.join(slugs.map(s => sql`${s}`), sql`, `)})`}
-		UNION ALL
-		SELECT slug FROM ${planetaryBodies} WHERE LOWER(slug) IN ${sql`(${sql.join(slugs.map(s => sql`${s}`), sql`, `)})`}
-		UNION ALL
-		SELECT slug FROM ${starSystems}     WHERE LOWER(slug) IN ${sql`(${sql.join(slugs.map(s => sql`${s}`), sql`, `)})`}
-	`)
+	const matches = await db
+		.select({ slug: celestialBodies.slug })
+		.from(celestialBodies)
+		.where(inArray(sql`LOWER(${celestialBodies.slug})`, slugs))
 	const known = new Map<string, string>()
-	for (const row of matches as unknown as Array<{ slug: string }>) {
+	for (const row of matches) {
 		known.set(row.slug.toLowerCase(), row.slug)
 	}
 	for (const { slug } of unresolved.filter(e => e.domain === 'celestial')) {
@@ -190,9 +187,9 @@ async function resolveWordbookFallthrough(
 		// Each entry slug is `<lang>/<word>`. Resolve in batches by language.
 		const byLang = new Map<string, string[]>()
 		for (const { slug } of wordEntries) {
-			const idx = slug.indexOf('/')
-			const langSlug = slug.slice(0, idx)
-			const word = slug.slice(idx + 1)
+			const index = slug.indexOf('/')
+			const langSlug = slug.slice(0, index)
+			const word = slug.slice(index + 1)
 			if (!byLang.has(langSlug)) byLang.set(langSlug, [])
 			byLang.get(langSlug)!.push(word)
 		}
@@ -225,11 +222,11 @@ async function resolveWordbookFallthrough(
 }
 
 function buildHref(domain: string, slug: string, parentPath: string | null | undefined): string {
-	if (domain === 'know')      return `/know/${slug}`
+	if (domain === 'know') return `/know/${slug}`
 	if (domain === 'celestial') return `/Celestial:${encodeURI(slug)}`
-	if (domain === 'calendar')  return `/Calendar:${encodeURI(slug)}`
+	if (domain === 'calendar') return `/Calendar:${encodeURI(slug)}`
 	// `wordbook` slugs are stored in `<lang>` or `<lang>/<word>` form already.
-	if (domain === 'wordbook')  return `/Wordbook/${slug}`
+	if (domain === 'wordbook') return `/Wordbook/${slug}`
 	if (parentPath) return `/${domain}/${parentPath}/${slug}`
 	return `/${domain}/${slug}`
 }

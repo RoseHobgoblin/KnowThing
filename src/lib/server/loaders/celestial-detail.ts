@@ -5,10 +5,9 @@ import { hasRole } from '$lib/server/auth.js'
 import { resolveCelestialModel } from '$lib/server/structured-data.js'
 import { deriveHabitableZoneAu } from '$lib/celestial/compute.js'
 import type { PlanetModel, StarModel } from '$lib/celestial/models.js'
+import { findNearestStarAncestor } from '$lib/server/celestial/hierarchy.js'
 import {
-	findPlanetBySlugOrPageSlug,
-	findStarBySlugOrPageSlug,
-	findSystemBySlugOrPageSlug,
+	findCelestialBySlugOrPageSlug,
 	getBacklinksForCelestial,
 	getBodiesForSystemMap,
 	getCalendarsForSystem,
@@ -28,17 +27,19 @@ export interface CelestialDetailContext {
 	canonicalize: (slug: string) => string
 }
 
+type CelestialRow = NonNullable<Awaited<ReturnType<typeof findCelestialBySlugOrPageSlug>>>
+
 export type CelestialDetailData =
 	| (CelestialBaseData & {
 		kind: 'system'
-		body: Awaited<ReturnType<typeof findSystemBySlugOrPageSlug>>
+		body: CelestialRow
 		systemStars: MapBody[]
 		systemBodies: MapBody[]
 		systemCalendars: Awaited<ReturnType<typeof getCalendarsForSystem>>
 	})
 	| (CelestialBaseData & {
 		kind: 'star'
-		body: Awaited<ReturnType<typeof findStarBySlugOrPageSlug>>
+		body: CelestialRow
 		allSystems: Awaited<ReturnType<typeof listAllSystemReferences>>
 		allStars: Awaited<ReturnType<typeof listAllStarReferences>>
 		model: StarModel | null
@@ -46,7 +47,7 @@ export type CelestialDetailData =
 	})
 	| (CelestialBaseData & {
 		kind: 'planet'
-		body: Awaited<ReturnType<typeof findPlanetBySlugOrPageSlug>>
+		body: CelestialRow
 		allStars: Awaited<ReturnType<typeof listAllStarReferences>>
 		siblings: Awaited<ReturnType<typeof listAllBodyReferences>>
 		model: PlanetModel | null
@@ -73,39 +74,41 @@ export async function loadCelestialDetail(ctx: CelestialDetailContext): Promise<
 
 	const isConfigureMode = mode === 'configure'
 
-	const system = await findSystemBySlugOrPageSlug(identifier)
-	if (system) {
-		if (system.slug !== identifier) {
-			throw redirect(301, canonicalize(system.slug))
-		}
-		const systemStars = [...await getStarsForSystemMap(system.id)] as unknown as MapBody[]
-		const systemBodies = [...await getBodiesForSystemMap(system.id)] as unknown as MapBody[]
-		const systemCalendars = await getCalendarsForSystem(system.id)
-		const backlinks = await getBacklinksForCelestial(system.slug)
+	// One lookup — the row's kind discriminates. Slugs are globally unique
+	// across the celestial domain, so there is no probe order to get wrong.
+	const entity = await findCelestialBySlugOrPageSlug(identifier)
+	if (!entity) throw error(404, 'Celestial body not found')
+	if (entity.slug !== identifier) {
+		throw redirect(301, canonicalize(entity.slug))
+	}
+
+	if (entity.kind === 'system') {
+		const [systemStars, systemBodies, systemCalendars, backlinks] = await Promise.all([
+			getStarsForSystemMap(entity.id),
+			getBodiesForSystemMap(entity.id),
+			getCalendarsForSystem(entity.id),
+			getBacklinksForCelestial(entity.slug),
+		])
 		return {
 			kind: 'system',
-			body: system,
+			body: entity,
 			isEditMode: false,
 			isConfigureMode,
-			systemStars,
-			systemBodies,
+			systemStars: [...systemStars] as unknown as MapBody[],
+			systemBodies: [...systemBodies] as unknown as MapBody[],
 			systemCalendars,
 			backlinks,
 		}
 	}
 
-	const star = await findStarBySlugOrPageSlug(identifier)
-	if (star) {
-		if (star.slug !== identifier) {
-			throw redirect(301, canonicalize(star.slug))
-		}
+	if (entity.kind === 'star') {
 		const [allSystems, allStars, rawModel, systemPlanets, backlinks] = await Promise.all([
-			listAllSystemReferences(), listAllStarReferences(), resolveCelestialModel('star', star.slug), getPlanetsForStar(star.id), getBacklinksForCelestial(star.slug),
+			listAllSystemReferences(), listAllStarReferences(), resolveCelestialModel('star', entity.slug), getPlanetsForStar(entity.id), getBacklinksForCelestial(entity.slug),
 		])
 		const model = rawModel?.kind === 'star' ? rawModel : null
 		return {
 			kind: 'star',
-			body: star,
+			body: entity,
 			allSystems,
 			allStars,
 			model,
@@ -116,39 +119,32 @@ export async function loadCelestialDetail(ctx: CelestialDetailContext): Promise<
 		}
 	}
 
-	const planet = await findPlanetBySlugOrPageSlug(identifier)
-	if (planet) {
-		if (planet.slug !== identifier) {
-			throw redirect(301, canonicalize(planet.slug))
-		}
-		const [allStars, siblings, rawModel, backlinks, parentStarHzInputs] = await Promise.all([
-			listAllStarReferences(),
-			listAllBodyReferences(),
-			resolveCelestialModel('planet', planet.slug),
-			getBacklinksForCelestial(planet.slug),
-			// The parent star's habitable zone, so a planet can show whether it sits in
-			// it — fetched as just the luminosity inputs (in parallel), not the star's
-			// whole model with its discarded planet/satellite counts.
-			planet.starId == null ? Promise.resolve(null) : getStarHzInputs(planet.starId),
-		])
-		const model = rawModel?.kind === 'planet' ? rawModel : null
-		const parentStarHz = parentStarHzInputs
-			? deriveHabitableZoneAu(parentStarHzInputs.luminosityW, parentStarHzInputs.radiusM, parentStarHzInputs.temperatureK)
-			: null
-		return {
-			kind: 'planet',
-			body: planet,
-			allStars,
-			siblings,
-			model,
-			parentStarHz,
-			isEditMode: false,
-			isConfigureMode,
-			backlinks,
-		}
+	const [allStars, siblings, rawModel, backlinks, nearestStar] = await Promise.all([
+		listAllStarReferences(),
+		listAllBodyReferences(),
+		resolveCelestialModel('planet', entity.slug),
+		getBacklinksForCelestial(entity.slug),
+		entity.parentId == null ? Promise.resolve(null) : findNearestStarAncestor(entity.parentId),
+	])
+	const model = rawModel?.kind === 'planet' ? rawModel : null
+	// The parent star's habitable zone, so a planet can show whether it sits in
+	// it — fetched as just the luminosity inputs, not the star's whole model
+	// with its discarded planet/satellite counts.
+	const parentStarHzInputs = nearestStar ? await getStarHzInputs(nearestStar.id) : null
+	const parentStarHz = parentStarHzInputs
+		? deriveHabitableZoneAu(parentStarHzInputs.luminosityW, parentStarHzInputs.radiusM, parentStarHzInputs.temperatureK)
+		: null
+	return {
+		kind: 'planet',
+		body: entity,
+		allStars,
+		siblings,
+		model,
+		parentStarHz,
+		isEditMode: false,
+		isConfigureMode,
+		backlinks,
 	}
-
-	throw error(404, 'Celestial body not found')
 }
 
 export type _Cookies = Cookies

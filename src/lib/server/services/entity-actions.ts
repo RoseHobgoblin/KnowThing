@@ -4,7 +4,7 @@ import { requireEditor } from '$lib/server/guards.js'
 import { saveEntityBody, type EntityKind } from '$lib/server/services/entity-article-loader.js'
 
 const VALID_KINDS: ReadonlySet<string> = new Set([
-	'star', 'planet', 'system',
+	'star', 'body', 'system',
 	'language', 'lexicon',
 	'calendar', 'category', 'country', 'map',
 ])

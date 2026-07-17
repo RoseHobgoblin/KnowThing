@@ -71,63 +71,7 @@ export async function searchPagesRaw(
 					websearch_to_tsquery('english', ${query}),
 					${`StartSel=<mark>, StopSel=</mark>, MaxWords=${options.headlineMaxWords}, MinWords=${options.headlineMinWords}`}
 				) AS snippet
-			FROM stars
-			WHERE to_tsvector('english', name || ' ' || COALESCE(body_plain_text, '')) @@ websearch_to_tsquery('english', ${query})
-
-			UNION ALL
-
-			SELECT
-				'celestial' AS domain,
-				slug,
-				NULL AS "parentPath",
-				name AS title,
-				(
-					CASE
-						WHEN LOWER(name) = LOWER(${query}) THEN 5
-						WHEN LOWER(name) LIKE LOWER(${query + '%'}) THEN 3
-						ELSE 0
-					END
-					+ ts_rank(
-						setweight(to_tsvector('english', COALESCE(name, '')), 'A')
-						|| setweight(to_tsvector('english', COALESCE(body_plain_text, '')), 'B'),
-						websearch_to_tsquery('english', ${query})
-					)
-				) AS rank,
-				ts_headline(
-					'english',
-					body_plain_text,
-					websearch_to_tsquery('english', ${query}),
-					${`StartSel=<mark>, StopSel=</mark>, MaxWords=${options.headlineMaxWords}, MinWords=${options.headlineMinWords}`}
-				) AS snippet
-			FROM planetary_bodies
-			WHERE to_tsvector('english', name || ' ' || COALESCE(body_plain_text, '')) @@ websearch_to_tsquery('english', ${query})
-
-			UNION ALL
-
-			SELECT
-				'celestial' AS domain,
-				slug,
-				NULL AS "parentPath",
-				name AS title,
-				(
-					CASE
-						WHEN LOWER(name) = LOWER(${query}) THEN 5
-						WHEN LOWER(name) LIKE LOWER(${query + '%'}) THEN 3
-						ELSE 0
-					END
-					+ ts_rank(
-						setweight(to_tsvector('english', COALESCE(name, '')), 'A')
-						|| setweight(to_tsvector('english', COALESCE(body_plain_text, '')), 'B'),
-						websearch_to_tsquery('english', ${query})
-					)
-				) AS rank,
-				ts_headline(
-					'english',
-					body_plain_text,
-					websearch_to_tsquery('english', ${query}),
-					${`StartSel=<mark>, StopSel=</mark>, MaxWords=${options.headlineMaxWords}, MinWords=${options.headlineMinWords}`}
-				) AS snippet
-			FROM star_systems
+			FROM celestial_bodies
 			WHERE to_tsvector('english', name || ' ' || COALESCE(body_plain_text, '')) @@ websearch_to_tsquery('english', ${query})
 
 			UNION ALL
@@ -225,9 +169,7 @@ export async function countPageSearchResults(query: string): Promise<number> {
 	const [{ count }] = await db.execute<{ count: number }>(sql`
 		SELECT (
 			(SELECT COUNT(*) FROM content_records WHERE search_vector @@ websearch_to_tsquery('english', ${query}))
-			+ (SELECT COUNT(*) FROM stars WHERE to_tsvector('english', name || ' ' || COALESCE(body_plain_text, '')) @@ websearch_to_tsquery('english', ${query}))
-			+ (SELECT COUNT(*) FROM planetary_bodies WHERE to_tsvector('english', name || ' ' || COALESCE(body_plain_text, '')) @@ websearch_to_tsquery('english', ${query}))
-			+ (SELECT COUNT(*) FROM star_systems WHERE to_tsvector('english', name || ' ' || COALESCE(body_plain_text, '')) @@ websearch_to_tsquery('english', ${query}))
+			+ (SELECT COUNT(*) FROM celestial_bodies WHERE to_tsvector('english', name || ' ' || COALESCE(body_plain_text, '')) @@ websearch_to_tsquery('english', ${query}))
 			+ (SELECT COUNT(*) FROM languages WHERE to_tsvector('english', name || ' ' || COALESCE(body_plain_text, '')) @@ websearch_to_tsquery('english', ${query}))
 			+ (SELECT COUNT(*) FROM lexicon WHERE to_tsvector('english', word || ' ' || COALESCE(body_plain_text, '')) @@ websearch_to_tsquery('english', ${query}))
 			+ (SELECT COUNT(*) FROM calendars WHERE to_tsvector('english', name || ' ' || COALESCE(body_plain_text, '')) @@ websearch_to_tsquery('english', ${query}))

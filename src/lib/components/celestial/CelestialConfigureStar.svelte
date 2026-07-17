@@ -206,8 +206,8 @@
 	let metallicity = $state(initialDraft.metallicity)
 	let companion = $state(initialDraft.companion)
 
-	let systemIdStr = $state(initialDraft.systemIdStr)
-	let parentStarIdStr = $state(initialDraft.parentStarIdStr)
+	let systemIdString = $state(initialDraft.systemIdStr)
+	let parentStarIdString = $state(initialDraft.parentStarIdStr)
 	let description = $state(initialDraft.description)
 
 	// Lock states for overridable derived fields
@@ -223,7 +223,7 @@
 	// Always-derived display fields
 	const massDisplay = $derived(massKg ? formatMass(massKg) : null)
 	const radiusDisplay = $derived(radiusM ? formatRadius(radiusM) : null)
-	const tempDisplay = $derived(temperatureK ? formatTemperatureK(temperatureK) : null)
+	const temporaryDisplay = $derived(temperatureK ? formatTemperatureK(temperatureK) : null)
 
 	// Auto-computed from numeric inputs
 	const computedPhysical = $derived(deriveBodyFields(massKg, radiusM))
@@ -236,8 +236,8 @@
 			: null,
 	)
 	const effectiveLuminosityW = $derived(luminosityW ?? derivedLuminosityW)
-	const derivedLuminosityLabel = $derived(effectiveLuminosityW != null ? formatLuminosity(effectiveLuminosityW) : null)
-	const habitableZone = $derived(effectiveLuminosityW != null ? computeHabitableZoneAu(effectiveLuminosityW) : null)
+	const derivedLuminosityLabel = $derived(effectiveLuminosityW == null ? null : formatLuminosity(effectiveLuminosityW))
+	const habitableZone = $derived(effectiveLuminosityW == null ? null : computeHabitableZoneAu(effectiveLuminosityW))
 
 	let content = $state(initialDraft.content)
 	let editSummary = $state('')
@@ -330,8 +330,8 @@
 		angularDiameter,
 		metallicity,
 		companion,
-		systemIdStr,
-		parentStarIdStr,
+		systemIdStr: systemIdString,
+		parentStarIdStr: parentStarIdString,
 		description,
 		densityUnlocked, densityOverride,
 		gravityUnlocked, gravityOverride,
@@ -358,8 +358,7 @@
 			apparentMagnitude: apparentMagnitude || null,
 			angularDiameter: angularDiameter || null,
 			companion: companion || null,
-			systemId: systemIdStr ? Number(systemIdStr) : null,
-			parentStarId: parentStarIdStr ? Number(parentStarIdStr) : null,
+			parentId: parentStarIdString ? Number(parentStarIdString) : (systemIdString ? Number(systemIdString) : null),
 			description,
 		})
 
@@ -378,14 +377,14 @@
 		{ value: '', label: 'None (primary star)' },
 		...allStars
 			.filter(option => option.id !== initialStar.id)
-			.filter(option => (systemIdStr ? String(option.systemId ?? '') === systemIdStr : false))
+			.filter(option => (systemIdString ? String(option.systemId ?? '') === systemIdString : false))
 			.map(option => ({ value: String(option.id), label: option.name })),
 	])
 
 	// Clear an orphaned parent selection when the system changes out from under it.
 	$effect(() => {
-		if (!parentStarIdStr) return
-		if (!parentStarItems.some(item => item.value === parentStarIdStr)) parentStarIdStr = ''
+		if (!parentStarIdString) return
+		if (!parentStarItems.some(item => item.value === parentStarIdString)) parentStarIdString = ''
 	})
 
 	$effect(() => {
@@ -419,8 +418,8 @@
 		angularDiameter = initialDraft.angularDiameter
 		metallicity = initialDraft.metallicity
 		companion = initialDraft.companion
-		systemIdStr = initialDraft.systemIdStr
-		parentStarIdStr = initialDraft.parentStarIdStr
+		systemIdString = initialDraft.systemIdStr
+		parentStarIdString = initialDraft.parentStarIdStr
 		description = initialDraft.description
 		content = initialDraft.content
 		densityUnlocked = initialDensityOverride != null
@@ -448,7 +447,7 @@
 		saving = true
 		saveError = ''
 		try {
-			const res = await fetch(`/api/stars/${savedSlug}`, {
+			const res = await fetch(`/api/celestial/${savedSlug}`, {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -465,7 +464,7 @@
 					luminosity: luminosityUnlocked ? luminosityOverride : null,
 					luminosityW,
 					luminosityVisual: luminosityVisual || null,
-					temperature: tempDisplay,
+					temperature: temporaryDisplay,
 					temperatureK,
 					age: age || null,
 					color: color || null,
@@ -480,7 +479,9 @@
 					angularDiameter: angularDiameter || null,
 					metallicity: metallicity || null,
 					companion: companion || null,
-					systemId: systemIdStr ? Number(systemIdStr) : null,
+					// The single hierarchy edge: a companion orbits its parent star,
+					// a primary orbits (belongs to) the system.
+					parentId: parentStarIdString ? Number(parentStarIdString) : (systemIdString ? Number(systemIdString) : null),
 					description,
 				}),
 			})
@@ -524,7 +525,7 @@
 		)
 		if (!ok) return
 
-		const response = await fetch(`/api/stars/${savedSlug}`, { method: 'DELETE' })
+		const response = await fetch(`/api/celestial/${savedSlug}`, { method: 'DELETE' })
 		if (!response.ok) {
 			const body = await response.json().catch(() => ({}))
 			pushError(body.error || 'Failed to delete star')
@@ -586,7 +587,7 @@
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
 					<Input label="Name" bind:value={name} placeholder="Star name" oninput={() => { if (!slugEdited) slug = urlSlugify(name) }} />
 					<Input label="Slug" bind:value={slug} placeholder="star-slug" error={slugError} oninput={() => { slugEdited = true }} hint="URL identifier (/Celestial:slug). Follows the name until edited by hand. Existing [[links]] to the old slug are not redirected." />
-					<Select label="System" type="single" bind:value={systemIdStr} items={systemItems} />
+					<Select label="System" type="single" bind:value={systemIdString} items={systemItems} />
 					<Input label="Color" bind:value={color} placeholder="Yellow-white" hint="Descriptive color name used for map rendering. Examples: yellow-white, orange-red, blue-white." />
 				</div>
 				<Input label="Description" bind:value={description} placeholder="Brief description..." />
@@ -603,7 +604,7 @@
 					<LockableDerivedField label="Surface Gravity" derivedValue={computedPhysical.surfaceGravity} bind:value={gravityOverride} bind:unlocked={gravityUnlocked} hint="GM/r². Derived from mass and radius. The Sun is 274 m/s²." />
 					<LockableDerivedField label="Escape Velocity" derivedValue={computedPhysical.escapeVelocity} bind:value={escapeOverride} bind:unlocked={escapeUnlocked} hint="√(2GM/r). The Sun is 617.7 km/s." />
 					<Input label="Temperature (K)" type="number" bind:value={temperatureK} step="any" placeholder="5778" hint="Effective surface temperature in Kelvin. The Sun is 5,778 K. Used with radius to derive luminosity via Stefan-Boltzmann law." />
-					<DerivedField label="Temperature" value={tempDisplay} hint="Auto-formatted from the numeric Kelvin value." />
+					<DerivedField label="Temperature" value={temporaryDisplay} hint="Auto-formatted from the numeric Kelvin value." />
 					<LockableDerivedField label="Luminosity{!luminosityUnlocked && derivedLuminosityW ? ' (Stefan-Boltzmann)' : ''}" derivedValue={derivedLuminosityLabel} bind:value={luminosityOverride} bind:unlocked={luminosityUnlocked} hint="L = 4πR²σT⁴. Derived from radius and temperature. The Sun is 1.0 L☉. Lock to set a custom value for magically dim/bright stars." />
 					<Input label="Visual Luminosity" bind:value={luminosityVisual} placeholder="1.0 L☉ (visual)" hint="Luminosity in the visible spectrum only. Can differ from bolometric luminosity for very hot or cool stars." />
 					{#if habitableZone}
@@ -629,7 +630,7 @@
 					<Select
 						label="Orbits Star"
 						type="single"
-						bind:value={parentStarIdStr}
+						bind:value={parentStarIdString}
 						items={parentStarItems}
 					/>
 					<Input label="Companion" bind:value={companion} placeholder="Binary partner name" hint="Display name of the binary partner, shown in the infobox. The orbital hierarchy itself is set by the “Orbits Star” field." />

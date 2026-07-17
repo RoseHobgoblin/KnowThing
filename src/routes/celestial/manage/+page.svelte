@@ -112,10 +112,10 @@
 		if (!newSystemName.trim()) return
 		creating = true
 		try {
-			const res = await fetch('/api/star-systems', {
+			const res = await fetch('/api/celestial', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ name: newSystemName.trim(), slug: slugify(newSystemName) }),
+				body: JSON.stringify({ kind: 'system', name: newSystemName.trim(), slug: slugify(newSystemName) }),
 			})
 			if (res.ok) {
 				pushSuccess(`System "${newSystemName}" created`)
@@ -132,13 +132,14 @@
 		if (!newStarName.trim()) return
 		creating = true
 		try {
-			const res = await fetch('/api/stars', {
+			const res = await fetch('/api/celestial', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
+					kind: 'star',
 					name: newStarName.trim(),
 					slug: slugify(newStarName),
-					systemId: newStarSystemId ? Number(newStarSystemId) : null,
+					parentId: newStarSystemId ? Number(newStarSystemId) : null,
 				}),
 			})
 			if (res.ok) {
@@ -157,15 +158,17 @@
 		if (!newBodyName.trim()) return
 		creating = true
 		try {
-			const res = await fetch('/api/planetary-bodies', {
+			// A moon orbits its parent body; a planet orbits the star.
+			const parentId = newBodyParentId ? Number(newBodyParentId) : (newBodyStarId ? Number(newBodyStarId) : null)
+			const res = await fetch('/api/celestial', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
+					kind: 'body',
 					name: newBodyName.trim(),
 					slug: slugify(newBodyName),
 					bodyType: newBodyType,
-					starId: newBodyStarId ? Number(newBodyStarId) : null,
-					parentId: newBodyParentId ? Number(newBodyParentId) : null,
+					parentId,
 				}),
 			})
 			if (res.ok) {
@@ -189,10 +192,10 @@
 		presetProgress = 'Creating system...'
 		try {
 			// 1. Create system
-			const sysRes = await fetch('/api/star-systems', {
+			const sysRes = await fetch('/api/celestial', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ name: preset.system.name, slug: slugify(preset.system.name), systemType: preset.system.systemType }),
+				body: JSON.stringify({ kind: 'system', name: preset.system.name, slug: slugify(preset.system.name), systemType: preset.system.systemType }),
 			})
 			if (!sysRes.ok) {
 				pushError('Failed to create system')
@@ -203,11 +206,12 @@
 			// 2. Create stars
 			for (const starPreset of preset.stars) {
 				presetProgress = `Creating star: ${starPreset.name}...`
-				const starRes = await fetch('/api/stars', {
+				const starRes = await fetch('/api/celestial', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
-						name: starPreset.name, slug: slugify(starPreset.name), systemId: sys.id,
+						kind: 'star',
+						name: starPreset.name, slug: slugify(starPreset.name), parentId: sys.id,
 						spectralType: starPreset.spectralType, mass: starPreset.mass, massKg: starPreset.massKg,
 						radius: starPreset.radius, radiusM: starPreset.radiusM,
 						luminosity: starPreset.luminosity, temperature: starPreset.temperature,
@@ -246,11 +250,12 @@
 	}
 
 	async function createPresetBody(body: BodyPreset, starId: number, parentId: number | null): Promise<number | null> {
-		const response = await fetch('/api/planetary-bodies', {
+		const response = await fetch('/api/celestial', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
-				name: body.name, slug: slugify(body.name), bodyType: body.bodyType, starId, parentId,
+				kind: 'body',
+				name: body.name, slug: slugify(body.name), bodyType: body.bodyType, parentId: parentId ?? starId,
 				mass: body.mass, massKg: body.massKg, radius: body.radius, radiusM: body.radiusM,
 				temperature: body.temperature,
 				atmosphere: body.atmosphere || null, composition: body.composition,
@@ -269,11 +274,10 @@
 		return created.id
 	}
 
-	async function deleteItem(type: string, slug: string, name: string) {
+	async function deleteItem(slug: string, name: string) {
 		const ok = await confirmDialog.confirm('Delete', `Delete "${name}"?`, 'Delete', 'Cancel')
 		if (!ok) return
-		const endpoint = type === 'system' ? `/api/star-systems/${slug}` : (type === 'star' ? `/api/stars/${slug}` : `/api/planetary-bodies/${slug}`)
-		const res = await fetch(endpoint, { method: 'DELETE' })
+		const res = await fetch(`/api/celestial/${slug}`, { method: 'DELETE' })
 		if (res.ok) {
 			pushSuccess(`"${name}" deleted`)
 			invalidateAll()
@@ -312,7 +316,7 @@
 						</div>
 						<div class="flex items-center gap-3 text-xs">
 							<a href="/Celestial:{system.slug}/configure" class="text-link transition-colors flex items-center gap-1 hover:text-link-hover"><GearSix size={12} weight="fill" />Configure</a>
-							<button onclick={() => deleteItem('system', system.slug, system.name)} class="text-error transition-colors hover:text-error-hover">Delete</button>
+							<button onclick={() => deleteItem(system.slug, system.name)} class="text-error transition-colors hover:text-error-hover">Delete</button>
 						</div>
 					</div>
 
@@ -329,7 +333,7 @@
 								</div>
 								<div class="flex items-center gap-3 text-xs">
 									<a href="/Celestial:{star.slug}/configure" class="text-link transition-colors flex items-center gap-1 hover:text-link-hover"><GearSix size={12} weight="fill" />Configure</a>
-									<button onclick={() => deleteItem('star', star.slug, star.name)} class="text-error transition-colors hover:text-error-hover" aria-label="Delete {star.name}"><X size={12} weight="bold" /></button>
+									<button onclick={() => deleteItem(star.slug, star.name)} class="text-error transition-colors hover:text-error-hover" aria-label="Delete {star.name}"><X size={12} weight="bold" /></button>
 								</div>
 							</div>
 
@@ -346,7 +350,7 @@
 									</div>
 									<div class="flex items-center gap-3 text-xs">
 										<a href="/Celestial:{planet.slug}/configure" class="text-link transition-colors flex items-center gap-1 hover:text-link-hover"><GearSix size={12} weight="fill" />Configure</a>
-										<button onclick={() => deleteItem('body', planet.slug, planet.name)} class="text-error transition-colors hover:text-error-hover" aria-label="Delete {planet.name}"><X size={12} weight="bold" /></button>
+										<button onclick={() => deleteItem(planet.slug, planet.name)} class="text-error transition-colors hover:text-error-hover" aria-label="Delete {planet.name}"><X size={12} weight="bold" /></button>
 									</div>
 								</div>
 								{#each moonsForBody(planet.id) as moon (moon.id)}
@@ -357,7 +361,7 @@
 										</div>
 										<div class="flex items-center gap-3 text-xs">
 											<a href="/Celestial:{moon.slug}/configure" class="text-link transition-colors flex items-center gap-1 hover:text-link-hover"><GearSix size={12} weight="fill" />Configure</a>
-											<button onclick={() => deleteItem('body', moon.slug, moon.name)} class="text-error transition-colors hover:text-error-hover" aria-label="Delete {moon.name}"><X size={12} weight="bold" /></button>
+											<button onclick={() => deleteItem(moon.slug, moon.name)} class="text-error transition-colors hover:text-error-hover" aria-label="Delete {moon.name}"><X size={12} weight="bold" /></button>
 										</div>
 									</div>
 								{/each}

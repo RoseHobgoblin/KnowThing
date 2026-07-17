@@ -136,8 +136,19 @@
 
 	const configurePath = $derived(`/Celestial:${raw.slug}/configure`)
 
-	// A moon (planet-kind body with a parent body) orbits its parent, not the star.
-	const isSatellite = $derived(data.kind === 'planet' && raw.parentId != null)
+	// The raw row carries only the unified parent edge; the registry reference
+	// lists derive the legacy-shaped fields (systemId/parentStarId for stars,
+	// starId/body-parentId for bodies) for every entity — including this one.
+	const starSelfRef = $derived.by(() =>
+		data.kind === 'star' ? ((data.allStars ?? []) as any[]).find(s => s.id === raw.id) ?? null : null,
+	)
+	const bodySelfRef = $derived.by(() =>
+		data.kind === 'planet' ? ((data.siblings ?? []) as any[]).find(b => b.id === raw.id) ?? null : null,
+	)
+
+	// A moon (planet-kind body whose parent is another body) orbits its parent,
+	// not the star.
+	const isSatellite = $derived(data.kind === 'planet' && bodySelfRef?.parentId != null)
 
 	// Context-panel data: a star's planets; a planet's sibling planets + its moons;
 	// a moon's co-moons (the other satellites of the same parent).
@@ -145,9 +156,9 @@
 		if (data.kind === 'star') return data.systemPlanets ?? []
 		if (data.kind === 'planet') {
 			if (isSatellite) {
-				return (data.siblings ?? []).filter(b => b.parentId === raw.parentId && b.id !== raw.id)
+				return (data.siblings ?? []).filter(b => b.parentId === bodySelfRef?.parentId && b.id !== raw.id)
 			}
-			return (data.siblings ?? []).filter(b => b.starId === raw.starId && b.parentId == null && b.id !== raw.id)
+			return (data.siblings ?? []).filter(b => b.starId === bodySelfRef?.starId && b.parentId == null && b.id !== raw.id)
 		}
 		return []
 	})
@@ -171,7 +182,7 @@
 
 {#if isConfigureMode && data.kind === 'star'}
 	<CelestialConfigureStar
-		star={raw}
+		star={{ ...raw, systemId: starSelfRef?.systemId ?? null, parentStarId: starSelfRef?.parentStarId ?? null }}
 		allSystems={data.allSystems ?? []}
 		allStars={data.allStars ?? []}
 		wikiContent=""
@@ -179,7 +190,7 @@
 	/>
 {:else if isConfigureMode && data.kind === 'planet'}
 	<CelestialConfigureBody
-		body={raw}
+		body={{ ...raw, starId: bodySelfRef?.starId ?? null, parentId: bodySelfRef?.parentId ?? null }}
 		allStars={data.allStars ?? []}
 		siblings={data.siblings ?? []}
 		wikiContent=""

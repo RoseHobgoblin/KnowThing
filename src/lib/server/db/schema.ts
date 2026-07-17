@@ -191,7 +191,7 @@ export const calendars = pgTable('calendars', {
 	description: text('description').default(''),
 	isPrimary: boolean('is_primary').default(false).notNull(),
 	staticData: jsonb('static_data').notNull(),
-	planetId: integer('planet_id').references(() => planetaryBodies.id, { onDelete: 'set null' }),
+	planetId: integer('planet_id').references((): AnyPgColumn => celestialBodies.id, { onDelete: 'set null' }),
 	body: text('body').notNull().default(''),
 	bodyParsedAst: jsonb('body_parsed_ast'),
 	bodyPlainText: text('body_plain_text').notNull().default(''),
@@ -513,18 +513,66 @@ export const lexiconRelations = pgTable(
 // Celestial Bodies
 // ============================================================================
 
-export const starSystems = pgTable(
-	'star_systems',
+/**
+ * Unified celestial entity table (migration 0043). One row per system, star,
+ * or body; `kind` discriminates, `parentId` is the single hierarchy edge
+ * (star→system|star, body→star|body, system→none). Dynamical role (planet vs
+ * moon vs companion) is NOT stored — it derives from the parent's kind.
+ * Kind-specific column rules are enforced in Zod/services; the DB carries only
+ * structural CHECKs (see 0043). `legacyKind`/`legacyId` are migration audit
+ * columns, dropped in the follow-up cleanup migration.
+ */
+export const celestialBodies = pgTable(
+	'celestial_bodies',
 	{
 		id: serial('id').primaryKey(),
+		kind: text('kind').notNull(),
 		name: text('name').notNull(),
 		slug: text('slug').unique().notNull(),
 		// DEPRECATED: removed in Phase 9 of the namespace migration.
 		pageSlug: text('page_slug'),
-		systemType: text('system_type').default('single'),
-		description: text('description').default(''),
+		parentId: integer('parent_id').references((): AnyPgColumn => celestialBodies.id, { onDelete: 'set null' }),
 
-		// Placement & metadata — genuinely system-level, not derivable from children.
+		// Shared physical / observational.
+		massKg: doublePrecision('mass_kg'),
+		radiusM: doublePrecision('radius_m'),
+		age: text('age'),
+		apparentMagnitude: text('apparent_magnitude'),
+		angularDiameter: text('angular_diameter'),
+
+		// Orbital (stars in multiples, bodies).
+		orbitalPeriodDays: doublePrecision('orbital_period_days'),
+		semiMajorAxisAu: doublePrecision('semi_major_axis_au'),
+		eccentricity: doublePrecision('eccentricity'),
+		epochPhase: doublePrecision('epoch_phase').default(0),
+		inclination: doublePrecision('inclination'),
+
+		// Rotation.
+		rotationPeriodS: doublePrecision('rotation_period_s'),
+		axialTilt: doublePrecision('axial_tilt'),
+
+		// Star-only.
+		spectralType: text('spectral_type'),
+		luminosityW: doublePrecision('luminosity_w'),
+		luminosityVisual: text('luminosity_visual'),
+		temperatureK: doublePrecision('temperature_k'),
+		color: text('color'),
+		metallicity: text('metallicity'),
+		companion: text('companion'),
+		absoluteMagnitude: text('absolute_magnitude'),
+
+		// Body-only. bodyType is required for kind='body' (CHECK in 0043).
+		bodyType: text('body_type'),
+		temperature: text('temperature'),
+		composition: text('composition'),
+		atmosphere: text('atmosphere'),
+		surfacePressure: text('surface_pressure'),
+		albedo: text('albedo'),
+		satellites: integer('satellites'),
+		hasRings: boolean('has_rings').default(false),
+
+		// System-only.
+		systemType: text('system_type'),
 		distanceLy: doublePrecision('distance_ly'),
 		galacticX: doublePrecision('galactic_x'),
 		galacticY: doublePrecision('galactic_y'),
@@ -532,54 +580,9 @@ export const starSystems = pgTable(
 		formationAge: text('formation_age'),
 		designations: text('designations'),
 
-		extra: jsonb('extra').default({}),
-		body: text('body').notNull().default(''),
-		bodyParsedAst: jsonb('body_parsed_ast'),
-		bodyPlainText: text('body_plain_text').notNull().default(''),
-		bodySizeBytes: integer('body_size_bytes').notNull().default(0),
-		bodyUpdatedAt: timestamp('body_updated_at', { withTimezone: true }),
-		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-	},
-	table => [
-		index('idx_star_systems_slug').on(table.slug),
-	],
-)
-
-export const stars = pgTable(
-	'stars',
-	{
-		id: serial('id').primaryKey(),
-		name: text('name').notNull(),
-		slug: text('slug').unique().notNull(),
-		// DEPRECATED: removed in Phase 9 of the namespace migration.
-		pageSlug: text('page_slug'),
-
-		spectralType: text('spectral_type'),
-		massKg: doublePrecision('mass_kg'),
-		radiusM: doublePrecision('radius_m'),
-		luminosityW: doublePrecision('luminosity_w'),
-		luminosityVisual: text('luminosity_visual'),
-		temperatureK: doublePrecision('temperature_k'),
-		age: text('age'),
-		color: text('color'),
-
-		rotationPeriodS: doublePrecision('rotation_period_s'),
-		axialTilt: doublePrecision('axial_tilt'),
-
-		orbitalPeriodDays: doublePrecision('orbital_period_days'),
-		semiMajorAxisAu: doublePrecision('semi_major_axis_au'),
-		eccentricity: doublePrecision('eccentricity'),
-
-		apparentMagnitude: text('apparent_magnitude'),
-		absoluteMagnitude: text('absolute_magnitude'),
-		angularDiameter: text('angular_diameter'),
-
-		metallicity: text('metallicity'),
-		companion: text('companion'),
-		parentStarId: integer('parent_star_id').references((): AnyPgColumn => stars.id, { onDelete: 'set null' }),
-		systemId: integer('system_id').references(() => starSystems.id, { onDelete: 'set null' }),
-		epochPhase: doublePrecision('epoch_phase').default(0),
+		// Migration audit (dropped by the cleanup migration).
+		legacyKind: text('legacy_kind'),
+		legacyId: integer('legacy_id'),
 
 		extra: jsonb('extra').default({}),
 		description: text('description').default(''),
@@ -592,61 +595,9 @@ export const stars = pgTable(
 		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 	},
 	table => [
-		index('idx_stars_slug').on(table.slug),
-	],
-)
-
-export const planetaryBodies = pgTable(
-	'planetary_bodies',
-	{
-		id: serial('id').primaryKey(),
-		name: text('name').notNull(),
-		slug: text('slug').unique().notNull(),
-		bodyType: text('body_type').notNull().default('planet'),
-		starId: integer('star_id').references(() => stars.id, { onDelete: 'set null' }),
-		parentId: integer('parent_id').references((): AnyPgColumn => planetaryBodies.id, { onDelete: 'set null' }),
-		// DEPRECATED: removed in Phase 9 of the namespace migration.
-		pageSlug: text('page_slug'),
-
-		massKg: doublePrecision('mass_kg'),
-		radiusM: doublePrecision('radius_m'),
-		temperature: text('temperature'),
-		age: text('age'),
-
-		composition: text('composition'),
-		atmosphere: text('atmosphere'),
-		surfacePressure: text('surface_pressure'),
-
-		orbitalPeriodDays: doublePrecision('orbital_period_days'),
-		semiMajorAxisAu: doublePrecision('semi_major_axis_au'),
-		eccentricity: doublePrecision('eccentricity'),
-		inclination: doublePrecision('inclination'),
-
-		rotationPeriodS: doublePrecision('rotation_period_s'),
-		axialTilt: doublePrecision('axial_tilt'),
-
-		apparentMagnitude: text('apparent_magnitude'),
-		angularDiameter: text('angular_diameter'),
-		albedo: text('albedo'),
-
-		satellites: integer('satellites'),
-		hasRings: boolean('has_rings').default(false),
-		epochPhase: doublePrecision('epoch_phase').default(0),
-
-		extra: jsonb('extra').default({}),
-		description: text('description').default(''),
-		body: text('body').notNull().default(''),
-		bodyParsedAst: jsonb('body_parsed_ast'),
-		bodyPlainText: text('body_plain_text').notNull().default(''),
-		bodySizeBytes: integer('body_size_bytes').notNull().default(0),
-		bodyUpdatedAt: timestamp('body_updated_at', { withTimezone: true }),
-		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-	},
-	table => [
-		index('idx_planetary_bodies_slug').on(table.slug),
-		index('idx_planetary_bodies_star').on(table.starId),
-		index('idx_planetary_bodies_parent').on(table.parentId),
+		index('idx_celestial_bodies_slug').on(table.slug),
+		index('idx_celestial_bodies_parent').on(table.parentId),
+		index('idx_celestial_bodies_kind_parent').on(table.kind, table.parentId),
 	],
 )
 

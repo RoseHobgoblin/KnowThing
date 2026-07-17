@@ -1,5 +1,5 @@
 import { db } from './db/index.js'
-import { stars, planetaryBodies, starSystems, phonemes, languages, languageDialects, lexicon, definitions, graphemes, graphemePhonemes } from './db/schema.js'
+import { celestialBodies, phonemes, languages, languageDialects, lexicon, definitions, graphemes, graphemePhonemes } from './db/schema.js'
 import { eq, and, sql, asc, inArray } from 'drizzle-orm'
 import type { FieldMap } from '$lib/infoboxes/types.js'
 import type { MapBody } from '$lib/celestial/SystemMap.svelte'
@@ -9,6 +9,8 @@ import {
 	type PlanetModel, type StarModel, type PlanetRow, type StarRow,
 } from '$lib/celestial/models.js'
 import { planetInfoboxFields, starInfoboxFields } from '$lib/celestial/projections.js'
+import { CELESTIAL_TREE_CTE, findNearestStarAncestor } from '$lib/server/celestial/hierarchy.js'
+import { getStarsForSystemMap, getBodiesForSystemMap } from '$lib/server/services/celestial-registry.js'
 
 export interface SystemMapData {
 	systemName: string
@@ -21,37 +23,40 @@ export interface SystemMapData {
  * the typed model. The model — not a FieldMap — is the canonical representation;
  * every consumer projects from it.
  */
-async function buildPlanetModel(row: PlanetRow & { starId?: number | null, parentId?: number | null }): Promise<PlanetModel> {
+async function buildPlanetModel(row: PlanetRow & { parentId?: number | null }): Promise<PlanetModel> {
 	let star: { name: string, slug: string, massKg: number | null } | null = null
 	let parentBody: { name: string, slug: string, massKg: number | null } | null = null
 
 	if (row.parentId != null) {
-		const [parent] = await db.select({ name: planetaryBodies.name, slug: planetaryBodies.slug, massKg: planetaryBodies.massKg })
-			.from(planetaryBodies).where(eq(planetaryBodies.id, row.parentId))
-		parentBody = parent ?? null
-	}
-	if (row.starId != null) {
-		const [s] = await db.select({ name: stars.name, slug: stars.slug, massKg: stars.massKg })
-			.from(stars).where(eq(stars.id, row.starId))
-		star = s ?? null
+		const [parent] = await db
+			.select({ kind: celestialBodies.kind, name: celestialBodies.name, slug: celestialBodies.slug, massKg: celestialBodies.massKg })
+			.from(celestialBodies).where(eq(celestialBodies.id, row.parentId))
+		if (parent?.kind === 'body') parentBody = parent
+		// The nearest star ancestor is the direct parent for a planet, or the
+		// grandparent chain's star for a moon.
+		star = parent?.kind === 'star' ? parent : await findNearestStarAncestor(row.parentId)
 	}
 
 	return derivePlanet(row, { star, parentBody })
 }
 
 /** Fetch a star's relations (parent star + planet/satellite counts) and build the model. */
-async function buildStarModel(row: StarRow & { id: number, parentStarId?: number | null }): Promise<StarModel> {
+async function buildStarModel(row: StarRow & { id: number, parentId?: number | null }): Promise<StarModel> {
 	let parentStar: { name: string, slug: string } | null = null
-	if (row.parentStarId != null) {
-		const [parent] = await db.select({ name: stars.name, slug: stars.slug })
-			.from(stars).where(eq(stars.id, row.parentStarId))
-		parentStar = parent ?? null
+	if (row.parentId != null) {
+		const [parent] = await db
+			.select({ kind: celestialBodies.kind, name: celestialBodies.name, slug: celestialBodies.slug })
+			.from(celestialBodies).where(eq(celestialBodies.id, row.parentId))
+		if (parent?.kind === 'star') parentStar = { name: parent.name, slug: parent.slug }
 	}
 
+	// Planets orbit the star directly; satellites are every deeper body whose
+	// nearest star ancestor is this one (moons, submoons, …).
 	const [counts] = await db.execute(sql`
+		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
 		SELECT
-			(SELECT COUNT(*) FROM planetary_bodies WHERE star_id = ${row.id} AND parent_id IS NULL)::int AS planets,
-			(SELECT COUNT(*) FROM planetary_bodies WHERE star_id = ${row.id} AND parent_id IS NOT NULL)::int AS satellites
+			(SELECT COUNT(*) FROM celestial_tree t WHERE t.kind = 'body' AND t.parent_id = ${row.id})::int AS planets,
+			(SELECT COUNT(*) FROM celestial_tree t WHERE t.kind = 'body' AND t.nearest_star_id = ${row.id} AND t.parent_id <> ${row.id})::int AS satellites
 	`)
 	const c = counts as unknown as { planets?: number, satellites?: number } | undefined
 
@@ -68,11 +73,13 @@ async function buildStarModel(row: StarRow & { id: number, parentStarId?: number
  */
 export async function resolveCelestialModel(type: string, slug: string): Promise<PlanetModel | StarModel | null> {
 	if (type === 'star') {
-		const [row] = await db.select().from(stars).where(eq(stars.slug, slug))
+		const [row] = await db.select().from(celestialBodies)
+			.where(and(eq(celestialBodies.slug, slug), eq(celestialBodies.kind, 'star')))
 		return row ? buildStarModel(row) : null
 	}
 	if (type === 'planet' || type === 'celestial' || type === 'celestial body') {
-		const [row] = await db.select().from(planetaryBodies).where(eq(planetaryBodies.slug, slug))
+		const [row] = await db.select().from(celestialBodies)
+			.where(and(eq(celestialBodies.slug, slug), eq(celestialBodies.kind, 'body')))
 		return row ? buildPlanetModel(row) : null
 	}
 	return null
@@ -81,14 +88,12 @@ export async function resolveCelestialModel(type: string, slug: string): Promise
 /** Domain mapper registry: infobox type → table query + field mapper */
 const DOMAIN_RESOLVERS: Record<string, (slug: string) => Promise<FieldMap | null>> = {
 	star: async (slug) => {
-		const [row] = await db.select().from(stars).where(eq(stars.slug, slug))
-		if (!row) return null
-		return starInfoboxFields(await buildStarModel(row))
+		const model = await resolveCelestialModel('star', slug)
+		return model?.kind === 'star' ? starInfoboxFields(model) : null
 	},
 	planet: async (slug) => {
-		const [row] = await db.select().from(planetaryBodies).where(eq(planetaryBodies.slug, slug))
-		if (!row) return null
-		return planetInfoboxFields(await buildPlanetModel(row))
+		const model = await resolveCelestialModel('planet', slug)
+		return model?.kind === 'planet' ? planetInfoboxFields(model) : null
 	},
 }
 
@@ -98,21 +103,28 @@ DOMAIN_RESOLVERS['celestial body'] = DOMAIN_RESOLVERS['planet']
 
 // Star systems — auto-computed from child stars and planets
 DOMAIN_RESOLVERS['system'] = async (slug) => {
-	const [system] = await db.select().from(starSystems).where(eq(starSystems.slug, slug))
+	const [system] = await db.select().from(celestialBodies)
+		.where(and(eq(celestialBodies.slug, slug), eq(celestialBodies.kind, 'system')))
 	if (!system) return null
 
-	// Fetch stars in this system
+	// Fetch stars in this system (all descendants — companions included)
 	const systemStars = await db.execute(sql`
-		SELECT name, spectral_type, slug, page_slug
-		FROM stars WHERE system_id = ${system.id}
-		ORDER BY parent_star_id NULLS FIRST, name
+		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
+		SELECT s.name, s.spectral_type, s.slug, s.page_slug
+		FROM celestial_bodies s
+		JOIN celestial_tree t ON t.id = s.id
+		WHERE s.kind = 'star' AND t.root_id = ${system.id}
+		ORDER BY t.depth, s.name
 	`)
 
-	// Count planets
+	// Count planets (bodies orbiting a star) vs satellites (bodies orbiting a body)
 	const [counts] = await db.execute(sql`
+		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
 		SELECT
-			(SELECT COUNT(*) FROM planetary_bodies pb JOIN stars s ON s.id = pb.star_id WHERE s.system_id = ${system.id} AND pb.parent_id IS NULL)::int AS planets,
-			(SELECT COUNT(*) FROM planetary_bodies pb JOIN stars s ON s.id = pb.star_id WHERE s.system_id = ${system.id} AND pb.parent_id IS NOT NULL)::int AS satellites
+			(SELECT COUNT(*) FROM celestial_tree t JOIN celestial_bodies pp ON pp.id = t.parent_id
+				WHERE t.root_id = ${system.id} AND t.kind = 'body' AND pp.kind = 'star')::int AS planets,
+			(SELECT COUNT(*) FROM celestial_tree t JOIN celestial_bodies pp ON pp.id = t.parent_id
+				WHERE t.root_id = ${system.id} AND t.kind = 'body' AND pp.kind = 'body')::int AS satellites
 	`)
 
 	const fields = new Map<string, string>([
@@ -244,7 +256,7 @@ DOMAIN_RESOLVERS['word'] = async (ref) => {
 		.orderBy(asc(definitions.senseNumber))
 	if (defs.length > 0) {
 		if (defs[0].partOfSpeech) fields.set('part_of_speech', defs[0].partOfSpeech)
-		fields.set('definition', defs.map((d, i) => (defs.length > 1 ? `${i + 1}. ${d.definition}` : d.definition)).join('<br>'))
+		fields.set('definition', defs.map((d, index) => (defs.length > 1 ? `${index + 1}. ${d.definition}` : d.definition)).join('<br>'))
 	}
 
 	return fields
@@ -254,29 +266,15 @@ DOMAIN_RESOLVERS['word'] = async (ref) => {
  * Fetch full system map data for rendering {{System map|slug}}.
  */
 export async function resolveSystemMapData(slug: string): Promise<SystemMapData | null> {
-	const [system] = await db.select().from(starSystems).where(eq(starSystems.slug, slug))
+	const [system] = await db.select({ id: celestialBodies.id, name: celestialBodies.name })
+		.from(celestialBodies)
+		.where(and(eq(celestialBodies.slug, slug), eq(celestialBodies.kind, 'system')))
 	if (!system) return null
 
-	const systemStars = await db.execute(sql`
-		SELECT id, name, slug, spectral_type AS "spectralType", color,
-			page_slug AS "pageSlug", semi_major_axis_au AS "semiMajorAxisAu",
-			eccentricity, parent_star_id AS "parentStarId",
-			orbital_period_days AS "orbitalPeriodDays", epoch_phase AS "epochPhase"
-		FROM stars WHERE system_id = ${system.id}
-		ORDER BY parent_star_id NULLS FIRST, name
-	`)
-
-	const systemBodies = await db.execute(sql`
-		SELECT pb.id, pb.name, pb.slug, pb.body_type AS "bodyType",
-			pb.page_slug AS "pageSlug", pb.semi_major_axis_au AS "semiMajorAxisAu",
-			pb.eccentricity, pb.star_id AS "starId", pb.parent_id AS "parentId",
-			pb.orbital_period_days AS "orbitalPeriodDays", pb.epoch_phase AS "epochPhase",
-			(SELECT COUNT(*) FROM planetary_bodies m WHERE m.parent_id = pb.id)::int AS "moonCount"
-		FROM planetary_bodies pb
-		JOIN stars s ON s.id = pb.star_id
-		WHERE s.system_id = ${system.id}
-		ORDER BY pb.semi_major_axis_au NULLS LAST, pb.name
-	`)
+	const [systemStars, systemBodies] = await Promise.all([
+		getStarsForSystemMap(system.id),
+		getBodiesForSystemMap(system.id),
+	])
 
 	return {
 		systemName: system.name,
