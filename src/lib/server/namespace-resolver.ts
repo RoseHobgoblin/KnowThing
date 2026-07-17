@@ -22,7 +22,7 @@ import { buildWordbookHref } from '../sections/wordbook-path.js'
 export type EntityKind =
 	| 'celestial-system'
 	| 'celestial-star'
-	| 'celestial-planet'
+	| 'celestial-body'
 	| 'wordbook-language'
 	| 'wordbook-word'
 	| 'calendar'
@@ -112,7 +112,7 @@ async function resolveCelestial(identifier: string): Promise<ResolvedTarget> {
 			? 'celestial-system'
 			: (entity.kind === 'star'
 				? 'celestial-star'
-				: 'celestial-planet')
+				: 'celestial-body')
 	return {
 		kind,
 		href: buildNamespaceHref('Celestial', entity.slug),

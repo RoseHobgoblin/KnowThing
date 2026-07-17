@@ -1,8 +1,8 @@
 <script lang="ts">
-	import type { PlanetModel, StarModel } from './models.js'
+	import type { BodyModel, StarModel } from './models.js'
 	import { celestialStatTiles } from './projections.js'
 
-	let { model }: { model: PlanetModel | StarModel } = $props()
+	let { model }: { model: BodyModel | StarModel } = $props()
 
 	// A projection of the SAME model the infobox reads — rendered as an at-a-glance
 	// grid instead of an exhaustive vertical list.

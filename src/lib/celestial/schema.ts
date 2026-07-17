@@ -30,7 +30,6 @@ const overrideString = z.string().nullish()
 const coreSchema = z.object({
 	name: z.string().min(1),
 	slug: z.string().min(1),
-	pageSlug: z.string().nullish(),
 	extra: z.record(z.string(), z.unknown()).optional(),
 	description: z.string().optional(),
 })

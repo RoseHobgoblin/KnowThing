@@ -7,7 +7,7 @@
  * is a *projection* of one of these models — the model is never shaped for any
  * single consumer. See `projections.ts` for the projections.
  *
- * Derivation is pure: `derivePlanet`/`deriveStar` take plain data (a DB row plus
+ * Derivation is pure: `deriveBody`/`deriveStar` take plain data (a DB row plus
  * already-resolved relations) and compute everything with the formulas in
  * `compute.js`. No DB access, no formatting — fully unit-testable.
  */
@@ -45,7 +45,7 @@ export interface CelestialRowLike {
 	extra?: unknown
 }
 
-export interface PlanetRow extends CelestialRowLike {
+export interface BodyRow extends CelestialRowLike {
 	bodyType?: string | null
 	temperature?: string | null
 	age?: string | null
@@ -75,7 +75,7 @@ export interface StarRow extends CelestialRowLike {
 }
 
 /** Relations resolved by the caller (the DB layer), passed into the pure derive. */
-export interface PlanetRelations {
+export interface BodyRelations {
 	star?: (Ref & { massKg: number | null }) | null
 	parentBody?: (Ref & { massKg: number | null }) | null
 }
@@ -89,8 +89,8 @@ export interface StarRelations {
 /** Extra/override overflow, string-valued (as stored by the configure forms). */
 export type ExtraMap = Record<string, string>
 
-export interface PlanetModel {
-	kind: 'planet'
+export interface BodyModel {
+	kind: 'body'
 	name: string
 	slug: string
 	bodyType: string
@@ -209,7 +209,7 @@ function mapNum(n: number | null, f: (n: number) => number): number | null {
 	return n == null ? null : f(n)
 }
 
-export function derivePlanet(row: PlanetRow, relations: PlanetRelations = {}): PlanetModel {
+export function deriveBody(row: BodyRow, relations: BodyRelations = {}): BodyModel {
 	const massKg = positive(row.massKg)
 	const radiusM = positive(row.radiusM)
 	const semiMajorAxisAu = positive(row.semiMajorAxisAu)
@@ -232,7 +232,7 @@ export function derivePlanet(row: PlanetRow, relations: PlanetRelations = {}): P
 	const parentBody = relations.parentBody ? { name: relations.parentBody.name, slug: relations.parentBody.slug } : null
 
 	return {
-		kind: 'planet',
+		kind: 'body',
 		name: row.name,
 		slug: row.slug,
 		bodyType: row.bodyType ?? 'planet',

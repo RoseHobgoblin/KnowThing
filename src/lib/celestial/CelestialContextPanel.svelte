@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { PlanetModel, StarModel } from './models.js'
+	import type { BodyModel, StarModel } from './models.js'
 	import InlineMarkup from '$lib/renderer/InlineMarkup.svelte'
 
 	type ContextBody = { id?: number, name: string, slug: string, semiMajorAxisAu?: number | null, bodyType?: string | null }
@@ -11,7 +11,7 @@
 		hz = null,
 		selfAu = null,
 	}: {
-		model: PlanetModel | StarModel
+		model: BodyModel | StarModel
 		/** Star: its planets. Planet: its sibling planets. */
 		bodies?: ContextBody[]
 		/** Planet: its moons. */
@@ -68,7 +68,7 @@
 		{isStar ? 'System' : 'Position'}
 	</h3>
 	<div class="p-3 space-y-3 text-sm">
-		{#if !isStar && model.kind === 'planet' && model.satelliteOf}
+		{#if !isStar && model.kind === 'body' && model.satelliteOf}
 			<div class="flex justify-between gap-4">
 				<span class="text-secondary">Orbits</span>
 				<a href="/Celestial:{model.satelliteOf.slug}" class="text-link hover:text-link-hover">{model.satelliteOf.name}</a>

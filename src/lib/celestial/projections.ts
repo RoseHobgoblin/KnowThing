@@ -3,14 +3,14 @@
  * whatever a particular consumer needs. The model is the single source; adding a
  * consumer means adding a projection here, never re-deriving or parsing strings.
  *
- *  - `planetInfoboxFields` / `starInfoboxFields` → the snake_case FieldMap the
+ *  - `bodyInfoboxFields` / `starInfoboxFields` → the snake_case FieldMap the
  *    infobox components read (values formatted via the compute.js formatters).
  *  - `celestialStatTiles` → compact "at a glance" tiles for a non-infobox panel.
  *  - `celestialJson` → raw typed numbers for an API / external tools.
  */
 
 import type { FieldMap } from '$lib/infoboxes/types.js'
-import type { PlanetModel, StarModel } from './models.js'
+import type { BodyModel, StarModel } from './models.js'
 import {
 	formatMass, formatRadius, formatDensity, formatSurfaceGravity, formatEscapeVelocity,
 	formatPeriod, formatAuAsKm, formatAu, formatOrbitalVelocity, formatTemperatureK,
@@ -38,7 +38,7 @@ function circumferenceKm(circumferenceM: number): string {
 
 // ---- Planet → infobox FieldMap ----
 
-export function planetInfoboxFields(model: PlanetModel): FieldMap {
+export function bodyInfoboxFields(model: BodyModel): FieldMap {
 	const f: FieldMap = new Map()
 
 	// Passthrough text.
@@ -182,10 +182,10 @@ function times(ratio: number): string {
  * an exhaustive vertical infobox. Reference-scaled comparisons (×Earth / ×Sun)
  * come straight from the raw SI numbers the FieldMap threw away.
  */
-export function celestialStatTiles(model: PlanetModel | StarModel): StatTile[] {
+export function celestialStatTiles(model: BodyModel | StarModel): StatTile[] {
 	const tiles: StatTile[] = []
 
-	if (model.kind === 'planet') {
+	if (model.kind === 'body') {
 		if (model.radiusM != null) tiles.push({ label: 'Radius', value: formatRadius(model.radiusM), sub: `${times(model.radiusM / EARTH_RADIUS_M)} Earth` })
 		if (model.massKg != null) tiles.push({ label: 'Mass', value: formatMass(model.massKg), sub: `${times(model.massKg / EARTH_MASS_KG)} Earth` })
 		if (model.gravityMs2 != null) tiles.push({ label: 'Gravity', value: formatSurfaceGravity(model.gravityMs2), sub: `${times(model.gravityMs2 / EARTH_GRAVITY)} Earth` })
@@ -205,7 +205,7 @@ export function celestialStatTiles(model: PlanetModel | StarModel): StatTile[] {
 }
 
 /** Raw typed projection for APIs / external tools. Numbers stay numbers. */
-export function celestialJson(model: PlanetModel | StarModel): PlanetModel | StarModel {
+export function celestialJson(model: BodyModel | StarModel): BodyModel | StarModel {
 	return { ...model }
 }
 
@@ -300,8 +300,8 @@ function buildSections(fields: FieldMap, specs: SectionSpec[]): FactSection[] {
  * floating infobox. Values are formatted (and carry wikilink markup for relations),
  * reusing the infobox projection so the two never diverge.
  */
-export function celestialFactSections(model: PlanetModel | StarModel): FactSection[] {
-	return model.kind === 'planet'
-		? buildSections(planetInfoboxFields(model), PLANET_SECTIONS)
+export function celestialFactSections(model: BodyModel | StarModel): FactSection[] {
+	return model.kind === 'body'
+		? buildSections(bodyInfoboxFields(model), PLANET_SECTIONS)
 		: buildSections(starInfoboxFields(model), STAR_SECTIONS)
 }

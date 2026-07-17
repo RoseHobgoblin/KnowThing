@@ -139,7 +139,6 @@ async function createCelestialIn(dbx: Dbx, kind: CelestialKind, data: CreateCele
 		kind,
 		name: data.name.trim(),
 		slug,
-		pageSlug: data.pageSlug?.trim() || null,
 		description: data.description?.trim() || '',
 	}
 
@@ -349,12 +348,12 @@ export async function updateCelestial(slug: string, raw: unknown) {
 
 	if (kind === 'system') {
 		applyFieldUpdates(setClause, data,
-			['pageSlug', 'formationAge', 'designations'],
+			['formationAge', 'designations'],
 			['distanceLy', 'galacticX', 'galacticY', 'galacticZ'])
 		if (data.systemType !== undefined) setClause.systemType = data.systemType
 	} else if (kind === 'star') {
 		applyFieldUpdates(setClause, data,
-			['pageSlug', 'spectralType', 'luminosityVisual', 'age', 'color',
+			['spectralType', 'luminosityVisual', 'age', 'color',
 				'apparentMagnitude', 'absoluteMagnitude', 'angularDiameter',
 				'metallicity', 'companion'],
 			['massKg', 'radiusM', 'luminosityW', 'temperatureK',
@@ -362,7 +361,7 @@ export async function updateCelestial(slug: string, raw: unknown) {
 				'eccentricity', 'parentId', 'epochPhase'])
 	} else {
 		applyFieldUpdates(setClause, data,
-			['pageSlug', 'temperature', 'age', 'composition', 'atmosphere',
+			['temperature', 'age', 'composition', 'atmosphere',
 				'surfacePressure', 'apparentMagnitude', 'angularDiameter', 'albedo'],
 			// orbitalPeriodDays is handled explicitly below so an "auto" (null) value
 			// persists the Kepler-derived period instead of nulling the column.

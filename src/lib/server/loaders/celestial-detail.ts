@@ -4,10 +4,10 @@ import type { MapBody } from '$lib/celestial/SystemMap.svelte'
 import { hasRole } from '$lib/server/auth.js'
 import { resolveCelestialModel } from '$lib/server/structured-data.js'
 import { deriveHabitableZoneAu } from '$lib/celestial/compute.js'
-import type { PlanetModel, StarModel } from '$lib/celestial/models.js'
+import type { BodyModel, StarModel } from '$lib/celestial/models.js'
 import { findNearestStarAncestor } from '$lib/server/celestial/hierarchy.js'
 import {
-	findCelestialBySlugOrPageSlug,
+	findCelestialBySlugOrName,
 	getBacklinksForCelestial,
 	getBodiesForSystemMap,
 	getCalendarsForSystem,
@@ -27,7 +27,7 @@ export interface CelestialDetailContext {
 	canonicalize: (slug: string) => string
 }
 
-type CelestialRow = NonNullable<Awaited<ReturnType<typeof findCelestialBySlugOrPageSlug>>>
+type CelestialRow = NonNullable<Awaited<ReturnType<typeof findCelestialBySlugOrName>>>
 
 export type CelestialDetailData =
 	| (CelestialBaseData & {
@@ -46,11 +46,11 @@ export type CelestialDetailData =
 		systemPlanets: Awaited<ReturnType<typeof getPlanetsForStar>>
 	})
 	| (CelestialBaseData & {
-		kind: 'planet'
+		kind: 'body'
 		body: CelestialRow
 		allStars: Awaited<ReturnType<typeof listAllStarReferences>>
 		siblings: Awaited<ReturnType<typeof listAllBodyReferences>>
-		model: PlanetModel | null
+		model: BodyModel | null
 		parentStarHz: { inner: number, outer: number } | null
 	})
 
@@ -76,7 +76,7 @@ export async function loadCelestialDetail(ctx: CelestialDetailContext): Promise<
 
 	// One lookup — the row's kind discriminates. Slugs are globally unique
 	// across the celestial domain, so there is no probe order to get wrong.
-	const entity = await findCelestialBySlugOrPageSlug(identifier)
+	const entity = await findCelestialBySlugOrName(identifier)
 	if (!entity) throw error(404, 'Celestial body not found')
 	if (entity.slug !== identifier) {
 		throw redirect(301, canonicalize(entity.slug))
@@ -122,11 +122,11 @@ export async function loadCelestialDetail(ctx: CelestialDetailContext): Promise<
 	const [allStars, siblings, rawModel, backlinks, nearestStar] = await Promise.all([
 		listAllStarReferences(),
 		listAllBodyReferences(),
-		resolveCelestialModel('planet', entity.slug),
+		resolveCelestialModel('body', entity.slug),
 		getBacklinksForCelestial(entity.slug),
 		entity.parentId == null ? Promise.resolve(null) : findNearestStarAncestor(entity.parentId),
 	])
-	const model = rawModel?.kind === 'planet' ? rawModel : null
+	const model = rawModel?.kind === 'body' ? rawModel : null
 	// The parent star's habitable zone, so a planet can show whether it sits in
 	// it — fetched as just the luminosity inputs, not the star's whole model
 	// with its discarded planet/satellite counts.
@@ -135,7 +135,7 @@ export async function loadCelestialDetail(ctx: CelestialDetailContext): Promise<
 		? deriveHabitableZoneAu(parentStarHzInputs.luminosityW, parentStarHzInputs.radiusM, parentStarHzInputs.temperatureK)
 		: null
 	return {
-		kind: 'planet',
+		kind: 'body',
 		body: entity,
 		allStars,
 		siblings,

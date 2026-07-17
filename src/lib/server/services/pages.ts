@@ -198,11 +198,13 @@ export async function findPageInAnyDomain(slug: string) {
 	// Phase 4+: structured entities own their pages. Probe the celestial
 	// table when content_records misses, so /know/Therne still redirects to
 	// /celestial/therne after the celestial shadow rows have been dropped.
+	// Title links like [[Sunly system]] arrive wiki-slugified (spaces →
+	// underscores), so match the underscored display name too.
 	const lower = slug.toLowerCase()
 	const [celestial] = await db
 		.select({ slug: celestialBodies.slug })
 		.from(celestialBodies)
-		.where(sql`LOWER(${celestialBodies.slug}) = ${lower} OR LOWER(${celestialBodies.pageSlug}) = ${lower}`)
+		.where(sql`LOWER(${celestialBodies.slug}) = ${lower} OR LOWER(REPLACE(${celestialBodies.name}, ' ', '_')) = ${lower}`)
 		.limit(1)
 	if (celestial) return { domain: 'celestial', slug: celestial.slug, parentPath: null }
 

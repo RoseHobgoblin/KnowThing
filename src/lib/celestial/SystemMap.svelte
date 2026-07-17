@@ -4,7 +4,6 @@
 		name: string
 		slug: string
 		bodyType: string
-		pageSlug?: string | null
 		semiMajorAxisAu?: number | null
 		eccentricity?: number | null
 		color?: string | null

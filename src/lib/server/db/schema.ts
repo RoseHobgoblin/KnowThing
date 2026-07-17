@@ -529,7 +529,9 @@ export const celestialBodies = pgTable(
 		kind: text('kind').notNull(),
 		name: text('name').notNull(),
 		slug: text('slug').unique().notNull(),
-		// DEPRECATED: removed in Phase 9 of the namespace migration.
+		// RETIRED 2026-07-17: nothing reads or writes this anymore — title links
+		// resolve via the underscored display name instead. Column dropped in the
+		// 0044 legacy-cleanup migration.
 		pageSlug: text('page_slug'),
 		parentId: integer('parent_id').references((): AnyPgColumn => celestialBodies.id, { onDelete: 'set null' }),
 

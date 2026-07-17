@@ -25,7 +25,6 @@ export async function listSystemsForRegistry() {
 		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
 		SELECT
 			ss.id, ss.name, ss.slug, ss.system_type AS "systemType",
-			ss.page_slug AS "pageSlug",
 			(SELECT COUNT(*) FROM celestial_tree t WHERE t.root_id = ss.id AND t.kind = 'star')::int AS "starCount",
 			(SELECT COUNT(*) FROM celestial_tree t WHERE t.root_id = ss.id AND t.kind = 'body')::int AS "planetCount"
 		FROM celestial_bodies ss
@@ -38,8 +37,7 @@ export async function listStarsForRegistry() {
 	return db.execute(sql`
 		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
 		SELECT
-			s.id, s.name, s.slug, s.spectral_type AS "spectralType",
-			s.color, s.page_slug AS "pageSlug",
+			s.id, s.name, s.slug, s.spectral_type AS "spectralType", s.color,
 			CASE WHEN t.root_kind = 'system' THEN t.root_id END AS "systemId",
 			s.semi_major_axis_au AS "semiMajorAxisAu", s.eccentricity,
 			CASE WHEN p.kind = 'star' THEN s.parent_id END AS "parentStarId",
@@ -59,7 +57,6 @@ export async function listBodiesForRegistry() {
 			pb.id, pb.name, pb.slug, pb.body_type AS "bodyType",
 			t.nearest_star_id AS "starId",
 			CASE WHEN p.kind = 'body' THEN pb.parent_id END AS "parentId",
-			pb.page_slug AS "pageSlug",
 			pb.semi_major_axis_au AS "semiMajorAxisAu", pb.eccentricity,
 			(SELECT COUNT(*) FROM celestial_bodies m WHERE m.parent_id = pb.id AND m.kind = 'body')::int AS "moonCount"
 		FROM celestial_bodies pb
@@ -70,20 +67,25 @@ export async function listBodiesForRegistry() {
 	`)
 }
 
-/** Find any celestial entity by canonical slug or legacy pageSlug. */
-export async function findCelestialBySlugOrPageSlug(slug: string) {
+/**
+ * Find any celestial entity by canonical slug or by wiki-slugified display
+ * name (spaces → underscores, case-insensitive), so `[[Sunly system]]`-style
+ * title links and old title-based URLs resolve without the retired
+ * `page_slug` column.
+ */
+export async function findCelestialBySlugOrName(slug: string) {
 	const [row] = await db.select().from(celestialBodies)
-		.where(sql`LOWER(${celestialBodies.slug}) = LOWER(${slug}) OR LOWER(${celestialBodies.pageSlug}) = LOWER(${slug})`)
+		.where(sql`LOWER(${celestialBodies.slug}) = LOWER(${slug}) OR LOWER(REPLACE(${celestialBodies.name}, ' ', '_')) = LOWER(${slug})`)
 	return row ?? null
 }
 
 /**
- * Resolve any celestial input slug (real slug or legacy `pageSlug`) to its
+ * Resolve any celestial input slug (real slug or underscored title) to its
  * canonical row slug. Used by the legacy `/celestial/[...path]` 308 redirect
  * stub.
  */
 export async function resolveCelestialCanonicalSlug(slug: string): Promise<string | null> {
-	const row = await findCelestialBySlugOrPageSlug(slug)
+	const row = await findCelestialBySlugOrName(slug)
 	return row?.slug ?? null
 }
 
@@ -91,7 +93,7 @@ export async function getStarsForSystemMap(systemId: number) {
 	return db.execute(sql`
 		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
 		SELECT s.id, s.name, s.slug, s.spectral_type AS "spectralType", s.color,
-			s.page_slug AS "pageSlug", s.semi_major_axis_au AS "semiMajorAxisAu",
+			s.semi_major_axis_au AS "semiMajorAxisAu",
 			s.eccentricity,
 			CASE WHEN p.kind = 'star' THEN s.parent_id END AS "parentStarId",
 			s.orbital_period_days AS "orbitalPeriodDays",
@@ -108,7 +110,7 @@ export async function getBodiesForSystemMap(systemId: number) {
 	return db.execute(sql`
 		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
 		SELECT pb.id, pb.name, pb.slug, pb.body_type AS "bodyType",
-			pb.page_slug AS "pageSlug", pb.semi_major_axis_au AS "semiMajorAxisAu",
+			pb.semi_major_axis_au AS "semiMajorAxisAu",
 			pb.eccentricity,
 			t.nearest_star_id AS "starId",
 			CASE WHEN p.kind = 'body' THEN pb.parent_id END AS "parentId",

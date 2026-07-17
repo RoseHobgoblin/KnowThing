@@ -1,9 +1,9 @@
 <script lang="ts">
-	import type { PlanetModel, StarModel } from './models.js'
+	import type { BodyModel, StarModel } from './models.js'
 	import { celestialFactSections } from './projections.js'
 	import InlineMarkup from '$lib/renderer/InlineMarkup.svelte'
 
-	let { model }: { model: PlanetModel | StarModel } = $props()
+	let { model }: { model: BodyModel | StarModel } = $props()
 
 	// A projection of the same model the infobox reads — laid out as full-width
 	// grouped sections instead of a cramped floating table.

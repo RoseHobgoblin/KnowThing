@@ -45,7 +45,7 @@
 			// Key matches WikiInternalLink's lookup: `${sourceDomain}:${slugify(target).toLowerCase()}`.
 			if (ref?.slug) entries.push([`celestial:${slugify(ref.slug).toLowerCase()}`, { href: `/Celestial:${ref.slug}`, exists: true }])
 		}
-		if (d.kind === 'planet' && d.model) {
+		if (d.kind === 'body' && d.model) {
 			add(d.model.satelliteOf)
 			add(d.model.star)
 			add(d.model.parentBody)
@@ -141,18 +141,18 @@
 		data.kind === 'star' ? ((data.allStars ?? []) as any[]).find(s => s.id === raw.id) ?? null : null,
 	)
 	const bodySelfRef = $derived.by(() =>
-		data.kind === 'planet' ? ((data.siblings ?? []) as any[]).find(b => b.id === raw.id) ?? null : null,
+		data.kind === 'body' ? ((data.siblings ?? []) as any[]).find(b => b.id === raw.id) ?? null : null,
 	)
 
 	// A moon (planet-kind body whose parent is another body) orbits its parent,
 	// not the star.
-	const isSatellite = $derived(data.kind === 'planet' && bodySelfRef?.parentId != null)
+	const isSatellite = $derived(data.kind === 'body' && bodySelfRef?.parentId != null)
 
 	// Context-panel data: a star's planets; a planet's sibling planets + its moons;
 	// a moon's co-moons (the other satellites of the same parent).
 	const contextBodies = $derived.by(() => {
 		if (data.kind === 'star') return data.systemPlanets ?? []
-		if (data.kind === 'planet') {
+		if (data.kind === 'body') {
 			if (isSatellite) {
 				return (data.siblings ?? []).filter(b => b.parentId === bodySelfRef?.parentId && b.id !== raw.id)
 			}
@@ -161,7 +161,7 @@
 		return []
 	})
 	const contextMoons = $derived.by(() =>
-		data.kind === 'planet' ? (data.siblings ?? []).filter(b => b.parentId === raw.id) : [],
+		data.kind === 'body' ? (data.siblings ?? []).filter(b => b.parentId === raw.id) : [],
 	)
 	// Habitable zone and the self-distance dot are heliocentric — only meaningful
 	// for a planet orbiting the star directly. A moon's semiMajorAxisAu is relative
@@ -169,9 +169,9 @@
 	const contextHz = $derived(
 		data.kind === 'star'
 			? data.model?.habitableZoneAu ?? null
-			: (data.kind === 'planet' && !isSatellite ? data.parentStarHz : null),
+			: (data.kind === 'body' && !isSatellite ? data.parentStarHz : null),
 	)
-	const contextSelfAu = $derived(data.kind === 'planet' && !isSatellite ? data.model?.semiMajorAxisAu ?? null : null)
+	const contextSelfAu = $derived(data.kind === 'body' && !isSatellite ? data.model?.semiMajorAxisAu ?? null : null)
 </script>
 
 <svelte:head>
@@ -185,7 +185,7 @@
 		systems={data.allSystems ?? []}
 		stars={data.allStars ?? []}
 	/>
-{:else if isConfigureMode && data.kind === 'planet'}
+{:else if isConfigureMode && data.kind === 'body'}
 	<CelestialConfigureForm
 		kind="body"
 		record={{ ...raw, starId: bodySelfRef?.starId ?? null, parentId: bodySelfRef?.parentId ?? null }}
@@ -254,7 +254,7 @@
 					<CelestialBacklinks links={data.backlinks} />
 				</div>
 			</div>
-		{:else if (data.kind === 'star' || data.kind === 'planet') && data.model}
+		{:else if (data.kind === 'star' || data.kind === 'body') && data.model}
 			<div class="space-y-4">
 				<CelestialStatGrid model={data.model} />
 				<div class="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_300px] lg:items-start">

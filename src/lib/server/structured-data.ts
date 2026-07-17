@@ -5,10 +5,10 @@ import type { FieldMap } from '$lib/infoboxes/types.js'
 import type { MapBody } from '$lib/celestial/SystemMap.svelte'
 import { deriveSystemType } from '$lib/celestial/compute.js'
 import {
-	derivePlanet, deriveStar,
-	type PlanetModel, type StarModel, type PlanetRow, type StarRow,
+	deriveBody, deriveStar,
+	type BodyModel, type StarModel, type BodyRow, type StarRow,
 } from '$lib/celestial/models.js'
-import { planetInfoboxFields, starInfoboxFields } from '$lib/celestial/projections.js'
+import { bodyInfoboxFields, starInfoboxFields } from '$lib/celestial/projections.js'
 import { CELESTIAL_TREE_CTE, findNearestStarAncestor } from '$lib/server/celestial/hierarchy.js'
 import { getStarsForSystemMap, getBodiesForSystemMap } from '$lib/server/services/celestial-registry.js'
 
@@ -23,7 +23,7 @@ export interface SystemMapData {
  * the typed model. The model — not a FieldMap — is the canonical representation;
  * every consumer projects from it.
  */
-async function buildPlanetModel(row: PlanetRow & { parentId?: number | null }): Promise<PlanetModel> {
+async function buildBodyModel(row: BodyRow & { parentId?: number | null }): Promise<BodyModel> {
 	let star: { name: string, slug: string, massKg: number | null } | null = null
 	let parentBody: { name: string, slug: string, massKg: number | null } | null = null
 
@@ -37,7 +37,7 @@ async function buildPlanetModel(row: PlanetRow & { parentId?: number | null }): 
 		star = parent?.kind === 'star' ? parent : await findNearestStarAncestor(row.parentId)
 	}
 
-	return derivePlanet(row, { star, parentBody })
+	return deriveBody(row, { star, parentBody })
 }
 
 /** Fetch a star's relations (parent star + planet/satellite counts) and build the model. */
@@ -71,16 +71,18 @@ async function buildStarModel(row: StarRow & { id: number, parentId?: number | n
  * Resolve the typed model for a celestial entity — the model-layer entry point
  * used by pages/consumers that want structured data rather than infobox fields.
  */
-export async function resolveCelestialModel(type: string, slug: string): Promise<PlanetModel | StarModel | null> {
+export async function resolveCelestialModel(type: string, slug: string): Promise<BodyModel | StarModel | null> {
 	if (type === 'star') {
 		const [row] = await db.select().from(celestialBodies)
 			.where(and(eq(celestialBodies.slug, slug), eq(celestialBodies.kind, 'star')))
 		return row ? buildStarModel(row) : null
 	}
-	if (type === 'planet' || type === 'celestial' || type === 'celestial body') {
+	// 'body' is the canonical internal kind; 'planet'/'celestial'/'celestial body'
+	// remain as user-facing infobox template vocabulary.
+	if (type === 'body' || type === 'planet' || type === 'celestial' || type === 'celestial body') {
 		const [row] = await db.select().from(celestialBodies)
 			.where(and(eq(celestialBodies.slug, slug), eq(celestialBodies.kind, 'body')))
-		return row ? buildPlanetModel(row) : null
+		return row ? buildBodyModel(row) : null
 	}
 	return null
 }
@@ -92,8 +94,8 @@ const DOMAIN_RESOLVERS: Record<string, (slug: string) => Promise<FieldMap | null
 		return model?.kind === 'star' ? starInfoboxFields(model) : null
 	},
 	planet: async (slug) => {
-		const model = await resolveCelestialModel('planet', slug)
-		return model?.kind === 'planet' ? planetInfoboxFields(model) : null
+		const model = await resolveCelestialModel('body', slug)
+		return model?.kind === 'body' ? bodyInfoboxFields(model) : null
 	},
 }
 
@@ -110,7 +112,7 @@ DOMAIN_RESOLVERS['system'] = async (slug) => {
 	// Fetch stars in this system (all descendants — companions included)
 	const systemStars = await db.execute(sql`
 		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
-		SELECT s.name, s.spectral_type, s.slug, s.page_slug
+		SELECT s.name, s.spectral_type, s.slug
 		FROM celestial_bodies s
 		JOIN celestial_tree t ON t.id = s.id
 		WHERE s.kind = 'star' AND t.root_id = ${system.id}
@@ -134,7 +136,7 @@ DOMAIN_RESOLVERS['system'] = async (slug) => {
 
 	// Stars list
 	const starNames = (systemStars as any[]).map((s: any) => {
-		const link = s.page_slug ? `[[${s.page_slug}|${s.name}]]` : s.name
+		const link = `[[${s.slug}|${s.name}]]`
 		return s.spectral_type ? `${link} (${s.spectral_type})` : link
 	})
 	fields.set('stars', starNames.join(', '))

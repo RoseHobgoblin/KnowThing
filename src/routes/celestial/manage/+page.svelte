@@ -28,7 +28,6 @@
 		name: string
 		slug: string
 		systemType: string | null
-		pageSlug: string | null
 		starCount: number
 		planetCount: number
 	}
@@ -39,7 +38,6 @@
 		slug: string
 		spectralType: string | null
 		color: string | null
-		pageSlug: string | null
 		systemId: number | null
 		semiMajorAxisAu: number | null
 		eccentricity: number | null
@@ -54,7 +52,6 @@
 		bodyType: string
 		starId: number | null
 		parentId: number | null
-		pageSlug: string | null
 		semiMajorAxisAu: number | null
 		eccentricity: number | null
 		moonCount: number
