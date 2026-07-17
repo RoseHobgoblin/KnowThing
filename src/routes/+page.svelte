@@ -63,14 +63,14 @@
 			<div class="bg-surface p-5 text-center">
 				<h2 class="text-xs font-semibold text-secondary uppercase tracking-wider mb-3">Get started</h2>
 				<p class="text-sm text-dim mb-4">No articles yet. Create your first page.</p>
-				<a href="/know/create" class="inline-block bg-accent text-surface px-5 py-2 font-medium text-sm transition-colors hover:bg-accent-hover">Create a page</a>
+				<a href="/know/create" class="interactive-frame inline-block bg-accent text-surface px-5 py-2 font-medium text-sm transition-colors hover:bg-accent-hover">Create a page</a>
 			</div>
 		{/if}
 
 		<!-- Today + Word of the day -->
 		<div class="space-y-4">
 			{#if data.calendarInfo}
-				<a href="/calendar" class="block bg-surface border border-transparent p-5 transition-colors hover:border-accent-border group">
+				<a href="/calendar" class="interactive-frame block bg-surface p-5 transition-colors group">
 					<h2 class="text-xs font-semibold text-secondary uppercase tracking-wider mb-2">Today</h2>
 					<div class="text-lg font-bold text-heading group-hover:text-link transition-colors">
 						{data.calendarInfo.dayName}, {data.calendarInfo.day} {data.calendarInfo.monthName}
@@ -85,7 +85,7 @@
 			{#if data.randomWord}
 				<a
 					href="/Wordbook/{data.randomWord.languageSlug}/{encodeURIComponent(data.randomWord.word)}"
-					class="block bg-surface border border-transparent p-5 transition-colors hover:border-accent-border group"
+					class="interactive-frame block bg-surface p-5 transition-colors group"
 				>
 					<h2 class="text-xs font-semibold text-secondary uppercase tracking-wider mb-2">From the {sc?.wordbookName ?? 'Wordbook'}</h2>
 					<div class="flex items-baseline gap-2">

@@ -23,7 +23,7 @@
 		...props
 	}: Props = $props()
 
-	const base = 'inline-flex items-center justify-center gap-1.5 font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none'
+	const base = 'interactive-frame inline-flex items-center justify-center gap-1.5 font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none'
 
 	const variants = {
 		primary: 'bg-accent text-surface hover:bg-accent-hover',
