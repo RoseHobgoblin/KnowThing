@@ -15,6 +15,10 @@ jobs:
           port: ${{ secrets.SERVER_PORT }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          # The --no-cache docker build takes longer than the action's 10m
+          # default; the 2026-07-16 deploy died mid-build with
+          # "Run Command Timeout", leaving prod on a stale image.
+          command_timeout: 30m
           script: |
             cd ~/KnowThing
             git pull origin main
