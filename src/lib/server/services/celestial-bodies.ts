@@ -182,7 +182,6 @@ async function createCelestialIn(dbx: Dbx, kind: CelestialKind, data: CreateCele
 			absoluteMagnitude: star.absoluteMagnitude?.trim() || null,
 			angularDiameter: star.angularDiameter?.trim() || null,
 			metallicity: star.metallicity?.trim() || null,
-			companion: star.companion?.trim() || null,
 			extra: mergeOverrideExtras(star.extra, star as Record<string, unknown>, STAR_OVERRIDE_MAP),
 		})
 	}
@@ -338,7 +337,7 @@ export async function updateCelestial(slug: string, raw: unknown) {
 		applyFieldUpdates(setClause, data,
 			['spectralType', 'luminosityVisual', 'age', 'color',
 				'apparentMagnitude', 'absoluteMagnitude', 'angularDiameter',
-				'metallicity', 'companion'],
+				'metallicity'],
 			['massKg', 'radiusM', 'luminosityW', 'temperatureK',
 				'rotationPeriodS', 'axialTilt', 'orbitalPeriodDays', 'semiMajorAxisAu',
 				'eccentricity', 'parentId', 'epochPhase'])

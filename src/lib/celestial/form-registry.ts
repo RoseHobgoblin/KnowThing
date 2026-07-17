@@ -515,7 +515,6 @@ const starConfig: CelestialFormConfig = {
 								.map(option => ({ value: String(option.id), label: option.name })),
 						],
 					},
-					{ control: 'text', key: 'companion', label: 'Companion', placeholder: 'Binary partner name', hint: 'Display name of the binary partner, shown in the infobox. The orbital hierarchy itself is set by the “Orbits Star” field.' },
 					{ control: 'number', key: 'orbitalPeriodDays', label: 'Orbital Period (days)', placeholder: '79.91', hint: 'Orbital period in days for binary/multiple systems. Leave blank — it is derived from semi-major axis and combined mass wherever it is shown.' },
 					{ control: 'derived', label: 'Orbital Period', compute: ctx => starDisplayStrings(ctx).orbitalPeriod, hint: 'Human-readable period: the explicit days value, else Kepler from semi-major axis and combined mass.' },
 					{ control: 'number', key: 'semiMajorAxisAu', label: 'Semi-major Axis (AU)', placeholder: '23.4', min: 0, rangeError: 'Must be 0 or greater', hint: 'Half the longest diameter of the binary orbit, in AU. Determines the orbit size on the system map.' },

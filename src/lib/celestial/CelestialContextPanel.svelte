@@ -1,6 +1,5 @@
 <script lang="ts">
 	import type { BodyModel, StarModel } from './models.js'
-	import InlineMarkup from '$lib/renderer/InlineMarkup.svelte'
 
 	type ContextBody = { id?: number, name: string, slug: string, semiMajorAxisAu?: number | null, bodyType?: string | null }
 
@@ -55,8 +54,22 @@
 		...(!isStar && selfAu != null && selfAu > 0 ? [{ name: model.name, au: selfAu, self: true }] : []),
 	])
 
-	const companionName = $derived(isStar ? ((model as StarModel).companionOf?.name ?? (model as StarModel).companion) : null)
-	const companionSlug = $derived(isStar ? ((model as StarModel).companionOf?.slug ?? null) : null)
+	// Companions are derived from the graph, so every entry is a real, linkable
+	// entity: the star this one orbits, its child stars, barycenter co-components.
+	const companionRefs = $derived.by(() => {
+		if (!isStar) return []
+		const star = model as StarModel
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity
+		const seen = new Set<string>()
+		const refs: { name: string, slug: string }[] = []
+		for (const ref of [star.companionOf, ...star.companions]) {
+			if (ref && !seen.has(ref.slug)) {
+				seen.add(ref.slug)
+				refs.push(ref)
+			}
+		}
+		return refs
+	})
 
 	function fmtAu(au: number): string {
 		return `${au.toLocaleString('en-US', { maximumFractionDigits: au >= 1 ? 2 : 4 })} AU`
@@ -129,19 +142,20 @@
 			</div>
 		{/if}
 
-		<!-- Companion (star) -->
-		{#if companionName}
+		<!-- Companions (star) — derived from the orbital graph -->
+		{#if companionRefs.length > 0}
 			<div class="flex justify-between gap-4">
-				<span class="text-secondary shrink-0">Companion</span>
-				{#if companionSlug}
-					<a href="/Celestial:{companionSlug}" class="text-link hover:text-link-hover text-right">{companionName}</a>
-				{:else}
-					<span class="text-body text-right min-w-0"><InlineMarkup text={companionName} /></span>
-				{/if}
+				<span class="text-secondary shrink-0">{companionRefs.length === 1 ? 'Companion' : 'Companions'}</span>
+				<span class="text-right min-w-0">
+					{#each companionRefs as ref, refIndex (ref.slug)}
+						{#if refIndex > 0}<span class="text-secondary">, </span>{/if}
+						<a href="/Celestial:{ref.slug}" class="text-link hover:text-link-hover">{ref.name}</a>
+					{/each}
+				</span>
 			</div>
 		{/if}
 
-		{#if isStar && bodies.length === 0 && !companionName}
+		{#if isStar && bodies.length === 0 && companionRefs.length === 0}
 			<p class="text-faint text-xs">No planets or companions catalogued yet.</p>
 		{/if}
 	</div>

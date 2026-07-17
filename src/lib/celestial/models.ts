@@ -68,7 +68,6 @@ export interface StarRow extends CelestialRowLike {
 	age?: string | null
 	color?: string | null
 	metallicity?: string | null
-	companion?: string | null
 	apparentMagnitude?: string | null
 	absoluteMagnitude?: string | null
 	angularDiameter?: string | null
@@ -88,6 +87,11 @@ export interface StarRelations {
 	parentStar?: (Ref & { massKg?: number | null }) | null
 	/** Total stellar mass of the parent system when the star orbits its barycenter. */
 	barycenterMassKg?: number | null
+	/**
+	 * Stars gravitationally paired with this one, derived from the graph:
+	 * child stars orbiting it plus co-components of the same barycenter.
+	 */
+	companions?: Ref[]
 	planetCount?: number
 	satelliteCount?: number
 }
@@ -163,7 +167,6 @@ export interface StarModel {
 	age: string | null
 	color: string | null
 	metallicity: string | null
-	companion: string | null
 	apparentMagnitude: string | null
 	absoluteMagnitude: string | null
 	angularDiameter: string | null
@@ -194,6 +197,8 @@ export interface StarModel {
 
 	// Relationships & counts.
 	companionOf: Ref | null
+	/** Derived from the graph: child stars + co-components of the same barycenter. */
+	companions: Ref[]
 	planetCount: number
 	satelliteCount: number
 
@@ -325,7 +330,6 @@ export function deriveStar(row: StarRow, relations: StarRelations = {}): StarMod
 		age: row.age ?? null,
 		color: row.color ?? null,
 		metallicity: row.metallicity ?? null,
-		companion: row.companion ?? null,
 		apparentMagnitude: row.apparentMagnitude ?? null,
 		absoluteMagnitude: row.absoluteMagnitude ?? null,
 		angularDiameter: row.angularDiameter ?? null,
@@ -351,6 +355,7 @@ export function deriveStar(row: StarRow, relations: StarRelations = {}): StarMod
 		habitableZoneAu: luminosityW != null && luminosityW > 0 ? computeHabitableZoneAu(luminosityW) : null,
 
 		companionOf: relations.parentStar ? { name: relations.parentStar.name, slug: relations.parentStar.slug } : null,
+		companions: relations.companions ?? [],
 		planetCount: relations.planetCount ?? 0,
 		satelliteCount: relations.satelliteCount ?? 0,
 

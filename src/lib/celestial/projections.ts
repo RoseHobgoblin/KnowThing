@@ -115,7 +115,6 @@ export function starInfoboxFields(model: StarModel): FieldMap {
 	setText(f, 'apparent_magnitude', model.apparentMagnitude)
 	setText(f, 'absolute_magnitude', model.absoluteMagnitude)
 	setText(f, 'angular_diameter', model.angularDiameter)
-	setText(f, 'companion', model.companion)
 	setText(f, 'description', model.description)
 
 	applyExtra(f, model.extra)
@@ -139,6 +138,13 @@ export function starInfoboxFields(model: StarModel): FieldMap {
 	if (model.companionOf) {
 		f.set('companion_of', model.companionOf.name)
 		f.set('companion_of_slug', model.companionOf.slug)
+	}
+
+	// Companions derive from the graph (child stars + barycenter co-components)
+	// and link to real entities; an `extra` override still wins for lore-only
+	// companions with no catalogued record.
+	if (model.companions.length > 0) {
+		setDerived(f, 'companion', model.companions.map(c => `[[${c.slug}|${c.name}]]`).join(', '))
 	}
 
 	if (model.habitableZoneAu) {
@@ -238,7 +244,7 @@ const PLANET_SECTIONS: SectionSpec[] = [
 const STAR_SECTIONS: SectionSpec[] = [
 	{ title: 'Stellar', fields: [['spectral_type', 'Spectral type'], ['mass', 'Mass'], ['radius', 'Radius'], ['temperature', 'Temperature'], ['luminosity', 'Luminosity'], ['luminosity_visual', 'Visual luminosity'], ['density', 'Density'], ['surface_gravity', 'Surface gravity'], ['escape_velocity', 'Escape velocity'], ['metallicity', 'Metallicity'], ['color', 'Color'], ['age', 'Age']] },
 	{ title: 'Environment', fields: [['habitable_zone', 'Habitable zone']] },
-	{ title: 'Orbit', fields: [['companion', 'Companion'], ['companion_of', 'Orbits'], ['orbital_period', 'Orbital period'], ['semi_major_axis', 'Semi-major axis'], ['eccentricity', 'Eccentricity'], ['periastron', 'Periastron'], ['apastron', 'Apastron']] },
+	{ title: 'Orbit', fields: [['companion', 'Companions'], ['companion_of', 'Orbits'], ['orbital_period', 'Orbital period'], ['semi_major_axis', 'Semi-major axis'], ['eccentricity', 'Eccentricity'], ['periastron', 'Periastron'], ['apastron', 'Apastron']] },
 	{ title: 'Rotation', fields: [['rotation_period', 'Rotation period'], ['axial_tilt', 'Axial tilt'], ['equatorial_velocity', 'Equatorial velocity']] },
 	{ title: 'Observation', fields: [['apparent_magnitude', 'Apparent magnitude'], ['absolute_magnitude', 'Absolute magnitude'], ['angular_diameter', 'Angular diameter']] },
 	{ title: 'System', fields: [['planets', 'Planets'], ['known_satellites', 'Known satellites']] },

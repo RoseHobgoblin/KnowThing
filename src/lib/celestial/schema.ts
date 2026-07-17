@@ -84,14 +84,12 @@ const starSchema = coreSchema.extend(orbiterSchema.shape).extend({
 
 	absoluteMagnitude: z.string().nullish(),
 	metallicity: z.string().nullish(),
-	companion: z.string().nullish(),
 
 	luminosity: overrideString,
 })
 
 function starHasOrbitalData(data: Partial<z.infer<typeof starSchema>>) {
-	return data.companion != null
-		|| data.orbitalPeriodDays != null
+	return data.orbitalPeriodDays != null
 		|| data.semiMajorAxisAu != null
 		|| data.eccentricity != null
 		|| data.epochPhase != null

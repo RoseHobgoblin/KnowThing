@@ -52,6 +52,7 @@
 			add(d.model.system)
 		} else if (d.kind === 'star' && d.model) {
 			add(d.model.companionOf)
+			for (const companion of d.model.companions) add(companion)
 		}
 		return entries
 	}

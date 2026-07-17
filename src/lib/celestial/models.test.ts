@@ -91,6 +91,20 @@ describe('deriveStar + projection', () => {
 		expect(m.orbitalPeriodDays).not.toBeNull()
 	})
 
+	it('companions come from the graph relation and project as linked entities', () => {
+		const m = deriveStar(SUN, { companions: [{ name: 'Therne', slug: 'therne' }] })
+		expect(m.companions).toEqual([{ name: 'Therne', slug: 'therne' }])
+		expect(starInfoboxFields(m).get('companion')).toBe('[[therne|Therne]]')
+		// no relation → empty list, no infobox row
+		expect(deriveStar(SUN, {}).companions).toEqual([])
+		expect(starInfoboxFields(deriveStar(SUN, {})).has('companion')).toBe(false)
+	})
+
+	it('an extra override still wins over the derived companions row', () => {
+		const m = deriveStar({ ...SUN, extra: { companion: 'An unseen dark companion' } }, { companions: [{ name: 'Therne', slug: 'therne' }] })
+		expect(starInfoboxFields(m).get('companion')).toBe('An unseen dark companion')
+	})
+
 	it('projects to infobox fields including counts and HZ', () => {
 		const m = deriveStar(SUN, { planetCount: 8, satelliteCount: 3 })
 		const f = starInfoboxFields(m)

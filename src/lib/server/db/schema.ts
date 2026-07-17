@@ -560,7 +560,6 @@ export const celestialBodies = pgTable(
 		temperatureK: doublePrecision('temperature_k'),
 		color: text('color'),
 		metallicity: text('metallicity'),
-		companion: text('companion'),
 		absoluteMagnitude: text('absolute_magnitude'),
 
 		// Body-only. bodyType is required for kind='body' (CHECK in 0043).

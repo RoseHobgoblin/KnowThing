@@ -1,6 +1,6 @@
 import { db } from './db/index.js'
 import { celestialBodies, phonemes, languages, languageDialects, lexicon, definitions, graphemes, graphemePhonemes } from './db/schema.js'
-import { eq, and, sql, asc, inArray } from 'drizzle-orm'
+import { eq, and, or, sql, asc, inArray } from 'drizzle-orm'
 import type { FieldMap } from '$lib/infoboxes/types.js'
 import type { MapBody } from '$lib/celestial/SystemMap.svelte'
 import { deriveSystemType } from '$lib/celestial/compute.js'
@@ -69,18 +69,36 @@ async function buildBodyModel(row: BodyRow & { id: number, parentId?: number | n
 async function buildStarModel(row: StarRow & { id: number, parentId?: number | null }): Promise<StarModel> {
 	let parentStar: { name: string, slug: string, massKg: number | null } | null = null
 	let barycenterMassKg: number | null = null
+	let parentSystemId: number | null = null
 	if (row.parentId != null) {
 		const [parent] = await db
 			.select({ kind: celestialBodies.kind, name: celestialBodies.name, slug: celestialBodies.slug, massKg: celestialBodies.massKg })
 			.from(celestialBodies).where(eq(celestialBodies.id, row.parentId))
 		if (parent?.kind === 'star') parentStar = { name: parent.name, slug: parent.slug, massKg: parent.massKg }
-		// A star orbiting its system orbits the barycenter — its period derives
-		// from the system's total stellar mass. Only fetched when there is an
-		// orbit to derive (primaries without orbital elements skip the query).
-		if (parent?.kind === 'system' && row.semiMajorAxisAu != null && row.semiMajorAxisAu > 0) {
-			barycenterMassKg = await systemStellarMassKg(row.parentId)
+		if (parent?.kind === 'system') {
+			parentSystemId = row.parentId
+			// A star orbiting its system orbits the barycenter — its period derives
+			// from the system's total stellar mass. Only fetched when there is an
+			// orbit to derive (primaries without orbital elements skip the query).
+			if (row.semiMajorAxisAu != null && row.semiMajorAxisAu > 0) {
+				barycenterMassKg = await systemStellarMassKg(row.parentId)
+			}
 		}
 	}
+
+	// Companions are never stored — they derive from the graph: child stars
+	// orbiting this one, plus co-components of the same barycenter.
+	const companions = await db
+		.select({ name: celestialBodies.name, slug: celestialBodies.slug })
+		.from(celestialBodies)
+		.where(and(
+			eq(celestialBodies.kind, 'star'),
+			sql`${celestialBodies.id} <> ${row.id}`,
+			parentSystemId == null
+				? eq(celestialBodies.parentId, row.id)
+				: or(eq(celestialBodies.parentId, row.id), eq(celestialBodies.parentId, parentSystemId)),
+		))
+		.orderBy(celestialBodies.name)
 
 	// Planets orbit the star directly; satellites are every deeper body whose
 	// nearest star ancestor is this one (moons, submoons, …).
@@ -95,6 +113,7 @@ async function buildStarModel(row: StarRow & { id: number, parentId?: number | n
 	return deriveStar(row, {
 		parentStar,
 		barycenterMassKg,
+		companions,
 		planetCount: c?.planets ?? 0,
 		satelliteCount: c?.satellites ?? 0,
 	})
