@@ -14,9 +14,7 @@
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import { SvelteMap } from 'svelte/reactivity'
 	import { createKnowContext, slugify, type ResolvedLink } from '$lib/renderer/context.js'
-	import CelestialConfigureStar from '$lib/components/celestial/CelestialConfigureStar.svelte'
-	import CelestialConfigureBody from '$lib/components/celestial/CelestialConfigureBody.svelte'
-	import CelestialConfigureSystem from '$lib/components/celestial/CelestialConfigureSystem.svelte'
+	import CelestialConfigureForm from '$lib/components/celestial/CelestialConfigureForm.svelte'
 	import { celestialBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import GearSixIcon from 'phosphor-svelte/lib/GearSixIcon'
 	import type { CelestialDetailData } from '$lib/server/loaders/celestial-detail.js'
@@ -181,23 +179,21 @@
 </svelte:head>
 
 {#if isConfigureMode && data.kind === 'star'}
-	<CelestialConfigureStar
-		star={{ ...raw, systemId: starSelfRef?.systemId ?? null, parentStarId: starSelfRef?.parentStarId ?? null }}
-		allSystems={data.allSystems ?? []}
-		allStars={data.allStars ?? []}
-		wikiContent=""
-		contentRecordId={null}
+	<CelestialConfigureForm
+		kind="star"
+		record={{ ...raw, systemId: starSelfRef?.systemId ?? null, parentStarId: starSelfRef?.parentStarId ?? null }}
+		systems={data.allSystems ?? []}
+		stars={data.allStars ?? []}
 	/>
 {:else if isConfigureMode && data.kind === 'planet'}
-	<CelestialConfigureBody
-		body={{ ...raw, starId: bodySelfRef?.starId ?? null, parentId: bodySelfRef?.parentId ?? null }}
-		allStars={data.allStars ?? []}
+	<CelestialConfigureForm
+		kind="body"
+		record={{ ...raw, starId: bodySelfRef?.starId ?? null, parentId: bodySelfRef?.parentId ?? null }}
+		stars={data.allStars ?? []}
 		siblings={data.siblings ?? []}
-		wikiContent=""
-		contentRecordId={null}
 	/>
 {:else if isConfigureMode && data.kind === 'system'}
-	<CelestialConfigureSystem system={raw} />
+	<CelestialConfigureForm kind="system" record={raw} />
 {:else}
 	<ArticleShell
 		breadcrumbs={celestialBreadcrumbs(raw.name)}
