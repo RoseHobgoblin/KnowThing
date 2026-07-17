@@ -29,7 +29,7 @@ export async function listSystemsForRegistry() {
 	return db.execute(sql`
 		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
 		SELECT
-			ss.id, ss.name, ss.slug, ss.system_type AS "systemType",
+			ss.id, ss.name, ss.slug,
 			(SELECT COUNT(*) FROM celestial_tree t WHERE t.root_id = ss.id AND t.kind = 'star')::int AS "starCount",
 			(SELECT COUNT(*) FROM celestial_tree t WHERE t.root_id = ss.id AND t.kind = 'body')::int AS "planetCount"
 		FROM celestial_bodies ss

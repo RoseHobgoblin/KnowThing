@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { enrichSystems, filterSystems, matchedBodyName, type AtlasSystem, type AtlasStar, type AtlasBody } from './atlas.js'
 
 const systems: AtlasSystem[] = [
-	{ id: 1, name: 'Sunly', slug: 'Sunly', systemType: null, starCount: 2, planetCount: 3 },
-	{ id: 2, name: 'Vega', slug: 'Vega', systemType: null, starCount: 1, planetCount: 1 },
+	{ id: 1, name: 'Sunly', slug: 'Sunly', starCount: 2, planetCount: 3 },
+	{ id: 2, name: 'Vega', slug: 'Vega', starCount: 1, planetCount: 1 },
 ]
 const stars: AtlasStar[] = [
 	{ id: 10, name: 'Sun', slug: 'Sun', spectralType: 'G2V', color: 'yellow', systemId: 1 },

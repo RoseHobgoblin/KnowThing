@@ -145,7 +145,6 @@ async function createCelestialIn(dbx: Dbx, kind: CelestialKind, data: CreateCele
 		const system = data as CreateSystemInput
 		return insertRow(dbx, {
 			...common,
-			systemType: system.systemType,
 			distanceLy: system.distanceLy ?? null,
 			galacticX: system.galacticX ?? null,
 			galacticY: system.galacticY ?? null,
@@ -239,7 +238,6 @@ export async function createCelestialFromPreset(label: string) {
 		const system = await createCelestialIn(tx, 'system', CREATE_SCHEMAS.system.parse({
 			name: preset.system.name,
 			slug: urlSlugify(preset.system.name),
-			systemType: preset.system.systemType,
 		}))
 
 		for (const starPreset of preset.stars) {
@@ -336,7 +334,6 @@ export async function updateCelestial(slug: string, raw: unknown) {
 		applyFieldUpdates(setClause, data,
 			['formationAge', 'designations'],
 			['distanceLy', 'galacticX', 'galacticY', 'galacticZ'])
-		if (data.systemType !== undefined) setClause.systemType = data.systemType
 	} else if (kind === 'star') {
 		applyFieldUpdates(setClause, data,
 			['spectralType', 'luminosityVisual', 'age', 'color',

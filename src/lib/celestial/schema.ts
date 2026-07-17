@@ -60,9 +60,8 @@ const orbiterSchema = z.object({
 })
 
 const systemSchema = coreSchema.extend({
-	// Derived from star count at read time; kept only as a stub fallback for
-	// zero-star systems and preset creation. Not edited via the configure form.
-	systemType: z.enum(['single', 'binary', 'trinary', 'multiple']).default('single'),
+	// The system type (single/binary/trinary/…) is not stored — it is derived
+	// from the star count at read time (deriveSystemType).
 
 	// Placement & metadata.
 	distanceLy: z.number().nullish(),

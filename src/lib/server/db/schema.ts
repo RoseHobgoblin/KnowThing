@@ -574,7 +574,6 @@ export const celestialBodies = pgTable(
 		hasRings: boolean('has_rings').default(false),
 
 		// System-only.
-		systemType: text('system_type'),
 		distanceLy: doublePrecision('distance_ly'),
 		galacticX: doublePrecision('galactic_x'),
 		galacticY: doublePrecision('galactic_y'),

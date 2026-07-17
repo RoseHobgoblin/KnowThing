@@ -27,7 +27,6 @@
 		id: number
 		name: string
 		slug: string
-		systemType: string | null
 		starCount: number
 		planetCount: number
 	}
@@ -248,7 +247,7 @@
 						<div class="flex items-center gap-2">
 							<SunDim size={20} weight="fill" class="text-accent" />
 							<a href="/Celestial:{system.slug}" class="text-heading font-bold text-lg transition-colors hover:text-link">{system.name}</a>
-							<span class="text-xs text-faint">{deriveSystemType(system.starCount, system.systemType)} · {system.starCount} {system.starCount === 1 ? 'star' : 'stars'} · {system.planetCount} {system.planetCount === 1 ? 'planet' : 'planets'}</span>
+							<span class="text-xs text-faint">{deriveSystemType(system.starCount)} · {system.starCount} {system.starCount === 1 ? 'star' : 'stars'} · {system.planetCount} {system.planetCount === 1 ? 'planet' : 'planets'}</span>
 						</div>
 						<div class="flex items-center gap-3 text-xs">
 							<a href="/Celestial:{system.slug}/configure" class="text-link transition-colors flex items-center gap-1 hover:text-link-hover"><GearSix size={12} weight="fill" />Configure</a>

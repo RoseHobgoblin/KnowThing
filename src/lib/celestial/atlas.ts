@@ -12,7 +12,6 @@ export interface AtlasSystem {
 	id: number
 	name: string
 	slug: string
-	systemType: string | null
 	starCount: number
 	planetCount: number
 }
@@ -86,7 +85,7 @@ export function enrichSystems(systems: AtlasSystem[], stars: AtlasStar[], bodies
 		const bodyNames = (bodiesBySystem.get(system.id) ?? []).map(body => body.name)
 		return {
 			system,
-			type: deriveSystemType(system.starCount, system.systemType),
+			type: deriveSystemType(system.starCount),
 			classes,
 			starDots: systemStars.map(star => ({ name: star.name, color: spectralColor(star.spectralType, star.color) })),
 			moonCount: moonCounts.get(system.id) ?? 0,

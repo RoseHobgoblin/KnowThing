@@ -3,7 +3,6 @@ export interface CelestialPreset {
 	description: string
 	system: {
 		name: string
-		systemType: string
 	}
 	stars: StarPreset[]
 }
@@ -89,7 +88,7 @@ export const celestialPresets: CelestialPreset[] = [
 	{
 		label: 'Solar System',
 		description: 'Our solar system with the Sun, 8 planets, and major moons.',
-		system: { name: 'Solar System', systemType: 'single' },
+		system: { name: 'Solar System' },
 		stars: [
 			{
 				name: 'The Sun',

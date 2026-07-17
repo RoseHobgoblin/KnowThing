@@ -122,13 +122,8 @@ describe('deriveSystemType', () => {
 		expect(deriveSystemType(9)).toBe('multiple')
 	})
 
-	it('falls back to the stored stub only when no stars exist', () => {
-		expect(deriveSystemType(0, 'trinary')).toBe('trinary')
+	it('reads a zero-star system as single', () => {
 		expect(deriveSystemType(0)).toBe('single')
-	})
-
-	it('ignores the stored value once stars are present', () => {
-		expect(deriveSystemType(2, 'trinary')).toBe('binary')
 	})
 })
 

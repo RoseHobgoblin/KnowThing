@@ -24,8 +24,6 @@
 	}: {
 		system: {
 			name: string
-			systemType?: string | null
-			system_type?: string | null
 			distanceLy?: number | null
 			formationAge?: string | null
 			designations?: string | null
@@ -43,7 +41,7 @@
 	const currentDate = $derived(selectedCalendar ? dateFromAbsolute(selectedCalendar.static_data, currentAbsoluteDay) : null)
 	const resolved = $derived(selectedCalendar && currentDate ? resolveDisplay(selectedCalendar, currentDate) : null)
 
-	const systemType = $derived(deriveSystemType(stars.length, system.systemType ?? system.system_type))
+	const systemType = $derived(deriveSystemType(stars.length))
 	const primaryStar = $derived(stars.find(s => !s.parentStarId) ?? stars[0])
 
 	function planetsForStar(starId: number) {

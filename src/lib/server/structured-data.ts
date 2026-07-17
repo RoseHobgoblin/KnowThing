@@ -165,7 +165,7 @@ DOMAIN_RESOLVERS['system'] = async (slug) => {
 
 	const fields = new Map<string, string>([
 		['name', system.name],
-		['system_type', deriveSystemType(systemStars.length, system.systemType)],
+		['system_type', deriveSystemType(systemStars.length)],
 	])
 
 	// Stars list
