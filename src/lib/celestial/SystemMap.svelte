@@ -9,6 +9,8 @@
 		color?: string | null
 		moonCount?: number
 		parentStarId?: number | null
+		/** Direct parent when the parent is the system — a barycentric orbit. */
+		parentSystemId?: number | null
 		spectralType?: string | null
 		starId?: number | null
 		parentId?: number | null
@@ -315,14 +317,29 @@
 		return result
 	}
 
+	// A star orbiting the system barycenter (binary component) is never the
+	// center of the map — with a true barycentric pair the center is empty.
+	function isBarycentric(star: MapBody): boolean {
+		return star.parentSystemId != null && star.semiMajorAxisAu != null && star.semiMajorAxisAu > 0
+	}
+
 	function buildScene(): Scene {
-		const primaryStar = stars.find(star => !star.parentStarId) ?? stars[0] ?? null
+		const centerCandidate = stars.find(star => !star.parentStarId && !isBarycentric(star))
+		const primaryStar = centerCandidate ?? (stars.some(isBarycentric) ? null : stars[0] ?? null)
 		const primaryStarId = primaryStar?.id ?? null
 		const starIds = new Set(stars.map(star => star.id))
 		const companionStars = stars.filter(star => star.parentStarId)
 		const directOrbiters: OrbitBody[] = []
 		// eslint-disable-next-line svelte/prefer-svelte-reactivity
 		const seen = new Set<EntityKey>()
+
+		// Barycentric components orbit the (empty or stub) center directly.
+		for (const star of stars) {
+			const key = keyForBody(star, true)
+			if (!isBarycentric(star) || star.id === primaryStarId || seen.has(key)) continue
+			seen.add(key)
+			directOrbiters.push({ ...star, orbitAu: star.semiMajorAxisAu!, ecc: star.eccentricity ?? 0, isStar: true, renderAsSatellite: false })
+		}
 
 		const deepCompanionStars: OrbitBody[] = []
 		for (const star of companionStars) {

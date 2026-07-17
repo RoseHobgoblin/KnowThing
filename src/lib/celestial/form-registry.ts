@@ -5,6 +5,7 @@ import {
 	computeHabitableZoneAu,
 	computeHillSphereAu,
 	computeLuminosity,
+	computeOrbitalPeriodDays,
 	deriveBodyFields,
 	deriveBodyOrbitalFields,
 	deriveDisplayStrings,
@@ -35,7 +36,7 @@ export interface SelectOption { value: string, label: string }
 
 export interface SystemReferenceOption { id: number, name: string }
 export interface StarReferenceOption { id: number, name: string, massKg?: number | null, systemId?: number | null, parentStarId?: number | null }
-export interface BodyReferenceOption { id: number, name: string, massKg?: number | null, starId?: number | null, parentId?: number | null, semiMajorAxisAu?: number | null, eccentricity?: number | null }
+export interface BodyReferenceOption { id: number, name: string, massKg?: number | null, starId?: number | null, parentId?: number | null, parentSystemId?: number | null, rootSystemId?: number | null, semiMajorAxisAu?: number | null, eccentricity?: number | null }
 
 /** Everything a field's dynamic parts (options, derivations, labels) can see. */
 export interface FieldContext {
@@ -374,8 +375,42 @@ function starEffectiveLuminosityW(ctx: FieldContext): number | null {
 	return num(ctx, 'luminosityW') ?? starDerivedLuminosityW(ctx)
 }
 
+/**
+ * The mass a star's binary orbit derives its period from: the pair's combined
+ * mass when it orbits another star, or the system's total stellar mass when it
+ * orbits the barycenter (own draft mass + every other member star).
+ */
+function starPrimaryMassKg(ctx: FieldContext): number | null {
+	const parentStarId = text(ctx, 'parentStarId')
+	if (parentStarId) {
+		const parent = ctx.stars.find(option => String(option.id) === parentStarId)
+		return parent?.massKg ? parent.massKg + (num(ctx, 'massKg') ?? 0) : null
+	}
+	const systemId = text(ctx, 'systemId')
+	if (systemId) {
+		let total = num(ctx, 'massKg') ?? 0
+		for (const option of ctx.stars) {
+			if (option.id !== ctx.selfId && String(option.systemId ?? '') === systemId && option.massKg) {
+				total += option.massKg
+			}
+		}
+		return total > 0 ? total : null
+	}
+	return null
+}
+
+function starEffectivePeriodDays(ctx: FieldContext): number | null {
+	const stored = num(ctx, 'orbitalPeriodDays')
+	if (stored != null) return stored
+	const semiMajorAxisAu = num(ctx, 'semiMajorAxisAu')
+	const primaryMassKg = starPrimaryMassKg(ctx)
+	return semiMajorAxisAu != null && semiMajorAxisAu > 0 && primaryMassKg != null
+		? computeOrbitalPeriodDays(semiMajorAxisAu, primaryMassKg)
+		: null
+}
+
 function starDisplayStrings(ctx: FieldContext) {
-	return deriveDisplayStrings(num(ctx, 'orbitalPeriodDays'), num(ctx, 'semiMajorAxisAu'), num(ctx, 'rotationPeriodS'))
+	return deriveDisplayStrings(starEffectivePeriodDays(ctx), num(ctx, 'semiMajorAxisAu'), num(ctx, 'rotationPeriodS'))
 }
 
 const starColorField: TextFieldSpec = {
@@ -481,8 +516,8 @@ const starConfig: CelestialFormConfig = {
 						],
 					},
 					{ control: 'text', key: 'companion', label: 'Companion', placeholder: 'Binary partner name', hint: 'Display name of the binary partner, shown in the infobox. The orbital hierarchy itself is set by the “Orbits Star” field.' },
-					{ control: 'number', key: 'orbitalPeriodDays', label: 'Orbital Period (days)', placeholder: '79.91', hint: 'Orbital period in days for binary/multiple systems. Leave blank to auto-derive from semi-major axis and combined mass.' },
-					{ control: 'derived', label: 'Orbital Period', compute: ctx => starDisplayStrings(ctx).orbitalPeriod, hint: 'Human-readable period, formatted from the days value.' },
+					{ control: 'number', key: 'orbitalPeriodDays', label: 'Orbital Period (days)', placeholder: '79.91', hint: 'Orbital period in days for binary/multiple systems. Leave blank — it is derived from semi-major axis and combined mass wherever it is shown.' },
+					{ control: 'derived', label: 'Orbital Period', compute: ctx => starDisplayStrings(ctx).orbitalPeriod, hint: 'Human-readable period: the explicit days value, else Kepler from semi-major axis and combined mass.' },
 					{ control: 'number', key: 'semiMajorAxisAu', label: 'Semi-major Axis (AU)', placeholder: '23.4', min: 0, rangeError: 'Must be 0 or greater', hint: 'Half the longest diameter of the binary orbit, in AU. Determines the orbit size on the system map.' },
 					{ control: 'derived', label: 'Semi-major Axis', compute: ctx => starDisplayStrings(ctx).semiMajorAxis, hint: 'Same distance converted to kilometres.' },
 					{ control: 'number', key: 'eccentricity', label: 'Eccentricity', placeholder: '0.0', min: 0, max: 1, rangeError: 'Use a value from 0 to 1', hint: 'How elliptical the binary orbit is. 0 = circular, approaching 1 = extremely elongated.' },
@@ -564,18 +599,40 @@ const starConfig: CelestialFormConfig = {
 
 const BODY_PRESETS = getBodyPresets()
 
+/**
+ * The body form's primary selector (`starId` draft key) holds either a star id
+ * ('12') or a system barycenter ('system:3', a circumbinary orbit).
+ */
+function bodyPrimarySelection(ctx: FieldContext): { starId: string, systemId: string } {
+	const raw = text(ctx, 'starId')
+	if (raw.startsWith('system:')) return { starId: '', systemId: raw.slice('system:'.length) }
+	return { starId: raw, systemId: '' }
+}
+
+/** Mass of the selected primary: the star's, or the system's total stellar mass. */
+function bodyPrimaryMassKg(ctx: FieldContext): number | null {
+	const { starId, systemId } = bodyPrimarySelection(ctx)
+	if (starId) {
+		const star = ctx.stars.find(starOption => String(starOption.id) === starId)
+		return star?.massKg ?? null
+	}
+	if (systemId) {
+		let total = 0
+		for (const starOption of ctx.stars) {
+			if (String(starOption.systemId ?? '') === systemId && starOption.massKg) total += starOption.massKg
+		}
+		return total > 0 ? total : null
+	}
+	return null
+}
+
 function bodyParentMassKg(ctx: FieldContext): number | null {
 	const parentId = text(ctx, 'parentId')
 	if (parentId) {
 		const parent = ctx.siblings.find(sibling => String(sibling.id) === parentId)
 		if (parent?.massKg) return parent.massKg
 	}
-	const starId = text(ctx, 'starId')
-	if (starId) {
-		const star = ctx.stars.find(starOption => String(starOption.id) === starId)
-		if (star?.massKg) return star.massKg
-	}
-	return null
+	return bodyPrimaryMassKg(ctx)
 }
 
 function bodyOrbitalDerivations(ctx: FieldContext) {
@@ -604,13 +661,21 @@ function bodyParentHillAu(ctx: FieldContext): number | null {
 	const parentId = text(ctx, 'parentId')
 	if (!parentId) return null
 	const parent = ctx.siblings.find(sibling => String(sibling.id) === parentId)
-	const star = ctx.stars.find(starOption => String(starOption.id) === text(ctx, 'starId'))
-	if (!parent?.massKg || !parent?.semiMajorAxisAu || !star?.massKg) return null
-	return computeHillSphereAu(parent.semiMajorAxisAu, parent.massKg, star.massKg, parent.eccentricity ?? null)
+	const primaryMassKg = bodyPrimaryMassKg(ctx)
+	if (!parent?.massKg || !parent?.semiMajorAxisAu || !primaryMassKg) return null
+	return computeHillSphereAu(parent.semiMajorAxisAu, parent.massKg, primaryMassKg, parent.eccentricity ?? null)
+}
+
+/** Does this sibling orbit the same primary (star or system barycenter) as the draft? */
+function bodySharesPrimary(ctx: FieldContext, sibling: BodyReferenceOption): boolean {
+	const { starId, systemId } = bodyPrimarySelection(ctx)
+	if (systemId) return String(sibling.parentSystemId ?? '') === systemId
+	if (starId) return String(sibling.starId ?? '') === starId
+	return sibling.starId == null && sibling.parentSystemId == null
 }
 
 /**
- * Planets sharing this body's star (each orbiting the star directly), for
+ * Planets sharing this body's primary (each orbiting it directly), for
  * orbit-crossing detection. Moons are checked for Hill-sphere containment instead.
  */
 function bodySiblingOrbits(ctx: FieldContext) {
@@ -618,7 +683,7 @@ function bodySiblingOrbits(ctx: FieldContext) {
 	return ctx.siblings
 		.filter(sibling => sibling.id !== ctx.selfId
 			&& sibling.parentId == null
-			&& String(sibling.starId ?? '') === text(ctx, 'starId')
+			&& bodySharesPrimary(ctx, sibling)
 			&& sibling.semiMajorAxisAu != null)
 		.map(sibling => ({ name: sibling.name, semiMajorAxisAu: sibling.semiMajorAxisAu as number, eccentricity: sibling.eccentricity ?? null }))
 }
@@ -648,10 +713,16 @@ const bodyConfig: CelestialFormConfig = {
 							],
 						},
 						{
-							control: 'select', key: 'starId', label: 'Parent Star', omitFromPayload: true,
+							control: 'select', key: 'starId', label: 'Orbits Star / System', omitFromPayload: true,
+							hint: 'The primary this body orbits: a star, or a system barycenter for a circumbinary orbit around all of its stars.',
+							initial: (record) => {
+								if (record.parentSystemId != null) return `system:${record.parentSystemId}`
+								return record.starId == null ? '' : String(record.starId)
+							},
 							options: ctx => [
 								{ value: '', label: 'None' },
 								...ctx.stars.map(starOption => ({ value: String(starOption.id), label: starOption.name })),
+								...ctx.systems.map(system => ({ value: `system:${system.id}`, label: `${system.name} — barycenter (circumbinary)` })),
 							],
 						},
 					],
@@ -663,14 +734,18 @@ const bodyConfig: CelestialFormConfig = {
 							control: 'select', key: 'parentId', label: 'Orbits Body', omitFromPayload: true, clearIfInvalid: true,
 							options: (ctx) => {
 								const excluded = descendantIds(ctx.siblings, ctx.selfId)
-								const starId = text(ctx, 'starId')
+								const { starId, systemId } = bodyPrimarySelection(ctx)
 								return [
-									{ value: '', label: starId ? 'None (orbits star directly)' : 'None' },
+									{ value: '', label: starId || systemId ? 'None (orbits primary directly)' : 'None' },
 									...ctx.siblings
 										.filter(sibling => !excluded.has(sibling.id))
-										.filter(sibling => starId
-											? String(sibling.starId ?? '') === starId
-											: sibling.starId == null)
+										// Under a barycenter, any body in the system may be the
+										// parent; under a star, bodies of that star.
+										.filter(sibling => (systemId
+											? String(sibling.rootSystemId ?? '') === systemId
+											: (starId
+												? String(sibling.starId ?? '') === starId
+												: sibling.starId == null && sibling.parentSystemId == null)))
 										.map(sibling => ({ value: String(sibling.id), label: sibling.name })),
 								]
 							},
@@ -753,12 +828,14 @@ const bodyConfig: CelestialFormConfig = {
 		},
 	],
 	// The single hierarchy edge: a moon orbits its parent body, a planet orbits
-	// the star.
-	extraPayload: ctx => ({
-		parentId: text(ctx, 'parentId')
-			? Number(text(ctx, 'parentId'))
-			: (text(ctx, 'starId') ? Number(text(ctx, 'starId')) : null),
-	}),
+	// the star, a circumbinary body orbits the system barycenter.
+	extraPayload: (ctx) => {
+		const parentId = text(ctx, 'parentId')
+		if (parentId) return { parentId: Number(parentId) }
+		const { starId, systemId } = bodyPrimarySelection(ctx)
+		const primary = starId || systemId
+		return { parentId: primary ? Number(primary) : null }
+	},
 	physicsWarnings: ctx => validateBodyPhysics({
 		massKg: num(ctx, 'massKg'),
 		radiusM: num(ctx, 'radiusM'),

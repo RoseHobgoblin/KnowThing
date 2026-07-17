@@ -35,6 +35,19 @@ describe('deriveBody', () => {
 		const m = deriveBody(EARTH, { star: { name: 'Sun', slug: 'the-sun', massKg: SUN.massKg } })
 		expect(m.satelliteOf?.slug).toBe('the-sun')
 	})
+
+	it('a circumbinary body orbits the system barycenter using the total stellar mass', () => {
+		const m = deriveBody(EARTH, { system: { name: 'Twinly', slug: 'twinly', massKg: 2 * SUN.massKg } })
+		expect(m.satelliteOf?.slug).toBe('twinly')
+		expect(m.system?.name).toBe('Twinly')
+		// Twice the solar mass → year shortened by 1/√2.
+		expect(m.orbitalPeriodDays).toBeCloseTo(365.25 / Math.SQRT2, 0)
+	})
+
+	it('falls back to the resolved moon count when no satellite count is stored', () => {
+		expect(deriveBody(EARTH, { moonCount: 2 }).satellites).toBe(2)
+		expect(deriveBody({ ...EARTH, satellites: 5 }, { moonCount: 2 }).satellites).toBe(5)
+	})
 })
 
 describe('bodyInfoboxFields projection', () => {
@@ -62,6 +75,20 @@ describe('deriveStar + projection', () => {
 		expect(m.luminosityW! / 3.828e26).toBeCloseTo(1, 1)
 		expect(m.habitableZoneAu!.inner).toBeLessThan(1)
 		expect(m.habitableZoneAu!.outer).toBeGreaterThan(1)
+	})
+
+	it('derives a companion star period from the pair\'s combined mass', () => {
+		const companion = { ...SUN, name: 'Sun B', slug: 'sun-b', semiMajorAxisAu: 1 }
+		const m = deriveStar(companion, { parentStar: { name: 'Sun A', slug: 'sun-a', massKg: SUN.massKg } })
+		// 2 M☉ total → 365.25/√2 days.
+		expect(m.orbitalPeriodDays).toBeCloseTo(365.25 / Math.SQRT2, 0)
+		expect(m.companionOf?.slug).toBe('sun-a')
+	})
+
+	it('derives a barycentric component period from the system stellar mass', () => {
+		const component = { ...SUN, semiMajorAxisAu: 0.5 }
+		const m = deriveStar(component, { barycenterMassKg: 2 * SUN.massKg })
+		expect(m.orbitalPeriodDays).not.toBeNull()
 	})
 
 	it('projects to infobox fields including counts and HZ', () => {

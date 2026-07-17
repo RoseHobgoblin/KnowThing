@@ -9,9 +9,8 @@ import { findNearestStarAncestor } from '$lib/server/celestial/hierarchy.js'
 import {
 	findCelestialBySlugOrName,
 	getBacklinksForCelestial,
-	getBodiesForSystemMap,
 	getCalendarsForSystem,
-	getStarsForSystemMap,
+	getSystemMapEntities,
 	getPlanetsForStar,
 	getStarHzInputs,
 	listAllStarReferences,
@@ -48,6 +47,7 @@ export type CelestialDetailData =
 	| (CelestialBaseData & {
 		kind: 'body'
 		body: CelestialRow
+		allSystems: Awaited<ReturnType<typeof listAllSystemReferences>>
 		allStars: Awaited<ReturnType<typeof listAllStarReferences>>
 		siblings: Awaited<ReturnType<typeof listAllBodyReferences>>
 		model: BodyModel | null
@@ -83,9 +83,8 @@ export async function loadCelestialDetail(ctx: CelestialDetailContext): Promise<
 	}
 
 	if (entity.kind === 'system') {
-		const [systemStars, systemBodies, systemCalendars, backlinks] = await Promise.all([
-			getStarsForSystemMap(entity.id),
-			getBodiesForSystemMap(entity.id),
+		const [mapEntities, systemCalendars, backlinks] = await Promise.all([
+			getSystemMapEntities(entity.id),
 			getCalendarsForSystem(entity.id),
 			getBacklinksForCelestial(entity.slug),
 		])
@@ -94,8 +93,8 @@ export async function loadCelestialDetail(ctx: CelestialDetailContext): Promise<
 			body: entity,
 			isEditMode: false,
 			isConfigureMode,
-			systemStars: [...systemStars] as unknown as MapBody[],
-			systemBodies: [...systemBodies] as unknown as MapBody[],
+			systemStars: mapEntities.stars as unknown as MapBody[],
+			systemBodies: mapEntities.bodies as unknown as MapBody[],
 			systemCalendars,
 			backlinks,
 		}
@@ -119,7 +118,8 @@ export async function loadCelestialDetail(ctx: CelestialDetailContext): Promise<
 		}
 	}
 
-	const [allStars, siblings, rawModel, backlinks, nearestStar] = await Promise.all([
+	const [allSystems, allStars, siblings, rawModel, backlinks, nearestStar] = await Promise.all([
+		listAllSystemReferences(),
 		listAllStarReferences(),
 		listAllBodyReferences(),
 		resolveCelestialModel('body', entity.slug),
@@ -137,6 +137,7 @@ export async function loadCelestialDetail(ctx: CelestialDetailContext): Promise<
 	return {
 		kind: 'body',
 		body: entity,
+		allSystems,
 		allStars,
 		siblings,
 		model,

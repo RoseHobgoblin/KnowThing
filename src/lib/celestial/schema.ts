@@ -132,7 +132,7 @@ const planetaryBodySchema = coreSchema.extend(orbiterSchema.shape).extend({
 
 function validatePlanetaryBodyCreate(data: Partial<z.infer<typeof planetaryBodySchema>>, ctx: z.RefinementCtx) {
 	if (data.parentId == null) {
-		ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['parentId'], message: 'Celestial bodies must orbit a parent star or body' })
+		ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['parentId'], message: 'Celestial bodies must orbit a parent system, star, or body' })
 	}
 }
 
@@ -140,7 +140,7 @@ function validatePlanetaryBodyCreate(data: Partial<z.infer<typeof planetaryBodyS
 // re-validates with the create schema, so only flag fields actually being set.
 function validatePlanetaryBodyUpdate(data: Partial<z.infer<typeof planetaryBodySchema>>, ctx: z.RefinementCtx) {
 	if ('parentId' in data && data.parentId == null) {
-		ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['parentId'], message: 'Celestial bodies must orbit a parent star or body' })
+		ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['parentId'], message: 'Celestial bodies must orbit a parent system, star, or body' })
 	}
 }
 

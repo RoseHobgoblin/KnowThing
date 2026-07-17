@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit'
-import { eq, sql, and } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import type { z } from 'zod'
 import { db } from '$lib/server/db/index.js'
 import { celestialBodies } from '$lib/server/db/schema.js'
@@ -14,7 +14,6 @@ import {
 import { validateParentKind, isCelestialKind, type CelestialKind } from '$lib/celestial/parent-rules.js'
 import { celestialPresets, type BodyPreset } from '$lib/celestial/presets.js'
 import { urlSlugify } from '$lib/utils/slugify.js'
-import { computeLuminosity, computeOrbitalPeriodDays, deriveBodyOrbitalFields } from '$lib/celestial/compute.js'
 import { CELESTIAL_TREE_CTE, celestialCycleWouldForm } from '$lib/server/celestial/hierarchy.js'
 import {
 	deleteCelestialEntity,
@@ -161,20 +160,15 @@ async function createCelestialIn(dbx: Dbx, kind: CelestialKind, data: CreateCele
 		const star = data as CreateStarInput
 		if (star.parentId != null) await loadValidatedParent(dbx, 'star', star.parentId)
 
-		// Luminosity: explicit, else Stefan-Boltzmann from radius + temperature.
-		let derivedLuminosityW = star.luminosityW ?? null
-		if (derivedLuminosityW == null && star.radiusM != null && star.temperatureK != null
-			&& star.radiusM > 0 && star.temperatureK > 0) {
-			derivedLuminosityW = computeLuminosity(star.radiusM, star.temperatureK)
-		}
-
+		// Luminosity is stored only when explicit — the model layer derives the
+		// Stefan-Boltzmann value from radius + temperature at read time.
 		return insertRow(dbx, {
 			...common,
 			parentId: star.parentId ?? null,
 			spectralType: star.spectralType?.trim() || null,
 			massKg: star.massKg ?? null,
 			radiusM: star.radiusM ?? null,
-			luminosityW: derivedLuminosityW,
+			luminosityW: star.luminosityW ?? null,
 			luminosityVisual: star.luminosityVisual?.trim() || null,
 			temperatureK: star.temperatureK ?? null,
 			age: star.age?.trim() || null,
@@ -196,15 +190,7 @@ async function createCelestialIn(dbx: Dbx, kind: CelestialKind, data: CreateCele
 
 	const body = data as CreateBodyInput
 	// Zod guarantees parentId for bodies; the parent's kind still needs the DB.
-	const parent = await loadValidatedParent(dbx, 'body', body.parentId!, body.bodyType)
-
-	const orbital = deriveBodyOrbitalFields(
-		body.semiMajorAxisAu ?? null,
-		body.orbitalPeriodDays ?? null,
-		body.massKg ?? null,
-		parent.massKg,
-		body.eccentricity ?? null,
-	)
+	await loadValidatedParent(dbx, 'body', body.parentId!, body.bodyType)
 
 	return insertRow(dbx, {
 		...common,
@@ -217,7 +203,7 @@ async function createCelestialIn(dbx: Dbx, kind: CelestialKind, data: CreateCele
 		composition: body.composition?.trim() || null,
 		atmosphere: body.atmosphere?.trim() || null,
 		surfacePressure: body.surfacePressure?.trim() || null,
-		orbitalPeriodDays: body.orbitalPeriodDays ?? orbital.orbitalPeriodDays,
+		orbitalPeriodDays: body.orbitalPeriodDays ?? null,
 		semiMajorAxisAu: body.semiMajorAxisAu ?? null,
 		eccentricity: body.eccentricity ?? null,
 		inclination: body.inclination ?? null,
@@ -363,9 +349,7 @@ export async function updateCelestial(slug: string, raw: unknown) {
 		applyFieldUpdates(setClause, data,
 			['temperature', 'age', 'composition', 'atmosphere',
 				'surfacePressure', 'apparentMagnitude', 'angularDiameter', 'albedo'],
-			// orbitalPeriodDays is handled explicitly below so an "auto" (null) value
-			// persists the Kepler-derived period instead of nulling the column.
-			['massKg', 'radiusM', 'semiMajorAxisAu',
+			['massKg', 'radiusM', 'orbitalPeriodDays', 'semiMajorAxisAu',
 				'eccentricity', 'inclination', 'epochPhase', 'rotationPeriodS',
 				'axialTilt', 'parentId', 'satellites'])
 		if (data.bodyType !== undefined) setClause.bodyType = data.bodyType
@@ -382,9 +366,6 @@ export async function updateCelestial(slug: string, raw: unknown) {
 		setClause.extra = mergeOverrideExtras(setClause.extra ?? current.extra, data, BODY_OVERRIDE_MAP)
 	}
 
-	if (kind === 'star') await applyStarDerivations(setClause, current, data)
-	if (kind === 'body') await applyBodyDerivations(setClause, current, data)
-
 	const updated = await db.transaction(async (tx) => {
 		const [saved] = await tx.update(celestialBodies).set(setClause).where(eq(celestialBodies.slug, slug)).returning()
 		if (!saved) return null
@@ -400,98 +381,6 @@ export async function updateCelestial(slug: string, raw: unknown) {
 
 	if (!updated) throw error(404, 'Celestial entity not found')
 	return updated
-}
-
-async function applyStarDerivations(
-	setClause: Record<string, unknown>,
-	current: CelestialRow,
-	data: Record<string, unknown>,
-) {
-	const patch = data as {
-		radiusM?: number | null
-		temperatureK?: number | null
-		luminosityW?: number | null
-		massKg?: number | null
-		semiMajorAxisAu?: number | null
-		orbitalPeriodDays?: number | null
-	}
-
-	const finalRadiusM = patch.radiusM === undefined ? current.radiusM : patch.radiusM
-	const finalTemperatureK = patch.temperatureK === undefined ? current.temperatureK : patch.temperatureK
-	// Only (re)derive luminosity when it has never been set or when the inputs actually
-	// change — otherwise a partial patch of an unrelated field would clobber a stored value.
-	const radiusOrTemperatureChanged = patch.radiusM !== undefined || patch.temperatureK !== undefined
-	if (patch.luminosityW === undefined && (current.luminosityW == null || radiusOrTemperatureChanged)
-		&& finalRadiusM != null && finalTemperatureK != null && finalRadiusM > 0 && finalTemperatureK > 0) {
-		setClause.luminosityW = computeLuminosity(finalRadiusM, finalTemperatureK)
-	}
-
-	// A companion star's period derives from its primary. Only a star parent
-	// contributes mass — a system parent is a barycenter stub with none.
-	const finalMassKg = patch.massKg === undefined ? current.massKg : patch.massKg
-	const finalAu = patch.semiMajorAxisAu === undefined ? current.semiMajorAxisAu : patch.semiMajorAxisAu
-	const finalOrbitalDays = patch.orbitalPeriodDays === undefined ? current.orbitalPeriodDays : patch.orbitalPeriodDays
-	if (finalOrbitalDays == null && finalAu != null && finalAu > 0 && current.parentId != null) {
-		const [parent] = await db
-			.select({ kind: celestialBodies.kind, massKg: celestialBodies.massKg })
-			.from(celestialBodies)
-			.where(eq(celestialBodies.id, current.parentId))
-		if (parent?.kind === 'star' && parent.massKg) {
-			const totalMass = (finalMassKg ?? 0) + parent.massKg
-			if (totalMass > 0) {
-				setClause.orbitalPeriodDays = computeOrbitalPeriodDays(finalAu, totalMass)
-			}
-		}
-	}
-}
-
-async function applyBodyDerivations(
-	setClause: Record<string, unknown>,
-	current: CelestialRow,
-	data: Record<string, unknown>,
-) {
-	const patch = data as {
-		massKg?: number | null
-		parentId?: number | null
-		semiMajorAxisAu?: number | null
-		orbitalPeriodDays?: number | null
-		eccentricity?: number | null
-		satellites?: number | null
-	}
-
-	const finalMassKg = patch.massKg === undefined ? current.massKg : patch.massKg
-	const finalParentId = patch.parentId === undefined ? current.parentId : patch.parentId
-
-	let parentMassKg: number | null = null
-	if (finalParentId != null) {
-		const [parent] = await db
-			.select({ massKg: celestialBodies.massKg })
-			.from(celestialBodies)
-			.where(eq(celestialBodies.id, finalParentId))
-		parentMassKg = parent?.massKg ?? null
-	}
-
-	const finalAu = patch.semiMajorAxisAu === undefined ? current.semiMajorAxisAu : patch.semiMajorAxisAu
-	const finalOrbitalDays = patch.orbitalPeriodDays === undefined ? current.orbitalPeriodDays : patch.orbitalPeriodDays
-	const finalEccentricity = patch.eccentricity === undefined ? current.eccentricity : patch.eccentricity
-	const orbital = deriveBodyOrbitalFields(finalAu, finalOrbitalDays, finalMassKg, parentMassKg, finalEccentricity)
-	const effectivePeriodDays = finalOrbitalDays ?? orbital.orbitalPeriodDays
-	if (patch.orbitalPeriodDays !== undefined) {
-		// Explicit custom period, or null ("auto") → persist the Kepler-derived value
-		// so the map animation and infobox velocity have a concrete period to work from.
-		setClause.orbitalPeriodDays = patch.orbitalPeriodDays ?? orbital.orbitalPeriodDays ?? null
-	} else if (effectivePeriodDays != null && current.orbitalPeriodDays == null) {
-		// Field untouched, but a period can now be derived (e.g. mass was just added).
-		setClause.orbitalPeriodDays = effectivePeriodDays
-	}
-
-	if (patch.satellites === undefined) {
-		const [{ count }] = await db
-			.select({ count: sql<number>`count(*)::int` })
-			.from(celestialBodies)
-			.where(and(eq(celestialBodies.parentId, current.id), eq(celestialBodies.kind, 'body')))
-		setClause.satellites = count
-	}
 }
 
 export async function deleteCelestial(slug: string) {

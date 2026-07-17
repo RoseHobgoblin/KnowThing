@@ -78,10 +78,16 @@ export interface StarRow extends CelestialRowLike {
 export interface BodyRelations {
 	star?: (Ref & { massKg: number | null }) | null
 	parentBody?: (Ref & { massKg: number | null }) | null
+	/** The parent system for a circumbinary body — massKg is the system's total stellar mass. */
+	system?: (Ref & { massKg: number | null }) | null
+	/** Direct child bodies, for the derived satellite count. */
+	moonCount?: number
 }
 
 export interface StarRelations {
-	parentStar?: Ref | null
+	parentStar?: (Ref & { massKg?: number | null }) | null
+	/** Total stellar mass of the parent system when the star orbits its barycenter. */
+	barycenterMassKg?: number | null
 	planetCount?: number
 	satelliteCount?: number
 }
@@ -137,7 +143,9 @@ export interface BodyModel {
 	// Relationships.
 	star: Ref | null
 	parentBody: Ref | null
-	/** The body this one orbits directly — parent body if a moon, else the star. */
+	/** The parent system, when this body orbits a system barycenter (circumbinary). */
+	system: Ref | null
+	/** What this orbits directly — parent body if a moon, else the star, else the system barycenter. */
 	satelliteOf: Ref | null
 
 	extra: ExtraMap
@@ -216,9 +224,10 @@ export function deriveBody(row: BodyRow, relations: BodyRelations = {}): BodyMod
 	const rotationPeriodS = positive(row.rotationPeriodS)
 	const eccentricity = row.eccentricity ?? null
 
-	// A moon orbits its parent body; a planet orbits the star. Its period, if not
-	// stored, derives from whichever primary it actually circles.
-	const primaryMassKg = relations.parentBody?.massKg ?? relations.star?.massKg ?? null
+	// A moon orbits its parent body; a planet orbits the star; a circumbinary
+	// body orbits the system barycenter (whose mass is the total stellar mass).
+	// Its period, if not stored, derives from whichever primary it circles.
+	const primaryMassKg = relations.parentBody?.massKg ?? relations.star?.massKg ?? relations.system?.massKg ?? null
 	const orbitalPeriodDays = row.orbitalPeriodDays
 		?? (semiMajorAxisAu != null && primaryMassKg != null && primaryMassKg > 0
 			? computeOrbitalPeriodDays(semiMajorAxisAu, primaryMassKg)
@@ -230,6 +239,7 @@ export function deriveBody(row: BodyRow, relations: BodyRelations = {}): BodyMod
 
 	const star = relations.star ? { name: relations.star.name, slug: relations.star.slug } : null
 	const parentBody = relations.parentBody ? { name: relations.parentBody.name, slug: relations.parentBody.slug } : null
+	const system = relations.system ? { name: relations.system.name, slug: relations.system.slug } : null
 
 	return {
 		kind: 'body',
@@ -268,12 +278,13 @@ export function deriveBody(row: BodyRow, relations: BodyRelations = {}): BodyMod
 		axialTilt: row.axialTilt ?? null,
 		equatorialVelocityMs: radiusM != null && rotationPeriodS != null ? (2 * Math.PI * radiusM) / rotationPeriodS : null,
 
-		satellites: row.satellites ?? null,
+		satellites: row.satellites ?? relations.moonCount ?? null,
 		hasRings: row.hasRings ?? false,
 
 		star,
 		parentBody,
-		satelliteOf: parentBody ?? star,
+		system,
+		satelliteOf: parentBody ?? star ?? system,
 
 		extra: toExtraMap(row.extra),
 	}
@@ -290,6 +301,18 @@ export function deriveStar(row: StarRow, relations: StarRelations = {}): StarMod
 	// Luminosity: explicit, else Stefan-Boltzmann from radius + temperature.
 	const luminosityW = positive(row.luminosityW)
 		?? (radiusM != null && temperatureK != null ? computeLuminosity(radiusM, temperatureK) : null)
+
+	// Binary/barycentric orbital period: explicit, else Kepler from the semi-major
+	// axis and the pair's combined mass (companion of a star) or the system's
+	// total stellar mass (component orbiting the barycenter).
+	const pairMassKg = relations.parentStar?.massKg != null && relations.parentStar.massKg > 0
+		? relations.parentStar.massKg + (massKg ?? 0)
+		: null
+	const primaryMassKg = pairMassKg ?? positive(relations.barycenterMassKg)
+	const orbitalPeriodDays = row.orbitalPeriodDays
+		?? (semiMajorAxisAu != null && primaryMassKg != null
+			? computeOrbitalPeriodDays(semiMajorAxisAu, primaryMassKg)
+			: null)
 
 	return {
 		kind: 'star',
@@ -316,7 +339,7 @@ export function deriveStar(row: StarRow, relations: StarRelations = {}): StarMod
 		escapeVelocityMs: massKg != null && radiusM != null ? computeEscapeVelocity(massKg, radiusM) : null,
 
 		semiMajorAxisAu,
-		orbitalPeriodDays: row.orbitalPeriodDays ?? null,
+		orbitalPeriodDays,
 		eccentricity,
 		periastronAu: semiMajorAxisAu != null && eccentricity != null ? computePeriastron(semiMajorAxisAu, eccentricity) : null,
 		apastronAu: semiMajorAxisAu != null && eccentricity != null ? computeApastron(semiMajorAxisAu, eccentricity) : null,
@@ -327,7 +350,7 @@ export function deriveStar(row: StarRow, relations: StarRelations = {}): StarMod
 
 		habitableZoneAu: luminosityW != null && luminosityW > 0 ? computeHabitableZoneAu(luminosityW) : null,
 
-		companionOf: relations.parentStar ?? null,
+		companionOf: relations.parentStar ? { name: relations.parentStar.name, slug: relations.parentStar.slug } : null,
 		planetCount: relations.planetCount ?? 0,
 		satelliteCount: relations.satelliteCount ?? 0,
 

@@ -6,6 +6,11 @@ import {
 	contentRecords,
 } from '$lib/server/db/schema.js'
 import { CELESTIAL_TREE_CTE } from '$lib/server/celestial/hierarchy.js'
+import {
+	annotateEffectivePeriods,
+	type EffectiveOrbitStar,
+	type EffectiveOrbitBody,
+} from '$lib/celestial/effective-orbits.js'
 
 /**
  * Read-side registry over the unified `celestial_bodies` table.
@@ -89,40 +94,52 @@ export async function resolveCelestialCanonicalSlug(slug: string): Promise<strin
 	return row?.slug ?? null
 }
 
-export async function getStarsForSystemMap(systemId: number) {
-	return db.execute(sql`
-		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
-		SELECT s.id, s.name, s.slug, s.spectral_type AS "spectralType", s.color,
-			s.semi_major_axis_au AS "semiMajorAxisAu",
-			s.eccentricity,
-			CASE WHEN p.kind = 'star' THEN s.parent_id END AS "parentStarId",
-			s.orbital_period_days AS "orbitalPeriodDays",
-			s.epoch_phase AS "epochPhase"
-		FROM celestial_bodies s
-		JOIN celestial_tree t ON t.id = s.id
-		LEFT JOIN celestial_bodies p ON p.id = s.parent_id
-		WHERE s.kind = 'star' AND t.root_id = ${systemId}
-		ORDER BY "parentStarId" NULLS FIRST, s.name
-	`)
-}
-
-export async function getBodiesForSystemMap(systemId: number) {
-	return db.execute(sql`
-		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
-		SELECT pb.id, pb.name, pb.slug, pb.body_type AS "bodyType",
-			pb.semi_major_axis_au AS "semiMajorAxisAu",
-			pb.eccentricity,
-			t.nearest_star_id AS "starId",
-			CASE WHEN p.kind = 'body' THEN pb.parent_id END AS "parentId",
-			pb.orbital_period_days AS "orbitalPeriodDays",
-			pb.epoch_phase AS "epochPhase",
-			(SELECT COUNT(*) FROM celestial_bodies m WHERE m.parent_id = pb.id AND m.kind = 'body')::int AS "moonCount"
-		FROM celestial_bodies pb
-		JOIN celestial_tree t ON t.id = pb.id
-		LEFT JOIN celestial_bodies p ON p.id = pb.parent_id
-		WHERE pb.kind = 'body' AND t.root_id = ${systemId}
-		ORDER BY pb.semi_major_axis_au NULLS LAST, pb.name
-	`)
+/**
+ * Map rows for one system's stars and bodies, with `orbitalPeriodDays` filled
+ * in at read time (Kepler from mass + semi-major axis) when not stored — the
+ * DB keeps only user-asserted periods.
+ */
+export async function getSystemMapEntities(systemId: number) {
+	const [stars, bodies] = await Promise.all([
+		db.execute(sql`
+			WITH RECURSIVE ${CELESTIAL_TREE_CTE}
+			SELECT s.id, s.name, s.slug, s.spectral_type AS "spectralType", s.color,
+				s.mass_kg AS "massKg",
+				s.semi_major_axis_au AS "semiMajorAxisAu",
+				s.eccentricity,
+				CASE WHEN p.kind = 'star' THEN s.parent_id END AS "parentStarId",
+				CASE WHEN p.kind = 'system' THEN s.parent_id END AS "parentSystemId",
+				s.orbital_period_days AS "orbitalPeriodDays",
+				s.epoch_phase AS "epochPhase"
+			FROM celestial_bodies s
+			JOIN celestial_tree t ON t.id = s.id
+			LEFT JOIN celestial_bodies p ON p.id = s.parent_id
+			WHERE s.kind = 'star' AND t.root_id = ${systemId}
+			ORDER BY "parentStarId" NULLS FIRST, s.name
+		`),
+		db.execute(sql`
+			WITH RECURSIVE ${CELESTIAL_TREE_CTE}
+			SELECT pb.id, pb.name, pb.slug, pb.body_type AS "bodyType",
+				pb.mass_kg AS "massKg",
+				pb.semi_major_axis_au AS "semiMajorAxisAu",
+				pb.eccentricity,
+				t.nearest_star_id AS "starId",
+				CASE WHEN p.kind = 'body' THEN pb.parent_id END AS "parentId",
+				CASE WHEN p.kind = 'system' THEN pb.parent_id END AS "parentSystemId",
+				pb.orbital_period_days AS "orbitalPeriodDays",
+				pb.epoch_phase AS "epochPhase",
+				(SELECT COUNT(*) FROM celestial_bodies m WHERE m.parent_id = pb.id AND m.kind = 'body')::int AS "moonCount"
+			FROM celestial_bodies pb
+			JOIN celestial_tree t ON t.id = pb.id
+			LEFT JOIN celestial_bodies p ON p.id = pb.parent_id
+			WHERE pb.kind = 'body' AND t.root_id = ${systemId}
+			ORDER BY pb.semi_major_axis_au NULLS LAST, pb.name
+		`),
+	])
+	return annotateEffectivePeriods(
+		stars as unknown as (EffectiveOrbitStar & Record<string, unknown>)[],
+		bodies as unknown as (EffectiveOrbitBody & Record<string, unknown>)[],
+	)
 }
 
 export async function getCalendarsForSystem(systemId: number) {
@@ -199,6 +216,10 @@ export interface BodyReference {
 	starId: number | null
 	/** Direct parent when the parent is a body (moon relationship). */
 	parentId: number | null
+	/** Direct parent when the parent is a system (circumbinary orbit). */
+	parentSystemId: number | null
+	/** Root of the parent chain when that root is a system. */
+	rootSystemId: number | null
 	semiMajorAxisAu: number | null
 	eccentricity: number | null
 	bodyType: string | null
@@ -210,6 +231,8 @@ export async function listAllBodyReferences(): Promise<BodyReference[]> {
 		SELECT pb.id, pb.name, pb.slug, pb.mass_kg AS "massKg",
 			t.nearest_star_id AS "starId",
 			CASE WHEN p.kind = 'body' THEN pb.parent_id END AS "parentId",
+			CASE WHEN p.kind = 'system' THEN pb.parent_id END AS "parentSystemId",
+			CASE WHEN t.root_kind = 'system' THEN t.root_id END AS "rootSystemId",
 			pb.semi_major_axis_au AS "semiMajorAxisAu", pb.eccentricity,
 			pb.body_type AS "bodyType"
 		FROM celestial_bodies pb

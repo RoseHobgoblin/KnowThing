@@ -49,6 +49,7 @@
 			add(d.model.satelliteOf)
 			add(d.model.star)
 			add(d.model.parentBody)
+			add(d.model.system)
 		} else if (d.kind === 'star' && d.model) {
 			add(d.model.companionOf)
 		}
@@ -156,7 +157,10 @@
 			if (isSatellite) {
 				return (data.siblings ?? []).filter(b => b.parentId === bodySelfRef?.parentId && b.id !== raw.id)
 			}
-			return (data.siblings ?? []).filter(b => b.starId === bodySelfRef?.starId && b.parentId == null && b.id !== raw.id)
+			// Same primary: same nearest star, or the same barycenter for circumbinary bodies.
+			return (data.siblings ?? []).filter(b => b.starId === bodySelfRef?.starId
+				&& b.parentSystemId === bodySelfRef?.parentSystemId
+				&& b.parentId == null && b.id !== raw.id)
 		}
 		return []
 	})
@@ -188,7 +192,8 @@
 {:else if isConfigureMode && data.kind === 'body'}
 	<CelestialConfigureForm
 		kind="body"
-		record={{ ...raw, starId: bodySelfRef?.starId ?? null, parentId: bodySelfRef?.parentId ?? null }}
+		record={{ ...raw, starId: bodySelfRef?.starId ?? null, parentId: bodySelfRef?.parentId ?? null, parentSystemId: bodySelfRef?.parentSystemId ?? null }}
+		systems={data.allSystems ?? []}
 		stars={data.allStars ?? []}
 		siblings={data.siblings ?? []}
 	/>

@@ -10,7 +10,7 @@ import {
 } from '$lib/celestial/models.js'
 import { bodyInfoboxFields, starInfoboxFields } from '$lib/celestial/projections.js'
 import { CELESTIAL_TREE_CTE, findNearestStarAncestor } from '$lib/server/celestial/hierarchy.js'
-import { getStarsForSystemMap, getBodiesForSystemMap } from '$lib/server/services/celestial-registry.js'
+import { getSystemMapEntities } from '$lib/server/services/celestial-registry.js'
 
 export interface SystemMapData {
 	systemName: string
@@ -18,36 +18,68 @@ export interface SystemMapData {
 	bodies: MapBody[]
 }
 
+/** Total mass of a system's stars — the effective mass of its barycenter. */
+async function systemStellarMassKg(systemId: number): Promise<number | null> {
+	const [row] = await db.execute(sql`
+		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
+		SELECT SUM(cb.mass_kg)::double precision AS "massKg"
+		FROM celestial_bodies cb
+		JOIN celestial_tree t ON t.id = cb.id
+		WHERE cb.kind = 'star' AND t.root_id = ${systemId}
+	`)
+	const mass = (row as unknown as { massKg: number | null } | undefined)?.massKg
+	return mass != null && mass > 0 ? mass : null
+}
+
 /**
- * Fetch a planet's relations (parent star + parent body, with masses) and build
- * the typed model. The model — not a FieldMap — is the canonical representation;
- * every consumer projects from it.
+ * Fetch a body's relations (parent star / parent body / parent system, with
+ * masses, plus its moon count) and build the typed model. The model — not a
+ * FieldMap — is the canonical representation; every consumer projects from it.
  */
-async function buildBodyModel(row: BodyRow & { parentId?: number | null }): Promise<BodyModel> {
+async function buildBodyModel(row: BodyRow & { id: number, parentId?: number | null }): Promise<BodyModel> {
 	let star: { name: string, slug: string, massKg: number | null } | null = null
 	let parentBody: { name: string, slug: string, massKg: number | null } | null = null
+	let system: { name: string, slug: string, massKg: number | null } | null = null
 
 	if (row.parentId != null) {
 		const [parent] = await db
 			.select({ kind: celestialBodies.kind, name: celestialBodies.name, slug: celestialBodies.slug, massKg: celestialBodies.massKg })
 			.from(celestialBodies).where(eq(celestialBodies.id, row.parentId))
 		if (parent?.kind === 'body') parentBody = parent
-		// The nearest star ancestor is the direct parent for a planet, or the
-		// grandparent chain's star for a moon.
-		star = parent?.kind === 'star' ? parent : await findNearestStarAncestor(row.parentId)
+		if (parent?.kind === 'system') {
+			// Circumbinary: the primary is the system barycenter, whose effective
+			// mass is the total mass of the system's stars.
+			system = { name: parent.name, slug: parent.slug, massKg: await systemStellarMassKg(row.parentId) }
+		} else {
+			// The nearest star ancestor is the direct parent for a planet, or the
+			// grandparent chain's star for a moon.
+			star = parent?.kind === 'star' ? parent : await findNearestStarAncestor(row.parentId)
+		}
 	}
 
-	return deriveBody(row, { star, parentBody })
+	const [{ count: moonCount }] = await db
+		.select({ count: sql<number>`count(*)::int` })
+		.from(celestialBodies)
+		.where(and(eq(celestialBodies.parentId, row.id), eq(celestialBodies.kind, 'body')))
+
+	return deriveBody(row, { star, parentBody, system, moonCount })
 }
 
-/** Fetch a star's relations (parent star + planet/satellite counts) and build the model. */
+/** Fetch a star's relations (parent star / barycenter mass + planet/satellite counts) and build the model. */
 async function buildStarModel(row: StarRow & { id: number, parentId?: number | null }): Promise<StarModel> {
-	let parentStar: { name: string, slug: string } | null = null
+	let parentStar: { name: string, slug: string, massKg: number | null } | null = null
+	let barycenterMassKg: number | null = null
 	if (row.parentId != null) {
 		const [parent] = await db
-			.select({ kind: celestialBodies.kind, name: celestialBodies.name, slug: celestialBodies.slug })
+			.select({ kind: celestialBodies.kind, name: celestialBodies.name, slug: celestialBodies.slug, massKg: celestialBodies.massKg })
 			.from(celestialBodies).where(eq(celestialBodies.id, row.parentId))
-		if (parent?.kind === 'star') parentStar = { name: parent.name, slug: parent.slug }
+		if (parent?.kind === 'star') parentStar = { name: parent.name, slug: parent.slug, massKg: parent.massKg }
+		// A star orbiting its system orbits the barycenter — its period derives
+		// from the system's total stellar mass. Only fetched when there is an
+		// orbit to derive (primaries without orbital elements skip the query).
+		if (parent?.kind === 'system' && row.semiMajorAxisAu != null && row.semiMajorAxisAu > 0) {
+			barycenterMassKg = await systemStellarMassKg(row.parentId)
+		}
 	}
 
 	// Planets orbit the star directly; satellites are every deeper body whose
@@ -62,6 +94,7 @@ async function buildStarModel(row: StarRow & { id: number, parentId?: number | n
 
 	return deriveStar(row, {
 		parentStar,
+		barycenterMassKg,
 		planetCount: c?.planets ?? 0,
 		satelliteCount: c?.satellites ?? 0,
 	})
@@ -119,12 +152,13 @@ DOMAIN_RESOLVERS['system'] = async (slug) => {
 		ORDER BY t.depth, s.name
 	`)
 
-	// Count planets (bodies orbiting a star) vs satellites (bodies orbiting a body)
+	// Count planets (bodies orbiting a star or the system barycenter) vs
+	// satellites (bodies orbiting a body)
 	const [counts] = await db.execute(sql`
 		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
 		SELECT
 			(SELECT COUNT(*) FROM celestial_tree t JOIN celestial_bodies pp ON pp.id = t.parent_id
-				WHERE t.root_id = ${system.id} AND t.kind = 'body' AND pp.kind = 'star')::int AS planets,
+				WHERE t.root_id = ${system.id} AND t.kind = 'body' AND pp.kind IN ('star', 'system'))::int AS planets,
 			(SELECT COUNT(*) FROM celestial_tree t JOIN celestial_bodies pp ON pp.id = t.parent_id
 				WHERE t.root_id = ${system.id} AND t.kind = 'body' AND pp.kind = 'body')::int AS satellites
 	`)
@@ -273,15 +307,12 @@ export async function resolveSystemMapData(slug: string): Promise<SystemMapData 
 		.where(and(eq(celestialBodies.slug, slug), eq(celestialBodies.kind, 'system')))
 	if (!system) return null
 
-	const [systemStars, systemBodies] = await Promise.all([
-		getStarsForSystemMap(system.id),
-		getBodiesForSystemMap(system.id),
-	])
+	const { stars, bodies } = await getSystemMapEntities(system.id)
 
 	return {
 		systemName: system.name,
-		stars: systemStars as unknown as MapBody[],
-		bodies: systemBodies as unknown as MapBody[],
+		stars: stars as unknown as MapBody[],
+		bodies: bodies as unknown as MapBody[],
 	}
 }
 

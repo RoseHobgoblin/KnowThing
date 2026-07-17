@@ -66,6 +66,11 @@ describe('buildDraft', () => {
 		expect(draft.parentId).toBe('4')
 		expect(draft.bodyType).toBe('planet')
 	})
+
+	it('hydrates a circumbinary body\'s primary as its system barycenter', () => {
+		const draft = buildDraft(CELESTIAL_FORM_CONFIGS.body, { id: 3, name: 'Tatooine', slug: 'tatooine', starId: null, parentSystemId: 3 })
+		expect(draft.starId).toBe('system:3')
+	})
 })
 
 describe('buildPayload', () => {
@@ -92,6 +97,15 @@ describe('buildPayload', () => {
 		ctx.draft.parentId = '4'
 		expect(buildPayload(config, ctx).parentId).toBe(4)
 		expect('starId' in buildPayload(config, ctx)).toBe(false)
+	})
+
+	it('a system barycenter selection becomes the parent edge (circumbinary)', () => {
+		const config = CELESTIAL_FORM_CONFIGS.body
+		const ctx = makeCtx(config)
+		ctx.draft.starId = 'system:3'
+		expect(buildPayload(config, ctx).parentId).toBe(3)
+		ctx.draft.parentId = '4'
+		expect(buildPayload(config, ctx).parentId).toBe(4)
 	})
 
 	it('sends locked overrides as null and unlocked overrides verbatim', () => {
@@ -150,7 +164,20 @@ describe('parent option filtering', () => {
 		const ctx = makeCtx(config, { selfId: 1, siblings })
 		ctx.draft.starId = '7'
 		const options = selectSpec(config, 'parentId').options(ctx)
-		expect(options.map(o => o.label)).toEqual(['None (orbits star directly)', 'Mars'])
+		expect(options.map(o => o.label)).toEqual(['None (orbits primary directly)', 'Mars'])
+	})
+
+	it('body parent options under a barycenter span the whole system', () => {
+		const config = CELESTIAL_FORM_CONFIGS.body
+		const systemSiblings: BodyReferenceOption[] = [
+			{ id: 1, name: 'Earth', starId: 7, parentId: null, rootSystemId: 3 },
+			{ id: 2, name: 'Tatooine', starId: null, parentId: null, parentSystemId: 3, rootSystemId: 3 },
+			{ id: 3, name: 'Elsewhere', starId: 9, parentId: null, rootSystemId: 4 },
+		]
+		const ctx = makeCtx(config, { selfId: 99, siblings: systemSiblings })
+		ctx.draft.starId = 'system:3'
+		const options = selectSpec(config, 'parentId').options(ctx)
+		expect(options.map(o => o.label)).toEqual(['None (orbits primary directly)', 'Earth', 'Tatooine'])
 	})
 
 	it('body parent options fall back to star-less siblings when no star is chosen', () => {
