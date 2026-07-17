@@ -379,7 +379,7 @@
 		</header>
 
 		{#if !grid || (grid.columns.length === 0 && unplaced.length === 0)}
-			<div class="border border-border-subtle bg-raised px-4 py-8 text-center text-dim text-sm">
+			<div class="bg-raised px-4 py-8 text-center text-dim text-sm">
 				No {label.toLowerCase()} defined yet.
 				{#if !readOnly}
 					<div class="mt-2">
@@ -391,7 +391,7 @@
 				{/if}
 			</div>
 		{:else if grid}
-			<div class="overflow-x-auto border border-border-subtle">
+			<div class="overflow-x-auto">
 				<table class="w-full text-sm">
 					<thead>
 						<tr>
@@ -438,7 +438,7 @@
 												{#if !readOnly}
 													<button
 														type="button"
-														class="text-faint transition-colors opacity-0 px-1 hover:text-accent group-hover:opacity-100"
+														class="text-secondary transition-colors opacity-0 px-1 hover:text-accent group-hover:opacity-100"
 														onclick={() => openCell(kind, null, axes)}
 														title="Add another here"
 													>
@@ -449,7 +449,7 @@
 										{:else if !readOnly}
 											<button
 												type="button"
-												class="size-full min-h-8 px-2 py-1.5 text-faint transition-colors cursor-pointer hover:text-accent hover:bg-accent-subtle"
+												class="size-full min-h-8 px-2 py-1.5 text-secondary transition-colors cursor-pointer hover:text-accent hover:bg-accent-subtle"
 												onclick={() => openCell(kind, null, axes)}
 												title="Add {row.header} {col}"
 												aria-label="Add {row.header} {col}"
@@ -471,7 +471,7 @@
 				<ol class="mt-2 text-xs text-dim space-y-0.5 list-none pl-2">
 					{#each grid.footnotes as function_ (function_.index)}
 						<li>
-							<span class="font-mono text-faint">*</span>
+							<span class="font-mono text-secondary">*</span>
 							<span class="font-serif">{function_.ipa}</span>
 							<span class="mx-1">·</span>
 							<span>{function_.text}</span>
@@ -489,7 +489,7 @@
 						{#each unplaced as p (p.id)}
 							<button
 								type="button"
-								class="font-serif text-base px-2 py-0.5 border border-border-subtle rounded-sm transition-colors {readOnly ? 'cursor-default' : 'cursor-pointer hover:bg-accent-subtle hover:text-accent hover:border-accent-border'}"
+								class="font-serif text-base px-2 py-0.5 border border-transparent rounded-sm transition-colors {readOnly ? 'cursor-default' : 'cursor-pointer hover:bg-accent-subtle hover:text-accent hover:border-accent-border'}"
 								onclick={() => openCell(kind, p as Phoneme, {})}
 								disabled={readOnly}
 							>
@@ -520,13 +520,13 @@
 			{#each otherPhonemes as p (p.id)}
 				<button
 					type="button"
-					class="font-serif text-base px-2 py-0.5 border border-border-subtle rounded-sm transition-colors {readOnly ? 'cursor-default' : 'cursor-pointer hover:bg-accent-subtle hover:text-accent hover:border-accent-border'}"
+					class="font-serif text-base px-2 py-0.5 border border-transparent rounded-sm transition-colors {readOnly ? 'cursor-default' : 'cursor-pointer hover:bg-accent-subtle hover:text-accent hover:border-accent-border'}"
 					onclick={() => openCell('consonant', p as Phoneme, {})}
 					disabled={readOnly}
 					title="{p.type}"
 				>
 					{p.ipa}
-					<span class="text-faint text-xs ml-1">{p.type}</span>
+					<span class="text-secondary text-xs ml-1">{p.type}</span>
 				</button>
 			{/each}
 		</div>
@@ -571,16 +571,16 @@
 			<div class="pt-2 border-t border-border-subtle">
 				<div class="text-xs uppercase tracking-wider text-dim mb-1.5">Written as</div>
 				{#if loadingLinked}
-					<div class="text-xs text-faint">Loading…</div>
+					<div class="text-xs text-secondary">Loading…</div>
 				{:else if linkedGraphemes.length === 0}
-					<div class="text-xs text-faint italic">
+					<div class="text-xs text-secondary italic">
 						No graphemes map to this phoneme yet.
 						<a href="/Wordbook/contribute/language/{languageSlug}?tab=orthography" class="text-link hover:underline">Open orthography →</a>
 					</div>
 				{:else}
 					<div class="flex flex-wrap gap-1.5 items-center">
 						{#each linkedGraphemes as lg (lg.id)}
-							<span class="inline-flex items-center gap-1 px-2 py-0.5 border border-border-subtle bg-raised text-sm">
+							<span class="inline-flex items-center gap-1 px-2 py-0.5 bg-raised text-sm">
 								<span class="font-serif">{lg.grapheme}</span>
 								{#if lg.environment}
 									<span class="text-dim text-xs">({lg.environment})</span>

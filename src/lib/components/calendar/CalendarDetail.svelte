@@ -37,7 +37,7 @@
 				<GearSixIcon size={14} weight="fill" />Configure
 			</a>
 		{:else if permissions.isAuthenticated}
-			<span class="text-faint text-sm">View only. Editor role required to configure calendars.</span>
+			<span class="text-secondary text-sm">View only. Editor role required to configure calendars.</span>
 		{/if}
 	{/snippet}
 
@@ -48,7 +48,7 @@
 	</div>
 
 	{#if resolved}
-		<div class="bg-raised border border-border-subtle p-4 mb-6 space-y-2">
+		<div class="bg-raised p-4 mb-6 space-y-2">
 			<h3 class="text-sm font-semibold text-heading">Current Date</h3>
 			<p class="text-sm text-body">
 				{resolved.day_of_week_name}, {resolved.day} {resolved.month_name}, {resolved.year_display}
@@ -71,12 +71,12 @@
 		</div>
 	{/if}
 
-	<details class="bg-raised border border-border-subtle mb-6">
+	<details class="bg-raised mb-6">
 		<summary class="px-4 py-3 cursor-pointer text-sm font-semibold text-heading select-none transition-colors hover:bg-surface">
 			Magic Words Reference
 		</summary>
 		<div class="px-4 pb-4">
-			<p class="text-xs text-faint mb-2">Use these in wiki articles to display live calendar data:</p>
+			<p class="text-xs text-secondary mb-2">Use these in wiki articles to display live calendar data:</p>
 			<div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
 				<code class="text-accent">{'{{CURRENTYEAR}}'}</code><span class="text-secondary">Current year number</span>
 				<code class="text-accent">{'{{CURRENTMONTHNAME}}'}</code><span class="text-secondary">Month name</span>

@@ -19,11 +19,11 @@
 			<tr>
 				{#each row.cells as cell}
 					{#if cell.isHeader}
-						<th class="know-th bg-raised border border-border-strong px-3 py-1.5 text-left font-bold text-sm">
+						<th class="know-th bg-raised px-3 py-1.5 text-left font-bold text-sm">
 							{#each cell.children as child}<WikiNodeComponent node={child} />{/each}
 						</th>
 					{:else}
-						<td class="know-td border border-border-strong px-3 py-1.5 text-sm">
+						<td class="know-td px-3 py-1.5 text-sm">
 							{#each cell.children as child}<WikiNodeComponent node={child} />{/each}
 						</td>
 					{/if}

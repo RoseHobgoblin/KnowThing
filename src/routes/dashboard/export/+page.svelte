@@ -25,7 +25,7 @@
 	<title>Export — KnowThing</title>
 </svelte:head>
 
-<div class="bg-surface shadow-sm border border-border p-6">
+<div class="bg-surface shadow-sm p-6">
 	<h1 class="text-xl font-bold text-heading mb-2">Export Backup</h1>
 	<p class="text-sm text-dim mb-6">
 		Download all articles as a JSON file. This includes {data.pageCount} articles.

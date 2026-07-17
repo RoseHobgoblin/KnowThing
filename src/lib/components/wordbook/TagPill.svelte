@@ -8,9 +8,9 @@
 <a
 	{href}
 	class="
-		inline-block px-2.5 py-1 text-xs bg-raised text-secondary border border-border
+		inline-block px-2.5 py-1 text-xs bg-raised text-secondary
 		transition-colors
-		hover:bg-accent-subtle hover:text-link hover:border-accent-border
+		hover:bg-accent-subtle hover:text-link
 	"
 >
 	{tag}

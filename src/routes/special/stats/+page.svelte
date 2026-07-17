@@ -16,7 +16,7 @@
 	<title>Statistics — KnowThing</title>
 </svelte:head>
 
-<div class="bg-surface shadow-sm border border-border p-6">
+<div class="bg-surface shadow-sm p-6">
 	<h1 class="text-2xl font-bold text-heading mb-6">Statistics</h1>
 
 	<div class="grid grid-cols-2 gap-4 md:grid-cols-4">

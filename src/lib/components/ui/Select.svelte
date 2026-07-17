@@ -116,12 +116,11 @@
 			<Select.Trigger
 				{id}
 				class={cn(
-					'inline-flex items-center gap-2 text-body font-medium w-full cursor-pointer select-none appearance-none transition-colors border border-border-strong bg-surface',
-					'hover:not-data-disabled:border-border',
+					'inline-flex items-center gap-2 text-body font-medium w-full cursor-pointer select-none appearance-none transition-colors bg-page',
 					'data-disabled:opacity-50 data-disabled:cursor-not-allowed',
 					triggerSize[size],
-					open && 'ring-2 ring-accent border-accent-border',
-					isErrorState && 'ring-1 ring-error-border border-error-border',
+					open && 'ring-2 ring-accent',
+					isErrorState && 'ring-1 ring-error-border',
 					className,
 				)}
 			>
@@ -130,7 +129,7 @@
 						<span class="truncate">{selectedLabel}{index < selectedLabels.length - 1 ? ', ' : ''}</span>
 					{/each}
 				{:else}
-					<span class="text-faint">{placeholder}</span>
+					<span class="text-secondary">{placeholder}</span>
 				{/if}
 				<span class={cn('ml-auto text-secondary transition-transform duration-200', open && 'rotate-180')}><CaretDown size={12} weight="bold" /></span>
 			</Select.Trigger>
@@ -139,7 +138,7 @@
 					{...contentProps}
 					class="
 						z-[9999] max-h-64 w-(--bits-select-anchor-width) min-w-(--bits-select-anchor-width)
-						select-none bg-surface border border-border shadow-lg outline-none overflow-hidden
+						select-none bg-surface shadow-lg outline-none overflow-hidden
 						data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95
 						data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95
 					"

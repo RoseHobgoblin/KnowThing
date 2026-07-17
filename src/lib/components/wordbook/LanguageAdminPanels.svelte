@@ -136,7 +136,7 @@
 </script>
 
 <!-- Dialects manager -->
-<section class="bg-raised border border-border-subtle p-4 mb-4">
+<section class="bg-raised p-4 mb-4">
 	<div class="flex items-center justify-between mb-3">
 		<h3 class="text-sm font-semibold text-body">Dialects</h3>
 		{#if isAdmin && !addingDialect}
@@ -145,7 +145,7 @@
 	</div>
 
 	{#if dialects.length === 0 && !addingDialect}
-		<p class="text-xs text-faint">No dialects recorded.</p>
+		<p class="text-xs text-secondary">No dialects recorded.</p>
 	{/if}
 
 	<div class="space-y-2">
@@ -155,13 +155,13 @@
 					<Input label="Name" bind:value={editName} required />
 					<Input label="Region" bind:value={editRegion} />
 					<button type="submit" disabled={savingDialect} class="px-3 py-1.5 bg-accent text-surface text-xs hover:bg-accent-hover disabled:opacity-50">Save</button>
-					<button type="button" onclick={() => editingDialectSlug = null} class="text-xs text-faint hover:text-secondary">Cancel</button>
+					<button type="button" onclick={() => editingDialectSlug = null} class="text-xs text-secondary hover:text-body">Cancel</button>
 				</form>
 			{:else}
 				<div class="flex items-center gap-2 text-sm">
 					<span class="font-medium text-secondary">{dialect.name}</span>
 					{#if dialect.region}
-						<span class="text-faint text-xs">({dialect.region})</span>
+						<span class="text-secondary text-xs">({dialect.region})</span>
 					{/if}
 					{#if isAdmin}
 						<span class="ml-auto flex gap-2">
@@ -179,7 +179,7 @@
 			<Input label="Name" bind:value={dialectName} required placeholder="Northern" />
 			<Input label="Region" bind:value={dialectRegion} placeholder="The highlands" />
 			<button type="submit" disabled={savingDialect} class="px-3 py-1.5 bg-accent text-surface text-xs hover:bg-accent-hover disabled:opacity-50">Add</button>
-			<button type="button" onclick={() => addingDialect = false} class="text-xs text-faint hover:text-secondary">Cancel</button>
+			<button type="button" onclick={() => addingDialect = false} class="text-xs text-secondary hover:text-body">Cancel</button>
 		</form>
 	{/if}
 </section>

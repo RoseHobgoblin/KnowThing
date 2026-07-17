@@ -16,7 +16,7 @@
 		>
 			{scope.label}
 			{#if scope.count !== undefined}
-				<span class="ml-1 text-xs text-faint">({scope.count})</span>
+				<span class="ml-1 text-xs text-secondary">({scope.count})</span>
 			{/if}
 		</a>
 	{/each}

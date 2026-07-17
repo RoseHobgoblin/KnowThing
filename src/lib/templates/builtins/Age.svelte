@@ -14,5 +14,5 @@
 </script>
 
 {#if age !== null}<span>{age}</span>
-{:else if Number.isNaN(birthYear)}<span class="text-faint">[age: ?]</span>
-{:else}<span class="text-faint">[age: no calendar]</span>{/if}
+{:else if Number.isNaN(birthYear)}<span class="text-secondary">[age: ?]</span>
+{:else}<span class="text-secondary">[age: no calendar]</span>{/if}

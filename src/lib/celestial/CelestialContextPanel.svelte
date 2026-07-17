@@ -76,8 +76,8 @@
 	}
 </script>
 
-<div class="border border-border-subtle bg-surface">
-	<h3 class="text-xs font-semibold uppercase tracking-wider text-faint px-3 py-2 border-b border-border-subtle bg-raised">
+<div class="bg-surface">
+	<h3 class="text-xs font-semibold uppercase tracking-wider text-secondary px-3 py-2 border-b border-border-subtle bg-raised">
 		{isStar ? 'System' : 'Position'}
 	</h3>
 	<div class="p-3 space-y-3 text-sm">
@@ -91,11 +91,11 @@
 		<!-- Habitable-zone strip -->
 		{#if hzBand}
 			<div>
-				<div class="flex items-center justify-between text-xs text-faint mb-1">
+				<div class="flex items-center justify-between text-xs text-secondary mb-1">
 					<span>Habitable zone</span>
 					<span>{hz!.inner.toFixed(2)}–{hz!.outer.toFixed(2)} AU</span>
 				</div>
-				<div class="relative h-7 bg-raised border border-border-subtle overflow-hidden">
+				<div class="relative h-7 bg-raised overflow-hidden">
 					<div
 						class="absolute inset-y-0 bg-accent/15 border-x border-accent/40"
 						style="left:{hzBand.left}%;width:{hzBand.width}%;"
@@ -115,7 +115,7 @@
 		<!-- Related bodies -->
 		{#if bodies.length > 0}
 			<div class="space-y-0.5">
-				<div class="text-xs text-faint uppercase tracking-wider">{isStar ? 'Planets' : 'Siblings'}</div>
+				<div class="text-xs text-secondary uppercase tracking-wider">{isStar ? 'Planets' : 'Siblings'}</div>
 				{#each bodies as body (body.slug)}
 					<a href="/Celestial:{body.slug}" class="flex items-center justify-between gap-3 px-1.5 py-1 transition-colors hover:bg-raised">
 						<span class="text-body truncate">{body.name}</span>
@@ -124,7 +124,7 @@
 								<span class="text-accent">HZ</span>
 							{/if}
 							{#if body.semiMajorAxisAu != null}
-								<span class="text-faint tabular-nums">{fmtAu(body.semiMajorAxisAu)}</span>
+								<span class="text-secondary tabular-nums">{fmtAu(body.semiMajorAxisAu)}</span>
 							{/if}
 						</span>
 					</a>
@@ -135,7 +135,7 @@
 		<!-- Moons (planet) -->
 		{#if moons.length > 0}
 			<div class="space-y-0.5">
-				<div class="text-xs text-faint uppercase tracking-wider">Moons</div>
+				<div class="text-xs text-secondary uppercase tracking-wider">Moons</div>
 				{#each moons as moon (moon.slug)}
 					<a href="/Celestial:{moon.slug}" class="block px-1.5 py-1 text-secondary text-xs transition-colors hover:bg-raised hover:text-body">{moon.name}</a>
 				{/each}
@@ -156,7 +156,7 @@
 		{/if}
 
 		{#if isStar && bodies.length === 0 && companionRefs.length === 0}
-			<p class="text-faint text-xs">No planets or companions catalogued yet.</p>
+			<p class="text-secondary text-xs">No planets or companions catalogued yet.</p>
 		{/if}
 	</div>
 </div>

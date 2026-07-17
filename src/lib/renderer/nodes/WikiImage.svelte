@@ -39,7 +39,7 @@
 </script>
 
 {#if isThumb || isFrame}
-	<figure class="know-image-frame border border-border-strong bg-page p-1 mb-4 overflow-hidden max-w-full {alignClass}">
+	<figure class="know-image-frame bg-page p-1 mb-4 overflow-hidden max-w-full {alignClass}">
 		<MediaImage
 			{filename}
 			{alt}

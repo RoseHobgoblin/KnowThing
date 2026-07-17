@@ -16,5 +16,5 @@
 		<SystemMapView systemName={data.systemName} stars={data.stars} bodies={data.bodies} />
 	</div>
 {:else}
-	<span class="text-faint">[system map: {slug || '?'}]</span>
+	<span class="text-secondary">[system map: {slug || '?'}]</span>
 {/if}

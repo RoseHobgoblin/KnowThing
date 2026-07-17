@@ -201,7 +201,7 @@
 
 	<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
 		<div class="lg:col-span-2">
-			<div class="bg-surface border border-border overflow-hidden">
+			<div class="bg-surface overflow-hidden">
 				<div class="bg-raised p-4 flex items-center justify-center min-h-75">
 					<img
 						src="/api/media/{data.file.filename}"
@@ -216,20 +216,20 @@
 						<div class="flex gap-3">
 							{#if data.file.hasThumb150}
 								<div class="text-center">
-									<img src="/api/media/{data.file.filename}?w=150" alt="150px" class="h-16 object-contain border border-border" />
-									<span class="text-xs text-faint block mt-1">150px</span>
+									<img src="/api/media/{data.file.filename}?w=150" alt="150px" class="h-16 object-contain" />
+									<span class="text-xs text-secondary block mt-1">150px</span>
 								</div>
 							{/if}
 							{#if data.file.hasThumb300}
 								<div class="text-center">
-									<img src="/api/media/{data.file.filename}?w=300" alt="300px" class="h-16 object-contain border border-border" />
-									<span class="text-xs text-faint block mt-1">300px</span>
+									<img src="/api/media/{data.file.filename}?w=300" alt="300px" class="h-16 object-contain" />
+									<span class="text-xs text-secondary block mt-1">300px</span>
 								</div>
 							{/if}
 							{#if data.file.hasThumb600}
 								<div class="text-center">
-									<img src="/api/media/{data.file.filename}?w=600" alt="600px" class="h-16 object-contain border border-border" />
-									<span class="text-xs text-faint block mt-1">600px</span>
+									<img src="/api/media/{data.file.filename}?w=600" alt="600px" class="h-16 object-contain" />
+									<span class="text-xs text-secondary block mt-1">600px</span>
 								</div>
 							{/if}
 						</div>
@@ -238,7 +238,7 @@
 			</div>
 
 			{#if canManageMedia}
-				<div class="bg-surface border border-border p-4 mt-4 space-y-4">
+				<div class="bg-surface p-4 mt-4 space-y-4">
 					<RecordModeBanner
 						modeLabel="Configure Media"
 						title="File Details"
@@ -256,7 +256,7 @@
 								id="desc"
 								bind:value={description}
 								rows={3}
-								class="w-full px-3 py-2 border border-border-strong text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+								class="w-full px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
 								placeholder="Describe this file..."
 							></textarea>
 						</div>
@@ -273,7 +273,7 @@
 					</div>
 				</div>
 			{:else if data.file.description}
-				<div class="bg-surface border border-border p-4 mt-4">
+				<div class="bg-surface p-4 mt-4">
 					<h3 class="text-sm font-semibold text-body mb-2">Description</h3>
 					<p class="text-sm text-body whitespace-pre-wrap">{data.file.description}</p>
 				</div>
@@ -281,7 +281,7 @@
 		</div>
 
 		<div class="space-y-4">
-			<div class="bg-surface border border-border p-4">
+			<div class="bg-surface p-4">
 				<h3 class="text-sm font-semibold text-body mb-3">File Info</h3>
 				<dl class="text-sm space-y-2">
 					<div class="flex justify-between">
@@ -321,7 +321,7 @@
 				</dl>
 			</div>
 
-			<div class="bg-surface border border-border p-4">
+			<div class="bg-surface p-4">
 				<h3 class="text-sm font-semibold text-body mb-3">Actions</h3>
 				<div class="space-y-2">
 					{#if canManageMedia}
@@ -396,14 +396,14 @@
 			</div>
 
 			{#if data.versions && data.versions.length > 0}
-				<div class="bg-surface border border-border p-4">
+				<div class="bg-surface p-4">
 					<h3 class="text-sm font-semibold text-body mb-3">Version history</h3>
 					<ul class="text-sm space-y-2">
 						{#each data.versions as v}
 							<li class="flex items-start justify-between gap-2 pb-2 border-b border-border-subtle last:border-0 last:pb-0">
 								<div class="min-w-0 flex-1">
 									<div class="text-body">v{v.version} — {formatBytes(v.sizeBytes)}{v.width && v.height ? `, ${v.width}x${v.height}` : ''}</div>
-									<div class="text-xs text-faint">{new Date(v.archivedAt).toLocaleString()} {v.username ? `· ${v.username}` : ''}</div>
+									<div class="text-xs text-secondary">{new Date(v.archivedAt).toLocaleString()} {v.username ? `· ${v.username}` : ''}</div>
 								</div>
 								{#if canManageMedia}
 									<button
@@ -420,7 +420,7 @@
 				</div>
 			{/if}
 
-			<div class="bg-surface border border-border p-4">
+			<div class="bg-surface p-4">
 				<h3 class="text-sm font-semibold text-body mb-3">Used in {data.usage.length} {data.usage.length === 1 ? 'page' : 'pages'}</h3>
 				{#if data.usage.length > 0}
 					<ul class="text-sm space-y-1">
@@ -429,7 +429,7 @@
 						{/each}
 					</ul>
 				{:else}
-					<p class="text-sm text-faint">Not used in any pages.</p>
+					<p class="text-sm text-secondary">Not used in any pages.</p>
 				{/if}
 			</div>
 		</div>

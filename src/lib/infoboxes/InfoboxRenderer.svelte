@@ -99,7 +99,7 @@
 								caption={img.caption}
 								displayWidth={img.width}
 								sizes="{img.width}px"
-								class="w-full h-auto border border-border-subtle"
+								class="w-full h-auto"
 							/>
 							{#if img.caption}
 								<figcaption class="text-xs text-dim text-center">

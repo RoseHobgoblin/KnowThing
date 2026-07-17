@@ -17,12 +17,12 @@
 </script>
 
 {#if !slug}
-	<span class="text-faint">[{type}s: missing language slug]</span>
+	<span class="text-secondary">[{type}s: missing language slug]</span>
 {:else if !grid}
-	<span class="text-faint">[{type}s: no data for "{slug}"]</span>
+	<span class="text-secondary">[{type}s: no data for "{slug}"]</span>
 {:else}
 	<figure class="my-4 phoneme-grid">
-		<table class="border border-border-subtle text-sm mx-auto">
+		<table class="text-sm mx-auto">
 			<thead>
 				<tr>
 					<th class="px-3 py-2 border-b border-r border-border-subtle bg-muted text-left text-heading capitalize">

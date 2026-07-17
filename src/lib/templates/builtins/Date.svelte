@@ -28,5 +28,5 @@
 {#if formatted}
 	<a href="/calendar?date={ts}" class="text-link hover:text-link-hover hover:underline" title="View in calendar">{formatted}</a>
 {:else}
-	<span class="text-faint">[date: {tsString}]</span>
+	<span class="text-secondary">[date: {tsString}]</span>
 {/if}

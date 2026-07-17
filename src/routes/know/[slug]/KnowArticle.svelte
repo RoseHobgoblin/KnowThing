@@ -77,7 +77,7 @@
 			<a href="/know/{slug}/move" class="text-dim transition-colors flex items-center gap-1 hover:text-secondary"><ArrowsLeftRight size={14} weight="fill" />Move</a>
 			<a href="/know/{slug}/history" class="text-dim transition-colors flex items-center gap-1 hover:text-secondary"><ClockCounterClockwise size={14} weight="fill" />History</a>
 		{:else if permissions.isAuthenticated}
-			<span class="text-faint text-sm">View only. Editor role required for page actions.</span>
+			<span class="text-secondary text-sm">View only. Editor role required for page actions.</span>
 		{/if}
 		{#if isAdmin}
 			<button onclick={ondeletepage} class="text-error transition-colors flex items-center gap-1 hover:text-error-hover"><Trash size={14} weight="fill" />Delete</button>
@@ -116,7 +116,7 @@
 	<CategoryBar {categories} />
 
 	{#if updatedAt}
-		<div class="clear-both mt-6 pt-4 border-t border-border-subtle text-xs text-faint">
+		<div class="clear-both mt-6 pt-4 border-t border-border-subtle text-xs text-secondary">
 			Last edited {new Date(updatedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
 		</div>
 	{/if}

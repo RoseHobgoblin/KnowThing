@@ -38,14 +38,14 @@
 </script>
 
 {#if !slug}
-	<span class="text-faint">[orthography: missing language slug]</span>
+	<span class="text-secondary">[orthography: missing language slug]</span>
 {:else if !rows}
-	<span class="text-faint">[orthography: no data for "{slug}"]</span>
+	<span class="text-secondary">[orthography: no data for "{slug}"]</span>
 {:else if rows.length === 0}
-	<span class="text-faint">[orthography: no graphemes for "{slug}"]</span>
+	<span class="text-secondary">[orthography: no graphemes for "{slug}"]</span>
 {:else}
 	<figure class="my-4 orthography-table">
-		<table class="border border-border-subtle text-sm mx-auto">
+		<table class="text-sm mx-auto">
 			<thead>
 				<tr>
 					<th class="px-3 py-2 border-b border-r border-border-subtle bg-muted text-heading font-medium text-center">Script</th>

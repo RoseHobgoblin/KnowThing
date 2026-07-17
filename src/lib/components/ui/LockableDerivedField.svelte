@@ -42,7 +42,7 @@
 {#snippet lockIcon()}
 	<button
 		type="button"
-		class="text-faint transition-colors inline-flex hover:text-secondary"
+		class="text-secondary transition-colors inline-flex hover:text-body"
 		onclick={toggle}
 		title={unlocked ? 'Re-lock: revert to auto-derived value' : 'Unlock: override with a custom value'}
 	>

@@ -31,7 +31,7 @@
 	<div class="flex items-baseline gap-2 flex-wrap">
 		<span class="text-lg font-semibold text-heading">{entry.word}</span>
 		{#if entry.pronunciation}
-			<span class="text-sm text-faint font-mono">{entry.pronunciation}</span>
+			<span class="text-sm text-secondary font-mono">{entry.pronunciation}</span>
 		{/if}
 		{#if entry.partOfSpeech}
 			<Badge class={posClass}>{entry.partOfSpeech}</Badge>

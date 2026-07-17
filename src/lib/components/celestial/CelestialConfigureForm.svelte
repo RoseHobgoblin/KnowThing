@@ -1,17 +1,17 @@
 <script lang="ts">
 	import { untrack } from 'svelte'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
+	import Button from '$lib/components/ui/Button.svelte'
 	import Input from '$lib/components/ui/Input.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
 	import Checkbox from '$lib/components/ui/Checkbox.svelte'
-	import DerivedField from '$lib/components/ui/DerivedField.svelte'
+	import UnitNumberInput from '$lib/components/ui/UnitNumberInput.svelte'
 	import LockableDerivedField from '$lib/components/ui/LockableDerivedField.svelte'
 	import TabNavigation from '$lib/components/ui/TabNavigation.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import UnsavedChangesGuard from '$lib/components/editor/UnsavedChangesGuard.svelte'
 	import SaveStatusBadge from '$lib/components/editor/SaveStatusBadge.svelte'
 	import FormNotice from '$lib/components/editor/FormNotice.svelte'
-	import StickyActionBar from '$lib/components/editor/StickyActionBar.svelte'
 	import { celestialConfigureBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import { goto } from '$app/navigation'
@@ -125,14 +125,32 @@
 		? config.sections.filter(section => section.id === activeTab)
 		: config.sections)
 
+	// Preset select docked beside the tabs — applying is immediate on pick.
 	const presetItems = config.presets
 		? [{ value: '', label: config.presets.placeholder }, ...config.presets.names.map(name => ({ value: name, label: name }))]
 		: []
 	let selectedPreset = $state('')
-	function applyPreset() {
-		const patch = config.presets?.patch(selectedPreset)
-		if (patch) Object.assign(draft, patch)
-	}
+	$effect(() => {
+		const name = selectedPreset
+		if (!name) return
+		untrack(() => {
+			const patch = config.presets?.patch(name)
+			if (patch) Object.assign(draft, patch)
+			selectedPreset = ''
+		})
+	})
+
+	const preview = $derived(config.preview ? config.preview(ctx) : null)
+
+	// The computed panel scopes to the active tab's rows by default; the switch
+	// widens it to everything derivable about the entity.
+	let computedScope = $state<'tab' | 'all'>('tab')
+	const computedRows = $derived(
+		(config.computed ?? [])
+			.filter(row => !config.useTabs || computedScope === 'all' || row.tab == null || row.tab === activeTab)
+			.map(row => ({ label: row.label, value: row.compute(ctx) }))
+			.filter((row): row is { label: string, value: string } => row.value != null && row.value !== ''),
+	)
 
 	function numberRangeError(spec: NumberFieldSpec): string {
 		const value = draft[spec.key]
@@ -141,12 +159,6 @@
 			return spec.rangeError ?? 'Out of range'
 		}
 		return ''
-	}
-
-	function resetDraft() {
-		draft = buildDraft(config, initialRecord)
-		slugEdited = false
-		saveError = ''
 	}
 
 	async function save() {
@@ -177,7 +189,7 @@
 			const saved = await response.json().catch(() => null)
 			if (saved?.slug && saved.slug !== savedSlug) {
 				draft.slug = saved.slug
-				// Update URL without navigation so save-and-exit uses the new slug
+				// Update URL without navigation so a later exit uses the new slug
 				globalThis.history.replaceState({}, '', globalThis.location.pathname.replace(savedSlug, saved.slug))
 				savedSlug = saved.slug
 			}
@@ -191,11 +203,6 @@
 		} finally {
 			saving = false
 		}
-	}
-
-	async function saveAndExit() {
-		await save()
-		if (!saveError) goto(viewPath)
 	}
 
 	async function deleteEntity() {
@@ -239,25 +246,32 @@
 	{:else if spec.control === 'text'}
 		<Input label={labelOf(spec, ctx)} bind:value={draft[spec.key]} placeholder={spec.placeholder} hint={spec.hint} />
 	{:else if spec.control === 'number'}
-		<Input
-			label={labelOf(spec, ctx)}
-			type="number"
-			step="any"
-			bind:value={draft[spec.key]}
-			min={spec.min}
-			max={spec.max}
-			placeholder={spec.placeholder}
-			hint={spec.hint}
-			error={numberRangeError(spec)}
-		/>
+		{#if spec.units}
+			<UnitNumberInput
+				label={labelOf(spec, ctx)}
+				bind:value={draft[spec.key]}
+				units={spec.units}
+				placeholder={spec.placeholder}
+				hint={spec.hint}
+				error={numberRangeError(spec)}
+			/>
+		{:else}
+			<Input
+				label={labelOf(spec, ctx)}
+				type="number"
+				step="any"
+				bind:value={draft[spec.key]}
+				min={spec.min}
+				max={spec.max}
+				placeholder={spec.placeholder}
+				hint={spec.hint}
+				error={numberRangeError(spec)}
+			/>
+		{/if}
 	{:else if spec.control === 'select'}
 		<Select label={labelOf(spec, ctx)} type="single" bind:value={draft[spec.key]} items={spec.options(ctx)} />
 	{:else if spec.control === 'checkbox'}
 		<Checkbox bind:value={draft[spec.key]} label={labelOf(spec, ctx)} />
-	{:else if spec.control === 'derived'}
-		{#if !spec.visible || spec.visible(ctx)}
-			<DerivedField label={labelOf(spec, ctx)} value={spec.compute(ctx)} hint={spec.hint} />
-		{/if}
 	{:else if spec.control === 'lockable'}
 		<LockableDerivedField
 			label={labelOf(spec, ctx)}
@@ -276,32 +290,16 @@
 	breadcrumbs={celestialConfigureBreadcrumbs(initialParentCrumbs, { name: initialRecord.name, slug: initialRecord.slug })}
 	title="Configure {initialRecord.name}"
 >
-	<UnsavedChangesGuard when={isDirty && !saving} />
-	<div class="space-y-6">
-		<div class="flex items-center justify-between gap-3 bg-surface border border-border px-4 py-3">
-			<div>
-				<h2 class="text-sm font-semibold text-heading">Configure {config.noun}</h2>
-				<p class="text-xs text-faint">{config.headerNote}</p>
-			</div>
-			<SaveStatusBadge dirty={isDirty} {saving} error={saveError} {savedAt} />
+	{#snippet actions()}
+		<div class="flex items-center gap-3">
+			<SaveStatusBadge plain dirty={isDirty} {saving} error={saveError} {savedAt} />
+			<Button variant="secondary" href={viewPath}>Cancel</Button>
+			<Button onclick={save} disabled={!isDirty} loading={saving}>Save changes</Button>
 		</div>
+	{/snippet}
 
-		{#if config.presets}
-			<section class="bg-accent-subtle/30 border border-accent-border/50 p-4 flex flex-col gap-2 sm:flex-row sm:items-end">
-				<div class="flex-1">
-					<Select label="Populate from real-world data" type="single" bind:value={selectedPreset} items={presetItems} />
-				</div>
-				<button
-					type="button"
-					disabled={!selectedPreset}
-					onclick={applyPreset}
-					class="px-4 py-2 text-sm border border-accent-border text-accent hover:bg-accent-subtle disabled:opacity-40 disabled:cursor-not-allowed"
-				>
-					Apply
-				</button>
-			</section>
-		{/if}
-
+	<UnsavedChangesGuard when={isDirty && !saving} />
+	<div class="space-y-4">
 		{#if saveError}
 			<FormNotice title="{config.noun} changes were not saved" message={saveError} />
 		{/if}
@@ -316,62 +314,135 @@
 			/>
 		{/if}
 
-		{#if config.useTabs}
-			<TabNavigation navItems={tabs} bind:activeSectionId={activeTab} fullWidth size="sm" />
+		{#if config.useTabs || config.presets}
+			<div class="flex items-center justify-between gap-4">
+				{#if config.useTabs}
+					<TabNavigation navItems={tabs} bind:activeSectionId={activeTab} size="sm" />
+				{:else}
+					<div></div>
+				{/if}
+				{#if config.presets}
+					<div class="w-56 shrink-0">
+						<Select type="single" bind:value={selectedPreset} items={presetItems} />
+					</div>
+				{/if}
+			</div>
 		{/if}
 
-		{#each visibleSections as section (section.id)}
-			<section class="bg-raised border border-border-subtle p-5 space-y-4">
-				{#if section.intro}
-					<p class="text-xs text-faint">{section.intro}</p>
-				{/if}
-				{#each section.groups as group, groupIndex (groupIndex)}
-					{#if group.cols === 1}
-						{#each group.fields as spec, specIndex (specIndex)}
-							{@render fieldControl(spec)}
+		<div class="grid grid-cols-1 gap-4 items-start lg:grid-cols-[1fr_280px]">
+			<div class="space-y-4 min-w-0">
+				{#each visibleSections as section (section.id)}
+					<section class="p-5 space-y-4">
+						{#if section.intro}
+							<p class="text-xs text-secondary">{section.intro}</p>
+						{/if}
+						{#each section.groups as group, groupIndex (groupIndex)}
+							{#if group.cols === 1}
+								{#each group.fields as spec, specIndex (specIndex)}
+									{@render fieldControl(spec)}
+								{/each}
+							{:else}
+								<div class={cn('grid grid-cols-1 gap-4', group.cols === 2 ? 'md:grid-cols-2' : 'md:grid-cols-3')}>
+									{#each group.fields as spec, specIndex (specIndex)}
+										{@render fieldControl(spec)}
+									{/each}
+								</div>
+							{/if}
 						{/each}
-					{:else}
-						<div class={cn('grid grid-cols-1 gap-4', group.cols === 2 ? 'md:grid-cols-2' : 'md:grid-cols-3')}>
-							{#each group.fields as spec, specIndex (specIndex)}
+					</section>
+				{/each}
+
+				{#if config.overrides && config.overrides.length > 0}
+					<section class="p-5 space-y-4">
+						<div>
+							<h2 class="text-sm font-semibold text-heading">Overrides</h2>
+							<p class="text-xs text-secondary mt-1">
+								These values are computed from what you entered above. Unlock one to pin your own value instead — for exotic or magical {config.noun.toLowerCase()}s the physics can't describe.
+							</p>
+						</div>
+						<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+							{#each config.overrides as spec (spec.key)}
 								{@render fieldControl(spec)}
 							{/each}
 						</div>
-					{/if}
-				{/each}
-			</section>
-		{/each}
+					</section>
+				{/if}
 
-		<div class="space-y-3">
-			<StickyActionBar
-				dirty={isDirty}
-				{saving}
-				error={saveError}
-				{savedAt}
-				saveType="button"
-				onsave={save}
-				onsaveandexit={saveAndExit}
-				ondiscard={resetDraft}
-				cancelHref={viewPath}
-			/>
+				{#if permissions.canManageSettings}
+					<section class="border border-error-border bg-error-subtle/40 p-5 space-y-3">
+						<div>
+							<h2 class="text-sm font-semibold text-error">Danger Zone</h2>
+							<p class="text-xs text-secondary mt-1">{config.deleteNote}</p>
+						</div>
+						<div>
+							<button
+								type="button"
+								onclick={deleteEntity}
+								class="px-4 py-2 text-sm border border-error-border text-error hover:bg-error-subtle"
+							>
+								{config.deleteConfirm.action}
+							</button>
+						</div>
+					</section>
+				{/if}
+			</div>
+
+			<aside class="space-y-4 lg:sticky lg:top-4">
+				{#if preview}
+					<div class="bg-surface p-4 flex items-center gap-3">
+						<span
+							class="size-10 rounded-full shrink-0"
+							style:background-color={preview.color ?? 'var(--color-border, currentColor)'}
+						></span>
+						<div class="min-w-0">
+							<div class="text-sm font-semibold text-heading truncate">{preview.title}</div>
+							{#if preview.subtitle}
+								<div class="text-xs text-secondary truncate">{preview.subtitle}</div>
+							{/if}
+						</div>
+					</div>
+				{/if}
+
+				{#if config.computed && config.computed.length > 0}
+					<div class="bg-surface">
+						<div class="px-3 py-2 flex items-center justify-between gap-2 border-b border-border-subtle">
+							<h3 class="text-xs font-semibold uppercase tracking-wider text-secondary">Computed properties</h3>
+							{#if config.useTabs}
+								<div class="flex">
+									<button
+										type="button"
+										onclick={() => computedScope = 'tab'}
+										class={cn('px-1.5 py-0.5 text-xs border transition-colors', computedScope === 'tab' ? 'border-accent-border bg-accent-subtle text-accent' : 'border-border-subtle text-secondary hover:text-body')}
+									>
+										This tab
+									</button>
+									<button
+										type="button"
+										onclick={() => computedScope = 'all'}
+										class={cn('px-1.5 py-0.5 text-xs border -ml-px transition-colors', computedScope === 'all' ? 'border-accent-border bg-accent-subtle text-accent' : 'border-border-subtle text-secondary hover:text-body')}
+									>
+										All
+									</button>
+								</div>
+							{/if}
+						</div>
+						<div class="px-3 py-2.5 space-y-1.5 text-sm">
+							{#each computedRows as row (row.label)}
+								<div class="flex justify-between gap-4">
+									<span class="text-secondary shrink-0">{row.label}</span>
+									<span class="text-body text-right font-medium min-w-0">{row.value}</span>
+								</div>
+							{:else}
+								<p class="text-secondary text-xs">Enter values on the left to derive properties.</p>
+							{/each}
+							{#if computedRows.length > 0}
+								<p class="text-secondary text-xs pt-1.5 border-t border-border-subtle">Recalculated live from the values you enter.</p>
+							{/if}
+						</div>
+					</div>
+				{/if}
+			</aside>
 		</div>
-
-		{#if permissions.canManageSettings}
-			<section class="border border-error-border bg-error-subtle/40 p-5 space-y-3">
-				<div>
-					<h2 class="text-sm font-semibold text-error">Danger Zone</h2>
-					<p class="text-xs text-faint mt-1">{config.deleteNote}</p>
-				</div>
-				<div>
-					<button
-						type="button"
-						onclick={deleteEntity}
-						class="px-4 py-2 text-sm border border-error-border text-error hover:bg-error-subtle"
-					>
-						{config.deleteConfirm.action}
-					</button>
-				</div>
-			</section>
-		{/if}
 	</div>
 </ArticleShell>
 

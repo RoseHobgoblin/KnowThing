@@ -10,7 +10,7 @@
 	} = $props()
 </script>
 
-<div class="text-center py-12 text-faint">
+<div class="text-center py-12 text-secondary">
 	{#if query}
 		<p class="text-lg">{noResultsMessage}</p>
 	{:else}

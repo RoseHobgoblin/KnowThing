@@ -175,15 +175,15 @@
 <!-- Reusable relation entry display -->
 {#snippet relationRow(entry: RelatedEntry, arrow: string, label: string)}
 	<div class="flex items-baseline gap-2 text-sm mb-1.5 group/rel">
-		<span class="text-faint">{arrow}</span>
+		<span class="text-secondary">{arrow}</span>
 		<span class="text-dim text-xs">{label}</span>
 		<a href="/Wordbook/{entry.languageSlug}/{encodeURIComponent(entry.word)}" class="font-medium text-link italic hover:text-link-hover hover:underline">{entry.word}</a>
-		<span class="text-faint text-xs">({entry.languageName})</span>
+		<span class="text-secondary text-xs">({entry.languageName})</span>
 		{#if entry.definition}
 			<span class="text-dim text-xs">"{entry.definition}"</span>
 		{/if}
 		{#if entry.relationNotes}
-			<span class="text-faint text-xs">— {entry.relationNotes}</span>
+			<span class="text-secondary text-xs">— {entry.relationNotes}</span>
 		{/if}
 		{#if canEdit}
 			<button
@@ -198,21 +198,21 @@
 
 <!-- Reusable add-relation form -->
 {#snippet addRelationForm()}
-	<div class="p-4 bg-page border border-border">
+	<div class="p-4 bg-page">
 		<div class="flex items-center justify-between mb-3">
 			<h4 class="text-xs font-medium uppercase tracking-wide text-dim">Add relation</h4>
-			<button onclick={() => { showForm = false; resetForm() }} class="text-xs text-faint hover:text-secondary">Cancel</button>
+			<button onclick={() => { showForm = false; resetForm() }} class="text-xs text-secondary hover:text-body">Cancel</button>
 		</div>
 
 		<!-- Direction toggle -->
 		<div class="flex gap-1 mb-3 text-xs">
 			<button
 				onclick={() => direction = 'from'}
-				class="px-3 py-1.5 transition-colors {direction === 'from' ? 'bg-accent text-surface' : 'bg-surface text-secondary border border-border-strong hover:bg-page'}"
+				class="px-3 py-1.5 transition-colors {direction === 'from' ? 'bg-accent text-surface' : 'bg-surface text-secondary hover:bg-page'}"
 			>This word comes from...</button>
 			<button
 				onclick={() => direction = 'to'}
-				class="px-3 py-1.5 transition-colors {direction === 'to' ? 'bg-accent text-surface' : 'bg-surface text-secondary border border-border-strong hover:bg-page'}"
+				class="px-3 py-1.5 transition-colors {direction === 'to' ? 'bg-accent text-surface' : 'bg-surface text-secondary hover:bg-page'}"
 			>Another word comes from this...</button>
 		</div>
 
@@ -237,14 +237,14 @@
 						onfocus={() => { if (searchResults.length > 0) showDropdown = true }}
 						onblur={() => setTimeout(() => showDropdown = false, 200)}
 						placeholder="Search for a word..."
-						class="w-full px-3 py-1.5 border border-border-strong text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent"
+						class="w-full px-3 py-1.5 text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent"
 					/>
 					{#if showDropdown}
-						<div class="absolute z-10 top-full inset-x-0 mt-1 bg-surface border border-border shadow-lg max-h-48 overflow-y-auto">
+						<div class="absolute z-10 top-full inset-x-0 mt-1 bg-surface shadow-lg max-h-48 overflow-y-auto">
 							{#each searchResults as result}
 								<button type="button" onclick={() => selectTarget(result)} class="w-full text-left px-3 py-2 text-sm border-b border-border-subtle hover:bg-accent-subtle last:border-0">
 									<span class="font-medium">{result.word}</span>
-									<span class="text-faint text-xs ml-1">({result.languageName})</span>
+									<span class="text-secondary text-xs ml-1">({result.languageName})</span>
 									{#if result.definition}
 										<span class="text-dim text-xs block truncate">{result.definition}</span>
 									{/if}
@@ -256,7 +256,7 @@
 			</div>
 
 			{#if currentHelp}
-				<p class="text-xs text-faint -mt-1">{currentHelp}</p>
+				<p class="text-xs text-secondary -mt-1">{currentHelp}</p>
 			{/if}
 
 			<Input bind:value={notes} placeholder="Notes (optional)" containerClass="w-full" />
@@ -274,10 +274,10 @@
 	<!-- Etymology chain breadcrumb -->
 	{#if etymologyChain.length > 1}
 		<div class="flex items-center gap-1 flex-wrap text-sm">
-			<span class="text-xs font-medium uppercase tracking-wide text-faint mr-1">Origin</span>
+			<span class="text-xs font-medium uppercase tracking-wide text-secondary mr-1">Origin</span>
 			{#each etymologyChain as step, index}
 				{#if index > 0}
-					<span class="text-faint text-xs">→</span>
+					<span class="text-secondary text-xs">→</span>
 				{/if}
 				<a
 					href="/Wordbook/{step.languageSlug}/{encodeURIComponent(step.word)}"
@@ -285,7 +285,7 @@
 					title={step.definition}
 				>
 					<span class="italic font-medium">{step.word}</span>
-					<span class="text-faint text-xs">({step.languageName})</span>
+					<span class="text-secondary text-xs">({step.languageName})</span>
 				</a>
 			{/each}
 		</div>
@@ -294,7 +294,7 @@
 	<!-- Etymology sources -->
 	{#if direct.derivedFrom.length > 0 || direct.loanFrom.length > 0 || direct.compoundOf.length > 0}
 		<div>
-			<h3 class="text-xs font-medium uppercase tracking-wide text-faint mb-2">Etymology</h3>
+			<h3 class="text-xs font-medium uppercase tracking-wide text-secondary mb-2">Etymology</h3>
 			{#each direct.derivedFrom as entry}
 				{@render relationRow(entry, '←', 'derived from')}
 			{/each}
@@ -303,10 +303,10 @@
 			{/each}
 			{#if direct.compoundOf.length > 0}
 				<div class="flex items-baseline gap-2 text-sm mb-1.5 flex-wrap">
-					<span class="text-faint">←</span>
+					<span class="text-secondary">←</span>
 					<span class="text-dim text-xs">compound of</span>
 					{#each direct.compoundOf as entry, index}
-						{#if index > 0}<span class="text-faint">+</span>{/if}
+						{#if index > 0}<span class="text-secondary">+</span>{/if}
 						<a href="/Wordbook/{entry.languageSlug}/{encodeURIComponent(entry.word)}" class="font-medium text-link italic hover:text-link-hover hover:underline">{entry.word}</a>
 						<span class="text-dim text-xs">({entry.definition})</span>
 						{#if canEdit}
@@ -322,7 +322,7 @@
 	{#if narrativeEtymology}
 		<div>
 			{#if direct.derivedFrom.length === 0 && direct.loanFrom.length === 0 && direct.compoundOf.length === 0}
-				<h3 class="text-xs font-medium uppercase tracking-wide text-faint mb-2">Etymology</h3>
+				<h3 class="text-xs font-medium uppercase tracking-wide text-secondary mb-2">Etymology</h3>
 			{/if}
 			<p class="text-sm/relaxed text-secondary italic">{narrativeEtymology}</p>
 		</div>
@@ -331,7 +331,7 @@
 	<!-- Derived forms -->
 	{#if direct.derivedWords.length > 0}
 		<div>
-			<h3 class="text-xs font-medium uppercase tracking-wide text-faint mb-2">Derived forms</h3>
+			<h3 class="text-xs font-medium uppercase tracking-wide text-secondary mb-2">Derived forms</h3>
 			{#each direct.derivedWords as entry}
 				{@render relationRow(entry, '→', entry.partOfSpeech || '')}
 			{/each}
@@ -341,7 +341,7 @@
 	<!-- Borrowed by -->
 	{#if direct.loanedTo.length > 0}
 		<div>
-			<h3 class="text-xs font-medium uppercase tracking-wide text-faint mb-2">Borrowed by</h3>
+			<h3 class="text-xs font-medium uppercase tracking-wide text-secondary mb-2">Borrowed by</h3>
 			{#each direct.loanedTo as entry}
 				{@render relationRow(entry, '→', '')}
 			{/each}
@@ -351,7 +351,7 @@
 	<!-- Compounds using this -->
 	{#if direct.compoundsUsing.length > 0}
 		<div>
-			<h3 class="text-xs font-medium uppercase tracking-wide text-faint mb-2">Compounds</h3>
+			<h3 class="text-xs font-medium uppercase tracking-wide text-secondary mb-2">Compounds</h3>
 			{#each direct.compoundsUsing as entry}
 				{@render relationRow(entry, '→', '')}
 			{/each}
@@ -361,17 +361,17 @@
 	<!-- Cognates -->
 	{#if cognates.length > 0}
 		<div>
-			<h3 class="text-xs font-medium uppercase tracking-wide text-faint mb-2">Cognates</h3>
+			<h3 class="text-xs font-medium uppercase tracking-wide text-secondary mb-2">Cognates</h3>
 			{#each cognates as group}
 				<div class="mb-3">
-					<div class="text-xs text-faint font-medium mb-1">{group.family} family</div>
+					<div class="text-xs text-secondary font-medium mb-1">{group.family} family</div>
 					{#each group.languages as lang}
 						<div class="flex items-baseline gap-2 text-sm mb-1 ml-3">
 							<span class="text-dim min-w-20">{lang.name}:</span>
 							{#each lang.words as w, index}
-								{#if index > 0}<span class="text-faint">,</span>{/if}
+								{#if index > 0}<span class="text-secondary">,</span>{/if}
 								<a href="/Wordbook/{lang.slug}/{encodeURIComponent(w.word)}" class="text-link italic hover:text-link-hover hover:underline">{w.word}</a>
-								<span class="text-faint text-xs">({w.definition})</span>
+								<span class="text-secondary text-xs">({w.definition})</span>
 							{/each}
 						</div>
 					{/each}
@@ -394,7 +394,7 @@
 </div>
 {:else if canEdit}
 	<div class="py-4">
-		<p class="text-sm text-faint mb-3">No etymological relations yet.</p>
+		<p class="text-sm text-secondary mb-3">No etymological relations yet.</p>
 		{#if showForm}
 			{@render addRelationForm()}
 		{:else}

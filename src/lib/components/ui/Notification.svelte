@@ -29,7 +29,7 @@
 <div
 	role="status"
 	class={cn(
-		'relative flex items-center gap-3 px-4 py-3 bg-surface border border-border shadow-lg animate-slide-in min-w-64 max-w-sm overflow-hidden text-left',
+		'relative flex items-center gap-3 px-4 py-3 bg-surface shadow-lg animate-slide-in min-w-64 max-w-sm overflow-hidden text-left',
 		notification.expired && 'animate-slide-out',
 	)}
 >

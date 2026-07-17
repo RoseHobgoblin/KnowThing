@@ -203,7 +203,7 @@
 	})
 </script>
 
-<div class="calendar-widget bg-surface border border-border-strong shadow-sm overflow-hidden" class:max-w-md={viewMode === 'month'}>
+<div class="calendar-widget bg-surface shadow-sm overflow-hidden" class:max-w-md={viewMode === 'month'}>
 	<!-- Header -->
 	<div class="flex items-center justify-between px-4 py-3 bg-raised border-b border-border-strong">
 		{#if viewMode === 'month'}
@@ -219,10 +219,10 @@
 						type="number"
 						bind:value={jumpYear}
 						placeholder="Year"
-						class="w-20 px-2 py-0.5 text-sm border border-border-strong rounded bg-surface text-center focus:outline-none focus:ring-1 focus:ring-accent"
+						class="w-20 px-2 py-0.5 text-sm rounded bg-surface text-center focus:outline-none focus:ring-1 focus:ring-accent"
 					/>
 					<button type="submit" class="text-xs text-link hover:underline">Go</button>
-					<button type="button" onclick={() => showJump = false} class="text-xs text-faint hover:underline">Cancel</button>
+					<button type="button" onclick={() => showJump = false} class="text-xs text-secondary hover:underline">Cancel</button>
 				</form>
 			{:else}
 				{#if viewMode === 'month'}
@@ -303,7 +303,7 @@
 					<!-- svelte-ignore a11y_click_events_have_key_events -->
 					<!-- svelte-ignore a11y_no_static_element_interactions -->
 					<div
-						class="cursor-pointer border p-1.5 transition-colors {isCurrent ? 'border-accent bg-accent-subtle' : 'border-border-subtle hover:border-border-strong hover:bg-raised'}"
+						class="cursor-pointer border p-1.5 transition-colors {isCurrent ? 'border-accent bg-accent-subtle' : 'border-transparent hover:border-border-strong hover:bg-raised'}"
 						onclick={() => selectMiniMonth(monthIdx)}
 					>
 						<div class="text-xs font-semibold text-heading mb-1 text-center truncate">{miniGrid.monthName}</div>
@@ -332,11 +332,11 @@
 		<!-- SEASONS VIEW -->
 		<div class="p-3 space-y-2">
 			{#if seasonBlocks.length === 0}
-				<p class="text-sm text-faint text-center py-4">No seasons defined for this calendar.</p>
+				<p class="text-sm text-secondary text-center py-4">No seasons defined for this calendar.</p>
 			{:else}
 				<!-- Season bar -->
 				{@const totalDays = seasonBlocks.reduce((sum, b) => sum + b.totalDays, 0)}
-				<div class="flex overflow-hidden h-6 border border-border-subtle">
+				<div class="flex overflow-hidden h-6">
 					{#each seasonBlocks as block}
 						<div
 							class="flex items-center justify-center text-[9px] font-medium text-white overflow-hidden"
@@ -358,7 +358,7 @@
 								{block.startDay} {block.startMonth} — {block.endDay} {block.endMonth}
 							</div>
 						</div>
-						<div class="text-xs text-faint shrink-0">{block.totalDays} days</div>
+						<div class="text-xs text-secondary shrink-0">{block.totalDays} days</div>
 					</div>
 				{/each}
 			{/if}

@@ -13,8 +13,8 @@
 <a
 	href="/Wordbook/{slug}"
 	class="
-		block bg-surface border border-border transition-all overflow-hidden group
-		hover:border-accent-border hover:shadow-md
+		block bg-surface transition-all overflow-hidden group
+		hover:shadow-md
 	"
 >
 	<div class="h-1.5" style="background-color: {color};"></div>
@@ -22,7 +22,7 @@
 		<div class="flex items-baseline gap-2 mb-1">
 			<h3 class="font-semibold text-heading transition-colors group-hover:text-link">{name}</h3>
 			{#if nativeName}
-				<span class="text-sm text-faint italic">{nativeName}</span>
+				<span class="text-sm text-secondary italic">{nativeName}</span>
 			{/if}
 		</div>
 
@@ -31,7 +31,7 @@
 				<span>{family}</span>
 			{/if}
 			{#if script}
-				<span class="text-faint">·</span>
+				<span class="text-secondary">·</span>
 				<span>{script} script</span>
 			{/if}
 		</div>

@@ -1248,7 +1248,7 @@
 
 	{#if isViewMoved}
 		<button
-			class="absolute top-2 right-2 px-1.5 py-0.5 text-xs font-medium text-dim bg-surface/80 border border-border-subtle transition-colors hover:text-accent"
+			class="absolute top-2 right-2 px-1.5 py-0.5 text-xs font-medium text-dim bg-surface/80 transition-colors hover:text-accent"
 			onclick={resetView}
 		>
 			{zoomLevel.toFixed(1)}x
@@ -1263,11 +1263,11 @@
 			<div class="text-xs font-semibold text-heading whitespace-nowrap">
 				{hoveredBody.name}
 				{#if hoveredBody.spectralType}
-					<span class="font-normal text-faint">({hoveredBody.spectralType})</span>
+					<span class="font-normal text-secondary">({hoveredBody.spectralType})</span>
 				{/if}
 			</div>
 			{#if hoveredBody.semiMajorAxisAu}
-				<div class="text-xs text-faint">{hoveredBody.semiMajorAxisAu.toFixed(3)} AU</div>
+				<div class="text-xs text-secondary">{hoveredBody.semiMajorAxisAu.toFixed(3)} AU</div>
 			{/if}
 		</div>
 	{/if}

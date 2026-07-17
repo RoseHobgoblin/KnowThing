@@ -299,11 +299,11 @@
 	<WorkedInflectionExample />
 
 	<!-- ── Section 1: Dimensions ───────────────────────────────────── -->
-	<section class="bg-surface border border-border p-4 space-y-3">
+	<section class="bg-surface p-4 space-y-3">
 		<div class="flex items-start justify-between gap-2">
 			<div>
 				<h3 class="text-sm font-semibold text-body">1. Dimensions</h3>
-				<p class="text-xs text-faint mt-0.5">What axes does morphology vary on? E.g. nouns vary by Number; verbs vary by Tense and Person.</p>
+				<p class="text-xs text-secondary mt-0.5">What axes does morphology vary on? E.g. nouns vary by Number; verbs vary by Tense and Person.</p>
 			</div>
 			<button onclick={() => showAddDim = !showAddDim} class="text-xs text-link whitespace-nowrap hover:text-link-hover hover:underline">+ Dimension</button>
 		</div>
@@ -314,14 +314,14 @@
 
 				<!-- Click-to-fill chips -->
 				<div class="flex flex-wrap items-center gap-1.5 text-xs">
-					<span class="text-faint">Try one — click to fill:</span>
+					<span class="text-secondary">Try one — click to fill:</span>
 					{#each DIMENSION_PRESETS as preset (preset.label)}
 						<button
 							type="button"
 							onclick={() => applyDimensionPreset(preset)}
 							class="
-								px-2 py-0.5 border border-border-subtle bg-surface text-secondary transition-colors
-								hover:border-accent-border hover:bg-accent-subtle hover:text-accent
+								px-2 py-0.5 bg-surface text-secondary transition-colors
+								hover:bg-accent-subtle hover:text-accent
 							"
 						>{preset.label}</button>
 					{/each}
@@ -349,29 +349,29 @@
 				</div>
 
 				{#if showDisplayAs && displayAsHint}
-					<p class="text-xs text-faint -mt-1">{displayAsHint}</p>
+					<p class="text-xs text-secondary -mt-1">{displayAsHint}</p>
 				{/if}
 
 				<Input bind:value={newDimValues} placeholder="Values, comma-separated" required containerClass="w-full" />
 
 				{#if newDimShapeLine}
 					<p class="text-xs text-secondary">
-						<span class="text-faint">Your table will have</span> {newDimShapeLine}
+						<span class="text-secondary">Your table will have</span> {newDimShapeLine}
 					</p>
 				{:else}
-					<p class="text-xs text-faint">Type at least one value, e.g. <code class="bg-surface-dim px-1 rounded-sm">singular, plural</code>.</p>
+					<p class="text-xs text-secondary">Type at least one value, e.g. <code class="bg-surface-dim px-1 rounded-sm">singular, plural</code>.</p>
 				{/if}
 
 				<div class="flex gap-2">
 					<button type="submit" disabled={addingDim} class="px-3 py-1 bg-accent text-surface text-xs hover:bg-accent-hover disabled:opacity-50">Add</button>
-					<button type="button" onclick={() => showAddDim = false} class="text-xs text-faint">Cancel</button>
+					<button type="button" onclick={() => showAddDim = false} class="text-xs text-secondary">Cancel</button>
 				</div>
 			</form>
 		{/if}
 
 		{#if dimensions.length === 0 && !showAddDim}
 			<div class="space-y-2">
-				<p class="text-xs text-faint">No dimensions yet. Pick a starter, or open the form for full control:</p>
+				<p class="text-xs text-secondary">No dimensions yet. Pick a starter, or open the form for full control:</p>
 				<div class="flex flex-wrap gap-1.5">
 					{#each DIMENSION_PRESETS.slice(0, 4) as preset (preset.label)}
 						<button
@@ -396,8 +396,8 @@
 							{#each dimsByPos(pos) as dim (dim.id)}
 								<div class="flex items-center gap-2 text-sm group">
 									<span class="font-medium text-secondary">{dim.name}</span>
-									<span class="text-faint text-xs">[{dim.dimValues.join(', ')}]</span>
-									<span class="text-xs px-1.5 py-0.5 border border-border-subtle bg-page text-dim">{sortLabel(dim.sortOrder)}</span>
+									<span class="text-secondary text-xs">[{dim.dimValues.join(', ')}]</span>
+									<span class="text-xs px-1.5 py-0.5 bg-page text-dim">{sortLabel(dim.sortOrder)}</span>
 									<button onclick={() => deleteDimension(dim.id)} class="text-error text-xs opacity-0 transition-opacity hover:text-error-hover group-hover:opacity-100">×</button>
 								</div>
 							{/each}
@@ -409,11 +409,11 @@
 	</section>
 
 	<!-- ── Section 2: Paradigm classes ─────────────────────────────── -->
-	<section class="bg-surface border border-border p-4 space-y-3">
+	<section class="bg-surface p-4 space-y-3">
 		<div class="flex items-start justify-between gap-2">
 			<div>
 				<h3 class="text-sm font-semibold text-body">2. Paradigm classes</h3>
-				<p class="text-xs text-faint mt-0.5">Group words that inflect identically. <em>cat</em> and <em>dog</em> share rules; <em>mouse</em> needs its own class or overrides.</p>
+				<p class="text-xs text-secondary mt-0.5">Group words that inflect identically. <em>cat</em> and <em>dog</em> share rules; <em>mouse</em> needs its own class or overrides.</p>
 			</div>
 			<button onclick={() => showAddClass = !showAddClass} class="text-xs text-link whitespace-nowrap hover:text-link-hover hover:underline">+ Class</button>
 		</div>
@@ -423,14 +423,14 @@
 				<div class="text-xs font-medium text-dim mb-1">New paradigm class</div>
 
 				<div class="flex flex-wrap items-center gap-1.5 text-xs">
-					<span class="text-faint">Try one — click to fill:</span>
+					<span class="text-secondary">Try one — click to fill:</span>
 					{#each CLASS_PRESETS as preset (preset.label)}
 						<button
 							type="button"
 							onclick={() => applyClassPreset(preset)}
 							class="
-								px-2 py-0.5 border border-border-subtle bg-surface text-secondary transition-colors
-								hover:border-accent-border hover:bg-accent-subtle hover:text-accent
+								px-2 py-0.5 bg-surface text-secondary transition-colors
+								hover:bg-accent-subtle hover:text-accent
 							"
 						>{preset.label}</button>
 					{/each}
@@ -449,12 +449,12 @@
 
 				{#if newClassCellsHint}
 					<p class="text-xs text-secondary">
-						<span class="text-faint">This class will have</span> {newClassCellsHint.count} cell{newClassCellsHint.count === 1 ? '' : 's'}:
-						<span class="font-mono text-faint">{newClassCellsHint.labels.join(' · ')}{newClassCellsHint.truncated ? ' …' : ''}</span>
-						<span class="text-faint">(from {newClassCellsHint.dimNames})</span>
+						<span class="text-secondary">This class will have</span> {newClassCellsHint.count} cell{newClassCellsHint.count === 1 ? '' : 's'}:
+						<span class="font-mono text-secondary">{newClassCellsHint.labels.join(' · ')}{newClassCellsHint.truncated ? ' …' : ''}</span>
+						<span class="text-secondary">(from {newClassCellsHint.dimNames})</span>
 					</p>
 				{:else}
-					<p class="text-xs text-faint">
+					<p class="text-xs text-secondary">
 						No dimensions for <strong>{newClassPos}</strong> yet. The class will have nothing to inflect until you
 						<button
 							type="button"
@@ -470,13 +470,13 @@
 
 				<div class="flex gap-2">
 					<button type="submit" disabled={addingClass} class="px-3 py-1 bg-accent text-surface text-xs hover:bg-accent-hover disabled:opacity-50">Add</button>
-					<button type="button" onclick={() => showAddClass = false} class="text-xs text-faint">Cancel</button>
+					<button type="button" onclick={() => showAddClass = false} class="text-xs text-secondary">Cancel</button>
 				</div>
 			</form>
 		{/if}
 
 		{#if classes.length === 0 && !showAddClass}
-			<p class="text-xs text-faint">No classes yet. Add one — e.g. <code class="bg-surface-dim px-1 rounded-sm">Regular</code> for nouns. Then click it to define rules.</p>
+			<p class="text-xs text-secondary">No classes yet. Add one — e.g. <code class="bg-surface-dim px-1 rounded-sm">Regular</code> for nouns. Then click it to define rules.</p>
 		{:else if classes.length > 0}
 			<div class="space-y-3">
 				{#each allPos.filter(p => classes.some(c => c.partOfSpeech === p)) as pos (pos)}
@@ -499,30 +499,30 @@
 										{:else if ruleN === 0}
 											<span class="text-xs px-1.5 py-0.5 border border-warning-border bg-warning-bg text-body">no rules — click to add ↓</span>
 										{:else}
-											<span class="text-xs px-1.5 py-0.5 border border-border-subtle bg-page text-dim">{ruleN} / {totalCells} rules</span>
+											<span class="text-xs px-1.5 py-0.5 bg-page text-dim">{ruleN} / {totalCells} rules</span>
 										{/if}
 										{#if cls.description}
-											<span class="text-faint text-xs">— {cls.description}</span>
+											<span class="text-secondary text-xs">— {cls.description}</span>
 										{/if}
 										<button onclick={() => deleteClass(cls.id)} class="text-error text-xs opacity-0 transition-opacity hover:text-error-hover group-hover:opacity-100">×</button>
 									</div>
 
 									{#if editingClassId === cls.id}
-										<div class="mt-2 p-3 bg-page border border-border space-y-3">
+										<div class="mt-2 p-3 bg-page space-y-3">
 											{#if loadingRules}
-												<p class="text-xs text-faint">Loading rules…</p>
+												<p class="text-xs text-secondary">Loading rules…</p>
 											{:else if editingRules.length === 0}
-												<p class="text-xs text-faint">
+												<p class="text-xs text-secondary">
 													No dimensions defined for <strong>{pos}</strong> yet.
 													Add at least one dimension in section 1 first.
 												</p>
 												<div class="flex gap-2">
-													<button onclick={() => editingClassId = null} class="text-xs text-faint hover:text-dim">Cancel</button>
+													<button onclick={() => editingClassId = null} class="text-xs text-secondary hover:text-dim">Cancel</button>
 												</div>
 											{:else}
 												<div>
 													<h4 class="text-xs font-semibold text-body mb-2">3. Rules for <em>{cls.name}</em></h4>
-													<p class="text-xs text-faint">
+													<p class="text-xs text-secondary">
 														Write a pattern for each cell. <code class="bg-surface-dim px-1 rounded-sm">{'{stem}'}</code> is replaced with the word's stem. Leave a cell blank to omit it.
 													</p>
 												</div>
@@ -557,7 +557,7 @@
 																			class="font-mono"
 																		/>
 																	</td>
-																	<td class="py-1.5 text-xs font-mono text-faint">{rule.pattern.trim() ? applyStem(rule.pattern, previewStem) : '—'}</td>
+																	<td class="py-1.5 text-xs font-mono text-secondary">{rule.pattern.trim() ? applyStem(rule.pattern, previewStem) : '—'}</td>
 																</tr>
 															{/each}
 														</tbody>
@@ -572,7 +572,7 @@
 													>
 														{savingRules ? 'Saving…' : 'Save rules'}
 													</button>
-													<button onclick={() => editingClassId = null} class="text-xs text-faint hover:text-dim">Cancel</button>
+													<button onclick={() => editingClassId = null} class="text-xs text-secondary hover:text-dim">Cancel</button>
 												</div>
 											{/if}
 										</div>

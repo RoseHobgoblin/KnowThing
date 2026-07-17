@@ -25,14 +25,14 @@
 		</div>
 		<div class="flex items-center gap-2">
 			{#if hasPreviousPage}
-				<a href={prevHref} class="px-3 py-1.5 text-sm border border-border text-secondary hover:bg-page">Previous</a>
+				<a href={prevHref} class="px-3 py-1.5 text-sm text-secondary hover:bg-page">Previous</a>
 			{:else}
-				<span class="px-3 py-1.5 text-sm border border-border text-faint opacity-50">Previous</span>
+				<span class="px-3 py-1.5 text-sm text-secondary opacity-50">Previous</span>
 			{/if}
 			{#if hasNextPage}
-				<a href={nextHref} class="px-3 py-1.5 text-sm border border-border text-secondary hover:bg-page">Next</a>
+				<a href={nextHref} class="px-3 py-1.5 text-sm text-secondary hover:bg-page">Next</a>
 			{:else}
-				<span class="px-3 py-1.5 text-sm border border-border text-faint opacity-50">Next</span>
+				<span class="px-3 py-1.5 text-sm text-secondary opacity-50">Next</span>
 			{/if}
 		</div>
 	</div>

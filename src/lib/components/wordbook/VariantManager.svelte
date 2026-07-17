@@ -101,7 +101,7 @@
 			<div class="flex items-baseline gap-2 text-sm group">
 				<span class="text-dim min-w-24 text-xs font-medium">{variant.dialectName}:</span>
 				{#if variant.pronunciation}
-					<span class="text-faint font-mono text-xs">{variant.pronunciation}</span>
+					<span class="text-secondary font-mono text-xs">{variant.pronunciation}</span>
 				{/if}
 				{#if variant.spelling}
 					<span class="text-secondary italic">"{variant.spelling}"</span>
@@ -125,19 +125,19 @@
 
 		{#if adding}
 			{#if dialectsLoaded && dialects.length === 0}
-				<p class="text-xs text-faint">
+				<p class="text-xs text-secondary">
 					No dialects exist for this language yet — add one on the
 					<a href="/Wordbook/contribute/language/{languageSlug}" class="text-link hover:underline">language edit page</a>.
 				</p>
 			{:else if dialectsLoaded && availableDialects.length === 0}
-				<p class="text-xs text-faint">Every dialect already has a variant. Remove one to change it.</p>
+				<p class="text-xs text-secondary">Every dialect already has a variant. Remove one to change it.</p>
 			{:else}
 				<form onsubmit={addVariant} class="flex flex-wrap items-center gap-2 pt-1">
 					<select
 						bind:value={dialectIdString}
 						required
 						aria-label="Dialect"
-						class="px-2 py-1 text-xs text-body bg-surface border border-border-strong outline-none focus:ring-2 focus:ring-accent"
+						class="px-2 py-1 text-xs text-body bg-surface outline-none focus:ring-2 focus:ring-accent"
 					>
 						<option value="" disabled>Dialect…</option>
 						{#each availableDialects as dialect}
@@ -149,17 +149,17 @@
 						bind:value={pronunciation}
 						placeholder="/pronunciation/"
 						aria-label="Pronunciation"
-						class="px-2 py-1 text-xs font-mono text-body bg-surface border border-border-strong outline-none focus:ring-2 focus:ring-accent"
+						class="px-2 py-1 text-xs font-mono text-body bg-surface outline-none focus:ring-2 focus:ring-accent"
 					/>
 					<input
 						type="text"
 						bind:value={spelling}
 						placeholder="spelling"
 						aria-label="Spelling"
-						class="px-2 py-1 text-xs text-body bg-surface border border-border-strong outline-none focus:ring-2 focus:ring-accent"
+						class="px-2 py-1 text-xs text-body bg-surface outline-none focus:ring-2 focus:ring-accent"
 					/>
 					<button type="submit" disabled={saving} class="px-2.5 py-1 bg-accent text-surface text-xs hover:bg-accent-hover disabled:opacity-50">Add</button>
-					<button type="button" onclick={() => adding = false} class="text-xs text-faint hover:text-secondary">Cancel</button>
+					<button type="button" onclick={() => adding = false} class="text-xs text-secondary hover:text-body">Cancel</button>
 				</form>
 			{/if}
 		{/if}

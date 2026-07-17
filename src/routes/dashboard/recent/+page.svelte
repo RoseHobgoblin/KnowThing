@@ -8,7 +8,7 @@
 	<title>Recent Changes — KnowThing</title>
 </svelte:head>
 
-<div class="bg-surface shadow-sm border border-border">
+<div class="bg-surface shadow-sm">
 	<div class="px-6 py-4 border-b border-border-subtle">
 		<h1 class="text-xl font-bold text-heading">Recent Changes</h1>
 	</div>
@@ -21,21 +21,21 @@
 				<div class="px-6 py-3 flex items-start gap-4">
 					<div class="flex-1 min-w-0">
 						<a href="/{edit.domain}/{edit.parentPath ? `${edit.parentPath}/` : ''}{edit.pageSlug}" class="text-link font-medium text-sm hover:text-link-hover">{edit.title}</a>
-							{#if edit.domain !== 'know'}<span class="text-xs text-faint bg-raised px-1.5 py-0.5 rounded">{edit.domain}</span>{/if}
+							{#if edit.domain !== 'know'}<span class="text-xs text-secondary bg-raised px-1.5 py-0.5 rounded">{edit.domain}</span>{/if}
 						{#if edit.editSummary}
-							<span class="text-faint text-sm ml-1">— {edit.editSummary}</span>
+							<span class="text-secondary text-sm ml-1">— {edit.editSummary}</span>
 						{/if}
-						<div class="text-xs text-faint mt-0.5">
+						<div class="text-xs text-secondary mt-0.5">
 							{edit.username ?? 'Unknown'}
 							<span class="mx-1">&middot;</span>
 							{new Date(edit.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
 							{#if edit.sizeBytes}
 								<span class="mx-1">&middot;</span>
-								<span class="text-faint">{(edit.sizeBytes / 1024).toFixed(1)} KB</span>
+								<span class="text-secondary">{(edit.sizeBytes / 1024).toFixed(1)} KB</span>
 							{/if}
 						</div>
 					</div>
-					<a href="/{edit.domain}/{edit.parentPath ? `${edit.parentPath}/` : ''}{edit.pageSlug}" class="text-xs text-faint shrink-0 hover:text-link">history</a>
+					<a href="/{edit.domain}/{edit.parentPath ? `${edit.parentPath}/` : ''}{edit.pageSlug}" class="text-xs text-secondary shrink-0 hover:text-link">history</a>
 				</div>
 			{/each}
 		</div>

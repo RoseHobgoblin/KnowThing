@@ -13,8 +13,8 @@
 </script>
 
 {#if links.length > 0}
-	<div class="border border-border-subtle bg-surface">
-		<h3 class="text-xs font-semibold uppercase tracking-wider text-faint px-3 py-2 border-b border-border-subtle bg-raised">
+	<div class="bg-surface">
+		<h3 class="text-xs font-semibold uppercase tracking-wider text-secondary px-3 py-2 border-b border-border-subtle bg-raised">
 			Referenced by
 		</h3>
 		<ul>
@@ -26,7 +26,7 @@
 					>
 						<span class="text-link truncate hover:text-link-hover">{link.title ?? link.slug}</span>
 						{#if link.domain !== 'know'}
-							<span class="shrink-0 text-xs uppercase tracking-wider text-faint">{link.domain}</span>
+							<span class="shrink-0 text-xs uppercase tracking-wider text-secondary">{link.domain}</span>
 						{/if}
 					</a>
 				</li>

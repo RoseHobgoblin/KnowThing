@@ -92,9 +92,9 @@
 	{#snippet actions()}
 		{#if canManageWordbook}
 			<a href="/Wordbook/contribute?language={data.language.slug}" class="text-sm text-link hover:text-link-hover hover:underline">+ Add word</a>
-			<a href="/Wordbook/contribute/language/{data.language.slug}" class="text-sm text-faint hover:text-link hover:underline">Edit language</a>
+			<a href="/Wordbook/contribute/language/{data.language.slug}" class="text-sm text-secondary hover:text-link hover:underline">Edit language</a>
 		{:else if isAuthenticated}
-			<span class="text-faint text-sm">View only. Editor role required for wordbook changes.</span>
+			<span class="text-secondary text-sm">View only. Editor role required for wordbook changes.</span>
 		{/if}
 	{/snippet}
 
@@ -102,16 +102,16 @@
 		<div class="flex items-center gap-3 text-sm text-dim mt-1">
 			{#if data.language.nativeName}
 				<span class="italic">{data.language.nativeName}</span>
-				<span class="text-faint">·</span>
+				<span class="text-secondary">·</span>
 			{/if}
 			{#if data.language.family}
 				<span>{data.language.family}</span>
 			{/if}
 			{#if data.language.script}
-				<span class="text-faint">·</span>
+				<span class="text-secondary">·</span>
 				<span>{data.language.script} script</span>
 			{/if}
-			<span class="text-faint">·</span>
+			<span class="text-secondary">·</span>
 			<span style="color: {data.language.color};" class="font-medium">{Number(data.language.wordCount)} words</span>
 		</div>
 	{/snippet}
@@ -139,22 +139,22 @@
 
 	<!-- Child languages -->
 	{#if data.children.length > 0}
-		<div class="bg-raised border border-border-subtle p-4 mb-4">
+		<div class="bg-raised p-4 mb-4">
 			<h3 class="text-sm font-semibold text-body mb-2">Descendant languages</h3>
 			<div class="flex flex-wrap gap-2">
 				{#each data.children as child}
 					<a href="/Wordbook/{child.slug}" class="
-						inline-flex items-center gap-1.5 px-3 py-1.5 border border-border text-sm
+						inline-flex items-center gap-1.5 px-3 py-1.5 text-sm
 						transition-colors
-						hover:border-accent-border hover:bg-accent-subtle
+						hover:bg-accent-subtle
 					">
 						<span class="size-2" style="background-color: {child.color || 'var(--color-accent)'}"></span>
 						<span class="font-medium text-body">{child.name}</span>
 						{#if child.nativeName}
-							<span class="text-faint text-xs italic">{child.nativeName}</span>
+							<span class="text-secondary text-xs italic">{child.nativeName}</span>
 						{/if}
 						{#if child.languageType !== 'language'}
-							<span class="text-xs text-faint">({child.languageType})</span>
+							<span class="text-xs text-secondary">({child.languageType})</span>
 						{/if}
 					</a>
 				{/each}
@@ -164,14 +164,14 @@
 
 	<!-- Dialects -->
 	{#if data.dialects.length > 0}
-		<div class="bg-raised border border-border-subtle p-4 mb-4">
+		<div class="bg-raised p-4 mb-4">
 			<h3 class="text-sm font-semibold text-body mb-2">Dialects</h3>
 			<div class="space-y-1">
 				{#each data.dialects as dialect}
 					<div class="flex items-center gap-2 text-sm">
 						<span class="font-medium text-secondary">{dialect.name}</span>
 						{#if dialect.region}
-							<span class="text-faint text-xs">({dialect.region})</span>
+							<span class="text-secondary text-xs">({dialect.region})</span>
 						{/if}
 					</div>
 				{/each}
@@ -192,7 +192,7 @@
 	{/if}
 
 	<!-- Alphabet nav -->
-	<div class="border border-border-subtle bg-raised px-2 mb-4">
+	<div class="bg-raised px-2 mb-4">
 		<AlphabetNav
 			activeLetters={data.activeLetters}
 			currentLetter={data.currentLetter}
@@ -204,8 +204,8 @@
 	{#if data.entries.length > 0}
 		{#each grouped as [letter, entries]}
 			<section class="mb-4">
-				<h2 class="text-xl font-bold text-faint mb-2 pl-1" id="letter-{letter}">{letter}</h2>
-				<div class="bg-raised border border-border-subtle divide-y divide-border-subtle">
+				<h2 class="text-xl font-bold text-secondary mb-2 pl-1" id="letter-{letter}">{letter}</h2>
+				<div class="bg-raised divide-y divide-border-subtle">
 					{#each entries as entry}
 						<WordEntry {entry} showLanguage={false} />
 					{/each}
@@ -220,7 +220,7 @@
 				{/if}
 				<span class="text-dim">
 					Page {data.entriesPage} of {totalPages}
-					<span class="text-faint">({data.entriesTotal} words)</span>
+					<span class="text-secondary">({data.entriesTotal} words)</span>
 				</span>
 				{#if data.entriesPage < totalPages}
 					<a href={pageHref(data.entriesPage + 1)} class="text-link hover:text-link-hover hover:underline">Next →</a>
@@ -228,7 +228,7 @@
 			</nav>
 		{/if}
 	{:else}
-		<div class="text-center py-12 text-faint">
+		<div class="text-center py-12 text-secondary">
 			{#if data.currentLetter}
 				<p>No words starting with "{data.currentLetter.toUpperCase()}"</p>
 			{:else}

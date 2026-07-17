@@ -5,7 +5,7 @@
 	let { title, groups }: { title: string, groups: NavboxGroup[] } = $props()
 </script>
 
-<nav class="know-navbox border border-border-strong my-4 text-sm">
+<nav class="know-navbox my-4 text-sm">
 	<div class="bg-border px-3 py-1.5 font-bold text-center">{title}</div>
 	{#each groups as group}
 		<div class="flex border-t border-border-strong">
@@ -14,7 +14,7 @@
 			</div>
 			<div class="px-3 py-1 flex-1">
 				{#each group.items as item, index}
-					{#if index > 0}<span class="mx-1 text-faint">·</span>{/if}
+					{#if index > 0}<span class="mx-1 text-secondary">·</span>{/if}
 					<WikiNodeComponent node={item} />
 				{/each}
 			</div>

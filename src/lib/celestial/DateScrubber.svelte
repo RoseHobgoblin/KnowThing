@@ -60,7 +60,7 @@
 				size="sm"
 			/>
 		{:else if calendars.length === 1}
-			<span class="text-faint">{calendars[0].name}</span>
+			<span class="text-secondary">{calendars[0].name}</span>
 		{/if}
 
 		<!-- Step back -->
@@ -72,7 +72,7 @@
 				{resolved.day} {resolved.month_name}, {resolved.year_display}
 			</span>
 		{:else}
-			<span class="text-faint flex-1 text-center">Day {currentAbsoluteDay}</span>
+			<span class="text-secondary flex-1 text-center">Day {currentAbsoluteDay}</span>
 		{/if}
 
 		<!-- Step forward -->

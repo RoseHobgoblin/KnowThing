@@ -53,9 +53,9 @@
 <div class="h-screen flex bg-page overflow-hidden" dir={sc?.textDirection ?? 'ltr'}>
 
 	<!-- Sidebar (desktop) -->
-	<aside class="hidden w-56 shrink-0 bg-surface border-r border-border flex-col h-screen md:flex">
+	<aside class="hidden w-56 shrink-0 bg-surface flex-col h-screen md:flex">
 		<!-- Logo -->
-		<div class="px-4 py-4 border-b border-border-subtle">
+		<div class="p-4">
 			<a href="/" class="text-lg font-bold text-heading tracking-tight transition-colors hover:text-link">
 				{#if sc?.logoUrl}
 					<img src={sc.logoUrl} alt={sc?.siteName} class="h-7" />
@@ -118,7 +118,7 @@
 	<!-- Main area -->
 	<div class="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
 		<!-- Top bar -->
-		<header class="bg-surface border-b border-border px-4 py-2.5 flex items-center gap-4 shrink-0">
+		<header class="bg-surface px-4 py-2.5 flex items-center gap-4 shrink-0">
 			<button
 				onclick={() => sidebarOpen = !sidebarOpen}
 				class="text-secondary p-1 md:hidden hover:text-link"
@@ -149,8 +149,8 @@
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<div class="fixed inset-0 z-40 bg-black/40 md:hidden" onclick={() => sidebarOpen = false}></div>
-			<aside class="fixed left-0 top-0 z-50 w-64 h-full bg-surface border-r border-border overflow-y-auto md:hidden">
-				<div class="px-4 py-4 border-b border-border-subtle">
+			<aside class="fixed left-0 top-0 z-50 w-64 h-full bg-surface overflow-y-auto md:hidden">
+				<div class="p-4">
 					<a href="/" class="text-lg font-bold text-heading" onclick={navClick}>
 						{#if siteNameParts.length >= 2}
 							{siteNameParts[0]}<span class="text-accent">{siteNameParts.slice(1).join('')}</span>
@@ -212,8 +212,8 @@
 					{@render children()}
 				{/key}
 			</div>
-			<footer class="border-t border-border bg-surface p-4 shrink-0 mt-auto">
-				<div class="max-w-6xl mx-auto text-xs text-faint text-center">
+			<footer class="bg-surface p-4 shrink-0 mt-auto">
+				<div class="max-w-6xl mx-auto text-xs text-secondary text-center">
 					{#if sc?.footerText}
 						{sc.footerText}
 					{:else}

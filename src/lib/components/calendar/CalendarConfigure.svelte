@@ -391,10 +391,10 @@
 >
 	<UnsavedChangesGuard when={isDirty && !saving} />
 	<div class="space-y-6">
-		<div class="flex items-center justify-between gap-3 bg-surface border border-border px-4 py-3">
+		<div class="flex items-center justify-between gap-3 bg-surface px-4 py-3">
 			<div>
 				<h2 class="text-sm font-semibold text-heading">Configure Record</h2>
-				<p class="text-xs text-faint">Structured calendar settings and article content are managed here.</p>
+				<p class="text-xs text-secondary">Structured calendar settings and article content are managed here.</p>
 			</div>
 			<SaveStatusBadge dirty={isDirty} {saving} error={saveError} {savedAt} />
 		</div>
@@ -412,7 +412,7 @@
 		{/if}
 
 		<!-- Preview -->
-		<details class="bg-raised border border-border-subtle">
+		<details class="bg-raised">
 			<summary class="px-4 py-3 cursor-pointer text-sm font-semibold text-heading select-none transition-colors hover:bg-surface">Preview</summary>
 			<div class="px-4 pb-4">
 				{#if months.length > 0 && weekdays.length > 0}
@@ -422,7 +422,7 @@
 						{/key}
 					</div>
 				{:else}
-					<p class="text-sm text-faint text-center py-6">Add at least one month and one weekday to see a preview.</p>
+					<p class="text-sm text-secondary text-center py-6">Add at least one month and one weekday to see a preview.</p>
 				{/if}
 			</div>
 		</details>
@@ -430,7 +430,7 @@
 		<TabNavigation navItems={calendarTabs} bind:activeSectionId={activeTab} fullWidth size="sm" />
 
 		{#if activeTab === 'identity'}
-			<section class="bg-raised border border-border-subtle p-5 space-y-4">
+			<section class="bg-raised p-5 space-y-4">
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 					<div><span class="text-xs font-medium text-secondary block mb-1">Name</span><p class="text-sm text-body">{calendar.name}</p></div>
 					<div><span class="text-xs font-medium text-secondary block mb-1">Description</span><p class="text-sm text-body">{calendar.description || '—'}</p></div>
@@ -438,87 +438,87 @@
 				<Checkbox bind:value={displayMoons} label="Show moon phases" />
 			</section>
 		{:else if activeTab === 'time'}
-			<section class="bg-raised border border-border-subtle p-5 space-y-4">
+			<section class="bg-raised p-5 space-y-4">
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
 					<div>
 						<div class="flex items-center gap-1 mb-1">
 							<span class="text-xs font-medium text-secondary">Epoch Offset</span>
-							<Tooltip content="Calendar days between Unix epoch (1 Jan 1970) and Year 1 Day 1." side="top"><span class="text-faint text-xs cursor-help">i</span></Tooltip>
+							<Tooltip content="Calendar days between Unix epoch (1 Jan 1970) and Year 1 Day 1." side="top"><span class="text-secondary text-xs cursor-help">i</span></Tooltip>
 						</div>
 						<Input type="number" bind:value={epochOffset} />
 					</div>
 					<div>
 						<div class="flex items-center gap-1 mb-1">
 							<span class="text-xs font-medium text-secondary">Day Length</span>
-							<Tooltip content="Real-world seconds per calendar day. Earth = 86400." side="top"><span class="text-faint text-xs cursor-help">i</span></Tooltip>
+							<Tooltip content="Real-world seconds per calendar day. Earth = 86400." side="top"><span class="text-secondary text-xs cursor-help">i</span></Tooltip>
 						</div>
 						<Input type="number" bind:value={dayLengthSeconds} min={1} />
 						{#if dayLengthSeconds < 1}
 							<p class="text-xs text-error mt-1">Day length must be at least one second.</p>
 						{:else}
-						<p class="text-xs text-faint mt-1">{dayLengthHours} hours</p>
+						<p class="text-xs text-secondary mt-1">{dayLengthHours} hours</p>
 						{/if}
 					</div>
 					<div>
 						<div class="flex items-center gap-1 mb-1">
 							<span class="text-xs font-medium text-secondary">Year Display Offset</span>
-							<Tooltip content="Added to displayed year numbers." side="top"><span class="text-faint text-xs cursor-help">i</span></Tooltip>
+							<Tooltip content="Added to displayed year numbers." side="top"><span class="text-secondary text-xs cursor-help">i</span></Tooltip>
 						</div>
 						<Input type="number" bind:value={yearOffset} />
 					</div>
 				</div>
 			</section>
 		{:else if activeTab === 'months'}
-			<section class="bg-raised border border-border-subtle p-5 space-y-3">
+			<section class="bg-raised p-5 space-y-3">
 				<div class="flex items-center justify-between border-b border-border-subtle pb-2">
-					<div><h2 class="text-sm font-semibold text-heading">Months</h2><p class="text-xs text-faint">{months.length} months · {totalDaysInYear} days total</p></div>
+					<div><h2 class="text-sm font-semibold text-heading">Months</h2><p class="text-xs text-secondary">{months.length} months · {totalDaysInYear} days total</p></div>
 					<button type="button" onclick={() => months = [...months, emptyMonth()]} class="text-xs text-link font-medium hover:underline">+ Add month</button>
 				</div>
 				{#each months as month, index (month._id)}
 					<div class="flex gap-2 items-center group">
-						<span class="text-xs text-faint w-5 text-right shrink-0">{index + 1}</span>
+						<span class="text-xs text-secondary w-5 text-right shrink-0">{index + 1}</span>
 						<Input bind:value={month.name} placeholder="Month name" containerClass="flex-1" error={!month.name.trim() ? 'Required' : ''} />
 						<Input bind:value={month.short_name} placeholder="Abbr" containerClass="w-14" />
 						<div class="flex items-center gap-1">
 							<Input type="number" bind:value={month.length} min={1} containerClass="w-14" class="text-center" error={month.length < 1 ? 'Min 1' : ''} />
-							<span class="text-xs text-faint">days</span>
+							<span class="text-xs text-secondary">days</span>
 						</div>
 						<Select type="single" bind:value={month.month_type} items={[{ value: 'regular', label: 'Regular' }, { value: 'intercalary', label: 'Intercalary' }, { value: 'lunisolar_leap', label: 'Lunisolar Leap' }]} containerClass="w-32" size="sm" />
-						<button type="button" onclick={() => months = months.filter((_, i) => i !== index)} class="text-faint opacity-0 transition-opacity group-hover:opacity-100 hover:text-error">×</button>
+						<button type="button" onclick={() => months = months.filter((_, i) => i !== index)} class="text-secondary opacity-0 transition-opacity group-hover:opacity-100 hover:text-error">×</button>
 					</div>
 				{/each}
 			</section>
 		{:else if activeTab === 'weekdays'}
-			<section class="bg-raised border border-border-subtle p-5 space-y-3">
+			<section class="bg-raised p-5 space-y-3">
 				<div class="flex items-center justify-between border-b border-border-subtle pb-2">
-					<div><h2 class="text-sm font-semibold text-heading">Weekdays</h2><p class="text-xs text-faint">{weekdays.length}-day week</p></div>
+					<div><h2 class="text-sm font-semibold text-heading">Weekdays</h2><p class="text-xs text-secondary">{weekdays.length}-day week</p></div>
 					<button type="button" onclick={() => weekdays = [...weekdays, emptyWeekday()]} class="text-xs text-link font-medium hover:underline">+ Add weekday</button>
 				</div>
 				<div class="flex items-center gap-1 mb-1">
 					<span class="text-xs font-medium text-secondary">First weekday of Year 1, Day 1</span>
 					<Input type="number" bind:value={firstWeekDay} min={0} max={weekdays.length - 1} containerClass="w-14 ml-2" class="text-center" error={firstWeekDay < 0 || firstWeekDay >= weekdays.length ? 'Invalid' : ''} />
-					{#if weekdays[firstWeekDay]}<span class="text-xs text-faint">({weekdays[firstWeekDay].name || '...'})</span>{/if}
+					{#if weekdays[firstWeekDay]}<span class="text-xs text-secondary">({weekdays[firstWeekDay].name || '...'})</span>{/if}
 				</div>
 				{#each weekdays as day, index (day._id)}
 					<div class="flex gap-2 items-center group">
-						<span class="text-xs text-faint w-5 text-right shrink-0">{index}</span>
+						<span class="text-xs text-secondary w-5 text-right shrink-0">{index}</span>
 						<Input bind:value={day.name} placeholder="Weekday name" containerClass="flex-1" error={!day.name.trim() ? 'Required' : ''} />
 						<Input bind:value={day.abbreviation} placeholder="Abbr" containerClass="w-16" />
-						<button type="button" onclick={() => weekdays = weekdays.filter((_, i) => i !== index)} class="text-faint opacity-0 transition-opacity group-hover:opacity-100 hover:text-error">×</button>
+						<button type="button" onclick={() => weekdays = weekdays.filter((_, i) => i !== index)} class="text-secondary opacity-0 transition-opacity group-hover:opacity-100 hover:text-error">×</button>
 					</div>
 				{/each}
 			</section>
 		{:else if activeTab === 'leapdays'}
-			<section class="bg-raised border border-border-subtle p-5 space-y-3">
+			<section class="bg-raised p-5 space-y-3">
 				<div class="flex items-center justify-between border-b border-border-subtle pb-2">
 					<h2 class="text-sm font-semibold text-heading">Leap Days</h2>
 					<button type="button" onclick={() => leapDays = [...leapDays, emptyLeapDay()]} class="text-xs text-link font-medium hover:underline">+ Add leap day</button>
 				</div>
 				{#each leapDays as ld, index (ld._id)}
-					<div class="border border-border-subtle p-4 space-y-3 bg-page">
+					<div class="p-4 space-y-3 bg-page">
 						<div class="flex items-center justify-between">
 							<Input bind:value={ld.name} placeholder="Leap day name" containerClass="flex-1" class="font-medium" error={!ld.name.trim() ? 'Required' : ''} />
-							<button type="button" onclick={() => leapDays = leapDays.filter((_, i) => i !== index)} class="text-faint ml-2 text-sm hover:text-error">×</button>
+							<button type="button" onclick={() => leapDays = leapDays.filter((_, i) => i !== index)} class="text-secondary ml-2 text-sm hover:text-error">×</button>
 						</div>
 						<div class="grid grid-cols-2 gap-3 md:grid-cols-4">
 							<Select type="single" label="Insert after" bind:value={ld.month_index_str} items={months.map((m, mi) => ({ value: String(mi), label: m.name || `Month ${mi + 1}` }))} />
@@ -535,16 +535,16 @@
 				{/each}
 			</section>
 		{:else if activeTab === 'eras'}
-			<section class="bg-raised border border-border-subtle p-5 space-y-3">
+			<section class="bg-raised p-5 space-y-3">
 				<div class="flex items-center justify-between border-b border-border-subtle pb-2">
-					<div><h2 class="text-sm font-semibold text-heading">Eras</h2><p class="text-xs text-faint">Named periods of time</p></div>
+					<div><h2 class="text-sm font-semibold text-heading">Eras</h2><p class="text-xs text-secondary">Named periods of time</p></div>
 					<button type="button" onclick={() => eras = [...eras, emptyEra()]} class="text-xs text-link font-medium hover:underline">+ Add era</button>
 				</div>
 				{#each eras as era, index (era._id)}
-					<div class="border border-border-subtle p-4 space-y-3 bg-page">
+					<div class="p-4 space-y-3 bg-page">
 						<div class="flex items-center justify-between">
 							<Input bind:value={era.name} placeholder="Era name (e.g. FA, AD)" containerClass="flex-1" class="font-medium" error={!era.name.trim() ? 'Required' : ''} />
-							<button type="button" onclick={() => eras = eras.filter((_, i) => i !== index)} class="text-faint ml-2 text-sm hover:text-error">×</button>
+							<button type="button" onclick={() => eras = eras.filter((_, i) => i !== index)} class="text-secondary ml-2 text-sm hover:text-error">×</button>
 						</div>
 						<div class="grid grid-cols-2 gap-3 md:grid-cols-4">
 							<Input type="number" label="Starts at year" bind:value={era.start_year} />
@@ -556,43 +556,43 @@
 				{/each}
 			</section>
 		{:else if activeTab === 'moons'}
-			<section class="bg-raised border border-border-subtle p-5 space-y-3">
+			<section class="bg-raised p-5 space-y-3">
 				<div class="flex items-center justify-between border-b border-border-subtle pb-2">
-					<div><h2 class="text-sm font-semibold text-heading">Moons</h2><p class="text-xs text-faint">Phase calculated automatically from cycle length.</p></div>
+					<div><h2 class="text-sm font-semibold text-heading">Moons</h2><p class="text-xs text-secondary">Phase calculated automatically from cycle length.</p></div>
 					<button type="button" onclick={() => moons = [...moons, emptyMoon()]} class="text-xs text-link font-medium hover:underline">+ Add moon</button>
 				</div>
 				{#each moons as moon, index (moon._id)}
-					<div class="flex gap-3 items-center group border border-border-subtle p-3 bg-page">
+					<div class="flex gap-3 items-center group p-3 bg-page">
 						<div class="flex gap-1 shrink-0">
-							<input type="color" bind:value={moon.face_color} class="size-7 border border-border cursor-pointer" title="Lit color" />
-							<input type="color" bind:value={moon.shadow_color} class="size-7 border border-border cursor-pointer" title="Shadow color" />
+							<input type="color" bind:value={moon.face_color} class="size-7 cursor-pointer" title="Lit color" />
+							<input type="color" bind:value={moon.shadow_color} class="size-7 cursor-pointer" title="Shadow color" />
 						</div>
 						<Input bind:value={moon.name} placeholder="Moon name" containerClass="flex-1" error={!moon.name.trim() ? 'Required' : ''} />
 						<div class="flex items-center gap-1">
 							<Input type="number" bind:value={moon.cycle} step="0.01" containerClass="w-20" class="text-center" />
-							<span class="text-xs text-faint whitespace-nowrap">day cycle</span>
+							<span class="text-xs text-secondary whitespace-nowrap">day cycle</span>
 						</div>
 						<div class="flex items-center gap-1">
 							<Input type="number" bind:value={moon.offset} containerClass="w-16" class="text-center" />
-							<span class="text-xs text-faint">offset</span>
+							<span class="text-xs text-secondary">offset</span>
 						</div>
-						<button type="button" onclick={() => moons = moons.filter((_, i) => i !== index)} class="text-faint opacity-0 transition-opacity group-hover:opacity-100 hover:text-error">×</button>
+						<button type="button" onclick={() => moons = moons.filter((_, i) => i !== index)} class="text-secondary opacity-0 transition-opacity group-hover:opacity-100 hover:text-error">×</button>
 					</div>
 				{/each}
 			</section>
 		{:else if activeTab === 'seasons'}
-			<section class="bg-raised border border-border-subtle p-5 space-y-3">
+			<section class="bg-raised p-5 space-y-3">
 				<div class="flex items-center justify-between border-b border-border-subtle pb-2">
-					<div><h2 class="text-sm font-semibold text-heading">Seasons</h2><p class="text-xs text-faint">By date or rolling duration.</p></div>
+					<div><h2 class="text-sm font-semibold text-heading">Seasons</h2><p class="text-xs text-secondary">By date or rolling duration.</p></div>
 					<button type="button" onclick={() => seasons = [...seasons, emptySeason()]} class="text-xs text-link font-medium hover:underline">+ Add season</button>
 				</div>
 				{#each seasons as season, index (season._id)}
-					<div class="border border-border-subtle p-4 space-y-3 bg-page">
+					<div class="p-4 space-y-3 bg-page">
 						<div class="flex items-center gap-3">
-							<input type="color" bind:value={season.color} class="size-7 border border-border cursor-pointer shrink-0" />
+							<input type="color" bind:value={season.color} class="size-7 cursor-pointer shrink-0" />
 							<Input bind:value={season.name} placeholder="Season name" containerClass="flex-1" class="font-medium" error={!season.name.trim() ? 'Required' : ''} />
 							<Select type="single" bind:value={season.kind} items={[{ value: 'spring', label: 'Spring' }, { value: 'summer', label: 'Summer' }, { value: 'autumn', label: 'Autumn' }, { value: 'winter', label: 'Winter' }, { value: 'custom', label: 'Custom' }]} containerClass="w-24" size="sm" />
-							<button type="button" onclick={() => seasons = seasons.filter((_, i) => i !== index)} class="text-faint text-sm hover:text-error">×</button>
+							<button type="button" onclick={() => seasons = seasons.filter((_, i) => i !== index)} class="text-secondary text-sm hover:text-error">×</button>
 						</div>
 						<div class="flex items-center gap-3">
 							<Select type="single" bind:value={season.timing_type} items={[{ value: 'dated', label: 'Starts on date' }, { value: 'periodic', label: 'Rolling duration' }]} containerClass="w-36" size="sm" />
@@ -603,7 +603,7 @@
 								<div class="flex items-center gap-1">
 									<span class="text-xs text-secondary">Lasts</span>
 									<Input type="number" bind:value={season.duration} min={1} containerClass="w-16" class="text-center" error={season.duration < 1 ? 'Min 1' : ''} />
-									<span class="text-xs text-faint">days</span>
+									<span class="text-xs text-secondary">days</span>
 								</div>
 							{/if}
 						</div>
@@ -630,7 +630,7 @@
 			<section class="border border-error-border bg-error-subtle/40 p-5 space-y-3">
 				<div>
 					<h2 class="text-sm font-semibold text-error">Danger Zone</h2>
-					<p class="text-xs text-faint mt-1">Delete this calendar and its linked article content. This cannot be undone.</p>
+					<p class="text-xs text-secondary mt-1">Delete this calendar and its linked article content. This cannot be undone.</p>
 				</div>
 				<div>
 					<button

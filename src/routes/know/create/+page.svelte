@@ -47,7 +47,7 @@
 		<button
 			onclick={() => (showPreview = !showPreview)}
 			type="button"
-			class="px-3 py-1.5 border border-border-strong text-sm hover:bg-page {showPreview ? 'bg-accent-subtle border-accent-border' : ''}"
+			class="px-3 py-1.5 text-sm hover:bg-page {showPreview ? 'bg-accent-subtle border-accent-border' : ''}"
 		>
 			{showPreview ? 'Hide preview' : 'Show preview'}
 		</button>
@@ -59,7 +59,7 @@
 		</div>
 
 		{#if showPreview}
-			<div class="w-1/2 border border-border-strong overflow-hidden">
+			<div class="w-1/2 overflow-hidden">
 				<div class="bg-raised px-3 py-1 text-xs font-medium text-dim border-b border-border-strong">Preview</div>
 				<LivePreview {content} />
 			</div>

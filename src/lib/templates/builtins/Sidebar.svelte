@@ -8,7 +8,7 @@
 	const rows = args.filter(a => a.name && a.name.toLowerCase().trim() !== 'title')
 </script>
 
-<div class="know-sidebar float-right ml-4 mb-4 border border-border-strong bg-page text-sm w-56 p-3">
+<div class="know-sidebar float-right ml-4 mb-4 bg-page text-sm w-56 p-3">
 	{#if title}
 		<div class="font-bold text-center mb-2 pb-1 border-b border-border">{title}</div>
 	{/if}

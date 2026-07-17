@@ -67,14 +67,14 @@
 </script>
 
 <div class="phoneme-sequence-input">
-	<div class="flex flex-wrap items-center gap-1.5 min-h-10 p-2 border border-border-subtle bg-raised">
+	<div class="flex flex-wrap items-center gap-1.5 min-h-10 p-2 bg-raised">
 		{#if value.length === 0}
 			<span class="text-dim text-xs italic">Silent — no phonemes. Add one below, or leave empty for punctuation / silent letters.</span>
 		{:else}
 			{#each value as pid, index (pid + ':' + index)}
 				{@const p = optionById.get(pid)}
 				<div
-					class="inline-flex items-center gap-1 px-2 py-1 bg-muted border border-border-subtle rounded-sm text-sm cursor-grab"
+					class="inline-flex items-center gap-1 px-2 py-1 bg-muted rounded-sm text-sm cursor-grab"
 					class:opacity-50={dragging === index}
 					draggable="true"
 					ondragstart={e => onDragStart(index, e)}
@@ -84,9 +84,9 @@
 					title={p ? `${p.type}` : 'unknown phoneme'}
 					role="listitem"
 				>
-					<DotsSixVertical size={12} class="text-faint" />
+					<DotsSixVertical size={12} class="text-secondary" />
 					<span class="font-serif">/{p?.ipa ?? '?'}/</span>
-					<button type="button" class="text-faint hover:text-error" onclick={() => removeAt(index)} aria-label="Remove phoneme">
+					<button type="button" class="text-secondary hover:text-error" onclick={() => removeAt(index)} aria-label="Remove phoneme">
 						<X size={12} weight="bold" />
 					</button>
 				</div>

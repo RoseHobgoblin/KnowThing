@@ -22,7 +22,7 @@
 			name="q"
 			value={query}
 			placeholder={placeholder}
-			class="w-full px-3 py-2 border border-border-strong text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent"
+			class="w-full px-3 py-2 text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent"
 		/>
 	</div>
 	<input type="hidden" name="scope" value={scope} />

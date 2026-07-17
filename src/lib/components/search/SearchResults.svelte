@@ -18,7 +18,7 @@
 				<a href={result.href} class="text-lg text-link font-medium hover:underline">{result.title}</a>
 				<Badge>{result.badge}</Badge>
 				{#each result.meta as item}
-					<span class="text-xs text-faint">{item}</span>
+					<span class="text-xs text-secondary">{item}</span>
 				{/each}
 			</div>
 			{#if result.snippet}

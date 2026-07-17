@@ -180,18 +180,18 @@
 		return applyStem(pattern, previewStem)
 	}
 
-	const inputClass = 'px-2 py-1 border border-border-strong text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent'
+	const inputClass = 'px-2 py-1 text-sm bg-page focus:outline-none focus:ring-2 focus:ring-accent'
 </script>
 
 {#if editing}
-	<div class="mt-4 p-4 bg-raised border border-border space-y-3">
+	<div class="mt-4 p-4 bg-raised space-y-3">
 		<div class="flex items-center justify-between">
 			<h4 class="text-xs font-medium uppercase tracking-wide text-dim">Set up inflection</h4>
 			<div class="flex gap-2">
 				{#if inflection.hasInflection}
 					<button onclick={removeInflection} class="text-xs text-error hover:underline">Remove</button>
 				{/if}
-				<button onclick={() => editing = false} class="text-xs text-faint hover:text-secondary">Cancel</button>
+				<button onclick={() => editing = false} class="text-xs text-secondary hover:text-body">Cancel</button>
 			</div>
 		</div>
 
@@ -214,7 +214,7 @@
 						items={filteredClasses.map(cls => ({ value: String(cls.id), label: cls.name }))}
 						containerClass="w-full"
 					/>
-					<p class="text-xs text-faint mt-1">Picks the rule set. Forms below auto-generate from the class's rules + the stem.</p>
+					<p class="text-xs text-secondary mt-1">Picks the rule set. Forms below auto-generate from the class's rules + the stem.</p>
 				{:else}
 					<div class="p-2 bg-warning-bg border border-warning-border text-xs text-body">
 						{#if availableClasses.length > 0}
@@ -238,21 +238,21 @@
 			<div class="flex-1 min-w-[150px]">
 				<label class="block text-xs font-medium text-secondary mb-1">Stem</label>
 				<Input bind:value={stem} containerClass="w-full" placeholder={`e.g. ${stemPlaceholder}`} />
-				<p class="text-xs text-faint mt-1">The unchanging part the rules attach to — usually the word minus its ending.</p>
+				<p class="text-xs text-secondary mt-1">The unchanging part the rules attach to — usually the word minus its ending.</p>
 			</div>
 		</div>
 
 		{#if selectedClassId !== null && livePreview.length > 0}
-			<div class="p-2 bg-page border border-border-subtle">
+			<div class="p-2 bg-page">
 				<div class="text-xs text-dim mb-1">Will generate:</div>
 				<div class="text-xs font-mono text-body flex flex-wrap gap-x-3 gap-y-0.5">
 					{#each livePreview as cell (cell.cell)}
-						<span><span class="text-faint">{cellKeyLabel(cell.cell)}:</span> {cell.form}</span>
+						<span><span class="text-secondary">{cellKeyLabel(cell.cell)}:</span> {cell.form}</span>
 					{/each}
 				</div>
 			</div>
 		{:else if selectedClassId !== null && loadingRules}
-			<div class="text-xs text-faint">Loading class rules…</div>
+			<div class="text-xs text-secondary">Loading class rules…</div>
 		{/if}
 
 		<!-- Override grid -->
@@ -261,13 +261,13 @@
 				<label class="block text-xs font-medium text-secondary mb-1">
 					Irregular forms (overrides)
 				</label>
-				<p class="text-xs text-faint mb-2">Leave blank to use the class rule. Fill a cell only when this word breaks the pattern.</p>
+				<p class="text-xs text-secondary mb-2">Leave blank to use the class rule. Fill a cell only when this word breaks the pattern.</p>
 				<div class="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
 					{#each cellKeys as key (key)}
 						{@const generated = ruleWouldBe(key)}
 						{@const hasOverride = (overrides[key] ?? '').trim().length > 0}
 						<div class="flex items-center gap-2">
-							<span class="text-xs text-faint w-32 truncate" title={key}>{cellKeyLabel(key)}</span>
+							<span class="text-xs text-secondary w-32 truncate" title={key}>{cellKeyLabel(key)}</span>
 							<input
 								type="text"
 								value={overrides[key] || ''}
@@ -284,7 +284,7 @@
 								class="flex-1 {inputClass} text-xs {hasOverride ? 'border-accent bg-accent-subtle' : ''}"
 							/>
 							{#if hasOverride && generated}
-								<span class="text-xs text-faint whitespace-nowrap" title="Rule would generate this">would be: {generated}</span>
+								<span class="text-xs text-secondary whitespace-nowrap" title="Rule would generate this">would be: {generated}</span>
 							{/if}
 						</div>
 					{/each}
@@ -305,7 +305,7 @@
 		+ Set up inflection
 	</button>
 {:else}
-	<button onclick={startEditing} class="mt-1 text-xs text-faint hover:text-link hover:underline">
+	<button onclick={startEditing} class="mt-1 text-xs text-secondary hover:text-link hover:underline">
 		Edit inflection
 	</button>
 {/if}

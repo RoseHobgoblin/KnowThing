@@ -202,7 +202,7 @@
 		}
 	}
 
-	const textareaClass = 'w-full px-3 py-2 text-sm text-body bg-surface border border-border-strong outline-none transition-colors placeholder:text-faint hover:border-border focus:ring-2 focus:ring-accent focus:border-accent-border'
+	const textareaClass = 'w-full px-3 py-2 text-sm text-body bg-page outline-none transition-colors placeholder:text-dim focus:ring-2 focus:ring-accent'
 	const labelClass = 'block text-sm font-medium text-secondary mb-1'
 </script>
 
@@ -227,10 +227,10 @@
 		</div>
 
 		{#each defs as def, index}
-			<div class="border border-border p-3 mb-3 bg-page/50 {defs.length > 1 ? 'relative' : ''}">
+			<div class="p-3 mb-3 bg-page/50 {defs.length > 1 ? 'relative' : ''}">
 				{#if defs.length > 1}
 					<div class="flex items-center justify-between mb-2">
-						<span class="text-xs font-medium text-faint">Definition {index + 1}</span>
+						<span class="text-xs font-medium text-secondary">Definition {index + 1}</span>
 						<span class="flex items-center gap-2">
 							<button
 								type="button"
@@ -274,7 +274,7 @@
 	{#if relationsManagedAt}
 		<div>
 			<div class={labelClass}>Etymology Links</div>
-			<p class="text-xs text-faint">
+			<p class="text-xs text-secondary">
 				Relations for this entry are managed in the Etymology section of
 				<a href={relationsManagedAt} class="text-link hover:text-link-hover hover:underline">the word page</a>.
 			</p>
@@ -286,7 +286,7 @@
 			<button type="button" onclick={addEtymRow} class="text-xs text-link hover:text-link-hover hover:underline">+ Add source word</button>
 		</div>
 		{#if etymRows.length === 0}
-			<p class="text-xs text-faint">Click "+ Add source word" to link derivations, loans, or compounds.</p>
+			<p class="text-xs text-secondary">Click "+ Add source word" to link derivations, loans, or compounds.</p>
 		{/if}
 		{#each etymRows as row, index}
 			<div class="flex gap-2 items-start mb-2">
@@ -300,18 +300,17 @@
 						onblur={() => setTimeout(() => row.showDropdown = false, 200)}
 						placeholder="Search for a word..."
 						class="
-							w-full px-3 py-1.5 text-sm text-body bg-surface border border-border-strong outline-none transition-colors
-							placeholder:text-faint
-							hover:border-border
-							focus:ring-2 focus:ring-accent focus:border-accent-border
-							{row.targetId ? 'border-success-border bg-success-bg' : ''}"
+							w-full px-3 py-1.5 text-sm text-body bg-page outline-none transition-colors
+							placeholder:text-dim
+							focus:ring-2 focus:ring-accent
+							{row.targetId ? 'bg-success-bg' : ''}"
 					/>
 					{#if row.showDropdown}
-						<div class="absolute z-10 top-full inset-x-0 mt-1 bg-surface border border-border shadow-lg max-h-40 overflow-y-auto">
+						<div class="absolute z-10 top-full inset-x-0 mt-1 bg-surface shadow-lg max-h-40 overflow-y-auto">
 							{#each row.results as result}
 								<button type="button" onclick={() => selectEtymTarget(index, result)} class="w-full text-left px-3 py-1.5 text-sm border-b border-border-subtle hover:bg-accent-subtle last:border-0">
 									<span class="font-medium">{result.word}</span>
-									<span class="text-faint text-xs ml-1">({result.languageName})</span>
+									<span class="text-secondary text-xs ml-1">({result.languageName})</span>
 								</button>
 							{/each}
 						</div>

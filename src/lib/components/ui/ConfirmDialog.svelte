@@ -62,7 +62,7 @@
 					onclick={handleClose}
 					disabled={confirming}
 					class="
-						px-4 py-2 text-sm border border-border text-secondary transition-colors
+						px-4 py-2 text-sm text-secondary transition-colors
 						hover:bg-raised disabled:opacity-50
 					"
 				>

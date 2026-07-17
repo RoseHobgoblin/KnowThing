@@ -199,7 +199,12 @@
 		siblings={data.siblings ?? []}
 	/>
 {:else if isConfigureMode && data.kind === 'system'}
-	<CelestialConfigureForm kind="system" record={raw} />
+	<!-- Map rows carry id/name; systemId is trivially this system (they were fetched by it). -->
+	<CelestialConfigureForm
+		kind="system"
+		record={raw}
+		stars={(data.systemStars ?? []).map(s => ({ id: s.id, name: s.name, systemId: raw.id }))}
+	/>
 {:else}
 	<ArticleShell
 		breadcrumbs={celestialBreadcrumbs(raw.name)}
@@ -211,13 +216,13 @@
 					<GearSixIcon size={14} weight="fill" />Configure
 				</a>
 			{:else if permissions.isAuthenticated && !permissions.canConfigureCelestial}
-				<span class="text-faint text-sm">View only. Editor role required for celestial changes.</span>
+				<span class="text-secondary text-sm">View only. Editor role required for celestial changes.</span>
 			{/if}
 		{/snippet}
 
 		{#if kind === 'system' && data.kind === 'system'}
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-[1fr_280px]">
-				<div class="border border-border-subtle overflow-hidden">
+				<div class="overflow-hidden">
 					{#if data.systemStars && data.systemStars.length > 0}
 						<MapControls
 							bind:scale={mapScale}
@@ -241,7 +246,7 @@
 							<DateScrubber calendars={systemCalendarConfigs} bind:currentAbsoluteDay />
 						{/if}
 					{:else}
-						<div class="flex items-center justify-center h-64 text-dim border border-border-subtle">
+						<div class="flex items-center justify-center h-64 text-dim">
 							No stars registered in this system.
 						</div>
 					{/if}

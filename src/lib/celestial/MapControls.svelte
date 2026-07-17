@@ -41,8 +41,8 @@
 <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-3 py-1.5 bg-page border-b border-border-subtle text-xs text-secondary select-none">
 	<!-- Scale -->
 	<div class="flex items-center gap-1">
-		<span class="text-faint uppercase tracking-wider">Scale</span>
-		<div class="flex border border-border-subtle">
+		<span class="text-secondary uppercase tracking-wider">Scale</span>
+		<div class="flex">
 			{#each scaleItems as item (item.value)}
 				<button
 					type="button"
@@ -56,8 +56,8 @@
 
 	<!-- Labels -->
 	<div class="flex items-center gap-1">
-		<span class="text-faint uppercase tracking-wider">Labels</span>
-		<div class="flex border border-border-subtle">
+		<span class="text-secondary uppercase tracking-wider">Labels</span>
+		<div class="flex">
 			{#each labelItems as item (item.value)}
 				<button
 					type="button"
@@ -70,8 +70,8 @@
 
 	<!-- Trails -->
 	<div class="flex items-center gap-1">
-		<span class="text-faint uppercase tracking-wider">Trails</span>
-		<div class="flex border border-border-subtle">
+		<span class="text-secondary uppercase tracking-wider">Trails</span>
+		<div class="flex">
 			{#each trailItems as item (item.value)}
 				<button
 					type="button"
@@ -86,7 +86,7 @@
 	<button
 		type="button"
 		disabled={!hasSelection}
-		class="px-1.5 py-0.5 border border-border-subtle transition-colors
+		class="px-1.5 py-0.5 transition-colors
 			{follow && hasSelection ? 'bg-accent-subtle text-accent font-medium' : 'hover:bg-raised'}
 			{!hasSelection ? 'opacity-40 cursor-not-allowed' : ''}"
 		title={hasSelection ? 'Center on selected body' : 'Select a body first'}

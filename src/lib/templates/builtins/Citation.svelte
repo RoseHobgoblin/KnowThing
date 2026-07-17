@@ -31,5 +31,5 @@
 	{#if doi}doi:<a href="https://doi.org/{doi}" class="text-link hover:underline" target="_blank" rel="noopener">{doi}</a>.{/if}
 	{#if isbn}ISBN {isbn}.{/if}
 	{#if url}<a href={url} class="text-link hover:underline" target="_blank" rel="noopener">[link]</a>{/if}
-	{#if accessdate} <span class="text-faint">(accessed {accessdate})</span>{/if}
+	{#if accessdate} <span class="text-secondary">(accessed {accessdate})</span>{/if}
 </span>

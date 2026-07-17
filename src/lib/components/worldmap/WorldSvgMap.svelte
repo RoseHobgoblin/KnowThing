@@ -147,14 +147,14 @@
 		</p>
 		<button
 			type="button"
-			class="px-3 py-1.5 text-xs border border-border bg-surface hover:bg-raised text-body"
+			class="px-3 py-1.5 text-xs bg-surface hover:bg-raised text-body"
 			onclick={resetView}
 		>
 			Reset view
 		</button>
 	</div>
 
-	<div class="border border-border bg-raised overflow-hidden">
+	<div class="bg-raised overflow-hidden">
 		<svg
 			bind:this={svgEl}
 			viewBox={viewBoxValue}

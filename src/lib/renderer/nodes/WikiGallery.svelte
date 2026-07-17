@@ -9,7 +9,7 @@
 
 <div class="know-gallery flex flex-wrap gap-3 my-4">
 	{#each items as item}
-		<figure class="border border-border-strong bg-page p-1 text-center">
+		<figure class="bg-page p-1 text-center">
 			<img
 				src="{ctx.mediaBaseUrl}/{encodeURIComponent(item.filename)}?w=150"
 				alt={item.caption || item.filename}

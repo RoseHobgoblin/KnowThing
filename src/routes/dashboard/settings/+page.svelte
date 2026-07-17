@@ -129,10 +129,10 @@
 		<FormNotice title="Settings were not saved" message={saveError} />
 	{/if}
 
-	<section class="bg-surface border border-border p-5 space-y-4">
+	<section class="bg-surface p-5 space-y-4">
 		<div>
 			<h2 class="text-sm font-semibold text-heading">Identity</h2>
-			<p class="text-xs text-faint mt-0.5">The name and branding of your site.</p>
+			<p class="text-xs text-secondary mt-0.5">The name and branding of your site.</p>
 		</div>
 		<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 			<Input label="Site name" bind:value={siteName} placeholder="KnowThing" />
@@ -142,10 +142,10 @@
 		</div>
 	</section>
 
-	<section class="bg-surface border border-border p-5 space-y-4">
+	<section class="bg-surface p-5 space-y-4">
 		<div>
 			<h2 class="text-sm font-semibold text-heading">Navigation Labels</h2>
-			<p class="text-xs text-faint mt-0.5">Customize what the nav bar links are called.</p>
+			<p class="text-xs text-secondary mt-0.5">Customize what the nav bar links are called.</p>
 		</div>
 		<div class="grid grid-cols-2 gap-4 md:grid-cols-3">
 			<Input label="Main page" bind:value={navWikiLabel} placeholder="Main Page" />
@@ -156,10 +156,10 @@
 		</div>
 	</section>
 
-	<section class="bg-surface border border-border p-5 space-y-4">
+	<section class="bg-surface p-5 space-y-4">
 		<div>
 			<h2 class="text-sm font-semibold text-heading">Features</h2>
-			<p class="text-xs text-faint mt-0.5">Toggle site features on or off.</p>
+			<p class="text-xs text-secondary mt-0.5">Toggle site features on or off.</p>
 		</div>
 		<div class="flex flex-col gap-3">
 			<Checkbox bind:value={wordbookEnabled} label="Wordbook">
@@ -171,10 +171,10 @@
 		</div>
 	</section>
 
-	<section class="bg-surface border border-border p-5 space-y-4">
+	<section class="bg-surface p-5 space-y-4">
 		<div>
 			<h2 class="text-sm font-semibold text-heading">Media</h2>
-			<p class="text-xs text-faint mt-0.5">How uploads are processed and what metadata is preserved.</p>
+			<p class="text-xs text-secondary mt-0.5">How uploads are processed and what metadata is preserved.</p>
 		</div>
 		<div class="flex flex-col gap-3">
 			<Checkbox bind:value={stripExifOnUpload} label="Strip EXIF on upload">
@@ -183,10 +183,10 @@
 		</div>
 	</section>
 
-	<section class="bg-surface border border-border p-5 space-y-4">
+	<section class="bg-surface p-5 space-y-4">
 		<div>
 			<h2 class="text-sm font-semibold text-heading">Display</h2>
-			<p class="text-xs text-faint mt-0.5">Visual and layout settings.</p>
+			<p class="text-xs text-secondary mt-0.5">Visual and layout settings.</p>
 		</div>
 		<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 			<div>

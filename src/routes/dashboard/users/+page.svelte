@@ -90,7 +90,7 @@
 <div class="space-y-6">
 	<h1 class="text-xl font-bold text-heading">Users</h1>
 
-	<div class="bg-surface border border-border">
+	<div class="bg-surface">
 		<div class="divide-y divide-border-subtle">
 			{#each data.users as user (user.id)}
 				<div class="flex items-center justify-between px-4 py-3">
@@ -99,13 +99,13 @@
 						{#if user.role === 'owner'}
 							<Badge variant="accent">Owner</Badge>
 						{/if}
-						<span class="text-xs text-faint">
+						<span class="text-xs text-secondary">
 							joined {new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
 						</span>
 					</div>
 					<div class="flex items-center gap-2">
 						{#if user.role === 'owner'}
-							<span class="text-xs text-faint">Owner</span>
+							<span class="text-xs text-secondary">Owner</span>
 						{:else}
 							<Select
 								type="single"
@@ -125,12 +125,12 @@
 	</div>
 
 	<!-- Registration codes -->
-		<section class="bg-surface border border-border p-5 space-y-4">
+		<section class="bg-surface p-5 space-y-4">
 			<h2 class="text-sm font-semibold text-heading">Registration Codes</h2>
-			<p class="text-xs text-faint">Generate invite codes for new users. Each code can be used once.</p>
-			<p class="text-xs text-faint">Codes are only shown in full when they are first generated.</p>
+			<p class="text-xs text-secondary">Generate invite codes for new users. Each code can be used once.</p>
+			<p class="text-xs text-secondary">Codes are only shown in full when they are first generated.</p>
 			{#if permissions.canGenerateInviteCodes && !isOwner}
-				<p class="text-xs text-faint">Owner role is required to generate admin invite codes.</p>
+				<p class="text-xs text-secondary">Owner role is required to generate admin invite codes.</p>
 			{/if}
 
 		<div class="flex gap-3 items-end">
@@ -146,7 +146,7 @@
 		</div>
 
 		{#if generatedCode}
-			<div class="flex items-center gap-2 bg-raised border border-border-subtle p-3">
+			<div class="flex items-center gap-2 bg-raised p-3">
 				<code class="text-body font-mono text-lg flex-1">{generatedCode}</code>
 				<button onclick={copyCode} class="text-xs text-link hover:text-link-hover">Copy</button>
 			</div>
@@ -154,15 +154,15 @@
 
 		{#if (data.codes as any[]).length > 0}
 			<div class="border-t border-border-subtle pt-3 mt-3">
-				<span class="text-xs text-faint uppercase tracking-wider">Recent Codes</span>
+				<span class="text-xs text-secondary uppercase tracking-wider">Recent Codes</span>
 				<div class="mt-2 space-y-1">
 					{#each data.codes as code (code.id)}
 						<div class="flex items-center justify-between text-xs py-1">
 							<code class="text-secondary font-mono">{code.code}</code>
 							<div class="flex items-center gap-2">
-								<span class="text-faint">{code.role}</span>
+								<span class="text-secondary">{code.role}</span>
 								{#if code.isOwnerOnlyRole}
-									<span class="text-faint">owner-only</span>
+									<span class="text-secondary">owner-only</span>
 								{/if}
 								{#if code.usedBy}
 									<span class="text-accent">used</span>

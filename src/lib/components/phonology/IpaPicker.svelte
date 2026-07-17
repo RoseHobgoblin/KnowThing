@@ -98,7 +98,7 @@
 		<!-- ─────────────────────────────────────────── refining phase ── -->
 		<div class="space-y-5 pb-2">
 			<!-- Live preview -->
-			<div class="flex items-center justify-between gap-4 p-4 border border-border-subtle bg-raised">
+			<div class="flex items-center justify-between gap-4 p-4 bg-raised">
 				<div>
 					<div class="text-xs uppercase tracking-wider text-dim mb-1">Result</div>
 					<div class="font-serif text-4xl text-heading">/{composedSymbol}/</div>
@@ -110,7 +110,7 @@
 								.join(' · ')}
 						</div>
 					{:else}
-						<div class="text-xs text-faint mt-1">No modifiers — plain /{selected.symbol}/</div>
+						<div class="text-xs text-secondary mt-1">No modifiers — plain /{selected.symbol}/</div>
 					{/if}
 				</div>
 				<div class="flex items-center gap-2">
@@ -135,7 +135,7 @@
 								inline-flex items-center gap-1.5 px-2.5 py-1 text-xs border transition-colors cursor-pointer
 								{active
 									? 'border-accent bg-accent-subtle text-accent'
-									: 'border-border-subtle text-body hover:border-accent-border hover:bg-accent-subtle hover:text-accent'}
+									: 'border-transparent text-body hover:border-accent-border hover:bg-accent-subtle hover:text-accent'}
 							"
 							onclick={() => toggleModifier(modifier.id)}
 							title={modifier.description}
@@ -145,7 +145,7 @@
 						</button>
 					{/each}
 				</div>
-				<p class="text-xs text-faint mt-2">
+				<p class="text-xs text-secondary mt-2">
 					Click a modifier to toggle it. Mutually exclusive modifiers (e.g. long vs half-long) replace each other.
 				</p>
 			</div>
@@ -159,7 +159,7 @@
 
 					{#if section.columns && section.rows}
 						<div class="overflow-x-auto">
-							<table class="border border-border-subtle text-sm mx-auto">
+							<table class="text-sm mx-auto">
 								<thead>
 									<tr>
 										<th class="px-2 py-1 border-b border-r border-border-subtle bg-muted text-heading text-left capitalize">
@@ -210,7 +210,7 @@
 								<button
 									type="button"
 									class="
-										font-serif text-base px-2 py-1 rounded-sm border border-border-subtle cursor-pointer transition-colors
+										font-serif text-base px-2 py-1 rounded-sm cursor-pointer transition-colors
 										hover:bg-accent-subtle hover:text-accent
 										disabled:opacity-50 disabled:cursor-wait
 									"

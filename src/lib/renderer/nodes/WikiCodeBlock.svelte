@@ -3,6 +3,6 @@
 </script>
 
 <pre class="
-	know-code-block bg-page border border-border p-3 my-2 overflow-x-auto text-sm
+	know-code-block bg-page p-3 my-2 overflow-x-auto text-sm
 	font-mono
 "><code class={lang ? `language-${lang}` : ''}>{code}</code></pre>

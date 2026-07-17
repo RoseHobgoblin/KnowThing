@@ -144,15 +144,15 @@
 		aria-autocomplete="list"
 		aria-activedescendant={selectedIndex >= 0 ? `search-result-${selectedIndex}` : undefined}
 		class="
-			w-full border border-border px-3 py-1.5 text-sm bg-page transition-colors
-			focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent-border
+			w-full px-3 py-1.5 text-sm bg-page transition-colors
+			focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent
 		"
 	/>
 
 	{#if showResults && results.length > 0}
 		<div
 			class="
-				absolute top-full inset-x-0 bg-surface border border-border shadow-lg z-50 max-h-80
+				absolute top-full inset-x-0 bg-surface shadow-lg z-50 max-h-80
 				overflow-y-auto mt-0.5
 			"
 			role="listbox"
@@ -169,7 +169,7 @@
 				>
 					<div class="flex items-center gap-2">
 						<div class="font-medium text-sm text-heading">{r.title}</div>
-						<span class="text-xs uppercase tracking-wide text-faint">{r.badge}</span>
+						<span class="text-xs uppercase tracking-wide text-secondary">{r.badge}</span>
 					</div>
 					{#if r.snippet}
 						<div class="text-xs text-dim mt-0.5">{@html sanitizeSnippet(r.snippet)}</div>

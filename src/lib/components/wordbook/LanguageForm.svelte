@@ -147,7 +147,7 @@
 		}
 	}
 
-	const textareaClass = 'flex w-full min-w-0 px-3 py-2 text-sm text-body bg-surface border border-border-strong outline-none transition-colors placeholder:text-faint hover:border-border focus:ring-2 focus:ring-accent focus:border-accent-border disabled:pointer-events-none disabled:opacity-50'
+	const textareaClass = 'flex w-full min-w-0 px-3 py-2 text-sm text-body bg-page outline-none transition-colors placeholder:text-dim focus:ring-2 focus:ring-accent disabled:pointer-events-none disabled:opacity-50'
 </script>
 
 <form onsubmit={handleSubmit} class="space-y-4">
@@ -184,7 +184,7 @@
 				{#if languageType === 'proto'}
 					<span class="text-error">*</span>
 				{:else}
-					<span class="text-xs text-faint">(inherits from parent)</span>
+					<span class="text-xs text-secondary">(inherits from parent)</span>
 				{/if}
 			</Label>
 			<Input
@@ -197,7 +197,7 @@
 		<div>
 			<Label>Accent Color</Label>
 			<div class="flex gap-2 items-center mt-1">
-				<input id="color" type="color" bind:value={color} class="size-10 border border-border-strong cursor-pointer" />
+				<input id="color" type="color" bind:value={color} class="size-10 cursor-pointer" />
 				<Input bind:value={color} placeholder="#d97706" />
 			</div>
 		</div>

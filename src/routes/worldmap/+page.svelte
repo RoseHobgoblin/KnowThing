@@ -123,7 +123,7 @@
 	{/snippet}
 
 	{#if canCreateMap && showCreateForm}
-		<div class="mb-5 border border-border bg-raised p-4 space-y-4">
+		<div class="mb-5 bg-raised p-4 space-y-4">
 			<p class="text-sm text-secondary">Create a map with optional timeline/event metadata and an optional wiki link.</p>
 			<div class="grid grid-cols-1 gap-3 md:grid-cols-2">
 				<Input label="Map name" bind:value={mapName} placeholder="Main World Map" />
@@ -153,7 +153,7 @@
 	{:else}
 		<ul class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 			{#each data.maps as map (map.id)}
-				<li class="border border-border bg-raised p-4">
+				<li class="bg-raised p-4">
 					<a class="block hover:text-link" href={`/worldmap/${map.slug}`}>
 						<h2 class="text-lg font-semibold text-heading">{map.name}</h2>
 					</a>

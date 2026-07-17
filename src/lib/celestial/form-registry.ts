@@ -6,6 +6,7 @@ import {
 	computeHillSphereAu,
 	computeLuminosity,
 	computeOrbitalPeriodDays,
+	deriveSystemType,
 	deriveBodyFields,
 	deriveBodyOrbitalFields,
 	deriveDisplayStrings,
@@ -16,6 +17,7 @@ import {
 	formatTemperatureK,
 } from './compute.js'
 import { validateBodyPhysics, validateStarPhysics, type PhysicsWarning } from './validate-physics.js'
+import { spectralColor } from './colors.js'
 
 /**
  * Declarative field registry for the celestial configure forms.
@@ -62,6 +64,9 @@ export interface TextFieldSpec extends FieldBase {
 	/** Send '' as null in the payload. Defaults to true; description must stay a string. */
 	emptyAsNull?: boolean
 }
+/** A selectable display unit: storage = typed × factor. The factor-1 entry is the storage unit. */
+export interface UnitOption { label: string, factor: number }
+
 export interface NumberFieldSpec extends FieldBase {
 	control: 'number'
 	key: string
@@ -69,6 +74,8 @@ export interface NumberFieldSpec extends FieldBase {
 	min?: number
 	max?: number
 	rangeError?: string
+	/** Selectable display units (ascending by factor). Omit for a plain numeric input. */
+	units?: UnitOption[]
 }
 export interface SelectFieldSpec extends FieldBase {
 	control: 'select'
@@ -81,11 +88,6 @@ export interface SelectFieldSpec extends FieldBase {
 	initial?: (record: Record<string, any>) => string
 }
 export interface CheckboxFieldSpec extends FieldBase { control: 'checkbox', key: string }
-export interface DerivedFieldSpec extends FieldBase {
-	control: 'derived'
-	compute: (ctx: FieldContext) => string | null
-	visible?: (ctx: FieldContext) => boolean
-}
 export interface LockableFieldSpec extends FieldBase {
 	control: 'lockable'
 	key: string
@@ -103,8 +105,23 @@ export type FieldSpec =
 	| NumberFieldSpec
 	| SelectFieldSpec
 	| CheckboxFieldSpec
-	| DerivedFieldSpec
 	| LockableFieldSpec
+
+/** One row of the live "computed properties" side panel. Null values are hidden. */
+export interface ComputedSpec {
+	label: string
+	compute: (ctx: FieldContext) => string | null
+	/** Section id this row belongs to — the panel scopes to the active tab by default. */
+	tab?: string
+}
+
+/** The entity preview card at the top of the side panel. */
+export interface FormPreview {
+	title: string
+	subtitle: string | null
+	/** Swatch color (resolved hex), or null for a neutral dot. */
+	color: string | null
+}
 
 export interface FieldGroup { cols: 1 | 2 | 3, fields: FieldSpec[] }
 export interface FormSection { id: string, label: string, intro?: string, groups: FieldGroup[] }
@@ -125,6 +142,12 @@ export interface CelestialFormConfig {
 	sections: FormSection[]
 	/** Draft keys hydrated from the record and passed through the payload without a control (e.g. luminosityW). */
 	passthroughKeys?: string[]
+	/** Live-derived rows for the side panel. */
+	computed?: ComputedSpec[]
+	/** Lockable derived fields, rendered as their own "Overrides" section below the form. */
+	overrides?: LockableFieldSpec[]
+	/** Entity preview card for the side panel. */
+	preview?: (ctx: FieldContext) => FormPreview
 	/** Payload entries derived from the whole draft — the parent-edge coalescing lives here. */
 	extraPayload?: (ctx: FieldContext) => Record<string, any>
 	physicsWarnings?: (ctx: FieldContext) => PhysicsWarning[]
@@ -142,7 +165,10 @@ export function labelOf(spec: FieldSpec, ctx: FieldContext): string {
 }
 
 export function allFieldSpecs(config: CelestialFormConfig): FieldSpec[] {
-	return config.sections.flatMap(section => section.groups.flatMap(group => group.fields))
+	return [
+		...config.sections.flatMap(section => section.groups.flatMap(group => group.fields)),
+		...(config.overrides ?? []),
+	]
 }
 
 /** Read a draft value as a finite number, tolerating '' / strings from inputs. */
@@ -167,7 +193,6 @@ export function buildDraft(config: CelestialFormConfig, record: Record<string, a
 	const extraString = (key: string) => (typeof extra[key] === 'string' ? (extra[key] as string) : null)
 	const draft: CelestialDraft = {}
 	for (const spec of allFieldSpecs(config)) {
-		if (spec.control === 'derived') continue
 		if (spec.key in draft) continue // a field may render in two sections (star color)
 		switch (spec.control) {
 			case 'name':
@@ -206,7 +231,6 @@ export function buildPayload(config: CelestialFormConfig, ctx: FieldContext): Re
 	const draft = ctx.draft
 	const payload: Record<string, any> = {}
 	for (const spec of allFieldSpecs(config)) {
-		if (spec.control === 'derived') continue
 		if (spec.control === 'select' && spec.omitFromPayload) continue
 		switch (spec.control) {
 			case 'text':
@@ -268,34 +292,57 @@ const descriptionField: TextFieldSpec = {
 	control: 'text', key: 'description', label: 'Description', placeholder: 'Brief description...', emptyAsNull: false,
 }
 
-const massDisplayField = (units: string): DerivedFieldSpec => ({
-	control: 'derived', label: 'Mass',
-	compute: ctx => formatFromDraft(ctx, 'massKg', formatMass),
-	hint: `Auto-formatted from the numeric mass value. Shows ${units} reference units.`,
-})
-
-const radiusDisplayField = (units: string): DerivedFieldSpec => ({
-	control: 'derived', label: 'Radius',
-	compute: ctx => formatFromDraft(ctx, 'radiusM', formatRadius),
-	hint: `Auto-formatted from the numeric radius value. Shows ${units} reference units.`,
-})
-
 function physicalDerivations(ctx: FieldContext) {
 	return deriveBodyFields(num(ctx, 'massKg'), num(ctx, 'radiusM'))
 }
+
+// ---- Display units (storage = typed × factor; the factor-1 entry is storage) ----
+
+const MASS_UNITS: UnitOption[] = [
+	{ label: 'kg', factor: 1 },
+	{ label: 'M⊕', factor: 5.972e24 },
+	{ label: 'Mⱼ', factor: 1.898e27 },
+	{ label: 'M☉', factor: 1.989e30 },
+]
+
+const RADIUS_UNITS: UnitOption[] = [
+	{ label: 'm', factor: 1 },
+	{ label: 'km', factor: 1e3 },
+	{ label: 'R⊕', factor: 6.371e6 },
+	{ label: 'Rⱼ', factor: 6.9911e7 },
+	{ label: 'R☉', factor: 6.9634e8 },
+]
+
+const ROTATION_UNITS: UnitOption[] = [
+	{ label: 's', factor: 1 },
+	{ label: 'hours', factor: 3600 },
+	{ label: 'days', factor: 86_400 },
+]
+
+const ORBITAL_PERIOD_UNITS: UnitOption[] = [
+	{ label: 'days', factor: 1 },
+	{ label: 'years', factor: 365.25 },
+]
+
+const SEMI_MAJOR_AXIS_UNITS: UnitOption[] = [
+	{ label: 'km', factor: 1 / 1.495_978_707e8 },
+	{ label: 'AU', factor: 1 },
+]
+
+const KELVIN_UNITS: UnitOption[] = [{ label: 'K', factor: 1 }]
+
+const LIGHT_YEAR_UNITS: UnitOption[] = [
+	{ label: 'ly', factor: 1 },
+	{ label: 'pc', factor: 3.26156 },
+]
 
 function rotationSection(placeholder: string, tiltPlaceholder: string, periodHint: string, tiltHint: string): FormSection {
 	return {
 		id: 'rotation', label: 'Rotation',
 		groups: [{
-			cols: 3,
+			cols: 2,
 			fields: [
-				{ control: 'number', key: 'rotationPeriodS', label: 'Rotation Period (seconds)', placeholder, hint: periodHint },
-				{
-					control: 'derived', label: 'Rotation Period',
-					compute: ctx => deriveDisplayStrings(null, null, num(ctx, 'rotationPeriodS')).rotationPeriod,
-					hint: 'Human-readable rotation period, formatted from the seconds value.',
-				},
+				{ control: 'number', key: 'rotationPeriodS', label: 'Rotation Period', placeholder, hint: periodHint, units: ROTATION_UNITS },
 				{ control: 'number', key: 'axialTilt', label: 'Axial Tilt (deg)', placeholder: tiltPlaceholder, hint: tiltHint },
 			],
 		}],
@@ -305,6 +352,12 @@ function rotationSection(placeholder: string, tiltPlaceholder: string, periodHin
 // ---------------------------------------------------------------------------
 // System
 // ---------------------------------------------------------------------------
+
+/** Stars catalogued in the system being edited (for the live type preview). */
+function systemStarCount(ctx: FieldContext): number {
+	if (ctx.selfId == null) return 0
+	return ctx.stars.filter(star => star.systemId === ctx.selfId).length
+}
 
 const systemConfig: CelestialFormConfig = {
 	kind: 'system',
@@ -334,7 +387,7 @@ const systemConfig: CelestialFormConfig = {
 				{
 					cols: 3,
 					fields: [
-						{ control: 'number', key: 'distanceLy', label: 'Distance (ly)', placeholder: '4.24', hint: 'Distance from the reference point, in light-years.' },
+						{ control: 'number', key: 'distanceLy', label: 'Distance', placeholder: '4.24', hint: 'Distance from the reference point.', units: LIGHT_YEAR_UNITS },
 						{ control: 'text', key: 'formationAge', label: 'Formation Age', placeholder: '~4.6 billion years', hint: 'When the system formed. Free text.' },
 					],
 				},
@@ -348,6 +401,15 @@ const systemConfig: CelestialFormConfig = {
 				},
 			],
 		},
+	],
+	preview: ctx => ({
+		title: text(ctx, 'name') || 'New system',
+		subtitle: `${deriveSystemType(systemStarCount(ctx))} system`,
+		color: null,
+	}),
+	computed: [
+		{ label: 'System type', compute: ctx => deriveSystemType(systemStarCount(ctx)) },
+		{ label: 'Stars', compute: ctx => String(systemStarCount(ctx)) },
 	],
 	deleteConfirm: {
 		title: 'Delete star system',
@@ -450,60 +512,28 @@ const starConfig: CelestialFormConfig = {
 		{
 			id: 'stellar', label: 'Stellar',
 			groups: [{
-				cols: 3,
+				cols: 2,
 				fields: [
-					{ control: 'text', key: 'spectralType', label: 'Spectral Type', placeholder: 'G2V', hint: 'Morgan-Keenan classification. Letter = temperature class (O B A F G K M), number = subclass, roman numeral = luminosity class. The Sun is G2V.' },
-					{ control: 'number', key: 'massKg', label: 'Mass (kg)', placeholder: '1.989e30', hint: 'Total mass in kilograms. The Sun is 1.989 × 10³⁰ kg. Used by orbiting bodies to derive orbital periods via Kepler\'s law.' },
-					massDisplayField('Solar'),
-					{ control: 'number', key: 'radiusM', label: 'Radius (m)', placeholder: '696340000', hint: 'Mean radius in metres. The Sun is 696,340,000 m.' },
-					radiusDisplayField('Solar'),
-					{ control: 'lockable', key: 'density', label: 'Density', source: { extra: 'density' }, derive: ctx => physicalDerivations(ctx).density, hint: 'Mass / volume. Derived from mass and radius. Lock to override.' },
-					{ control: 'lockable', key: 'surfaceGravity', label: 'Surface Gravity', source: { extra: 'surface_gravity' }, derive: ctx => physicalDerivations(ctx).surfaceGravity, hint: 'GM/r². Derived from mass and radius. The Sun is 274 m/s².' },
-					{ control: 'lockable', key: 'escapeVelocity', label: 'Escape Velocity', source: { extra: 'escape_velocity' }, derive: ctx => physicalDerivations(ctx).escapeVelocity, hint: '√(2GM/r). The Sun is 617.7 km/s.' },
-					{ control: 'number', key: 'temperatureK', label: 'Temperature (K)', placeholder: '5778', hint: 'Effective surface temperature in Kelvin. The Sun is 5,778 K. Used with radius to derive luminosity via Stefan-Boltzmann law.' },
-					{
-						control: 'derived', label: 'Temperature',
-						compute: ctx => formatFromDraft(ctx, 'temperatureK', formatTemperatureK),
-						hint: 'Auto-formatted from the numeric Kelvin value.',
-					},
-					{
-						control: 'lockable', key: 'luminosity',
-						label: ctx => `Luminosity${!ctx.draft[lockFlagKey('luminosity')] && starDerivedLuminosityW(ctx) ? ' (Stefan-Boltzmann)' : ''}`,
-						source: { extra: 'luminosity' },
-						derive: (ctx) => {
-							const luminosityW = starEffectiveLuminosityW(ctx)
-							return luminosityW == null ? null : formatLuminosity(luminosityW)
-						},
-						hint: 'L = 4πR²σT⁴. Derived from radius and temperature. The Sun is 1.0 L☉. Lock to set a custom value for magically dim/bright stars.',
-					},
+					{ control: 'text', key: 'spectralType', label: 'Spectral type', placeholder: 'G2V', hint: 'Morgan-Keenan classification. Letter = temperature class (O B A F G K M), number = subclass, roman numeral = luminosity class. The Sun is G2V.' },
+					{ control: 'number', key: 'temperatureK', label: 'Temperature', placeholder: '5778', hint: 'Effective surface temperature. The Sun is 5,778 K. Used with radius to derive luminosity via Stefan-Boltzmann law.', units: KELVIN_UNITS },
+					{ control: 'number', key: 'massKg', label: 'Mass', placeholder: '1.989e30', hint: 'Total mass. The Sun is 1 M☉. Used by orbiting bodies to derive orbital periods via Kepler\'s law.', units: MASS_UNITS },
+					{ control: 'number', key: 'radiusM', label: 'Radius', placeholder: '696340000', hint: 'Mean radius. The Sun is 1 R☉.', units: RADIUS_UNITS },
+					{ control: 'text', key: 'metallicity', label: 'Metallicity [Fe/H]', placeholder: '0.0', hint: 'Metal content relative to the Sun. [Fe/H] = 0 is solar. Higher values mean more metals, increasing rocky planet likelihood.' },
+					{ control: 'text', key: 'age', label: 'Age', placeholder: '4.6 billion years', hint: 'Estimated age. Free text.' },
 					{ control: 'text', key: 'luminosityVisual', label: 'Visual Luminosity', placeholder: '1.0 L☉ (visual)', hint: 'Luminosity in the visible spectrum only. Can differ from bolometric luminosity for very hot or cool stars.' },
-					{
-						control: 'derived', label: 'Habitable Zone',
-						visible: ctx => starEffectiveLuminosityW(ctx) != null,
-						compute: (ctx) => {
-							const luminosityW = starEffectiveLuminosityW(ctx)
-							if (luminosityW == null) return null
-							const hz = computeHabitableZoneAu(luminosityW)
-							return `${hz.inner.toFixed(2)} – ${hz.outer.toFixed(2)} AU`
-						},
-						hint: 'Conservative HZ from luminosity: inner = √(L/1.1), outer = √(L/0.53). Where liquid water could exist on a rocky planet.',
-					},
-					{ control: 'text', key: 'metallicity', label: 'Metallicity', placeholder: '[Fe/H] = 0.0', hint: 'Metal content relative to the Sun. [Fe/H] = 0 is solar. Higher values mean more metals, increasing rocky planet likelihood.' },
-					{ control: 'text', key: 'age', label: 'Age', placeholder: '~4.6 billion years', hint: 'Estimated age. Free text.' },
-					starColorField,
 				],
 			}],
 		},
 		rotationSection(
 			'2160000', '7.25',
-			'Sidereal rotation period in seconds. The Sun\'s equatorial period is ~25.05 days (2,164,320 s). Stars rotate differentially.',
+			'Sidereal rotation period. The Sun\'s equatorial period is ~25.05 days. Stars rotate differentially.',
 			'Angle between the rotational axis and the ecliptic. The Sun is 7.25°.',
 		),
 		{
 			id: 'orbit', label: 'Orbit',
 			intro: 'For binary or multiple star systems. Leave blank for single stars.',
 			groups: [{
-				cols: 3,
+				cols: 2,
 				fields: [
 					{
 						control: 'select', key: 'parentStarId', label: 'Orbits Star', omitFromPayload: true, clearIfInvalid: true,
@@ -515,22 +545,10 @@ const starConfig: CelestialFormConfig = {
 								.map(option => ({ value: String(option.id), label: option.name })),
 						],
 					},
-					{ control: 'number', key: 'orbitalPeriodDays', label: 'Orbital Period (days)', placeholder: '79.91', hint: 'Orbital period in days for binary/multiple systems. Leave blank — it is derived from semi-major axis and combined mass wherever it is shown.' },
-					{ control: 'derived', label: 'Orbital Period', compute: ctx => starDisplayStrings(ctx).orbitalPeriod, hint: 'Human-readable period: the explicit days value, else Kepler from semi-major axis and combined mass.' },
-					{ control: 'number', key: 'semiMajorAxisAu', label: 'Semi-major Axis (AU)', placeholder: '23.4', min: 0, rangeError: 'Must be 0 or greater', hint: 'Half the longest diameter of the binary orbit, in AU. Determines the orbit size on the system map.' },
-					{ control: 'derived', label: 'Semi-major Axis', compute: ctx => starDisplayStrings(ctx).semiMajorAxis, hint: 'Same distance converted to kilometres.' },
+					{ control: 'number', key: 'orbitalPeriodDays', label: 'Orbital Period', placeholder: '79.91', hint: 'Orbital period for binary/multiple systems. Leave blank — it is derived from semi-major axis and combined mass wherever it is shown.', units: ORBITAL_PERIOD_UNITS },
+					{ control: 'number', key: 'semiMajorAxisAu', label: 'Semi-major Axis', placeholder: '23.4', min: 0, rangeError: 'Must be 0 or greater', hint: 'Half the longest diameter of the binary orbit. Determines the orbit size on the system map.', units: SEMI_MAJOR_AXIS_UNITS },
 					{ control: 'number', key: 'eccentricity', label: 'Eccentricity', placeholder: '0.0', min: 0, max: 1, rangeError: 'Use a value from 0 to 1', hint: 'How elliptical the binary orbit is. 0 = circular, approaching 1 = extremely elongated.' },
 					{ control: 'number', key: 'epochPhase', label: 'Epoch Phase', placeholder: '0.0', min: 0, max: 1, rangeError: 'Use a value from 0 to 1', hint: 'Position along the orbit at day 0 (0–1). Used for map animation.' },
-					{
-						control: 'derived', label: 'Periastron',
-						compute: ctx => deriveStarOrbitalFields(num(ctx, 'semiMajorAxisAu'), num(ctx, 'eccentricity')).periastron,
-						hint: 'Closest approach: a × (1 − e). The near point of the binary orbit.',
-					},
-					{
-						control: 'derived', label: 'Apastron',
-						compute: ctx => deriveStarOrbitalFields(num(ctx, 'semiMajorAxisAu'), num(ctx, 'eccentricity')).apastron,
-						hint: 'Farthest separation: a × (1 + e). The far point of the binary orbit.',
-					},
 				],
 			}],
 		},
@@ -560,6 +578,56 @@ const starConfig: CelestialFormConfig = {
 		eccentricity: num(ctx, 'eccentricity'),
 		temperatureK: num(ctx, 'temperatureK'),
 		spectralType: text(ctx, 'spectralType') || null,
+	}),
+	overrides: [
+		{ control: 'lockable', key: 'density', label: 'Density', source: { extra: 'density' }, derive: ctx => physicalDerivations(ctx).density, hint: 'Mass / volume. Derived from mass and radius. Unlock to override.' },
+		{ control: 'lockable', key: 'surfaceGravity', label: 'Surface Gravity', source: { extra: 'surface_gravity' }, derive: ctx => physicalDerivations(ctx).surfaceGravity, hint: 'GM/r². Derived from mass and radius. The Sun is 274 m/s².' },
+		{ control: 'lockable', key: 'escapeVelocity', label: 'Escape Velocity', source: { extra: 'escape_velocity' }, derive: ctx => physicalDerivations(ctx).escapeVelocity, hint: '√(2GM/r). The Sun is 617.7 km/s.' },
+		{
+			control: 'lockable', key: 'luminosity', label: 'Luminosity',
+			source: { extra: 'luminosity' },
+			derive: (ctx) => {
+				const luminosityW = starEffectiveLuminosityW(ctx)
+				return luminosityW == null ? null : formatLuminosity(luminosityW)
+			},
+			hint: 'L = 4πR²σT⁴. Derived from radius and temperature. The Sun is 1.0 L☉. Unlock for magically dim/bright stars.',
+		},
+	],
+	computed: [
+		{ tab: 'stellar', label: 'Mass', compute: ctx => formatFromDraft(ctx, 'massKg', formatMass) },
+		{ tab: 'stellar', label: 'Radius', compute: ctx => formatFromDraft(ctx, 'radiusM', formatRadius) },
+		{ tab: 'stellar', label: 'Temperature', compute: ctx => formatFromDraft(ctx, 'temperatureK', formatTemperatureK) },
+		{ tab: 'stellar', label: 'Density', compute: ctx => physicalDerivations(ctx).density },
+		{ tab: 'stellar', label: 'Surface gravity', compute: ctx => physicalDerivations(ctx).surfaceGravity },
+		{ tab: 'stellar', label: 'Escape velocity', compute: ctx => physicalDerivations(ctx).escapeVelocity },
+		{
+			tab: 'stellar',
+			label: 'Luminosity',
+			compute: (ctx) => {
+				const luminosityW = starEffectiveLuminosityW(ctx)
+				return luminosityW == null ? null : formatLuminosity(luminosityW)
+			},
+		},
+		{
+			tab: 'stellar',
+			label: 'Habitable zone',
+			compute: (ctx) => {
+				const luminosityW = starEffectiveLuminosityW(ctx)
+				if (luminosityW == null) return null
+				const hz = computeHabitableZoneAu(luminosityW)
+				return `${hz.inner.toFixed(2)} – ${hz.outer.toFixed(2)} AU`
+			},
+		},
+		{ tab: 'orbit', label: 'Orbital period', compute: ctx => starDisplayStrings(ctx).orbitalPeriod },
+		{ tab: 'orbit', label: 'Semi-major axis', compute: ctx => starDisplayStrings(ctx).semiMajorAxis },
+		{ tab: 'orbit', label: 'Periastron', compute: ctx => deriveStarOrbitalFields(num(ctx, 'semiMajorAxisAu'), num(ctx, 'eccentricity')).periastron },
+		{ tab: 'orbit', label: 'Apastron', compute: ctx => deriveStarOrbitalFields(num(ctx, 'semiMajorAxisAu'), num(ctx, 'eccentricity')).apastron },
+		{ tab: 'rotation', label: 'Rotation period', compute: ctx => starDisplayStrings(ctx).rotationPeriod },
+	],
+	preview: ctx => ({
+		title: text(ctx, 'name') || 'New star',
+		subtitle: [text(ctx, 'spectralType'), text(ctx, 'color')].filter(Boolean).join(' · ') || null,
+		color: spectralColor(text(ctx, 'spectralType') || null, text(ctx, 'color') || null),
 	}),
 	presets: {
 		placeholder: 'Choose a star...',
@@ -757,15 +825,10 @@ const bodyConfig: CelestialFormConfig = {
 		{
 			id: 'physical', label: 'Physical',
 			groups: [{
-				cols: 3,
+				cols: 2,
 				fields: [
-					{ control: 'number', key: 'massKg', label: 'Mass (kg)', placeholder: '5.972e24', hint: 'Total mass in kilograms. Earth is 5.972 × 10²⁴ kg. Used to derive density, gravity, escape velocity, and Hill sphere.' },
-					massDisplayField('Earth/Jupiter/Solar'),
-					{ control: 'number', key: 'radiusM', label: 'Radius (m)', placeholder: '6371000', hint: 'Mean radius in metres. Earth is 6,371,000 m. Used to derive density, gravity, and escape velocity.' },
-					radiusDisplayField('Earth/Jupiter/Solar'),
-					{ control: 'lockable', key: 'density', label: 'Density', source: { extra: 'density' }, derive: ctx => physicalDerivations(ctx).density, hint: 'Mass / volume. Derived from mass and radius. Earth is 5.514 g/cm³. Lock to override for exotic materials.' },
-					{ control: 'lockable', key: 'surfaceGravity', label: 'Surface Gravity', source: { extra: 'surface_gravity' }, derive: ctx => physicalDerivations(ctx).surfaceGravity, hint: 'GM/r². Derived from mass and radius. Earth is 9.807 m/s². Lock to override for artificial or magical gravity.' },
-					{ control: 'lockable', key: 'escapeVelocity', label: 'Escape Velocity', source: { extra: 'escape_velocity' }, derive: ctx => physicalDerivations(ctx).escapeVelocity, hint: '√(2GM/r). Earth is 11.186 km/s. Lock to override.' },
+					{ control: 'number', key: 'massKg', label: 'Mass', placeholder: '5.972e24', hint: 'Total mass. Earth is 1 M⊕. Used to derive density, gravity, escape velocity, and Hill sphere.', units: MASS_UNITS },
+					{ control: 'number', key: 'radiusM', label: 'Radius', placeholder: '6371000', hint: 'Mean radius. Earth is 1 R⊕. Used to derive density, gravity, and escape velocity.', units: RADIUS_UNITS },
 					{ control: 'text', key: 'temperature', label: 'Temperature', placeholder: '288 K (mean)', hint: 'Mean surface or cloud-top temperature. Free text — include units.' },
 					{ control: 'text', key: 'age', label: 'Age', placeholder: '~4.5 billion years', hint: 'Estimated age. Free text.' },
 				],
@@ -784,33 +847,20 @@ const bodyConfig: CelestialFormConfig = {
 		},
 		{
 			id: 'orbit', label: 'Orbit',
+			intro: 'The orbital period is derived from the semi-major axis and the primary\'s mass — see the computed panel. Pin a custom period in the Overrides section below.',
 			groups: [{
-				cols: 3,
+				cols: 2,
 				fields: [
-					{
-						control: 'lockable', key: 'orbitalPeriodDays', label: 'Orbital Period (days)',
-						source: { record: 'orbitalPeriodDays' }, valueType: 'number', placeholder: '365.25',
-						derive: (ctx) => {
-							const unlocked = !!ctx.draft[lockFlagKey('orbitalPeriodDays')]
-							const kepler = unlocked ? null : bodyOrbitalDerivations(ctx).orbitalPeriodDays
-							return kepler ? `${kepler.toFixed(3)} days` : null
-						},
-						hint: 'Time for one full orbit in days. Derived from semi-major axis + parent star mass via Kepler\'s third law. Unlock to set a custom value.',
-					},
-					{ control: 'derived', label: 'Orbital Period', compute: ctx => bodyDisplayStrings(ctx).orbitalPeriod, hint: 'Human-readable period formatted from the days value.' },
-					{ control: 'number', key: 'semiMajorAxisAu', label: 'Semi-major Axis (AU)', placeholder: '1.0', min: 0, rangeError: 'Must be 0 or greater', hint: 'Half the longest diameter of the orbit, in astronomical units. 1 AU = Earth–Sun distance.' },
-					{ control: 'derived', label: 'Semi-major Axis', compute: ctx => bodyDisplayStrings(ctx).semiMajorAxis, hint: 'Same distance converted to kilometres.' },
+					{ control: 'number', key: 'semiMajorAxisAu', label: 'Semi-major Axis', placeholder: '1.0', min: 0, rangeError: 'Must be 0 or greater', hint: 'Half the longest diameter of the orbit. 1 AU = Earth–Sun distance.', units: SEMI_MAJOR_AXIS_UNITS },
 					{ control: 'number', key: 'eccentricity', label: 'Eccentricity', placeholder: '0.0167', min: 0, max: 1, rangeError: 'Use a value from 0 to 1', hint: 'How elliptical the orbit is. 0 = perfect circle, 1 = parabolic escape. Earth is 0.0167.' },
 					{ control: 'number', key: 'inclination', label: 'Inclination (deg)', placeholder: '0.0', hint: 'Angle of the orbital plane relative to the reference plane (ecliptic), in degrees.' },
 					{ control: 'number', key: 'epochPhase', label: 'Epoch Phase', placeholder: '0.0', min: 0, max: 1, rangeError: 'Use a value from 0 to 1', hint: 'Position along the orbit at day 0 (0–1). Used for map animation. 0 = periapsis.' },
-					{ control: 'derived', label: 'Orbital Velocity', compute: ctx => bodyOrbitalDerivations(ctx).orbitalVelocity, hint: 'Mean speed along the orbit: 2πa / T. Earth is ~29.78 km/s.' },
-					{ control: 'derived', label: 'Hill Sphere', compute: ctx => bodyOrbitalDerivations(ctx).hillSphere, hint: 'Maximum distance at which this body can hold satellites. Derived from semi-major axis, body mass, and parent mass: a × (m/3M)^⅓.' },
 				],
 			}],
 		},
 		rotationSection(
 			'86164.1', '23.44',
-			'Sidereal rotation period in seconds. Earth is 86,164 s (23h 56m 4s). Not the same as a solar day.',
+			'Sidereal rotation period. Earth is 86,164 s (23h 56m 4s). Not the same as a solar day.',
 			'Angle between the rotational axis and the orbital plane. Earth is 23.44°. Drives seasons.',
 		),
 		{
@@ -848,6 +898,43 @@ const bodyConfig: CelestialFormConfig = {
 		siblingOrbits: bodySiblingOrbits(ctx),
 		parentHillAu: bodyParentHillAu(ctx),
 	}),
+	overrides: [
+		{
+			control: 'lockable', key: 'orbitalPeriodDays', label: 'Orbital Period (days)',
+			source: { record: 'orbitalPeriodDays' }, valueType: 'number', placeholder: '365.25',
+			derive: (ctx) => {
+				const unlocked = !!ctx.draft[lockFlagKey('orbitalPeriodDays')]
+				const kepler = unlocked ? null : bodyOrbitalDerivations(ctx).orbitalPeriodDays
+				return kepler ? `${kepler.toFixed(3)} days` : null
+			},
+			hint: 'Derived from semi-major axis + primary mass via Kepler\'s third law. Unlock to set a custom value in days.',
+		},
+		{ control: 'lockable', key: 'density', label: 'Density', source: { extra: 'density' }, derive: ctx => physicalDerivations(ctx).density, hint: 'Mass / volume. Derived from mass and radius. Earth is 5.514 g/cm³. Unlock for exotic materials.' },
+		{ control: 'lockable', key: 'surfaceGravity', label: 'Surface Gravity', source: { extra: 'surface_gravity' }, derive: ctx => physicalDerivations(ctx).surfaceGravity, hint: 'GM/r². Derived from mass and radius. Earth is 9.807 m/s². Unlock for artificial or magical gravity.' },
+		{ control: 'lockable', key: 'escapeVelocity', label: 'Escape Velocity', source: { extra: 'escape_velocity' }, derive: ctx => physicalDerivations(ctx).escapeVelocity, hint: '√(2GM/r). Earth is 11.186 km/s. Unlock to override.' },
+	],
+	computed: [
+		{ tab: 'physical', label: 'Mass', compute: ctx => formatFromDraft(ctx, 'massKg', formatMass) },
+		{ tab: 'physical', label: 'Radius', compute: ctx => formatFromDraft(ctx, 'radiusM', formatRadius) },
+		{ tab: 'physical', label: 'Density', compute: ctx => physicalDerivations(ctx).density },
+		{ tab: 'physical', label: 'Surface gravity', compute: ctx => physicalDerivations(ctx).surfaceGravity },
+		{ tab: 'physical', label: 'Escape velocity', compute: ctx => physicalDerivations(ctx).escapeVelocity },
+		{ tab: 'orbit', label: 'Orbital period', compute: ctx => bodyDisplayStrings(ctx).orbitalPeriod },
+		{ tab: 'orbit', label: 'Orbital velocity', compute: ctx => bodyOrbitalDerivations(ctx).orbitalVelocity },
+		{ tab: 'orbit', label: 'Semi-major axis', compute: ctx => bodyDisplayStrings(ctx).semiMajorAxis },
+		{ tab: 'orbit', label: 'Hill sphere', compute: ctx => bodyOrbitalDerivations(ctx).hillSphere },
+		{ tab: 'rotation', label: 'Rotation period', compute: ctx => bodyDisplayStrings(ctx).rotationPeriod },
+	],
+	preview: (ctx) => {
+		const bodyType = text(ctx, 'bodyType') || 'planet'
+		const subtitleParts = [bodyType.replace('_', ' ')]
+		if (ctx.draft.hasRings) subtitleParts.push('ringed')
+		return {
+			title: text(ctx, 'name') || 'New body',
+			subtitle: subtitleParts.join(' · '),
+			color: null,
+		}
+	},
 	presets: {
 		placeholder: 'Choose a body...',
 		names: [...BODY_PRESETS.keys()],

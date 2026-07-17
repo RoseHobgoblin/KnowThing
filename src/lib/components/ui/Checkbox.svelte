@@ -82,7 +82,7 @@
 		>
 			<span class={cn('text-sm text-secondary', labelClass)}>{label}</span>
 			{#if children}
-				<span class="text-xs text-faint font-normal">
+				<span class="text-xs text-secondary font-normal">
 					{@render children()}
 				</span>
 			{/if}

@@ -34,7 +34,7 @@
 
 <div class="w-full space-y-4">
 	<!-- Admin sub-nav -->
-	<nav class="bg-surface border border-border p-2 flex flex-wrap gap-1">
+	<nav class="bg-surface p-2 flex flex-wrap gap-1">
 		<a href="/dashboard/recent" class="{linkClass} {isActive('/dashboard/recent') ? activeClass : inactiveClass}"><ClockCounterClockwise size={14} weight="fill" />Recent</a>
 		<a href="/dashboard/media" class="{linkClass} {isActive('/dashboard/media') ? activeClass : inactiveClass}"><Image size={14} weight="fill" />Media</a>
 		<a href="/dashboard/wanted" class="{linkClass} {isActive('/dashboard/wanted') ? activeClass : inactiveClass}"><FileMagnifyingGlass size={14} weight="fill" />Wanted</a>

@@ -121,7 +121,7 @@
 	<div
 		bind:this={containerElement}
 		class={cn(
-			'p-1 relative bg-page border border-border',
+			'p-1 relative bg-page',
 			fullWidth ? 'grid grid-flow-col auto-cols-fr w-full gap-1' : 'inline-flex gap-1',
 		)}
 	>
@@ -146,7 +146,7 @@
 				class={cn(
 					'cursor-pointer font-medium relative z-[1] flex items-center justify-center gap-1.5 whitespace-nowrap transition-colors duration-200',
 					tabClasses[size],
-					item.id === activeSectionId ? 'text-heading' : 'text-faint hover:text-secondary',
+					item.id === activeSectionId ? 'text-heading' : 'text-secondary hover:text-body',
 					disabled && 'pointer-events-none opacity-60',
 				)}
 				aria-selected={item.id === activeSectionId}

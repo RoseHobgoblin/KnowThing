@@ -94,7 +94,7 @@
 			<div>
 				<CalendarWidget config={primary.config} />
 			</div>
-			<div class="bg-raised border border-border-subtle p-5 flex flex-col justify-center space-y-3">
+			<div class="bg-raised p-5 flex flex-col justify-center space-y-3">
 				<h3 class="text-base font-semibold text-heading font-heading">{primary.name}</h3>
 				<p class="text-lg text-body font-medium">
 					{resolved.day_of_week_name}, {resolved.day} {resolved.month_name}, {resolved.year_display}
@@ -117,9 +117,9 @@
 		<div class="space-y-1.5">
 			{#each calendars as cal (cal.id)}
 				<a href="/Calendar:{cal.slug}" class="
-					flex items-center justify-between px-4 py-3 bg-raised border border-border-subtle
+					flex items-center justify-between px-4 py-3 bg-raised
 					transition-colors group
-					hover:border-border hover:bg-surface
+ hover:bg-surface
 				">
 					<div class="flex items-center gap-2">
 						<span class="text-body font-medium transition-colors group-hover:text-heading">{cal.name}</span>
@@ -138,7 +138,7 @@
 	{/if}
 
 	{#if permissions.canManageSettings}
-		<div class="mt-8 border border-border-subtle bg-raised p-5 space-y-3">
+		<div class="mt-8 bg-raised p-5 space-y-3">
 			<h2 class="text-sm font-semibold text-heading">New Calendar</h2>
 			<Select type="single" label="Start from preset" bind:value={selectedPreset} items={presetItems} />
 			<div class="flex gap-2 items-end">
@@ -149,8 +149,8 @@
 			</div>
 		</div>
 	{:else if permissions.isAuthenticated}
-		<div class="mt-8 border border-border-subtle bg-raised p-5">
-			<p class="text-sm text-faint">Admin role required to create calendars.</p>
+		<div class="mt-8 bg-raised p-5">
+			<p class="text-sm text-secondary">Admin role required to create calendars.</p>
 		</div>
 	{/if}
 </ArticleShell>

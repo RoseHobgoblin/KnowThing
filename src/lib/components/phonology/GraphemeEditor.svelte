@@ -260,7 +260,7 @@
 {/if}
 
 {#if graphemes.length === 0}
-	<div class="border border-border-subtle bg-raised px-4 py-8 text-center text-dim text-sm">
+	<div class="bg-raised px-4 py-8 text-center text-dim text-sm">
 		No graphemes defined yet. Add the first one to build the orthography.
 		{#if !readOnly}
 			<div class="mt-3">
@@ -271,7 +271,7 @@
 		{/if}
 	</div>
 {:else}
-	<div class="overflow-x-auto border border-border-subtle">
+	<div class="overflow-x-auto">
 		<table class="w-full text-sm">
 			<thead>
 				<tr>
@@ -302,7 +302,7 @@
 						ondragend={onRowDragEnd}
 					>
 						<td
-							class="px-1 py-1.5 border-b border-r border-border-subtle text-center text-faint {readOnly ? '' : 'cursor-grab'}"
+							class="px-1 py-1.5 border-b border-r border-border-subtle text-center text-secondary {readOnly ? '' : 'cursor-grab'}"
 							draggable={readOnly ? 'false' : 'true'}
 							ondragstart={e => onRowDragStart(index, e)}
 							title={readOnly ? undefined : 'Drag to reorder'}
@@ -312,7 +312,7 @@
 						<td class="{cellAttrs} font-serif text-base" onclick={cellClick} onkeydown={cellKeydown} role={readOnly ? undefined : 'button'} tabindex={readOnly ? undefined : 0}>
 							{g.grapheme}
 						</td>
-						<td class="px-1 py-1.5 border-b border-r border-border-subtle text-faint text-center">→</td>
+						<td class="px-1 py-1.5 border-b border-r border-border-subtle text-secondary text-center">→</td>
 						<td class="{cellAttrs} font-serif {g.phonemes.length === 0 ? 'text-dim' : ''}" onclick={cellClick} onkeydown={cellKeydown} role={readOnly ? undefined : 'button'} tabindex={readOnly ? undefined : -1}>
 							{ipaDisplay(g)}
 						</td>
@@ -325,7 +325,7 @@
 							{#if !readOnly}
 								<button
 									type="button"
-									class="text-faint px-1 hover:text-accent"
+									class="text-secondary px-1 hover:text-accent"
 									onclick={() => openEdit(g)}
 									aria-label="Edit grapheme"
 									title="Edit"
@@ -334,7 +334,7 @@
 								</button>
 								<button
 									type="button"
-									class="text-faint px-1 hover:text-error"
+									class="text-secondary px-1 hover:text-error"
 									onclick={() => handleDelete(g)}
 									aria-label="Delete grapheme"
 									title="Delete"

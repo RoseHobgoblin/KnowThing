@@ -45,18 +45,18 @@
 {:else if hasInflection && dimensions.length > 0 && Object.keys(forms).length > 0}
 	<div class="mt-4">
 		<div class="flex items-baseline gap-2 mb-2">
-			<h3 class="text-xs font-medium uppercase tracking-wide text-faint">Inflection</h3>
+			<h3 class="text-xs font-medium uppercase tracking-wide text-secondary">Inflection</h3>
 			{#if className}
-				<span class="text-xs text-faint">({className})</span>
+				<span class="text-xs text-secondary">({className})</span>
 			{/if}
 			{#if stem}
-				<span class="text-xs text-faint font-mono">stem: {stem}</span>
+				<span class="text-xs text-secondary font-mono">stem: {stem}</span>
 			{/if}
 		</div>
 
 		{#if dimensions.length === 1 && rowDim}
 			<!-- Single dimension: simple list -->
-			<div class="border border-border overflow-hidden text-sm">
+			<div class="overflow-hidden text-sm">
 				{#each rowDim.values as value}
 					{@const key = value}
 					{@const form = getForm(key)}
@@ -71,7 +71,7 @@
 		{:else if dimensions.length >= 2 && rowDim && colDim}
 			<!-- Two+ dimensions: table -->
 			{#if extraDims.length === 0}
-				<div class="border border-border overflow-hidden overflow-x-auto">
+				<div class="overflow-hidden overflow-x-auto">
 					<table class="w-full text-sm">
 						<thead>
 							<tr class="bg-page">
@@ -117,7 +117,7 @@
 						<div class="text-xs text-dim font-medium mb-1">
 							{extraDims.map((d, index) => `${d.name}: ${extraVals[index]}`).join(', ')}
 						</div>
-						<div class="border border-border overflow-hidden overflow-x-auto">
+						<div class="overflow-hidden overflow-x-auto">
 							<table class="w-full text-sm">
 								<thead>
 									<tr class="bg-page">

@@ -27,7 +27,7 @@
 
 	const variants = {
 		primary: 'bg-accent text-surface hover:bg-accent-hover',
-		secondary: 'border border-border text-secondary hover:bg-raised hover:text-heading',
+		secondary: 'text-secondary hover:bg-raised hover:text-heading',
 		danger: 'bg-error text-white hover:opacity-90',
 		ghost: 'text-link hover:text-link-hover hover:underline',
 	}

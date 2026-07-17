@@ -104,8 +104,8 @@
 			onclick={() => tocOpen = !tocOpen}
 			class="
 				flex items-center gap-1.5 text-xs text-secondary font-medium
-				border border-border px-3 py-1.5 bg-surface shadow-sm
-				transition-colors hover:text-link hover:border-accent-border
+				px-3 py-1.5 bg-surface shadow-sm
+				transition-colors hover:text-link
 			"
 		>
 			<svg class="size-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -121,7 +121,7 @@
 		</button>
 
 		{#if tocOpen}
-			<nav class="mt-2 border border-border bg-surface shadow-sm p-3">
+			<nav class="mt-2 bg-surface shadow-sm p-3">
 				<ol class="space-y-0.5 text-sm">
 					{#each headings as h}
 						<li style="padding-left: {(h.level - 2) * 16}px">

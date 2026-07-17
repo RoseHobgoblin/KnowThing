@@ -55,7 +55,7 @@
 
 {#key data.slug}
 	{#if data.notFound}
-		<div class="bg-surface shadow-sm border border-border p-8 text-center">
+		<div class="bg-surface shadow-sm p-8 text-center">
 			<h1 class="text-2xl font-bold mb-3 text-body">{data.title}</h1>
 			<p class="text-dim mb-6">
 				This article doesn't exist yet.

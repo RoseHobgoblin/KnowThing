@@ -9,7 +9,7 @@
 	<title>Categories — KnowThing</title>
 </svelte:head>
 
-<div class="bg-surface shadow-sm border border-border p-6">
+<div class="bg-surface shadow-sm p-6">
 	<h1 class="text-2xl font-bold text-heading mb-6">Categories</h1>
 
 	{#if data.categories.length === 0}
@@ -26,7 +26,7 @@
 					"
 				>
 					{cat.name}
-					<span class="text-xs text-faint bg-border px-1.5 py-0.5">{cat.count}</span>
+					<span class="text-xs text-secondary bg-border px-1.5 py-0.5">{cat.count}</span>
 				</a>
 			{/each}
 		</div>

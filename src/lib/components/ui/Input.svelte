@@ -156,7 +156,7 @@
 			{/if}
 			{#if hint}
 				<Tooltip content={hint} side="top">
-					<span class="text-faint transition-colors cursor-help hover:text-secondary"><QuestionIcon size={12} weight="bold" /></span>
+					<span class="text-secondary transition-colors cursor-help hover:text-body"><QuestionIcon size={12} weight="bold" /></span>
 				</Tooltip>
 			{/if}
 		</div>
@@ -172,10 +172,10 @@
 			{readonly}
 			tabindex={readonly ? -1 : undefined}
 			class={cn(
-				'flex w-full min-w-0 px-3 py-2 text-sm text-body bg-surface border border-border-strong outline-none transition-colors',
-				'placeholder:text-faint',
-				!readonly && 'hover:border-border focus:ring-2 focus:ring-accent focus:border-accent-border',
-				'aria-invalid:ring-1 aria-invalid:ring-error-border aria-invalid:border-error-border',
+				'flex w-full min-w-0 px-3 py-2 text-sm text-body bg-page outline-none transition-colors',
+				'placeholder:text-dim',
+				!readonly && 'focus:ring-2 focus:ring-accent',
+				'aria-invalid:ring-1 aria-invalid:ring-error-border',
 				'disabled:pointer-events-none disabled:opacity-50',
 				readonly && 'bg-raised text-secondary cursor-default',
 				(copyable || clearable || type === 'password') && 'pr-10',
@@ -189,7 +189,7 @@
 
 		<div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
 			{#if copyable}
-				<button type="button" class="text-faint transition-colors hover:text-secondary" onclick={onCopy} aria-label="Copy to clipboard">
+				<button type="button" class="text-secondary transition-colors hover:text-body" onclick={onCopy} aria-label="Copy to clipboard">
 					{#if justCopied}
 						<Check size={14} weight="bold" />
 					{:else}
@@ -198,12 +198,12 @@
 				</button>
 			{/if}
 			{#if clearable && value}
-				<button type="button" class="text-faint transition-colors hover:text-secondary" onclick={onClear} aria-label="Clear">
+				<button type="button" class="text-secondary transition-colors hover:text-body" onclick={onClear} aria-label="Clear">
 					<X size={14} weight="bold" />
 				</button>
 			{/if}
 			{#if type === 'password'}
-				<button type="button" class="text-faint transition-colors hover:text-secondary" onclick={() => passwordVisible = !passwordVisible} aria-label={passwordVisible ? 'Hide password' : 'Show password'}>
+				<button type="button" class="text-secondary transition-colors hover:text-body" onclick={() => passwordVisible = !passwordVisible} aria-label={passwordVisible ? 'Hide password' : 'Show password'}>
 					{#if passwordVisible}
 						<Eye size={14} />
 					{:else}

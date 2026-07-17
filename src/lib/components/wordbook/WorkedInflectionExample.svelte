@@ -58,19 +58,19 @@
 	const variant = $derived(mode === 'real' ? english : conlang)
 </script>
 
-<div class="bg-page border border-border-subtle text-xs text-secondary p-3 space-y-3">
+<div class="bg-page text-xs text-secondary p-3 space-y-3">
 	<div class="flex items-center justify-between gap-2">
 		<span class="text-xs font-semibold text-dim uppercase tracking-wide">Worked example</span>
-		<div class="inline-flex border border-border-subtle bg-surface text-xs">
+		<div class="inline-flex bg-surface text-xs">
 			<button
 				type="button"
 				onclick={() => mode = 'real'}
-				class={cn('px-2 py-0.5 transition-colors', mode === 'real' ? 'bg-accent text-surface' : 'text-faint hover:text-link')}
+				class={cn('px-2 py-0.5 transition-colors', mode === 'real' ? 'bg-accent text-surface' : 'text-secondary hover:text-link')}
 			>English</button>
 			<button
 				type="button"
 				onclick={() => mode = 'conlang'}
-				class={cn('px-2 py-0.5 transition-colors', mode === 'conlang' ? 'bg-accent text-surface' : 'text-faint hover:text-link')}
+				class={cn('px-2 py-0.5 transition-colors', mode === 'conlang' ? 'bg-accent text-surface' : 'text-secondary hover:text-link')}
 			>Conlang</button>
 		</div>
 	</div>
@@ -80,10 +80,10 @@
 			<div>
 				With class <strong>{variant.className}</strong> and stem <code class="bg-surface-dim px-1 rounded-sm font-mono">{variant.stem}</code>, the rules generate:
 			</div>
-			<div class="font-mono text-faint">
+			<div class="font-mono text-secondary">
 				{#each variant.applied as cell, index (cell.cell)}{index > 0 ? ' · ' : ''}{cell.form}{/each}
 			</div>
-			<div class="text-faint pt-1">
+			<div class="text-secondary pt-1">
 				If <em>{variant.irregular.word}</em>'s {variant.irregular.cell} is irregular (<code class="bg-surface-dim px-1 rounded-sm font-mono">{variant.irregular.actual}</code> instead of <code class="bg-surface-dim px-1 rounded-sm font-mono">{variant.irregular.expected}</code>), set it as an override.
 			</div>
 		</div>
@@ -100,7 +100,7 @@
 			<div class="font-semibold text-dim">3. Rules</div>
 			<div class="space-y-0.5">
 				{#each variant.rules as rule (rule.cell)}
-					<div class="font-mono text-xs"><span class="text-faint">{rule.cell}:</span> {rule.pattern}</div>
+					<div class="font-mono text-xs"><span class="text-secondary">{rule.cell}:</span> {rule.pattern}</div>
 				{/each}
 			</div>
 
@@ -111,7 +111,7 @@
 			</div>
 		</div>
 
-		<div class="pt-2 border-t border-border-subtle text-faint">
+		<div class="pt-2 border-t border-border-subtle text-secondary">
 			<strong>Override</strong> a single cell when a word breaks the rule — e.g. plural of <em>{variant.irregular.word}</em> is <code class="bg-surface-dim px-1 rounded-sm font-mono">{variant.irregular.actual}</code>, not the expected <code class="bg-surface-dim px-1 rounded-sm font-mono">{variant.irregular.expected}</code>.
 		</div>
 	{/if}

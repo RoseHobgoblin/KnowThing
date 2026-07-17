@@ -29,20 +29,20 @@
 			<span class="px-2 py-0.5 bg-accent-subtle text-link border border-accent-border">"{query}"</span>
 		{/if}
 		{#if language}
-			<span class="px-2 py-0.5 bg-raised text-secondary border border-border">{language}</span>
+			<span class="px-2 py-0.5 bg-raised text-secondary">{language}</span>
 		{/if}
 		{#if tag}
 			<TagPill {tag} />
 		{/if}
 		{#if pos}
-			<span class="px-2 py-0.5 bg-raised text-secondary border border-border">{pos}</span>
+			<span class="px-2 py-0.5 bg-raised text-secondary">{pos}</span>
 		{/if}
 		{#if mediaCategory}
-			<span class="px-2 py-0.5 bg-raised text-secondary border border-border">{mediaCategory}</span>
+			<span class="px-2 py-0.5 bg-raised text-secondary">{mediaCategory}</span>
 		{/if}
 		{#if unused}
-			<span class="px-2 py-0.5 bg-raised text-secondary border border-border">Unused only</span>
+			<span class="px-2 py-0.5 bg-raised text-secondary">Unused only</span>
 		{/if}
-		<a href={clearHref} class="text-xs text-faint hover:text-secondary">Clear all</a>
+		<a href={clearHref} class="text-xs text-secondary hover:text-body">Clear all</a>
 	</div>
 {/if}

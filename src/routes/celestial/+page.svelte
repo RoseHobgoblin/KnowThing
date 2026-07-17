@@ -96,7 +96,7 @@
 	{/snippet}
 
 	{#if systems.length === 0}
-		<div class="border border-border bg-surface p-8 text-center">
+		<div class="bg-surface p-8 text-center">
 			<p class="text-dim">No star systems catalogued yet.</p>
 			{#if permissions.canConfigureCelestial}
 				<a href="/celestial/manage" class="mt-2 inline-block text-link transition-colors hover:text-link-hover">Add one in Manage →</a>
@@ -106,9 +106,9 @@
 		<!-- Overview -->
 		<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
 			{#each overview as tile (tile.label)}
-				<div class="border border-border-subtle bg-surface px-4 py-3">
+				<div class="bg-surface px-4 py-3">
 					<div class="text-xl font-semibold text-heading tabular-nums">{tile.value}</div>
-					<div class="text-xs uppercase tracking-wider text-faint">{tile.label}</div>
+					<div class="text-xs uppercase tracking-wider text-secondary">{tile.label}</div>
 				</div>
 			{/each}
 		</div>
@@ -126,7 +126,7 @@
 			<div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
 				{#if availableTypes.length > 1}
 					<div class="flex flex-wrap items-center gap-1.5">
-						<span class="uppercase tracking-wider text-faint">Type</span>
+						<span class="uppercase tracking-wider text-secondary">Type</span>
 						{#each availableTypes as type (type)}
 							<button
 								type="button"
@@ -138,7 +138,7 @@
 				{/if}
 				{#if availableClasses.length > 1}
 					<div class="flex flex-wrap items-center gap-1.5">
-						<span class="uppercase tracking-wider text-faint">Star</span>
+						<span class="uppercase tracking-wider text-secondary">Star</span>
 						{#each availableClasses as cls (cls)}
 							<button
 								type="button"
@@ -156,15 +156,15 @@
 			</div>
 		{/if}
 
-		<p class="mb-2 mt-4 text-xs text-faint">
+		<p class="mb-2 mt-4 text-xs text-secondary">
 			{filtered.length} of {systems.length} {systems.length === 1 ? 'system' : 'systems'}{hasFilters ? ' match' : ''}
 		</p>
 
 		<!-- Index -->
 		{#if filtered.length === 0}
-			<div class="border border-border-subtle bg-surface p-8 text-center text-dim">No systems match your search.</div>
+			<div class="bg-surface p-8 text-center text-dim">No systems match your search.</div>
 		{:else}
-			<div class="divide-y divide-border-subtle border border-border-subtle">
+			<div class="divide-y divide-border-subtle">
 				{#each filtered as entry (entry.system.id)}
 					{@const mb = matchedBodyName(entry, query)}
 					<a
@@ -176,7 +176,7 @@
 						<div class="min-w-0 flex-1">
 							<div class="flex flex-wrap items-center gap-x-2 gap-y-1">
 								<span class="font-semibold text-heading">{entry.system.name}</span>
-								<span class="text-xs capitalize text-faint">{entry.type}</span>
+								<span class="text-xs capitalize text-secondary">{entry.type}</span>
 								{#if entry.starDots.length > 0}
 									<span class="flex items-center gap-1">
 										{#each entry.starDots as dot (dot.name)}
@@ -189,14 +189,14 @@
 								<div class="text-xs text-dim">matched: <span class="text-secondary">{mb}</span></div>
 							{/if}
 						</div>
-						<div class="hidden shrink-0 items-center gap-3 text-xs tabular-nums text-faint sm:flex">
+						<div class="hidden shrink-0 items-center gap-3 text-xs tabular-nums text-secondary sm:flex">
 							<span class="flex items-center gap-1" title="Stars"><StarIcon size={11} weight="fill" />{entry.system.starCount}</span>
 							<span class="flex items-center gap-1" title="Planets"><Planet size={11} />{entry.system.planetCount}</span>
 							{#if entry.moonCount > 0}
 								<span class="flex items-center gap-1" title="Moons"><Moon size={11} />{entry.moonCount}</span>
 							{/if}
 						</div>
-						<CaretRight size={14} class="shrink-0 text-faint" />
+						<CaretRight size={14} class="shrink-0 text-secondary" />
 					</a>
 				{/each}
 			</div>

@@ -17,7 +17,7 @@
 	<title>History: {data.title} — KnowThing</title>
 </svelte:head>
 
-<div class="bg-surface shadow-sm border border-border">
+<div class="bg-surface shadow-sm">
 	<div class="px-6 py-4 border-b border-border-subtle flex items-center justify-between">
 		<div>
 			<h1 class="text-xl font-bold text-heading">Revision History</h1>
@@ -61,10 +61,10 @@
 			{#each data.history as rev, index}
 				<div class="px-6 py-3 flex items-center gap-4">
 					<div class="flex gap-2 shrink-0">
-						<label class="text-xs text-faint">
+						<label class="text-xs text-secondary">
 							<input type="radio" name="old" value={rev.id} bind:group={selectedOld} class="accent-accent" />
 						</label>
-						<label class="text-xs text-faint">
+						<label class="text-xs text-secondary">
 							<input type="radio" name="new" value={rev.id} bind:group={selectedNew} class="accent-accent" />
 						</label>
 					</div>
@@ -72,12 +72,12 @@
 						<span class="text-secondary">
 							{new Date(rev.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
 						</span>
-						<span class="text-faint mx-1.5">&middot;</span>
+						<span class="text-secondary mx-1.5">&middot;</span>
 						<span class="text-secondary">{rev.username || 'Unknown'}</span>
-						<span class="text-faint mx-1.5">&middot;</span>
-						<span class="text-faint">{(rev.sizeBytes / 1024).toFixed(1)} KB</span>
+						<span class="text-secondary mx-1.5">&middot;</span>
+						<span class="text-secondary">{(rev.sizeBytes / 1024).toFixed(1)} KB</span>
 						{#if rev.editSummary}
-							<span class="text-faint mx-1.5">&middot;</span>
+							<span class="text-secondary mx-1.5">&middot;</span>
 							<span class="text-dim italic">{rev.editSummary}</span>
 						{/if}
 					</div>

@@ -173,7 +173,7 @@
 	{#if permissions.canManageMedia}
 		<div
 			class="relative border-2 border-dashed p-6 text-center transition-colors
-				{dragOver ? 'border-accent-border bg-accent-subtle' : 'border-border-strong bg-surface hover:border-border-strong'}"
+				{dragOver ? 'border-accent-border bg-accent-subtle' : 'border-transparent bg-surface hover:border-border-strong'}"
 			ondrop={handleDrop}
 			ondragover={handleDragOver}
 			ondragleave={() => dragOver = false}
@@ -202,8 +202,8 @@
 			{/if}
 		</div>
 	{:else if permissions.isAuthenticated}
-		<div class="border border-border-subtle bg-surface p-6 text-center">
-			<p class="text-sm text-faint">Editor role required to upload media.</p>
+		<div class="bg-surface p-6 text-center">
+			<p class="text-sm text-secondary">Editor role required to upload media.</p>
 		</div>
 	{/if}
 
@@ -231,7 +231,7 @@
 
 		<Checkbox bind:value={showUnused} label="Unused only" onclick={() => { currentPage = 0; loadFiles() }} />
 
-		<div class="flex border border-border-strong overflow-hidden">
+		<div class="flex overflow-hidden">
 			<button
 				onclick={() => viewMode = 'grid'}
 				class="px-2.5 py-1.5 text-xs {viewMode === 'grid' ? 'bg-accent text-surface' : 'bg-surface text-secondary hover:bg-page'}"
@@ -245,7 +245,7 @@
 		<button
 			type="button"
 			onclick={() => goto(unifiedSearchHref)}
-			class="px-3 py-2 text-xs border border-border text-secondary hover:bg-page"
+			class="px-3 py-2 text-xs text-secondary hover:bg-page"
 		>
 			Search View
 		</button>
@@ -256,7 +256,7 @@
 		{#if viewMode === 'grid'}
 			<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5" aria-busy="true" aria-label="Loading media">
 				{#each Array(12) as _}
-					<div class="bg-surface border border-border overflow-hidden">
+					<div class="bg-surface overflow-hidden">
 						<Skeleton class="aspect-square w-full" />
 						<div class="p-2 space-y-1.5">
 							<Skeleton class="h-3 w-3/4" />
@@ -266,7 +266,7 @@
 				{/each}
 			</div>
 		{:else}
-			<div class="bg-surface border border-border divide-y divide-border-subtle" aria-busy="true" aria-label="Loading media">
+			<div class="bg-surface divide-y divide-border-subtle" aria-busy="true" aria-label="Loading media">
 				{#each Array(8) as _}
 					<div class="flex items-center gap-4 px-4 py-3">
 						<Skeleton class="size-12 shrink-0" />
@@ -279,7 +279,7 @@
 			</div>
 		{/if}
 	{:else if files.length === 0}
-		<div class="text-center py-12 text-faint">
+		<div class="text-center py-12 text-secondary">
 			{searchQuery ? 'No files match your search.' : 'No media uploaded yet.'}
 		</div>
 	{:else if viewMode === 'grid'}
@@ -288,8 +288,8 @@
 				<a
 					href="/media/{encodeURIComponent(file.filename)}"
 					class="
-						group bg-surface border border-border overflow-hidden transition-all
-						hover:border-accent-border hover:shadow-md
+						group bg-surface overflow-hidden transition-all
+						hover:shadow-md
 					"
 				>
 					<div class="aspect-square bg-raised flex items-center justify-center overflow-hidden">
@@ -301,12 +301,12 @@
 								class="size-full object-cover transition-transform group-hover:scale-105"
 							/>
 						{:else}
-							<span class="text-xs text-faint">file</span>
+							<span class="text-xs text-secondary">file</span>
 						{/if}
 					</div>
 					<div class="p-2">
 						<div class="text-xs font-medium text-body truncate group-hover:text-link">{file.filename}</div>
-						<div class="flex items-center gap-1 text-xs text-faint mt-0.5">
+						<div class="flex items-center gap-1 text-xs text-secondary mt-0.5">
 							{#if file.width && file.height}
 								<span>{file.width}×{file.height}</span>
 								<span>·</span>
@@ -318,7 +318,7 @@
 			{/each}
 		</div>
 	{:else}
-		<div class="bg-surface border border-border divide-y divide-border-subtle">
+		<div class="bg-surface divide-y divide-border-subtle">
 			{#each files as file}
 				<a href="/media/{encodeURIComponent(file.filename)}" class="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-accent-subtle/30">
 					<div class="
@@ -327,12 +327,12 @@
 						{#if file.mimeType?.startsWith('image/')}
 							<img src="/api/media/{file.filename}?w=150" alt={file.filename} loading="lazy" class="size-full object-cover" />
 						{:else}
-							<span class="text-xs text-faint">file</span>
+							<span class="text-xs text-secondary">file</span>
 						{/if}
 					</div>
 					<div class="flex-1 min-w-0">
 						<div class="text-sm font-medium text-body truncate">{file.filename}</div>
-						<div class="text-xs text-faint">
+						<div class="text-xs text-secondary">
 							{formatBytes(file.sizeBytes)}
 							{#if file.width && file.height}
 								<span class="mx-1">·</span> {file.width}×{file.height}
@@ -343,7 +343,7 @@
 							{/if}
 						</div>
 					</div>
-					<span class="text-xs text-faint shrink-0">
+					<span class="text-xs text-secondary shrink-0">
 						{new Date(file.uploadedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
 					</span>
 				</a>
@@ -358,7 +358,7 @@
 				onclick={() => { currentPage = Math.max(0, currentPage - 1); loadFiles() }}
 				disabled={currentPage === 0}
 				class="
-					px-3 py-1 text-sm border border-border-strong
+					px-3 py-1 text-sm
 					disabled:opacity-30
 					hover:bg-page
 				"
@@ -370,7 +370,7 @@
 				onclick={() => { currentPage = Math.min(totalPages - 1, currentPage + 1); loadFiles() }}
 				disabled={currentPage >= totalPages - 1}
 				class="
-					px-3 py-1 text-sm border border-border-strong
+					px-3 py-1 text-sm
 					disabled:opacity-30
 					hover:bg-page
 				"

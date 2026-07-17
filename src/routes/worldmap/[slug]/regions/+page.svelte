@@ -247,12 +247,12 @@
 			</div>
 		{/if}
 		{#if currentMapImageUrl && data.map.hasUploadedSource}
-			<div class="mb-3 max-w-xl border border-border bg-raised p-2">
+			<div class="mb-3 max-w-xl bg-raised p-2">
 				<p class="mb-2 text-xs text-secondary">Current source preview</p>
 				<img src={currentMapImageUrl} alt="Current map source" class="h-44 w-full object-contain bg-page" />
 			</div>
 			{#if data.map.imageWidth && data.map.imageHeight}
-				<div class="mb-3 border border-border bg-raised p-2">
+				<div class="mb-3 bg-raised p-2">
 					<p class="mb-2 text-xs text-secondary">Hover a row below to highlight that region's clickable border.</p>
 					<WorldSvgMap
 						width={data.map.imageWidth}
@@ -280,7 +280,7 @@
 		<span>Unassigned: {data.unassignedCount}</span>
 	</div>
 
-	<div class="mb-5 border border-border bg-raised p-4 space-y-3">
+	<div class="mb-5 bg-raised p-4 space-y-3">
 		<p class="text-sm text-secondary">{uploadHelpText}</p>
 		<Select
 			type="single"
@@ -304,7 +304,7 @@
 			<p class="text-xs text-secondary">Current source stays visible above until you choose a replacement SVG.</p>
 		{/if}
 		{#if selectedSvgPreviewUrl}
-			<div class="max-w-xl border border-border bg-raised p-2">
+			<div class="max-w-xl bg-raised p-2">
 				<p class="mb-2 text-xs text-secondary">Selected SVG preview</p>
 				<img src={selectedSvgPreviewUrl} alt="Selected SVG preview" class="h-44 w-full object-contain bg-page" />
 			</div>
@@ -318,13 +318,13 @@
 			<p class="text-sm text-secondary">Assign wiki pages for each hex color below. Assigned regions stay in the list.</p>
 			{#each data.regions as region (region.id)}
 				<div
-					class="border border-border bg-raised p-3 grid grid-cols-1 gap-3 md:grid-cols-[auto_1fr] md:items-center"
+					class="bg-raised p-3 grid grid-cols-1 gap-3 md:grid-cols-[auto_1fr] md:items-center"
 					role="group"
 					onmouseenter={() => { hoveredRegionId = region.id }}
 					onmouseleave={() => { hoveredRegionId = null }}
 				>
 					<div class="flex items-center gap-2 text-sm">
-						<span class="inline-block h-6 w-6 border border-border" style={`background-color: ${region.hexColor};`}></span>
+						<span class="inline-block h-6 w-6" style={`background-color: ${region.hexColor};`}></span>
 						<span class="font-mono">{region.hexColor}</span>
 						{#if region.pageSlug}
 							<span class="text-xs text-secondary">Assigned to {region.pageSlug}</span>

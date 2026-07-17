@@ -99,7 +99,7 @@
 {#if !error}
 	<div
 		bind:this={popupElement}
-		class="link-preview fixed z-50 border border-border bg-surface shadow-lg overflow-hidden"
+		class="link-preview fixed z-50 bg-surface shadow-lg overflow-hidden"
 		style={style}
 		role="tooltip"
 	>
@@ -123,7 +123,7 @@
 					{#if summary}
 						<p class="text-xs/relaxed text-body">{summary}</p>
 					{:else}
-						<p class="text-xs text-faint italic">No summary available.</p>
+						<p class="text-xs text-secondary italic">No summary available.</p>
 					{/if}
 				</div>
 			</div>
@@ -142,7 +142,7 @@
 				{#if summary}
 					<p class="text-xs/relaxed text-body">{summary}</p>
 				{:else}
-					<p class="text-xs text-faint italic">No summary available.</p>
+					<p class="text-xs text-secondary italic">No summary available.</p>
 				{/if}
 			</div>
 		{/if}

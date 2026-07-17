@@ -229,7 +229,6 @@ describe('registry integrity', () => {
 		for (const config of Object.values(CELESTIAL_FORM_CONFIGS)) {
 			const draft = buildDraft(config, { id: 1, name: 'X', slug: 'x' })
 			for (const spec of allFieldSpecs(config)) {
-				if (spec.control === 'derived') continue
 				expect(draft, `${config.kind}:${spec.key}`).toHaveProperty(spec.key)
 			}
 		}

@@ -13,7 +13,7 @@
 
 {#if slug && rows && rows.length > 0}
 	<figure class="my-4 diphthong-list">
-		<div class="border border-border-subtle bg-raised px-4 py-2.5 text-center mx-auto w-fit">
+		<div class="bg-raised px-4 py-2.5 text-center mx-auto w-fit">
 			<span class="phoneme-cell inline-flex gap-3">
 				{#each rows as phoneme}
 					<span

@@ -27,7 +27,7 @@
 	})
 </script>
 
-<div class="bg-surface border border-border p-4">
+<div class="bg-surface p-4">
 	<div class="flex items-center justify-between mb-3">
 		<h3 class="text-sm font-semibold text-body">Inflection System</h3>
 		{#if canEdit}
@@ -39,7 +39,7 @@
 	</div>
 
 	{#if grouped.length === 0}
-		<p class="text-xs text-faint">
+		<p class="text-xs text-secondary">
 			No inflection dimensions defined yet.
 			{#if canEdit}
 				<a href="/Wordbook/contribute/language/{languageSlug}?tab=inflections" class="text-link hover:underline">Set one up</a>
@@ -56,7 +56,7 @@
 							{#each group.dims as dim (dim.id)}
 								<div class="flex items-center gap-2 text-sm">
 									<span class="font-medium text-secondary">{dim.name}</span>
-									<span class="text-faint text-xs">[{dim.dimValues.join(', ')}]</span>
+									<span class="text-secondary text-xs">[{dim.dimValues.join(', ')}]</span>
 								</div>
 							{/each}
 						</div>
@@ -67,7 +67,7 @@
 								<div class="flex items-center gap-2 text-sm">
 									<span class="text-link">{cls.name}</span>
 									{#if cls.description}
-										<span class="text-faint text-xs">— {cls.description}</span>
+										<span class="text-secondary text-xs">— {cls.description}</span>
 									{/if}
 								</div>
 							{/each}

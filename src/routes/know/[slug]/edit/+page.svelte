@@ -50,7 +50,7 @@
 				<button
 					type="button"
 					onclick={() => (showPreview = !showPreview)}
-					class="px-3 py-1 border border-border text-xs text-secondary hover:bg-raised {showPreview ? 'bg-accent-subtle border-accent-border text-accent' : ''}"
+					class="px-3 py-1 text-xs text-secondary hover:bg-raised {showPreview ? 'bg-accent-subtle border-accent-border text-accent' : ''}"
 				>
 					{showPreview ? 'Hide preview' : 'Show preview'}
 				</button>
@@ -71,7 +71,7 @@
 					md:w-[45%] md:max-w-2xl md:h-auto
 				">
 					<div class="
-						bg-raised px-6 py-1.5 text-xs font-medium text-faint border-b border-border-subtle uppercase
+						bg-raised px-6 py-1.5 text-xs font-medium text-secondary border-b border-border-subtle uppercase
 						tracking-wide
 					">Preview</div>
 					<div class="flex-1 overflow-y-auto px-6 py-4">
@@ -107,7 +107,7 @@
 				<a
 					href="/know/{data.slug}"
 					class="
-						flex-1 text-center px-5 py-2 border border-border text-secondary text-sm
+						flex-1 text-center px-5 py-2 text-secondary text-sm
 						sm:flex-none
 						hover:bg-raised
 					"

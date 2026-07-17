@@ -40,13 +40,13 @@
 	const showsMediaFilters = $derived(scope === 'all' || scope === 'media')
 </script>
 
-<form action={action} method="GET" class="bg-surface border border-border p-4 space-y-4">
+<form action={action} method="GET" class="bg-surface p-4 space-y-4">
 	<input type="hidden" name="q" value={query} />
 	<input type="hidden" name="scope" value={scope} />
 
 	<div class="flex items-center justify-between gap-3">
 		<h2 class="text-sm font-semibold text-heading">Filters</h2>
-		<a href={clearHref} class="text-xs text-faint hover:text-secondary">Clear all</a>
+		<a href={clearHref} class="text-xs text-secondary hover:text-body">Clear all</a>
 	</div>
 
 	<div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -72,7 +72,7 @@
 					name="tag"
 					bind:value={currentTag}
 					placeholder="e.g. archaic"
-					class="w-full px-3 py-2 border border-border-strong text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent"
+					class="w-full px-3 py-2 text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent"
 				/>
 			</div>
 		{/if}
@@ -101,7 +101,7 @@
 	{/if}
 
 	<div class="flex justify-end">
-		<button type="submit" class="px-4 py-2 bg-raised text-body text-sm border border-border hover:bg-page">
+		<button type="submit" class="px-4 py-2 bg-raised text-body text-sm hover:bg-page">
 			Apply filters
 		</button>
 	</div>

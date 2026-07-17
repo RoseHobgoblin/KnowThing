@@ -53,7 +53,7 @@
 			{#if data.languages.length > 0}
 				<select
 					name="language"
-					class="px-3 py-3 border border-border-strong bg-surface text-sm text-body focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent-border"
+					class="px-3 py-3 bg-page text-sm text-body focus:outline-none focus:ring-2 focus:ring-accent"
 				>
 					<option value="">All languages</option>
 					{#each data.languages as language (language.slug)}
@@ -96,7 +96,7 @@
 			</div>
 		</section>
 	{:else}
-		<div class="text-center py-12 text-faint">
+		<div class="text-center py-12 text-secondary">
 			<p class="text-lg mb-2">No languages yet</p>
 			<p class="text-sm">
 				<a href="/Wordbook/contribute/language" class="text-link hover:underline">Add a language</a> to get started.
@@ -108,7 +108,7 @@
 	{#if data.recent.length > 0}
 		<section>
 			<h2 class="text-lg font-semibold text-body mb-3">Recently Added</h2>
-			<div class="bg-raised border border-border-subtle divide-y divide-border-subtle">
+			<div class="bg-raised divide-y divide-border-subtle">
 				{#each data.recent as entry (entry.id)}
 					<WordEntry {entry} />
 				{/each}

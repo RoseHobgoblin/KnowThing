@@ -13,8 +13,8 @@
 {#if sections.length > 0}
 	<div class="gap-3 columns-1 md:columns-2 [&>section]:mb-3 [&>section]:break-inside-avoid">
 		{#each sections as section (section.title)}
-			<section class="border border-border-subtle bg-surface">
-				<h3 class="text-xs font-semibold uppercase tracking-wider text-faint px-3 py-2 border-b border-border-subtle bg-raised">
+			<section class="bg-surface">
+				<h3 class="text-xs font-semibold uppercase tracking-wider text-secondary px-3 py-2 border-b border-border-subtle bg-raised">
 					{section.title}
 				</h3>
 				<dl>

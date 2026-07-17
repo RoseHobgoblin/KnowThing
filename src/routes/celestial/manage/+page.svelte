@@ -235,19 +235,19 @@
 	{/snippet}
 
 	{#if systems.length === 0 && orphanStars().length === 0 && orphanBodies().length === 0}
-		<div class="bg-surface border border-border p-8 text-center">
+		<div class="bg-surface p-8 text-center">
 			<p class="text-dim">No celestial bodies registered yet. Use the forms below to add one.</p>
 		</div>
 	{:else}
 		<div class="space-y-4">
 			{#each systems as system (system.id)}
-				<div class="bg-surface border border-border">
+				<div class="bg-surface">
 					<!-- System header -->
 					<div class="flex items-center justify-between px-4 py-3 bg-raised border-b border-border-subtle">
 						<div class="flex items-center gap-2">
 							<SunDim size={20} weight="fill" class="text-accent" />
 							<a href="/Celestial:{system.slug}" class="text-heading font-bold text-lg transition-colors hover:text-link">{system.name}</a>
-							<span class="text-xs text-faint">{deriveSystemType(system.starCount)} · {system.starCount} {system.starCount === 1 ? 'star' : 'stars'} · {system.planetCount} {system.planetCount === 1 ? 'planet' : 'planets'}</span>
+							<span class="text-xs text-secondary">{deriveSystemType(system.starCount)} · {system.starCount} {system.starCount === 1 ? 'star' : 'stars'} · {system.planetCount} {system.planetCount === 1 ? 'planet' : 'planets'}</span>
 						</div>
 						<div class="flex items-center gap-3 text-xs">
 							<a href="/Celestial:{system.slug}/configure" class="text-link transition-colors flex items-center gap-1 hover:text-link-hover"><GearSix size={12} weight="fill" />Configure</a>
@@ -263,7 +263,7 @@
 									<StarIcon size={14} weight="fill" class="text-secondary" />
 									<a href="/Celestial:{star.slug}" class="text-heading font-semibold transition-colors hover:text-link">{star.name}</a>
 									{#if star.spectralType}
-										<span class="text-xs text-faint">({star.spectralType})</span>
+										<span class="text-xs text-secondary">({star.spectralType})</span>
 									{/if}
 								</div>
 								<div class="flex items-center gap-3 text-xs">
@@ -278,7 +278,7 @@
 									<div class="flex items-center gap-2">
 										<Planet size={12} class="text-dim" />
 										<a href="/Celestial:{planet.slug}" class="text-body text-sm transition-colors hover:text-link">{planet.name}</a>
-										<span class="text-xs text-faint">({planet.bodyType})</span>
+										<span class="text-xs text-secondary">({planet.bodyType})</span>
 										{#if planet.moonCount > 0}
 											<span class="text-xs text-dim">· {planet.moonCount} {planet.moonCount === 1 ? 'satellite' : 'satellites'}</span>
 										{/if}
@@ -291,7 +291,7 @@
 								{#each moonsForBody(planet.id) as moon (moon.id)}
 									<div class="flex items-center justify-between px-4 py-1 ml-14">
 										<div class="flex items-center gap-2">
-											<Moon size={10} class="text-faint" />
+											<Moon size={10} class="text-secondary" />
 											<a href="/Celestial:{moon.slug}" class="text-xs text-secondary transition-colors hover:text-link">{moon.name}</a>
 										</div>
 										<div class="flex items-center gap-3 text-xs">
@@ -308,15 +308,15 @@
 
 			<!-- Orphan stars (no system) -->
 			{#if orphanStars().length > 0}
-				<div class="bg-surface border border-border p-4">
-					<span class="text-xs text-faint uppercase tracking-wide">Unassigned Stars</span>
+				<div class="bg-surface p-4">
+					<span class="text-xs text-secondary uppercase tracking-wide">Unassigned Stars</span>
 					{#each orphanStars() as star (star.id)}
 						<div class="flex items-center justify-between py-1.5 mt-1">
 							<div class="flex items-center gap-2">
 								<StarIcon size={14} weight="fill" class="text-secondary" />
 								<span class="text-body">{star.name}</span>
 								{#if star.spectralType}
-									<span class="text-xs text-faint">({star.spectralType})</span>
+									<span class="text-xs text-secondary">({star.spectralType})</span>
 								{/if}
 							</div>
 							<a href="/Celestial:{star.slug}/configure" class="text-xs text-link flex items-center gap-1 transition-colors hover:text-link-hover"><GearSix size={12} weight="fill" />Configure</a>
@@ -327,14 +327,14 @@
 
 			<!-- Orphan bodies (no star) -->
 			{#if orphanBodies().length > 0}
-				<div class="bg-surface border border-border p-4">
-					<span class="text-xs text-faint uppercase tracking-wide">Unassigned Bodies</span>
+				<div class="bg-surface p-4">
+					<span class="text-xs text-secondary uppercase tracking-wide">Unassigned Bodies</span>
 					{#each orphanBodies() as body (body.id)}
 						<div class="flex items-center justify-between py-1.5 mt-1">
 							<div class="flex items-center gap-2">
 								<Planet size={12} class="text-dim" />
 								<span class="text-body">{body.name}</span>
-								<span class="text-xs text-faint">({body.bodyType})</span>
+								<span class="text-xs text-secondary">({body.bodyType})</span>
 							</div>
 							<a href="/Celestial:{body.slug}/configure" class="text-xs text-link flex items-center gap-1 transition-colors hover:text-link-hover"><GearSix size={12} weight="fill" />Configure</a>
 						</div>
@@ -347,9 +347,9 @@
 	<!-- Create forms -->
 	<div class="mt-8 space-y-4">
 		<!-- Presets -->
-		<section class="bg-surface border border-border p-5 space-y-3">
+		<section class="bg-surface p-5 space-y-3">
 			<h2 class="text-sm font-semibold text-heading">Create from Preset</h2>
-			<p class="text-xs text-faint">Populate an entire system with real-world data. Creates the system, stars, planets, and moons in one go.</p>
+			<p class="text-xs text-secondary">Populate an entire system with real-world data. Creates the system, stars, planets, and moons in one go.</p>
 			<div class="flex flex-wrap gap-2">
 				{#each celestialPresets as preset (preset.label)}
 					<Button onclick={() => createFromPreset(preset)} loading={creatingPreset} disabled={creatingPreset}>
@@ -362,7 +362,7 @@
 			{/if}
 		</section>
 
-		<section class="bg-surface border border-border p-5 space-y-3">
+		<section class="bg-surface p-5 space-y-3">
 			<h2 class="text-sm font-semibold text-heading">Add System</h2>
 			<div class="flex gap-3 items-end">
 				<Input label="Name" bind:value={newSystemName} placeholder="e.g. Sunly system" containerClass="flex-1" />
@@ -370,7 +370,7 @@
 			</div>
 		</section>
 
-		<section class="bg-surface border border-border p-5 space-y-3">
+		<section class="bg-surface p-5 space-y-3">
 			<h2 class="text-sm font-semibold text-heading">Add Star</h2>
 			<div class="flex gap-3 items-end">
 				<Input label="Name" bind:value={newStarName} placeholder="e.g. The Sun" containerClass="flex-1" />
@@ -385,9 +385,9 @@
 			</div>
 		</section>
 
-		<section class="bg-surface border border-border p-5 space-y-3">
+		<section class="bg-surface p-5 space-y-3">
 			<h2 class="text-sm font-semibold text-heading">Add Body</h2>
-			<p class="text-xs text-faint">Pick a parent body to create a moon or ring system; leave empty for a planet that orbits the star directly.</p>
+			<p class="text-xs text-secondary">Pick a parent body to create a moon or ring system; leave empty for a planet that orbits the star directly.</p>
 			<div class="flex gap-3 items-end flex-wrap">
 				<Input label="Name" bind:value={newBodyName} placeholder="e.g. Earth" containerClass="flex-1 min-w-40" />
 				<Select

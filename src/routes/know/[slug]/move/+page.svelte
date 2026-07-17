@@ -23,7 +23,7 @@
 	<title>Move: {data.title} - KnowThing</title>
 </svelte:head>
 
-<div class="bg-surface shadow-sm border border-border p-6 max-w-lg">
+<div class="bg-surface shadow-sm p-6 max-w-lg">
 	<RecordModeBanner
 		modeLabel="Move Article"
 		title="Rename or relocate article"
@@ -65,7 +65,7 @@
 
 		<div>
 			<label for="slug" class="block text-sm font-medium text-secondary mb-1">New URL slug</label>
-			<div class="flex items-center gap-1 text-sm text-faint">
+			<div class="flex items-center gap-1 text-sm text-secondary">
 				<span>/know/</span>
 				<Input
 					id="slug"

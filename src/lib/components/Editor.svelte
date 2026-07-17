@@ -277,7 +277,7 @@
 	}
 </script>
 
-<div class="border border-border-strong overflow-hidden h-full flex flex-col">
+<div class="overflow-hidden h-full flex flex-col">
 	<!-- Toolbar -->
 	<div class="flex items-center gap-0.5 px-2 py-1.5 bg-page border-b border-border flex-wrap">
 		{#each toolbar as button}

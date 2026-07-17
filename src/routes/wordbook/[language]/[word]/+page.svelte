@@ -136,7 +136,7 @@
 				<button onclick={() => deleteEntry(data.homographs[0].entry.id)} class="text-error transition-colors flex items-center gap-1 hover:text-error-hover"><Trash size={14} weight="fill" />Delete</button>
 			{/if}
 		{:else if isAuthenticated}
-			<span class="text-faint text-sm">View only. Editor role required for wordbook changes.</span>
+			<span class="text-secondary text-sm">View only. Editor role required for wordbook changes.</span>
 		{/if}
 	{/snippet}
 
@@ -144,7 +144,7 @@
 		<div class="flex items-center gap-2 mt-1">
 			<LanguageBadge name={data.language.name} slug={data.language.slug} color={data.language.color} />
 			{#if data.homographs[0]?.entry.pronunciation}
-				<span class="text-faint font-mono text-sm">{data.homographs[0].entry.pronunciation}</span>
+				<span class="text-secondary font-mono text-sm">{data.homographs[0].entry.pronunciation}</span>
 			{/if}
 		</div>
 	{/snippet}
@@ -156,11 +156,11 @@
 		{@const relations = hom.relations}
 
 		<!-- Headword card -->
-		<div class="bg-raised border border-border-subtle overflow-hidden mb-4 {homIndex > 0 ? 'mt-6' : ''}">
+		<div class="bg-raised overflow-hidden mb-4 {homIndex > 0 ? 'mt-6' : ''}">
 			<div class="p-4">
 				{#if data.isMultipleHomographs}
 					<h2 class="text-lg font-bold text-heading mb-2">
-						{data.word}<sup class="text-sm text-faint ml-0.5">{entry.homographNumber}</sup>
+						{data.word}<sup class="text-sm text-secondary ml-0.5">{entry.homographNumber}</sup>
 					</h2>
 				{/if}
 
@@ -178,7 +178,7 @@
 						<div class="py-3 group first:pt-0">
 							<div class="flex items-baseline gap-2 mb-1">
 								{#if defs.length > 1}
-									<span class="text-xs font-bold text-faint">{index + 1}.</span>
+									<span class="text-xs font-bold text-secondary">{index + 1}.</span>
 								{/if}
 								{#if def.partOfSpeech}
 									<Badge class={posColors[def.partOfSpeech.toLowerCase()] || ''}>{def.partOfSpeech}</Badge>
@@ -203,7 +203,7 @@
 				<!-- Add sense -->
 				{#if canManageWordbook}
 					{#if addingSenseFor === entry.id}
-						<form onsubmit={e => addSense(entry.id, e)} class="mt-3 p-3 bg-page border border-border-subtle space-y-2">
+						<form onsubmit={e => addSense(entry.id, e)} class="mt-3 p-3 bg-page space-y-2">
 							{#if senseError}
 								<div class="p-2 bg-error-bg border border-error-border text-error text-xs">{senseError}</div>
 							{/if}
@@ -223,7 +223,7 @@
 							</div>
 							<div class="flex gap-2">
 								<button type="submit" disabled={submittingSense} class="px-3 py-1.5 bg-accent text-surface text-sm hover:bg-accent-hover disabled:opacity-50">Add</button>
-								<button type="button" onclick={() => addingSenseFor = null} class="text-xs text-faint hover:text-secondary">Cancel</button>
+								<button type="button" onclick={() => addingSenseFor = null} class="text-xs text-secondary hover:text-body">Cancel</button>
 							</div>
 						</form>
 					{:else}
@@ -278,7 +278,7 @@
 
 		<!-- Etymology -->
 		{#if relations.direct || relations.cognates?.length || relations.etymologyChain?.length || entry.etymology}
-			<div class="bg-raised border border-border-subtle p-4 mb-4">
+			<div class="bg-raised p-4 mb-4">
 				<EtymologySection
 					entryId={entry.id}
 					direct={relations.direct}

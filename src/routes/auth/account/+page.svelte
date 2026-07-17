@@ -69,7 +69,7 @@
 	title="Account"
 >
 	<!-- Info -->
-	<section class="bg-raised border border-border-subtle p-4 mb-6">
+	<section class="bg-raised p-4 mb-6">
 		<div class="flex items-center gap-3 text-sm">
 			<span class="text-secondary">Username</span>
 			<span class="text-body font-medium">{data.username}</span>
