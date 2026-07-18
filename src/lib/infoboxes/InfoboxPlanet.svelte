@@ -72,7 +72,7 @@
 
 <InfoboxShell {image} {imageCaption}>
 	{#if hasOrbital}
-		<InfoboxSection title="Orbital characteristics">
+		<InfoboxSection title="Orbital characteristics" variant="raised">
 		{#if satelliteOf}
 			<InfoboxRow label="Satellite of" value={satelliteOfSlug ? `[[${satelliteOfSlug}|${satelliteOf}]]` : satelliteOf} />
 		{/if}
@@ -86,7 +86,7 @@
 		</InfoboxSection>
 	{/if}
 
-	<InfoboxSection title="Physical characteristics">
+	<InfoboxSection title="Physical characteristics" variant="raised">
 	<InfoboxRow label="Type" value={bodyType} />
 	<InfoboxRow label="Mass" value={mass} />
 	<InfoboxRow label="Radius" value={radius} />
@@ -101,7 +101,7 @@
 	</InfoboxSection>
 
 	{#if hasComposition}
-		<InfoboxSection title="Composition">
+		<InfoboxSection title="Composition" variant="raised">
 		<InfoboxRow label="Composition" value={composition} />
 		<InfoboxRow label="Atmosphere" value={atmosphere} />
 		<InfoboxRow label="Surface pressure" value={surfacePressure} />
@@ -109,7 +109,7 @@
 	{/if}
 
 	{#if hasRotation}
-		<InfoboxSection title="Rotation">
+		<InfoboxSection title="Rotation" variant="raised">
 		<InfoboxRow label="Rotation period" value={rotationPeriod} />
 		<InfoboxRow label="Axial tilt" value={axialTilt} />
 		<InfoboxRow label="Equatorial velocity" value={equatorialVelocity} />
@@ -117,7 +117,7 @@
 	{/if}
 
 	{#if hasObservation}
-		<InfoboxSection title="Observation">
+		<InfoboxSection title="Observation" variant="raised">
 		<InfoboxRow label="Apparent magnitude" value={apparentMagnitude} />
 		<InfoboxRow label="Angular diameter" value={angularDiameter} />
 		<InfoboxRow label="Albedo" value={albedo} />
@@ -125,7 +125,7 @@
 	{/if}
 
 	{#if hasSystem}
-		<InfoboxSection title="System">
+		<InfoboxSection title="System" variant="raised">
 		<InfoboxRow label="Satellites" value={satellites} />
 		{#if hasRings}
 			<InfoboxRow label="Rings" value="Yes" />

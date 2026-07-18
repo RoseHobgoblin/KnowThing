@@ -1,7 +1,7 @@
 import type { PageServerLoad } from './$types.js'
 import { resolveDisplay } from '$lib/calendar/date-math.js'
 import type { CalendarConfig, StaticCalendarData } from '$lib/calendar/types.js'
-import { extractSummaryFromAst, parseWikitext } from '$lib/parser/index.js'
+import { extractImagesFromAst, extractSummaryFromAst, parseWikitext } from '$lib/parser/index.js'
 import type { WikiNode } from '$lib/parser/types.js'
 import {
 	getFeaturedArticle,
@@ -44,12 +44,11 @@ export const load: PageServerLoad = async () => {
 		}
 	}
 
-	const featuredSummary = featured
-		? extractSummaryFromAst(
-			(featured.parsedAst as WikiNode | null) ?? parseWikitext(featured.content),
-			{ maxLength: 250 },
-		)
-		: ''
+	const featuredAst = featured
+		? (featured.parsedAst as WikiNode | null) ?? parseWikitext(featured.content)
+		: null
+	const featuredSummary = featuredAst ? extractSummaryFromAst(featuredAst, { maxLength: 250 }) : ''
+	const featuredImage = featuredAst ? extractImagesFromAst(featuredAst)[0] ?? null : null
 
 	return {
 		stats,
@@ -58,6 +57,7 @@ export const load: PageServerLoad = async () => {
 			slug: featured.slug,
 			title: featured.title,
 			summary: featuredSummary,
+			image: featuredImage,
 		} : null,
 		randomWord,
 		calendarInfo,

@@ -34,7 +34,7 @@
 		return [resolveStaticRow(row, suffix)]
 	}
 
-	type ResolvedSection = { heading?: string, rows: ResolvedRow[] }
+	type ResolvedSection = { heading?: string, headerStyle?: 'plain' | 'raised', rows: ResolvedRow[] }
 
 	const resolvedSections: ResolvedSection[] = $derived.by(() => {
 		const out: ResolvedSection[] = []
@@ -46,12 +46,13 @@
 					const heading = getField(fields, `${discoverKey}${suffix}`)
 					if (!heading) continue
 					const rows = section.rows.flatMap(r => expandRow(r, suffix))
-					out.push({ heading, rows })
+					out.push({ heading, headerStyle: section.headerStyle, rows })
 				}
 			} else {
 				const rows = section.rows.flatMap(r => expandRow(r, ''))
 				if (rows.some(r => r.value)) {
-					out.push({ heading: section.heading, rows })
+					const heading = section.headingCompose ? section.headingCompose(fields).trim() : section.heading
+					out.push({ heading, headerStyle: section.headerStyle, rows })
 				}
 			}
 		}
@@ -104,7 +105,7 @@
 		</div>
 	{/if}
 	{#each resolvedSections as section}
-		<InfoboxSection_ title={section.heading}>
+		<InfoboxSection_ title={section.heading} variant={section.headerStyle}>
 			{#each section.rows as row}
 				<InfoboxRow label={row.label} value={row.value} />
 			{/each}

@@ -45,39 +45,39 @@
 	<span class="text-secondary">[orthography: no graphemes for "{slug}"]</span>
 {:else}
 	<figure class="my-4 orthography-table">
-		<table class="text-sm mx-auto">
+		<table class="know-table know-table-divided text-sm">
 			<thead>
 				<tr>
-					<th class="px-3 py-2 border-b border-r border-border-subtle bg-muted text-heading font-medium text-center">Script</th>
+					<th class="text-heading font-medium text-center">Script</th>
 					{#if showRomanization}
-						<th class="px-3 py-2 border-b border-r border-border-subtle bg-muted text-heading font-medium text-center">Romanization</th>
+						<th class="text-heading font-medium text-center">Romanization</th>
 					{/if}
-					<th class="px-3 py-2 border-b border-r border-border-subtle bg-muted text-heading font-medium text-center">IPA</th>
+					<th class="text-heading font-medium text-center">IPA</th>
 					{#if showEnvironment}
-						<th class="px-3 py-2 border-b border-border-subtle bg-muted text-heading font-medium text-left">Environment</th>
+						<th class="text-heading font-medium text-left">Environment</th>
 					{/if}
 				</tr>
 			</thead>
 			<tbody>
 				{#each rows as row (row.id)}
 					<tr>
-						<td class="px-3 py-1.5 border-b border-r border-border-subtle font-serif text-base text-center">
+						<td class="font-serif text-base text-center">
 							{row.grapheme}
 						</td>
 						{#if showRomanization}
-							<td class="px-3 py-1.5 border-b border-r border-border-subtle font-serif text-center text-secondary">
+							<td class="font-serif text-center text-secondary">
 								{row.romanization ?? ''}
 							</td>
 						{/if}
 						<td
-							class="px-3 py-1.5 border-b border-r border-border-subtle font-serif text-center {row.phonemes.length === 0 ? 'text-dim' : ''}"
+							class="font-serif text-center {row.phonemes.length === 0 ? 'text-dim' : ''}"
 							title={row.phonemes.length === 0 ? 'silent / punctuation' : undefined}
 						>
 							{ipaFor(row)}
 							{#if footnoteById.has(row.id)}<sup class="text-dim text-xs ml-0.5">{footnoteById.get(row.id)}</sup>{/if}
 						</td>
 						{#if showEnvironment}
-							<td class="px-3 py-1.5 border-b border-border-subtle text-secondary">
+							<td class="text-secondary">
 								{row.environment ?? ''}
 							</td>
 						{/if}
@@ -86,7 +86,7 @@
 			</tbody>
 		</table>
 		{#if footnotes.length > 0}
-			<figcaption class="mt-2 text-xs text-dim max-w-prose mx-auto">
+			<figcaption class="know-table-notes text-xs max-w-prose mx-auto">
 				<ol class="list-none pl-0 space-y-0.5">
 					{#each footnotes as function_ (function_.id)}
 						<li>

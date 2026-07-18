@@ -72,25 +72,25 @@
 			<!-- Two+ dimensions: table -->
 			{#if extraDims.length === 0}
 				<div class="overflow-hidden overflow-x-auto">
-					<table class="w-full text-sm">
+					<table class="know-table know-table-divided w-full text-sm">
 						<thead>
-							<tr class="bg-page">
-								<th class="px-3 py-1.5 text-left text-xs text-dim font-medium border-r border-border"></th>
+							<tr>
+								<th class="text-left text-xs text-dim font-medium"></th>
 								{#each colDim.values as col}
-									<th class="px-3 py-1.5 text-center text-xs text-secondary font-medium">{col}</th>
+									<th class="text-center text-xs text-secondary font-medium">{col}</th>
 								{/each}
 							</tr>
 						</thead>
 						<tbody>
 							{#each rowDim.values as row}
-								<tr class="border-t border-border-subtle">
+								<tr>
 									<td class="
-										px-3 py-1.5 bg-page text-xs text-secondary font-medium border-r border-border
+										text-xs text-secondary font-medium
 									">{row}</td>
 									{#each colDim.values as col}
 										{@const key = getCellKey(row, col)}
 										{@const form = getForm(key)}
-										<td class="px-3 py-1.5 text-center font-mono text-sm {isOverride(key) ? 'text-link italic bg-accent-subtle/30' : 'text-body'}">
+										<td class="text-center font-mono text-sm {isOverride(key) ? 'text-link italic bg-accent-subtle/30' : 'text-body'}">
 											{form || '—'}
 										</td>
 									{/each}
@@ -118,27 +118,27 @@
 							{extraDims.map((d, index) => `${d.name}: ${extraVals[index]}`).join(', ')}
 						</div>
 						<div class="overflow-hidden overflow-x-auto">
-							<table class="w-full text-sm">
+							<table class="know-table know-table-divided w-full text-sm">
 								<thead>
-									<tr class="bg-page">
+									<tr>
 										<th class="
-											px-3 py-1.5 text-left text-xs text-dim font-medium border-r border-border
+											text-left text-xs text-dim font-medium
 										"></th>
 										{#each colDim.values as col}
-											<th class="px-3 py-1.5 text-center text-xs text-secondary font-medium">{col}</th>
+											<th class="text-center text-xs text-secondary font-medium">{col}</th>
 										{/each}
 									</tr>
 								</thead>
 								<tbody>
 									{#each rowDim.values as row}
-										<tr class="border-t border-border-subtle">
+										<tr>
 											<td class="
-												px-3 py-1.5 bg-page text-xs text-secondary font-medium border-r border-border
+												text-xs text-secondary font-medium
 											">{row}</td>
 											{#each colDim.values as col}
 												{@const key = getCellKey(row, col, ...extraVals)}
 												{@const form = getForm(key)}
-												<td class="px-3 py-1.5 text-center font-mono text-sm {isOverride(key) ? 'text-link italic bg-accent-subtle/30' : 'text-body'}">
+												<td class="text-center font-mono text-sm {isOverride(key) ? 'text-link italic bg-accent-subtle/30' : 'text-body'}">
 													{form || '—'}
 												</td>
 											{/each}

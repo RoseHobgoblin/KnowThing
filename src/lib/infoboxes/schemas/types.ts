@@ -30,6 +30,9 @@ export function isPairRow(row: InfoboxRowSpec): row is PairRow {
 
 export type StaticSection = {
 	heading?: string
+	/** Builds a heading from infobox fields, for linked contextual sections. */
+	headingCompose?: (fields: FieldMap) => string
+	headerStyle?: 'plain' | 'raised'
 	rows: InfoboxRowSpec[]
 }
 
@@ -39,6 +42,7 @@ export type StaticSection = {
  * for that block. Row `keys` and `compose(_, suffix)` inside the section get the current suffix appended/passed.
  */
 export type RepeatSection = {
+	headerStyle?: 'plain' | 'raised'
 	repeat: {
 		discoverKey: string
 		max: number
