@@ -349,6 +349,8 @@ export const phonemes = pgTable(
 	},
 	table => [
 		index('idx_phonemes_language_type').on(table.languageId, table.type, table.sortOrder),
+		// A phoneme inventory is a set: a language cannot list the same IPA twice.
+		unique('uq_phonemes_lang_ipa').on(table.languageId, table.ipa),
 	],
 )
 
@@ -369,6 +371,11 @@ export const graphemes = pgTable(
 	},
 	table => [
 		index('idx_graphemes_language').on(table.languageId, table.sortOrder),
+		// A letter may recur only in a different environment; NULLS NOT DISTINCT
+		// so two unqualified (NULL-environment) copies collide instead of duplicating.
+		unique('uq_graphemes_lang_grapheme_env')
+			.on(table.languageId, table.grapheme, table.environment)
+			.nullsNotDistinct(),
 	],
 )
 
