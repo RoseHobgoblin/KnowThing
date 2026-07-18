@@ -58,13 +58,6 @@
 		return out
 	})
 
-	const title = $derived(schema.titleCompose ? schema.titleCompose(fields).trim() : (getField(fields, ...schema.title) ?? ''))
-	const subtitle = $derived(
-		schema.subtitleCompose
-			? schema.subtitleCompose(fields).trim()
-			: (schema.subtitle ? (getField(fields, ...schema.subtitle) ?? '') : ''),
-	)
-
 	type ResolvedHeaderImage = { file: string, caption: string, alt: string, width: number }
 
 	const resolvedHeaderImages: ResolvedHeaderImage[] = $derived.by(() => {
@@ -86,11 +79,10 @@
 	const remaining = $derived(getRemainingFields(fields, knownKeys(schema)))
 </script>
 
-<InfoboxShell {title} {subtitle} {image} {imageCaption}>
+<InfoboxShell {image} {imageCaption}>
 	{#if hasHeaderImages}
-		<tr>
-			<td colspan="2" class="p-3">
-				<div class="flex items-start justify-center gap-4 flex-wrap">
+		<div class="infobox-media infobox-header-media">
+			<div class="flex items-start justify-center gap-4 flex-wrap">
 					{#each resolvedHeaderImages as img}
 						<figure class="flex flex-col items-center gap-1 m-0" style="width: {img.width}px;">
 							<MediaImage
@@ -108,20 +100,22 @@
 							{/if}
 						</figure>
 					{/each}
-				</div>
-			</td>
-		</tr>
+			</div>
+		</div>
 	{/if}
 	{#each resolvedSections as section}
-		{#if section.heading}
-			<InfoboxSection_ title={section.heading} />
-		{/if}
-		{#each section.rows as row}
-			<InfoboxRow label={row.label} value={row.value} />
-		{/each}
+		<InfoboxSection_ title={section.heading}>
+			{#each section.rows as row}
+				<InfoboxRow label={row.label} value={row.value} />
+			{/each}
+		</InfoboxSection_>
 	{/each}
 
-	{#each remaining as [key, value]}
-		<InfoboxRow label={key} {value} />
-	{/each}
+	{#if remaining.length > 0}
+		<InfoboxSection_>
+			{#each remaining as [key, value]}
+				<InfoboxRow label={key} {value} />
+			{/each}
+		</InfoboxSection_>
+	{/if}
 </InfoboxShell>

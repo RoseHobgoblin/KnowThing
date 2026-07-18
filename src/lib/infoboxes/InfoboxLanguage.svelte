@@ -7,8 +7,6 @@
 
 	let { fields }: { fields: FieldMap } = $props()
 
-	const title = getField(fields, 'name', 'nativename') ?? ''
-	const nativeName = getField(fields, 'nativename', 'altname') ?? ''
 	const image = getField(fields, 'image') ?? ''
 	const imageCaption = getField(fields, 'imagecaption') ?? ''
 
@@ -64,65 +62,65 @@
 	const glottoLine = glotto ? `${glotto}${glottoname ? ` (${glottoname})` : ''}` : ''
 </script>
 
-<InfoboxShell
-	{title}
-	subtitle={nativeName === title ? '' : nativeName}
-	{image}
-	{imageCaption}
->
-	{#if familyColor}
-		<tr>
-			<td colspan="2" class="h-1.5 p-0" style="background: {familyColor};"></td>
-		</tr>
-	{/if}
-
+<InfoboxShell {image} {imageCaption}>
+	<InfoboxSection>
+		{#if familyColor}
+			<div class="h-1.5 -mx-3 mb-1.5" style="background: {familyColor};"></div>
+		{/if}
 	<InfoboxRow label="Pronunciation" value={pronunciation} />
 	<InfoboxRow label="Native to" value={states} />
 	<InfoboxRow label="Region" value={region} />
 	<InfoboxRow label="Ethnicity" value={ethnicity} />
 	<InfoboxRow label="Era" value={era} />
 	<InfoboxRow label="Extinct" value={extinct} />
+	</InfoboxSection>
 
 	{#if speakerLine}
-		<InfoboxSection title="Speakers" />
+		<InfoboxSection title="Speakers">
 		<InfoboxRow label="Native speakers" value={speakerLine} />
+		</InfoboxSection>
 	{/if}
 
 	{#if family || familyTree || protoname || ancestors}
-		<InfoboxSection title="Classification" />
+		<InfoboxSection title="Classification">
 		<InfoboxRow label="Family" value={family} />
 		<InfoboxRow label="Family tree" value={familyTree} />
 		<InfoboxRow label="Proto-language" value={protoname} />
 		<InfoboxRow label="Ancestors" value={ancestors} />
+		</InfoboxSection>
 	{/if}
 
 	{#if dialects.length > 0}
-		<InfoboxSection title="Dialects" />
+		<InfoboxSection title="Dialects">
 		<InfoboxRow label="Varieties" value={dialects.join(', ')} />
+		</InfoboxSection>
 	{/if}
 
 	{#if script || sign}
-		<InfoboxSection title="Writing system" />
+		<InfoboxSection title="Writing system">
 		<InfoboxRow label="Script" value={script} />
 		<InfoboxRow label="Signed forms" value={sign} />
+		</InfoboxSection>
 	{/if}
 
 	{#if creator || created || setting}
-		<InfoboxSection title="Constructed" />
+		<InfoboxSection title="Constructed">
 		<InfoboxRow label="Created by" value={creator} />
 		<InfoboxRow label="Created" value={created} />
 		<InfoboxRow label="Setting" value={setting} />
+		</InfoboxSection>
 	{/if}
 
 	{#if nation || minority || agency}
-		<InfoboxSection title="Official status" />
+		<InfoboxSection title="Official status">
 		<InfoboxRow label="Official in" value={nation} />
 		<InfoboxRow label="Recognised minority in" value={minority} />
 		<InfoboxRow label="Regulated by" value={agency} />
+		</InfoboxSection>
 	{/if}
 
 	{#if iso1 || iso2 || iso2b || iso2t || iso3 || glotto || lingua}
-		<InfoboxSection title="Language codes" />
+		<InfoboxSection title="Language codes">
 		<InfoboxRow label="ISO 639-1" value={iso1} />
 		<InfoboxRow label="ISO 639-2" value={iso2} />
 		<InfoboxRow label="ISO 639-2 (B)" value={iso2b} />
@@ -130,5 +128,6 @@
 		<InfoboxRow label="ISO 639-3" value={iso3} />
 		<InfoboxRow label="Glottolog" value={glottoLine} />
 		<InfoboxRow label="Linguasphere" value={lingua} />
+		</InfoboxSection>
 	{/if}
 </InfoboxShell>

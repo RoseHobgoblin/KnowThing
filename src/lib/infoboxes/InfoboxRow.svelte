@@ -11,12 +11,12 @@
 </script>
 
 {#if value}
-	<tr>
-		<th class="infobox-label">
+	<div class="infobox-row">
+		<div class="infobox-label">
 			<InlineMarkup text={label} />
-		</th>
-		<td class="infobox-data">
+		</div>
+		<div class="infobox-data">
 			<InlineMarkup text={value} />
-		</td>
-	</tr>
+		</div>
+	</div>
 {/if}

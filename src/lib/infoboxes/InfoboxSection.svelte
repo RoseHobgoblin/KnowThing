@@ -1,11 +1,13 @@
 <script lang="ts">
 	import InlineMarkup from '$lib/renderer/InlineMarkup.svelte'
+	import type { Snippet } from 'svelte'
 
-	let { title }: { title: string } = $props()
+	let { title, children }: { title?: string, children: Snippet } = $props()
 </script>
 
-<tr >
-	<th colspan="2" class="infobox-section">
-		<InlineMarkup text={title} />
-	</th>
-</tr>
+<section class="infobox-section">
+	{#if title}
+		<h3 class="infobox-section-title"><InlineMarkup text={title} /></h3>
+	{/if}
+	<div class="infobox-section-rows">{@render children()}</div>
+</section>

@@ -21,7 +21,6 @@
 		'satellites', 'has_rings', 'description',
 	])
 
-	const title = getField(fields, 'name') ?? ''
 	const image = getField(fields, 'image') ?? ''
 	const imageCaption = getField(fields, 'caption') ?? ''
 	const bodyType = getField(fields, 'body_type') ?? ''
@@ -71,14 +70,9 @@
 	const remaining = getRemainingFields(fields, KNOWN_KEYS)
 </script>
 
-<InfoboxShell
-	{title}
-	subtitle={bodyType ? bodyType.charAt(0).toUpperCase() + bodyType.slice(1) : ''}
-	{image}
-	{imageCaption}
->
+<InfoboxShell {image} {imageCaption}>
 	{#if hasOrbital}
-		<InfoboxSection title="Orbital characteristics" />
+		<InfoboxSection title="Orbital characteristics">
 		{#if satelliteOf}
 			<InfoboxRow label="Satellite of" value={satelliteOfSlug ? `[[${satelliteOfSlug}|${satelliteOf}]]` : satelliteOf} />
 		{/if}
@@ -89,9 +83,11 @@
 		<InfoboxRow label="Apoapsis" value={apoapsis} />
 		<InfoboxRow label="Orbital velocity" value={orbitalVelocity} />
 		<InfoboxRow label="Inclination" value={inclination} />
+		</InfoboxSection>
 	{/if}
 
-	<InfoboxSection title="Physical characteristics" />
+	<InfoboxSection title="Physical characteristics">
+	<InfoboxRow label="Type" value={bodyType} />
 	<InfoboxRow label="Mass" value={mass} />
 	<InfoboxRow label="Radius" value={radius} />
 	<InfoboxRow label="Circumference" value={circumference} />
@@ -102,37 +98,46 @@
 	<InfoboxRow label="Escape velocity" value={escapeVelocity} />
 	<InfoboxRow label="Temperature" value={temperature} />
 	<InfoboxRow label="Age" value={age} />
+	</InfoboxSection>
 
 	{#if hasComposition}
-		<InfoboxSection title="Composition" />
+		<InfoboxSection title="Composition">
 		<InfoboxRow label="Composition" value={composition} />
 		<InfoboxRow label="Atmosphere" value={atmosphere} />
 		<InfoboxRow label="Surface pressure" value={surfacePressure} />
+		</InfoboxSection>
 	{/if}
 
 	{#if hasRotation}
-		<InfoboxSection title="Rotation" />
+		<InfoboxSection title="Rotation">
 		<InfoboxRow label="Rotation period" value={rotationPeriod} />
 		<InfoboxRow label="Axial tilt" value={axialTilt} />
 		<InfoboxRow label="Equatorial velocity" value={equatorialVelocity} />
+		</InfoboxSection>
 	{/if}
 
 	{#if hasObservation}
-		<InfoboxSection title="Observation" />
+		<InfoboxSection title="Observation">
 		<InfoboxRow label="Apparent magnitude" value={apparentMagnitude} />
 		<InfoboxRow label="Angular diameter" value={angularDiameter} />
 		<InfoboxRow label="Albedo" value={albedo} />
+		</InfoboxSection>
 	{/if}
 
 	{#if hasSystem}
-		<InfoboxSection title="System" />
+		<InfoboxSection title="System">
 		<InfoboxRow label="Satellites" value={satellites} />
 		{#if hasRings}
 			<InfoboxRow label="Rings" value="Yes" />
 		{/if}
+		</InfoboxSection>
 	{/if}
 
-	{#each remaining as [key, value]}
-		<InfoboxRow label={key} {value} />
-	{/each}
+	{#if remaining.length > 0}
+		<InfoboxSection>
+			{#each remaining as [key, value]}
+				<InfoboxRow label={key} {value} />
+			{/each}
+		</InfoboxSection>
+	{/if}
 </InfoboxShell>

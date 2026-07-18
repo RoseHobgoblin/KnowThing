@@ -156,7 +156,7 @@
 		{@const relations = hom.relations}
 
 		<!-- Headword card -->
-		<div class="bg-raised overflow-hidden mb-4 {homIndex > 0 ? 'mt-6' : ''}">
+		<div class="bg-surface overflow-hidden mb-4 {homIndex > 0 ? 'mt-6' : ''}">
 			<div class="p-4">
 				{#if data.isMultipleHomographs}
 					<h2 class="text-lg font-bold text-heading mb-2">
@@ -278,7 +278,7 @@
 
 		<!-- Etymology -->
 		{#if relations.direct || relations.cognates?.length || relations.etymologyChain?.length || entry.etymology}
-			<div class="bg-raised p-4 mb-4">
+			<div class="bg-surface p-4 mb-4">
 				<EtymologySection
 					entryId={entry.id}
 					direct={relations.direct}

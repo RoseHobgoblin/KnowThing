@@ -12,6 +12,8 @@
 	import ClockCounterClockwise from 'phosphor-svelte/lib/ClockCounterClockwise'
 	import Trash from 'phosphor-svelte/lib/Trash'
 	import type { WikiNode } from '$lib/parser/types.js'
+	import { buildFieldMap, getField } from '$lib/infoboxes/types.js'
+	import { detectInfoboxType } from '$lib/infoboxes/detect.js'
 
 	let {
 		title,
@@ -55,6 +57,25 @@
 		return map
 	}
 
+	function findPersonNativeName(node: WikiNode): string {
+		if (node.type === 'template') {
+			const fields = buildFieldMap(node.args)
+			const type = detectInfoboxType(node.name, fields)
+			if (type === 'person' || type === 'royalty' || type === 'officeholder') {
+				return getField(fields, 'native_name') ?? ''
+			}
+		}
+		if ('children' in node) {
+			for (const child of node.children) {
+				const nativeName = findPersonNativeName(child)
+				if (nativeName) return nativeName
+			}
+		}
+		return ''
+	}
+
+	const articleSubtitle = $derived(findPersonNativeName(ast))
+
 	createKnowContext({
 		resolvedLinks: new SvelteMap(Object.entries(rawResolvedLinks ?? {})),
 		mediaBaseUrl: '/api/media',
@@ -70,6 +91,7 @@
 <ArticleShell
 	breadcrumbs={knowBreadcrumbs(title)}
 	{title}
+	subtitle={articleSubtitle}
 >
 	{#snippet actions()}
 		{#if permissions.canEditContent}

@@ -14,7 +14,6 @@
 		'description',
 	])
 
-	const title = getField(fields, 'name') ?? ''
 	const image = getField(fields, 'image') ?? ''
 	const imageCaption = getField(fields, 'caption') ?? ''
 	const systemType = getField(fields, 'system_type') ?? ''
@@ -31,25 +30,28 @@
 	const remaining = getRemainingFields(fields, KNOWN_KEYS)
 </script>
 
-<InfoboxShell
-	{title}
-	subtitle={typeLabel}
-	{image}
-	{imageCaption}
->
-	<InfoboxSection title="System" />
+
+<InfoboxShell {image} {imageCaption}>
+	<InfoboxSection title="System">
+	<InfoboxRow label="Type" value={typeLabel} />
 	<InfoboxRow label="Stars" value={starsList} />
 	{#if starCount && Number(starCount) > 1}
 		<InfoboxRow label="Star count" value={starCount} />
 	{/if}
+	</InfoboxSection>
 
-	<InfoboxSection title="Bodies" />
+	<InfoboxSection title="Bodies">
 	<InfoboxRow label="Planets" value={planets} />
 	{#if satellites && satellites !== '0'}
 		<InfoboxRow label="Satellites" value={satellites} />
 	{/if}
+	</InfoboxSection>
 
-	{#each remaining as [key, value]}
-		<InfoboxRow label={key} {value} />
-	{/each}
+	{#if remaining.length > 0}
+		<InfoboxSection>
+			{#each remaining as [key, value]}
+				<InfoboxRow label={key} {value} />
+			{/each}
+		</InfoboxSection>
+	{/if}
 </InfoboxShell>

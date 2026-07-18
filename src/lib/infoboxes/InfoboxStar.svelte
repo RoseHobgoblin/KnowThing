@@ -24,7 +24,6 @@
 		'description', 'from',
 	])
 
-	const title = getField(fields, 'name') ?? ''
 	const image = getField(fields, 'image') ?? ''
 	const imageCaption = getField(fields, 'caption') ?? ''
 
@@ -75,13 +74,8 @@
 	const remaining = getRemainingFields(fields, KNOWN_KEYS)
 </script>
 
-<InfoboxShell
-	{title}
-	subtitle={spectralType}
-	{image}
-	{imageCaption}
->
-	<InfoboxSection title="Stellar properties" />
+<InfoboxShell {image} {imageCaption}>
+	<InfoboxSection title="Stellar properties">
 	<InfoboxRow label="Spectral type" value={spectralType} />
 	<InfoboxRow label="Mass" value={mass} />
 	<InfoboxRow label="Radius" value={radius} />
@@ -97,25 +91,28 @@
 	<InfoboxRow label="Age" value={age} />
 	<InfoboxRow label="Color" value={color} />
 	<InfoboxRow label="Habitable zone" value={habitableZone} />
+	</InfoboxSection>
 
 	{#if hasRotation}
-		<InfoboxSection title="Rotation" />
+		<InfoboxSection title="Rotation">
 		<InfoboxRow label="Rotation period" value={rotationPeriod} />
 		<InfoboxRow label="Equatorial velocity" value={equatorialVelocity} />
 		<InfoboxRow label="Axial tilt" value={axialTilt} />
+		</InfoboxSection>
 	{/if}
 
 	{#if hasOrbital}
-		<InfoboxSection title="Orbit" />
+		<InfoboxSection title="Orbit">
 		<InfoboxRow label="Orbital period" value={orbitalPeriod} />
 		<InfoboxRow label="Semi-major axis" value={semiMajorAxis} />
 		<InfoboxRow label="Eccentricity" value={eccentricity} />
 		<InfoboxRow label="Periastron" value={periastron} />
 		<InfoboxRow label="Apastron" value={apastron} />
+		</InfoboxSection>
 	{/if}
 
 	{#if hasObservation}
-		<InfoboxSection title="Observation" />
+		<InfoboxSection title="Observation">
 		{#if apparentMagnitude}
 			<InfoboxRow label="Apparent magnitude" value={apparentMagnitude} />
 		{/if}
@@ -136,19 +133,25 @@
 		{#if angularDiameterMin}
 			<InfoboxRow label="Angular diameter (min)" value={angularDiameterMin} />
 		{/if}
+		</InfoboxSection>
 	{/if}
 
 	{#if hasSystem}
-		<InfoboxSection title="System" />
+		<InfoboxSection title="System">
 		{#if companionOf}
 			<InfoboxRow label="Companion of" value={companionOfSlug ? `[[${companionOfSlug}|${companionOf}]]` : companionOf} />
 		{/if}
 		<InfoboxRow label="Companion" value={companion} />
 		<InfoboxRow label="Planets" value={planets} />
 		<InfoboxRow label="Known satellites" value={knownSatellites} />
+		</InfoboxSection>
 	{/if}
 
-	{#each remaining as [key, value]}
-		<InfoboxRow label={key} {value} />
-	{/each}
+	{#if remaining.length > 0}
+		<InfoboxSection>
+			{#each remaining as [key, value]}
+				<InfoboxRow label={key} {value} />
+			{/each}
+		</InfoboxSection>
+	{/if}
 </InfoboxShell>

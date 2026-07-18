@@ -31,6 +31,12 @@ export const countrySchema: InfoboxSchema = {
 	],
 	sections: [
 		{
+			heading: 'Identity',
+			rows: [
+				{ label: 'Native name', keys: ['native_name'] },
+			],
+		},
+		{
 			rows: [
 				{ label: 'Motto', keys: ['national_motto', 'motto'] },
 				{ label: 'Anthem', keys: ['national_anthem', 'anthem'] },
