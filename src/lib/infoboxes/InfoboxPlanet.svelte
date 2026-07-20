@@ -21,6 +21,7 @@
 		'satellites', 'has_rings', 'description',
 	])
 
+	const title = getField(fields, 'name') ?? ''
 	const image = getField(fields, 'image') ?? ''
 	const imageCaption = getField(fields, 'caption') ?? ''
 	const bodyType = getField(fields, 'body_type') ?? ''
@@ -70,7 +71,7 @@
 	const remaining = getRemainingFields(fields, KNOWN_KEYS)
 </script>
 
-<InfoboxShell {image} {imageCaption}>
+<InfoboxShell {title} {image} {imageCaption}>
 	{#if hasOrbital}
 		<InfoboxSection title="Orbital characteristics" variant="raised">
 		{#if satelliteOf}

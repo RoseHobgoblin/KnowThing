@@ -7,6 +7,8 @@
 
 	let { fields }: { fields: FieldMap } = $props()
 
+	const title = getField(fields, 'name', 'nativename') ?? ''
+	const nativeName = getField(fields, 'nativename', 'altname') ?? ''
 	const image = getField(fields, 'image') ?? ''
 	const imageCaption = getField(fields, 'imagecaption') ?? ''
 
@@ -62,7 +64,7 @@
 	const glottoLine = glotto ? `${glotto}${glottoname ? ` (${glottoname})` : ''}` : ''
 </script>
 
-<InfoboxShell {image} {imageCaption}>
+<InfoboxShell {title} subtitle={nativeName === title ? '' : nativeName} {image} {imageCaption}>
 	<InfoboxSection>
 		{#if familyColor}
 			<div class="h-1.5 -mx-3 mb-1.5" style="background: {familyColor};"></div>

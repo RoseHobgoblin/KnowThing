@@ -14,6 +14,7 @@
 		'description',
 	])
 
+	const title = getField(fields, 'name') ?? ''
 	const image = getField(fields, 'image') ?? ''
 	const imageCaption = getField(fields, 'caption') ?? ''
 	const systemType = getField(fields, 'system_type') ?? ''
@@ -31,7 +32,7 @@
 </script>
 
 
-<InfoboxShell {image} {imageCaption}>
+<InfoboxShell {title} {image} {imageCaption}>
 	<InfoboxSection title="System">
 	<InfoboxRow label="Type" value={typeLabel} />
 	<InfoboxRow label="Stars" value={starsList} />

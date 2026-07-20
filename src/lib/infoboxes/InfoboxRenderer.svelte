@@ -59,6 +59,13 @@
 		return out
 	})
 
+	const title = $derived(schema.hideTitle ? '' : (schema.titleCompose ? schema.titleCompose(fields).trim() : (getField(fields, ...schema.title) ?? '')))
+	const subtitle = $derived(
+		schema.subtitleCompose
+			? schema.subtitleCompose(fields).trim()
+			: (schema.subtitle ? (getField(fields, ...schema.subtitle) ?? '') : ''),
+	)
+
 	type ResolvedHeaderImage = { file: string, caption: string, alt: string, width: number }
 
 	const resolvedHeaderImages: ResolvedHeaderImage[] = $derived.by(() => {
@@ -80,7 +87,7 @@
 	const remaining = $derived(getRemainingFields(fields, knownKeys(schema)))
 </script>
 
-<InfoboxShell {image} {imageCaption}>
+<InfoboxShell {title} {subtitle} {image} {imageCaption}>
 	{#if hasHeaderImages}
 		<div class="infobox-media infobox-header-media">
 			<div class="flex items-start justify-center gap-4 flex-wrap">

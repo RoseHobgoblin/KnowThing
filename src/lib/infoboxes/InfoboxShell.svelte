@@ -4,10 +4,14 @@
 	import InlineMarkup from '$lib/renderer/InlineMarkup.svelte'
 
 	let {
+		title = '',
+		subtitle = '',
 		image = '',
 		imageCaption = '',
 		children,
 	}: {
+		title?: string
+		subtitle?: string
 		image?: string
 		imageCaption?: string
 		children: Snippet
@@ -15,6 +19,14 @@
 </script>
 
 <aside class="know-infobox">
+	{#if title}
+		<div class="infobox-header">
+			<h2 class="infobox-title"><InlineMarkup text={title} /></h2>
+			{#if subtitle}
+				<div class="infobox-subtitle"><InlineMarkup text={subtitle} /></div>
+			{/if}
+		</div>
+	{/if}
 	{#if image}
 		<div class="infobox-media">
 			<MediaImage
@@ -25,10 +37,10 @@
 				sizes="(max-width: 640px) calc(100vw - 3rem), 320px"
 				class="max-w-full h-auto mx-auto"
 			/>
-			{#if imageCaption}
-				<div class="infobox-caption"><InlineMarkup text={imageCaption} /></div>
-			{/if}
 		</div>
+		{#if imageCaption}
+			<div class="infobox-caption"><InlineMarkup text={imageCaption} /></div>
+		{/if}
 	{/if}
 	{@render children()}
 </aside>

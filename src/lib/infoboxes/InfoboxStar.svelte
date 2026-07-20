@@ -24,6 +24,7 @@
 		'description', 'from',
 	])
 
+	const title = getField(fields, 'name') ?? ''
 	const image = getField(fields, 'image') ?? ''
 	const imageCaption = getField(fields, 'caption') ?? ''
 
@@ -74,7 +75,7 @@
 	const remaining = getRemainingFields(fields, KNOWN_KEYS)
 </script>
 
-<InfoboxShell {image} {imageCaption}>
+<InfoboxShell {title} {image} {imageCaption}>
 	<InfoboxSection title="Stellar properties">
 	<InfoboxRow label="Spectral type" value={spectralType} />
 	<InfoboxRow label="Mass" value={mass} />

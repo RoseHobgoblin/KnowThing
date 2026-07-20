@@ -69,6 +69,12 @@ export type InfoboxSchema = {
 	title: string[]
 	/** Overrides title resolution when present. */
 	titleCompose?: (fields: FieldMap) => string
+	/**
+	 * Suppress the infobox header entirely. Use when the title would merely echo the
+	 * page `<h1>` (e.g. a gun, a person). The `title`/`subtitle` keys stay registered
+	 * so they're still filtered out of the fallback "remaining fields" list.
+	 */
+	hideTitle?: boolean
 	subtitle?: string[]
 	/** Overrides subtitle resolution when present. */
 	subtitleCompose?: (fields: FieldMap) => string
