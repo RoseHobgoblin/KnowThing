@@ -2,6 +2,8 @@
 	import { Command, Dialog } from 'bits-ui'
 	import { goto } from '$app/navigation'
 	import { createQuery } from '@tanstack/svelte-query'
+	import { useDebounce } from 'runed'
+	import { shortcut } from '@svelte-put/shortcut'
 	import type { Component } from 'svelte'
 	import { api } from '$lib/api'
 	import { commandPalette } from './command-palette.svelte'
@@ -23,25 +25,26 @@
 
 	let query = $state('')
 	let debounced = $state('')
-	let timer: ReturnType<typeof setTimeout>
+
+	const setDebounced = useDebounce(() => debounced = query.trim(), 200)
 
 	// Clear the query whenever the palette closes so it reopens fresh.
 	$effect(() => {
 		if (!commandPalette.open) {
 			query = ''
 			debounced = ''
-			clearTimeout(timer)
+			setDebounced.cancel()
 		}
 	})
 
 	function onInput(event: Event) {
 		query = (event.currentTarget as HTMLInputElement).value
-		clearTimeout(timer)
 		if (!query.trim()) {
+			setDebounced.cancel()
 			debounced = ''
 			return
 		}
-		timer = setTimeout(() => debounced = query.trim(), 200)
+		setDebounced()
 	}
 
 	const term = $derived(query.trim().toLowerCase())
@@ -64,16 +67,16 @@
 		commandPalette.close()
 		goto(href)
 	}
-
-	function onWindowKeydown(event: KeyboardEvent) {
-		if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
-			event.preventDefault()
-			commandPalette.toggle()
-		}
-	}
 </script>
 
-<svelte:window onkeydown={onWindowKeydown} />
+<svelte:window use:shortcut={{
+	trigger: {
+		key: 'k',
+		modifier: ['ctrl', 'meta'],
+		callback: () => commandPalette.toggle(),
+		preventDefault: true,
+	},
+}} />
 
 <Dialog.Root bind:open={() => commandPalette.open, (v) => { commandPalette.open = v }}>
 	<Dialog.Portal>

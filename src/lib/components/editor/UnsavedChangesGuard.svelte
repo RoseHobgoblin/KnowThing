@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { beforeNavigate } from '$app/navigation'
+	import { useEventListener } from 'runed'
 
 	let {
 		when = false,
@@ -15,16 +16,14 @@
 		if (!ok) navigation.cancel()
 	})
 
-	$effect(() => {
-		if (!when) return
-
-		const handler = (event: BeforeUnloadEvent) => {
+	// Target getter returns undefined while `when` is false, so the listener is
+	// only attached when there are unsaved changes (and torn down otherwise).
+	useEventListener(
+		() => (when ? window : undefined),
+		'beforeunload',
+		(event) => {
 			event.preventDefault()
 			event.returnValue = message
-			return message
-		}
-
-		window.addEventListener('beforeunload', handler)
-		return () => window.removeEventListener('beforeunload', handler)
-	})
+		},
+	)
 </script>

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy } from 'svelte'
+	import { useDebounce } from 'runed'
 	import { invalidateAll } from '$app/navigation'
 	import { createMutation, createQuery } from '@tanstack/svelte-query'
 	import { pushSuccess } from '$lib/notifications.svelte'
@@ -109,7 +109,7 @@
 	let formError = $state('')
 	let debouncedQuery = $state('')
 	let dropdownOpen = $state(false)
-	let searchTimeout: ReturnType<typeof setTimeout> | null = null
+	const runSearch = useDebounce(() => debouncedQuery = targetQuery.trim(), 300)
 
 	const searchQuery = createQuery(() => ({
 		queryKey: ['wordbook-search', debouncedQuery, 10],
@@ -120,10 +120,6 @@
 
 	const searchResults = $derived(searchQuery.data ?? [])
 	const showDropdown = $derived(dropdownOpen && searchResults.length > 0)
-
-	onDestroy(() => {
-		if (searchTimeout) clearTimeout(searchTimeout)
-	})
 
 	const typeOptions = $derived.by(() => {
 		if (direction === 'from') {
@@ -143,17 +139,15 @@
 	const currentHelp = $derived(typeOptions.find(o => o.value === relationType)?.help || '')
 
 	function handleSearch() {
-		if (searchTimeout) clearTimeout(searchTimeout)
 		targetId = null
 		if (targetQuery.trim().length < 2) {
+			runSearch.cancel()
 			debouncedQuery = ''
 			dropdownOpen = false
 			return
 		}
 		dropdownOpen = true
-		searchTimeout = setTimeout(() => {
-			debouncedQuery = targetQuery.trim()
-		}, 300)
+		runSearch()
 	}
 
 	function selectTarget(r: typeof searchResults[0]) {

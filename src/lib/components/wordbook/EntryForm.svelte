@@ -1,7 +1,8 @@
 <script lang="ts">
-	import { onDestroy, untrack } from 'svelte'
+	import { untrack } from 'svelte'
 	import { createSpaForm } from '$lib/forms/spa-form.svelte.js'
 	import { createQuery } from '@tanstack/svelte-query'
+	import { useDebounce } from 'runed'
 	import { PARTS_OF_SPEECH } from './constants.js'
 	import Input from '$lib/components/ui/Input.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
@@ -86,7 +87,6 @@
 	let etymRows = $state<EtymRow[]>([])
 	let searchRowIndex = $state<number | null>(null)
 	let debouncedTerm = $state('')
-	let searchTimeout: ReturnType<typeof setTimeout> | null = null
 
 	const etymSearchQuery = createQuery(() => ({
 		queryKey: ['wordbook-search', debouncedTerm, 8],
@@ -105,9 +105,10 @@
 	// Adding an etymology row is an intentional edit the tainted tracker can't see.
 	const isDirty = $derived(spa.isDirty || etymRows.length > 0)
 
-	onDestroy(() => {
-		if (searchTimeout) clearTimeout(searchTimeout)
-	})
+	const runEtymSearch = useDebounce((index: number, term: string) => {
+		searchRowIndex = index
+		debouncedTerm = term
+	}, 300)
 
 	let languageIdString = $derived($form.languageId ? String($form.languageId) : '')
 	function setLanguageId(v: string) {
@@ -144,16 +145,13 @@
 	function handleEtymSearch(index: number) {
 		const row = etymRows[index]
 		row.targetId = null
-		if (searchTimeout) clearTimeout(searchTimeout)
 		if (row.query.trim().length < 2) {
+			runEtymSearch.cancel()
 			row.results = []
 			row.showDropdown = false
 			return
 		}
-		searchTimeout = setTimeout(() => {
-			searchRowIndex = index
-			debouncedTerm = row.query.trim()
-		}, 300)
+		runEtymSearch(index, row.query.trim())
 	}
 
 	function selectEtymTarget(index: number, r: EtymRow['results'][0]) {

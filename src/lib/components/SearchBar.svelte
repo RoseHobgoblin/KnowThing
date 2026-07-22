@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation'
-	import { onDestroy } from 'svelte'
 	import { Combobox } from 'bits-ui'
 	import { createQuery } from '@tanstack/svelte-query'
+	import { useDebounce } from 'runed'
 	import { api } from '$lib/api'
 	import { sanitizeSnippet } from '$lib/utils.js'
 
@@ -12,18 +12,17 @@
 	let debounced = $state('')
 	let open = $state(false)
 	let inputRef = $state<HTMLInputElement | null>(null)
-	let debounceTimer: ReturnType<typeof setTimeout>
 
-	onDestroy(() => clearTimeout(debounceTimer))
+	const setDebounced = useDebounce(() => debounced = query.trim(), 250)
 
 	function onInput(event: Event) {
 		query = (event.currentTarget as HTMLInputElement).value
-		clearTimeout(debounceTimer)
 		if (!query.trim()) {
+			setDebounced.cancel()
 			debounced = ''
 			return
 		}
-		debounceTimer = setTimeout(() => debounced = query.trim(), 250)
+		setDebounced()
 	}
 
 	const search = createQuery(() => ({
@@ -35,7 +34,7 @@
 	const results = $derived(debounced.length > 0 ? search.data?.results ?? [] : [])
 
 	function reset() {
-		clearTimeout(debounceTimer)
+		setDebounced.cancel()
 		query = ''
 		debounced = ''
 		open = false
