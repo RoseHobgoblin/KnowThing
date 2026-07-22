@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte'
 	import type { ActionData, PageData } from './$types.js'
 	import { enhance } from '$app/forms'
 	import Editor from '$lib/components/Editor.svelte'
@@ -10,7 +11,7 @@
 	import Input from '$lib/components/ui/Input.svelte'
 
 	let { form, data }: { form: ActionData, data: PageData } = $props()
-	let content = $state(data.content)
+	let content = $state(untrack(() => data.content))
 	let showPreview = $state(true)
 	let submitting = $state(false)
 	let editSummary = $state('')

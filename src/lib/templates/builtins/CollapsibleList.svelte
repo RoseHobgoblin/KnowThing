@@ -5,7 +5,7 @@
 
 	let { args }: { args: TemplateArg[] } = $props()
 
-	const summary = (namedArgAny(args, 'title', 'titlestyle') ?? 'See list').trim()
+	const summary = $derived((namedArgAny(args, 'title', 'titlestyle') ?? 'See list').trim())
 
 	function collectItems(): string[] {
 		const numbered: string[] = []
@@ -18,14 +18,14 @@
 		return positionalArgs(args).map(s => s.trim()).filter(Boolean)
 	}
 
-	const items = collectItems()
+	const items = $derived(collectItems())
 </script>
 
 {#if items.length > 0}
 	<details class="cl-details">
 		<summary class="cl-summary"><InlineMarkup text={summary} /></summary>
 		<div class="cl-body">
-			{#each items as item}
+			{#each items as item, index (index)}
 				<div><InlineMarkup text={item} /></div>
 			{/each}
 		</div>

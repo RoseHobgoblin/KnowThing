@@ -8,21 +8,23 @@
 	let { args }: { args: TemplateArg[] } = $props()
 
 	const ctx = getKnowContext()
-	const tsString = positionalArg(args, 0)?.trim() || ''
-	const ts = Number.parseInt(tsString)
+	const tsString = $derived(positionalArg(args, 0)?.trim() || '')
+	const ts = $derived(Number.parseInt(tsString))
 
-	let resolved: ResolvedDate | null = null
-	if (Number.isFinite(ts) && ctx.calendarConfig) {
-		try {
-			resolved = fromTimestamp(ts, ctx.calendarConfig)
-		} catch {
-			resolved = null
+	const resolved: ResolvedDate | null = $derived.by(() => {
+		if (Number.isFinite(ts) && ctx.calendarConfig) {
+			try {
+				return fromTimestamp(ts, ctx.calendarConfig)
+			} catch {
+				return null
+			}
 		}
-	}
+		return null
+	})
 
-	const formatted = resolved
+	const formatted = $derived(resolved
 		? `${resolved.day_of_week_name}, ${resolved.day} ${resolved.month_name}, ${resolved.year_display}`
-		: null
+		: null)
 </script>
 
 {#if formatted}

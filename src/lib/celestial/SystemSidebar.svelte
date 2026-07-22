@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte'
 	import type { MapBody } from './SystemMap.svelte'
 	import type { CalendarConfig } from '$lib/calendar/types.js'
 	import { resolveColor } from './colors.js'
@@ -36,7 +37,7 @@
 		selectedBody?: MapBody | null
 	} = $props()
 
-	let selectedCalendarId = $state(calendars[0]?.id ?? 0)
+	let selectedCalendarId = $state(untrack(() => calendars[0]?.id ?? 0))
 	const selectedCalendar = $derived(calendars.find(c => c.id === selectedCalendarId) ?? calendars[0])
 	const currentDate = $derived(selectedCalendar ? dateFromAbsolute(selectedCalendar.static_data, currentAbsoluteDay) : null)
 	const resolved = $derived(selectedCalendar && currentDate ? resolveDisplay(selectedCalendar, currentDate) : null)

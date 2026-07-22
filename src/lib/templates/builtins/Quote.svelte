@@ -4,10 +4,10 @@
 
 	let { args }: { args: TemplateArg[] } = $props()
 
-	const positional = positionalArgs(args)
-	const text = positional[0] || namedArg(args, 'text') || ''
-	const author = namedArg(args, 'author') || positional[1]
-	const source = namedArg(args, 'source') || positional[2]
+	const positional = $derived(positionalArgs(args))
+	const text = $derived(positional[0] || namedArg(args, 'text') || '')
+	const author = $derived(namedArg(args, 'author') || positional[1])
+	const source = $derived(namedArg(args, 'source') || positional[2])
 </script>
 
 <blockquote class="know-quote border-l-4 border-border-strong pl-4 my-4 italic text-secondary">

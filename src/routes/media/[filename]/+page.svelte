@@ -406,7 +406,7 @@
 				<div class="bg-surface p-4">
 					<h3 class="text-sm font-semibold text-body mb-3">Version history</h3>
 					<ul class="text-sm space-y-2">
-						{#each data.versions as v}
+						{#each data.versions as v (v.version)}
 							<li class="flex items-start justify-between gap-2 pb-2 border-b border-border-subtle last:border-0 last:pb-0">
 								<div class="min-w-0 flex-1">
 									<div class="text-body">v{v.version} — {formatBytes(v.sizeBytes)}{v.width && v.height ? `, ${v.width}x${v.height}` : ''}</div>
@@ -431,7 +431,7 @@
 				<h3 class="text-sm font-semibold text-body mb-3">Used in {data.usage.length} {data.usage.length === 1 ? 'page' : 'pages'}</h3>
 				{#if data.usage.length > 0}
 					<ul class="text-sm space-y-1">
-						{#each data.usage as slug}
+						{#each data.usage as slug (slug)}
 							<li><a href="/know/{slug}" class="text-link hover:text-link-hover hover:underline">{slug.replaceAll('_', ' ')}</a></li>
 						{/each}
 					</ul>

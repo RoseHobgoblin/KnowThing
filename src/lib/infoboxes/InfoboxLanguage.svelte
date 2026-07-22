@@ -7,61 +7,61 @@
 
 	let { fields }: { fields: FieldMap } = $props()
 
-	const title = getField(fields, 'name', 'nativename') ?? ''
-	const nativeName = getField(fields, 'nativename', 'altname') ?? ''
-	const image = getField(fields, 'image') ?? ''
-	const imageCaption = getField(fields, 'imagecaption') ?? ''
+	const title = $derived(getField(fields, 'name', 'nativename') ?? '')
+	const nativeName = $derived(getField(fields, 'nativename', 'altname') ?? '')
+	const image = $derived(getField(fields, 'image') ?? '')
+	const imageCaption = $derived(getField(fields, 'imagecaption') ?? '')
 
-	const pronunciation = getField(fields, 'pronunciation') ?? ''
-	const states = getField(fields, 'states', 'state') ?? ''
-	const region = getField(fields, 'region') ?? ''
-	const ethnicity = getField(fields, 'ethnicity') ?? ''
+	const pronunciation = $derived(getField(fields, 'pronunciation') ?? '')
+	const states = $derived(getField(fields, 'states', 'state') ?? '')
+	const region = $derived(getField(fields, 'region') ?? '')
+	const ethnicity = $derived(getField(fields, 'ethnicity') ?? '')
 
-	const speakers = getField(fields, 'speakers') ?? ''
-	const speakersDate = getField(fields, 'date') ?? ''
-	const speakersRef = getField(fields, 'ref') ?? ''
-	const extinct = getField(fields, 'extinct') ?? ''
-	const era = getField(fields, 'era') ?? ''
+	const speakers = $derived(getField(fields, 'speakers') ?? '')
+	const speakersDate = $derived(getField(fields, 'date') ?? '')
+	const speakersRef = $derived(getField(fields, 'ref') ?? '')
+	const extinct = $derived(getField(fields, 'extinct') ?? '')
+	const era = $derived(getField(fields, 'era') ?? '')
 
-	const familyColor = getField(fields, 'familycolor') ?? ''
-	const family = getField(fields, 'family') ?? ''
-	const protoname = getField(fields, 'protoname') ?? ''
-	const familyChain = getNumberedFields(fields, 'fam', 15)
-	const ancestorChain = getNumberedFields(fields, 'ancestor', 10)
+	const familyColor = $derived(getField(fields, 'familycolor') ?? '')
+	const family = $derived(getField(fields, 'family') ?? '')
+	const protoname = $derived(getField(fields, 'protoname') ?? '')
+	const familyChain = $derived(getNumberedFields(fields, 'fam', 15))
+	const ancestorChain = $derived(getNumberedFields(fields, 'ancestor', 10))
 
 	// Wikipedia uses lc1/ld1 (code/name) pairs for dialects/varieties; fall back to dia1..diaN
-	const dialects: string[] = (() => {
+	const dialects: string[] = $derived.by(() => {
 		const out: string[] = []
 		for (let i = 1; i <= 20; i++) {
 			const d = fields.get(`ld${i}`) || fields.get(`dia${i}`)
 			if (d) out.push(d)
 		}
 		return out
-	})()
+	})
 
-	const script = getField(fields, 'script') ?? ''
-	const sign = getField(fields, 'sign') ?? ''
-	const creator = getField(fields, 'creator') ?? ''
-	const created = getField(fields, 'created') ?? ''
-	const setting = getField(fields, 'setting') ?? ''
+	const script = $derived(getField(fields, 'script') ?? '')
+	const sign = $derived(getField(fields, 'sign') ?? '')
+	const creator = $derived(getField(fields, 'creator') ?? '')
+	const created = $derived(getField(fields, 'created') ?? '')
+	const setting = $derived(getField(fields, 'setting') ?? '')
 
-	const nation = getField(fields, 'nation') ?? ''
-	const minority = getField(fields, 'minority') ?? ''
-	const agency = getField(fields, 'agency') ?? ''
+	const nation = $derived(getField(fields, 'nation') ?? '')
+	const minority = $derived(getField(fields, 'minority') ?? '')
+	const agency = $derived(getField(fields, 'agency') ?? '')
 
-	const iso1 = getField(fields, 'iso1') ?? ''
-	const iso2 = getField(fields, 'iso2') ?? ''
-	const iso2b = getField(fields, 'iso2b') ?? ''
-	const iso2t = getField(fields, 'iso2t') ?? ''
-	const iso3 = getField(fields, 'iso3') ?? ''
-	const glotto = getField(fields, 'glotto') ?? ''
-	const glottoname = getField(fields, 'glottoname') ?? ''
-	const lingua = getField(fields, 'lingua') ?? ''
+	const iso1 = $derived(getField(fields, 'iso1') ?? '')
+	const iso2 = $derived(getField(fields, 'iso2') ?? '')
+	const iso2b = $derived(getField(fields, 'iso2b') ?? '')
+	const iso2t = $derived(getField(fields, 'iso2t') ?? '')
+	const iso3 = $derived(getField(fields, 'iso3') ?? '')
+	const glotto = $derived(getField(fields, 'glotto') ?? '')
+	const glottoname = $derived(getField(fields, 'glottoname') ?? '')
+	const lingua = $derived(getField(fields, 'lingua') ?? '')
 
-	const familyTree = familyChain.map(f => f.value).join(' › ')
-	const ancestors = ancestorChain.map(a => a.value).join(' › ')
-	const speakerLine = speakers ? `${speakers}${speakersDate ? ` (${speakersDate})` : ''}${speakersRef ? ` ${speakersRef}` : ''}` : ''
-	const glottoLine = glotto ? `${glotto}${glottoname ? ` (${glottoname})` : ''}` : ''
+	const familyTree = $derived(familyChain.map(f => f.value).join(' › '))
+	const ancestors = $derived(ancestorChain.map(a => a.value).join(' › '))
+	const speakerLine = $derived(speakers ? `${speakers}${speakersDate ? ` (${speakersDate})` : ''}${speakersRef ? ` ${speakersRef}` : ''}` : '')
+	const glottoLine = $derived(glotto ? `${glotto}${glottoname ? ` (${glottoname})` : ''}` : '')
 </script>
 
 <InfoboxShell {title} subtitle={nativeName === title ? '' : nativeName} {image} {imageCaption}>

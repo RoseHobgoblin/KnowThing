@@ -26,7 +26,7 @@
 		/>
 	</div>
 	<input type="hidden" name="scope" value={scope} />
-	{#each Object.entries(hiddenFields) as [key, value]}
+	{#each Object.entries(hiddenFields) as [key, value] (key)}
 		{#if value}
 			<input type="hidden" name={key} value={value} />
 		{/if}

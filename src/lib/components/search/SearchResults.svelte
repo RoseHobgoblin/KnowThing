@@ -12,12 +12,12 @@
 </script>
 
 <div class="space-y-4">
-	{#each results as result}
+	{#each results as result (result.href)}
 		<div>
 			<div class="flex items-center gap-2 flex-wrap">
 				<a href={result.href} class="text-lg text-link font-medium hover:underline">{result.title}</a>
 				<Badge>{result.badge}</Badge>
-				{#each result.meta as item}
+				{#each result.meta as item, index (index)}
 					<span class="text-xs text-secondary">{item}</span>
 				{/each}
 			</div>

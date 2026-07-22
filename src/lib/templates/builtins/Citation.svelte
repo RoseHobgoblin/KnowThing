@@ -4,22 +4,22 @@
 
 	let { args }: { args: TemplateArg[] } = $props()
 
-	const last = namedArg(args, 'last')
-	const first = namedArg(args, 'first')
-	const author = namedArg(args, 'author')
-	const title = namedArg(args, 'title')
-	const publisher = namedArg(args, 'publisher')
-	const journal = namedArg(args, 'journal')
-	const volume = namedArg(args, 'volume')
-	const issue = namedArg(args, 'issue')
-	const pages = namedArgAny(args, 'pages', 'page')
-	const date = namedArgAny(args, 'date', 'year')
-	const url = namedArg(args, 'url')
-	const accessdate = namedArgAny(args, 'access-date', 'accessdate')
-	const doi = namedArg(args, 'doi')
-	const isbn = namedArg(args, 'isbn')
+	const last = $derived(namedArg(args, 'last'))
+	const first = $derived(namedArg(args, 'first'))
+	const author = $derived(namedArg(args, 'author'))
+	const title = $derived(namedArg(args, 'title'))
+	const publisher = $derived(namedArg(args, 'publisher'))
+	const journal = $derived(namedArg(args, 'journal'))
+	const volume = $derived(namedArg(args, 'volume'))
+	const issue = $derived(namedArg(args, 'issue'))
+	const pages = $derived(namedArgAny(args, 'pages', 'page'))
+	const date = $derived(namedArgAny(args, 'date', 'year'))
+	const url = $derived(namedArg(args, 'url'))
+	const accessdate = $derived(namedArgAny(args, 'access-date', 'accessdate'))
+	const doi = $derived(namedArg(args, 'doi'))
+	const isbn = $derived(namedArg(args, 'isbn'))
 
-	const byline = (last || author) ? `${last || author}${first ? `, ${first}` : ''}` : null
+	const byline = $derived((last || author) ? `${last || author}${first ? `, ${first}` : ''}` : null)
 </script>
 
 <span class="know-citation text-xs">

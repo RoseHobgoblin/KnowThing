@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte'
 	import Select from '$lib/components/ui/Select.svelte'
 	import Checkbox from '$lib/components/ui/Checkbox.svelte'
 
@@ -24,17 +25,17 @@
 		pos?: string
 		mediaCategory?: string
 		unused?: boolean
-		languages?: Array<{ name: string; slug: string }>
-		partsOfSpeech?: Array<{ value: string; label: string }>
+		languages?: Array<{ name: string, slug: string }>
+		partsOfSpeech?: Array<{ value: string, label: string }>
 		mediaCategories?: string[]
 		clearHref: string
 	} = $props()
 
-	let selectedLanguage = $state(language)
-	let selectedPos = $state(pos)
-	let currentTag = $state(tag)
-	let currentMediaCategory = $state(mediaCategory)
-	let showUnused = $state(unused)
+	let selectedLanguage = $state(untrack(() => language))
+	let selectedPos = $state(untrack(() => pos))
+	let currentTag = $state(untrack(() => tag))
+	let currentMediaCategory = $state(untrack(() => mediaCategory))
+	let showUnused = $state(untrack(() => unused))
 
 	const showsWordbookFilters = $derived(scope === 'all' || scope === 'wordbook')
 	const showsMediaFilters = $derived(scope === 'all' || scope === 'media')
@@ -56,7 +57,7 @@
 				label="Language"
 				bind:value={selectedLanguage}
 				placeholder="All languages"
-				items={[{ value: '', label: 'All languages' }, ...languages.map((lang) => ({ value: lang.slug, label: lang.name }))]}
+				items={[{ value: '', label: 'All languages' }, ...languages.map(lang => ({ value: lang.slug, label: lang.name }))]}
 			/>
 			<Select
 				type="single"
@@ -83,7 +84,7 @@
 				label="Media category"
 				bind:value={currentMediaCategory}
 				placeholder="Any category"
-				items={[{ value: '', label: 'Any category' }, ...mediaCategories.map((category) => ({ value: category, label: category }))]}
+				items={[{ value: '', label: 'Any category' }, ...mediaCategories.map(category => ({ value: category, label: category }))]}
 			/>
 			<div class="flex items-end">
 				<Checkbox bind:value={showUnused} label="Unused only">

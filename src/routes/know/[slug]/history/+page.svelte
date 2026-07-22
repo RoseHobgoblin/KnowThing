@@ -41,7 +41,7 @@
 				<span>Newer: {data.diffNewLabel}</span>
 			</div>
 			<div class="font-mono text-xs/relaxed overflow-x-auto">
-				{#each data.diff as part}
+				{#each data.diff as part, index (index)}
 					{#if part.added}
 						<div class="bg-diff-add-bg text-diff-add-text border-l-4 border-diff-add-border px-2 py-0.5">{part.value}</div>
 					{:else if part.removed}
@@ -58,7 +58,7 @@
 		<div class="p-6 text-center text-dim">No revisions yet.</div>
 	{:else}
 		<div class="divide-y divide-border-subtle">
-			{#each data.history as rev, index}
+			{#each data.history as rev, index (rev.id)}
 				<div class="px-6 py-3 flex items-center gap-4">
 					<div class="flex gap-2 shrink-0">
 						<label class="text-xs text-secondary">

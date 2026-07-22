@@ -6,5 +6,5 @@
 </script>
 
 <div class="know-hatnote italic text-sm text-secondary mb-4 pl-4 border-l-2 border-border-strong">
-	{#each content as child}<WikiNodeComponent node={child} />{/each}
+	{#each content as child, index (index)}<WikiNodeComponent node={child} />{/each}
 </div>

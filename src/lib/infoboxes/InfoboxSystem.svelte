@@ -14,21 +14,21 @@
 		'description',
 	])
 
-	const title = getField(fields, 'name') ?? ''
-	const image = getField(fields, 'image') ?? ''
-	const imageCaption = getField(fields, 'caption') ?? ''
-	const systemType = getField(fields, 'system_type') ?? ''
+	const title = $derived(getField(fields, 'name') ?? '')
+	const image = $derived(getField(fields, 'image') ?? '')
+	const imageCaption = $derived(getField(fields, 'caption') ?? '')
+	const systemType = $derived(getField(fields, 'system_type') ?? '')
 
-	const starsList = getField(fields, 'stars') ?? ''
-	const starCount = getField(fields, 'star_count') ?? ''
-	const planets = getField(fields, 'planets') ?? ''
-	const satellites = getField(fields, 'satellites') ?? ''
+	const starsList = $derived(getField(fields, 'stars') ?? '')
+	const starCount = $derived(getField(fields, 'star_count') ?? '')
+	const planets = $derived(getField(fields, 'planets') ?? '')
+	const satellites = $derived(getField(fields, 'satellites') ?? '')
 
-	const typeLabel = systemType
+	const typeLabel = $derived(systemType
 		? systemType.charAt(0).toUpperCase() + systemType.slice(1) + ' star system'
-		: 'Star system'
+		: 'Star system')
 
-	const remaining = getRemainingFields(fields, KNOWN_KEYS)
+	const remaining = $derived(getRemainingFields(fields, KNOWN_KEYS))
 </script>
 
 
@@ -50,7 +50,7 @@
 
 	{#if remaining.length > 0}
 		<InfoboxSection>
-			{#each remaining as [key, value]}
+			{#each remaining as [key, value] (key)}
 				<InfoboxRow label={key} {value} />
 			{/each}
 		</InfoboxSection>

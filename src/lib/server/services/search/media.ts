@@ -20,7 +20,7 @@ export interface MediaListItem {
 	height: number | null
 	sizeBytes: number | null
 	description: string | null
-	hash: string
+	hash: string | null
 	hasThumb150: boolean | null
 	hasThumb300: boolean | null
 	hasThumb600: boolean | null

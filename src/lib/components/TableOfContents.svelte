@@ -82,7 +82,7 @@
 				Sections
 			</div>
 			<ol class="space-y-0.5">
-				{#each headings as h}
+				{#each headings as h (h.id)}
 					<li style="padding-left: {(h.level - 2) * 10}px">
 						<a
 							href="#{h.id}"
@@ -123,7 +123,7 @@
 		<Collapsible.Content>
 			<nav class="mt-2 bg-surface shadow-sm p-3">
 				<ol class="space-y-0.5 text-sm">
-					{#each headings as h}
+					{#each headings as h (h.id)}
 						<li style="padding-left: {(h.level - 2) * 16}px">
 							<a
 								href="#{h.id}"

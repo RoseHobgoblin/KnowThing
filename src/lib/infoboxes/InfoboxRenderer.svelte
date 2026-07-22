@@ -91,7 +91,7 @@
 	{#if hasHeaderImages}
 		<div class="infobox-media infobox-header-media">
 			<div class="flex items-start justify-center gap-4 flex-wrap">
-					{#each resolvedHeaderImages as img}
+					{#each resolvedHeaderImages as img, imgIndex (imgIndex)}
 						<figure class="flex flex-col items-center gap-1 m-0" style="width: {img.width}px;">
 							<MediaImage
 								filename={img.file}
@@ -111,9 +111,9 @@
 			</div>
 		</div>
 	{/if}
-	{#each resolvedSections as section}
+	{#each resolvedSections as section, sectionIndex (sectionIndex)}
 		<InfoboxSection_ title={section.heading} variant={section.headerStyle}>
-			{#each section.rows as row}
+			{#each section.rows as row, rowIndex (rowIndex)}
 				<InfoboxRow label={row.label} value={row.value} />
 			{/each}
 		</InfoboxSection_>
@@ -121,7 +121,7 @@
 
 	{#if remaining.length > 0}
 		<InfoboxSection_>
-			{#each remaining as [key, value]}
+			{#each remaining as [key, value] (key)}
 				<InfoboxRow label={key} {value} />
 			{/each}
 		</InfoboxSection_>
