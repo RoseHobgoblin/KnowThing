@@ -25,7 +25,7 @@
 	<details class="cl-details">
 		<summary class="cl-summary"><InlineMarkup text={summary} /></summary>
 		<div class="cl-body">
-			{#each items as item}
+			{#each items as item, index (index)}
 				<div><InlineMarkup text={item} /></div>
 			{/each}
 		</div>

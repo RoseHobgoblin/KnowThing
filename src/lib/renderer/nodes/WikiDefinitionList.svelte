@@ -6,13 +6,13 @@
 </script>
 
 <dl class="know-dl my-2">
-	{#each items as item}
+	{#each items as item, index (index)}
 		<dt class="font-bold">
-			{#each item.term as child}<WikiNodeComponent node={child} />{/each}
+			{#each item.term as child, childIndex (childIndex)}<WikiNodeComponent node={child} />{/each}
 		</dt>
 		{#if item.definition.length > 0}
 			<dd class="pl-6">
-				{#each item.definition as child}<WikiNodeComponent node={child} />{/each}
+				{#each item.definition as child, childIndex (childIndex)}<WikiNodeComponent node={child} />{/each}
 			</dd>
 		{/if}
 	{/each}

@@ -250,7 +250,7 @@
 
 	<!-- View mode tabs -->
 	<div class="flex border-b border-border-strong text-xs bg-raised">
-		{#each [['month', 'Month'], ['year', 'Year'], ['seasons', 'Seasons']] as [mode, label]}
+		{#each [['month', 'Month'], ['year', 'Year'], ['seasons', 'Seasons']] as [mode, label] (mode)}
 			<button
 				onclick={() => viewMode = mode as ViewMode}
 				class="flex-1 py-2 text-center transition-colors {viewMode === mode ? 'text-accent font-semibold border-b-2 border-accent bg-surface' : 'text-secondary hover:text-body hover:bg-surface'}"
@@ -262,14 +262,14 @@
 		<!-- MONTH VIEW -->
 		<!-- Weekday headers -->
 		<div class="grid gap-px bg-border" style="grid-template-columns: repeat({grid.weekdays.length}, 1fr)">
-			{#each grid.weekdays as wd}
+			{#each grid.weekdays as wd, weekdayIndex (weekdayIndex)}
 				<div class="text-center text-[11px] font-semibold text-dim bg-raised py-2 uppercase tracking-wider">{wd}</div>
 			{/each}
 		</div>
 
 		<!-- Day grid -->
 		<div class="grid gap-px bg-border" style="grid-template-columns: repeat({grid.weekdays.length}, 1fr)">
-			{#each grid.days as day}
+			{#each grid.days as day, dayIndex (dayIndex)}
 				{#if day === null}
 					<div class="bg-page min-h-11"></div>
 				{:else}
@@ -283,7 +283,7 @@
 						<span class="{isToday ? 'text-accent' : 'text-body'}">{day}</span>
 						{#if moons.length > 0}
 							<div class="flex gap-0.5 mt-0.5">
-								{#each moons as moon}
+								{#each moons as moon (moon.name)}
 									<span class="text-xs leading-none" title="{moon.name}: {moon.phase_name}">
 										{MOON_EMOJI[moonPhaseKey(moon.phase)] ?? '🌑'}
 									</span>
@@ -298,7 +298,7 @@
 	{:else if viewMode === 'year'}
 		<!-- YEAR VIEW -->
 		<div class="grid grid-cols-3 gap-2 p-3 md:grid-cols-4">
-			{#each yearGrids as miniGrid, monthIdx}
+			{#each yearGrids as miniGrid, monthIdx (monthIdx)}
 				{#if miniGrid}
 					{@const isCurrent = viewYear === resolved.year && monthIdx === resolved.month_index}
 					<!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -309,7 +309,7 @@
 					>
 						<div class="text-xs font-semibold text-heading mb-1 text-center truncate">{miniGrid.monthName}</div>
 						<div class="grid gap-px" style="grid-template-columns: repeat({miniGrid.weekdays.length}, 1fr)">
-							{#each miniGrid.days as day}
+							{#each miniGrid.days as day, dayIndex (dayIndex)}
 								{#if day === null}
 									<div class="h-2.5"></div>
 								{:else}
@@ -338,7 +338,7 @@
 				<!-- Season bar -->
 				{@const totalDays = seasonBlocks.reduce((sum, b) => sum + b.totalDays, 0)}
 				<div class="flex overflow-hidden h-6">
-					{#each seasonBlocks as block}
+					{#each seasonBlocks as block, blockIndex (blockIndex)}
 						<div
 							class="flex items-center justify-center text-[9px] font-medium text-white overflow-hidden"
 							style="width: {(block.totalDays / totalDays) * 100}%; background: {block.color}"
@@ -350,7 +350,7 @@
 				</div>
 
 				<!-- Season list -->
-				{#each seasonBlocks as block}
+				{#each seasonBlocks as block, blockIndex (blockIndex)}
 					<div class="flex items-center gap-3 py-1.5 border-b border-border-subtle last:border-0">
 						<div class="size-3 shrink-0" style="background: {block.color}"></div>
 						<div class="flex-1 min-w-0">

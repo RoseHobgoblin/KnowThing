@@ -8,7 +8,7 @@
 </script>
 
 <div class="know-gallery flex flex-wrap gap-3 my-4">
-	{#each items as item}
+	{#each items as item, index (index)}
 		<figure class="bg-page p-1 text-center">
 			<img
 				src="{ctx.mediaBaseUrl}/{encodeURIComponent(item.filename)}?w=150"

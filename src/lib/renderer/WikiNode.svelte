@@ -33,7 +33,7 @@
 </script>
 
 {#if node.type === 'document'}
-	{#each node.children as child}
+	{#each node.children as child, index (index)}
 		<WikiNodeSelf node={child} />
 	{/each}
 {:else if node.type === 'heading'}

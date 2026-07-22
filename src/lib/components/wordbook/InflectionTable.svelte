@@ -57,7 +57,7 @@
 		{#if dimensions.length === 1 && rowDim}
 			<!-- Single dimension: simple list -->
 			<div class="overflow-hidden text-sm">
-				{#each rowDim.values as value}
+				{#each rowDim.values as value (value)}
 					{@const key = value}
 					{@const form = getForm(key)}
 					{#if form}
@@ -76,18 +76,18 @@
 						<thead>
 							<tr>
 								<th class="text-left text-xs text-dim font-medium"></th>
-								{#each colDim.values as col}
+								{#each colDim.values as col (col)}
 									<th class="text-center text-xs text-secondary font-medium">{col}</th>
 								{/each}
 							</tr>
 						</thead>
 						<tbody>
-							{#each rowDim.values as row}
+							{#each rowDim.values as row (row)}
 								<tr>
 									<td class="
 										text-xs text-secondary font-medium
 									">{row}</td>
-									{#each colDim.values as col}
+									{#each colDim.values as col (col)}
 										{@const key = getCellKey(row, col)}
 										{@const form = getForm(key)}
 										<td class="text-center font-mono text-sm {isOverride(key) ? 'text-link italic bg-accent-subtle/30' : 'text-body'}">
@@ -112,7 +112,7 @@
 					return result
 				}, [])}
 
-				{#each extraKeys as extraVals}
+				{#each extraKeys as extraVals (extraVals.join('.'))}
 					<div class="mb-4">
 						<div class="text-xs text-dim font-medium mb-1">
 							{extraDims.map((d, index) => `${d.name}: ${extraVals[index]}`).join(', ')}
@@ -124,18 +124,18 @@
 										<th class="
 											text-left text-xs text-dim font-medium
 										"></th>
-										{#each colDim.values as col}
+										{#each colDim.values as col (col)}
 											<th class="text-center text-xs text-secondary font-medium">{col}</th>
 										{/each}
 									</tr>
 								</thead>
 								<tbody>
-									{#each rowDim.values as row}
+									{#each rowDim.values as row (row)}
 										<tr>
 											<td class="
 												text-xs text-secondary font-medium
 											">{row}</td>
-											{#each colDim.values as col}
+											{#each colDim.values as col (col)}
 												{@const key = getCellKey(row, col, ...extraVals)}
 												{@const form = getForm(key)}
 												<td class="text-center font-mono text-sm {isOverride(key) ? 'text-link italic bg-accent-subtle/30' : 'text-body'}">

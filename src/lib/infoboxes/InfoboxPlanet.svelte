@@ -136,7 +136,7 @@
 
 	{#if remaining.length > 0}
 		<InfoboxSection>
-			{#each remaining as [key, value]}
+			{#each remaining as [key, value] (key)}
 				<InfoboxRow label={key} {value} />
 			{/each}
 		</InfoboxSection>

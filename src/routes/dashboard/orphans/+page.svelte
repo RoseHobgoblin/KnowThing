@@ -18,7 +18,7 @@
 		<div class="p-6 text-center text-dim">No orphaned pages. Every article has at least one inbound link.</div>
 	{:else}
 		<div class="divide-y divide-border-subtle">
-			{#each data.orphans as p}
+			{#each data.orphans as p (`${p.domain}/${p.parentPath ?? ''}/${p.slug}`)}
 				<div class="px-6 py-3 flex items-center justify-between">
 					<div class="flex items-center gap-2 min-w-0">
 						<a href="/{p.domain}/{p.parentPath ? `${p.parentPath}/` : ''}{p.slug}" class="text-link font-medium text-sm hover:text-link-hover">{p.title}</a>

@@ -18,7 +18,7 @@
 		<div class="p-6 text-center text-dim">No wanted pages. All linked articles exist.</div>
 	{:else}
 		<div class="divide-y divide-border-subtle">
-			{#each data.wanted as w}
+			{#each data.wanted as w (`${w.domain}/${w.slug}`)}
 				<div class="px-6 py-3 flex items-center justify-between">
 					<div class="flex items-center gap-2 min-w-0">
 						{#if w.domain === 'know'}

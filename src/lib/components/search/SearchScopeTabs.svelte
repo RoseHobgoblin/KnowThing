@@ -9,7 +9,7 @@
 </script>
 
 <div class="flex flex-wrap gap-2 border-b border-border-subtle pb-3">
-	{#each scopes as scope}
+	{#each scopes as scope (scope.value)}
 		<a
 			href={scope.href}
 			class="px-3 py-1.5 text-sm border transition-colors {currentScope === scope.value ? 'border-accent-border bg-accent-subtle text-link' : 'border-border text-secondary hover:bg-page'}"

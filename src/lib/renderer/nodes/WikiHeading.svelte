@@ -28,22 +28,22 @@
 
 {#if level === 2}
 	<h2 {id} class="know-heading text-2xl font-bold mt-6 mb-2 pb-1 border-b border-border-strong">
-		{#each children as child}<WikiNodeComponent node={child} />{/each}
+		{#each children as child, index (index)}<WikiNodeComponent node={child} />{/each}
 	</h2>
 {:else if level === 3}
 	<h3 {id} class="know-heading text-xl font-bold mt-5 mb-2">
-		{#each children as child}<WikiNodeComponent node={child} />{/each}
+		{#each children as child, index (index)}<WikiNodeComponent node={child} />{/each}
 	</h3>
 {:else if level === 4}
 	<h4 {id} class="know-heading text-lg font-bold mt-4 mb-1">
-		{#each children as child}<WikiNodeComponent node={child} />{/each}
+		{#each children as child, index (index)}<WikiNodeComponent node={child} />{/each}
 	</h4>
 {:else if level === 5}
 	<h5 {id} class="know-heading text-base font-bold mt-3 mb-1">
-		{#each children as child}<WikiNodeComponent node={child} />{/each}
+		{#each children as child, index (index)}<WikiNodeComponent node={child} />{/each}
 	</h5>
 {:else}
 	<h6 {id} class="know-heading text-sm font-bold mt-3 mb-1">
-		{#each children as child}<WikiNodeComponent node={child} />{/each}
+		{#each children as child, index (index)}<WikiNodeComponent node={child} />{/each}
 	</h6>
 {/if}

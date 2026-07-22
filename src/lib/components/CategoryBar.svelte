@@ -8,7 +8,7 @@
 	<div class="article-footer mt-8 pt-4 border-t border-border">
 		<div class="flex items-center gap-2 flex-wrap">
 			<span class="text-xs font-semibold text-dim uppercase tracking-wide">Categories</span>
-			{#each categories as cat}
+			{#each categories as cat (cat)}
 				<a
 					href="/know/category:{slugify(cat)}"
 					class="

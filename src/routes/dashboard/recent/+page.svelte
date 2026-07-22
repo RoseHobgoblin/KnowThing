@@ -17,7 +17,7 @@
 		<div class="p-6 text-center text-dim">No edits yet.</div>
 	{:else}
 		<div class="divide-y divide-border-subtle">
-			{#each data.edits as edit}
+			{#each data.edits as edit (edit.id)}
 				<div class="px-6 py-3 flex items-start gap-4">
 					<div class="flex-1 min-w-0">
 						<a href="/{edit.domain}/{edit.parentPath ? `${edit.parentPath}/` : ''}{edit.pageSlug}" class="text-link font-medium text-sm hover:text-link-hover">{edit.title}</a>

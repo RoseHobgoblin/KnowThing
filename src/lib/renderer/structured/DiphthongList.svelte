@@ -16,7 +16,7 @@
 		<table class="know-table text-sm">
 			<tbody>
 				<tr>
-				{#each rows as phoneme}
+				{#each rows as phoneme, index (index)}
 					<td
 						class="font-serif text-base {phoneme.marginal ? 'text-dim' : ''}"
 						title={phoneme.notes ?? undefined}

@@ -16,7 +16,7 @@
 		<p class="text-dim">No categories yet. Categories are created when articles use <code>[[Category:Name]]</code> markup.</p>
 	{:else}
 		<div class="flex flex-wrap gap-2">
-			{#each data.categories as cat}
+			{#each data.categories as cat (cat.name)}
 				<a
 					href="/know/category:{slugify(cat.name)}"
 					class="

@@ -6,5 +6,5 @@
 </script>
 
 <p class="know-paragraph my-2 leading-relaxed">
-	{#each children as child}<WikiNodeComponent node={child} />{/each}
+	{#each children as child, index (index)}<WikiNodeComponent node={child} />{/each}
 </p>
