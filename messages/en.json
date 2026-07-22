@@ -1,0 +1,20 @@
+{
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"nav_main_page": "Main Page",
+	"nav_wordbook": "Wordbook",
+	"nav_calendar": "Calendar",
+	"nav_world_maps": "World Maps",
+	"nav_celestial": "Celestial",
+	"nav_categories": "Categories",
+	"nav_random": "Random",
+	"nav_new_page": "New Page",
+	"nav_recent_changes": "Recent Changes",
+	"nav_settings": "Settings",
+	"section_browse": "Browse",
+	"section_discover": "Discover",
+	"section_contribute": "Contribute",
+	"section_manage": "Manage",
+	"auth_log_out": "Log out",
+	"auth_log_in": "Log in",
+	"auth_register": "Register"
+}

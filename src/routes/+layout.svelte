@@ -1,6 +1,10 @@
 <script lang="ts">
 	import '../app.css'
 	import { Tooltip } from 'bits-ui'
+	import { m } from '$lib/paraglide/messages.js'
+	import { getLocale } from '$lib/paraglide/runtime.js'
+	import { applyStoredLocale } from '$lib/i18n.svelte'
+	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte'
 	import { page } from '$app/stores'
 	import { normalizePermissions } from '$lib/permissions.js'
 	import SearchBar from '$lib/components/SearchBar.svelte'
@@ -42,6 +46,18 @@
 		if (data.permissions !== undefined) {
 			stablePermissions = normalizePermissions(data.permissions)
 		}
+	})
+
+	// Locale is client-only (localStorage). Applying it after mount keeps the
+	// first client render matching the server (both baseLocale), then flips the
+	// whole tree to the stored language reactively.
+	$effect(() => {
+		applyStoredLocale()
+	})
+
+	// Keep <html lang> in sync with the active locale (reactive via getLocale).
+	$effect(() => {
+		document.documentElement.lang = getLocale()
 	})
 
 	function isActive(href: string): boolean {
@@ -99,30 +115,30 @@
 {/snippet}
 
 {#snippet navLinks(onNav?: () => void)}
-	<p class={sectionClass}>Browse</p>
-	<a href="/" onclick={onNav} class="{linkClass} {isActive('/') && currentPath === '/' ? activeClass : inactiveClass}"><House size={16} weight="fill" />{sc?.navWikiLabel ?? 'Main Page'}</a>
+	<p class={sectionClass}>{m.section_browse()}</p>
+	<a href="/" onclick={onNav} class="{linkClass} {isActive('/') && currentPath === '/' ? activeClass : inactiveClass}"><House size={16} weight="fill" />{sc?.navWikiLabel ?? m.nav_main_page()}</a>
 	{#if sc?.wordbookEnabled !== false}
-		<a href="/Wordbook" onclick={onNav} class="{linkClass} {isActive('/Wordbook') ? activeClass : inactiveClass}"><BookOpen size={16} weight="fill" />{sc?.navWordbookLabel ?? 'Wordbook'}</a>
+		<a href="/Wordbook" onclick={onNav} class="{linkClass} {isActive('/Wordbook') ? activeClass : inactiveClass}"><BookOpen size={16} weight="fill" />{sc?.navWordbookLabel ?? m.nav_wordbook()}</a>
 	{/if}
 	{#if sc?.calendarEnabled !== false}
-		<a href="/calendar" onclick={onNav} class="{linkClass} {isActive('/calendar') ? activeClass : inactiveClass}"><CalendarBlank size={16} weight="fill" />{sc?.navCalendarLabel ?? 'Calendar'}</a>
+		<a href="/calendar" onclick={onNav} class="{linkClass} {isActive('/calendar') ? activeClass : inactiveClass}"><CalendarBlank size={16} weight="fill" />{sc?.navCalendarLabel ?? m.nav_calendar()}</a>
 	{/if}
-	<a href="/worldmap" onclick={onNav} class="{linkClass} {isActive('/worldmap') ? activeClass : inactiveClass}"><MapTrifold size={16} weight="fill" />World Maps</a>
-	<a href="/celestial" onclick={onNav} class="{linkClass} {isActive('/celestial') ? activeClass : inactiveClass}"><Planet size={16} weight="fill" />Celestial</a>
+	<a href="/worldmap" onclick={onNav} class="{linkClass} {isActive('/worldmap') ? activeClass : inactiveClass}"><MapTrifold size={16} weight="fill" />{m.nav_world_maps()}</a>
+	<a href="/celestial" onclick={onNav} class="{linkClass} {isActive('/celestial') ? activeClass : inactiveClass}"><Planet size={16} weight="fill" />{m.nav_celestial()}</a>
 
-	<p class={sectionClass}>Discover</p>
-	<a href="/special/categories" onclick={onNav} class="{linkClass} {isActive('/special/categories') ? activeClass : inactiveClass}"><Tag size={16} weight="fill" />Categories</a>
-	<a href="/special/random" onclick={onNav} class="{linkClass} {inactiveClass}"><Shuffle size={16} weight="fill" />Random</a>
+	<p class={sectionClass}>{m.section_discover()}</p>
+	<a href="/special/categories" onclick={onNav} class="{linkClass} {isActive('/special/categories') ? activeClass : inactiveClass}"><Tag size={16} weight="fill" />{m.nav_categories()}</a>
+	<a href="/special/random" onclick={onNav} class="{linkClass} {inactiveClass}"><Shuffle size={16} weight="fill" />{m.nav_random()}</a>
 
 	{#if permissions.isAuthenticated}
-		<p class={sectionClass}>Contribute</p>
+		<p class={sectionClass}>{m.section_contribute()}</p>
 		{#if permissions.canCreatePages}
-			<a href="/know/create" onclick={onNav} class="{linkClass} {isActive('/know/create') ? activeClass : inactiveClass}"><PlusCircle size={16} weight="fill" />{sc?.navCreateLabel ?? 'New Page'}</a>
+			<a href="/know/create" onclick={onNav} class="{linkClass} {isActive('/know/create') ? activeClass : inactiveClass}"><PlusCircle size={16} weight="fill" />{sc?.navCreateLabel ?? m.nav_new_page()}</a>
 		{/if}
-		<a href="/dashboard/recent" onclick={onNav} class="{linkClass} {isActive('/dashboard/recent') ? activeClass : inactiveClass}"><ClockCounterClockwise size={16} weight="fill" />Recent Changes</a>
+		<a href="/dashboard/recent" onclick={onNav} class="{linkClass} {isActive('/dashboard/recent') ? activeClass : inactiveClass}"><ClockCounterClockwise size={16} weight="fill" />{m.nav_recent_changes()}</a>
 		{#if permissions.canManageSettings}
-			<p class={sectionClass}>Manage</p>
-			<a href="/dashboard/settings" onclick={onNav} class="{linkClass} {isActive('/dashboard') ? activeClass : inactiveClass}"><GearSix size={16} weight="fill" />Settings</a>
+			<p class={sectionClass}>{m.section_manage()}</p>
+			<a href="/dashboard/settings" onclick={onNav} class="{linkClass} {isActive('/dashboard') ? activeClass : inactiveClass}"><GearSix size={16} weight="fill" />{m.nav_settings()}</a>
 		{/if}
 	{/if}
 {/snippet}
@@ -133,13 +149,13 @@
 			<div class="flex items-center justify-between">
 				<a href="/auth/account" onclick={onNav} class="truncate text-dim transition-colors hover:text-link">{data.user.username}</a>
 				<form method="POST" action="/auth/logout">
-					<button type="submit" onclick={onNav} class="flex items-center gap-1.5 text-secondary transition-colors hover:text-link"><SignOut size={14} weight="fill" />Log out</button>
+					<button type="submit" onclick={onNav} class="flex items-center gap-1.5 text-secondary transition-colors hover:text-link"><SignOut size={14} weight="fill" />{m.auth_log_out()}</button>
 				</form>
 			</div>
 		{:else}
 			<div class="flex items-center gap-3">
-				<a href="/auth/login" onclick={onNav} class="flex items-center gap-1.5 text-link transition-colors hover:text-link-hover"><SignIn size={14} weight="fill" />Log in</a>
-				<a href="/auth/register" onclick={onNav} class="text-link transition-colors hover:text-link-hover">Register</a>
+				<a href="/auth/login" onclick={onNav} class="flex items-center gap-1.5 text-link transition-colors hover:text-link-hover"><SignIn size={14} weight="fill" />{m.auth_log_in()}</a>
+				<a href="/auth/register" onclick={onNav} class="text-link transition-colors hover:text-link-hover">{m.auth_register()}</a>
 			</div>
 		{/if}
 	</div>
@@ -187,6 +203,11 @@
 			</div>
 			<div class="flex-1 max-w-xl">
 				<SearchBar />
+			</div>
+
+			<!-- Language switcher (all breakpoints) -->
+			<div class="shrink-0">
+				<LanguageSwitcher />
 			</div>
 
 			<!-- Quick actions (desktop) -->

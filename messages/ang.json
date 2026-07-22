@@ -1,0 +1,20 @@
+{
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"nav_main_page": "Head Leaf",
+	"nav_wordbook": "Wordbook",
+	"nav_calendar": "Daytale",
+	"nav_world_maps": "World Maps",
+	"nav_celestial": "Heavenly",
+	"nav_categories": "Kinds",
+	"nav_random": "Wayward",
+	"nav_new_page": "New Leaf",
+	"nav_recent_changes": "Latest Wendings",
+	"nav_settings": "Settings",
+	"section_browse": "Look",
+	"section_discover": "Find",
+	"section_contribute": "Help",
+	"section_manage": "Wield",
+	"auth_log_out": "Log Out",
+	"auth_log_in": "Log In",
+	"auth_register": "Inwrite"
+}

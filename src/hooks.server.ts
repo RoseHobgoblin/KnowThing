@@ -41,4 +41,7 @@ const rateLimitAndAuth: Handle = async ({ event, resolve }) => {
 	return resolve(event)
 }
 
+// Locale is resolved client-side from localStorage (see `$lib/i18n.svelte.ts`),
+// so there's no Paraglide server middleware here — SSR renders the base locale
+// and the client applies the stored one after mount.
 export const handle = sequence(canonicalizeUrl, rateLimitAndAuth)

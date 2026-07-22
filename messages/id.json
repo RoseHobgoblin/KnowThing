@@ -1,0 +1,20 @@
+{
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"nav_main_page": "Halaman Utama",
+	"nav_wordbook": "Kamus",
+	"nav_calendar": "Kalender",
+	"nav_world_maps": "Peta Dunia",
+	"nav_celestial": "Benda Langit",
+	"nav_categories": "Kategori",
+	"nav_random": "Acak",
+	"nav_new_page": "Halaman Baru",
+	"nav_recent_changes": "Perubahan Terbaru",
+	"nav_settings": "Pengaturan",
+	"section_browse": "Jelajahi",
+	"section_discover": "Telusuri",
+	"section_contribute": "Berkontribusi",
+	"section_manage": "Kelola",
+	"auth_log_out": "Keluar",
+	"auth_log_in": "Masuk",
+	"auth_register": "Daftar"
+}
