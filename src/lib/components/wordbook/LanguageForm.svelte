@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { untrack } from 'svelte'
-	import { superForm, defaults } from 'sveltekit-superforms'
-	import { zod4, zod4Client } from 'sveltekit-superforms/adapters'
+	import { createSpaForm } from '$lib/forms/spa-form.svelte.js'
 	import Input from '$lib/components/ui/Input.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
 	import Label from '$lib/components/ui/Label.svelte'
@@ -50,29 +49,13 @@
 
 	const isEditing = !!initialValues.name
 
-	// Surfaced separately from validation errors so it can drive the FormNotice
-	// and StickyActionBar; set when the parent's save (mutation) rejects.
-	let submitError = $state('')
-
-	const { form, errors, enhance, submitting, isTainted, reset } = superForm(
-		defaults(initialValues, zod4(languageFormSchema)),
-		{
-			SPA: true,
-			validators: zod4Client(languageFormSchema),
-			resetForm: false,
-			async onUpdate({ form: validated }) {
-				if (!validated.valid) return
-				submitError = ''
-				try {
-					await onsubmit(toLanguagePayload(validated.data))
-				} catch (error) {
-					submitError = error instanceof Error ? error.message : 'Failed to save language'
-				}
-			},
-		},
-	)
-
-	const isDirty = $derived(isTainted())
+	const spa = createSpaForm({
+		schema: languageFormSchema,
+		initial: initialValues,
+		errorMessage: 'Failed to save language',
+		onValid: data => onsubmit(toLanguagePayload(data)),
+	})
+	const { form, errors, enhance, submitting, reset, clearError } = spa
 
 	function updateSlug() {
 		if (isEditing) return
@@ -88,7 +71,7 @@
 	}
 
 	function discard() {
-		submitError = ''
+		clearError()
 		reset()
 	}
 
@@ -107,10 +90,10 @@
 </script>
 
 <form method="POST" use:enhance class="space-y-4">
-	<UnsavedChangesGuard when={isDirty && !$submitting} />
+	<UnsavedChangesGuard when={spa.isDirty && !$submitting} />
 
-	{#if submitError}
-		<FormNotice title="Language changes were not saved" message={submitError} />
+	{#if spa.submitError}
+		<FormNotice title="Language changes were not saved" message={spa.submitError} />
 	{/if}
 
 	<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -168,9 +151,9 @@
 	</div>
 
 	<StickyActionBar
-		dirty={isDirty}
+		dirty={spa.isDirty}
 		saving={$submitting}
-		error={submitError}
+		error={spa.submitError}
 		saveType="submit"
 		ondiscard={discard}
 		saveLabel={submitLabel}

@@ -1,15 +1,14 @@
 <script lang="ts">
 	import { untrack } from 'svelte'
 	import type { PageData } from './$types.js'
-	import { superForm, defaults } from 'sveltekit-superforms'
-	import { zod4, zod4Client } from 'sveltekit-superforms/adapters'
+	import { createSpaForm } from '$lib/forms/spa-form.svelte.js'
 	import Input from '$lib/components/ui/Input.svelte'
 	import Checkbox from '$lib/components/ui/Checkbox.svelte'
 	import UnsavedChangesGuard from '$lib/components/editor/UnsavedChangesGuard.svelte'
 	import StickyActionBar from '$lib/components/editor/StickyActionBar.svelte'
 	import FormNotice from '$lib/components/editor/FormNotice.svelte'
 	import RecordModeBanner from '$lib/components/editor/RecordModeBanner.svelte'
-	import { pushSuccess, pushError } from '$lib/notifications.svelte'
+	import { pushSuccess } from '$lib/notifications.svelte'
 	import { invalidateAll } from '$app/navigation'
 	import { api } from '$lib/api'
 	import { settingsFormSchema, toSettingsPayload } from '$lib/settings/settings-form-schema.js'
@@ -34,38 +33,27 @@
 		stripExifOnUpload: initialSettings.strip_exif_on_upload !== 'false',
 	}
 
-	let saveError = $state('')
 	let savedAt = $state<Date | null>(null)
 
-	const { form, enhance, submitting, isTainted, reset } = superForm(
-		defaults(initialValues, zod4(settingsFormSchema)),
-		{
-			SPA: true,
-			validators: zod4Client(settingsFormSchema),
-			resetForm: false,
-			async onUpdate({ form: validated }) {
-				if (!validated.valid) return
-				saveError = ''
-				try {
-					await api('PUT', '/api/settings', toSettingsPayload(validated.data))
-					savedAt = new Date()
-					pushSuccess('Settings saved')
-					// Re-baseline tainted to the just-saved values (replaces markClean).
-					reset({ data: validated.data })
-					await invalidateAll()
-				} catch (error) {
-					saveError = error instanceof Error ? error.message : 'Failed to save settings'
-					pushError(saveError)
-				}
-			},
+	const spa = createSpaForm({
+		schema: settingsFormSchema,
+		initial: initialValues,
+		errorMessage: 'Failed to save settings',
+		async onValid(data, { markClean }) {
+			await api('PUT', '/api/settings', toSettingsPayload(data))
+			savedAt = new Date()
+			pushSuccess('Settings saved')
+			markClean()
+			await invalidateAll()
 		},
-	)
+	})
+	const { form, enhance, submitting, reset, clearError } = spa
 
-	const isDirty = $derived(isTainted())
+	const isDirty = $derived(spa.isDirty)
 	const saving = $derived($submitting)
 
 	function discard() {
-		saveError = ''
+		clearError()
 		reset()
 	}
 </script>
@@ -83,8 +71,8 @@
 		description="Update branding, feature toggles, and navigation labels here. These changes affect the whole application."
 	/>
 
-	{#if saveError}
-		<FormNotice title="Settings were not saved" message={saveError} />
+	{#if spa.submitError}
+		<FormNotice title="Settings were not saved" message={spa.submitError} />
 	{/if}
 
 	<section class="bg-surface p-5 space-y-4">
@@ -167,7 +155,7 @@
 	<StickyActionBar
 		dirty={isDirty}
 		{saving}
-		error={saveError}
+		error={spa.submitError}
 		{savedAt}
 		saveType="submit"
 		ondiscard={discard}

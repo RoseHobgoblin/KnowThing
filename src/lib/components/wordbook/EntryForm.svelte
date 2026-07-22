@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { onDestroy, untrack } from 'svelte'
-	import { superForm, defaults } from 'sveltekit-superforms'
-	import { zod4, zod4Client } from 'sveltekit-superforms/adapters'
+	import { createSpaForm } from '$lib/forms/spa-form.svelte.js'
 	import { createQuery } from '@tanstack/svelte-query'
 	import { PARTS_OF_SPEECH } from './constants.js'
 	import Input from '$lib/components/ui/Input.svelte'
@@ -71,28 +70,18 @@
 	// Only selected targets (targetId) become `relations` on submit.
 	type EtymRow = { relationType: string, targetId: number | null, query: string, results: Array<{ id: number, word: string, definition: string, languageName: string, languageSlug: string }>, showDropdown: boolean }
 
-	let submitError = $state('')
-
-	const { form, errors, enhance, submitting, isTainted, reset } = superForm(
-		defaults(initialValues, zod4(entryFormSchema)),
-		{
-			SPA: true,
-			validators: zod4Client(entryFormSchema),
-			resetForm: false,
-			async onUpdate({ form: validated }) {
-				if (!validated.valid) return
-				submitError = ''
-				const relations: EtymRelation[] = etymRows
-					.filter((r): r is EtymRow & { targetId: number } => r.targetId !== null)
-					.map(r => ({ targetId: r.targetId, relationType: r.relationType }))
-				try {
-					await onsubmit(toEntryPayload(validated.data, relations))
-				} catch (error) {
-					submitError = error instanceof Error ? error.message : 'Failed to save'
-				}
-			},
+	const spa = createSpaForm({
+		schema: entryFormSchema,
+		initial: initialValues,
+		errorMessage: 'Failed to save',
+		onValid: (data) => {
+			const relations: EtymRelation[] = etymRows
+				.filter((r): r is EtymRow & { targetId: number } => r.targetId !== null)
+				.map(r => ({ targetId: r.targetId, relationType: r.relationType }))
+			return onsubmit(toEntryPayload(data, relations))
 		},
-	)
+	})
+	const { form, errors, enhance, submitting, reset, clearError } = spa
 
 	let etymRows = $state<EtymRow[]>([])
 	let searchRowIndex = $state<number | null>(null)
@@ -114,7 +103,7 @@
 	})
 
 	// Adding an etymology row is an intentional edit the tainted tracker can't see.
-	const isDirty = $derived(isTainted() || etymRows.length > 0)
+	const isDirty = $derived(spa.isDirty || etymRows.length > 0)
 
 	onDestroy(() => {
 		if (searchTimeout) clearTimeout(searchTimeout)
@@ -176,7 +165,7 @@
 	}
 
 	function discard() {
-		submitError = ''
+		clearError()
 		etymRows = []
 		reset()
 	}
@@ -195,8 +184,8 @@
 <form method="POST" use:enhance class="space-y-5">
 	<UnsavedChangesGuard when={isDirty && !$submitting} />
 
-	{#if submitError}
-		<FormNotice title="Wordbook entry was not saved" message={submitError} />
+	{#if spa.submitError}
+		<FormNotice title="Wordbook entry was not saved" message={spa.submitError} />
 	{/if}
 
 	<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -319,7 +308,7 @@
 	<StickyActionBar
 		dirty={isDirty}
 		saving={$submitting}
-		error={submitError}
+		error={spa.submitError}
 		saveType="submit"
 		ondiscard={discard}
 		saveLabel={submitLabel}
