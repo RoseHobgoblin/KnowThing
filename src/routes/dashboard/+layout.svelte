@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte'
 	import type { Snippet } from 'svelte'
 	import type { LayoutData } from './$types.js'
 	import { page } from '$app/stores'
@@ -12,7 +13,7 @@
 	import LinkBreak from 'phosphor-svelte/lib/LinkBreak'
 
 	let { children, data }: { children: Snippet, data: LayoutData } = $props()
-	let stablePermissions = $state(normalizePermissions(data.permissions))
+	let stablePermissions = $state(untrack(() => normalizePermissions(data.permissions)))
 
 	const currentPath = $derived($page.url.pathname)
 	const permissions = $derived(stablePermissions)

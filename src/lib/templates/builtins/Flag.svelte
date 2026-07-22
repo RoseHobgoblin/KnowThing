@@ -4,7 +4,7 @@
 	import WikiInternalLink from '$lib/renderer/nodes/WikiInternalLink.svelte'
 
 	let { args }: { args: TemplateArg[] } = $props()
-	const country = (positionalArg(args, 0) || '').trim()
+	const country = $derived((positionalArg(args, 0) || '').trim())
 </script>
 
 <WikiInternalLink target={country} display={null} />

@@ -4,7 +4,7 @@
 
 	let { args, variant }: { args: TemplateArg[], variant: 'main' | 'see-also' | 'for' | 'about' } = $props()
 
-	const positional = positionalArgs(args)
+	const positional = $derived(positionalArgs(args))
 
 	function pageHref(page: string): string {
 		return `/know/${encodeURIComponent(page.trim())}`

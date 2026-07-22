@@ -5,9 +5,9 @@
 
 	let { args }: { args: TemplateArg[] } = $props()
 
-	const langCode = (positionalArg(args, 0) ?? '').trim()
-	const text = (positionalArg(args, 1) ?? '').trim()
-	const italics = namedArg(args, 'italics')?.toLowerCase().trim() !== 'no'
+	const langCode = $derived((positionalArg(args, 0) ?? '').trim())
+	const text = $derived((positionalArg(args, 1) ?? '').trim())
+	const italics = $derived(namedArg(args, 'italics')?.toLowerCase().trim() !== 'no')
 </script>
 
 {#if text}

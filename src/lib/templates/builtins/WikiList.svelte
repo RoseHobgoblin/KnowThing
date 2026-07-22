@@ -5,7 +5,7 @@
 
 	let { args, variant }: { args: TemplateArg[], variant: 'unbulleted' | 'horizontal' | 'br-separated' } = $props()
 
-	const items = positionalArgs(args).map(s => s.trim()).filter(Boolean)
+	const items = $derived(positionalArgs(args).map(s => s.trim()).filter(Boolean))
 </script>
 
 {#if items.length > 0}

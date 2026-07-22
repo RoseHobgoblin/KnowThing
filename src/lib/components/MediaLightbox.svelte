@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte'
 	import { Dialog } from 'bits-ui'
 	import { page } from '$app/stores'
 	import { mediaLightbox } from './mediaLightbox.svelte.ts'
@@ -7,7 +8,7 @@
 	const current = $derived(mediaLightbox.current)
 	const pathname = $derived($page.url.pathname)
 
-	let lastPathname = pathname
+	let lastPathname = untrack(() => pathname)
 	$effect(() => {
 		if (pathname !== lastPathname) {
 			lastPathname = pathname

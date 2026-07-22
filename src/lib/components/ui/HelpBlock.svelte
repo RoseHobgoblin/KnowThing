@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte'
 	import type { Snippet } from 'svelte'
 
 	let {
@@ -13,7 +14,7 @@
 		children: Snippet<[]>
 	} = $props()
 
-	let showHelp = $state(open)
+	let showHelp = $state(untrack(() => open))
 </script>
 
 <div class={className}>

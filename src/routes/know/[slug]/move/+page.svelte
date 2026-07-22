@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte'
 	import type { PageData, ActionData } from './$types.js'
 	import { enhance } from '$app/forms'
 	import Input from '$lib/components/ui/Input.svelte'
@@ -9,8 +10,8 @@
 
 	let { data, form }: { data: PageData, form: ActionData } = $props()
 	let submitting = $state(false)
-	let title = $state(form?.title ?? data.title)
-	let slug = $state(form?.slug ?? data.slug)
+	let title = $state(untrack(() => form?.title ?? data.title))
+	let slug = $state(untrack(() => form?.slug ?? data.slug))
 	const isDirty = $derived(title !== data.title || slug !== data.slug)
 	const titleError = $derived(form?.error === 'Title is required' ? form.error : '')
 	const slugError = $derived(form?.error === 'Slug is required' ? form.error : '')

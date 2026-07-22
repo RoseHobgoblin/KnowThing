@@ -46,89 +46,104 @@
 		return currentPath.startsWith(href)
 	}
 
-	const linkClass = 'flex items-center gap-3 px-3 py-2 text-sm transition-colors'
-	const activeClass = 'bg-raised text-accent font-medium'
-	const inactiveClass = 'text-secondary hover:bg-raised hover:text-heading'
+	// Active state is carried by a left accent bar; the transparent border on the
+	// inactive state keeps the label from shifting when it becomes active.
+	const linkClass = 'flex items-center gap-3 border-l-2 px-3 py-2 text-sm transition-colors'
+	const activeClass = 'border-accent bg-raised text-accent font-medium'
+	const inactiveClass = 'border-transparent text-secondary hover:bg-raised hover:text-heading'
+	const sectionClass = 'select-none px-3 pt-4 pb-1 text-[0.6875rem] font-semibold uppercase tracking-wider text-dim'
 
 	function navClick() {
 		sidebarOpen = false
 	}
 </script>
 
+{#snippet siteName(onNav?: () => void)}
+	<a href="/" onclick={onNav} class="text-lg font-bold tracking-tight text-heading transition-colors hover:text-link">
+		{#if sc?.logoUrl}
+			<img src={sc.logoUrl} alt={sc?.siteName} class="h-7" />
+		{:else if siteNameParts.length >= 2}
+			{siteNameParts[0]}<span class="text-accent">{siteNameParts.slice(1).join('')}</span>
+		{:else}
+			{sc?.siteName ?? 'KnowThing'}
+		{/if}
+	</a>
+{/snippet}
+
+{#snippet navLinks(onNav?: () => void)}
+	<p class={sectionClass}>Browse</p>
+	<a href="/" onclick={onNav} class="{linkClass} {isActive('/') && currentPath === '/' ? activeClass : inactiveClass}"><House size={16} weight="fill" />{sc?.navWikiLabel ?? 'Main Page'}</a>
+	{#if sc?.wordbookEnabled !== false}
+		<a href="/Wordbook" onclick={onNav} class="{linkClass} {isActive('/Wordbook') ? activeClass : inactiveClass}"><BookOpen size={16} weight="fill" />{sc?.navWordbookLabel ?? 'Wordbook'}</a>
+	{/if}
+	{#if sc?.calendarEnabled !== false}
+		<a href="/calendar" onclick={onNav} class="{linkClass} {isActive('/calendar') ? activeClass : inactiveClass}"><CalendarBlank size={16} weight="fill" />{sc?.navCalendarLabel ?? 'Calendar'}</a>
+	{/if}
+	<a href="/worldmap" onclick={onNav} class="{linkClass} {isActive('/worldmap') ? activeClass : inactiveClass}"><MapTrifold size={16} weight="fill" />World Maps</a>
+	<a href="/celestial" onclick={onNav} class="{linkClass} {isActive('/celestial') ? activeClass : inactiveClass}"><Planet size={16} weight="fill" />Celestial</a>
+
+	<p class={sectionClass}>Discover</p>
+	<a href="/special/categories" onclick={onNav} class="{linkClass} {isActive('/special/categories') ? activeClass : inactiveClass}"><Tag size={16} weight="fill" />Categories</a>
+	<a href="/special/random" onclick={onNav} class="{linkClass} {inactiveClass}"><Shuffle size={16} weight="fill" />Random</a>
+
+	{#if permissions.isAuthenticated}
+		<p class={sectionClass}>Contribute</p>
+		{#if permissions.canCreatePages}
+			<a href="/know/create" onclick={onNav} class="{linkClass} {isActive('/know/create') ? activeClass : inactiveClass}"><PlusCircle size={16} weight="fill" />{sc?.navCreateLabel ?? 'New Page'}</a>
+		{/if}
+		<a href="/dashboard/recent" onclick={onNav} class="{linkClass} {isActive('/dashboard/recent') ? activeClass : inactiveClass}"><ClockCounterClockwise size={16} weight="fill" />Recent Changes</a>
+		{#if permissions.canManageSettings}
+			<p class={sectionClass}>Manage</p>
+			<a href="/dashboard/settings" onclick={onNav} class="{linkClass} {isActive('/dashboard') ? activeClass : inactiveClass}"><GearSix size={16} weight="fill" />Settings</a>
+		{/if}
+	{/if}
+{/snippet}
+
+{#snippet userFooter(onNav?: () => void)}
+	<div class="border-t border-border-subtle p-3 text-xs">
+		{#if data.user}
+			<div class="flex items-center justify-between">
+				<a href="/auth/account" onclick={onNav} class="truncate text-dim transition-colors hover:text-link">{data.user.username}</a>
+				<form method="POST" action="/auth/logout">
+					<button type="submit" onclick={onNav} class="flex items-center gap-1.5 text-secondary transition-colors hover:text-link"><SignOut size={14} weight="fill" />Log out</button>
+				</form>
+			</div>
+		{:else}
+			<div class="flex items-center gap-3">
+				<a href="/auth/login" onclick={onNav} class="flex items-center gap-1.5 text-link transition-colors hover:text-link-hover"><SignIn size={14} weight="fill" />Log in</a>
+				<a href="/auth/register" onclick={onNav} class="text-link transition-colors hover:text-link-hover">Register</a>
+			</div>
+		{/if}
+	</div>
+{/snippet}
+
 <QueryClientProvider client={queryClient}>
 <Tooltip.Provider>
 <div class="h-screen flex bg-page overflow-hidden" dir={sc?.textDirection ?? 'ltr'}>
 
 	<!-- Sidebar (desktop) -->
-	<aside class="hidden w-56 shrink-0 bg-surface flex-col h-screen md:flex">
+	<aside class="hidden w-56 shrink-0 flex-col h-screen border-r border-border bg-surface md:flex">
 		<!-- Logo -->
-		<div class="p-4">
-			<a href="/" class="text-lg font-bold text-heading tracking-tight transition-colors hover:text-link">
-				{#if sc?.logoUrl}
-					<img src={sc.logoUrl} alt={sc?.siteName} class="h-7" />
-				{:else if siteNameParts.length >= 2}
-					{siteNameParts[0]}<span class="text-accent">{siteNameParts.slice(1).join('')}</span>
-				{:else}
-					{sc?.siteName ?? 'KnowThing'}
-				{/if}
-			</a>
+		<div class="flex h-12 items-center border-b border-border-subtle px-4">
+			{@render siteName()}
 		</div>
 
 		<!-- Nav links -->
-		<nav class="flex-1 overflow-y-auto px-2 py-3 space-y-1">
-			<a href="/" class="{linkClass} {isActive('/') && currentPath === '/' ? activeClass : inactiveClass}"><House size={16} weight="fill" />{sc?.navWikiLabel ?? 'Main Page'}</a>
-			{#if sc?.wordbookEnabled !== false}
-				<a href="/Wordbook" class="{linkClass} {isActive('/Wordbook') ? activeClass : inactiveClass}"><BookOpen size={16} weight="fill" />{sc?.navWordbookLabel ?? 'Wordbook'}</a>
-			{/if}
-			{#if sc?.calendarEnabled !== false}
-				<a href="/calendar" class="{linkClass} {isActive('/calendar') ? activeClass : inactiveClass}"><CalendarBlank size={16} weight="fill" />{sc?.navCalendarLabel ?? 'Calendar'}</a>
-			{/if}
-			<a href="/worldmap" class="{linkClass} {isActive('/worldmap') ? activeClass : inactiveClass}"><MapTrifold size={16} weight="fill" />World Maps</a>
-			<a href="/celestial" class="{linkClass} {isActive('/celestial') ? activeClass : inactiveClass}"><Planet size={16} weight="fill" />Celestial</a>
-
-			<div class="my-2 border-t border-border-subtle"></div>
-
-			<a href="/special/categories" class="{linkClass} {isActive('/special/categories') ? activeClass : inactiveClass}"><Tag size={16} weight="fill" />Categories</a>
-			<a href="/special/random" class="{linkClass} {inactiveClass}"><Shuffle size={16} weight="fill" />Random</a>
-
-			{#if permissions.isAuthenticated}
-				<div class="my-2 border-t border-border-subtle"></div>
-				{#if permissions.canCreatePages}
-					<a href="/know/create" class="{linkClass} {isActive('/know/create') ? activeClass : inactiveClass}"><PlusCircle size={16} weight="fill" />{sc?.navCreateLabel ?? 'New Page'}</a>
-				{/if}
-				<a href="/dashboard/recent" class="{linkClass} {isActive('/dashboard/recent') ? activeClass : inactiveClass}"><ClockCounterClockwise size={16} weight="fill" />Recent Changes</a>
-				{#if permissions.canManageSettings}
-					<div class="my-2 border-t border-border-subtle"></div>
-					<a href="/dashboard/settings" class="{linkClass} {isActive('/dashboard') ? activeClass : inactiveClass}"><GearSix size={16} weight="fill" />Settings</a>
-				{/if}
-			{/if}
+		<nav class="flex-1 overflow-y-auto px-2 pb-3">
+			{@render navLinks()}
 		</nav>
 
 		<!-- User footer -->
-		<div class="px-3 py-3 border-t border-border-subtle text-xs">
-			{#if data.user}
-				<div class="flex items-center justify-between">
-					<a href="/auth/account" class="text-dim truncate transition-colors hover:text-link">{data.user.username}</a>
-					<form method="POST" action="/auth/logout">
-						<button type="submit" class="text-secondary transition-colors hover:text-link flex items-center gap-1.5"><SignOut size={14} weight="fill" />Log out</button>
-					</form>
-				</div>
-			{:else}
-				<div class="flex items-center gap-3">
-					<a href="/auth/login" class="text-link flex items-center gap-1.5 transition-colors hover:text-link-hover"><SignIn size={14} weight="fill" />Log in</a>
-					<a href="/auth/register" class="text-link transition-colors hover:text-link-hover">Register</a>
-				</div>
-			{/if}
-		</div>
+		{@render userFooter()}
 	</aside>
 
 	<!-- Main area -->
 	<div class="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
 		<!-- Top bar -->
-		<header class="bg-surface px-4 py-2.5 flex items-center gap-4 shrink-0">
+		<header class="flex h-12 shrink-0 items-center gap-3 border-b border-border bg-surface px-3 md:px-4">
 			<button
 				onclick={() => sidebarOpen = !sidebarOpen}
-				class="text-secondary p-1 md:hidden hover:text-link"
+				class="p-1 text-secondary hover:text-link md:hidden"
 				aria-label="Toggle menu"
 			>
 				<svg class="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -139,15 +154,39 @@
 					{/if}
 				</svg>
 			</button>
-			<a href="/" class="text-lg font-bold text-heading md:hidden">
-				{#if siteNameParts.length >= 2}
-					{siteNameParts[0]}<span class="text-accent">{siteNameParts.slice(1).join('')}</span>
-				{:else}
-					{sc?.siteName ?? 'KnowThing'}
-				{/if}
-			</a>
+			<div class="md:hidden">
+				{@render siteName()}
+			</div>
 			<div class="flex-1 max-w-xl">
 				<SearchBar />
+			</div>
+
+			<!-- Quick actions (desktop) -->
+			<div class="hidden items-center gap-1 shrink-0 md:flex">
+				<a
+					href="/special/random"
+					title="Random page"
+					aria-label="Random page"
+					class="flex items-center justify-center p-2 text-secondary transition-colors hover:bg-raised hover:text-heading"
+				>
+					<Shuffle size={18} weight="fill" />
+				</a>
+
+				{#if permissions.canCreatePages}
+					<a
+						href="/know/create"
+						class="ml-1 flex items-center gap-1.5 bg-accent px-3 py-1.5 text-sm font-medium text-accent-text transition-colors hover:bg-accent-hover"
+					>
+						<PlusCircle size={16} weight="fill" />{sc?.navCreateLabel ?? 'New Page'}
+					</a>
+				{:else if !permissions.isAuthenticated}
+					<a
+						href="/auth/login"
+						class="ml-1 flex items-center gap-1.5 px-3 py-1.5 text-sm text-link transition-colors hover:text-link-hover"
+					>
+						<SignIn size={16} weight="fill" />Log in
+					</a>
+				{/if}
 			</div>
 			</header>
 
@@ -156,59 +195,14 @@
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<div class="fixed inset-0 z-40 bg-black/40 md:hidden" onclick={() => sidebarOpen = false}></div>
-			<aside class="fixed left-0 top-0 z-50 w-64 h-full bg-surface overflow-y-auto md:hidden">
-				<div class="p-4">
-					<a href="/" class="text-lg font-bold text-heading" onclick={navClick}>
-						{#if siteNameParts.length >= 2}
-							{siteNameParts[0]}<span class="text-accent">{siteNameParts.slice(1).join('')}</span>
-						{:else}
-							{sc?.siteName ?? 'KnowThing'}
-						{/if}
-					</a>
+			<aside class="fixed left-0 top-0 z-50 flex w-64 h-full flex-col border-r border-border bg-surface md:hidden">
+				<div class="flex h-12 shrink-0 items-center border-b border-border-subtle px-4">
+					{@render siteName(navClick)}
 				</div>
-				<nav class="px-2 py-3 space-y-1">
-					<a href="/" onclick={navClick} class="{linkClass} {isActive('/') && currentPath === '/' ? activeClass : inactiveClass}"><House size={16} weight="fill" />{sc?.navWikiLabel ?? 'Main Page'}</a>
-					{#if sc?.wordbookEnabled !== false}
-						<a href="/Wordbook" onclick={navClick} class="{linkClass} {isActive('/Wordbook') ? activeClass : inactiveClass}"><BookOpen size={16} weight="fill" />{sc?.navWordbookLabel ?? 'Wordbook'}</a>
-					{/if}
-					{#if sc?.calendarEnabled !== false}
-						<a href="/calendar" onclick={navClick} class="{linkClass} {isActive('/calendar') ? activeClass : inactiveClass}"><CalendarBlank size={16} weight="fill" />{sc?.navCalendarLabel ?? 'Calendar'}</a>
-					{/if}
-					<a href="/worldmap" onclick={navClick} class="{linkClass} {isActive('/worldmap') ? activeClass : inactiveClass}"><MapTrifold size={16} weight="fill" />World Maps</a>
-					<a href="/celestial" onclick={navClick} class="{linkClass} {isActive('/celestial') ? activeClass : inactiveClass}"><Planet size={16} weight="fill" />Celestial</a>
-
-					<div class="my-2 border-t border-border-subtle"></div>
-
-					<a href="/special/categories" onclick={navClick} class="{linkClass} {isActive('/special/categories') ? activeClass : inactiveClass}"><Tag size={16} weight="fill" />Categories</a>
-					<a href="/special/random" onclick={navClick} class="{linkClass} {inactiveClass}"><Shuffle size={16} weight="fill" />Random</a>
-
-					{#if permissions.isAuthenticated}
-						<div class="my-2 border-t border-border-subtle"></div>
-						{#if permissions.canCreatePages}
-							<a href="/know/create" onclick={navClick} class="{linkClass} {isActive('/know/create') ? activeClass : inactiveClass}"><PlusCircle size={16} weight="fill" />{sc?.navCreateLabel ?? 'New Page'}</a>
-						{/if}
-						<a href="/dashboard/recent" onclick={navClick} class="{linkClass} {isActive('/dashboard/recent') ? activeClass : inactiveClass}"><ClockCounterClockwise size={16} weight="fill" />Recent Changes</a>
-						{#if permissions.canManageSettings}
-							<div class="my-2 border-t border-border-subtle"></div>
-							<a href="/dashboard/settings" onclick={navClick} class="{linkClass} {isActive('/dashboard') ? activeClass : inactiveClass}"><GearSix size={16} weight="fill" />Settings</a>
-						{/if}
-					{/if}
+				<nav class="flex-1 overflow-y-auto px-2 pb-3">
+					{@render navLinks(navClick)}
 				</nav>
-				<div class="px-3 py-3 border-t border-border-subtle text-xs">
-					{#if data.user}
-						<div class="flex items-center justify-between">
-							<a href="/auth/account" onclick={navClick} class="text-dim truncate transition-colors hover:text-link">{data.user.username}</a>
-							<form method="POST" action="/auth/logout">
-								<button type="submit" class="text-secondary transition-colors hover:text-link flex items-center gap-1.5" onclick={navClick}><SignOut size={14} weight="fill" />Log out</button>
-							</form>
-						</div>
-					{:else}
-						<div class="flex items-center gap-3">
-							<a href="/auth/login" onclick={navClick} class="text-link flex items-center gap-1.5 transition-colors hover:text-link-hover"><SignIn size={14} weight="fill" />Log in</a>
-							<a href="/auth/register" onclick={navClick} class="text-link transition-colors hover:text-link-hover">Register</a>
-						</div>
-					{/if}
-				</div>
+				{@render userFooter(navClick)}
 			</aside>
 		{/if}
 

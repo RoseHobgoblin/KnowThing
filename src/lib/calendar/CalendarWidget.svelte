@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte'
 	import type { CalendarConfig } from './types.js'
 	import { getMonthGrid, resolveDisplay, moonPhase, phaseName, daysInMonth, formatYearWithEra, seasonForDate } from './date-math.js'
 
@@ -15,8 +16,8 @@
 	type ViewMode = 'month' | 'year' | 'seasons'
 
 	const resolved = $derived(resolveDisplay(config))
-	let viewYear = $state(initialYear ?? resolved.year)
-	let viewMonth = $state(initialMonth ?? resolved.month_index)
+	let viewYear = $state(untrack(() => initialYear ?? resolved.year))
+	let viewMonth = $state(untrack(() => initialMonth ?? resolved.month_index))
 	let viewMode = $state<ViewMode>('month')
 	let jumpYear = $state('')
 	let showJump = $state(false)

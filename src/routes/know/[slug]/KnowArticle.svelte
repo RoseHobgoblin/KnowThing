@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte'
 	import WikiNodeComponent from '$lib/renderer/WikiNode.svelte'
 	import { createKnowContext, type KnowRenderContext } from '$lib/renderer/context.js'
 	import { SvelteMap } from 'svelte/reactivity'
@@ -76,7 +77,9 @@
 
 	const articleSubtitle = $derived(findPersonNativeName(ast))
 
-	createKnowContext({
+	// One-time capture is correct: the parent keys this component on the slug,
+	// so a new article remounts it with fresh context.
+	createKnowContext(untrack(() => ({
 		resolvedLinks: new SvelteMap(Object.entries(rawResolvedLinks ?? {})),
 		mediaBaseUrl: '/api/media',
 		pageBaseUrl: '/know',
@@ -85,7 +88,7 @@
 		structuredData: buildStructuredData(rawStructuredData),
 		structuredCollections: (structuredCollections ?? null) as KnowRenderContext['structuredCollections'],
 		systemMaps: systemMaps as KnowRenderContext['systemMaps'],
-	})
+	})))
 </script>
 
 <ArticleShell

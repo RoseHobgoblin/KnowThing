@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte'
 	import type { ActionData, PageData } from './$types.js'
 	import { enhance } from '$app/forms'
 	import Editor from '$lib/components/Editor.svelte'
@@ -9,10 +10,10 @@
 	import FormNotice from '$lib/components/editor/FormNotice.svelte'
 
 	let { form, data }: { form: ActionData, data: PageData } = $props()
-	let content = $state(form?.content ?? '')
+	let content = $state(untrack(() => form?.content ?? ''))
 	let showPreview = $state(true)
 	let submitting = $state(false)
-	let title = $state(form?.title ?? data.suggestedTitle)
+	let title = $state(untrack(() => form?.title ?? data.suggestedTitle))
 	const isDirty = $derived(content.trim().length > 0 || title.trim().length > 0)
 	const titleError = $derived(form?.error && !title.trim() ? form.error : '')
 	const formError = $derived(titleError ? '' : (form?.error ?? ''))

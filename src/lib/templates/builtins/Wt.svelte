@@ -6,8 +6,8 @@
 	let { args }: { args: TemplateArg[] } = $props()
 	const ctx = getKnowContext()
 
-	const word = positionalArg(args, 0)?.trim() || ''
-	const lang = positionalArg(args, 1)?.trim() || ''
+	const word = $derived(positionalArg(args, 0)?.trim() || '')
+	const lang = $derived(positionalArg(args, 1)?.trim() || '')
 
 	// Same resolved-links contract as WikiWordbookLink: absent ⇒ red link.
 	const key = $derived(`wordbook:${lang.toLowerCase()}/${word.toLowerCase()}`)

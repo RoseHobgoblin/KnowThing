@@ -9,7 +9,7 @@
 		return `${(bytes / 1048576).toFixed(1)} MB`
 	}
 
-	const s = data.stats
+	const s = $derived(data.stats)
 </script>
 
 <svelte:head>
