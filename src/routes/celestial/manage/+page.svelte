@@ -5,7 +5,9 @@
 	import Button from '$lib/components/ui/Button.svelte'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
-	import { pushSuccess, pushError } from '$lib/notifications.svelte'
+	import { pushSuccess } from '$lib/notifications.svelte'
+	import { createMutation } from '@tanstack/svelte-query'
+	import { api } from '$lib/api'
 	import { invalidateAll } from '$app/navigation'
 	import { urlSlugify } from '$lib/utils/slugify.js'
 	import { celestialPresets } from '$lib/celestial/presets.js'
@@ -67,7 +69,7 @@
 	let newBodyType = $state('planet')
 	let newBodyStarId = $state<string | undefined>(undefined)
 	let newBodyParentId = $state<string | undefined>(undefined)
-	let creating = $state(false)
+
 
 	const newBodyParentOptions = $derived(
 		newBodyStarId
@@ -104,119 +106,97 @@
 
 	const slugify = urlSlugify
 
-	async function createSystem() {
+	const createSystemMutation = createMutation(() => ({
+		mutationFn: () => api('POST', '/api/celestial', { kind: 'system', name: newSystemName.trim(), slug: slugify(newSystemName) }),
+		onSuccess: () => {
+			pushSuccess(`System "${newSystemName}" created`)
+			newSystemName = ''
+			invalidateAll()
+		},
+	}))
+
+	function createSystem() {
 		if (!newSystemName.trim()) return
-		creating = true
-		try {
-			const res = await fetch('/api/celestial', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ kind: 'system', name: newSystemName.trim(), slug: slugify(newSystemName) }),
-			})
-			if (res.ok) {
-				pushSuccess(`System "${newSystemName}" created`)
-				newSystemName = ''
-				invalidateAll()
-			} else {
-				const error = await res.json()
-				pushError(error.error || 'Failed to create')
-			}
-		} finally { creating = false }
+		createSystemMutation.mutate()
 	}
 
-	async function createStar() {
+	const createStarMutation = createMutation(() => ({
+		mutationFn: () => api('POST', '/api/celestial', {
+			kind: 'star',
+			name: newStarName.trim(),
+			slug: slugify(newStarName),
+			parentId: newStarSystemId ? Number(newStarSystemId) : null,
+		}),
+		onSuccess: () => {
+			pushSuccess(`Star "${newStarName}" created`)
+			newStarName = ''
+			newStarSystemId = undefined
+			invalidateAll()
+		},
+	}))
+
+	function createStar() {
 		if (!newStarName.trim()) return
-		creating = true
-		try {
-			const res = await fetch('/api/celestial', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					kind: 'star',
-					name: newStarName.trim(),
-					slug: slugify(newStarName),
-					parentId: newStarSystemId ? Number(newStarSystemId) : null,
-				}),
-			})
-			if (res.ok) {
-				pushSuccess(`Star "${newStarName}" created`)
-				newStarName = ''
-				newStarSystemId = undefined
-				invalidateAll()
-			} else {
-				const error = await res.json()
-				pushError(error.error || 'Failed to create')
-			}
-		} finally { creating = false }
+		createStarMutation.mutate()
 	}
 
-	async function createBody() {
-		if (!newBodyName.trim()) return
-		creating = true
-		try {
+	const createBodyMutation = createMutation(() => ({
+		mutationFn: () => api('POST', '/api/celestial', {
+			kind: 'body',
+			name: newBodyName.trim(),
+			slug: slugify(newBodyName),
+			bodyType: newBodyType,
 			// A moon orbits its parent body; a planet orbits the star.
-			const parentId = newBodyParentId ? Number(newBodyParentId) : (newBodyStarId ? Number(newBodyStarId) : null)
-			const res = await fetch('/api/celestial', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					kind: 'body',
-					name: newBodyName.trim(),
-					slug: slugify(newBodyName),
-					bodyType: newBodyType,
-					parentId,
-				}),
-			})
-			if (res.ok) {
-				pushSuccess(`${newBodyName} created`)
-				newBodyName = ''
-				newBodyStarId = undefined
-				newBodyParentId = undefined
-				invalidateAll()
-			} else {
-				const error = await res.json()
-				pushError(error.error || 'Failed to create')
-			}
-		} finally { creating = false }
+			parentId: newBodyParentId ? Number(newBodyParentId) : (newBodyStarId ? Number(newBodyStarId) : null),
+		}),
+		onSuccess: () => {
+			pushSuccess(`${newBodyName} created`)
+			newBodyName = ''
+			newBodyStarId = undefined
+			newBodyParentId = undefined
+			invalidateAll()
+		},
+	}))
+
+	function createBody() {
+		if (!newBodyName.trim()) return
+		createBodyMutation.mutate()
 	}
 
-	let creatingPreset = $state(false)
+	const creating = $derived(createSystemMutation.isPending || createStarMutation.isPending || createBodyMutation.isPending)
+
 	let presetProgress = $state('')
 
 	// One server call seeds the whole system in a single transaction — a
 	// failure part-way rolls everything back instead of orphaning half a system.
-	async function createFromPreset(preset: CelestialPreset) {
-		creatingPreset = true
-		presetProgress = `Creating ${preset.system.name}...`
-		try {
-			const res = await fetch('/api/celestial/preset', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ preset: preset.label }),
-			})
-			if (res.ok) {
-				pushSuccess(`Created "${preset.system.name}" with all bodies`)
-				invalidateAll()
-			} else {
-				const data = await res.json().catch(() => ({}))
-				pushError(data.error || 'Failed to create preset')
-			}
-		} catch {
-			pushError('Failed to create preset')
-		} finally {
-			creatingPreset = false
-			presetProgress = ''
-		}
+	const presetMutation = createMutation(() => ({
+		mutationFn: (preset: CelestialPreset) => api('POST', '/api/celestial/preset', { preset: preset.label }),
+		onMutate: (preset) => { presetProgress = `Creating ${preset.system.name}...` },
+		onSuccess: (_data, preset) => {
+			pushSuccess(`Created "${preset.system.name}" with all bodies`)
+			invalidateAll()
+		},
+		onSettled: () => { presetProgress = '' },
+	}))
+
+	const creatingPreset = $derived(presetMutation.isPending)
+
+	function createFromPreset(preset: CelestialPreset) {
+		presetMutation.mutate(preset)
 	}
+
+	const deleteMutation = createMutation(() => ({
+		mutationFn: ({ slug }: { slug: string, name: string }) => api('DELETE', `/api/celestial/${slug}`),
+		onSuccess: (_data, { name }) => {
+			pushSuccess(`"${name}" deleted`)
+			invalidateAll()
+		},
+	}))
 
 	async function deleteItem(slug: string, name: string) {
 		const ok = await confirmDialog.confirm('Delete', `Delete "${name}"?`, 'Delete', 'Cancel')
 		if (!ok) return
-		const res = await fetch(`/api/celestial/${slug}`, { method: 'DELETE' })
-		if (res.ok) {
-			pushSuccess(`"${name}" deleted`)
-			invalidateAll()
-		} else pushError('Failed to delete')
+		deleteMutation.mutate({ slug, name })
 	}
 </script>
 

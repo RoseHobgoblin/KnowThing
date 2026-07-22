@@ -2,7 +2,9 @@
 	import type { PageData } from './$types.js'
 	import { goto, replaceState } from '$app/navigation'
 	import { page } from '$app/stores'
+	import { createMutation } from '@tanstack/svelte-query'
 	import { pushSuccess } from '$lib/notifications.svelte'
+	import { api } from '$lib/api'
 	import EntryForm from '$lib/components/wordbook/EntryForm.svelte'
 	import InflectionEditor from '$lib/components/wordbook/InflectionEditor.svelte'
 	import InflectionTable from '$lib/components/wordbook/InflectionTable.svelte'
@@ -46,11 +48,10 @@
 		data.languages.find(l => l.id === data.entry.languageId)?.slug ?? ''
 	)
 
-	async function handleSubmit(formData: Record<string, unknown>) {
-		const res = await fetch(`/api/wordbook/${data.entry.id}`, {
-			method: 'PUT',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
+	const updateEntryMutation = createMutation(() => ({
+		meta: { skipGlobalErrorToast: true },
+		mutationFn: async (formData: Record<string, unknown>) => {
+			await api('PUT', `/api/wordbook/${data.entry.id}`, {
 				word: formData.word,
 				languageId: formData.languageId,
 				pronunciation: formData.pronunciation,
@@ -58,27 +59,18 @@
 				notes: formData.notes,
 				pageSlug: formData.pageSlug,
 				tags: formData.tags,
-			}),
-		})
-
-		if (!res.ok) {
-			const error = await res.json()
-			throw new Error(error.error || 'Failed to update entry')
-		}
-
-		const defs = formData.defs as Array<{ partOfSpeech?: string, definition: string, usageExample?: string, usageTranslation?: string }>
-		if (defs && defs.length > 0) {
-			const defRes = await fetch(`/api/wordbook/${data.entry.id}/definitions`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ defs }),
 			})
-			if (!defRes.ok) {
-				const error = await defRes.json()
-				throw new Error(error.error || 'Failed to update definitions')
-			}
-		}
 
+			const defs = formData.defs as Array<{ partOfSpeech?: string, definition: string, usageExample?: string, usageTranslation?: string }>
+			if (defs && defs.length > 0) {
+				await api('PUT', `/api/wordbook/${data.entry.id}/definitions`, { defs })
+			}
+		},
+	}))
+
+	// errors rethrow via mutateAsync so EntryForm can display them
+	async function handleSubmit(formData: Record<string, unknown>) {
+		await updateEntryMutation.mutateAsync(formData)
 		pushSuccess('Word updated')
 		const lang = data.languages.find(l => l.id === formData.languageId)
 		if (lang) {

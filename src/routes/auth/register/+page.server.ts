@@ -1,55 +1,37 @@
 import { fail, isHttpError, redirect } from '@sveltejs/kit'
-import { z } from 'zod'
+import { superValidate, message, type ErrorStatus } from 'sveltekit-superforms'
+import { zod4 } from 'sveltekit-superforms/adapters'
 import type { Actions, PageServerLoad } from './$types.js'
 import { setSessionCookie } from '$lib/server/auth.js'
 import { hasAnyUser, registerUser } from '$lib/server/services/auth.js'
-
-const registerSchema = z.object({
-	username: z.string().min(3, 'Username must be at least 3 characters'),
-	password: z.string().min(8, 'Password must be at least 8 characters'),
-	confirm: z.string(),
-	code: z.string().optional(),
-})
+import { registerSchema } from '$lib/auth/form-schemas.js'
 
 export const load: PageServerLoad = async ({ locals }) => {
 	if (locals.user) throw redirect(302, '/')
-	return { requireCode: await hasAnyUser() }
+	return {
+		requireCode: await hasAnyUser(),
+		form: await superValidate(zod4(registerSchema)),
+	}
 }
 
 export const actions: Actions = {
 	default: async (event) => {
-		const formData = await event.request.formData()
-		const parsed = registerSchema.safeParse({
-			username: formData.get('username')?.toString()?.trim(),
-			password: formData.get('password')?.toString(),
-			confirm: formData.get('confirm')?.toString(),
-			code: formData.get('code')?.toString()?.trim(),
-		})
-		if (!parsed.success) {
-			return fail(400, { error: parsed.error.issues[0].message, username: formData.get('username')?.toString()?.trim() })
-		}
-		const { username, password, confirm, code } = parsed.data
-
-		if (password !== confirm) {
-			return fail(400, { error: 'Passwords do not match', username })
-		}
+		const form = await superValidate(event.request, zod4(registerSchema))
+		if (!form.valid) return fail(400, { form })
 
 		try {
-			const result = await registerUser({ username, password, code })
+			const result = await registerUser({
+				username: form.data.username,
+				password: form.data.password,
+				code: form.data.code,
+			})
 			setSessionCookie(event, result.token)
 		} catch (error: unknown) {
-			if (isHttpError(error)) {
-				return fail(error.status, { error: error.body?.message ?? 'Request failed', username })
-			}
-			const message = error instanceof Error ? error.message : 'Unknown error'
-			if (message.includes('Registration code was just used')) {
-				return fail(409, { error: message, username })
-			}
-			if (message.includes('unique') || message.includes('duplicate')) {
-				return fail(409, { error: 'Username already taken', username })
-			}
-			console.error('register failed', error)
-			return fail(500, { error: 'Registration failed', username })
+			if (isHttpError(error)) return message(form, error.body?.message ?? 'Request failed', { status: error.status as ErrorStatus })
+			const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+			if (errorMessage.includes('Registration code was just used')) return message(form, errorMessage, { status: 409 })
+			if (errorMessage.includes('unique') || errorMessage.includes('duplicate')) return message(form, 'Username already taken', { status: 409 })
+			return message(form, 'Registration failed', { status: 500 })
 		}
 
 		throw redirect(302, '/')

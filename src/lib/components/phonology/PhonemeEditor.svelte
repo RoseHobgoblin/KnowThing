@@ -14,6 +14,9 @@
 	import PencilSimple from 'phosphor-svelte/lib/PencilSimpleIcon'
 	import Trash from 'phosphor-svelte/lib/TrashIcon'
 	import Copy from 'phosphor-svelte/lib/CopyIcon'
+	import { createMutation, createQuery } from '@tanstack/svelte-query'
+	import { api } from '$lib/api'
+	import { createDirtyTracker } from '$lib/utils/dirty.svelte'
 
 	interface Phoneme {
 		id: number
@@ -92,21 +95,31 @@
 	interface LinkedGrapheme { id: number, grapheme: string, environment: string | null }
 
 	let phonemes = $state<Phoneme[]>(initial)
-	let linkedGraphemes = $state<LinkedGrapheme[]>([])
-	let loadingLinked = $state(false)
 	let pickerOpen = $state(false)
 	let pickerFilter = $state<'consonant' | 'vowel'>('consonant')
 	let manualOpen = $state(false)
 	let editingId = $state<number | null>(null)
 	let draft = $state<Draft>(emptyDraft())
-	/** Snapshot of the draft as it was when the dialog last opened. Used to
-	 * detect unsaved changes and protect against accidental close. */
-	let draftSnapshot = $state<Draft>(emptyDraft())
-	let saving = $state(false)
 	let errorMessage = $state('')
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
 
-	const dirty = $derived(JSON.stringify(draft) !== JSON.stringify(draftSnapshot))
+	// Save/delete failures surface in the inline error banner, not toasts.
+	const onError = (error: Error) => {
+		errorMessage = error.message
+	}
+
+	const linkedGraphemesQuery = createQuery(() => ({
+		queryKey: ['phoneme-graphemes', languageSlug, editingId],
+		queryFn: () => api<{ graphemes?: LinkedGrapheme[] }>('GET', `/api/languages/${languageSlug}/phonemes/${editingId}`),
+		enabled: manualOpen && editingId != null,
+	}))
+	const linkedGraphemes = $derived(linkedGraphemesQuery.data?.graphemes ?? [])
+	const loadingLinked = $derived(linkedGraphemesQuery.isPending)
+
+	// Re-baselined (markClean) each time the dialog opens; protects against
+	// accidental close with unsaved changes.
+	const dirtyTracker = createDirtyTracker(() => draft)
+	const dirty = $derived(dirtyTracker.isDirty)
 
 	const consonants = $derived(phonemes.filter(p => p.type === 'consonant'))
 	const vowels = $derived(phonemes.filter(p => p.type === 'vowel'))
@@ -138,7 +151,7 @@
 
 	function openManual(type: string, prefill: Partial<Draft> = {}) {
 		draft = { ...emptyDraft(type), ...prefill }
-		draftSnapshot = $state.snapshot(draft) as Draft
+		dirtyTracker.markClean()
 		editingId = null
 		manualOpen = true
 	}
@@ -152,30 +165,16 @@
 		if (existing) {
 			editingId = existing.id
 			draft = draftFrom(existing)
-			draftSnapshot = $state.snapshot(draft) as Draft
-			loadLinkedGraphemes(existing.id)
+			dirtyTracker.markClean()
 			manualOpen = true
 		} else {
 			openManual(kind, axes)
 		}
 	}
 
-	async function loadLinkedGraphemes(phonemeId: number) {
-		linkedGraphemes = []
-		loadingLinked = true
-		try {
-			const response = await fetch(`/api/languages/${languageSlug}/phonemes/${phonemeId}`)
-			if (!response.ok) return
-			const body = await response.json() as { graphemes?: LinkedGrapheme[] }
-			linkedGraphemes = body.graphemes ?? []
-		} finally {
-			loadingLinked = false
-		}
-	}
-
-	async function handlePick(entry: IpaEntry) {
-		errorMessage = ''
-		const body = {
+	const pickMutation = createMutation(() => ({
+		meta: { skipGlobalErrorToast: true },
+		mutationFn: (entry: IpaEntry) => api<Phoneme>('POST', `/api/languages/${languageSlug}/phonemes`, {
 			ipa: entry.symbol,
 			type: entry.type,
 			place: entry.place ?? null,
@@ -186,39 +185,29 @@
 			backness: entry.backness ?? null,
 			rounded: entry.rounded ?? null,
 			marginal: false,
-		}
-		saving = true
-		try {
-			const response = await fetch(`/api/languages/${languageSlug}/phonemes`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(body),
-			})
-			if (!response.ok) {
-				const error = await response.json().catch(() => null)
-				errorMessage = error?.error ?? 'Failed to add phoneme'
-				return
-			}
-			const created = await response.json() as Phoneme
+		}),
+		onMutate: () => { errorMessage = '' },
+		onSuccess: (created) => {
 			phonemes = [...phonemes, created]
-		} finally {
-			saving = false
-		}
+		},
+		onError,
+	}))
+
+	function handlePick(entry: IpaEntry) {
+		pickMutation.mutate(entry)
 	}
 
-	async function saveManual() {
-		errorMessage = ''
-		saving = true
-		try {
+	const saveMutation = createMutation(() => ({
+		meta: { skipGlobalErrorToast: true },
+		mutationFn: () => {
 			const url = editingId
 				? `/api/languages/${languageSlug}/phonemes/${editingId}`
 				: `/api/languages/${languageSlug}/phonemes`
-			const method = editingId ? 'PATCH' : 'POST'
 			// Wipe axis fields that don't apply to this type so changing
 			// consonant → vowel (or back) doesn't leave stale data behind.
 			const isConsonantish = draft.type === 'consonant' || draft.type === 'special' || draft.type === 'diphthong'
 			const isVowel = draft.type === 'vowel'
-			const body: Record<string, unknown> = {
+			return api<Phoneme>(editingId ? 'PATCH' : 'POST', url, {
 				ipa: draft.ipa.trim(),
 				type: draft.type,
 				place: isConsonantish ? (draft.place.trim() || null) : null,
@@ -230,30 +219,27 @@
 				rounded: isVowel ? (draft.rounded ?? null) : null,
 				marginal: draft.marginal,
 				notes: draft.notes.trim() || null,
-			}
-			const response = await fetch(url, {
-				method,
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(body),
 			})
-			if (!response.ok) {
-				const error = await response.json().catch(() => null)
-				errorMessage = error?.error ?? 'Failed to save phoneme'
-				return
-			}
-			const saved = await response.json() as Phoneme
+		},
+		onMutate: () => { errorMessage = '' },
+		onSuccess: (saved) => {
 			if (editingId) {
 				phonemes = phonemes.map(p => p.id === saved.id ? saved : p)
 			} else {
 				phonemes = [...phonemes, saved]
 			}
-			// Sync the snapshot so dirty goes false before close, preventing a
+			// Sync the baseline so dirty goes false before close, preventing a
 			// spurious "discard changes?" prompt on the closing transition.
-			draftSnapshot = $state.snapshot(draft) as Draft
+			dirtyTracker.markClean()
 			manualOpen = false
-		} finally {
-			saving = false
-		}
+		},
+		onError,
+	}))
+
+	const saving = $derived(pickMutation.isPending || saveMutation.isPending)
+
+	function saveManual() {
+		saveMutation.mutate()
 	}
 
 	/** Turn the current edit session into a new-add with the same fields as a
@@ -293,63 +279,61 @@
 		}
 	}
 
-	async function handleDelete(p: Phoneme) {
-		// Skip confirm dialog — the undo toast IS the safety net now. One click,
-		// one toast, six seconds to change your mind. This is the Gmail pattern.
-		const response = await fetch(`/api/languages/${languageSlug}/phonemes/${p.id}`, { method: 'DELETE' })
-		if (!response.ok) {
-			const error = await response.json().catch(() => null)
-			errorMessage = error?.error ?? 'Failed to delete phoneme'
-			return
-		}
+	// Undo: re-POST with the same feature values. Gets a new ID from
+	// the server — that's fine since we've already removed the old
+	// row from local state, and external refs (wiki templates) use
+	// IPA + slug, not the numeric id.
+	const restoreMutation = createMutation(() => ({
+		meta: { skipGlobalErrorToast: true },
+		mutationFn: (snapshot: Phoneme) => api<Phoneme>('POST', `/api/languages/${languageSlug}/phonemes`, {
+			ipa: snapshot.ipa,
+			type: snapshot.type,
+			place: snapshot.place,
+			manner: snapshot.manner,
+			subtype: snapshot.subtype,
+			voicing: snapshot.voicing,
+			height: snapshot.height,
+			backness: snapshot.backness,
+			rounded: snapshot.rounded,
+			marginal: snapshot.marginal,
+			notes: snapshot.notes,
+			sortOrder: snapshot.sortOrder,
+		}),
+		onSuccess: (restored) => {
+			phonemes = [...phonemes, restored]
+		},
+		onError: (_error, snapshot) => pushError(`Couldn't restore /${snapshot.ipa}/`),
+	}))
 
-		const body = await response.json().catch(() => ({ affectedGraphemes: 0 })) as { affectedGraphemes?: number }
-		const affected = body.affectedGraphemes ?? 0
+	const deleteMutation = createMutation(() => ({
+		meta: { skipGlobalErrorToast: true },
+		mutationFn: (p: Phoneme) => api<{ affectedGraphemes?: number } | undefined>('DELETE', `/api/languages/${languageSlug}/phonemes/${p.id}`),
+		onSuccess: (data, p) => {
+			const affected = data?.affectedGraphemes ?? 0
 
-		// Snapshot the deleted row so we can re-POST on undo.
-		const snapshot: Phoneme = { ...p }
-		phonemes = phonemes.filter(x => x.id !== p.id)
-		if (editingId === p.id) manualOpen = false
+			// Snapshot the deleted row so we can re-POST on undo.
+			const snapshot: Phoneme = { ...p }
+			phonemes = phonemes.filter(x => x.id !== p.id)
+			if (editingId === p.id) manualOpen = false
 
-		const toastMessage = affected > 0
-			? `Deleted /${p.ipa}/. ${affected} ${affected === 1 ? 'grapheme' : 'graphemes'} became silent.`
-			: `Deleted /${p.ipa}/`
+			const toastMessage = affected > 0
+				? `Deleted /${p.ipa}/. ${affected} ${affected === 1 ? 'grapheme' : 'graphemes'} became silent.`
+				: `Deleted /${p.ipa}/`
 
-		pushUndoable(
-			toastMessage,
-			async () => {
-				// Undo: re-POST with the same feature values. Gets a new ID from
-				// the server — that's fine since we've already removed the old
-				// row from local state, and external refs (wiki templates) use
-				// IPA + slug, not the numeric id.
-				const undoResponse = await fetch(`/api/languages/${languageSlug}/phonemes`, {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						ipa: snapshot.ipa,
-						type: snapshot.type,
-						place: snapshot.place,
-						manner: snapshot.manner,
-						subtype: snapshot.subtype,
-						voicing: snapshot.voicing,
-						height: snapshot.height,
-						backness: snapshot.backness,
-						rounded: snapshot.rounded,
-						marginal: snapshot.marginal,
-						notes: snapshot.notes,
-						sortOrder: snapshot.sortOrder,
-					}),
-				})
-				if (!undoResponse.ok) {
-					pushError(`Couldn't restore /${snapshot.ipa}/`)
-					return
-				}
-				const restored = await undoResponse.json() as Phoneme
-				phonemes = [...phonemes, restored]
-			},
-			// onExpire: nothing to do — server already deleted. Kept for parity.
-			() => {},
-		)
+			pushUndoable(
+				toastMessage,
+				() => restoreMutation.mutate(snapshot),
+				// onExpire: nothing to do — server already deleted. Kept for parity.
+				() => {},
+			)
+		},
+		onError,
+	}))
+
+	// Skip confirm dialog — the undo toast IS the safety net now. One click,
+	// one toast, six seconds to change your mind. This is the Gmail pattern.
+	function handleDelete(p: Phoneme) {
+		deleteMutation.mutate(p)
 	}
 </script>
 
@@ -607,9 +591,9 @@
 		<div class="flex justify-between items-center pt-3 border-t border-border-subtle">
 			<div class="flex gap-2">
 				{#if editingId}
-					<Button variant="danger" size="sm" onclick={async () => {
+					<Button variant="danger" size="sm" onclick={() => {
 						const p = phonemes.find(x => x.id === editingId)
-						if (p) await handleDelete(p)
+						if (p) handleDelete(p)
 					}}>
 						<Trash size={14} weight="bold" /> Delete
 					</Button>

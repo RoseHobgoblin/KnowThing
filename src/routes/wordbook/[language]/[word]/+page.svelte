@@ -3,6 +3,8 @@
 	import { page } from '$app/stores'
 	import { invalidateAll } from '$app/navigation'
 	import { goto } from '$app/navigation'
+	import { createMutation } from '@tanstack/svelte-query'
+	import { api } from '$lib/api'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import Input from '$lib/components/ui/Input.svelte'
 	import LanguageBadge from '$lib/components/wordbook/LanguageBadge.svelte'
@@ -12,7 +14,7 @@
 	import InflectionTable from '$lib/components/wordbook/InflectionTable.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
-	import { pushSuccess, pushError } from '$lib/notifications.svelte'
+	import { pushSuccess } from '$lib/notifications.svelte'
 	import Badge from '$lib/components/ui/Badge.svelte'
 	import { PARTS_OF_SPEECH, POS_COLORS } from '$lib/components/wordbook/constants.js'
 	import InlineMarkup from '$lib/renderer/InlineMarkup.svelte'
@@ -49,65 +51,66 @@
 	let newDefinition = $state('')
 	let newUsage = $state('')
 	let newTranslation = $state('')
-	let submittingSense = $state(false)
 	let senseError = $state('')
 
-	async function addSense(entryId: number, event: Event) {
+
+	const addSenseMutation = createMutation(() => ({
+		mutationFn: (entryId: number) => api('POST', `/api/wordbook/${entryId}/definitions`, {
+			partOfSpeech: newPos || null,
+			definition: newDefinition.trim(),
+			usageExample: newUsage.trim() || null,
+			usageTranslation: newTranslation.trim() || null,
+		}),
+		onSuccess: () => {
+			pushSuccess('Definition added')
+			newPos = ''
+			newDefinition = ''
+			newUsage = ''
+			newTranslation = ''
+			addingSenseFor = null
+			invalidateAll()
+		},
+		onError: (error: Error) => {
+			senseError = error.message
+		},
+	}))
+
+	const submittingSense = $derived(addSenseMutation.isPending)
+
+	function addSense(entryId: number, event: Event) {
 		event.preventDefault()
 		if (!newDefinition.trim()) return
-		submittingSense = true
 		senseError = ''
-		try {
-			const response = await fetch(`/api/wordbook/${entryId}/definitions`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					partOfSpeech: newPos || null,
-					definition: newDefinition.trim(),
-					usageExample: newUsage.trim() || null,
-					usageTranslation: newTranslation.trim() || null,
-				}),
-			})
-			if (response.ok) {
-				pushSuccess('Definition added')
-				newPos = ''
-				newDefinition = ''
-				newUsage = ''
-				newTranslation = ''
-				addingSenseFor = null
-				invalidateAll()
-			} else {
-				const error = await response.json().catch(() => null)
-				senseError = error?.error || 'Failed to add definition'
-				pushError(senseError)
-			}
-		} finally {
-			submittingSense = false
-		}
+		addSenseMutation.mutate(entryId)
 	}
+
+	const deleteSenseMutation = createMutation(() => ({
+		mutationFn: ({ entryId, definitionId }: { entryId: number, definitionId: number }) =>
+			api('DELETE', `/api/wordbook/${entryId}/definitions/${definitionId}`),
+		onSuccess: () => {
+			pushSuccess('Definition deleted')
+			invalidateAll()
+		},
+	}))
 
 	async function deleteSense(entryId: number, definitionId: number) {
 		const ok = await confirmDialog.confirm('Delete definition', 'Delete this definition?', 'Delete', 'Cancel')
 		if (!ok) return
-		const response = await fetch(`/api/wordbook/${entryId}/definitions/${definitionId}`, { method: 'DELETE' })
-		if (response.ok) {
-			pushSuccess('Definition deleted')
-			invalidateAll()
-		} else {
-			pushError('Failed to delete definition')
-		}
+		deleteSenseMutation.mutate({ entryId, definitionId })
 	}
+
+	const deleteEntryMutation = createMutation(() => ({
+		mutationFn: (entryId: number) => api('DELETE', `/api/wordbook/${entryId}`),
+		onSuccess: () => {
+			pushSuccess(`"${data.word}" deleted`)
+			goto(`/Wordbook/${data.language.slug}`)
+		},
+	}))
 
 	async function deleteEntry(entryId: number) {
 		const ok = await confirmDialog.confirm('Delete word', `Delete "${data.word}"? This cannot be undone.`, 'Delete', 'Cancel')
 		if (!ok) return
-		const response = await fetch(`/api/wordbook/${entryId}`, { method: 'DELETE' })
-		if (response.ok) {
-			pushSuccess(`"${data.word}" deleted`)
-			goto(`/Wordbook/${data.language.slug}`)
-		} else {
-			pushError('Failed to delete word')
-		}
+		deleteEntryMutation.mutate(entryId)
 	}
 
 	const posColors = POS_COLORS

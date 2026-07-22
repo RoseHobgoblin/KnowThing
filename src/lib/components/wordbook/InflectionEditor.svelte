@@ -1,12 +1,14 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation'
-	import { pushSuccess, pushError } from '$lib/notifications.svelte'
+	import { createMutation, createQuery } from '@tanstack/svelte-query'
+	import { pushSuccess } from '$lib/notifications.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import Input from '$lib/components/ui/Input.svelte'
 	import WorkedInflectionExample from './WorkedInflectionExample.svelte'
 	import { generateCellKeys, cellKeyLabel } from '$lib/wordbook/cell-keys.js'
 	import { applyStem } from '$lib/wordbook/inflection-pattern.js'
+	import { api } from '$lib/api'
 
 	let {
 		entryId,
@@ -43,37 +45,22 @@
 	let selectedClassId = $state<number | null>(null)
 	let stem = $state('')
 	let overrides = $state<Record<string, string>>({})
-	let saving = $state(false)
 	let error = $state('')
 
+
 	// Rules for the currently selected class — fetched on demand for live preview
-	let selectedClassRules = $state<Record<string, string>>({})
-	let loadingRules = $state(false)
+	const rulesQuery = createQuery(() => ({
+		queryKey: ['inflection-class-rules', languageSlug, selectedClassId],
+		queryFn: () => api<{ rules?: Array<{ cellKey: string, pattern: string }> }>('GET', `/api/languages/${languageSlug}/inflections/classes/${selectedClassId}`),
+		enabled: editing && selectedClassId !== null,
+	}))
 
-	async function loadClassRules(classId: number | null) {
-		if (classId === null) {
-			selectedClassRules = {}
-			return
-		}
-		loadingRules = true
-		try {
-			const response = await fetch(`/api/languages/${languageSlug}/inflections/classes/${classId}`)
-			if (!response.ok) {
-				selectedClassRules = {}
-				return
-			}
-			const data = await response.json()
-			const rules: Record<string, string> = {}
-			for (const r of data.rules || []) rules[r.cellKey] = r.pattern
-			selectedClassRules = rules
-		} finally {
-			loadingRules = false
-		}
-	}
-
-	$effect(() => {
-		if (editing) loadClassRules(selectedClassId)
+	const selectedClassRules = $derived.by(() => {
+		const rules: Record<string, string> = {}
+		for (const r of rulesQuery.data?.rules || []) rules[r.cellKey] = r.pattern
+		return rules
 	})
+	const loadingRules = $derived(rulesQuery.isPending)
 
 	function startEditing() {
 		selectedClassId = null
@@ -88,54 +75,44 @@
 		editing = true
 	}
 
-	async function save() {
-		saving = true
-		error = ''
-		try {
-			const response = await fetch(`/api/wordbook/${entryId}/inflection`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					classId: selectedClassId || null,
-					stem: stem.trim() || null,
-					overrides: Object.fromEntries(
-						Object.entries(overrides).filter(([_, v]) => v.trim()),
-					),
-				}),
-			})
-			if (!response.ok) {
-				const data = await response.json()
-				throw new Error(data.error || 'Failed to save')
-			}
+	const saveMutation = createMutation(() => ({
+		mutationFn: () => api('PUT', `/api/wordbook/${entryId}/inflection`, {
+			classId: selectedClassId || null,
+			stem: stem.trim() || null,
+			overrides: Object.fromEntries(
+				Object.entries(overrides).filter(([_, v]) => v.trim()),
+			),
+		}),
+		onSuccess: () => {
 			pushSuccess('Inflection saved')
 			editing = false
 			invalidateAll()
-		} catch (error_: any) {
+		},
+		onError: (error_: Error) => {
 			error = error_.message
-			pushError(error_.message)
-		} finally {
-			saving = false
-		}
+		},
+	}))
+
+	function save() {
+		error = ''
+		saveMutation.mutate()
 	}
+
+	const removeMutation = createMutation(() => ({
+		mutationFn: () => api('PUT', `/api/wordbook/${entryId}/inflection`, { classId: null, stem: null, overrides: {} }),
+		onSuccess: () => pushSuccess('Inflection removed'),
+		onSettled: () => {
+			editing = false
+			invalidateAll()
+		},
+	}))
 
 	async function removeInflection() {
 		const ok = await confirmDialog.confirm('Remove inflection', 'Remove inflection data for this entry?', 'Remove', 'Cancel')
-		if (!ok) return
-		saving = true
-		const response = await fetch(`/api/wordbook/${entryId}/inflection`, {
-			method: 'PUT',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ classId: null, stem: null, overrides: {} }),
-		})
-		if (response.ok) {
-			pushSuccess('Inflection removed')
-		} else {
-			pushError('Failed to remove inflection')
-		}
-		editing = false
-		saving = false
-		invalidateAll()
+		if (ok) removeMutation.mutate()
 	}
+
+	const saving = $derived(saveMutation.isPending || removeMutation.isPending)
 
 	const cellKeys = $derived(
 		generateCellKeys(inflection.dimensions.map(d => ({ values: d.values, sortOrder: d.sortOrder }))),

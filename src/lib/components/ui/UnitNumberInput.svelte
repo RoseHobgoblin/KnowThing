@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { untrack } from 'svelte'
-	import { useId } from 'bits-ui'
+	import { useId, DropdownMenu } from 'bits-ui'
 	import { cn } from '$lib/utils'
 	import Label from './Label.svelte'
 	import Tooltip from './Tooltip.svelte'
 	import QuestionIcon from 'phosphor-svelte/lib/Question'
+	import CaretDown from 'phosphor-svelte/lib/CaretDown'
+	import Check from 'phosphor-svelte/lib/Check'
 
 	export interface UnitOption {
 		/** Display label, e.g. 'kg', 'M☉'. */
@@ -53,15 +55,17 @@
 
 	let unitIndex = $state(pickUnit(untrack(() => value)))
 	let text = $state(format(untrack(() => value), untrack(() => unitIndex)))
-	let focused = $state(false)
 
-	// Re-sync the display when the stored value changes from outside (preset
-	// apply, discard) — but never while the user is typing in the field.
+	// Track the value we last wrote ourselves. Only re-derive the display unit
+	// when the stored value changes from *outside* (preset apply, discard) — the
+	// user's own typing and unit choice are never second-guessed.
+	let lastValue = untrack(() => value)
+
 	$effect(() => {
 		const storedValue = value
-		const isFocused = focused
 		untrack(() => {
-			if (isFocused) return
+			if (storedValue === lastValue) return
+			lastValue = storedValue
 			const index = storedValue == null ? unitIndex : pickUnit(storedValue)
 			unitIndex = index
 			text = format(storedValue, index)
@@ -71,15 +75,19 @@
 	function onInput() {
 		if (text.trim() === '') {
 			value = null
+			lastValue = null
 			return
 		}
 		const typed = Number(text)
-		if (Number.isFinite(typed)) value = typed * units[unitIndex].factor
+		if (Number.isFinite(typed)) {
+			value = typed * units[unitIndex].factor
+			lastValue = value
+		}
 	}
 
-	function cycleUnit() {
-		unitIndex = (unitIndex + 1) % units.length
-		text = format(value, unitIndex)
+	function selectUnit(index: number) {
+		unitIndex = index
+		text = format(value, index)
 	}
 </script>
 
@@ -104,28 +112,58 @@
 			{placeholder}
 			aria-invalid={!!error}
 			class="
-				flex w-full min-w-0 px-3 py-2 pr-20 text-sm text-body bg-page outline-none transition-colors
+				flex w-full min-w-0 px-3 py-2 pr-24 text-sm text-body bg-page outline-none transition-colors
 				placeholder:text-dim
 				focus:ring-2 focus:ring-accent
 				aria-invalid:ring-1 aria-invalid:ring-error-border
 			"
-			onfocus={() => focused = true}
-			onblur={() => focused = false}
 			oninput={onInput}
 		/>
 		<div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
 			{#if units.length > 1}
-				<Tooltip content="Change unit — the value converts, storage stays in {storageUnit.label}" side="top">
-					<button
-						type="button"
-						onclick={cycleUnit}
-						class="px-1.5 py-0.5 text-xs font-semibold bg-accent-subtle text-accent border border-accent-border/60 transition-colors hover:bg-accent-subtle/60"
+				<DropdownMenu.Root>
+					<DropdownMenu.Trigger
+						title="Change unit — the value converts; storage stays in {storageUnit.label}"
+						class="
+							flex items-center gap-1 px-1.5 py-0.5 text-xs font-semibold bg-accent-subtle text-accent border border-accent-border/60 cursor-pointer transition-colors
+							hover:bg-accent-subtle/60
+						"
 					>
 						{units[unitIndex].label}
-					</button>
-				</Tooltip>
+						<CaretDown size={10} weight="bold" />
+					</DropdownMenu.Trigger>
+					<DropdownMenu.Portal>
+						<DropdownMenu.Content
+							align="end"
+							sideOffset={4}
+							class="
+								z-9999 min-w-24 bg-surface shadow-lg outline-none overflow-hidden
+								data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95
+								data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95
+							"
+						>
+							{#each units as unit, index (unit.label)}
+								<DropdownMenu.Item
+									onSelect={() => selectUnit(index)}
+									class={cn(
+										'flex items-center justify-between gap-3 px-2.5 py-1.5 text-xs cursor-pointer select-none outline-none transition-colors',
+										'data-highlighted:bg-raised data-highlighted:text-heading',
+										index === unitIndex ? 'text-heading font-medium' : 'text-body',
+									)}
+								>
+									<span>{unit.label}</span>
+									{#if unit.factor === 1}
+										<span class="text-[0.65rem] text-secondary">storage</span>
+									{:else if index === unitIndex}
+										<Check size={12} weight="bold" class="text-accent" />
+									{/if}
+								</DropdownMenu.Item>
+							{/each}
+						</DropdownMenu.Content>
+					</DropdownMenu.Portal>
+				</DropdownMenu.Root>
 				{#if units[unitIndex].factor !== storageUnit.factor}
-					<span class="text-xs text-secondary">{storageUnit.label}</span>
+					<span class="text-xs text-secondary" title="Stored in {storageUnit.label}">{storageUnit.label}</span>
 				{/if}
 			{:else}
 				<span class="text-xs text-secondary">{units[unitIndex].label}</span>

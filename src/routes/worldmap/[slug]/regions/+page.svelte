@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation'
+	import { createMutation } from '@tanstack/svelte-query'
 	import { pushError, pushSuccess } from '$lib/notifications.svelte'
+	import { api, apiUpload } from '$lib/api'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import WorldSvgMap from '$lib/components/worldmap/WorldSvgMap.svelte'
 	import Button from '$lib/components/ui/Button.svelte'
@@ -49,9 +51,6 @@
 
 	let { data }: { data: PageDataLocal } = $props()
 
-	let ingesting = $state(false)
-	let uploading = $state(false)
-	let saving = $state(false)
 	let selectedSvg = $state<File | null>(null)
 	let selectedSvgPreviewUrl = $state<string | null>(null)
 	let selectedMediaSvg = $state('')
@@ -108,57 +107,46 @@
 		assignments = { ...assignments, [regionId]: pageSlug }
 	}
 
-	async function runIngest() {
-		ingesting = true
-		try {
-			const response = await fetch(`/api/maps/${data.map.slug}/ingest`, { method: 'POST' })
-			if (!response.ok) {
-				const body = await response.json().catch(() => ({}))
-				throw new Error(body.error || 'Failed to ingest map SVG')
-			}
-			const result = await response.json()
+
+	const ingestMutation = createMutation(() => ({
+		mutationFn: () => api<{ uniqueColorCount: number, createdCountries: number }>('POST', `/api/maps/${data.map.slug}/ingest`),
+		onSuccess: async (result) => {
 			pushSuccess(`Ingested ${result.uniqueColorCount} colors. ${result.createdCountries} new country stubs created.`)
 			await invalidateAll()
-		} catch (err) {
-			pushError(err instanceof Error ? err.message : 'Failed to ingest map SVG')
-		} finally {
-			ingesting = false
-		}
+		},
+	}))
+
+	const ingesting = $derived(ingestMutation.isPending)
+
+	function runIngest() {
+		ingestMutation.mutate()
 	}
 
-	async function saveAssignments() {
+	const saveAssignmentsMutation = createMutation(() => ({
+		mutationFn: (payload: Array<{ regionId: number, pageSlug: string }>) =>
+			api<{ updatedCount: number }>('PUT', `/api/maps/${data.map.slug}/regions`, { assignments: payload }),
+		onSuccess: async (result) => {
+			pushSuccess(`Saved ${result.updatedCount} assignment${result.updatedCount === 1 ? '' : 's'}`)
+			await invalidateAll()
+		},
+	}))
+
+	const saving = $derived(saveAssignmentsMutation.isPending)
+
+	function saveAssignments() {
 		const payload = data.regions
-			.map((region) => ({
+			.map(region => ({
 				regionId: region.id,
 				pageSlug: (assignments[region.id] || '').trim(),
 			}))
-			.filter((entry) => entry.pageSlug.length > 0)
+			.filter(entry => entry.pageSlug.length > 0)
 
 		if (payload.length === 0) {
 			pushError('Choose at least one wiki page before saving')
 			return
 		}
 
-		saving = true
-		try {
-			const response = await fetch(`/api/maps/${data.map.slug}/regions`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ assignments: payload }),
-			})
-			if (!response.ok) {
-				const body = await response.json().catch(() => ({}))
-				throw new Error(body.error || 'Failed to save region assignments')
-			}
-
-			const result = await response.json()
-			pushSuccess(`Saved ${result.updatedCount} assignment${result.updatedCount === 1 ? '' : 's'}`)
-			await invalidateAll()
-		} catch (err) {
-			pushError(err instanceof Error ? err.message : 'Failed to save assignments')
-		} finally {
-			saving = false
-		}
+		saveAssignmentsMutation.mutate(payload)
 	}
 
 	function onFileSelected(event: Event) {
@@ -172,14 +160,8 @@
 		selectedSvg = null
 	}
 
-	async function uploadSvgAndIngest() {
-		if (!selectedSvg && !selectedMediaSvg) {
-			pushError('Select an SVG file first')
-			return
-		}
-
-		uploading = true
-		try {
+	const uploadMutation = createMutation(() => ({
+		mutationFn: async () => {
 			let imageFilename = selectedMediaSvg
 
 			if (selectedSvg) {
@@ -189,40 +171,28 @@
 
 				const formData = new FormData()
 				formData.append('file', selectedSvg)
-				const uploadResponse = await fetch('/api/media', {
-					method: 'POST',
-					body: formData,
-				})
-
-				if (!uploadResponse.ok) {
-					const body = await uploadResponse.json().catch(() => ({}))
-					throw new Error(body.error || 'Failed to upload map SVG')
-				}
-
-				const uploaded = await uploadResponse.json()
+				const uploaded = await apiUpload<{ filename: string }>('/api/media', formData)
 				imageFilename = uploaded.filename
 			}
 
-			const mapUpdateResponse = await fetch(`/api/maps/${data.map.slug}`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ imageFilename }),
-			})
-
-			if (!mapUpdateResponse.ok) {
-				const body = await mapUpdateResponse.json().catch(() => ({}))
-				throw new Error(body.error || 'Failed to link SVG to map')
-			}
-
+			await api('PUT', `/api/maps/${data.map.slug}`, { imageFilename })
+		},
+		onSuccess: async () => {
 			pushSuccess(selectedMediaSvg ? 'Existing SVG linked to map' : 'SVG uploaded and linked to map')
 			selectedSvg = null
 			selectedMediaSvg = ''
-			await runIngest()
-		} catch (err) {
-			pushError(err instanceof Error ? err.message : 'Failed to upload map SVG')
-		} finally {
-			uploading = false
+			await ingestMutation.mutateAsync().catch(() => undefined)
+		},
+	}))
+
+	const uploading = $derived(uploadMutation.isPending)
+
+	function uploadSvgAndIngest() {
+		if (!selectedSvg && !selectedMediaSvg) {
+			pushError('Select an SVG file first')
+			return
 		}
+		uploadMutation.mutate()
 	}
 </script>
 

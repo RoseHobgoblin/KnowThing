@@ -1,10 +1,9 @@
 <script lang="ts">
 	import { tick, type Snippet } from 'svelte'
 	import type { SvelteHTMLElements } from 'svelte/elements'
-	import { cn, getZodValidationError } from '$lib/utils'
+	import { cn } from '$lib/utils'
 	import { useId } from 'bits-ui'
 	import Label from './Label.svelte'
-	import type { ZodType } from 'zod'
 	import Check from 'phosphor-svelte/lib/Check'
 	import Copy from 'phosphor-svelte/lib/Copy'
 	import X from 'phosphor-svelte/lib/X'
@@ -18,8 +17,6 @@
 		labelClass?: string
 		labelExtra?: Snippet
 		containerClass?: string
-		validate?: ZodType
-		validateImmediately?: boolean
 		clearable?: boolean
 		copyable?: boolean
 		onclear?: () => void
@@ -44,8 +41,6 @@
 		oninput,
 		onsubmit,
 		onchange,
-		validate,
-		validateImmediately = false,
 		clearable = false,
 		copyable = false,
 		onclear,
@@ -58,20 +53,14 @@
 
 	id ??= useId('input')
 
-	let hasInteracted = $state(false)
 	let oldValue = $state(value)
 	let passwordVisible = $state(false)
 	let inputRef = $state<HTMLInputElement>()
 	let justCopied = $state(false)
 	let copyTimer: ReturnType<typeof setTimeout> | undefined
 
-	$effect(() => {
-		if (validateImmediately) hasInteracted = true
-	})
-
 	const displayType = $derived(type === 'password' && passwordVisible ? 'text' : type)
-	const errorText = $derived(getZodValidationError(validate, value))
-	const isErrorState = $derived((!!errorText && hasInteracted) || !!externalError)
+	const isErrorState = $derived(!!externalError)
 
 	$effect(() => {
 		if (oldValue !== value) {
@@ -84,12 +73,7 @@
 		if (!readonly) inputRef?.focus()
 	}
 
-	export function getIsValidInput() {
-		return !errorText
-	}
-
 	function onBlur(event_: FocusEvent & { currentTarget: EventTarget & HTMLInputElement }) {
-		hasInteracted = true
 		onblur?.(event_)
 	}
 
@@ -100,7 +84,6 @@
 	}
 
 	async function onInput(event_: Event & { currentTarget: EventTarget & HTMLInputElement }) {
-		hasInteracted = true
 		if (event_.target) {
 			const input = event_.target as HTMLInputElement
 			const cursorPosition = input.selectionStart
@@ -142,7 +125,7 @@
 	}
 </script>
 
-<div class={cn('relative', label ? 'space-y-1' : '', (validate || externalError) && 'pb-5', containerClass)}>
+<div class={cn('relative', label ? 'space-y-1' : '', externalError && 'pb-5', containerClass)}>
 	{#if label}
 		<div class="flex items-center gap-1">
 			<Label for={id} class={labelClass}>
@@ -214,12 +197,9 @@
 		</div>
 	</div>
 
-	{#if (validate || externalError)}
-		<div
-			class="text-error text-xs transition-opacity absolute bottom-0 left-0 pointer-events-none"
-			class:opacity-0={!isErrorState}
-		>
-			{isErrorState ? (externalError || errorText) : ''}
+	{#if externalError}
+		<div class="text-error text-xs absolute bottom-0 left-0 pointer-events-none">
+			{externalError}
 		</div>
 	{/if}
 </div>

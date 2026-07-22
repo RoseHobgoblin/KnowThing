@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { page } from '$app/stores'
 	import { invalidateAll } from '$app/navigation'
+	import { createMutation } from '@tanstack/svelte-query'
 	import { normalizePermissions } from '$lib/permissions.js'
 	import { pushError, pushSuccess } from '$lib/notifications.svelte'
+	import { api } from '$lib/api'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import Button from '$lib/components/ui/Button.svelte'
 	import Input from '$lib/components/ui/Input.svelte'
@@ -39,7 +41,6 @@
 	)
 
 	let showCreateForm = $state(false)
-	let creating = $state(false)
 	let mapName = $state('')
 	let mapSlug = $state('')
 	let timePeriod = $state('')
@@ -58,36 +59,17 @@
 		...data.knowPages.map((page_) => ({ value: page_.slug, label: `${page_.title} (${page_.slug})` })),
 	])
 
-	async function createMap() {
-		if (!mapName.trim()) {
-			pushError('Map name is required')
-			return
-		}
-		if (!mapSlug.trim()) {
-			pushError('Map slug is required')
-			return
-		}
 
-		creating = true
-		try {
-			const response = await fetch('/api/maps', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					name: mapName.trim(),
-					slug: mapSlug.trim(),
-					timePeriod: timePeriod.trim() || null,
-					event: eventName.trim() || null,
-					linkedPageSlug: linkedPageSlug || null,
-					description: description.trim(),
-				}),
-			})
-
-			if (!response.ok) {
-				const body = await response.json().catch(() => ({}))
-				throw new Error(body.error || 'Failed to create map')
-			}
-
+	const createMapMutation = createMutation(() => ({
+		mutationFn: () => api('POST', '/api/maps', {
+			name: mapName.trim(),
+			slug: mapSlug.trim(),
+			timePeriod: timePeriod.trim() || null,
+			event: eventName.trim() || null,
+			linkedPageSlug: linkedPageSlug || null,
+			description: description.trim(),
+		}),
+		onSuccess: async () => {
 			pushSuccess('Map created')
 			showCreateForm = false
 			mapName = ''
@@ -97,11 +79,21 @@
 			linkedPageSlug = ''
 			description = ''
 			await invalidateAll()
-		} catch (err) {
-			pushError(err instanceof Error ? err.message : 'Failed to create map')
-		} finally {
-			creating = false
+		},
+	}))
+
+	const creating = $derived(createMapMutation.isPending)
+
+	function createMap() {
+		if (!mapName.trim()) {
+			pushError('Map name is required')
+			return
 		}
+		if (!mapSlug.trim()) {
+			pushError('Map slug is required')
+			return
+		}
+		createMapMutation.mutate()
 	}
 </script>
 

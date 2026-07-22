@@ -3,8 +3,10 @@
 	import { page } from '$app/stores'
 	import Button from '$lib/components/ui/Button.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
-	import { pushSuccess, pushError } from '$lib/notifications.svelte'
+	import { pushSuccess } from '$lib/notifications.svelte'
 	import { goto } from '$app/navigation'
+	import { createMutation } from '@tanstack/svelte-query'
+	import { api } from '$lib/api'
 	import KnowArticle from './KnowArticle.svelte'
 
 	let { data }: { data: PageData } = $props()
@@ -21,16 +23,19 @@
 		return base
 	})
 
+
+	const deletePageMutation = createMutation(() => ({
+		mutationFn: () => api('DELETE', `/api/pages/${data.slug}`),
+		onSuccess: () => {
+			pushSuccess(`"${data.title}" deleted`)
+			goto('/')
+		},
+	}))
+
 	async function deletePage() {
 		const ok = await confirmDialog.confirm('Delete page', `Delete "${data.title}"? This cannot be undone.`, 'Delete', 'Cancel')
 		if (!ok) return
-		const response = await fetch(`/api/pages/${data.slug}`, { method: 'DELETE' })
-		if (response.ok) {
-			pushSuccess(`"${data.title}" deleted`)
-			goto('/')
-		} else {
-			pushError('Failed to delete page')
-		}
+		deletePageMutation.mutate()
 	}
 </script>
 

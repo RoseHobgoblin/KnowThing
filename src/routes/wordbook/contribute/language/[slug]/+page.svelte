@@ -2,7 +2,9 @@
 	import type { PageData } from './$types.js'
 	import { goto, replaceState } from '$app/navigation'
 	import { page } from '$app/stores'
+	import { createMutation } from '@tanstack/svelte-query'
 	import { pushSuccess } from '$lib/notifications.svelte'
+	import { api } from '$lib/api'
 	import LanguageForm from '$lib/components/wordbook/LanguageForm.svelte'
 	import LanguageAdminPanels from '$lib/components/wordbook/LanguageAdminPanels.svelte'
 	import DimensionEditor from '$lib/components/wordbook/DimensionEditor.svelte'
@@ -42,16 +44,14 @@
 		{ id: 'inflections', label: 'Inflections' },
 	]
 
+	const updateLanguageMutation = createMutation(() => ({
+		meta: { skipGlobalErrorToast: true },
+		mutationFn: (formData: Record<string, unknown>) => api('PUT', `/api/languages/${data.language.slug}`, formData),
+	}))
+
+	// errors rethrow via mutateAsync so LanguageForm can display them
 	async function handleDetailsSubmit(formData: Record<string, unknown>) {
-		const response = await fetch(`/api/languages/${data.language.slug}`, {
-			method: 'PUT',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(formData),
-		})
-		if (!response.ok) {
-			const error = await response.json()
-			throw new Error(error.error || 'Failed to update language')
-		}
+		await updateLanguageMutation.mutateAsync(formData)
 		pushSuccess('Language updated')
 		goto(`/Wordbook/${data.language.slug}`)
 	}

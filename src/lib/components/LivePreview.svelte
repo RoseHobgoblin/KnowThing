@@ -2,13 +2,14 @@
 	import WikiNodeComponent from '$lib/renderer/WikiNode.svelte'
 	import { createKnowContext } from '$lib/renderer/context.js'
 	import { page } from '$app/stores'
+	import { useDebounce } from 'runed'
+	import { api } from '$lib/api'
 	import type { WikiNode } from '$lib/parser/types.js'
 
 	let { content = '', domain = 'know' }: { content: string, domain?: string } = $props()
 
 	let ast = $state<WikiNode | null>(null)
 	let loading = $state(false)
-	let debounceTimer: ReturnType<typeof setTimeout>
 
 	const layoutData = $derived($page.data)
 
@@ -19,37 +20,28 @@
 		calendarDate: layoutData.calendarDate ?? null,
 	})
 
-	// Debounced fetch to /api/render
-	$effect(() => {
-		// Track content changes
-		const _c = content
-		clearTimeout(debounceTimer)
-
-		if (!_c.trim()) {
-			ast = null
-			return () => clearTimeout(debounceTimer)
+	const render = useDebounce(async (source: string) => {
+		try {
+			const data = await api<{ ast: WikiNode }>('POST', '/api/render', { content: source })
+			ast = data.ast
+		} catch {
+			// ignore
+		} finally {
+			loading = false
 		}
+	}, 300)
 
+	// Debounced fetch to /api/render, re-run whenever content changes.
+	$effect(() => {
+		const source = content
+		if (!source.trim()) {
+			render.cancel()
+			ast = null
+			loading = false
+			return
+		}
 		loading = true
-		debounceTimer = setTimeout(async () => {
-			try {
-				const res = await fetch('/api/render', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ content: _c }),
-				})
-				if (res.ok) {
-					const data = await res.json()
-					ast = data.ast
-				}
-			} catch {
-				// ignore
-			} finally {
-				loading = false
-			}
-		}, 300)
-
-		return () => clearTimeout(debounceTimer)
+		render(source)
 	})
 </script>
 

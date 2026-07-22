@@ -8,6 +8,7 @@
 	import { autocompletion, type CompletionContext, type CompletionResult } from '@codemirror/autocomplete'
 	import { bracketMatching } from '@codemirror/language'
 	import { tags } from '@lezer/highlight'
+	import { api } from '$lib/api'
 	import TextB from 'phosphor-svelte/lib/TextB'
 	import TextItalic from 'phosphor-svelte/lib/TextItalic'
 	import LinkSimple from 'phosphor-svelte/lib/LinkSimple'
@@ -135,9 +136,7 @@
 			const query = linkMatch.text.slice(2) // strip [[
 			if (query.length < 1) return null
 			try {
-				const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&scope=pages&limit=8`)
-				if (!res.ok) return null
-				const payload = await res.json()
+				const payload = await api<{ results?: any[] }>('GET', `/api/search?q=${encodeURIComponent(query)}&scope=pages&limit=8`)
 				const results = payload.results ?? []
 				return {
 					from: linkMatch.from + 2,
