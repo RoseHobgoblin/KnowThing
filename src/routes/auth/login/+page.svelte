@@ -1,34 +1,40 @@
 <script lang="ts">
-	import type { ActionData } from './$types.js'
-	import { enhance } from '$app/forms'
+	import type { PageData } from './$types.js'
+	import { superForm } from 'sveltekit-superforms'
+	import { zod4Client } from 'sveltekit-superforms/adapters'
 	import Input from '$lib/components/ui/Input.svelte'
 	import Button from '$lib/components/ui/Button.svelte'
 	import { pushError } from '$lib/notifications.svelte'
+	import { loginSchema } from '$lib/auth/form-schemas.js'
 
-	let { form }: { form: ActionData } = $props()
-	let submitting = $state(false)
+	let { data }: { data: PageData } = $props()
+
+	const { form, errors, message, enhance, submitting } = superForm(data.form, {
+		validators: zod4Client(loginSchema),
+	})
 
 	$effect(() => {
-		if (form?.error) pushError(form.error)
+		if ($message) pushError($message)
 	})
 </script>
 
 <div class="max-w-md mx-auto mt-20 p-6">
 	<h1 class="text-2xl font-bold mb-6">Log in</h1>
 
-	{#if form?.error}
+	{#if $message}
 		<div class="bg-error-bg border border-error-border text-error-text px-4 py-2 mb-4 text-sm">
-			{form.error}
+			{$message}
 		</div>
 	{/if}
 
-	<form method="POST" use:enhance={() => { submitting = true; return async ({ update }) => { submitting = false; await update() } }} class="space-y-4">
+	<form method="POST" use:enhance class="space-y-4">
 		<Input
 			label="Username"
 			name="username"
 			type="text"
 			required
-			value={form?.username ?? ''}
+			bind:value={$form.username}
+			error={$errors.username?.[0]}
 			autocomplete="username"
 		/>
 		<Input
@@ -36,10 +42,12 @@
 			name="password"
 			type="password"
 			required
+			bind:value={$form.password}
+			error={$errors.password?.[0]}
 			autocomplete="current-password"
 		/>
-		<Button type="submit" class="w-full" loading={submitting} disabled={submitting}>
-			{submitting ? 'Logging in...' : 'Log in'}
+		<Button type="submit" class="w-full" loading={$submitting} disabled={$submitting}>
+			{$submitting ? 'Logging in...' : 'Log in'}
 		</Button>
 	</form>
 

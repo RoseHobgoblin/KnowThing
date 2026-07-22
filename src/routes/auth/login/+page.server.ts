@@ -1,44 +1,35 @@
 import { fail, isHttpError, redirect } from '@sveltejs/kit'
-import { z } from 'zod'
+import { superValidate, message, type ErrorStatus } from 'sveltekit-superforms'
+import { zod4 } from 'sveltekit-superforms/adapters'
 import type { Actions, PageServerLoad } from './$types.js'
 import { setSessionCookie } from '$lib/server/auth.js'
 import { loginUser } from '$lib/server/services/auth.js'
-
-const loginSchema = z.object({
-	username: z.string().min(1, 'Username is required'),
-	password: z.string().min(1, 'Password is required'),
-})
+import { loginSchema } from '$lib/auth/form-schemas.js'
 
 export const load: PageServerLoad = async ({ locals }) => {
 	if (locals.user) throw redirect(302, '/')
+	return { form: await superValidate(zod4(loginSchema)) }
 }
 
 export const actions: Actions = {
 	default: async (event) => {
-		const formData = await event.request.formData()
-		const parsed = loginSchema.safeParse({
-			username: formData.get('username')?.toString()?.trim(),
-			password: formData.get('password')?.toString(),
-		})
-		if (!parsed.success) {
-			return fail(400, { error: parsed.error.issues[0].message, username: formData.get('username')?.toString()?.trim() })
-		}
-		const { username, password } = parsed.data
+		const form = await superValidate(event.request, zod4(loginSchema))
+		if (!form.valid) return fail(400, { form })
 
+		let result
 		try {
-			const result = await loginUser({
-				username,
-				password,
+			result = await loginUser({
+				username: form.data.username,
+				password: form.data.password,
 				ip: event.getClientAddress(),
 				redirectTo: event.url.searchParams.get('redirect'),
 			})
-			setSessionCookie(event, result.token)
-			throw redirect(302, result.redirectTo)
-		} catch (err: unknown) {
-			if (isHttpError(err)) {
-				return fail(err.status, { error: err.body?.message ?? 'Request failed', username })
-			}
-			throw err
+		} catch (error: unknown) {
+			if (isHttpError(error)) return message(form, error.body?.message ?? 'Request failed', { status: error.status as ErrorStatus })
+			throw error
 		}
+
+		setSessionCookie(event, result.token)
+		throw redirect(302, result.redirectTo)
 	},
 }
