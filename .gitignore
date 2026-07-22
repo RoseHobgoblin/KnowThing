@@ -8,6 +8,12 @@ node_modules
 /.svelte-kit
 /build
 
+# Workspace package builds (tsc output — exports point at src/, dist is optional).
+# Kept at repo root because ESLint's includeIgnoreFile only reads this file, not
+# the nested packages/*/.gitignore — so this is what keeps built dist/ out of lint.
+packages/*/dist
+*.tsbuildinfo
+
 # Paraglide (generated from messages/ by the Vite plugin)
 /src/lib/paraglide
 

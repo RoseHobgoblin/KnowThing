@@ -47,7 +47,7 @@ describe('validateCalendar', () => {
 		const data = baseData()
 		data.weekdays = []
 		data.months = []
-		const paths = validateCalendar(data).map(i => i.path)
+		const paths = validateCalendar(data).map(index => index.path)
 		expect(paths).toContain('weekdays')
 		expect(paths).toContain('months')
 	})
@@ -78,7 +78,7 @@ describe('validateCalendar', () => {
 			name: 'Leap {{month}}', length: 30, month_type: 'lunisolar_leap',
 			lunisolar: { solar_divisions: 24, moon_index: 9 },
 		})
-		expect(validateCalendar(data).some(i => i.path === 'months.2.lunisolar.moon_index')).toBe(true)
+		expect(validateCalendar(data).some(index => index.path === 'months.2.lunisolar.moon_index')).toBe(true)
 	})
 
 	it('flags an era that ends before it starts', () => {

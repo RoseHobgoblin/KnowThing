@@ -314,12 +314,6 @@ describe('variable day length', () => {
 		day_length_seconds: 72_000,
 	}
 
-	const SHORT_DAY_CONFIG: CalendarConfig = {
-		name: 'Zhevra Calendar',
-		description: 'Uses 20-hour days',
-		primary: false,
-		static_data: SHORT_DAY_DATA,
-	}
 
 	it('date math is unaffected by day_length_seconds', () => {
 		// absoluteDay and dateFromAbsolute work in calendar days, not real time
@@ -400,7 +394,6 @@ describe('lunisolar intercalation', () => {
 	}
 
 	it('regular year has 12 months', () => {
-		const layout = computeYearLayout(LUNISOLAR_DATA, 1)
 		// Year 1 may or may not be a leap year, but check that non-leap years have 12
 		const nonLeapLayouts: number[] = []
 		for (let y = 1; y <= 19; y++) {
