@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { validateBodyPhysics, validateStarPhysics } from './validate-physics.js'
+import { validateBodyPhysics, validateStarPhysics } from './validate.js'
 
 const EARTH_MASS = 5.972e24
 const EARTH_RADIUS = 6.371e6

@@ -1,0 +1,30 @@
+{
+	"name": "tungolcraft",
+	"version": "0.1.0",
+	"description": "A generative astrophysics engine for worldbuilding: derive, validate, and place invented celestial bodies.",
+	"type": "module",
+	"license": "MIT",
+	"keywords": [
+		"astrophysics",
+		"worldbuilding",
+		"orbital-mechanics",
+		"kepler",
+		"procedural-generation",
+		"astronomy"
+	],
+	"sideEffects": false,
+	"exports": {
+		".": {
+			"types": "./src/index.ts",
+			"default": "./src/index.ts"
+		}
+	},
+	"files": [
+		"src",
+		"dist"
+	],
+	"scripts": {
+		"build": "tsc -p tsconfig.json",
+		"test": "vitest run"
+	}
+}

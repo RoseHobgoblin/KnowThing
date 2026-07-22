@@ -3,6 +3,9 @@
 	"private": true,
 	"version": "0.0.1",
 	"type": "module",
+	"workspaces": [
+		"packages/*"
+	],
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
@@ -67,6 +70,7 @@
 		"sharp": "^0.34.5",
 		"svelte-sonner": "^1.1.1",
 		"tailwind-merge": "^3.5.0",
+		"tungolcraft": "*",
 		"zod": "^4.3.6"
 	}
 }

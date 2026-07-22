@@ -11,7 +11,7 @@ import {
 	deriveBodyFields,
 	deriveHabitableZoneAu,
 	deriveSystemType,
-} from './compute.js'
+} from './index.js'
 
 const EARTH_MASS_KG = 5.972e24
 const EARTH_RADIUS_M = 6.371e6
