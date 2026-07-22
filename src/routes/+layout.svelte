@@ -8,6 +8,9 @@
 	import { QueryClient, QueryClientProvider } from '@tanstack/svelte-query'
 	import { browser } from '$app/environment'
 	import MediaLightbox from '$lib/components/MediaLightbox.svelte'
+	import CommandPalette, { type PaletteAction } from '$lib/components/CommandPalette.svelte'
+	import { commandPalette } from '$lib/components/command-palette.svelte'
+	import MagnifyingGlass from 'phosphor-svelte/lib/MagnifyingGlass'
 	import type { LayoutData } from './$types.js'
 	import House from 'phosphor-svelte/lib/House'
 	import PlusCircle from 'phosphor-svelte/lib/PlusCircle'
@@ -45,6 +48,31 @@
 		if (href === '/') return currentPath === '/'
 		return currentPath.startsWith(href)
 	}
+
+	// Command-palette destinations, mirroring the sidebar nav under the same
+	// siteConfig/permission gating.
+	const paletteActions = $derived.by<PaletteAction[]>(() => {
+		const list: PaletteAction[] = [
+			{ label: sc?.navWikiLabel ?? 'Main Page', href: '/', icon: House, keywords: 'home wiki' },
+		]
+		if (sc?.wordbookEnabled !== false) list.push({ label: sc?.navWordbookLabel ?? 'Wordbook', href: '/Wordbook', icon: BookOpen, keywords: 'dictionary lexicon language' })
+		if (sc?.calendarEnabled !== false) list.push({ label: sc?.navCalendarLabel ?? 'Calendar', href: '/calendar', icon: CalendarBlank, keywords: 'date' })
+		list.push(
+			{ label: 'World Maps', href: '/worldmap', icon: MapTrifold, keywords: 'map region country' },
+			{ label: 'Celestial', href: '/celestial', icon: Planet, keywords: 'star system planet space' },
+			{ label: 'Categories', href: '/special/categories', icon: Tag, keywords: 'tags' },
+			{ label: 'Random page', href: '/special/random', icon: Shuffle, keywords: 'surprise' },
+		)
+		if (permissions.isAuthenticated) {
+			if (permissions.canCreatePages) list.push({ label: sc?.navCreateLabel ?? 'New Page', href: '/know/create', icon: PlusCircle, keywords: 'create write add article' })
+			list.push({ label: 'Recent Changes', href: '/dashboard/recent', icon: ClockCounterClockwise, keywords: 'history activity' })
+			if (permissions.canManageSettings) list.push({ label: 'Settings', href: '/dashboard/settings', icon: GearSix, keywords: 'admin configure preferences' })
+			list.push({ label: 'Account', href: '/auth/account', icon: SignOut, keywords: 'profile logout' })
+		} else {
+			list.push({ label: 'Log in', href: '/auth/login', icon: SignIn, keywords: 'sign in' })
+		}
+		return list
+	})
 
 	// Active state is carried by a left accent bar; the transparent border on the
 	// inactive state keeps the label from shifting when it becomes active.
@@ -163,6 +191,16 @@
 
 			<!-- Quick actions (desktop) -->
 			<div class="hidden items-center gap-1 shrink-0 md:flex">
+				<button
+					type="button"
+					onclick={() => commandPalette.show()}
+					title="Command palette (⌘K)"
+					aria-label="Open command palette"
+					class="flex items-center gap-1.5 p-2 text-secondary transition-colors hover:bg-raised hover:text-heading"
+				>
+					<MagnifyingGlass size={18} weight="bold" />
+					<kbd class="hidden rounded-sm border border-border-subtle px-1.5 py-0.5 text-[0.65rem] text-dim lg:inline">⌘K</kbd>
+				</button>
 				<a
 					href="/special/random"
 					title="Random page"
@@ -225,6 +263,9 @@
 		</main>
 	</div>
 </div>
+
+<!-- Inside the provider: the palette uses TanStack Query for its search. -->
+<CommandPalette actions={paletteActions} />
 </Tooltip.Provider>
 </QueryClientProvider>
 
