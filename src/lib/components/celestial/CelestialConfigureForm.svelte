@@ -325,7 +325,7 @@
 		<div class="grid grid-cols-1 gap-4 items-start lg:grid-cols-[1fr_280px]">
 			<div class="space-y-4 min-w-0">
 				{#each visibleSections as section (section.id)}
-					<section class="p-5 space-y-4">
+					<section class="bg-surface p-5 space-y-4">
 						{#if section.intro}
 							<p class="text-xs text-secondary">{section.intro}</p>
 						{/if}
@@ -346,7 +346,7 @@
 				{/each}
 
 				{#if config.overrides && config.overrides.length > 0}
-					<section class="p-5 space-y-4">
+					<section class="bg-surface p-5 space-y-4">
 						<div>
 							<h2 class="text-sm font-semibold text-heading">Overrides</h2>
 							<p class="text-xs text-secondary mt-1">
