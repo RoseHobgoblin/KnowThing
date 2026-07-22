@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { untrack } from 'svelte'
+	import { superForm, defaults } from 'sveltekit-superforms'
+	import { zod4, zod4Client } from 'sveltekit-superforms/adapters'
 	import Input from '$lib/components/ui/Input.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
 	import Label from '$lib/components/ui/Label.svelte'
@@ -7,7 +9,7 @@
 	import StickyActionBar from '$lib/components/editor/StickyActionBar.svelte'
 	import FormNotice from '$lib/components/editor/FormNotice.svelte'
 	import { urlSlugify } from '$lib/utils/slugify.js'
-	import { createDirtyTracker } from '$lib/utils/dirty.svelte'
+	import { languageFormSchema, toLanguagePayload, type LanguageType } from '$lib/wordbook/language-form-schema.js'
 
 	let {
 		initial = {},
@@ -31,6 +33,7 @@
 		onsubmit: (data: Record<string, unknown>) => Promise<void>
 		submitLabel?: string
 	} = $props()
+
 	const initialSnapshot = $state.snapshot(untrack(() => initial))
 	const initialValues = {
 		name: initialSnapshot.name || '',
@@ -42,42 +45,51 @@
 		description: initialSnapshot.description || '',
 		pageSlug: initialSnapshot.pageSlug || '',
 		parentLanguageId: initialSnapshot.parentLanguageId ?? null,
-		languageType: initialSnapshot.languageType || 'language',
+		languageType: (initialSnapshot.languageType || 'language') as LanguageType,
 	}
 
 	const isEditing = !!initialValues.name
 
-	let name = $state(initialValues.name)
-	let slug = $state(initialValues.slug)
-	let nativeName = $state(initialValues.nativeName)
-	let script = $state(initialValues.script)
-	let family = $state(initialValues.family)
-	let color = $state(initialValues.color)
-	let description = $state(initialValues.description)
-	let pageSlug = $state(initialValues.pageSlug)
-	let parentLanguageId = $state<number | null>(initialValues.parentLanguageId)
-	let languageType = $state(initialValues.languageType)
-	let submitting = $state(false)
-	let error = $state('')
+	// Surfaced separately from validation errors so it can drive the FormNotice
+	// and StickyActionBar; set when the parent's save (mutation) rejects.
+	let submitError = $state('')
 
-	const dirty = createDirtyTracker(() => ({
-		name,
-		slug,
-		nativeName,
-		script,
-		family,
-		color,
-		description,
-		pageSlug,
-		parentLanguageId,
-		languageType,
-	}))
-	const isDirty = $derived(dirty.isDirty)
+	const { form, errors, enhance, submitting, isTainted, reset } = superForm(
+		defaults(initialValues, zod4(languageFormSchema)),
+		{
+			SPA: true,
+			validators: zod4Client(languageFormSchema),
+			resetForm: false,
+			async onUpdate({ form: validated }) {
+				if (!validated.valid) return
+				submitError = ''
+				try {
+					await onsubmit(toLanguagePayload(validated.data))
+				} catch (error) {
+					submitError = error instanceof Error ? error.message : 'Failed to save language'
+				}
+			},
+		},
+	)
 
-	let parentLanguageIdStr = $derived(parentLanguageId === null ? '' : String(parentLanguageId))
+	const isDirty = $derived(isTainted())
+
+	function updateSlug() {
+		if (isEditing) return
+		if (!$form.slug || $form.slug === urlSlugify($form.name.slice(0, -1))) {
+			$form.slug = urlSlugify($form.name)
+		}
+	}
+
+	let parentLanguageIdString = $derived($form.parentLanguageId === null ? '' : String($form.parentLanguageId))
 
 	function setParentLanguageId(v: string) {
-		parentLanguageId = v === '' ? null : Number(v)
+		$form.parentLanguageId = v === '' ? null : Number(v)
+	}
+
+	function discard() {
+		submitError = ''
+		reset()
 	}
 
 	const parentLanguageItems = $derived([
@@ -91,82 +103,26 @@
 		{ value: 'historical', label: 'Historical' },
 	]
 
-	const slugify = urlSlugify
-
-	function updateSlug() {
-		if (isEditing) return
-		if (!slug || slug === slugify(name.slice(0, -1))) {
-			slug = slugify(name)
-		}
-	}
-
-	function resetForm() {
-		name = initialValues.name
-		slug = initialValues.slug
-		nativeName = initialValues.nativeName
-		script = initialValues.script
-		family = initialValues.family
-		color = initialValues.color
-		description = initialValues.description
-		pageSlug = initialValues.pageSlug
-		parentLanguageId = initialValues.parentLanguageId
-		languageType = initialValues.languageType
-		error = ''
-	}
-
-	async function handleSubmit(e: SubmitEvent) {
-		e.preventDefault()
-		if (!name.trim()) {
-			error = 'Name is required'
-			return
-		}
-		if (!isEditing && !slug.trim()) {
-			error = 'Slug is required'
-			return
-		}
-
-		error = ''
-		submitting = true
-		try {
-			await onsubmit({
-				name: name.trim(),
-				slug: slug.trim(),
-				nativeName: nativeName.trim() || null,
-				script: script.trim() || 'Latin',
-				family: family.trim() || null,
-				color: color || 'var(--color-accent)',
-				description: description.trim() || null,
-				pageSlug: pageSlug.trim() || null,
-				parentLanguageId: parentLanguageId || null,
-				languageType,
-			})
-		} catch (error_: any) {
-			error = error_.message || 'Failed to save language'
-		} finally {
-			submitting = false
-		}
-	}
-
 	const textareaClass = 'flex w-full min-w-0 px-3 py-2 text-sm text-body bg-page outline-none transition-colors placeholder:text-dim focus:ring-2 focus:ring-accent disabled:pointer-events-none disabled:opacity-50'
 </script>
 
-<form onsubmit={handleSubmit} class="space-y-4">
-	<UnsavedChangesGuard when={isDirty && !submitting} />
+<form method="POST" use:enhance class="space-y-4">
+	<UnsavedChangesGuard when={isDirty && !$submitting} />
 
-	{#if error}
-		<FormNotice title="Language changes were not saved" message={error} />
+	{#if submitError}
+		<FormNotice title="Language changes were not saved" message={submitError} />
 	{/if}
 
 	<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-		<Input label="Name" bind:value={name} oninput={updateSlug} required placeholder="Oncheran" error={!name.trim() && error ? 'Name is required' : ''} />
+		<Input label="Name" bind:value={$form.name} oninput={updateSlug} required placeholder="Oncheran" error={$errors.name?.[0]} />
 		{#if !isEditing}
-			<Input label="Slug" bind:value={slug} required placeholder="oncheran" error={!slug.trim() && error ? 'Slug is required' : ''} />
+			<Input label="Slug" bind:value={$form.slug} required placeholder="oncheran" error={$errors.slug?.[0]} />
 		{/if}
-		<Input label="Native Name" bind:value={nativeName} placeholder="Ontsserako" />
+		<Input label="Native Name" bind:value={$form.nativeName} placeholder="Ontsserako" />
 		<Select
 			label="Parent Language"
 			type="single"
-			value={parentLanguageIdStr}
+			value={parentLanguageIdString}
 			onValueChange={setParentLanguageId}
 			items={parentLanguageItems}
 			placeholder="None (root language)"
@@ -174,48 +130,49 @@
 		<Select
 			label="Type"
 			type="single"
-			bind:value={languageType}
+			bind:value={$form.languageType}
 			items={languageTypeItems}
 			placeholder="Language"
 		/>
 		<div>
 			<Label>
 				Family
-				{#if languageType === 'proto'}
+				{#if $form.languageType === 'proto'}
 					<span class="text-error">*</span>
 				{:else}
 					<span class="text-xs text-secondary">(inherits from parent)</span>
 				{/if}
 			</Label>
 			<Input
-				bind:value={family}
-				required={languageType === 'proto'}
-				placeholder={languageType === 'proto' ? 'e.g. Mirish' : 'Leave blank to inherit'}
+				bind:value={$form.family}
+				required={$form.languageType === 'proto'}
+				placeholder={$form.languageType === 'proto' ? 'e.g. Mirish' : 'Leave blank to inherit'}
+				error={$errors.family?.[0]}
 			/>
 		</div>
-		<Input label="Script" bind:value={script} placeholder="Latin" />
+		<Input label="Script" bind:value={$form.script} placeholder="Latin" />
 		<div>
 			<Label>Accent Color</Label>
 			<div class="flex gap-2 items-center mt-1">
-				<input id="color" type="color" bind:value={color} class="size-10 cursor-pointer" />
-				<Input bind:value={color} placeholder="#d97706" />
+				<input id="color" type="color" bind:value={$form.color} class="size-10 cursor-pointer" />
+				<Input bind:value={$form.color} placeholder="#d97706" />
 			</div>
 		</div>
 	</div>
 
-	<Input label="Wiki Article" bind:value={pageSlug} placeholder="oncheran_language" />
+	<Input label="Wiki Article" bind:value={$form.pageSlug} placeholder="oncheran_language" />
 
 	<div>
 		<Label for="desc">Description</Label>
-		<textarea id="desc" bind:value={description} rows={3} class={textareaClass} placeholder="A brief description of this language..."></textarea>
+		<textarea id="desc" bind:value={$form.description} rows={3} class={textareaClass} placeholder="A brief description of this language..."></textarea>
 	</div>
 
 	<StickyActionBar
 		dirty={isDirty}
-		saving={submitting}
-		error={error}
+		saving={$submitting}
+		error={submitError}
 		saveType="submit"
-		ondiscard={resetForm}
+		ondiscard={discard}
 		saveLabel={submitLabel}
 	/>
 </form>
