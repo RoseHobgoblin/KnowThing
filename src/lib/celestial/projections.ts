@@ -10,7 +10,7 @@
  */
 
 import type { FieldMap } from '$lib/infoboxes/types.js'
-import type { BodyModel, StarModel } from './models.js'
+import type { BodyModel, StarModel } from 'tungolcraft'
 import {
 	formatMass, formatRadius, formatDensity, formatSurfaceGravity, formatEscapeVelocity,
 	formatPeriod, formatAuAsKm, formatAu, formatOrbitalVelocity, formatTemperatureK,

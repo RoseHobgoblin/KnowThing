@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { BodyModel, StarModel } from './models.js'
+	import type { BodyModel, StarModel } from 'tungolcraft'
 	import { celestialFactSections } from './projections.js'
 	import InlineMarkup from '$lib/renderer/InlineMarkup.svelte'
 

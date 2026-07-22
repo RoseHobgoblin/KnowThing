@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { BodyModel, StarModel } from './models.js'
+	import type { BodyModel, StarModel } from 'tungolcraft'
 
 	type ContextBody = { id?: number, name: string, slug: string, semiMajorAxisAu?: number | null, bodyType?: string | null }
 

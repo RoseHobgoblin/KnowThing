@@ -4,7 +4,7 @@ import type { MapBody } from '$lib/celestial/SystemMap.svelte'
 import { hasRole } from '$lib/server/auth.js'
 import { resolveCelestialModel } from '$lib/server/structured-data.js'
 import { deriveHabitableZoneAu } from 'tungolcraft'
-import type { BodyModel, StarModel } from '$lib/celestial/models.js'
+import type { BodyModel, StarModel } from 'tungolcraft'
 import { findNearestStarAncestor } from '$lib/server/celestial/hierarchy.js'
 import {
 	findCelestialBySlugOrName,

@@ -1,15 +1,15 @@
 /**
- * Typed celestial view models.
+ * Typed celestial models — the engine's whole-body representation.
  *
- * These are the canonical, presentation-independent representation of a star or
- * planet: raw SI numbers and structured relationships, NOT formatted strings and
- * NOT infobox field names. Every consumer (infobox, stat grid, JSON API, map)
- * is a *projection* of one of these models — the model is never shaped for any
- * single consumer. See `projections.ts` for the projections.
+ * A model is the canonical, presentation-independent view of a star or planet:
+ * raw SI numbers and structured relationships, never formatted strings and
+ * never shaped for one particular consumer. `deriveBody`/`deriveStar` take the
+ * data a worldbuilder actually asserted (plus the masses of whatever a body
+ * orbits) and fill in everything derivable with the formulas in `physics`.
  *
- * Derivation is pure: `deriveBody`/`deriveStar` take plain data (a DB row plus
- * already-resolved relations) and compute everything with the formulas in
- * `compute.js`. No DB access, no formatting — fully unit-testable.
+ * Pure: no I/O, no formatting. Feed a model to your own presentation layer.
+ * `name`/`slug` are opaque identity, `extra` is arbitrary caller-owned metadata
+ * (it overrides derived values downstream) — none of it affects the physics.
  */
 
 import {
@@ -22,15 +22,15 @@ import {
 	computeApastron,
 	computeHabitableZoneAu,
 	computeLuminosity,
-} from 'tungolcraft'
+} from './physics.js'
 
-/** A link to another celestial entity. */
+/** A reference to another celestial entity. */
 export interface Ref {
 	name: string
 	slug: string
 }
 
-/** Raw stored physical/orbital columns shared by stars and planetary bodies. */
+/** Raw physical/orbital inputs shared by stars and planetary bodies. */
 export interface CelestialRowLike {
 	name: string
 	slug: string
@@ -73,7 +73,7 @@ export interface StarRow extends CelestialRowLike {
 	angularDiameter?: string | null
 }
 
-/** Relations resolved by the caller (the DB layer), passed into the pure derive. */
+/** Relations resolved by the caller (masses drive the period derivation). */
 export interface BodyRelations {
 	star?: (Ref & { massKg: number | null }) | null
 	parentBody?: (Ref & { massKg: number | null }) | null
@@ -96,7 +96,7 @@ export interface StarRelations {
 	satelliteCount?: number
 }
 
-/** Extra/override overflow, string-valued (as stored by the configure forms). */
+/** Arbitrary caller-owned metadata overflow, string-valued. */
 export type ExtraMap = Record<string, string>
 
 export interface BodyModel {
@@ -205,7 +205,7 @@ export interface StarModel {
 	extra: ExtraMap
 }
 
-/** Coerce a stored jsonb `extra` blob to a string-valued map (skipping empties). */
+/** Coerce a loose `extra` blob to a string-valued map (skipping empties). */
 function toExtraMap(extra: unknown): ExtraMap {
 	const out: ExtraMap = {}
 	if (!extra || typeof extra !== 'object') return out

@@ -7,7 +7,7 @@ import { deriveSystemType } from 'tungolcraft'
 import {
 	deriveBody, deriveStar,
 	type BodyModel, type StarModel, type BodyRow, type StarRow,
-} from '$lib/celestial/models.js'
+} from 'tungolcraft'
 import { bodyInfoboxFields, starInfoboxFields } from '$lib/celestial/projections.js'
 import { CELESTIAL_TREE_CTE, findNearestStarAncestor } from '$lib/server/celestial/hierarchy.js'
 import { getSystemMapEntities } from '$lib/server/services/celestial-registry.js'

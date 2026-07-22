@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { BodyModel, StarModel } from './models.js'
+	import type { BodyModel, StarModel } from 'tungolcraft'
 	import { celestialStatTiles } from './projections.js'
 
 	let { model }: { model: BodyModel | StarModel } = $props()
