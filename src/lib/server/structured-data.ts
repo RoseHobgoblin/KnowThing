@@ -3,7 +3,7 @@ import { celestialBodies, phonemes, languages, languageDialects, lexicon, defini
 import { eq, and, or, sql, asc, inArray } from 'drizzle-orm'
 import type { FieldMap } from '$lib/infoboxes/types.js'
 import type { MapBody } from '$lib/celestial/SystemMap.svelte'
-import { deriveSystemType } from '$lib/celestial/compute.js'
+import { deriveSystemType } from 'tungolcraft'
 import {
 	deriveBody, deriveStar,
 	type BodyModel, type StarModel, type BodyRow, type StarRow,

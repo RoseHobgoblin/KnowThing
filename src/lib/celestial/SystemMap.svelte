@@ -21,7 +21,7 @@
 
 <script lang="ts">
 	import { resolveColor, colorWithAlpha } from './colors.js'
-	import { meanAnomaly, solveKeplerE } from './orbit.js'
+	import { meanAnomaly, solveKeplerE } from 'tungolcraft'
 	import type { ScaleMode, LabelMode, TrailMode } from './map-settings.js'
 
 	type EntityKey = `star:${number}` | `body:${number}`

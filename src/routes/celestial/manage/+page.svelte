@@ -10,7 +10,7 @@
 	import { urlSlugify } from '$lib/utils/slugify.js'
 	import { celestialPresets } from '$lib/celestial/presets.js'
 	import type { CelestialPreset } from '$lib/celestial/presets.js'
-	import { deriveSystemType } from '$lib/celestial/compute.js'
+	import { deriveSystemType } from 'tungolcraft'
 	import { celestialRegistryBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import SunDim from 'phosphor-svelte/lib/SunDim'
 	import StarIcon from 'phosphor-svelte/lib/Star'

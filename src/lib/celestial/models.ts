@@ -22,7 +22,7 @@ import {
 	computeApastron,
 	computeHabitableZoneAu,
 	computeLuminosity,
-} from './compute.js'
+} from 'tungolcraft'
 
 /** A link to another celestial entity. */
 export interface Ref {

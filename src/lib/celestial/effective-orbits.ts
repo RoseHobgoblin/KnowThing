@@ -14,7 +14,7 @@
  * Pure and DB-free: callers (the registry map queries) pass the already-loaded
  * rows for one system and get the same rows back with periods filled in.
  */
-import { computeOrbitalPeriodDays } from './compute.js'
+import { computeOrbitalPeriodDays } from 'tungolcraft'
 
 export interface EffectiveOrbitStar {
 	id: number

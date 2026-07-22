@@ -15,7 +15,7 @@ import {
 	formatMass, formatRadius, formatDensity, formatSurfaceGravity, formatEscapeVelocity,
 	formatPeriod, formatAuAsKm, formatAu, formatOrbitalVelocity, formatTemperatureK,
 	formatLuminosity,
-} from './compute.js'
+} from 'tungolcraft'
 
 /** Set a key only if the value is a non-empty string. */
 function setText(map: FieldMap, key: string, value: string | null | undefined): void {

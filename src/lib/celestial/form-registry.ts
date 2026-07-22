@@ -15,8 +15,8 @@ import {
 	formatMass,
 	formatRadius,
 	formatTemperatureK,
-} from './compute.js'
-import { validateBodyPhysics, validateStarPhysics, type PhysicsWarning } from './validate-physics.js'
+} from 'tungolcraft'
+import { validateBodyPhysics, validateStarPhysics, type PhysicsWarning } from 'tungolcraft'
 import { spectralColor } from './colors.js'
 
 /**

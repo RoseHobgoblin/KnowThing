@@ -3,7 +3,7 @@
 	import type { MapBody } from './SystemMap.svelte'
 	import type { CalendarConfig } from '$lib/calendar/types.js'
 	import { resolveColor } from './colors.js'
-	import { deriveSystemType } from './compute.js'
+	import { deriveSystemType } from 'tungolcraft'
 	import { resolveDisplay, dateFromAbsolute } from '$lib/calendar/date-math.js'
 	import Select from '$lib/components/ui/Select.svelte'
 	import CalendarWidget from '$lib/calendar/CalendarWidget.svelte'

@@ -3,7 +3,7 @@ import type { Cookies } from '@sveltejs/kit'
 import type { MapBody } from '$lib/celestial/SystemMap.svelte'
 import { hasRole } from '$lib/server/auth.js'
 import { resolveCelestialModel } from '$lib/server/structured-data.js'
-import { deriveHabitableZoneAu } from '$lib/celestial/compute.js'
+import { deriveHabitableZoneAu } from 'tungolcraft'
 import type { BodyModel, StarModel } from '$lib/celestial/models.js'
 import { findNearestStarAncestor } from '$lib/server/celestial/hierarchy.js'
 import {

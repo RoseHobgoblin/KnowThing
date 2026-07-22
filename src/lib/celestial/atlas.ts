@@ -5,7 +5,7 @@
  * testable and free of the reactivity lint rules — it operates on plain data
  * loaded from the registry queries.
  */
-import { deriveSystemType } from './compute.js'
+import { deriveSystemType } from 'tungolcraft'
 import { spectralColor } from './colors.js'
 
 export interface AtlasSystem {
