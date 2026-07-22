@@ -1,38 +1,44 @@
 /**
- * Closed-form astrophysical formulas. Pure functions, SI units in and out.
- * Given a body's raw numbers (mass, radius, semi-major axis, …), derive the
- * rest — density, gravity, escape velocity, orbital mechanics, Roche/Hill
- * limits, habitable zone, luminosity.
+ * Closed-form astrophysical formulas. Pure functions with branded SI units in
+ * and out (see `units`): given a body's raw quantities (mass, radius, semi-major
+ * axis, …), derive the rest — density, gravity, escape velocity, orbital
+ * mechanics, Roche/Hill limits, habitable zone, luminosity. The compiler rejects
+ * a wrong-unit argument; wrap raw numbers at the boundary with `kg`, `m`, `au`, …
  */
 
 import { G, AU_M, STEFAN_BOLTZMANN, SOLAR_LUMINOSITY } from './constants.js'
+import { m, kelvin, watts } from './units.js'
+import type {
+	Kilograms, Metres, AstronomicalUnits, Days, Kelvin, Watts,
+	MetresPerSecond, MetresPerSecondSquared, KgPerCubicMetre,
+} from './units.js'
 
 /** density = 3M / (4πr³) → kg/m³ */
-export function computeDensity(massKg: number, radiusM: number): number {
-	return massKg / ((4 / 3) * Math.PI * radiusM ** 3)
+export function computeDensity(massKg: Kilograms, radiusM: Metres): KgPerCubicMetre {
+	return (massKg / ((4 / 3) * Math.PI * radiusM ** 3)) as KgPerCubicMetre
 }
 
 /** surface gravity = GM/r² → m/s² */
-export function computeSurfaceGravity(massKg: number, radiusM: number): number {
-	return (G * massKg) / radiusM ** 2
+export function computeSurfaceGravity(massKg: Kilograms, radiusM: Metres): MetresPerSecondSquared {
+	return ((G * massKg) / radiusM ** 2) as MetresPerSecondSquared
 }
 
 /** escape velocity = √(2GM/r) → m/s */
-export function computeEscapeVelocity(massKg: number, radiusM: number): number {
-	return Math.sqrt((2 * G * massKg) / radiusM)
+export function computeEscapeVelocity(massKg: Kilograms, radiusM: Metres): MetresPerSecond {
+	return Math.sqrt((2 * G * massKg) / radiusM) as MetresPerSecond
 }
 
 /** orbital period via Kepler's third law: T = 2π√(a³/GM) → days */
-export function computeOrbitalPeriodDays(semiMajorAxisAu: number, parentMassKg: number): number {
+export function computeOrbitalPeriodDays(semiMajorAxisAu: AstronomicalUnits, parentMassKg: Kilograms): Days {
 	const a = semiMajorAxisAu * AU_M
-	const seconds = 2 * Math.PI * Math.sqrt(a ** 3 / (G * parentMassKg))
-	return seconds / 86_400
+	const secs = 2 * Math.PI * Math.sqrt(a ** 3 / (G * parentMassKg))
+	return (secs / 86_400) as Days
 }
 
 /** mean orbital velocity: v = 2πa / T → m/s */
-export function computeOrbitalVelocity(semiMajorAxisAu: number, orbitalPeriodDays: number): number {
+export function computeOrbitalVelocity(semiMajorAxisAu: AstronomicalUnits, orbitalPeriodDays: Days): MetresPerSecond {
 	const a = semiMajorAxisAu * AU_M
-	return (2 * Math.PI * a) / (orbitalPeriodDays * 86_400)
+	return ((2 * Math.PI * a) / (orbitalPeriodDays * 86_400)) as MetresPerSecond
 }
 
 /**
@@ -41,56 +47,57 @@ export function computeOrbitalVelocity(semiMajorAxisAu: number, orbitalPeriodDay
  * smallest (and containment tightest) at closest approach. A null or
  * out-of-range eccentricity is treated as a circular orbit.
  */
-export function computeHillSphereAu(semiMajorAxisAu: number, bodyMassKg: number, parentMassKg: number, eccentricity: number | null = null): number {
+export function computeHillSphereAu(semiMajorAxisAu: AstronomicalUnits, bodyMassKg: Kilograms, parentMassKg: Kilograms, eccentricity: number | null = null): AstronomicalUnits {
 	const ecc = eccentricity != null && eccentricity > 0 && eccentricity < 1 ? eccentricity : 0
-	return semiMajorAxisAu * (1 - ecc) * Math.cbrt(bodyMassKg / (3 * parentMassKg))
+	return (semiMajorAxisAu * (1 - ecc) * Math.cbrt(bodyMassKg / (3 * parentMassKg))) as AstronomicalUnits
 }
 
 /** Roche limit (rigid body): d ≈ R_parent × (2 × ρ_parent / ρ_sat)^(1/3) → metres */
-export function computeRocheLimitM(parentRadiusM: number, parentDensity: number, bodyDensity: number): number {
-	return parentRadiusM * Math.cbrt(2 * parentDensity / bodyDensity)
+export function computeRocheLimitM(parentRadiusM: Metres, parentDensity: KgPerCubicMetre, bodyDensity: KgPerCubicMetre): Metres {
+	return (parentRadiusM * Math.cbrt(2 * parentDensity / bodyDensity)) as Metres
 }
 
 /** habitable zone inner/outer bounds (simple luminosity model): √(L/1.1) to √(L/0.53) → AU */
-export function computeHabitableZoneAu(luminosityW: number): { inner: number, outer: number } {
+export function computeHabitableZoneAu(luminosityW: Watts): { inner: AstronomicalUnits, outer: AstronomicalUnits } {
 	const lSolar = luminosityW / SOLAR_LUMINOSITY
 	return {
-		inner: Math.sqrt(lSolar / 1.1),
-		outer: Math.sqrt(lSolar / 0.53),
+		inner: Math.sqrt(lSolar / 1.1) as AstronomicalUnits,
+		outer: Math.sqrt(lSolar / 0.53) as AstronomicalUnits,
 	}
 }
 
 /**
  * Habitable-zone bounds from a star's raw luminosity inputs — explicit
- * luminosity, else Stefan-Boltzmann from radius + temperature. Null if neither
- * luminosity nor radius+temperature is available.
+ * luminosity, else Stefan-Boltzmann from radius + temperature. A loose-number
+ * convenience edge (nullable plain numbers in); brands internally. Null if
+ * neither luminosity nor radius+temperature is available.
  */
 export function deriveHabitableZoneAu(
 	luminosityW: number | null,
 	radiusM: number | null,
 	temperatureK: number | null,
-): { inner: number, outer: number } | null {
+): { inner: AstronomicalUnits, outer: AstronomicalUnits } | null {
 	const lum = luminosityW != null && luminosityW > 0
 		? luminosityW
 		: (radiusM != null && temperatureK != null && radiusM > 0 && temperatureK > 0
-			? computeLuminosity(radiusM, temperatureK)
+			? computeLuminosity(m(radiusM), kelvin(temperatureK))
 			: null)
-	return lum != null && lum > 0 ? computeHabitableZoneAu(lum) : null
+	return lum != null && lum > 0 ? computeHabitableZoneAu(watts(lum)) : null
 }
 
 /** periastron = a(1-e) in AU */
-export function computePeriastron(semiMajorAxisAu: number, eccentricity: number): number {
-	return semiMajorAxisAu * (1 - eccentricity)
+export function computePeriastron(semiMajorAxisAu: AstronomicalUnits, eccentricity: number): AstronomicalUnits {
+	return (semiMajorAxisAu * (1 - eccentricity)) as AstronomicalUnits
 }
 
 /** apastron = a(1+e) in AU */
-export function computeApastron(semiMajorAxisAu: number, eccentricity: number): number {
-	return semiMajorAxisAu * (1 + eccentricity)
+export function computeApastron(semiMajorAxisAu: AstronomicalUnits, eccentricity: number): AstronomicalUnits {
+	return (semiMajorAxisAu * (1 + eccentricity)) as AstronomicalUnits
 }
 
 /** luminosity from radius + temperature via Stefan-Boltzmann: L = 4πR²σT⁴ → W */
-export function computeLuminosity(radiusM: number, temperatureK: number): number {
-	return 4 * Math.PI * radiusM ** 2 * STEFAN_BOLTZMANN * temperatureK ** 4
+export function computeLuminosity(radiusM: Metres, temperatureK: Kelvin): Watts {
+	return (4 * Math.PI * radiusM ** 2 * STEFAN_BOLTZMANN * temperatureK ** 4) as Watts
 }
 
 // ---- System type ----

@@ -11,6 +11,7 @@ import {
 	deriveBodyFields,
 	deriveHabitableZoneAu,
 	deriveSystemType,
+	kg, m, au, kelvin, watts,
 } from './index.js'
 
 const EARTH_MASS_KG = 5.972e24
@@ -20,38 +21,38 @@ const SOLAR_LUMINOSITY_W = 3.828e26
 
 describe('physical formulas at Earth reference values', () => {
 	it('density ≈ 5514 kg/m³', () => {
-		expect(computeDensity(EARTH_MASS_KG, EARTH_RADIUS_M)).toBeCloseTo(5514, -2)
+		expect(computeDensity(kg(EARTH_MASS_KG), m(EARTH_RADIUS_M))).toBeCloseTo(5514, -2)
 	})
 
 	it('surface gravity ≈ 9.8 m/s²', () => {
-		expect(computeSurfaceGravity(EARTH_MASS_KG, EARTH_RADIUS_M)).toBeCloseTo(9.82, 1)
+		expect(computeSurfaceGravity(kg(EARTH_MASS_KG), m(EARTH_RADIUS_M))).toBeCloseTo(9.82, 1)
 	})
 
 	it('escape velocity ≈ 11.19 km/s', () => {
-		expect(computeEscapeVelocity(EARTH_MASS_KG, EARTH_RADIUS_M) / 1000).toBeCloseTo(11.19, 1)
+		expect(computeEscapeVelocity(kg(EARTH_MASS_KG), m(EARTH_RADIUS_M)) / 1000).toBeCloseTo(11.19, 1)
 	})
 })
 
 describe('computeOrbitalPeriodDays', () => {
 	it('Earth around the Sun ≈ 365 days', () => {
-		expect(computeOrbitalPeriodDays(1, SOLAR_MASS_KG)).toBeCloseTo(365, 0)
+		expect(computeOrbitalPeriodDays(au(1), kg(SOLAR_MASS_KG))).toBeCloseTo(365, 0)
 	})
 
 	it('scales as a^(3/2) (Kepler III)', () => {
-		const oneAu = computeOrbitalPeriodDays(1, SOLAR_MASS_KG)
-		const fourAu = computeOrbitalPeriodDays(4, SOLAR_MASS_KG)
+		const oneAu = computeOrbitalPeriodDays(au(1), kg(SOLAR_MASS_KG))
+		const fourAu = computeOrbitalPeriodDays(au(4), kg(SOLAR_MASS_KG))
 		expect(fourAu / oneAu).toBeCloseTo(8, 3) // 4^1.5 = 8
 	})
 })
 
 describe('computeLuminosity + habitable zone', () => {
 	it('Sun radius/temp yields ~1 solar luminosity', () => {
-		const l = computeLuminosity(6.9634e8, 5778)
+		const l = computeLuminosity(m(6.9634e8), kelvin(5778))
 		expect(l / SOLAR_LUMINOSITY_W).toBeCloseTo(1, 1)
 	})
 
 	it('habitable zone brackets 1 AU for a solar-luminosity star', () => {
-		const hz = computeHabitableZoneAu(SOLAR_LUMINOSITY_W)
+		const hz = computeHabitableZoneAu(watts(SOLAR_LUMINOSITY_W))
 		expect(hz.inner).toBeLessThan(1)
 		expect(hz.outer).toBeGreaterThan(1)
 	})
@@ -59,16 +60,16 @@ describe('computeLuminosity + habitable zone', () => {
 
 describe('computeHillSphereAu', () => {
 	it('applies the (1 − e) periapsis factor for eccentric orbits', () => {
-		const circular = computeHillSphereAu(1, EARTH_MASS_KG, SOLAR_MASS_KG)
-		const eccentric = computeHillSphereAu(1, EARTH_MASS_KG, SOLAR_MASS_KG, 0.25)
+		const circular = computeHillSphereAu(au(1), kg(EARTH_MASS_KG), kg(SOLAR_MASS_KG))
+		const eccentric = computeHillSphereAu(au(1), kg(EARTH_MASS_KG), kg(SOLAR_MASS_KG), 0.25)
 		expect(eccentric).toBeCloseTo(circular * 0.75, 10)
 	})
 
 	it('treats a null/omitted/out-of-range eccentricity as circular', () => {
-		const circular = computeHillSphereAu(1, EARTH_MASS_KG, SOLAR_MASS_KG)
-		expect(computeHillSphereAu(1, EARTH_MASS_KG, SOLAR_MASS_KG, null)).toBe(circular)
-		expect(computeHillSphereAu(1, EARTH_MASS_KG, SOLAR_MASS_KG, 1)).toBe(circular)
-		expect(computeHillSphereAu(1, EARTH_MASS_KG, SOLAR_MASS_KG, -0.3)).toBe(circular)
+		const circular = computeHillSphereAu(au(1), kg(EARTH_MASS_KG), kg(SOLAR_MASS_KG))
+		expect(computeHillSphereAu(au(1), kg(EARTH_MASS_KG), kg(SOLAR_MASS_KG), null)).toBe(circular)
+		expect(computeHillSphereAu(au(1), kg(EARTH_MASS_KG), kg(SOLAR_MASS_KG), 1)).toBe(circular)
+		expect(computeHillSphereAu(au(1), kg(EARTH_MASS_KG), kg(SOLAR_MASS_KG), -0.3)).toBe(circular)
 	})
 })
 

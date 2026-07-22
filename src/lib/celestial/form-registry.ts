@@ -15,6 +15,7 @@ import {
 	formatMass,
 	formatRadius,
 	formatTemperatureK,
+	au, kg, m, kelvin, watts,
 } from 'tungolcraft'
 import { validateBodyPhysics, validateStarPhysics, type PhysicsWarning } from 'tungolcraft'
 import { spectralColor } from './colors.js'
@@ -429,7 +430,7 @@ function starDerivedLuminosityW(ctx: FieldContext): number | null {
 	const radiusM = num(ctx, 'radiusM')
 	const temperatureK = num(ctx, 'temperatureK')
 	return radiusM != null && temperatureK != null && radiusM > 0 && temperatureK > 0
-		? computeLuminosity(radiusM, temperatureK)
+		? computeLuminosity(m(radiusM), kelvin(temperatureK))
 		: null
 }
 
@@ -467,7 +468,7 @@ function starEffectivePeriodDays(ctx: FieldContext): number | null {
 	const semiMajorAxisAu = num(ctx, 'semiMajorAxisAu')
 	const primaryMassKg = starPrimaryMassKg(ctx)
 	return semiMajorAxisAu != null && semiMajorAxisAu > 0 && primaryMassKg != null
-		? computeOrbitalPeriodDays(semiMajorAxisAu, primaryMassKg)
+		? computeOrbitalPeriodDays(au(semiMajorAxisAu), kg(primaryMassKg))
 		: null
 }
 
@@ -614,7 +615,7 @@ const starConfig: CelestialFormConfig = {
 			compute: (ctx) => {
 				const luminosityW = starEffectiveLuminosityW(ctx)
 				if (luminosityW == null) return null
-				const hz = computeHabitableZoneAu(luminosityW)
+				const hz = computeHabitableZoneAu(watts(luminosityW))
 				return `${hz.inner.toFixed(2)} – ${hz.outer.toFixed(2)} AU`
 			},
 		},
@@ -730,7 +731,7 @@ function bodyParentHillAu(ctx: FieldContext): number | null {
 	const parent = ctx.siblings.find(sibling => String(sibling.id) === parentId)
 	const primaryMassKg = bodyPrimaryMassKg(ctx)
 	if (!parent?.massKg || !parent?.semiMajorAxisAu || !primaryMassKg) return null
-	return computeHillSphereAu(parent.semiMajorAxisAu, parent.massKg, primaryMassKg, parent.eccentricity ?? null)
+	return computeHillSphereAu(au(parent.semiMajorAxisAu), kg(parent.massKg), kg(primaryMassKg), parent.eccentricity ?? null)
 }
 
 /** Does this sibling orbit the same primary (star or system barycenter) as the draft? */

@@ -1,7 +1,8 @@
 /**
  * Composite "partial in → complete out" derivations: the convenience layer that
- * takes whatever a worldbuilder actually entered and fills in the rest as
- * ready-to-display strings. Bridges `physics` (numbers) and `format` (strings).
+ * takes whatever a worldbuilder actually entered (loose numbers) and fills in
+ * the rest as ready-to-display strings. Brands raw inputs at the boundary before
+ * calling the physics engine, then bridges `physics` (numbers) and `format`.
  */
 
 import {
@@ -13,6 +14,7 @@ import {
 	formatDensity, formatSurfaceGravity, formatEscapeVelocity,
 	formatOrbitalVelocity, formatHillSphere, formatAu, formatPeriod, formatAuAsKm,
 } from './format.js'
+import { kg, m, au, days } from './units.js'
 
 export interface BodyDerivedFields {
 	density: string | null
@@ -25,9 +27,9 @@ export function deriveBodyFields(massKg: number | null, radiusM: number | null):
 		return { density: null, surfaceGravity: null, escapeVelocity: null }
 	}
 	return {
-		density: formatDensity(computeDensity(massKg, radiusM)),
-		surfaceGravity: formatSurfaceGravity(computeSurfaceGravity(massKg, radiusM)),
-		escapeVelocity: formatEscapeVelocity(computeEscapeVelocity(massKg, radiusM)),
+		density: formatDensity(computeDensity(kg(massKg), m(radiusM))),
+		surfaceGravity: formatSurfaceGravity(computeSurfaceGravity(kg(massKg), m(radiusM))),
+		escapeVelocity: formatEscapeVelocity(computeEscapeVelocity(kg(massKg), m(radiusM))),
 	}
 }
 
@@ -48,16 +50,16 @@ export function deriveBodyOrbitalFields(
 
 	// Compute orbital period from Kepler's third law if not provided
 	if (period == null && semiMajorAxisAu != null && parentMassKg != null && semiMajorAxisAu > 0 && parentMassKg > 0) {
-		period = computeOrbitalPeriodDays(semiMajorAxisAu, parentMassKg)
+		period = computeOrbitalPeriodDays(au(semiMajorAxisAu), kg(parentMassKg))
 	}
 
 	const orbitalVelocity = semiMajorAxisAu != null && period != null && period > 0
-		? formatOrbitalVelocity(computeOrbitalVelocity(semiMajorAxisAu, period))
+		? formatOrbitalVelocity(computeOrbitalVelocity(au(semiMajorAxisAu), days(period)))
 		: null
 
 	const hillSphere = semiMajorAxisAu != null && bodyMassKg != null && parentMassKg != null
 		&& semiMajorAxisAu > 0 && bodyMassKg > 0 && parentMassKg > 0
-		? formatHillSphere(computeHillSphereAu(semiMajorAxisAu, bodyMassKg, parentMassKg, eccentricity))
+		? formatHillSphere(computeHillSphereAu(au(semiMajorAxisAu), kg(bodyMassKg), kg(parentMassKg), eccentricity))
 		: null
 
 	return { orbitalPeriodDays: period, orbitalVelocity, hillSphere }
@@ -73,8 +75,8 @@ export function deriveStarOrbitalFields(semiMajorAxisAu: number | null, eccentri
 		return { periastron: null, apastron: null }
 	}
 	return {
-		periastron: formatAu(computePeriastron(semiMajorAxisAu, eccentricity)),
-		apastron: formatAu(computeApastron(semiMajorAxisAu, eccentricity)),
+		periastron: formatAu(computePeriastron(au(semiMajorAxisAu), eccentricity)),
+		apastron: formatAu(computeApastron(au(semiMajorAxisAu), eccentricity)),
 	}
 }
 

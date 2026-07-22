@@ -10,7 +10,7 @@ import {
 	annotateEffectivePeriods,
 	type EffectiveOrbitStar,
 	type EffectiveOrbitBody,
-} from '$lib/celestial/effective-orbits.js'
+} from 'tungolcraft'
 
 /**
  * Read-side registry over the unified `celestial_bodies` table.

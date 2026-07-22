@@ -1,9 +1,8 @@
 /**
  * Read-time effective orbital periods for a system's stars and bodies.
  *
- * The DB stores only what the user asserted — a blank `orbitalPeriodDays`
- * means "derive it". These helpers fill the gap from Kepler's third law using
- * the mass of whatever each row actually orbits:
+ * A blank `orbitalPeriodDays` means "derive it". These helpers fill the gap from
+ * Kepler's third law using the mass of whatever each row actually orbits:
  *
  *  - a companion star orbiting another star  → combined pair mass
  *  - a star orbiting the system barycenter   → total stellar mass of the system
@@ -11,10 +10,11 @@
  *  - a moon orbiting a body                  → that body's mass
  *  - a circumbinary body orbiting the system → total stellar mass of the system
  *
- * Pure and DB-free: callers (the registry map queries) pass the already-loaded
- * rows for one system and get the same rows back with periods filled in.
+ * Pure: callers pass the already-loaded rows for one system and get the same
+ * rows back with periods filled in.
  */
-import { computeOrbitalPeriodDays } from 'tungolcraft'
+import { computeOrbitalPeriodDays } from './physics.js'
+import { au, kg } from './units.js'
 
 export interface EffectiveOrbitStar {
 	id: number
@@ -52,7 +52,7 @@ export function totalStellarMassKg(stars: ReadonlyArray<{ massKg?: number | null
 
 function derivedPeriod(semiMajorAxisAu: number | null | undefined, primaryMassKg: number | null): number | null {
 	return semiMajorAxisAu != null && semiMajorAxisAu > 0 && primaryMassKg != null
-		? computeOrbitalPeriodDays(semiMajorAxisAu, primaryMassKg)
+		? computeOrbitalPeriodDays(au(semiMajorAxisAu), kg(primaryMassKg))
 		: null
 }
 

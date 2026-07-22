@@ -23,6 +23,7 @@ import {
 	computeHabitableZoneAu,
 	computeLuminosity,
 } from './physics.js'
+import { kg, m, au, days, kelvin, watts } from './units.js'
 
 /** A reference to another celestial entity. */
 export interface Ref {
@@ -235,11 +236,11 @@ export function deriveBody(row: BodyRow, relations: BodyRelations = {}): BodyMod
 	const primaryMassKg = relations.parentBody?.massKg ?? relations.star?.massKg ?? relations.system?.massKg ?? null
 	const orbitalPeriodDays = row.orbitalPeriodDays
 		?? (semiMajorAxisAu != null && primaryMassKg != null && primaryMassKg > 0
-			? computeOrbitalPeriodDays(semiMajorAxisAu, primaryMassKg)
+			? computeOrbitalPeriodDays(au(semiMajorAxisAu), kg(primaryMassKg))
 			: null)
 
 	const orbitalVelocityMs = semiMajorAxisAu != null && orbitalPeriodDays != null && orbitalPeriodDays > 0
-		? computeOrbitalVelocity(semiMajorAxisAu, orbitalPeriodDays)
+		? computeOrbitalVelocity(au(semiMajorAxisAu), days(orbitalPeriodDays))
 		: null
 
 	const star = relations.star ? { name: relations.star.name, slug: relations.star.slug } : null
@@ -264,9 +265,9 @@ export function deriveBody(row: BodyRow, relations: BodyRelations = {}): BodyMod
 
 		massKg,
 		radiusM,
-		densityKgM3: massKg != null && radiusM != null ? computeDensity(massKg, radiusM) : null,
-		gravityMs2: massKg != null && radiusM != null ? computeSurfaceGravity(massKg, radiusM) : null,
-		escapeVelocityMs: massKg != null && radiusM != null ? computeEscapeVelocity(massKg, radiusM) : null,
+		densityKgM3: massKg != null && radiusM != null ? computeDensity(kg(massKg), m(radiusM)) : null,
+		gravityMs2: massKg != null && radiusM != null ? computeSurfaceGravity(kg(massKg), m(radiusM)) : null,
+		escapeVelocityMs: massKg != null && radiusM != null ? computeEscapeVelocity(kg(massKg), m(radiusM)) : null,
 		circumferenceM: mapNum(radiusM, r => 2 * Math.PI * r),
 		surfaceAreaM2: mapNum(radiusM, r => 4 * Math.PI * r * r),
 		volumeM3: mapNum(radiusM, r => (4 / 3) * Math.PI * r ** 3),
@@ -276,8 +277,8 @@ export function deriveBody(row: BodyRow, relations: BodyRelations = {}): BodyMod
 		orbitalVelocityMs,
 		eccentricity,
 		inclination: row.inclination ?? null,
-		periapsisAu: semiMajorAxisAu != null && eccentricity != null ? computePeriastron(semiMajorAxisAu, eccentricity) : null,
-		apoapsisAu: semiMajorAxisAu != null && eccentricity != null ? computeApastron(semiMajorAxisAu, eccentricity) : null,
+		periapsisAu: semiMajorAxisAu != null && eccentricity != null ? computePeriastron(au(semiMajorAxisAu), eccentricity) : null,
+		apoapsisAu: semiMajorAxisAu != null && eccentricity != null ? computeApastron(au(semiMajorAxisAu), eccentricity) : null,
 
 		rotationPeriodS,
 		axialTilt: row.axialTilt ?? null,
@@ -305,7 +306,7 @@ export function deriveStar(row: StarRow, relations: StarRelations = {}): StarMod
 
 	// Luminosity: explicit, else Stefan-Boltzmann from radius + temperature.
 	const luminosityW = positive(row.luminosityW)
-		?? (radiusM != null && temperatureK != null ? computeLuminosity(radiusM, temperatureK) : null)
+		?? (radiusM != null && temperatureK != null ? computeLuminosity(m(radiusM), kelvin(temperatureK)) : null)
 
 	// Binary/barycentric orbital period: explicit, else Kepler from the semi-major
 	// axis and the pair's combined mass (companion of a star) or the system's
@@ -316,7 +317,7 @@ export function deriveStar(row: StarRow, relations: StarRelations = {}): StarMod
 	const primaryMassKg = pairMassKg ?? positive(relations.barycenterMassKg)
 	const orbitalPeriodDays = row.orbitalPeriodDays
 		?? (semiMajorAxisAu != null && primaryMassKg != null
-			? computeOrbitalPeriodDays(semiMajorAxisAu, primaryMassKg)
+			? computeOrbitalPeriodDays(au(semiMajorAxisAu), kg(primaryMassKg))
 			: null)
 
 	return {
@@ -338,21 +339,21 @@ export function deriveStar(row: StarRow, relations: StarRelations = {}): StarMod
 		radiusM,
 		temperatureK,
 		luminosityW,
-		densityKgM3: massKg != null && radiusM != null ? computeDensity(massKg, radiusM) : null,
-		gravityMs2: massKg != null && radiusM != null ? computeSurfaceGravity(massKg, radiusM) : null,
-		escapeVelocityMs: massKg != null && radiusM != null ? computeEscapeVelocity(massKg, radiusM) : null,
+		densityKgM3: massKg != null && radiusM != null ? computeDensity(kg(massKg), m(radiusM)) : null,
+		gravityMs2: massKg != null && radiusM != null ? computeSurfaceGravity(kg(massKg), m(radiusM)) : null,
+		escapeVelocityMs: massKg != null && radiusM != null ? computeEscapeVelocity(kg(massKg), m(radiusM)) : null,
 
 		semiMajorAxisAu,
 		orbitalPeriodDays,
 		eccentricity,
-		periastronAu: semiMajorAxisAu != null && eccentricity != null ? computePeriastron(semiMajorAxisAu, eccentricity) : null,
-		apastronAu: semiMajorAxisAu != null && eccentricity != null ? computeApastron(semiMajorAxisAu, eccentricity) : null,
+		periastronAu: semiMajorAxisAu != null && eccentricity != null ? computePeriastron(au(semiMajorAxisAu), eccentricity) : null,
+		apastronAu: semiMajorAxisAu != null && eccentricity != null ? computeApastron(au(semiMajorAxisAu), eccentricity) : null,
 
 		rotationPeriodS,
 		axialTilt: row.axialTilt ?? null,
 		equatorialVelocityMs: radiusM != null && rotationPeriodS != null ? (2 * Math.PI * radiusM) / rotationPeriodS : null,
 
-		habitableZoneAu: luminosityW != null && luminosityW > 0 ? computeHabitableZoneAu(luminosityW) : null,
+		habitableZoneAu: luminosityW != null && luminosityW > 0 ? computeHabitableZoneAu(watts(luminosityW)) : null,
 
 		companionOf: relations.parentStar ? { name: relations.parentStar.name, slug: relations.parentStar.slug } : null,
 		companions: relations.companions ?? [],

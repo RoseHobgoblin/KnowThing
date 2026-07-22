@@ -7,19 +7,25 @@
  * and place bodies along their orbits over time.
  *
  * Public surface:
+ *   units     — branded SI quantity types, constructors, and conversions
  *   constants — SI reference constants and scales
- *   physics   — closed-form derivations (numbers in, numbers out)
+ *   physics   — closed-form derivations (branded quantities in and out)
  *   format    — human-readable formatters over those numbers
  *   derive    — partial-in → complete-out convenience derivations
- *   models    — whole-body models (deriveBody / deriveStar)
- *   orbit     — two-body position (mean anomaly + Kepler solver)
- *   validate  — plausibility/consistency checks
+ *   models          — whole-body models from raw-SI rows (deriveBody / deriveStar)
+ *   build           — friendly, unit-safe authoring API (body / star)
+ *   effective-orbits — fill missing orbital periods across a system's rows
+ *   orbit           — two-body position (mean anomaly + Kepler solver)
+ *   validate        — plausibility/consistency checks
  */
 
+export * from './units.js'
 export * from './constants.js'
 export * from './physics.js'
 export * from './format.js'
 export * from './derive.js'
 export * from './models.js'
+export * from './build.js'
+export * from './effective-orbits.js'
 export * from './orbit.js'
 export * from './validate.js'
