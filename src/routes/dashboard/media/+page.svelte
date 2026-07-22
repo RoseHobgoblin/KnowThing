@@ -1,9 +1,11 @@
 <script lang="ts">
-	import { onMount } from 'svelte'
+	import { SvelteURLSearchParams } from 'svelte/reactivity'
 	import { goto } from '$app/navigation'
 	import { page } from '$app/stores'
+	import { createMutation, createQuery } from '@tanstack/svelte-query'
 	import { normalizePermissions } from '$lib/permissions.js'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
+	import { api } from '$lib/api'
 	import Select from '$lib/components/ui/Select.svelte'
 	import Checkbox from '$lib/components/ui/Checkbox.svelte'
 	import Input from '$lib/components/ui/Input.svelte'
@@ -22,10 +24,8 @@
 		usageCount: number
 	}
 
-	let files = $state<MediaFile[]>([])
-	let total = $state(0)
-	let loading = $state(true)
 	let searchQuery = $state('')
+	let debouncedQuery = $state('')
 	let sortBy = $state('newest')
 	let showUnused = $state(false)
 	let viewMode = $state<'grid' | 'list'>('grid')
@@ -33,7 +33,6 @@
 	const perPage = 50
 
 	// Upload state
-	let uploading = $state(false)
 	let uploadProgress = $state('')
 	let uploadError = $state('')
 	let dragOver = $state(false)
@@ -53,56 +52,59 @@
 		return `${(bytes / 1048576).toFixed(1)} MB`
 	}
 
-	async function loadFiles() {
-		loading = true
-		const params = new URLSearchParams()
-		if (searchQuery) params.set('q', searchQuery)
-		params.set('sort', sortBy)
-		if (showUnused) params.set('unused', 'true')
-		params.set('limit', String(perPage))
-		params.set('offset', String(currentPage * perPage))
+	const mediaQuery = createQuery(() => ({
+		queryKey: ['media', debouncedQuery, sortBy, showUnused, currentPage],
+		queryFn: () => {
+			const params = new SvelteURLSearchParams()
+			if (debouncedQuery) params.set('q', debouncedQuery)
+			params.set('sort', sortBy)
+			if (showUnused) params.set('unused', 'true')
+			params.set('limit', String(perPage))
+			params.set('offset', String(currentPage * perPage))
+			return api<{ files: MediaFile[], total: number }>('GET', `/api/media?${params}`)
+		},
+	}))
 
-		const res = await fetch(`/api/media?${params}`)
-		if (res.ok) {
-			const data = await res.json()
-			files = data.files
-			total = data.total
-		}
-		loading = false
-	}
+	const files = $derived(mediaQuery.data?.files ?? [])
+	const total = $derived(mediaQuery.data?.total ?? 0)
+	const loading = $derived(mediaQuery.isFetching)
 
 	let searchTimeout: ReturnType<typeof setTimeout>
 	function handleSearch() {
 		clearTimeout(searchTimeout)
 		searchTimeout = setTimeout(() => {
 			currentPage = 0
-			loadFiles()
+			debouncedQuery = searchQuery
 		}, 300)
 	}
 
-	async function uploadFile(file: File) {
-		uploading = true
+	const onError = (error: Error) => pushError(error.message)
+
+	const uploadMutation = createMutation(() => ({
+		mutationFn: async (file: File) => {
+			// raw fetch: api() is JSON-only, this is a FormData upload
+			const formData = new FormData()
+			formData.append('file', file)
+			const response = await fetch('/api/media', { method: 'POST', body: formData })
+			if (!response.ok) {
+				const error = await response.json().catch(() => ({}))
+				throw new Error(error.error || 'Upload failed')
+			}
+		},
+		onSuccess: (_data, file) => {
+			uploadProgress = ''
+			pushSuccess(`Uploaded ${file.name}`)
+			mediaQuery.refetch()
+		},
+		onError,
+	}))
+
+	const uploading = $derived(uploadMutation.isPending)
+
+	function uploadFile(file: File) {
 		uploadError = ''
 		uploadProgress = `Uploading ${file.name}...`
-
-		const formData = new FormData()
-		formData.append('file', file)
-
-		try {
-			const res = await fetch('/api/media', { method: 'POST', body: formData })
-			if (res.ok) {
-				uploadProgress = ''
-				pushSuccess(`Uploaded ${file.name}`)
-				loadFiles()
-			} else {
-				const error = await res.json()
-				pushError(error.error || 'Upload failed')
-			}
-		} catch {
-			pushError('Upload failed')
-		} finally {
-			uploading = false
-		}
+		uploadMutation.mutate(file)
 	}
 
 	function handleFileInput(e: Event) {
@@ -143,13 +145,13 @@
 
 	let sortByInitialized = false
 	$effect(() => {
-		sortBy  // subscribe to sortBy changes
-		if (!sortByInitialized) { sortByInitialized = true; return }
+		const _sort = sortBy
+		if (!sortByInitialized) {
+			sortByInitialized = true
+			return
+		}
 		currentPage = 0
-		loadFiles()
 	})
-
-	onMount(loadFiles)
 </script>
 
 <svelte:head>
@@ -229,7 +231,7 @@
 			]}
 		/>
 
-		<Checkbox bind:value={showUnused} label="Unused only" onclick={() => { currentPage = 0; loadFiles() }} />
+		<Checkbox bind:value={showUnused} label="Unused only" onclick={() => { currentPage = 0 }} />
 
 		<div class="flex overflow-hidden">
 			<button
@@ -355,7 +357,7 @@
 	{#if totalPages > 1}
 		<div class="flex justify-center gap-2 pt-2">
 			<button
-				onclick={() => { currentPage = Math.max(0, currentPage - 1); loadFiles() }}
+				onclick={() => { currentPage = Math.max(0, currentPage - 1) }}
 				disabled={currentPage === 0}
 				class="
 					px-3 py-1 text-sm
@@ -367,7 +369,7 @@
 				{currentPage + 1} / {totalPages}
 			</span>
 			<button
-				onclick={() => { currentPage = Math.min(totalPages - 1, currentPage + 1); loadFiles() }}
+				onclick={() => { currentPage = Math.min(totalPages - 1, currentPage + 1) }}
 				disabled={currentPage >= totalPages - 1}
 				class="
 					px-3 py-1 text-sm

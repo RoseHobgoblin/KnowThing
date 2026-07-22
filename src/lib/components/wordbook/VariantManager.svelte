@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation'
+	import { createMutation, createQuery } from '@tanstack/svelte-query'
 	import { pushError, pushSuccess } from '$lib/notifications.svelte'
+	import { api } from '$lib/api'
 
 	type Variant = {
 		id: number
@@ -24,74 +26,71 @@
 	} = $props()
 
 	let adding = $state(false)
-	let saving = $state(false)
-	let dialects = $state<Array<{ id: number, name: string }>>([])
-	let dialectsLoaded = $state(false)
 	let dialectIdString = $state('')
 	let pronunciation = $state('')
 	let spelling = $state('')
+
+	const onError = (error: Error) => pushError(error.message)
+
+	const dialectsQuery = createQuery(() => ({
+		queryKey: ['dialects', languageSlug],
+		queryFn: () => api<Array<{ id: number, name: string }>>('GET', `/api/languages/${languageSlug}/dialects`),
+		enabled: adding,
+	}))
+
+	const dialects = $derived(dialectsQuery.data ?? [])
+	const dialectsLoaded = $derived(dialectsQuery.isSuccess)
+
+	$effect(() => {
+		if (dialectsQuery.isError) pushError('Could not load dialects')
+	})
 
 	// Dialects the entry doesn't already have a variant for
 	const availableDialects = $derived(
 		dialects.filter(dialect => !variants.some(variant => variant.dialectId === dialect.id)),
 	)
 
-	async function openAdd() {
+	function openAdd() {
 		adding = true
-		if (dialectsLoaded) return
-		try {
-			const response = await fetch(`/api/languages/${languageSlug}/dialects`)
-			if (response.ok) dialects = await response.json()
-			dialectsLoaded = true
-		} catch {
-			pushError('Could not load dialects')
-		}
 	}
 
-	async function addVariant(event: Event) {
-		event.preventDefault()
-		const dialectId = Number(dialectIdString)
-		if (!dialectId || (!pronunciation.trim() && !spelling.trim())) return
-		saving = true
-		try {
-			const response = await fetch(`/api/wordbook/${entryId}/variants`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					dialectId,
-					pronunciation: pronunciation.trim() || undefined,
-					spelling: spelling.trim() || undefined,
-				}),
-			})
-			if (!response.ok) {
-				const body = await response.json()
-				throw new Error(body.error || 'Failed to add variant')
-			}
+	const addVariantMutation = createMutation(() => ({
+		mutationFn: () => api('POST', `/api/wordbook/${entryId}/variants`, {
+			dialectId: Number(dialectIdString),
+			pronunciation: pronunciation.trim() || undefined,
+			spelling: spelling.trim() || undefined,
+		}),
+		onSuccess: async () => {
 			pushSuccess('Dialect variant added')
 			adding = false
 			dialectIdString = ''
 			pronunciation = ''
 			spelling = ''
 			await invalidateAll()
-		} catch (error) {
-			pushError(error instanceof Error ? error.message : 'Failed to add variant')
-		} finally {
-			saving = false
-		}
+		},
+		onError,
+	}))
+
+	const saving = $derived(addVariantMutation.isPending)
+
+	function addVariant(event: Event) {
+		event.preventDefault()
+		const dialectId = Number(dialectIdString)
+		if (!dialectId || (!pronunciation.trim() && !spelling.trim())) return
+		addVariantMutation.mutate()
 	}
 
-	async function removeVariant(variant: Variant) {
-		try {
-			const response = await fetch(`/api/wordbook/${entryId}/variants/${variant.id}`, { method: 'DELETE' })
-			if (!response.ok) {
-				const body = await response.json()
-				throw new Error(body.error || 'Failed to remove variant')
-			}
+	const removeVariantMutation = createMutation(() => ({
+		mutationFn: (variant: Variant) => api('DELETE', `/api/wordbook/${entryId}/variants/${variant.id}`),
+		onSuccess: async () => {
 			pushSuccess('Variant removed')
 			await invalidateAll()
-		} catch (error) {
-			pushError(error instanceof Error ? error.message : 'Failed to remove variant')
-		}
+		},
+		onError,
+	}))
+
+	function removeVariant(variant: Variant) {
+		removeVariantMutation.mutate(variant)
 	}
 </script>
 

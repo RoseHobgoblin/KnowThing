@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation'
+	import { createMutation } from '@tanstack/svelte-query'
 	import Input from '$lib/components/ui/Input.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import { pushError, pushSuccess } from '$lib/notifications.svelte'
+	import { api } from '$lib/api'
 
 	type Dialect = { id: number, name: string, slug: string, region: string | null, description: string | null }
 
@@ -24,7 +26,6 @@
 	let addingDialect = $state(false)
 	let dialectName = $state('')
 	let dialectRegion = $state('')
-	let savingDialect = $state(false)
 	let editingDialectSlug = $state<string | null>(null)
 	let editName = $state('')
 	let editRegion = $state('')
@@ -33,34 +34,27 @@
 		return name.trim().toLowerCase().replaceAll(/[^\da-z]+/g, '-').replaceAll(/^-+|-+$/g, '')
 	}
 
-	async function addDialect(event: Event) {
-		event.preventDefault()
-		if (!dialectName.trim()) return
-		savingDialect = true
-		try {
-			const response = await fetch(`/api/languages/${languageSlug}/dialects`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					name: dialectName.trim(),
-					slug: slugify(dialectName),
-					region: dialectRegion.trim() || undefined,
-				}),
-			})
-			if (!response.ok) {
-				const body = await response.json()
-				throw new Error(body.error || 'Failed to add dialect')
-			}
+	const onError = (error: Error) => pushError(error.message)
+
+	const addDialectMutation = createMutation(() => ({
+		mutationFn: () => api('POST', `/api/languages/${languageSlug}/dialects`, {
+			name: dialectName.trim(),
+			slug: slugify(dialectName),
+			region: dialectRegion.trim() || undefined,
+		}),
+		onSuccess: async () => {
 			pushSuccess(`Dialect "${dialectName.trim()}" added`)
 			dialectName = ''
 			dialectRegion = ''
 			addingDialect = false
 			await invalidateAll()
-		} catch (error) {
-			pushError(error instanceof Error ? error.message : 'Failed to add dialect')
-		} finally {
-			savingDialect = false
-		}
+		},
+		onError,
+	}))
+
+	function addDialect(event: Event) {
+		event.preventDefault()
+		if (dialectName.trim()) addDialectMutation.mutate()
 	}
 
 	function startEdit(dialect: Dialect) {
@@ -69,29 +63,34 @@
 		editRegion = dialect.region ?? ''
 	}
 
-	async function saveEdit(event: Event) {
-		event.preventDefault()
-		if (!editingDialectSlug || !editName.trim()) return
-		savingDialect = true
-		try {
-			const response = await fetch(`/api/languages/${languageSlug}/dialects/${editingDialectSlug}`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ name: editName.trim(), region: editRegion.trim() || undefined }),
-			})
-			if (!response.ok) {
-				const body = await response.json()
-				throw new Error(body.error || 'Failed to update dialect')
-			}
+	const saveEditMutation = createMutation(() => ({
+		mutationFn: () => api('PUT', `/api/languages/${languageSlug}/dialects/${editingDialectSlug}`, {
+			name: editName.trim(),
+			region: editRegion.trim() || undefined,
+		}),
+		onSuccess: async () => {
 			pushSuccess('Dialect updated')
 			editingDialectSlug = null
 			await invalidateAll()
-		} catch (error) {
-			pushError(error instanceof Error ? error.message : 'Failed to update dialect')
-		} finally {
-			savingDialect = false
-		}
+		},
+		onError,
+	}))
+
+	function saveEdit(event: Event) {
+		event.preventDefault()
+		if (editingDialectSlug && editName.trim()) saveEditMutation.mutate()
 	}
+
+	const savingDialect = $derived(addDialectMutation.isPending || saveEditMutation.isPending)
+
+	const deleteDialectMutation = createMutation(() => ({
+		mutationFn: (dialect: Dialect) => api('DELETE', `/api/languages/${languageSlug}/dialects/${dialect.slug}`),
+		onSuccess: async (_data, dialect) => {
+			pushSuccess(`Dialect "${dialect.name}" deleted`)
+			await invalidateAll()
+		},
+		onError,
+	}))
 
 	async function deleteDialect(dialect: Dialect) {
 		const confirmed = await confirmDialog.confirm(
@@ -99,39 +98,26 @@
 			'Dialect variants recorded against it will be removed. This cannot be undone.',
 			'Delete',
 		)
-		if (!confirmed) return
-		try {
-			const response = await fetch(`/api/languages/${languageSlug}/dialects/${dialect.slug}`, { method: 'DELETE' })
-			if (!response.ok) {
-				const body = await response.json()
-				throw new Error(body.error || 'Failed to delete dialect')
-			}
-			pushSuccess(`Dialect "${dialect.name}" deleted`)
-			await invalidateAll()
-		} catch (error) {
-			pushError(error instanceof Error ? error.message : 'Failed to delete dialect')
-		}
+		if (confirmed) deleteDialectMutation.mutate(dialect)
 	}
 
 	// ── Danger zone ─────────────────────────────────────────────
+	const deleteLanguageMutation = createMutation(() => ({
+		mutationFn: () => api('DELETE', `/api/languages/${languageSlug}`),
+		onSuccess: () => {
+			pushSuccess(`"${languageName}" deleted`)
+			goto('/Wordbook')
+		},
+		onError,
+	}))
+
 	async function deleteLanguage() {
 		const confirmed = await confirmDialog.confirm(
 			`Delete "${languageName}"?`,
 			'Deletion is refused while the language still has entries or descendant languages. This cannot be undone.',
 			'Delete language',
 		)
-		if (!confirmed) return
-		try {
-			const response = await fetch(`/api/languages/${languageSlug}`, { method: 'DELETE' })
-			if (!response.ok) {
-				const body = await response.json()
-				throw new Error(body.error || 'Failed to delete language')
-			}
-			pushSuccess(`"${languageName}" deleted`)
-			goto('/Wordbook')
-		} catch (error) {
-			pushError(error instanceof Error ? error.message : 'Failed to delete language')
-		}
+		if (confirmed) deleteLanguageMutation.mutate()
 	}
 </script>
 

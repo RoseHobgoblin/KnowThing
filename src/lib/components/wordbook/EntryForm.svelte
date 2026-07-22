@@ -1,12 +1,14 @@
 <script lang="ts">
 	import { onDestroy, untrack } from 'svelte'
-	import { SvelteMap } from 'svelte/reactivity'
+	import { createQuery } from '@tanstack/svelte-query'
 	import { PARTS_OF_SPEECH } from './constants.js'
 	import Input from '$lib/components/ui/Input.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
 	import UnsavedChangesGuard from '$lib/components/editor/UnsavedChangesGuard.svelte'
 	import StickyActionBar from '$lib/components/editor/StickyActionBar.svelte'
 	import FormNotice from '$lib/components/editor/FormNotice.svelte'
+	import { api } from '$lib/api'
+	import { createDirtyTracker } from '$lib/utils/dirty.svelte'
 
 	let {
 		languages = [],
@@ -78,18 +80,29 @@
 	let defs = $state<DefRow[]>(initialDefRows)
 
 	let etymRows = $state<EtymRow[]>([])
-	const searchTimeouts = new SvelteMap<number, ReturnType<typeof setTimeout>>()
+	let searchRowIndex = $state<number | null>(null)
+	let debouncedTerm = $state('')
+	let searchTimeout: ReturnType<typeof setTimeout> | null = null
 
-	const currentSnapshot = $derived(JSON.stringify({ word, languageIdStr: languageIdString, pronunciation, etymology, notes, pageSlug, tagsInput, defs, etymRows }))
-	const initialSnapshot = JSON.stringify({
-		...initialValues,
-		defs: initialDefRows,
-		etymRows: [],
+	const etymSearchQuery = createQuery(() => ({
+		queryKey: ['wordbook-search', debouncedTerm, 8],
+		queryFn: () => api<EtymRow['results']>('GET', `/api/wordbook?q=${encodeURIComponent(debouncedTerm)}&limit=8`),
+		enabled: debouncedTerm.length >= 2,
+	}))
+
+	$effect(() => {
+		if (searchRowIndex === null || etymSearchQuery.data === undefined) return
+		const row = etymRows[searchRowIndex]
+		if (!row) return
+		row.results = etymSearchQuery.data
+		row.showDropdown = etymSearchQuery.data.length > 0
 	})
-	const isDirty = $derived(currentSnapshot !== initialSnapshot)
+
+	const dirty = createDirtyTracker(() => ({ word, languageIdStr: languageIdString, pronunciation, etymology, notes, pageSlug, tagsInput, defs, etymRows }))
+	const isDirty = $derived(dirty.isDirty)
 
 	onDestroy(() => {
-		for (const timer of searchTimeouts.values()) clearTimeout(timer)
+		if (searchTimeout) clearTimeout(searchTimeout)
 	})
 
 	function addDefinition() {
@@ -115,26 +128,23 @@
 	}
 
 	function removeEtymRow(index: number) {
+		searchRowIndex = null
 		etymRows = etymRows.filter((_, index_) => index_ !== index)
 	}
 
 	function handleEtymSearch(index: number) {
 		const row = etymRows[index]
 		row.targetId = null
-		const existing = searchTimeouts.get(index)
-		if (existing) clearTimeout(existing)
+		if (searchTimeout) clearTimeout(searchTimeout)
 		if (row.query.trim().length < 2) {
 			row.results = []
 			row.showDropdown = false
 			return
 		}
-		searchTimeouts.set(index, setTimeout(async () => {
-			const res = await fetch(`/api/wordbook?q=${encodeURIComponent(row.query.trim())}&limit=8`)
-			if (res.ok) {
-				row.results = await res.json()
-				row.showDropdown = row.results.length > 0
-			}
-		}, 300))
+		searchTimeout = setTimeout(() => {
+			searchRowIndex = index
+			debouncedTerm = row.query.trim()
+		}, 300)
 	}
 
 	function selectEtymTarget(index: number, r: EtymRow['results'][0]) {
@@ -142,6 +152,7 @@
 		row.targetId = r.id
 		row.query = `${r.word} (${r.languageName})`
 		row.showDropdown = false
+		searchRowIndex = null
 	}
 
 	function resetForm() {

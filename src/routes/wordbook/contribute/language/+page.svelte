@@ -1,7 +1,9 @@
 <script lang="ts">
 	import type { PageData } from './$types.js'
 	import { goto } from '$app/navigation'
+	import { createMutation } from '@tanstack/svelte-query'
 	import { pushSuccess } from '$lib/notifications.svelte'
+	import { api } from '$lib/api'
 	import LanguageForm from '$lib/components/wordbook/LanguageForm.svelte'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import { wordbookAddLanguageBreadcrumbs } from '$lib/utils/breadcrumbs.js'
@@ -11,17 +13,13 @@
 
 	const wbName = $derived($page.data.siteConfig?.wordbookName ?? 'Wordbook')
 
+	const createLanguageMutation = createMutation(() => ({
+		mutationFn: (formData: Record<string, unknown>) => api<{ slug: string }>('POST', '/api/languages', formData),
+	}))
+
+	// errors rethrow via mutateAsync so LanguageForm can display them
 	async function handleSubmit(formData: Record<string, unknown>) {
-		const res = await fetch('/api/languages', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(formData),
-		})
-		if (!res.ok) {
-			const error = await res.json()
-			throw new Error(error.error || 'Failed to create language')
-		}
-		const lang = await res.json()
+		const lang = await createLanguageMutation.mutateAsync(formData)
 		pushSuccess('Language created')
 		goto(`/Wordbook/${lang.slug}`)
 	}

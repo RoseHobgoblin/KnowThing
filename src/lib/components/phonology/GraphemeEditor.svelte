@@ -10,6 +10,10 @@
 	import Trash from 'phosphor-svelte/lib/TrashIcon'
 	import Copy from 'phosphor-svelte/lib/CopyIcon'
 	import DotsSixVertical from 'phosphor-svelte/lib/DotsSixVerticalIcon'
+	import { createSortable } from '$lib/utils/sortable.svelte'
+	import { createDirtyTracker } from '$lib/utils/dirty.svelte'
+	import { createMutation } from '@tanstack/svelte-query'
+	import { api } from '$lib/api'
 
 	interface PhonemeLink {
 		phonemeId: number
@@ -72,18 +76,20 @@
 	let dialogOpen = $state(false)
 	let editingId = $state<number | null>(null)
 	let draft = $state<Draft>(emptyDraft())
-	let draftSnapshot = $state<Draft>(emptyDraft())
-	let saving = $state(false)
 	let errorMessage = $state('')
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
 
-	const dirty = $derived(JSON.stringify(draft) !== JSON.stringify(draftSnapshot))
+	// Save/delete failures surface in the inline error banner, not toasts.
+	const onError = (error: Error) => {
+		errorMessage = error.message
+	}
 
-	let dragIndex = $state<number | null>(null)
+	const dirtyTracker = createDirtyTracker(() => draft)
+	const dirty = $derived(dirtyTracker.isDirty)
 
 	function openAdd() {
 		draft = emptyDraft()
-		draftSnapshot = $state.snapshot(draft) as Draft
+		dirtyTracker.markClean()
 		editingId = null
 		dialogOpen = true
 	}
@@ -92,46 +98,40 @@
 		if (readOnly) return
 		editingId = g.id
 		draft = draftFrom(g)
-		draftSnapshot = $state.snapshot(draft) as Draft
+		dirtyTracker.markClean()
 		dialogOpen = true
 	}
 
-	async function saveDraft() {
-		errorMessage = ''
-		saving = true
-		try {
+	const saveMutation = createMutation(() => ({
+		mutationFn: () => {
 			const url = editingId
 				? `/api/languages/${languageSlug}/graphemes/${editingId}`
 				: `/api/languages/${languageSlug}/graphemes`
-			const method = editingId ? 'PATCH' : 'POST'
-			const body = {
+			return api<Grapheme>(editingId ? 'PATCH' : 'POST', url, {
 				grapheme: draft.grapheme,
 				phonemeIds: draft.phonemeIds,
 				romanization: draft.romanization.trim() || null,
 				environment: draft.environment.trim() || null,
 				notes: draft.notes.trim() || null,
-			}
-			const response = await fetch(url, {
-				method,
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(body),
 			})
-			if (!response.ok) {
-				const error = await response.json().catch(() => null)
-				errorMessage = error?.error ?? 'Failed to save grapheme'
-				return
-			}
-			const saved = await response.json() as Grapheme
+		},
+		onMutate: () => { errorMessage = '' },
+		onSuccess: (saved) => {
 			if (editingId) {
 				graphemes = graphemes.map(g => g.id === saved.id ? saved : g)
 			} else {
 				graphemes = [...graphemes, saved]
 			}
-			draftSnapshot = $state.snapshot(draft) as Draft
+			dirtyTracker.markClean()
 			dialogOpen = false
-		} finally {
-			saving = false
-		}
+		},
+		onError,
+	}))
+
+	const saving = $derived(saveMutation.isPending)
+
+	function saveDraft() {
+		saveMutation.mutate()
 	}
 
 	function duplicate() {
@@ -160,94 +160,69 @@
 		}
 	}
 
-	async function handleDelete(g: Grapheme) {
-		const response = await fetch(`/api/languages/${languageSlug}/graphemes/${g.id}`, { method: 'DELETE' })
-		if (!response.ok) {
-			const error = await response.json().catch(() => null)
-			errorMessage = error?.error ?? 'Failed to delete grapheme'
-			return
-		}
+	const restoreMutation = createMutation(() => ({
+		mutationFn: (snapshot: Grapheme) => api<Grapheme>('POST', `/api/languages/${languageSlug}/graphemes`, {
+			grapheme: snapshot.grapheme,
+			phonemeIds: snapshot.phonemes.map(p => p.phonemeId),
+			romanization: snapshot.romanization,
+			environment: snapshot.environment,
+			notes: snapshot.notes,
+			sortOrder: snapshot.sortOrder,
+		}),
+		onSuccess: (restored) => {
+			graphemes = [...graphemes, restored]
+		},
+		onError: (_error, snapshot) => pushError(`Couldn't restore "${snapshot.grapheme}"`),
+	}))
 
-		const snapshot: Grapheme = { ...g }
-		graphemes = graphemes.filter(x => x.id !== g.id)
-		if (editingId === g.id) dialogOpen = false
+	const deleteMutation = createMutation(() => ({
+		mutationFn: (g: Grapheme) => api('DELETE', `/api/languages/${languageSlug}/graphemes/${g.id}`),
+		onSuccess: (_data, g) => {
+			const snapshot: Grapheme = { ...g }
+			graphemes = graphemes.filter(x => x.id !== g.id)
+			if (editingId === g.id) dialogOpen = false
 
-		pushUndoable(
-			`Deleted "${g.grapheme}"`,
-			async () => {
-				const undoResponse = await fetch(`/api/languages/${languageSlug}/graphemes`, {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						grapheme: snapshot.grapheme,
-						phonemeIds: snapshot.phonemes.map(p => p.phonemeId),
-						romanization: snapshot.romanization,
-						environment: snapshot.environment,
-						notes: snapshot.notes,
-						sortOrder: snapshot.sortOrder,
-					}),
-				})
-				if (!undoResponse.ok) {
-					pushError(`Couldn't restore "${snapshot.grapheme}"`)
-					return
-				}
-				const restored = await undoResponse.json() as Grapheme
-				graphemes = [...graphemes, restored]
-			},
-			() => {},
-		)
+			pushUndoable(
+				`Deleted "${g.grapheme}"`,
+				() => restoreMutation.mutate(snapshot),
+				() => {},
+			)
+		},
+		onError,
+	}))
+
+	function handleDelete(g: Grapheme) {
+		deleteMutation.mutate(g)
 	}
 
-	async function commitReorder(nextOrder: number[]) {
+	const reorderMutation = createMutation(() => ({
+		mutationFn: ({ order }: { order: number[], previous: Grapheme[] }) =>
+			api('POST', `/api/languages/${languageSlug}/graphemes/reorder`, { order }),
+		onError: (error, { previous }) => {
+			graphemes = previous
+			errorMessage = error.message
+		},
+	}))
+
+	function commitReorder(nextOrder: number[]) {
 		const previous = [...graphemes]
 		graphemes = nextOrder
 			.map(id => previous.find(g => g.id === id)!)
 			.filter(Boolean)
-		try {
-			const response = await fetch(`/api/languages/${languageSlug}/graphemes/reorder`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ order: nextOrder }),
-			})
-			if (!response.ok) {
-				graphemes = previous
-				const error = await response.json().catch(() => null)
-				errorMessage = error?.error ?? 'Failed to reorder'
-			}
-		} catch {
-			graphemes = previous
-			errorMessage = 'Failed to reorder'
-		}
+		reorderMutation.mutate({ order: nextOrder, previous })
 	}
 
-	function onRowDragStart(index: number, event: DragEvent) {
-		dragIndex = index
-		if (event.dataTransfer) {
-			event.dataTransfer.effectAllowed = 'move'
-			event.dataTransfer.setData('text/plain', String(index))
-		}
-	}
-
-	function onRowDragOver(event: DragEvent) {
-		event.preventDefault()
-		if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
-	}
-
-	function onRowDragEnd() {
-		// Cancelled drop (Esc / outside any droppable) — clear visual state.
-		dragIndex = null
-	}
-
-	function onRowDrop(index: number, event: DragEvent) {
-		event.preventDefault()
-		const from = dragIndex
-		dragIndex = null
-		if (from == null || from === index) return
-		const next = [...graphemes]
-		const [moved] = next.splice(from, 1)
-		next.splice(index, 0, moved)
-		commitReorder(next.map(g => g.id))
-	}
+	const sortable = createSortable({
+		axis: 'y',
+		handle: '.drag-handle',
+		disabled: readOnly,
+		onReorder(from, to) {
+			const next = [...graphemes]
+			const [moved] = next.splice(from, 1)
+			next.splice(to, 0, moved)
+			commitReorder(next.map(g => g.id))
+		},
+	})
 
 	function ipaDisplay(g: Grapheme): string {
 		if (g.phonemes.length === 0) return '—'
@@ -296,15 +271,12 @@
 						: 'px-3 py-1.5 border-b border-r border-border-subtle cursor-pointer'}
 					<tr
 						class="transition-colors hover:bg-accent-subtle/40"
-						class:opacity-50={dragIndex === index}
-						ondragover={onRowDragOver}
-						ondrop={e => onRowDrop(index, e)}
-						ondragend={onRowDragEnd}
+						class:opacity-50={sortable.dragIndex === index}
+						class:bg-accent-subtle={sortable.overIndex === index}
+						use:sortable.item={index}
 					>
 						<td
-							class="px-1 py-1.5 border-b border-r border-border-subtle text-center text-secondary {readOnly ? '' : 'cursor-grab'}"
-							draggable={readOnly ? 'false' : 'true'}
-							ondragstart={e => onRowDragStart(index, e)}
+							class="drag-handle px-1 py-1.5 border-b border-r border-border-subtle text-center text-secondary {readOnly ? '' : 'cursor-grab'}"
 							title={readOnly ? undefined : 'Drag to reorder'}
 						>
 							<DotsSixVertical size={14} />
@@ -391,9 +363,9 @@
 		<div class="flex justify-between items-center pt-3 border-t border-border-subtle">
 			<div class="flex gap-2">
 				{#if editingId}
-					<Button variant="danger" size="sm" onclick={async () => {
+					<Button variant="danger" size="sm" onclick={() => {
 						const g = graphemes.find(x => x.id === editingId)
-						if (g) await handleDelete(g)
+						if (g) handleDelete(g)
 					}}>
 						<Trash size={14} weight="bold" /> Delete
 					</Button>

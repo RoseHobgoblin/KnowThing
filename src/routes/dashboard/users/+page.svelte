@@ -2,8 +2,10 @@
 	import type { PageData } from './$types.js'
 	import { invalidateAll } from '$app/navigation'
 	import { page } from '$app/stores'
+	import { createMutation } from '@tanstack/svelte-query'
 	import { normalizePermissions } from '$lib/permissions.js'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
+	import { api } from '$lib/api'
 	import Button from '$lib/components/ui/Button.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
@@ -23,56 +25,54 @@
 	const currentUser = $derived($page.data.user)
 	const isOwner = $derived(currentUser?.role === 'owner')
 
-	async function setRole(userId: number, role: string) {
-		const res = await fetch(`/api/users/${userId}/role`, {
-			method: 'PUT',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ role }),
-		})
-		if (res.ok) {
+	const onError = (error: Error) => pushError(error.message)
+
+	const setRoleMutation = createMutation(() => ({
+		mutationFn: ({ userId, role }: { userId: number, role: string }) =>
+			api('PUT', `/api/users/${userId}/role`, { role }),
+		onSuccess: () => {
 			pushSuccess('Role updated')
 			invalidateAll()
-		} else {
-			const err = await res.json().catch(() => null)
-			pushError(err?.error || 'Failed to update role')
-		}
+		},
+		onError,
+	}))
+
+	function setRole(userId: number, role: string) {
+		setRoleMutation.mutate({ userId, role })
 	}
+
+	const removeUserMutation = createMutation(() => ({
+		mutationFn: ({ userId }: { userId: number, username: string }) => api('DELETE', `/api/users/${userId}`),
+		onSuccess: (_data, { username }) => {
+			pushSuccess(`"${username}" deleted`)
+			invalidateAll()
+		},
+		onError,
+	}))
 
 	async function removeUser(userId: number, username: string) {
 		const ok = await confirmDialog.confirm('Delete user', `Delete "${username}"? This cannot be undone.`, 'Delete', 'Cancel')
 		if (!ok) return
-		const res = await fetch(`/api/users/${userId}`, { method: 'DELETE' })
-		if (res.ok) {
-			pushSuccess(`"${username}" deleted`)
-			invalidateAll()
-		} else {
-			pushError('Failed to delete user')
-		}
+		removeUserMutation.mutate({ userId, username })
 	}
 
 	let codeRole = $state('editor')
-	let generating = $state(false)
 	let generatedCode = $state('')
 
-	async function generateCode() {
-		generating = true
-		try {
-			const res = await fetch('/api/registration-codes', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ role: codeRole }),
-			})
-			if (res.ok) {
-				const result = await res.json()
-				generatedCode = result.code
-				pushSuccess('Code generated')
-				invalidateAll()
-			} else {
-				pushError('Failed to generate code')
-			}
-		} finally {
-			generating = false
-		}
+	const generateCodeMutation = createMutation(() => ({
+		mutationFn: () => api<{ code: string }>('POST', '/api/registration-codes', { role: codeRole }),
+		onSuccess: (result) => {
+			generatedCode = result.code
+			pushSuccess('Code generated')
+			invalidateAll()
+		},
+		onError,
+	}))
+
+	const generating = $derived(generateCodeMutation.isPending)
+
+	function generateCode() {
+		generateCodeMutation.mutate()
 	}
 
 	function copyCode() {

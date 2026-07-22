@@ -3,8 +3,11 @@
 	import type { PageData } from './$types.js'
 	import { page } from '$app/stores'
 	import { invalidateAll, goto } from '$app/navigation'
+	import { createMutation } from '@tanstack/svelte-query'
 	import { normalizePermissions } from '$lib/permissions.js'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
+	import { api } from '$lib/api'
+	import { createDirtyTracker } from '$lib/utils/dirty.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import UnsavedChangesGuard from '$lib/components/editor/UnsavedChangesGuard.svelte'
 	import StickyActionBar from '$lib/components/editor/StickyActionBar.svelte'
@@ -22,7 +25,6 @@
 
 	let description = $state(initialDetails.description)
 	let categoriesInput = $state(initialDetails.categoriesInput)
-	let saving = $state(false)
 	let saveError = $state('')
 	let savedAt = $state<Date | null>(null)
 	let copied = $state(false)
@@ -32,9 +34,8 @@
 	const layoutData = $derived($page.data)
 	const permissions = $derived(stablePermissions)
 	const canManageMedia = $derived(permissions.canManageMedia)
-	const currentSnapshot = $derived(JSON.stringify({ description, categoriesInput }))
-	let savedSnapshot = $state(JSON.stringify(initialDetails))
-	const isDirty = $derived(currentSnapshot !== savedSnapshot)
+	const dirty = createDirtyTracker(() => ({ description, categoriesInput }))
+	const isDirty = $derived(dirty.isDirty)
 
 	$effect(() => {
 		if (layoutData.permissions !== undefined) {
@@ -55,32 +56,40 @@
 		saveError = ''
 	}
 
-	async function saveDetails() {
-		saving = true
+	const onError = (error: Error) => pushError(error.message)
+
+	const saveDetailsMutation = createMutation(() => ({
+		mutationFn: () => api('PUT', `/api/media/${encodeURIComponent(data.file.filename)}`, {
+			description: description.trim(),
+			categories: categoriesInput ? categoriesInput.split(',').map(c => c.trim()).filter(Boolean) : [],
+		}),
+		onSuccess: () => {
+			dirty.markClean()
+			savedAt = new Date()
+			pushSuccess('File details saved')
+			invalidateAll()
+		},
+		onError: (error: Error) => {
+			saveError = error.message
+			pushError(saveError)
+		},
+	}))
+
+	const saving = $derived(saveDetailsMutation.isPending)
+
+	function saveDetails() {
 		saveError = ''
-		try {
-			const res = await fetch(`/api/media/${encodeURIComponent(data.file.filename)}`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					description: description.trim(),
-					categories: categoriesInput ? categoriesInput.split(',').map(c => c.trim()).filter(Boolean) : [],
-				}),
-			})
-			if (res.ok) {
-				savedSnapshot = currentSnapshot
-				savedAt = new Date()
-				pushSuccess('File details saved')
-				invalidateAll()
-			} else {
-				const body = await res.json().catch(() => ({}))
-				saveError = body.error || 'Failed to save file details'
-				pushError(saveError)
-			}
-		} finally {
-			saving = false
-		}
+		saveDetailsMutation.mutate()
 	}
+
+	const deleteFileMutation = createMutation(() => ({
+		mutationFn: () => api('DELETE', `/api/media/${encodeURIComponent(data.file.filename)}`),
+		onSuccess: () => {
+			pushSuccess('File deleted')
+			goto('/dashboard/media')
+		},
+		onError,
+	}))
 
 	async function deleteFile() {
 		const ok = await confirmDialog.confirm(
@@ -90,14 +99,7 @@
 			'Cancel',
 		)
 		if (!ok) return
-		const res = await fetch(`/api/media/${encodeURIComponent(data.file.filename)}`, { method: 'DELETE' })
-		if (res.ok) {
-			pushSuccess('File deleted')
-			goto('/dashboard/media')
-		} else {
-			const body = await res.json().catch(() => ({}))
-			pushError(body.error || 'Failed to delete file')
-		}
+		deleteFileMutation.mutate()
 	}
 
 	function copyWikitext() {
@@ -107,30 +109,49 @@
 	}
 
 	let replaceInput: HTMLInputElement | undefined
-	let replacing = $state(false)
 
-	async function onReplaceFile(event: Event) {
+	const replaceFileMutation = createMutation(() => ({
+		mutationFn: async (file: File) => {
+			// raw fetch: api() is JSON-only, this is a FormData upload
+			const formData = new FormData()
+			formData.set('file', file)
+			const response = await fetch(`/api/media/${encodeURIComponent(data.file.filename)}`, {
+				method: 'POST',
+				body: formData,
+			})
+			if (!response.ok) {
+				const body = await response.json().catch(() => ({}))
+				throw new Error(body.error || 'Failed to replace file')
+			}
+		},
+		onSuccess: () => {
+			pushSuccess('Uploaded as new version. Previous version archived.')
+			invalidateAll()
+		},
+		onError,
+		onSettled: () => {
+			if (replaceInput) replaceInput.value = ''
+		},
+	}))
+
+	const replacing = $derived(replaceFileMutation.isPending)
+
+	function onReplaceFile(event: Event) {
 		const input = event.currentTarget as HTMLInputElement
 		const file = input.files?.[0]
 		if (!file) return
-
-		replacing = true
-		const formData = new FormData()
-		formData.set('file', file)
-		const res = await fetch(`/api/media/${encodeURIComponent(data.file.filename)}`, {
-			method: 'POST',
-			body: formData,
-		})
-		replacing = false
-		input.value = ''
-		if (res.ok) {
-			pushSuccess('Uploaded as new version. Previous version archived.')
-			invalidateAll()
-		} else {
-			const body = await res.json().catch(() => ({}))
-			pushError(body.error || 'Failed to replace file')
-		}
+		replaceFileMutation.mutate(file)
 	}
+
+	const restoreVersionMutation = createMutation(() => ({
+		mutationFn: (version: number) =>
+			api('PATCH', `/api/media/${encodeURIComponent(data.file.filename)}`, { action: 'restore', version }),
+		onSuccess: (_data, version) => {
+			pushSuccess(`Restored version ${version}.`)
+			invalidateAll()
+		},
+		onError,
+	}))
 
 	async function restoreVersion(version: number) {
 		const ok = await confirmDialog.confirm(
@@ -140,47 +161,33 @@
 			'Cancel',
 		)
 		if (!ok) return
-		const res = await fetch(`/api/media/${encodeURIComponent(data.file.filename)}`, {
-			method: 'PATCH',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ action: 'restore', version }),
-		})
-		if (res.ok) {
-			pushSuccess(`Restored version ${version}.`)
-			invalidateAll()
-		} else {
-			const body = await res.json().catch(() => ({}))
-			pushError(body.error || 'Failed to restore version')
-		}
+		restoreVersionMutation.mutate(version)
 	}
 
 	let renameInput = $state(data.file.filename)
-	let renaming = $state(false)
 	let renameOpen = $state(false)
 
-	async function submitRename() {
+	const renameMutation = createMutation(() => ({
+		mutationFn: (target: string) =>
+			api<{ newFilename?: string, rewrittenPages?: number }>('PATCH', `/api/media/${encodeURIComponent(data.file.filename)}`, { action: 'rename', newFilename: target }),
+		onSuccess: (body, target) => {
+			const finalName = body?.newFilename ?? target
+			pushSuccess(`Renamed to ${finalName}. ${body?.rewrittenPages ?? 0} page(s) updated.`)
+			renameOpen = false
+			goto(`/media/${encodeURIComponent(finalName)}`)
+		},
+		onError,
+	}))
+
+	const renaming = $derived(renameMutation.isPending)
+
+	function submitRename() {
 		const target = renameInput.trim()
 		if (!target || target === data.file.filename) {
 			renameOpen = false
 			return
 		}
-		renaming = true
-		const res = await fetch(`/api/media/${encodeURIComponent(data.file.filename)}`, {
-			method: 'PATCH',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ action: 'rename', newFilename: target }),
-		})
-		renaming = false
-		if (res.ok) {
-			const body = await res.json().catch(() => ({}))
-			const finalName: string = body.newFilename ?? target
-			pushSuccess(`Renamed to ${finalName}. ${body.rewrittenPages ?? 0} page(s) updated.`)
-			renameOpen = false
-			goto(`/media/${encodeURIComponent(finalName)}`)
-		} else {
-			const body = await res.json().catch(() => ({}))
-			pushError(body.error || 'Failed to rename file')
-		}
+		renameMutation.mutate(target)
 	}
 </script>
 

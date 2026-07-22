@@ -9,6 +9,9 @@
 	import RecordModeBanner from '$lib/components/editor/RecordModeBanner.svelte'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import { invalidateAll } from '$app/navigation'
+	import { createMutation } from '@tanstack/svelte-query'
+	import { api } from '$lib/api'
+	import { createDirtyTracker } from '$lib/utils/dirty.svelte'
 
 	let { data }: { data: PageData } = $props()
 	const initialSettings = $state.snapshot(untrack(() => data.settings))
@@ -30,32 +33,26 @@
 	let calendarEnabled = $state(initialSettings.calendar_enabled !== 'false')
 	let stripExifOnUpload = $state(initialSettings.strip_exif_on_upload !== 'false')
 
-	let saving = $state(false)
 	let saveError = $state('')
 	let savedAt = $state<Date | null>(null)
 
-	function snapshotState() {
-		return JSON.stringify({
-			siteName,
-			siteTagline,
-			institutionName,
-			footerText,
-			logoUrl,
-			textDirection,
-			navWikiLabel,
-			navCreateLabel,
-			navWordbookLabel,
-			navCalendarLabel,
-			wordbookName,
-			wordbookEnabled,
-			calendarEnabled,
-			stripExifOnUpload,
-		})
-	}
-
-	let savedSnapshot = $state(snapshotState())
-	const currentSnapshot = $derived(snapshotState())
-	const isDirty = $derived(currentSnapshot !== savedSnapshot)
+	const dirty = createDirtyTracker(() => ({
+		siteName,
+		siteTagline,
+		institutionName,
+		footerText,
+		logoUrl,
+		textDirection,
+		navWikiLabel,
+		navCreateLabel,
+		navWordbookLabel,
+		navCalendarLabel,
+		wordbookName,
+		wordbookEnabled,
+		calendarEnabled,
+		stripExifOnUpload,
+	}))
+	const isDirty = $derived(dirty.isDirty)
 
 	function resetDraft() {
 		siteName = initialSettings.site_name ?? 'KnowThing'
@@ -75,40 +72,40 @@
 		saveError = ''
 	}
 
-	async function save() {
-		saving = true
-		saveError = ''
-		const response = await fetch('/api/settings', {
-			method: 'PUT',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				site_name: siteName,
-				site_tagline: siteTagline,
-				institution_name: institutionName,
-				footer_text: footerText,
-				logo_url: logoUrl,
-				text_direction: textDirection,
-				nav_wiki_label: navWikiLabel,
-				nav_create_label: navCreateLabel,
-				nav_wordbook_label: navWordbookLabel,
-				nav_calendar_label: navCalendarLabel,
-				wordbook_name: wordbookName,
-				wordbook_enabled: String(wordbookEnabled),
-				calendar_enabled: String(calendarEnabled),
-				strip_exif_on_upload: String(stripExifOnUpload),
-			}),
-		})
-		if (response.ok) {
-			savedSnapshot = currentSnapshot
+	const saveMutation = createMutation(() => ({
+		mutationFn: () => api('PUT', '/api/settings', {
+			site_name: siteName,
+			site_tagline: siteTagline,
+			institution_name: institutionName,
+			footer_text: footerText,
+			logo_url: logoUrl,
+			text_direction: textDirection,
+			nav_wiki_label: navWikiLabel,
+			nav_create_label: navCreateLabel,
+			nav_wordbook_label: navWordbookLabel,
+			nav_calendar_label: navCalendarLabel,
+			wordbook_name: wordbookName,
+			wordbook_enabled: String(wordbookEnabled),
+			calendar_enabled: String(calendarEnabled),
+			strip_exif_on_upload: String(stripExifOnUpload),
+		}),
+		onSuccess: () => {
+			dirty.markClean()
 			savedAt = new Date()
 			pushSuccess('Settings saved')
 			invalidateAll()
-		} else {
-			const body = await response.json().catch(() => ({}))
-			saveError = body.error || 'Failed to save settings'
+		},
+		onError: (error: Error) => {
+			saveError = error.message
 			pushError(saveError)
-		}
-		saving = false
+		},
+	}))
+
+	const saving = $derived(saveMutation.isPending)
+
+	function save() {
+		saveError = ''
+		saveMutation.mutate()
 	}
 </script>
 

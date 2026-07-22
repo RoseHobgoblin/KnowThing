@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte'
 	import { invalidateAll } from '$app/navigation'
+	import { createMutation, createQuery } from '@tanstack/svelte-query'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import Input from '$lib/components/ui/Input.svelte'
 	import { cn } from '$lib/utils'
+	import { api } from '$lib/api'
 
 	type RelatedEntry = {
 		id: number
@@ -80,20 +82,23 @@
 
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
 
+	const onError = (error: Error) => pushError(error.message)
+
 	// ── Delete relation ──
-	let deleting = $state<number | null>(null)
-	async function deleteRelation(relationId: number) {
-		const ok = await confirmDialog.confirm('Remove relation', 'Remove this etymological relation?', 'Remove', 'Cancel')
-		if (!ok) return
-		deleting = relationId
-		const response = await fetch(`/api/wordbook/${entryId}/relations/${relationId}`, { method: 'DELETE' })
-		if (response.ok) {
+	const deleteRelationMutation = createMutation(() => ({
+		mutationFn: (relationId: number) => api('DELETE', `/api/wordbook/${entryId}/relations/${relationId}`),
+		onSuccess: () => {
 			pushSuccess('Relation removed')
 			invalidateAll()
-		} else {
-			pushError('Failed to remove relation')
-		}
-		deleting = null
+		},
+		onError,
+	}))
+
+	const deleting = $derived(deleteRelationMutation.isPending ? deleteRelationMutation.variables : null)
+
+	async function deleteRelation(relationId: number) {
+		const ok = await confirmDialog.confirm('Remove relation', 'Remove this etymological relation?', 'Remove', 'Cancel')
+		if (ok) deleteRelationMutation.mutate(relationId)
 	}
 
 	// ── Add relation form ──
@@ -103,11 +108,20 @@
 	let targetQuery = $state('')
 	let targetId = $state<number | null>(null)
 	let notes = $state('')
-	let submitting = $state(false)
 	let formError = $state('')
-	let searchResults = $state<Array<{ id: number, word: string, definition: string, languageName: string, languageSlug: string }>>([])
-	let showDropdown = $state(false)
+	let debouncedQuery = $state('')
+	let dropdownOpen = $state(false)
 	let searchTimeout: ReturnType<typeof setTimeout> | null = null
+
+	const searchQuery = createQuery(() => ({
+		queryKey: ['wordbook-search', debouncedQuery, 10],
+		queryFn: () => api<Array<{ id: number, word: string, definition: string, languageName: string, languageSlug: string }>>('GET', `/api/wordbook?q=${encodeURIComponent(debouncedQuery)}&limit=10`),
+		enabled: debouncedQuery.length >= 2,
+		placeholderData: (previous: Array<{ id: number, word: string, definition: string, languageName: string, languageSlug: string }> | undefined) => previous,
+	}))
+
+	const searchResults = $derived(searchQuery.data ?? [])
+	const showDropdown = $derived(dropdownOpen && searchResults.length > 0)
 
 	onDestroy(() => {
 		if (searchTimeout) clearTimeout(searchTimeout)
@@ -134,23 +148,20 @@
 		if (searchTimeout) clearTimeout(searchTimeout)
 		targetId = null
 		if (targetQuery.trim().length < 2) {
-			searchResults = []
-			showDropdown = false
+			debouncedQuery = ''
+			dropdownOpen = false
 			return
 		}
-		searchTimeout = setTimeout(async () => {
-			const response = await fetch(`/api/wordbook?q=${encodeURIComponent(targetQuery.trim())}&limit=10`)
-			if (response.ok) {
-				searchResults = await response.json()
-				showDropdown = searchResults.length > 0
-			}
+		dropdownOpen = true
+		searchTimeout = setTimeout(() => {
+			debouncedQuery = targetQuery.trim()
 		}, 300)
 	}
 
 	function selectTarget(r: typeof searchResults[0]) {
 		targetId = r.id
 		targetQuery = `${r.word} (${r.languageName})`
-		showDropdown = false
+		dropdownOpen = false
 	}
 
 	function resetForm() {
@@ -167,38 +178,34 @@
 		resetForm()
 	}
 
-	async function addRelation(event: SubmitEvent) {
+	const addRelationMutation = createMutation(() => ({
+		mutationFn: ({ sourceId, targetId: tgtId }: { sourceId: number, targetId: number }) =>
+			api('POST', `/api/wordbook/${sourceId}/relations`, { targetId: tgtId, relationType, notes: notes.trim() || undefined }),
+		onSuccess: () => {
+			pushSuccess('Relation added')
+			resetForm()
+			showForm = false
+			invalidateAll()
+		},
+		onError: (error: Error) => {
+			formError = error.message
+			pushError(error.message)
+		},
+	}))
+
+	const submitting = $derived(addRelationMutation.isPending)
+
+	function addRelation(event: SubmitEvent) {
 		event.preventDefault()
 		if (!targetId) {
 			formError = 'Select a target word'
 			return
 		}
 		formError = ''
-		submitting = true
-
-		const sourceId = direction === 'from' ? entryId : targetId
-		const tgtId = direction === 'from' ? targetId : entryId
-
-		try {
-			const response = await fetch(`/api/wordbook/${sourceId}/relations`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ targetId: tgtId, relationType, notes: notes.trim() || undefined }),
-			})
-			if (!response.ok) {
-				const error = await response.json()
-				throw new Error(error.error || 'Failed')
-			}
-			pushSuccess('Relation added')
-			resetForm()
-			showForm = false
-			invalidateAll()
-		} catch (error: any) {
-			formError = error.message
-			pushError(error.message)
-		} finally {
-			submitting = false
-		}
+		addRelationMutation.mutate({
+			sourceId: direction === 'from' ? entryId : targetId,
+			targetId: direction === 'from' ? targetId : entryId,
+		})
 	}
 </script>
 
@@ -264,8 +271,8 @@
 						type="text"
 						bind:value={targetQuery}
 						oninput={handleSearch}
-						onfocus={() => { if (searchResults.length > 0) showDropdown = true }}
-						onblur={() => setTimeout(() => showDropdown = false, 200)}
+						onfocus={() => { if (searchResults.length > 0) dropdownOpen = true }}
+						onblur={() => setTimeout(() => dropdownOpen = false, 200)}
 						placeholder="Search for a word..."
 						class="w-full px-3 py-1.5 text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent"
 					/>

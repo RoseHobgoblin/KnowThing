@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation'
+	import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
@@ -9,6 +10,7 @@
 	import { generateCellKeys, cellKeyLabel } from '$lib/wordbook/cell-keys.js'
 	import { applyStem } from '$lib/wordbook/inflection-pattern.js'
 	import { DIMENSION_PRESETS, CLASS_PRESETS, type DimensionPreset, type ClassPreset } from './dimension-presets.js'
+	import { api } from '$lib/api'
 
 	let { languageSlug, dimensions = [], classes = [], ruleCounts = {} }: {
 		languageSlug: string
@@ -41,6 +43,9 @@
 
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
 
+	const queryClient = useQueryClient()
+	const onError = (error: Error) => pushError(error.message)
+
 	const allPos = $derived.by(() => {
 		const seen: Record<string, true> = {}
 		const order: string[] = []
@@ -60,7 +65,6 @@
 	let newDimName = $state('')
 	let newDimValues = $state('')
 	let newDimSort = $state<string>('0')
-	let addingDim = $state(false)
 
 	function applyDimensionPreset(preset: DimensionPreset) {
 		newDimPos = preset.pos
@@ -110,65 +114,58 @@
 		return `${newDimAxis.toLowerCase()}: ${vals.join(' · ')}`
 	})
 
-	async function addDimension(event: SubmitEvent) {
-		event.preventDefault()
-		if (!newDimName.trim() || !newDimValues.trim()) return
-		addingDim = true
-		const sortOrder = showDisplayAs ? Number(newDimSort) || 0 : 0
-		const response = await fetch(`/api/languages/${languageSlug}/inflections/dimensions`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				partOfSpeech: newDimPos,
-				name: newDimName.trim(),
-				values: newDimValues.split(',').map(v => v.trim()).filter(Boolean),
-				sortOrder,
-			}),
-		})
-		if (response.ok) {
+	const addDimensionMutation = createMutation(() => ({
+		mutationFn: () => api('POST', `/api/languages/${languageSlug}/inflections/dimensions`, {
+			partOfSpeech: newDimPos,
+			name: newDimName.trim(),
+			values: newDimValues.split(',').map(v => v.trim()).filter(Boolean),
+			sortOrder: showDisplayAs ? Number(newDimSort) || 0 : 0,
+		}),
+		onSuccess: () => {
 			pushSuccess('Dimension created')
 			newDimName = ''
 			newDimValues = ''
 			showAddDim = false
 			invalidateAll()
-		} else {
-			pushError('Failed to create dimension')
-		}
-		addingDim = false
+		},
+		onError,
+	}))
+
+	function addDimension(event: SubmitEvent) {
+		event.preventDefault()
+		if (!newDimName.trim() || !newDimValues.trim()) return
+		addDimensionMutation.mutate()
 	}
 
-	async function quickAddPreset(preset: DimensionPreset) {
-		// One-click empty-state CTA — POSTs without opening the form.
-		addingDim = true
-		const response = await fetch(`/api/languages/${languageSlug}/inflections/dimensions`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				partOfSpeech: preset.pos,
-				name: preset.name,
-				values: preset.values,
-				sortOrder: preset.sortOrder,
-			}),
-		})
-		if (response.ok) {
+	// One-click empty-state CTA — POSTs without opening the form.
+	const quickAddPresetMutation = createMutation(() => ({
+		mutationFn: (preset: DimensionPreset) => api('POST', `/api/languages/${languageSlug}/inflections/dimensions`, {
+			partOfSpeech: preset.pos,
+			name: preset.name,
+			values: preset.values,
+			sortOrder: preset.sortOrder,
+		}),
+		onSuccess: (_data, preset) => {
 			pushSuccess(`Added ${preset.name} for ${preset.pos}`)
 			invalidateAll()
-		} else {
-			pushError('Failed to create dimension')
-		}
-		addingDim = false
-	}
+		},
+		onError,
+	}))
+
+	const addingDim = $derived(addDimensionMutation.isPending || quickAddPresetMutation.isPending)
+
+	const deleteDimensionMutation = createMutation(() => ({
+		mutationFn: (dimId: number) => api('DELETE', `/api/languages/${languageSlug}/inflections/dimensions/${dimId}`),
+		onSuccess: () => {
+			pushSuccess('Dimension removed')
+			invalidateAll()
+		},
+		onError,
+	}))
 
 	async function deleteDimension(dimId: number) {
 		const ok = await confirmDialog.confirm('Remove dimension', 'Remove this dimension? This will affect all paradigm rules using it.', 'Remove', 'Cancel')
-		if (!ok) return
-		const response = await fetch(`/api/languages/${languageSlug}/inflections/dimensions/${dimId}`, { method: 'DELETE' })
-		if (response.ok) {
-			pushSuccess('Dimension removed')
-			invalidateAll()
-		} else {
-			pushError('Failed to remove dimension')
-		}
+		if (ok) deleteDimensionMutation.mutate(dimId)
 	}
 
 	// ── Add class form ─────────────────────────────────────────────────
@@ -176,7 +173,6 @@
 	let newClassPos = $state('noun')
 	let newClassName = $state('')
 	let newClassDesc = $state('')
-	let addingClass = $state(false)
 
 	function applyClassPreset(preset: ClassPreset) {
 		newClassPos = preset.pos
@@ -198,93 +194,107 @@
 		}
 	})
 
-	async function addClass(event: SubmitEvent) {
-		event.preventDefault()
-		if (!newClassName.trim()) return
-		addingClass = true
-		const response = await fetch(`/api/languages/${languageSlug}/inflections/classes`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				partOfSpeech: newClassPos,
-				name: newClassName.trim(),
-				description: newClassDesc.trim() || undefined,
-			}),
-		})
-		if (response.ok) {
+	const addClassMutation = createMutation(() => ({
+		mutationFn: () => api('POST', `/api/languages/${languageSlug}/inflections/classes`, {
+			partOfSpeech: newClassPos,
+			name: newClassName.trim(),
+			description: newClassDesc.trim() || undefined,
+		}),
+		onSuccess: () => {
 			pushSuccess('Paradigm class created')
 			newClassName = ''
 			newClassDesc = ''
 			showAddClass = false
 			invalidateAll()
-		} else {
-			pushError('Failed to create paradigm class')
-		}
-		addingClass = false
+		},
+		onError,
+	}))
+
+	const addingClass = $derived(addClassMutation.isPending)
+
+	function addClass(event: SubmitEvent) {
+		event.preventDefault()
+		if (!newClassName.trim()) return
+		addClassMutation.mutate()
 	}
+
+	const deleteClassMutation = createMutation(() => ({
+		mutationFn: (classId: number) => api('DELETE', `/api/languages/${languageSlug}/inflections/classes/${classId}`),
+		onSuccess: () => {
+			pushSuccess('Paradigm class deleted')
+			invalidateAll()
+		},
+		onError,
+	}))
 
 	async function deleteClass(classId: number) {
 		const ok = await confirmDialog.confirm('Delete paradigm class', 'Delete this paradigm class and all its rules?', 'Delete', 'Cancel')
-		if (!ok) return
-		const response = await fetch(`/api/languages/${languageSlug}/inflections/classes/${classId}`, { method: 'DELETE' })
-		if (response.ok) {
-			pushSuccess('Paradigm class deleted')
-			invalidateAll()
-		} else {
-			pushError('Failed to delete paradigm class')
-		}
+		if (ok) deleteClassMutation.mutate(classId)
 	}
 
 	// ── Rules editor ───────────────────────────────────────────────────
 	let editingClassId = $state<number | null>(null)
 	let editingClassName = $state<string>('')
+	let editingClassPos = $state<string>('')
 	let editingRules = $state<Array<{ cellKey: string, pattern: string }>>([])
-	let loadingRules = $state(false)
-	let savingRules = $state(false)
+	// Tracks which class the editable rows were seeded from, so a background
+	// refetch never clobbers in-progress edits.
+	let seededClassId = $state<number | null>(null)
 	let previewStem = $state('cat')
 
-	async function openRulesEditor(cls: { id: number, name: string, partOfSpeech: string }) {
+	const rulesQuery = createQuery(() => ({
+		queryKey: ['inflection-class-rules', languageSlug, editingClassId],
+		queryFn: () => api<{ rules?: Array<{ cellKey: string, pattern: string }> }>('GET', `/api/languages/${languageSlug}/inflections/classes/${editingClassId}`),
+		enabled: editingClassId !== null,
+	}))
+
+	const loadingRules = $derived(editingClassId !== null && seededClassId !== editingClassId)
+
+	$effect(() => {
+		if (editingClassId === null || seededClassId === editingClassId) return
+		if (rulesQuery.isFetching || rulesQuery.data === undefined) return
+		const existingRules: Record<string, string> = {}
+		for (const r of rulesQuery.data.rules || []) {
+			existingRules[r.cellKey] = r.pattern
+		}
+		editingRules = cellKeysForPos(editingClassPos).map(key => ({
+			cellKey: key,
+			pattern: existingRules[key] || '',
+		}))
+		seededClassId = editingClassId
+	})
+
+	function openRulesEditor(cls: { id: number, name: string, partOfSpeech: string }) {
 		if (editingClassId === cls.id) {
 			editingClassId = null
 			return
 		}
-		loadingRules = true
 		editingClassId = cls.id
 		editingClassName = cls.name
-
-		const response = await fetch(`/api/languages/${languageSlug}/inflections/classes/${cls.id}`)
-		const data = await response.json()
-		const existingRules: Record<string, string> = {}
-		for (const r of data.rules || []) {
-			existingRules[r.cellKey] = r.pattern
-		}
-
-		const keys = cellKeysForPos(cls.partOfSpeech)
-		editingRules = keys.map(key => ({
-			cellKey: key,
-			pattern: existingRules[key] || '',
-		}))
-
-		loadingRules = false
+		editingClassPos = cls.partOfSpeech
+		editingRules = []
+		seededClassId = null
 	}
 
-	async function saveRules() {
-		if (editingClassId === null) return
-		savingRules = true
-		const nonEmpty = editingRules.filter(r => r.pattern.trim())
-		const response = await fetch(`/api/languages/${languageSlug}/inflections/classes/${editingClassId}`, {
-			method: 'PUT',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ rules: nonEmpty }),
-		})
-		if (response.ok) {
+	const saveRulesMutation = createMutation(() => ({
+		mutationFn: (classId: number) => api('PUT', `/api/languages/${languageSlug}/inflections/classes/${classId}`, {
+			rules: editingRules.filter(r => r.pattern.trim()),
+		}),
+		onSuccess: (_data, classId) => {
 			pushSuccess('Rules saved')
-		} else {
-			pushError('Failed to save rules')
-		}
-		savingRules = false
-		editingClassId = null
-		invalidateAll()
+			queryClient.invalidateQueries({ queryKey: ['inflection-class-rules', languageSlug, classId] })
+		},
+		onError,
+		onSettled: () => {
+			editingClassId = null
+			invalidateAll()
+		},
+	}))
+
+	const savingRules = $derived(saveRulesMutation.isPending)
+
+	function saveRules() {
+		if (editingClassId !== null) saveRulesMutation.mutate(editingClassId)
 	}
 
 	const previewRibbon = $derived.by(() => {
@@ -377,7 +387,7 @@
 						<button
 							type="button"
 							disabled={addingDim}
-							onclick={() => quickAddPreset(preset)}
+							onclick={() => quickAddPresetMutation.mutate(preset)}
 							class="
 								px-2 py-1 border border-accent-border bg-accent-subtle text-xs text-accent transition-colors
 								hover:bg-accent hover:text-surface

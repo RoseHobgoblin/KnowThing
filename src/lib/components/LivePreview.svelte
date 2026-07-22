@@ -2,6 +2,7 @@
 	import WikiNodeComponent from '$lib/renderer/WikiNode.svelte'
 	import { createKnowContext } from '$lib/renderer/context.js'
 	import { page } from '$app/stores'
+	import { api } from '$lib/api'
 	import type { WikiNode } from '$lib/parser/types.js'
 
 	let { content = '', domain = 'know' }: { content: string, domain?: string } = $props()
@@ -33,15 +34,8 @@
 		loading = true
 		debounceTimer = setTimeout(async () => {
 			try {
-				const res = await fetch('/api/render', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ content: _c }),
-				})
-				if (res.ok) {
-					const data = await res.json()
-					ast = data.ast
-				}
+				const data = await api<{ ast: WikiNode }>('POST', '/api/render', { content: _c })
+				ast = data.ast
 			} catch {
 				// ignore
 			} finally {

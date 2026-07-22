@@ -25,6 +25,9 @@
 	import { page } from '$app/stores'
 	import { goto } from '$app/navigation'
 	import { pushError, pushSuccess } from '$lib/notifications.svelte'
+	import { createMutation } from '@tanstack/svelte-query'
+	import { api } from '$lib/api'
+	import { createDirtyTracker } from '$lib/utils/dirty.svelte'
 	import { normalizePermissions } from '$lib/permissions.js'
 	import { staticDataSchema } from '$lib/calendar/schema.js'
 	import { summarizeZodIssues } from '$lib/utils.js'
@@ -225,9 +228,9 @@
 	let leapDays = $state<DraftLeapDay[]>(draftLeapDays(sd))
 
 	let editSummary = $state('')
-	let saving = $state(false)
 	let saveError = $state('')
-	let initialStaticData = JSON.stringify(initialConfig.static_data)
+
+	const onError = (error: Error) => pushError(error.message)
 
 	// ── Derived ─────────────────────────────────────────────
 	const previewConfig = $derived<CalendarConfig>({
@@ -293,8 +296,8 @@
 
 	const totalDaysInYear = $derived(months.reduce((sum, m) => sum + m.length, 0))
 	const dayLengthHours = $derived(Math.round((dayLengthSeconds / 3600) * 100) / 100)
-	const currentStaticData = $derived(JSON.stringify(previewConfig.static_data))
-	const isDirty = $derived(currentStaticData !== initialStaticData || editSummary.trim().length > 0)
+	const dirty = createDirtyTracker(() => previewConfig.static_data)
+	const isDirty = $derived(dirty.isDirty || editSummary.trim().length > 0)
 	let stablePermissions = $state(normalizePermissions($page.data.permissions))
 	const permissions = $derived(stablePermissions)
 	const validationIssues = $derived.by(() => {
@@ -326,43 +329,46 @@
 		saveError = ''
 	}
 
+	const saveMutation = createMutation(() => ({
+		mutationFn: () => api('PUT', `/api/calendar/${calendar.id}`, { staticData: previewConfig.static_data }),
+		onSuccess: () => {
+			savedAt = new Date()
+			dirty.markClean()
+			editSummary = ''
+			pushSuccess('Calendar saved')
+		},
+		onError: (error) => {
+			saveError = error.message
+			pushError(error.message)
+		},
+	}))
+
+	const saving = $derived(saveMutation.isPending)
+
 	async function save() {
 		if (validationIssues.length > 0) {
 			saveError = 'Review the calendar sections below before saving.'
 			return
 		}
 
-		saving = true
 		saveError = ''
-		try {
-			const res = await fetch(`/api/calendar/${calendar.id}`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ staticData: previewConfig.static_data }),
-			})
-			if (!res.ok) {
-				const body = await res.json().catch(() => ({}))
-				saveError = body.error || 'Failed to save calendar configuration'
-				pushError(saveError)
-				return
-			}
-
-			savedAt = new Date()
-			initialStaticData = currentStaticData
-			editSummary = ''
-			pushSuccess('Calendar saved')
-		} catch {
-			saveError = 'Failed to save'
-			pushError('Failed to save')
-		} finally {
-			saving = false
-		}
+		// Awaited so saveAndExit can check saveError after the request settles.
+		await saveMutation.mutateAsync().catch(() => {})
 	}
 
 	async function saveAndExit() {
 		await save()
 		if (!saveError) goto(viewPath)
 	}
+
+	const deleteMutation = createMutation(() => ({
+		mutationFn: () => api('DELETE', `/api/calendar/${calendar.id}`),
+		onSuccess: () => {
+			pushSuccess('Calendar deleted')
+			goto('/calendar')
+		},
+		onError,
+	}))
 
 	async function deleteCalendar() {
 		const ok = await confirmDialog.confirm(
@@ -373,15 +379,7 @@
 		)
 		if (!ok) return
 
-		const response = await fetch(`/api/calendar/${calendar.id}`, { method: 'DELETE' })
-		if (!response.ok) {
-			const body = await response.json().catch(() => ({}))
-			pushError(body.error || 'Failed to delete calendar')
-			return
-		}
-
-		pushSuccess('Calendar deleted')
-		goto('/calendar')
+		deleteMutation.mutate()
 	}
 </script>
 

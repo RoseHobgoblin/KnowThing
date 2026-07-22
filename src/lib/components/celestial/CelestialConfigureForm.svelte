@@ -14,6 +14,9 @@
 	import FormNotice from '$lib/components/editor/FormNotice.svelte'
 	import { celestialConfigureBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
+	import { createMutation } from '@tanstack/svelte-query'
+	import { api } from '$lib/api'
+	import { createDirtyTracker } from '$lib/utils/dirty.svelte'
 	import { goto } from '$app/navigation'
 	import { page } from '$app/stores'
 	import { normalizePermissions } from '$lib/permissions.js'
@@ -82,17 +85,17 @@
 		return ''
 	})
 
-	let saving = $state(false)
 	let saveError = $state('')
 	let savedAt = $state<Date | null>(null)
+
+	const onError = (error: Error) => pushError(error.message)
 
 	// Key-sorted so dirty tracking never depends on draft key insertion order.
 	function serializeDraft(value: Record<string, any>): string {
 		return JSON.stringify(value, Object.keys(value).toSorted())
 	}
-	let initialSnapshot = $state(serializeDraft(untrack(() => draft)))
-	const currentSnapshot = $derived(serializeDraft(draft))
-	const isDirty = $derived(currentSnapshot !== initialSnapshot)
+	const dirty = createDirtyTracker(() => serializeDraft(draft))
+	const isDirty = $derived(dirty.isDirty)
 
 	let stablePermissions = $state(normalizePermissions($page.data.permissions))
 	const permissions = $derived(stablePermissions)
@@ -161,7 +164,29 @@
 		return ''
 	}
 
-	async function save() {
+	const saveMutation = createMutation(() => ({
+		mutationFn: () => api<{ slug?: string } | undefined>('PUT', `/api/celestial/${savedSlug}`, buildPayload(config, ctx)),
+		onSuccess: (saved) => {
+			if (saved?.slug && saved.slug !== savedSlug) {
+				draft.slug = saved.slug
+				// Update URL without navigation so a later exit uses the new slug
+				globalThis.history.replaceState({}, '', globalThis.location.pathname.replace(savedSlug, saved.slug))
+				savedSlug = saved.slug
+			}
+
+			savedAt = new Date()
+			dirty.markClean()
+			pushSuccess(`${config.noun} saved`)
+		},
+		onError: (error) => {
+			saveError = error.message
+			pushError(error.message)
+		},
+	}))
+
+	const saving = $derived(saveMutation.isPending)
+
+	function save() {
 		if (validationIssues.length > 0) {
 			saveError = 'Review the highlighted fields before saving.'
 			return
@@ -171,39 +196,18 @@
 			return
 		}
 
-		saving = true
 		saveError = ''
-		try {
-			const response = await fetch(`/api/celestial/${savedSlug}`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(buildPayload(config, ctx)),
-			})
-			if (!response.ok) {
-				const payload = await response.json().catch(() => ({}))
-				saveError = payload.error || `Failed to save ${config.noun.toLowerCase()}`
-				pushError(saveError)
-				return
-			}
-
-			const saved = await response.json().catch(() => null)
-			if (saved?.slug && saved.slug !== savedSlug) {
-				draft.slug = saved.slug
-				// Update URL without navigation so a later exit uses the new slug
-				globalThis.history.replaceState({}, '', globalThis.location.pathname.replace(savedSlug, saved.slug))
-				savedSlug = saved.slug
-			}
-
-			savedAt = new Date()
-			initialSnapshot = currentSnapshot
-			pushSuccess(`${config.noun} saved`)
-		} catch {
-			saveError = 'Failed to save'
-			pushError('Failed to save')
-		} finally {
-			saving = false
-		}
+		saveMutation.mutate()
 	}
+
+	const deleteMutation = createMutation(() => ({
+		mutationFn: () => api('DELETE', `/api/celestial/${savedSlug}`),
+		onSuccess: () => {
+			pushSuccess(`${config.noun} deleted`)
+			goto(initialParentCrumbs.at(-1)?.href ?? '/celestial')
+		},
+		onError,
+	}))
 
 	async function deleteEntity() {
 		const ok = await confirmDialog.confirm(
@@ -214,15 +218,7 @@
 		)
 		if (!ok) return
 
-		const response = await fetch(`/api/celestial/${savedSlug}`, { method: 'DELETE' })
-		if (!response.ok) {
-			const payload = await response.json().catch(() => ({}))
-			pushError(payload.error || `Failed to delete ${config.noun.toLowerCase()}`)
-			return
-		}
-
-		pushSuccess(`${config.noun} deleted`)
-		goto(initialParentCrumbs.at(-1)?.href ?? '/celestial')
+		deleteMutation.mutate()
 	}
 </script>
 

@@ -11,6 +11,8 @@
 	import { normalizePermissions } from '$lib/permissions.js'
 	import { invalidateAll, goto } from '$app/navigation'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
+	import { createMutation } from '@tanstack/svelte-query'
+	import { api } from '$lib/api'
 	import StarIcon from 'phosphor-svelte/lib/Star'
 	import { calendarBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 
@@ -33,7 +35,8 @@
 
 	let newCalendarName = $state('')
 	let selectedPreset = $state('')
-	let creating = $state(false)
+
+	const onError = (error: Error) => pushError(error.message)
 
 	const presetItems = [
 		{ value: '', label: 'Blank' },
@@ -47,39 +50,35 @@
 		}
 	})
 
-	async function createCalendar() {
-		if (!newCalendarName.trim()) return
-		creating = true
-		const preset = calendarPresets.find(p => p.label === selectedPreset)
-		const staticData = preset?.staticData ?? {
-			first_week_day: 0,
-			weekdays: [{ name: 'Monday' }, { name: 'Tuesday' }, { name: 'Wednesday' }, { name: 'Thursday' }, { name: 'Friday' }, { name: 'Saturday' }, { name: 'Sunday' }],
-			months: [{ name: 'Month 1', length: 30, month_type: 'regular' }],
-			leap_days: [], moons: [], eras: [], seasons: [],
-			display_moons: false, year_offset: 0, epoch_offset: 0,
-		}
-		try {
-			const res = await fetch('/api/calendar', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					name: newCalendarName.trim(),
-					staticData,
-				}),
-			})
-			if (res.ok) {
-				const cal = await res.json()
-				pushSuccess(`Created "${cal.name}"`)
-				newCalendarName = ''
-				if (cal.slug) goto(`/Calendar:${cal.slug}`)
-				else invalidateAll()
-			} else {
-				const body = await res.json().catch(() => ({}))
-				pushError(body.error || 'Failed to create calendar')
+	const createCalendarMutation = createMutation(() => ({
+		mutationFn: () => {
+			const preset = calendarPresets.find(p => p.label === selectedPreset)
+			const staticData = preset?.staticData ?? {
+				first_week_day: 0,
+				weekdays: [{ name: 'Monday' }, { name: 'Tuesday' }, { name: 'Wednesday' }, { name: 'Thursday' }, { name: 'Friday' }, { name: 'Saturday' }, { name: 'Sunday' }],
+				months: [{ name: 'Month 1', length: 30, month_type: 'regular' }],
+				leap_days: [], moons: [], eras: [], seasons: [],
+				display_moons: false, year_offset: 0, epoch_offset: 0,
 			}
-		} finally {
-			creating = false
-		}
+			return api<{ name: string, slug?: string }>('POST', '/api/calendar', {
+				name: newCalendarName.trim(),
+				staticData,
+			})
+		},
+		onSuccess: (cal) => {
+			pushSuccess(`Created "${cal.name}"`)
+			newCalendarName = ''
+			if (cal.slug) goto(`/Calendar:${cal.slug}`)
+			else invalidateAll()
+		},
+		onError,
+	}))
+
+	const creating = $derived(createCalendarMutation.isPending)
+
+	function createCalendar() {
+		if (!newCalendarName.trim()) return
+		createCalendarMutation.mutate()
 	}
 </script>
 

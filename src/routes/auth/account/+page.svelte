@@ -7,6 +7,8 @@
 	import { accountBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import { goto } from '$app/navigation'
+	import { createMutation } from '@tanstack/svelte-query'
+	import { api } from '$lib/api'
 
 	let { data }: { data: PageData } = $props()
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
@@ -14,31 +16,36 @@
 	let currentPassword = $state('')
 	let newPassword = $state('')
 	let confirmPassword = $state('')
-	let changingPassword = $state(false)
 
-	async function handleChangePassword() {
+	const onError = (error: Error) => pushError(error.message)
+
+	const changePasswordMutation = createMutation(() => ({
+		mutationFn: () => api('PUT', '/api/account', { currentPassword, newPassword }),
+		onSuccess: () => {
+			pushSuccess('Password changed. Please log in again.')
+			goto('/auth/login')
+		},
+		onError,
+	}))
+
+	const changingPassword = $derived(changePasswordMutation.isPending)
+
+	function handleChangePassword() {
 		if (newPassword !== confirmPassword) {
 			pushError('Passwords do not match')
 			return
 		}
-		changingPassword = true
-		try {
-			const res = await fetch('/api/account', {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ currentPassword, newPassword }),
-			})
-			if (res.ok) {
-				pushSuccess('Password changed. Please log in again.')
-				goto('/auth/login')
-			} else {
-				const err = await res.json().catch(() => null)
-				pushError(err?.error || 'Failed to change password')
-			}
-		} finally {
-			changingPassword = false
-		}
+		changePasswordMutation.mutate()
 	}
+
+	const deleteAccountMutation = createMutation(() => ({
+		mutationFn: () => api('DELETE', '/api/account'),
+		onSuccess: () => {
+			pushSuccess('Account deleted')
+			goto('/')
+		},
+		onError,
+	}))
 
 	async function handleDeleteAccount() {
 		const ok = await confirmDialog.confirm(
@@ -48,15 +55,7 @@
 			'Cancel',
 		)
 		if (!ok) return
-
-		const res = await fetch('/api/account', { method: 'DELETE' })
-		if (res.ok) {
-			pushSuccess('Account deleted')
-			goto('/')
-		} else {
-			const err = await res.json().catch(() => null)
-			pushError(err?.error || 'Failed to delete account')
-		}
+		deleteAccountMutation.mutate()
 	}
 </script>
 
