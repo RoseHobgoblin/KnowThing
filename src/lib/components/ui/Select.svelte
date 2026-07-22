@@ -1,9 +1,8 @@
 <script lang="ts">
 	import { untrack } from 'svelte'
 	import { Select, type WithoutChildren, useId } from 'bits-ui'
-	import { cn, getZodValidationError } from '$lib/utils'
+	import { cn } from '$lib/utils'
 	import Label from './Label.svelte'
-	import type { ZodType } from 'zod'
 	import CaretDown from 'phosphor-svelte/lib/CaretDown'
 	import CaretUp from 'phosphor-svelte/lib/CaretUp'
 	import Check from 'phosphor-svelte/lib/Check'
@@ -24,8 +23,6 @@
 		labelClass?: string
 		containerClass?: string
 		required?: boolean
-		validate?: ZodType
-		validateImmediately?: boolean
 		size?: 'sm' | 'md'
 		/** When true, the bound value is coerced to/from number */
 		numeric?: boolean
@@ -42,8 +39,6 @@
 		labelClass,
 		containerClass,
 		required = false,
-		validate,
-		validateImmediately = false,
 		size = 'md',
 		numeric = false,
 		...rest
@@ -52,11 +47,6 @@
 	id ??= useId('select')
 
 	let open = $state(false)
-	let hasInteracted = $state(false)
-
-	$effect(() => {
-		if (validateImmediately) hasInteracted = true
-	})
 
 	// Numeric coercion: internal string value syncs with external number value
 	let internalValue = $state<string | string[] | undefined>(untrack(() =>
@@ -81,12 +71,6 @@
 	}
 
 	const type = $derived(rest.type)
-	const errorText = $derived(getZodValidationError(validate, value))
-	const isErrorState = $derived(!!errorText && hasInteracted)
-
-	export function getIsValidInput() {
-		return !errorText
-	}
 
 	const triggerSize = { sm: 'h-8 text-xs py-1.5 px-2.5', md: 'h-10 text-sm py-2 px-3' } as const
 	const itemSize = { sm: 'h-8 text-xs py-1.5 px-2.5', md: 'h-9 text-sm py-2 px-3' } as const
@@ -118,10 +102,7 @@
 	<div class="relative">
 		<Select.Root
 			value={internalValue as never}
-			onValueChange={((v: string | string[]) => {
-				hasInteracted = true
-				onValueChange(v)
-			}) as never}
+			onValueChange={((v: string | string[]) => onValueChange(v)) as never}
 			bind:open
 			{...rest}
 		>
@@ -132,7 +113,6 @@
 					'data-disabled:opacity-50 data-disabled:cursor-not-allowed',
 					triggerSize[size],
 					open && 'ring-2 ring-accent',
-					isErrorState && 'ring-1 ring-error-border',
 					className,
 				)}
 			>
@@ -182,13 +162,4 @@
 			</Select.Portal>
 		</Select.Root>
 	</div>
-
-	{#if validate}
-		<div
-			class="text-error text-xs transition-opacity absolute -bottom-4 left-0 pointer-events-none"
-			class:opacity-0={!isErrorState}
-		>
-			{isErrorState ? errorText : ''}
-		</div>
-	{/if}
 </div>
