@@ -4,7 +4,9 @@
 	import { page } from '$app/stores'
 	import { normalizePermissions } from '$lib/permissions.js'
 	import SearchBar from '$lib/components/SearchBar.svelte'
-	import Notifications from '$lib/components/ui/Notifications.svelte'
+	import { Toaster } from 'svelte-sonner'
+	import { QueryClient, QueryClientProvider } from '@tanstack/svelte-query'
+	import { browser } from '$app/environment'
 	import MediaLightbox from '$lib/components/MediaLightbox.svelte'
 	import type { LayoutData } from './$types.js'
 	import House from 'phosphor-svelte/lib/House'
@@ -21,6 +23,10 @@
 	import SignIn from 'phosphor-svelte/lib/SignIn'
 
 	let { children, data }: { children: any, data: LayoutData } = $props()
+
+	const queryClient = new QueryClient({
+		defaultOptions: { queries: { enabled: browser, staleTime: 30_000 } },
+	})
 	let sidebarOpen = $state(false)
 	let stablePermissions = $state(normalizePermissions($page.data.permissions))
 
@@ -49,6 +55,7 @@
 	}
 </script>
 
+<QueryClientProvider client={queryClient}>
 <Tooltip.Provider>
 <div class="h-screen flex bg-page overflow-hidden" dir={sc?.textDirection ?? 'ltr'}>
 
@@ -225,6 +232,11 @@
 	</div>
 </div>
 </Tooltip.Provider>
+</QueryClientProvider>
 
-<Notifications />
+<Toaster
+	position="bottom-center"
+	style="--normal-bg: var(--color-surface); --normal-text: var(--color-body); --normal-border: var(--color-accent-border); --border-radius: 0;"
+	toastOptions={{ class: 'shadow-lg' }}
+/>
 <MediaLightbox />

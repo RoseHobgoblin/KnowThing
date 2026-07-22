@@ -7,6 +7,7 @@
 	import StickyActionBar from '$lib/components/editor/StickyActionBar.svelte'
 	import FormNotice from '$lib/components/editor/FormNotice.svelte'
 	import { urlSlugify } from '$lib/utils/slugify.js'
+	import { createDirtyTracker } from '$lib/utils/dirty.svelte'
 
 	let {
 		initial = {},
@@ -59,7 +60,7 @@
 	let submitting = $state(false)
 	let error = $state('')
 
-	const currentSnapshot = $derived(JSON.stringify({
+	const dirty = createDirtyTracker(() => ({
 		name,
 		slug,
 		nativeName,
@@ -71,8 +72,7 @@
 		parentLanguageId,
 		languageType,
 	}))
-	const savedSnapshot = JSON.stringify(initialValues)
-	const isDirty = $derived(currentSnapshot !== savedSnapshot)
+	const isDirty = $derived(dirty.isDirty)
 
 	let parentLanguageIdStr = $derived(parentLanguageId === null ? '' : String(parentLanguageId))
 
