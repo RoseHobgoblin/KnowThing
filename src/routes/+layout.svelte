@@ -5,8 +5,9 @@
 	import { normalizePermissions } from '$lib/permissions.js'
 	import SearchBar from '$lib/components/SearchBar.svelte'
 	import { Toaster } from 'svelte-sonner'
-	import { QueryClient, QueryClientProvider } from '@tanstack/svelte-query'
+	import { QueryClient, QueryClientProvider, MutationCache } from '@tanstack/svelte-query'
 	import { browser } from '$app/environment'
+	import { pushError } from '$lib/notifications.svelte'
 	import MediaLightbox from '$lib/components/MediaLightbox.svelte'
 	import CommandPalette, { type PaletteAction } from '$lib/components/CommandPalette.svelte'
 	import { commandPalette } from '$lib/components/command-palette.svelte'
@@ -27,7 +28,16 @@
 
 	let { children, data }: { children: any, data: LayoutData } = $props()
 
+	// Every mutation error surfaces as a toast unless the mutation opts out via
+	// `meta: { skipGlobalErrorToast: true }` — used by editors that show an
+	// inline banner, emit a custom message, or surface errors inside a form.
 	const queryClient = new QueryClient({
+		mutationCache: new MutationCache({
+			onError: (error, _variables, _context, mutation) => {
+				if (mutation.options.meta?.skipGlobalErrorToast) return
+				pushError(error instanceof Error ? error.message : 'Something went wrong')
+			},
+		}),
 		defaultOptions: { queries: { enabled: browser, staleTime: 30_000 } },
 	})
 	let sidebarOpen = $state(false)

@@ -14,7 +14,7 @@
 	import InflectionTable from '$lib/components/wordbook/InflectionTable.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
-	import { pushSuccess, pushError } from '$lib/notifications.svelte'
+	import { pushSuccess } from '$lib/notifications.svelte'
 	import Badge from '$lib/components/ui/Badge.svelte'
 	import { PARTS_OF_SPEECH, POS_COLORS } from '$lib/components/wordbook/constants.js'
 	import InlineMarkup from '$lib/renderer/InlineMarkup.svelte'
@@ -53,7 +53,6 @@
 	let newTranslation = $state('')
 	let senseError = $state('')
 
-	const onError = (error: Error) => pushError(error.message)
 
 	const addSenseMutation = createMutation(() => ({
 		mutationFn: (entryId: number) => api('POST', `/api/wordbook/${entryId}/definitions`, {
@@ -73,7 +72,6 @@
 		},
 		onError: (error: Error) => {
 			senseError = error.message
-			pushError(senseError)
 		},
 	}))
 
@@ -93,7 +91,6 @@
 			pushSuccess('Definition deleted')
 			invalidateAll()
 		},
-		onError,
 	}))
 
 	async function deleteSense(entryId: number, definitionId: number) {
@@ -108,7 +105,6 @@
 			pushSuccess(`"${data.word}" deleted`)
 			goto(`/Wordbook/${data.language.slug}`)
 		},
-		onError,
 	}))
 
 	async function deleteEntry(entryId: number) {

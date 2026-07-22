@@ -107,7 +107,6 @@
 		assignments = { ...assignments, [regionId]: pageSlug }
 	}
 
-	const onError = (error: Error) => pushError(error.message)
 
 	const ingestMutation = createMutation(() => ({
 		mutationFn: () => api<{ uniqueColorCount: number, createdCountries: number }>('POST', `/api/maps/${data.map.slug}/ingest`),
@@ -115,7 +114,6 @@
 			pushSuccess(`Ingested ${result.uniqueColorCount} colors. ${result.createdCountries} new country stubs created.`)
 			await invalidateAll()
 		},
-		onError,
 	}))
 
 	const ingesting = $derived(ingestMutation.isPending)
@@ -131,7 +129,6 @@
 			pushSuccess(`Saved ${result.updatedCount} assignment${result.updatedCount === 1 ? '' : 's'}`)
 			await invalidateAll()
 		},
-		onError,
 	}))
 
 	const saving = $derived(saveAssignmentsMutation.isPending)
@@ -197,7 +194,6 @@
 			selectedMediaSvg = ''
 			await ingestMutation.mutateAsync().catch(() => undefined)
 		},
-		onError,
 	}))
 
 	const uploading = $derived(uploadMutation.isPending)

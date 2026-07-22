@@ -45,6 +45,7 @@
 	]
 
 	const updateLanguageMutation = createMutation(() => ({
+		meta: { skipGlobalErrorToast: true },
 		mutationFn: (formData: Record<string, unknown>) => api('PUT', `/api/languages/${data.language.slug}`, formData),
 	}))
 

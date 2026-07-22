@@ -5,7 +5,7 @@
 	import { invalidateAll, goto } from '$app/navigation'
 	import { createMutation } from '@tanstack/svelte-query'
 	import { normalizePermissions } from '$lib/permissions.js'
-	import { pushSuccess, pushError } from '$lib/notifications.svelte'
+	import { pushSuccess } from '$lib/notifications.svelte'
 	import { api } from '$lib/api'
 	import { createDirtyTracker } from '$lib/utils/dirty.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
@@ -56,7 +56,6 @@
 		saveError = ''
 	}
 
-	const onError = (error: Error) => pushError(error.message)
 
 	const saveDetailsMutation = createMutation(() => ({
 		mutationFn: () => api('PUT', `/api/media/${encodeURIComponent(data.file.filename)}`, {
@@ -71,7 +70,6 @@
 		},
 		onError: (error: Error) => {
 			saveError = error.message
-			pushError(saveError)
 		},
 	}))
 
@@ -88,7 +86,6 @@
 			pushSuccess('File deleted')
 			goto('/dashboard/media')
 		},
-		onError,
 	}))
 
 	async function deleteFile() {
@@ -128,7 +125,6 @@
 			pushSuccess('Uploaded as new version. Previous version archived.')
 			invalidateAll()
 		},
-		onError,
 		onSettled: () => {
 			if (replaceInput) replaceInput.value = ''
 		},
@@ -150,7 +146,6 @@
 			pushSuccess(`Restored version ${version}.`)
 			invalidateAll()
 		},
-		onError,
 	}))
 
 	async function restoreVersion(version: number) {
@@ -176,7 +171,6 @@
 			renameOpen = false
 			goto(`/media/${encodeURIComponent(finalName)}`)
 		},
-		onError,
 	}))
 
 	const renaming = $derived(renameMutation.isPending)

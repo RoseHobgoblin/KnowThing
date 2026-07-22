@@ -4,7 +4,7 @@
 	import { page } from '$app/stores'
 	import { createMutation } from '@tanstack/svelte-query'
 	import { normalizePermissions } from '$lib/permissions.js'
-	import { pushSuccess, pushError } from '$lib/notifications.svelte'
+	import { pushSuccess } from '$lib/notifications.svelte'
 	import { api } from '$lib/api'
 	import Button from '$lib/components/ui/Button.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
@@ -25,7 +25,6 @@
 	const currentUser = $derived($page.data.user)
 	const isOwner = $derived(currentUser?.role === 'owner')
 
-	const onError = (error: Error) => pushError(error.message)
 
 	const setRoleMutation = createMutation(() => ({
 		mutationFn: ({ userId, role }: { userId: number, role: string }) =>
@@ -34,7 +33,6 @@
 			pushSuccess('Role updated')
 			invalidateAll()
 		},
-		onError,
 	}))
 
 	function setRole(userId: number, role: string) {
@@ -47,7 +45,6 @@
 			pushSuccess(`"${username}" deleted`)
 			invalidateAll()
 		},
-		onError,
 	}))
 
 	async function removeUser(userId: number, username: string) {
@@ -66,7 +63,6 @@
 			pushSuccess('Code generated')
 			invalidateAll()
 		},
-		onError,
 	}))
 
 	const generating = $derived(generateCodeMutation.isPending)

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation'
 	import { createMutation, createQuery } from '@tanstack/svelte-query'
-	import { pushSuccess, pushError } from '$lib/notifications.svelte'
+	import { pushSuccess } from '$lib/notifications.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import Input from '$lib/components/ui/Input.svelte'
@@ -47,7 +47,6 @@
 	let overrides = $state<Record<string, string>>({})
 	let error = $state('')
 
-	const onError = (error_: Error) => pushError(error_.message)
 
 	// Rules for the currently selected class — fetched on demand for live preview
 	const rulesQuery = createQuery(() => ({
@@ -91,7 +90,6 @@
 		},
 		onError: (error_: Error) => {
 			error = error_.message
-			pushError(error_.message)
 		},
 	}))
 
@@ -103,7 +101,6 @@
 	const removeMutation = createMutation(() => ({
 		mutationFn: () => api('PUT', `/api/wordbook/${entryId}/inflection`, { classId: null, stem: null, overrides: {} }),
 		onSuccess: () => pushSuccess('Inflection removed'),
-		onError,
 		onSettled: () => {
 			editing = false
 			invalidateAll()

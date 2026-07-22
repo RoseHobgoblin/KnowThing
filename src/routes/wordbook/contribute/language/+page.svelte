@@ -14,6 +14,7 @@
 	const wbName = $derived($page.data.siteConfig?.wordbookName ?? 'Wordbook')
 
 	const createLanguageMutation = createMutation(() => ({
+		meta: { skipGlobalErrorToast: true },
 		mutationFn: (formData: Record<string, unknown>) => api<{ slug: string }>('POST', '/api/languages', formData),
 	}))
 

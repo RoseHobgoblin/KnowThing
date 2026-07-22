@@ -4,7 +4,7 @@
 	import { page } from '$app/stores'
 	import { createMutation, createQuery } from '@tanstack/svelte-query'
 	import { normalizePermissions } from '$lib/permissions.js'
-	import { pushSuccess, pushError } from '$lib/notifications.svelte'
+	import { pushSuccess } from '$lib/notifications.svelte'
 	import { api } from '$lib/api'
 	import Select from '$lib/components/ui/Select.svelte'
 	import Checkbox from '$lib/components/ui/Checkbox.svelte'
@@ -78,7 +78,6 @@
 		}, 300)
 	}
 
-	const onError = (error: Error) => pushError(error.message)
 
 	const uploadMutation = createMutation(() => ({
 		mutationFn: async (file: File) => {
@@ -96,7 +95,6 @@
 			pushSuccess(`Uploaded ${file.name}`)
 			mediaQuery.refetch()
 		},
-		onError,
 	}))
 
 	const uploading = $derived(uploadMutation.isPending)

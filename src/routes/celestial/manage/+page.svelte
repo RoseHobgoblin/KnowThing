@@ -5,7 +5,7 @@
 	import Button from '$lib/components/ui/Button.svelte'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
-	import { pushSuccess, pushError } from '$lib/notifications.svelte'
+	import { pushSuccess } from '$lib/notifications.svelte'
 	import { createMutation } from '@tanstack/svelte-query'
 	import { api } from '$lib/api'
 	import { invalidateAll } from '$app/navigation'
@@ -70,7 +70,6 @@
 	let newBodyStarId = $state<string | undefined>(undefined)
 	let newBodyParentId = $state<string | undefined>(undefined)
 
-	const onError = (error: Error) => pushError(error.message)
 
 	const newBodyParentOptions = $derived(
 		newBodyStarId
@@ -114,7 +113,6 @@
 			newSystemName = ''
 			invalidateAll()
 		},
-		onError,
 	}))
 
 	function createSystem() {
@@ -135,7 +133,6 @@
 			newStarSystemId = undefined
 			invalidateAll()
 		},
-		onError,
 	}))
 
 	function createStar() {
@@ -159,7 +156,6 @@
 			newBodyParentId = undefined
 			invalidateAll()
 		},
-		onError,
 	}))
 
 	function createBody() {
@@ -180,7 +176,6 @@
 			pushSuccess(`Created "${preset.system.name}" with all bodies`)
 			invalidateAll()
 		},
-		onError,
 		onSettled: () => { presetProgress = '' },
 	}))
 
@@ -196,7 +191,6 @@
 			pushSuccess(`"${name}" deleted`)
 			invalidateAll()
 		},
-		onError: () => pushError('Failed to delete'),
 	}))
 
 	async function deleteItem(slug: string, name: string) {

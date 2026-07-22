@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation'
 	import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query'
-	import { pushSuccess, pushError } from '$lib/notifications.svelte'
+	import { pushSuccess } from '$lib/notifications.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import Input from '$lib/components/ui/Input.svelte'
@@ -44,7 +44,6 @@
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
 
 	const queryClient = useQueryClient()
-	const onError = (error: Error) => pushError(error.message)
 
 	const allPos = $derived.by(() => {
 		const seen: Record<string, true> = {}
@@ -128,7 +127,6 @@
 			showAddDim = false
 			invalidateAll()
 		},
-		onError,
 	}))
 
 	function addDimension(event: SubmitEvent) {
@@ -149,7 +147,6 @@
 			pushSuccess(`Added ${preset.name} for ${preset.pos}`)
 			invalidateAll()
 		},
-		onError,
 	}))
 
 	const addingDim = $derived(addDimensionMutation.isPending || quickAddPresetMutation.isPending)
@@ -160,7 +157,6 @@
 			pushSuccess('Dimension removed')
 			invalidateAll()
 		},
-		onError,
 	}))
 
 	async function deleteDimension(dimId: number) {
@@ -207,7 +203,6 @@
 			showAddClass = false
 			invalidateAll()
 		},
-		onError,
 	}))
 
 	const addingClass = $derived(addClassMutation.isPending)
@@ -224,7 +219,6 @@
 			pushSuccess('Paradigm class deleted')
 			invalidateAll()
 		},
-		onError,
 	}))
 
 	async function deleteClass(classId: number) {
@@ -284,7 +278,6 @@
 			pushSuccess('Rules saved')
 			queryClient.invalidateQueries({ queryKey: ['inflection-class-rules', languageSlug, classId] })
 		},
-		onError,
 		onSettled: () => {
 			editingClassId = null
 			invalidateAll()

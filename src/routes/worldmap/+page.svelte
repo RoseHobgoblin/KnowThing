@@ -59,7 +59,6 @@
 		...data.knowPages.map((page_) => ({ value: page_.slug, label: `${page_.title} (${page_.slug})` })),
 	])
 
-	const onError = (error: Error) => pushError(error.message)
 
 	const createMapMutation = createMutation(() => ({
 		mutationFn: () => api('POST', '/api/maps', {
@@ -81,7 +80,6 @@
 			description = ''
 			await invalidateAll()
 		},
-		onError,
 	}))
 
 	const creating = $derived(createMapMutation.isPending)

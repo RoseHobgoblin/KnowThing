@@ -14,6 +14,7 @@
 	const wbName = $derived($page.data.siteConfig?.wordbookName ?? 'Wordbook')
 
 	const createEntryMutation = createMutation(() => ({
+		meta: { skipGlobalErrorToast: true },
 		mutationFn: (formData: Record<string, unknown>) => api<{ word: string }>('POST', '/api/wordbook', formData),
 	}))
 

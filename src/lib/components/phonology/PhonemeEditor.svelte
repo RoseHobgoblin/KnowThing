@@ -173,6 +173,7 @@
 	}
 
 	const pickMutation = createMutation(() => ({
+		meta: { skipGlobalErrorToast: true },
 		mutationFn: (entry: IpaEntry) => api<Phoneme>('POST', `/api/languages/${languageSlug}/phonemes`, {
 			ipa: entry.symbol,
 			type: entry.type,
@@ -197,6 +198,7 @@
 	}
 
 	const saveMutation = createMutation(() => ({
+		meta: { skipGlobalErrorToast: true },
 		mutationFn: () => {
 			const url = editingId
 				? `/api/languages/${languageSlug}/phonemes/${editingId}`
@@ -282,6 +284,7 @@
 	// row from local state, and external refs (wiki templates) use
 	// IPA + slug, not the numeric id.
 	const restoreMutation = createMutation(() => ({
+		meta: { skipGlobalErrorToast: true },
 		mutationFn: (snapshot: Phoneme) => api<Phoneme>('POST', `/api/languages/${languageSlug}/phonemes`, {
 			ipa: snapshot.ipa,
 			type: snapshot.type,
@@ -303,6 +306,7 @@
 	}))
 
 	const deleteMutation = createMutation(() => ({
+		meta: { skipGlobalErrorToast: true },
 		mutationFn: (p: Phoneme) => api<{ affectedGraphemes?: number } | undefined>('DELETE', `/api/languages/${languageSlug}/phonemes/${p.id}`),
 		onSuccess: (data, p) => {
 			const affected = data?.affectedGraphemes ?? 0

@@ -49,6 +49,7 @@
 	)
 
 	const updateEntryMutation = createMutation(() => ({
+		meta: { skipGlobalErrorToast: true },
 		mutationFn: async (formData: Record<string, unknown>) => {
 			await api('PUT', `/api/wordbook/${data.entry.id}`, {
 				word: formData.word,

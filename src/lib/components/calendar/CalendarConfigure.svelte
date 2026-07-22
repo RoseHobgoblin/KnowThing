@@ -24,7 +24,7 @@
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import { page } from '$app/stores'
 	import { goto } from '$app/navigation'
-	import { pushError, pushSuccess } from '$lib/notifications.svelte'
+	import { pushSuccess } from '$lib/notifications.svelte'
 	import { createMutation } from '@tanstack/svelte-query'
 	import { api } from '$lib/api'
 	import { createDirtyTracker } from '$lib/utils/dirty.svelte'
@@ -230,7 +230,6 @@
 	let editSummary = $state('')
 	let saveError = $state('')
 
-	const onError = (error: Error) => pushError(error.message)
 
 	// ── Derived ─────────────────────────────────────────────
 	const previewConfig = $derived<CalendarConfig>({
@@ -339,7 +338,6 @@
 		},
 		onError: (error) => {
 			saveError = error.message
-			pushError(error.message)
 		},
 	}))
 
@@ -367,7 +365,6 @@
 			pushSuccess('Calendar deleted')
 			goto('/calendar')
 		},
-		onError,
 	}))
 
 	async function deleteCalendar() {

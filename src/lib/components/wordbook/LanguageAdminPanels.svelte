@@ -3,7 +3,7 @@
 	import { createMutation } from '@tanstack/svelte-query'
 	import Input from '$lib/components/ui/Input.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
-	import { pushError, pushSuccess } from '$lib/notifications.svelte'
+	import { pushSuccess } from '$lib/notifications.svelte'
 	import { api } from '$lib/api'
 
 	type Dialect = { id: number, name: string, slug: string, region: string | null, description: string | null }
@@ -34,7 +34,6 @@
 		return name.trim().toLowerCase().replaceAll(/[^\da-z]+/g, '-').replaceAll(/^-+|-+$/g, '')
 	}
 
-	const onError = (error: Error) => pushError(error.message)
 
 	const addDialectMutation = createMutation(() => ({
 		mutationFn: () => api('POST', `/api/languages/${languageSlug}/dialects`, {
@@ -49,7 +48,6 @@
 			addingDialect = false
 			await invalidateAll()
 		},
-		onError,
 	}))
 
 	function addDialect(event: Event) {
@@ -73,7 +71,6 @@
 			editingDialectSlug = null
 			await invalidateAll()
 		},
-		onError,
 	}))
 
 	function saveEdit(event: Event) {
@@ -89,7 +86,6 @@
 			pushSuccess(`Dialect "${dialect.name}" deleted`)
 			await invalidateAll()
 		},
-		onError,
 	}))
 
 	async function deleteDialect(dialect: Dialect) {
@@ -108,7 +104,6 @@
 			pushSuccess(`"${languageName}" deleted`)
 			goto('/Wordbook')
 		},
-		onError,
 	}))
 
 	async function deleteLanguage() {

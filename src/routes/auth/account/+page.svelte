@@ -17,7 +17,6 @@
 	let newPassword = $state('')
 	let confirmPassword = $state('')
 
-	const onError = (error: Error) => pushError(error.message)
 
 	const changePasswordMutation = createMutation(() => ({
 		mutationFn: () => api('PUT', '/api/account', { currentPassword, newPassword }),
@@ -25,7 +24,6 @@
 			pushSuccess('Password changed. Please log in again.')
 			goto('/auth/login')
 		},
-		onError,
 	}))
 
 	const changingPassword = $derived(changePasswordMutation.isPending)
@@ -44,7 +42,6 @@
 			pushSuccess('Account deleted')
 			goto('/')
 		},
-		onError,
 	}))
 
 	async function handleDeleteAccount() {

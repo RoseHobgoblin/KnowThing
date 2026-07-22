@@ -2,7 +2,7 @@
 	import { onDestroy } from 'svelte'
 	import { invalidateAll } from '$app/navigation'
 	import { createMutation, createQuery } from '@tanstack/svelte-query'
-	import { pushSuccess, pushError } from '$lib/notifications.svelte'
+	import { pushSuccess } from '$lib/notifications.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import Input from '$lib/components/ui/Input.svelte'
@@ -82,7 +82,6 @@
 
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
 
-	const onError = (error: Error) => pushError(error.message)
 
 	// ── Delete relation ──
 	const deleteRelationMutation = createMutation(() => ({
@@ -91,7 +90,6 @@
 			pushSuccess('Relation removed')
 			invalidateAll()
 		},
-		onError,
 	}))
 
 	const deleting = $derived(deleteRelationMutation.isPending ? deleteRelationMutation.variables : null)
@@ -189,7 +187,6 @@
 		},
 		onError: (error: Error) => {
 			formError = error.message
-			pushError(error.message)
 		},
 	}))
 

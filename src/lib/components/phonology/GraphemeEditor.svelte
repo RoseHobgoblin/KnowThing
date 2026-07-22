@@ -103,6 +103,7 @@
 	}
 
 	const saveMutation = createMutation(() => ({
+		meta: { skipGlobalErrorToast: true },
 		mutationFn: () => {
 			const url = editingId
 				? `/api/languages/${languageSlug}/graphemes/${editingId}`
@@ -161,6 +162,7 @@
 	}
 
 	const restoreMutation = createMutation(() => ({
+		meta: { skipGlobalErrorToast: true },
 		mutationFn: (snapshot: Grapheme) => api<Grapheme>('POST', `/api/languages/${languageSlug}/graphemes`, {
 			grapheme: snapshot.grapheme,
 			phonemeIds: snapshot.phonemes.map(p => p.phonemeId),
@@ -176,6 +178,7 @@
 	}))
 
 	const deleteMutation = createMutation(() => ({
+		meta: { skipGlobalErrorToast: true },
 		mutationFn: (g: Grapheme) => api('DELETE', `/api/languages/${languageSlug}/graphemes/${g.id}`),
 		onSuccess: (_data, g) => {
 			const snapshot: Grapheme = { ...g }
@@ -196,6 +199,7 @@
 	}
 
 	const reorderMutation = createMutation(() => ({
+		meta: { skipGlobalErrorToast: true },
 		mutationFn: ({ order }: { order: number[], previous: Grapheme[] }) =>
 			api('POST', `/api/languages/${languageSlug}/graphemes/reorder`, { order }),
 		onError: (error, { previous }) => {

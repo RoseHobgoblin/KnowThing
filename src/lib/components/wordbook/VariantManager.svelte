@@ -30,7 +30,6 @@
 	let pronunciation = $state('')
 	let spelling = $state('')
 
-	const onError = (error: Error) => pushError(error.message)
 
 	const dialectsQuery = createQuery(() => ({
 		queryKey: ['dialects', languageSlug],
@@ -68,7 +67,6 @@
 			spelling = ''
 			await invalidateAll()
 		},
-		onError,
 	}))
 
 	const saving = $derived(addVariantMutation.isPending)
@@ -86,7 +84,6 @@
 			pushSuccess('Variant removed')
 			await invalidateAll()
 		},
-		onError,
 	}))
 
 	function removeVariant(variant: Variant) {

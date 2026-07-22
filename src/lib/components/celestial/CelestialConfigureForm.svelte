@@ -13,7 +13,7 @@
 	import SaveStatusBadge from '$lib/components/editor/SaveStatusBadge.svelte'
 	import FormNotice from '$lib/components/editor/FormNotice.svelte'
 	import { celestialConfigureBreadcrumbs } from '$lib/utils/breadcrumbs.js'
-	import { pushSuccess, pushError } from '$lib/notifications.svelte'
+	import { pushSuccess } from '$lib/notifications.svelte'
 	import { createMutation } from '@tanstack/svelte-query'
 	import { api } from '$lib/api'
 	import { createDirtyTracker } from '$lib/utils/dirty.svelte'
@@ -88,7 +88,6 @@
 	let saveError = $state('')
 	let savedAt = $state<Date | null>(null)
 
-	const onError = (error: Error) => pushError(error.message)
 
 	// Key-sorted so dirty tracking never depends on draft key insertion order.
 	function serializeDraft(value: Record<string, any>): string {
@@ -180,7 +179,6 @@
 		},
 		onError: (error) => {
 			saveError = error.message
-			pushError(error.message)
 		},
 	}))
 
@@ -206,7 +204,6 @@
 			pushSuccess(`${config.noun} deleted`)
 			goto(initialParentCrumbs.at(-1)?.href ?? '/celestial')
 		},
-		onError,
 	}))
 
 	async function deleteEntity() {

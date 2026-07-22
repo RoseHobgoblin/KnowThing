@@ -10,7 +10,7 @@
 	import { page } from '$app/stores'
 	import { normalizePermissions } from '$lib/permissions.js'
 	import { invalidateAll, goto } from '$app/navigation'
-	import { pushSuccess, pushError } from '$lib/notifications.svelte'
+	import { pushSuccess } from '$lib/notifications.svelte'
 	import { createMutation } from '@tanstack/svelte-query'
 	import { api } from '$lib/api'
 	import StarIcon from 'phosphor-svelte/lib/Star'
@@ -36,7 +36,6 @@
 	let newCalendarName = $state('')
 	let selectedPreset = $state('')
 
-	const onError = (error: Error) => pushError(error.message)
 
 	const presetItems = [
 		{ value: '', label: 'Blank' },
@@ -71,7 +70,6 @@
 			if (cal.slug) goto(`/Calendar:${cal.slug}`)
 			else invalidateAll()
 		},
-		onError,
 	}))
 
 	const creating = $derived(createCalendarMutation.isPending)
