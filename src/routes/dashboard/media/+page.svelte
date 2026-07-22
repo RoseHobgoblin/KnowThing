@@ -5,7 +5,7 @@
 	import { createMutation, createQuery } from '@tanstack/svelte-query'
 	import { normalizePermissions } from '$lib/permissions.js'
 	import { pushSuccess } from '$lib/notifications.svelte'
-	import { api } from '$lib/api'
+	import { api, apiUpload } from '$lib/api'
 	import Select from '$lib/components/ui/Select.svelte'
 	import Checkbox from '$lib/components/ui/Checkbox.svelte'
 	import Input from '$lib/components/ui/Input.svelte'
@@ -81,14 +81,9 @@
 
 	const uploadMutation = createMutation(() => ({
 		mutationFn: async (file: File) => {
-			// raw fetch: api() is JSON-only, this is a FormData upload
 			const formData = new FormData()
 			formData.append('file', file)
-			const response = await fetch('/api/media', { method: 'POST', body: formData })
-			if (!response.ok) {
-				const error = await response.json().catch(() => ({}))
-				throw new Error(error.error || 'Upload failed')
-			}
+			await apiUpload('/api/media', formData)
 		},
 		onSuccess: (_data, file) => {
 			uploadProgress = ''

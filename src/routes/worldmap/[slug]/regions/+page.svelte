@@ -2,7 +2,7 @@
 	import { invalidateAll } from '$app/navigation'
 	import { createMutation } from '@tanstack/svelte-query'
 	import { pushError, pushSuccess } from '$lib/notifications.svelte'
-	import { api } from '$lib/api'
+	import { api, apiUpload } from '$lib/api'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import WorldSvgMap from '$lib/components/worldmap/WorldSvgMap.svelte'
 	import Button from '$lib/components/ui/Button.svelte'
@@ -169,20 +169,9 @@
 					throw new Error('Only SVG files are supported for map ingest')
 				}
 
-				// raw fetch: api() is JSON-only, this is a FormData upload
 				const formData = new FormData()
 				formData.append('file', selectedSvg)
-				const uploadResponse = await fetch('/api/media', {
-					method: 'POST',
-					body: formData,
-				})
-
-				if (!uploadResponse.ok) {
-					const body = await uploadResponse.json().catch(() => ({}))
-					throw new Error(body.error || 'Failed to upload map SVG')
-				}
-
-				const uploaded = await uploadResponse.json()
+				const uploaded = await apiUpload<{ filename: string }>('/api/media', formData)
 				imageFilename = uploaded.filename
 			}
 

@@ -17,3 +17,14 @@ export async function api<T = unknown>(
 	}
 	return response.json().catch(() => undefined) as Promise<T>
 }
+
+/** Multipart upload counterpart to `api()`: POSTs FormData (which `api()` can't,
+ * being JSON-only) and throws the server's structured `{ error }` on non-2xx. */
+export async function apiUpload<T = unknown>(url: string, formData: FormData): Promise<T> {
+	const response = await fetch(url, { method: 'POST', body: formData })
+	if (!response.ok) {
+		const payload = await response.json().catch(() => null) as { error?: string } | null
+		throw new Error(payload?.error ?? `Upload failed (${response.status})`)
+	}
+	return response.json().catch(() => undefined) as Promise<T>
+}

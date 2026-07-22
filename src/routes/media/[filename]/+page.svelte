@@ -6,7 +6,7 @@
 	import { createMutation } from '@tanstack/svelte-query'
 	import { normalizePermissions } from '$lib/permissions.js'
 	import { pushSuccess } from '$lib/notifications.svelte'
-	import { api } from '$lib/api'
+	import { api, apiUpload } from '$lib/api'
 	import { createDirtyTracker } from '$lib/utils/dirty.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import UnsavedChangesGuard from '$lib/components/editor/UnsavedChangesGuard.svelte'
@@ -109,17 +109,9 @@
 
 	const replaceFileMutation = createMutation(() => ({
 		mutationFn: async (file: File) => {
-			// raw fetch: api() is JSON-only, this is a FormData upload
 			const formData = new FormData()
 			formData.set('file', file)
-			const response = await fetch(`/api/media/${encodeURIComponent(data.file.filename)}`, {
-				method: 'POST',
-				body: formData,
-			})
-			if (!response.ok) {
-				const body = await response.json().catch(() => ({}))
-				throw new Error(body.error || 'Failed to replace file')
-			}
+			await apiUpload(`/api/media/${encodeURIComponent(data.file.filename)}`, formData)
 		},
 		onSuccess: () => {
 			pushSuccess('Uploaded as new version. Previous version archived.')
