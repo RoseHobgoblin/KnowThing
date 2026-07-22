@@ -22,6 +22,8 @@
 	import Trash from 'phosphor-svelte/lib/Trash'
 	import { wordbookWordBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import { cn } from '$lib/utils'
+	import { createMutation } from '@tanstack/svelte-query'
+	import { api } from '$lib/api'
 
 	let { data }: { data: PageData } = $props()
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
@@ -49,64 +51,65 @@
 	let newDefinition = $state('')
 	let newUsage = $state('')
 	let newTranslation = $state('')
-	let submittingSense = $state(false)
 	let senseError = $state('')
+	const definitionMutation = createMutation(() => ({
+		mutationFn: ({ method, entryId, definitionId, body }: {
+			method: 'POST' | 'DELETE'
+			entryId: number
+			definitionId?: number
+			body?: unknown
+		}) => api(method, `/api/wordbook/${entryId}/definitions${definitionId ? `/${definitionId}` : ''}`, body),
+	}))
+	const deleteEntryMutation = createMutation(() => ({
+		mutationFn: (entryId: number) => api('DELETE', `/api/wordbook/${entryId}`),
+	}))
 
 	async function addSense(entryId: number, event: Event) {
 		event.preventDefault()
 		if (!newDefinition.trim()) return
-		submittingSense = true
 		senseError = ''
 		try {
-			const response = await fetch(`/api/wordbook/${entryId}/definitions`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					partOfSpeech: newPos || null,
-					definition: newDefinition.trim(),
-					usageExample: newUsage.trim() || null,
-					usageTranslation: newTranslation.trim() || null,
-				}),
+			await definitionMutation.mutateAsync({ method: 'POST', entryId, body: {
+				partOfSpeech: newPos || null,
+				definition: newDefinition.trim(),
+				usageExample: newUsage.trim() || null,
+				usageTranslation: newTranslation.trim() || null,
+			},
 			})
-			if (response.ok) {
-				pushSuccess('Definition added')
-				newPos = ''
-				newDefinition = ''
-				newUsage = ''
-				newTranslation = ''
-				addingSenseFor = null
-				invalidateAll()
-			} else {
-				const error = await response.json().catch(() => null)
-				senseError = error?.error || 'Failed to add definition'
-				pushError(senseError)
-			}
-		} finally {
-			submittingSense = false
+			pushSuccess('Definition added')
+			newPos = ''
+			newDefinition = ''
+			newUsage = ''
+			newTranslation = ''
+			addingSenseFor = null
+			await invalidateAll()
+		} catch (error) {
+			senseError = error instanceof Error ? error.message : 'Failed to add definition'
+			pushError(senseError)
 		}
 	}
 
 	async function deleteSense(entryId: number, definitionId: number) {
 		const ok = await confirmDialog.confirm('Delete definition', 'Delete this definition?', 'Delete', 'Cancel')
 		if (!ok) return
-		const response = await fetch(`/api/wordbook/${entryId}/definitions/${definitionId}`, { method: 'DELETE' })
-		if (response.ok) {
+		try {
+			await definitionMutation.mutateAsync({ method: 'DELETE', entryId, definitionId })
 			pushSuccess('Definition deleted')
-			invalidateAll()
-		} else {
-			pushError('Failed to delete definition')
+			await invalidateAll()
+		} catch (error) {
+			pushError(error instanceof Error ? error.message : 'Failed to delete definition')
 		}
 	}
 
 	async function deleteEntry(entryId: number) {
 		const ok = await confirmDialog.confirm('Delete word', `Delete "${data.word}"? This cannot be undone.`, 'Delete', 'Cancel')
 		if (!ok) return
-		const response = await fetch(`/api/wordbook/${entryId}`, { method: 'DELETE' })
-		if (response.ok) {
+		try {
+			await deleteEntryMutation.mutateAsync(entryId)
 			pushSuccess(`"${data.word}" deleted`)
 			goto(`/Wordbook/${data.language.slug}`)
-		} else {
-			pushError('Failed to delete word')
+		} catch (error) {
+			pushError(error instanceof Error ? error.message : 'Failed to delete word')
 		}
 	}
 
@@ -242,7 +245,7 @@
 								<Input bind:value={newTranslation} placeholder="Translation" containerClass="flex-1" />
 							</div>
 							<div class="flex gap-2">
-								<button type="submit" disabled={submittingSense} class="px-3 py-1.5 bg-accent text-surface text-sm hover:bg-accent-hover disabled:opacity-50">Add</button>
+								<button type="submit" disabled={definitionMutation.isPending} class="px-3 py-1.5 bg-accent text-surface text-sm hover:bg-accent-hover disabled:opacity-50">Add</button>
 								<button type="button" onclick={() => addingSenseFor = null} class="text-xs text-secondary hover:text-body">Cancel</button>
 							</div>
 						</form>

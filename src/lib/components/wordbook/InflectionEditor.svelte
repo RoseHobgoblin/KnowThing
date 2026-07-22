@@ -7,6 +7,9 @@
 	import WorkedInflectionExample from './WorkedInflectionExample.svelte'
 	import { generateCellKeys, cellKeyLabel } from '$lib/wordbook/cell-keys.js'
 	import { applyStem } from '$lib/wordbook/inflection-pattern.js'
+	import { cn } from '$lib/utils'
+	import { createMutation, createQuery } from '@tanstack/svelte-query'
+	import { api } from '$lib/api'
 
 	let {
 		entryId,
@@ -43,42 +46,30 @@
 	let selectedClassId = $state<number | null>(null)
 	let stem = $state('')
 	let overrides = $state<Record<string, string>>({})
-	let saving = $state(false)
 	let error = $state('')
 
 	// Rules for the currently selected class — fetched on demand for live preview
-	let selectedClassRules = $state<Record<string, string>>({})
-	let loadingRules = $state(false)
-
-	async function loadClassRules(classId: number | null) {
-		if (classId === null) {
-			selectedClassRules = {}
-			return
-		}
-		loadingRules = true
-		try {
-			const response = await fetch(`/api/languages/${languageSlug}/inflections/classes/${classId}`)
-			if (!response.ok) {
-				selectedClassRules = {}
-				return
-			}
-			const data = await response.json()
-			const rules: Record<string, string> = {}
-			for (const r of data.rules || []) rules[r.cellKey] = r.pattern
-			selectedClassRules = rules
-		} finally {
-			loadingRules = false
-		}
-	}
-
-	$effect(() => {
-		if (editing) loadClassRules(selectedClassId)
-	})
+	const classRulesQuery = createQuery(() => ({
+		queryKey: ['languages', languageSlug, 'inflection-classes', selectedClassId],
+		queryFn: () => api<{ rules?: Array<{ cellKey: string, pattern: string }> }>(
+			'GET', `/api/languages/${languageSlug}/inflections/classes/${selectedClassId}`,
+		),
+		enabled: editing && selectedClassId != null,
+	}))
+	const selectedClassRules = $derived(Object.fromEntries(
+		(classRulesQuery.data?.rules ?? []).map(rule => [rule.cellKey, rule.pattern]),
+	))
+	const loadingRules = $derived(classRulesQuery.isFetching)
+	const saveMutation = createMutation(() => ({
+		mutationFn: (body: { classId: number | null, stem: string | null, overrides: Record<string, string> }) =>
+			api('PUT', `/api/wordbook/${entryId}/inflection`, body),
+	}))
+	const saving = $derived(saveMutation.isPending)
 
 	function startEditing() {
 		selectedClassId = null
 		stem = inflection.stem || ''
-		overrides = { ...(inflection.overrides || {}) }
+		overrides = { ...inflection.overrides }
 
 		if (inflection.className) {
 			const match = filteredClasses.find(c => c.name === inflection.className)
@@ -89,52 +80,36 @@
 	}
 
 	async function save() {
-		saving = true
 		error = ''
 		try {
-			const response = await fetch(`/api/wordbook/${entryId}/inflection`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					classId: selectedClassId || null,
-					stem: stem.trim() || null,
-					overrides: Object.fromEntries(
-						Object.entries(overrides).filter(([_, v]) => v.trim()),
-					),
-				}),
+			await saveMutation.mutateAsync({
+				classId: selectedClassId || null,
+				stem: stem.trim() || null,
+				overrides: Object.fromEntries(
+					Object.entries(overrides).filter(([_, v]) => v.trim()),
+				),
 			})
-			if (!response.ok) {
-				const data = await response.json()
-				throw new Error(data.error || 'Failed to save')
-			}
 			pushSuccess('Inflection saved')
 			editing = false
-			invalidateAll()
-		} catch (error_: any) {
-			error = error_.message
-			pushError(error_.message)
-		} finally {
-			saving = false
+			await invalidateAll()
+		} catch (error_) {
+			const message = error_ instanceof Error ? error_.message : 'Failed to save'
+			error = message
+			pushError(message)
 		}
 	}
 
 	async function removeInflection() {
 		const ok = await confirmDialog.confirm('Remove inflection', 'Remove inflection data for this entry?', 'Remove', 'Cancel')
 		if (!ok) return
-		saving = true
-		const response = await fetch(`/api/wordbook/${entryId}/inflection`, {
-			method: 'PUT',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ classId: null, stem: null, overrides: {} }),
-		})
-		if (response.ok) {
+		try {
+			await saveMutation.mutateAsync({ classId: null, stem: null, overrides: {} })
 			pushSuccess('Inflection removed')
-		} else {
-			pushError('Failed to remove inflection')
+		} catch (error_) {
+			pushError(error_ instanceof Error ? error_.message : 'Failed to remove inflection')
 		}
 		editing = false
-		saving = false
-		invalidateAll()
+		await invalidateAll()
 	}
 
 	const cellKeys = $derived(
@@ -149,9 +124,9 @@
 		if (patterns.length === 0) return word
 		let best = word
 		for (const pattern of patterns) {
-			const idx = pattern.indexOf('{stem}')
-			if (idx === -1) continue
-			const suffix = pattern.slice(idx + '{stem}'.length)
+			const index = pattern.indexOf('{stem}')
+			if (index === -1) continue
+			const suffix = pattern.slice(index + '{stem}'.length)
 			if (suffix && word.endsWith(suffix)) {
 				const candidate = word.slice(0, word.length - suffix.length)
 				if (candidate.length < best.length && candidate.length > 0) best = candidate
@@ -203,7 +178,7 @@
 
 		<div class="flex gap-3 flex-wrap">
 			<!-- Paradigm class -->
-			<div class="flex-1 min-w-[200px]">
+			<div class="flex-1 min-w-50">
 				<label class="block text-xs font-medium text-secondary mb-1">Paradigm class</label>
 				{#if filteredClasses.length > 0}
 					<Select
@@ -235,7 +210,7 @@
 			</div>
 
 			<!-- Stem -->
-			<div class="flex-1 min-w-[150px]">
+			<div class="flex-1 min-w-37.5">
 				<label class="block text-xs font-medium text-secondary mb-1">Stem</label>
 				<Input bind:value={stem} containerClass="w-full" placeholder={`e.g. ${stemPlaceholder}`} />
 				<p class="text-xs text-secondary mt-1">The unchanging part the rules attach to — usually the word minus its ending.</p>
@@ -271,8 +246,8 @@
 							<input
 								type="text"
 								value={overrides[key] || ''}
-								oninput={(e) => {
-									const value = (e.target as HTMLInputElement).value
+								oninput={(event) => {
+									const value = (event.target as HTMLInputElement).value
 									if (value.trim()) {
 										overrides[key] = value
 									} else {
@@ -281,7 +256,7 @@
 									}
 								}}
 								placeholder={generated || '—'}
-								class="flex-1 {inputClass} text-xs {hasOverride ? 'border-accent bg-accent-subtle' : ''}"
+								class={cn('flex-1', inputClass, 'text-xs', hasOverride && 'border-accent bg-accent-subtle')}
 							/>
 							{#if hasOverride && generated}
 								<span class="text-xs text-secondary whitespace-nowrap" title="Rule would generate this">would be: {generated}</span>

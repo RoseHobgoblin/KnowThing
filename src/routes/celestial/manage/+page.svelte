@@ -19,6 +19,8 @@
 	import GearSix from 'phosphor-svelte/lib/GearSix'
 	import ArrowLeft from 'phosphor-svelte/lib/ArrowLeft'
 	import X from 'phosphor-svelte/lib/X'
+	import { createMutation } from '@tanstack/svelte-query'
+	import { api } from '$lib/api'
 
 	let { data }: { data: PageData } = $props()
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
@@ -67,7 +69,16 @@
 	let newBodyType = $state('planet')
 	let newBodyStarId = $state<string | undefined>(undefined)
 	let newBodyParentId = $state<string | undefined>(undefined)
-	let creating = $state(false)
+	const createEntityMutation = createMutation(() => ({
+		mutationFn: (body: Record<string, unknown>) => api('POST', '/api/celestial', body),
+	}))
+	const presetMutation = createMutation(() => ({
+		mutationFn: (preset: string) => api('POST', '/api/celestial/preset', { preset }),
+	}))
+	const deleteMutation = createMutation(() => ({
+		mutationFn: (slug: string) => api('DELETE', `/api/celestial/${slug}`),
+	}))
+	const creating = $derived(createEntityMutation.isPending)
 
 	const newBodyParentOptions = $derived(
 		newBodyStarId
@@ -106,105 +117,64 @@
 
 	async function createSystem() {
 		if (!newSystemName.trim()) return
-		creating = true
 		try {
-			const res = await fetch('/api/celestial', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ kind: 'system', name: newSystemName.trim(), slug: slugify(newSystemName) }),
-			})
-			if (res.ok) {
-				pushSuccess(`System "${newSystemName}" created`)
-				newSystemName = ''
-				invalidateAll()
-			} else {
-				const error = await res.json()
-				pushError(error.error || 'Failed to create')
-			}
-		} finally { creating = false }
+			await createEntityMutation.mutateAsync({ kind: 'system', name: newSystemName.trim(), slug: slugify(newSystemName) })
+			pushSuccess(`System "${newSystemName}" created`)
+			newSystemName = ''
+			await invalidateAll()
+		} catch (error) { pushError(error instanceof Error ? error.message : 'Failed to create') }
 	}
 
 	async function createStar() {
 		if (!newStarName.trim()) return
-		creating = true
 		try {
-			const res = await fetch('/api/celestial', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					kind: 'star',
-					name: newStarName.trim(),
-					slug: slugify(newStarName),
-					parentId: newStarSystemId ? Number(newStarSystemId) : null,
-				}),
+			await createEntityMutation.mutateAsync({
+				kind: 'star',
+				name: newStarName.trim(),
+				slug: slugify(newStarName),
+				parentId: newStarSystemId ? Number(newStarSystemId) : null,
 			})
-			if (res.ok) {
-				pushSuccess(`Star "${newStarName}" created`)
-				newStarName = ''
-				newStarSystemId = undefined
-				invalidateAll()
-			} else {
-				const error = await res.json()
-				pushError(error.error || 'Failed to create')
-			}
-		} finally { creating = false }
+			pushSuccess(`Star "${newStarName}" created`)
+			newStarName = ''
+			newStarSystemId = undefined
+			await invalidateAll()
+		} catch (error) { pushError(error instanceof Error ? error.message : 'Failed to create') }
 	}
 
 	async function createBody() {
 		if (!newBodyName.trim()) return
-		creating = true
 		try {
 			// A moon orbits its parent body; a planet orbits the star.
 			const parentId = newBodyParentId ? Number(newBodyParentId) : (newBodyStarId ? Number(newBodyStarId) : null)
-			const res = await fetch('/api/celestial', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					kind: 'body',
-					name: newBodyName.trim(),
-					slug: slugify(newBodyName),
-					bodyType: newBodyType,
-					parentId,
-				}),
+			await createEntityMutation.mutateAsync({
+				kind: 'body',
+				name: newBodyName.trim(),
+				slug: slugify(newBodyName),
+				bodyType: newBodyType,
+				parentId,
 			})
-			if (res.ok) {
-				pushSuccess(`${newBodyName} created`)
-				newBodyName = ''
-				newBodyStarId = undefined
-				newBodyParentId = undefined
-				invalidateAll()
-			} else {
-				const error = await res.json()
-				pushError(error.error || 'Failed to create')
-			}
-		} finally { creating = false }
+			pushSuccess(`${newBodyName} created`)
+			newBodyName = ''
+			newBodyStarId = undefined
+			newBodyParentId = undefined
+			await invalidateAll()
+		} catch (error) { pushError(error instanceof Error ? error.message : 'Failed to create') }
 	}
 
-	let creatingPreset = $state(false)
+	const creatingPreset = $derived(presetMutation.isPending)
 	let presetProgress = $state('')
 
 	// One server call seeds the whole system in a single transaction — a
 	// failure part-way rolls everything back instead of orphaning half a system.
 	async function createFromPreset(preset: CelestialPreset) {
-		creatingPreset = true
 		presetProgress = `Creating ${preset.system.name}...`
 		try {
-			const res = await fetch('/api/celestial/preset', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ preset: preset.label }),
-			})
-			if (res.ok) {
-				pushSuccess(`Created "${preset.system.name}" with all bodies`)
-				invalidateAll()
-			} else {
-				const data = await res.json().catch(() => ({}))
-				pushError(data.error || 'Failed to create preset')
-			}
-		} catch {
-			pushError('Failed to create preset')
+			await presetMutation.mutateAsync(preset.label)
+			pushSuccess(`Created "${preset.system.name}" with all bodies`)
+			await invalidateAll()
+		} catch (error) {
+			pushError(error instanceof Error ? error.message : 'Failed to create preset')
 		} finally {
-			creatingPreset = false
 			presetProgress = ''
 		}
 	}
@@ -212,11 +182,11 @@
 	async function deleteItem(slug: string, name: string) {
 		const ok = await confirmDialog.confirm('Delete', `Delete "${name}"?`, 'Delete', 'Cancel')
 		if (!ok) return
-		const res = await fetch(`/api/celestial/${slug}`, { method: 'DELETE' })
-		if (res.ok) {
+		try {
+			await deleteMutation.mutateAsync(slug)
 			pushSuccess(`"${name}" deleted`)
-			invalidateAll()
-		} else pushError('Failed to delete')
+			await invalidateAll()
+		} catch (error) { pushError(error instanceof Error ? error.message : 'Failed to delete') }
 	}
 </script>
 

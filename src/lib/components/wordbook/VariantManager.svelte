@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation'
 	import { pushError, pushSuccess } from '$lib/notifications.svelte'
+	import { createMutation, createQuery } from '@tanstack/svelte-query'
+	import { api } from '$lib/api'
 
 	type Variant = {
 		id: number
@@ -24,49 +26,42 @@
 	} = $props()
 
 	let adding = $state(false)
-	let saving = $state(false)
-	let dialects = $state<Array<{ id: number, name: string }>>([])
-	let dialectsLoaded = $state(false)
 	let dialectIdString = $state('')
 	let pronunciation = $state('')
 	let spelling = $state('')
+	const dialectsQuery = createQuery(() => ({
+		queryKey: ['languages', languageSlug, 'dialects'],
+		queryFn: () => api<Array<{ id: number, name: string }>>('GET', `/api/languages/${languageSlug}/dialects`),
+		enabled: adding,
+	}))
+	const dialects = $derived(dialectsQuery.data ?? [])
+	const addMutation = createMutation(() => ({
+		mutationFn: (body: { dialectId: number, pronunciation?: string, spelling?: string }) =>
+			api('POST', `/api/wordbook/${entryId}/variants`, body),
+	}))
+	const removeMutation = createMutation(() => ({
+		mutationFn: (id: number) => api('DELETE', `/api/wordbook/${entryId}/variants/${id}`),
+	}))
 
 	// Dialects the entry doesn't already have a variant for
 	const availableDialects = $derived(
 		dialects.filter(dialect => !variants.some(variant => variant.dialectId === dialect.id)),
 	)
 
-	async function openAdd() {
+	function openAdd() {
 		adding = true
-		if (dialectsLoaded) return
-		try {
-			const response = await fetch(`/api/languages/${languageSlug}/dialects`)
-			if (response.ok) dialects = await response.json()
-			dialectsLoaded = true
-		} catch {
-			pushError('Could not load dialects')
-		}
 	}
 
 	async function addVariant(event: Event) {
 		event.preventDefault()
 		const dialectId = Number(dialectIdString)
 		if (!dialectId || (!pronunciation.trim() && !spelling.trim())) return
-		saving = true
 		try {
-			const response = await fetch(`/api/wordbook/${entryId}/variants`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					dialectId,
-					pronunciation: pronunciation.trim() || undefined,
-					spelling: spelling.trim() || undefined,
-				}),
+			await addMutation.mutateAsync({
+				dialectId,
+				pronunciation: pronunciation.trim() || undefined,
+				spelling: spelling.trim() || undefined,
 			})
-			if (!response.ok) {
-				const body = await response.json()
-				throw new Error(body.error || 'Failed to add variant')
-			}
 			pushSuccess('Dialect variant added')
 			adding = false
 			dialectIdString = ''
@@ -75,18 +70,12 @@
 			await invalidateAll()
 		} catch (error) {
 			pushError(error instanceof Error ? error.message : 'Failed to add variant')
-		} finally {
-			saving = false
 		}
 	}
 
 	async function removeVariant(variant: Variant) {
 		try {
-			const response = await fetch(`/api/wordbook/${entryId}/variants/${variant.id}`, { method: 'DELETE' })
-			if (!response.ok) {
-				const body = await response.json()
-				throw new Error(body.error || 'Failed to remove variant')
-			}
+			await removeMutation.mutateAsync(variant.id)
 			pushSuccess('Variant removed')
 			await invalidateAll()
 		} catch (error) {
@@ -124,12 +113,16 @@
 		{/if}
 
 		{#if adding}
-			{#if dialectsLoaded && dialects.length === 0}
+			{#if dialectsQuery.isError}
+				<p class="text-xs text-error">Could not load dialects.</p>
+			{:else if dialectsQuery.isPending}
+				<p class="text-xs text-secondary">Loading dialectsâ€¦</p>
+			{:else if dialects.length === 0}
 				<p class="text-xs text-secondary">
 					No dialects exist for this language yet — add one on the
 					<a href="/Wordbook/contribute/language/{languageSlug}" class="text-link hover:underline">language edit page</a>.
 				</p>
-			{:else if dialectsLoaded && availableDialects.length === 0}
+			{:else if availableDialects.length === 0}
 				<p class="text-xs text-secondary">Every dialect already has a variant. Remove one to change it.</p>
 			{:else}
 				<form onsubmit={addVariant} class="flex flex-wrap items-center gap-2 pt-1">
@@ -158,7 +151,7 @@
 						aria-label="Spelling"
 						class="px-2 py-1 text-xs text-body bg-surface outline-none focus:ring-2 focus:ring-accent"
 					/>
-					<button type="submit" disabled={saving} class="px-2.5 py-1 bg-accent text-surface text-xs hover:bg-accent-hover disabled:opacity-50">Add</button>
+					<button type="submit" disabled={addMutation.isPending} class="px-2.5 py-1 bg-accent text-surface text-xs hover:bg-accent-hover disabled:opacity-50">Add</button>
 					<button type="button" onclick={() => adding = false} class="text-xs text-secondary hover:text-body">Cancel</button>
 				</form>
 			{/if}

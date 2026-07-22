@@ -6,22 +6,18 @@
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import { wordbookAddLanguageBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import { page } from '$app/stores'
+	import { createMutation } from '@tanstack/svelte-query'
+	import { api } from '$lib/api'
 
 	let { data }: { data: PageData } = $props()
 
 	const wbName = $derived($page.data.siteConfig?.wordbookName ?? 'Wordbook')
+	const createLanguageMutation = createMutation(() => ({
+		mutationFn: (formData: Record<string, unknown>) => api<{ slug: string }>('POST', '/api/languages', formData),
+	}))
 
 	async function handleSubmit(formData: Record<string, unknown>) {
-		const res = await fetch('/api/languages', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(formData),
-		})
-		if (!res.ok) {
-			const error = await res.json()
-			throw new Error(error.error || 'Failed to create language')
-		}
-		const lang = await res.json()
+		const lang = await createLanguageMutation.mutateAsync(formData)
 		pushSuccess('Language created')
 		goto(`/Wordbook/${lang.slug}`)
 	}

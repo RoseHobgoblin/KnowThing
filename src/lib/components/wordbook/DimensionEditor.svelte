@@ -9,6 +9,8 @@
 	import { generateCellKeys, cellKeyLabel } from '$lib/wordbook/cell-keys.js'
 	import { applyStem } from '$lib/wordbook/inflection-pattern.js'
 	import { DIMENSION_PRESETS, CLASS_PRESETS, type DimensionPreset, type ClassPreset } from './dimension-presets.js'
+	import { createMutation, useQueryClient } from '@tanstack/svelte-query'
+	import { api } from '$lib/api'
 
 	let { languageSlug, dimensions = [], classes = [], ruleCounts = {} }: {
 		languageSlug: string
@@ -40,6 +42,17 @@
 	]
 
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
+	const queryClient = useQueryClient()
+	const dimensionMutation = createMutation(() => ({
+		mutationFn: ({ method, id, body }: { method: 'POST' | 'DELETE', id?: number, body?: unknown }) =>
+			api(method, `/api/languages/${languageSlug}/inflections/dimensions${id ? `/${id}` : ''}`, body),
+		onSuccess: () => queryClient.invalidateQueries({ queryKey: ['languages', languageSlug, 'inflection-classes'] }),
+	}))
+	const classMutation = createMutation(() => ({
+		mutationFn: ({ method, id, body }: { method: 'POST' | 'PUT' | 'DELETE', id?: number, body?: unknown }) =>
+			api(method, `/api/languages/${languageSlug}/inflections/classes${id ? `/${id}` : ''}`, body),
+		onSuccess: () => queryClient.invalidateQueries({ queryKey: ['languages', languageSlug, 'inflection-classes'] }),
+	}))
 
 	const allPos = $derived.by(() => {
 		const seen: Record<string, true> = {}
@@ -60,7 +73,7 @@
 	let newDimName = $state('')
 	let newDimValues = $state('')
 	let newDimSort = $state<string>('0')
-	let addingDim = $state(false)
+	const addingDim = $derived(dimensionMutation.isPending)
 
 	function applyDimensionPreset(preset: DimensionPreset) {
 		newDimPos = preset.pos
@@ -113,61 +126,49 @@
 	async function addDimension(event: SubmitEvent) {
 		event.preventDefault()
 		if (!newDimName.trim() || !newDimValues.trim()) return
-		addingDim = true
 		const sortOrder = showDisplayAs ? Number(newDimSort) || 0 : 0
-		const response = await fetch(`/api/languages/${languageSlug}/inflections/dimensions`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
+		try {
+			await dimensionMutation.mutateAsync({ method: 'POST', body: {
 				partOfSpeech: newDimPos,
 				name: newDimName.trim(),
 				values: newDimValues.split(',').map(v => v.trim()).filter(Boolean),
 				sortOrder,
-			}),
-		})
-		if (response.ok) {
+			} })
 			pushSuccess('Dimension created')
 			newDimName = ''
 			newDimValues = ''
 			showAddDim = false
-			invalidateAll()
-		} else {
-			pushError('Failed to create dimension')
+			await invalidateAll()
+		} catch (error) {
+			pushError(error instanceof Error ? error.message : 'Failed to create dimension')
 		}
-		addingDim = false
 	}
 
 	async function quickAddPreset(preset: DimensionPreset) {
 		// One-click empty-state CTA — POSTs without opening the form.
-		addingDim = true
-		const response = await fetch(`/api/languages/${languageSlug}/inflections/dimensions`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
+		try {
+			await dimensionMutation.mutateAsync({ method: 'POST', body: {
 				partOfSpeech: preset.pos,
 				name: preset.name,
 				values: preset.values,
 				sortOrder: preset.sortOrder,
-			}),
-		})
-		if (response.ok) {
+			} })
 			pushSuccess(`Added ${preset.name} for ${preset.pos}`)
-			invalidateAll()
-		} else {
-			pushError('Failed to create dimension')
+			await invalidateAll()
+		} catch (error) {
+			pushError(error instanceof Error ? error.message : 'Failed to create dimension')
 		}
-		addingDim = false
 	}
 
 	async function deleteDimension(dimId: number) {
 		const ok = await confirmDialog.confirm('Remove dimension', 'Remove this dimension? This will affect all paradigm rules using it.', 'Remove', 'Cancel')
 		if (!ok) return
-		const response = await fetch(`/api/languages/${languageSlug}/inflections/dimensions/${dimId}`, { method: 'DELETE' })
-		if (response.ok) {
+		try {
+			await dimensionMutation.mutateAsync({ method: 'DELETE', id: dimId })
 			pushSuccess('Dimension removed')
-			invalidateAll()
-		} else {
-			pushError('Failed to remove dimension')
+			await invalidateAll()
+		} catch (error) {
+			pushError(error instanceof Error ? error.message : 'Failed to remove dimension')
 		}
 	}
 
@@ -176,7 +177,7 @@
 	let newClassPos = $state('noun')
 	let newClassName = $state('')
 	let newClassDesc = $state('')
-	let addingClass = $state(false)
+	const addingClass = $derived(classMutation.isPending)
 
 	function applyClassPreset(preset: ClassPreset) {
 		newClassPos = preset.pos
@@ -201,37 +202,31 @@
 	async function addClass(event: SubmitEvent) {
 		event.preventDefault()
 		if (!newClassName.trim()) return
-		addingClass = true
-		const response = await fetch(`/api/languages/${languageSlug}/inflections/classes`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
+		try {
+			await classMutation.mutateAsync({ method: 'POST', body: {
 				partOfSpeech: newClassPos,
 				name: newClassName.trim(),
 				description: newClassDesc.trim() || undefined,
-			}),
-		})
-		if (response.ok) {
+			} })
 			pushSuccess('Paradigm class created')
 			newClassName = ''
 			newClassDesc = ''
 			showAddClass = false
-			invalidateAll()
-		} else {
-			pushError('Failed to create paradigm class')
+			await invalidateAll()
+		} catch (error) {
+			pushError(error instanceof Error ? error.message : 'Failed to create paradigm class')
 		}
-		addingClass = false
 	}
 
 	async function deleteClass(classId: number) {
 		const ok = await confirmDialog.confirm('Delete paradigm class', 'Delete this paradigm class and all its rules?', 'Delete', 'Cancel')
 		if (!ok) return
-		const response = await fetch(`/api/languages/${languageSlug}/inflections/classes/${classId}`, { method: 'DELETE' })
-		if (response.ok) {
+		try {
+			await classMutation.mutateAsync({ method: 'DELETE', id: classId })
 			pushSuccess('Paradigm class deleted')
-			invalidateAll()
-		} else {
-			pushError('Failed to delete paradigm class')
+			await invalidateAll()
+		} catch (error) {
+			pushError(error instanceof Error ? error.message : 'Failed to delete paradigm class')
 		}
 	}
 
@@ -240,7 +235,7 @@
 	let editingClassName = $state<string>('')
 	let editingRules = $state<Array<{ cellKey: string, pattern: string }>>([])
 	let loadingRules = $state(false)
-	let savingRules = $state(false)
+	const savingRules = $derived(classMutation.isPending)
 	let previewStem = $state('cat')
 
 	async function openRulesEditor(cls: { id: number, name: string, partOfSpeech: string }) {
@@ -252,8 +247,12 @@
 		editingClassId = cls.id
 		editingClassName = cls.name
 
-		const response = await fetch(`/api/languages/${languageSlug}/inflections/classes/${cls.id}`)
-		const data = await response.json()
+		const data = await queryClient.fetchQuery({
+			queryKey: ['languages', languageSlug, 'inflection-classes', cls.id],
+			queryFn: () => api<{ rules?: Array<{ cellKey: string, pattern: string }> }>(
+				'GET', `/api/languages/${languageSlug}/inflections/classes/${cls.id}`,
+			),
+		})
 		const existingRules: Record<string, string> = {}
 		for (const r of data.rules || []) {
 			existingRules[r.cellKey] = r.pattern
@@ -270,21 +269,15 @@
 
 	async function saveRules() {
 		if (editingClassId === null) return
-		savingRules = true
 		const nonEmpty = editingRules.filter(r => r.pattern.trim())
-		const response = await fetch(`/api/languages/${languageSlug}/inflections/classes/${editingClassId}`, {
-			method: 'PUT',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ rules: nonEmpty }),
-		})
-		if (response.ok) {
+		try {
+			await classMutation.mutateAsync({ method: 'PUT', id: editingClassId, body: { rules: nonEmpty } })
 			pushSuccess('Rules saved')
-		} else {
-			pushError('Failed to save rules')
+		} catch (error) {
+			pushError(error instanceof Error ? error.message : 'Failed to save rules')
 		}
-		savingRules = false
 		editingClassId = null
-		invalidateAll()
+		await invalidateAll()
 	}
 
 	const previewRibbon = $derived.by(() => {
@@ -319,10 +312,7 @@
 						<button
 							type="button"
 							onclick={() => applyDimensionPreset(preset)}
-							class="
-								px-2 py-0.5 bg-surface text-secondary transition-colors
-								hover:bg-accent-subtle hover:text-accent
-							"
+							class="px-2 py-0.5 bg-surface text-secondary transition-colors hover:bg-accent-subtle hover:text-accent"
 						>{preset.label}</button>
 					{/each}
 				</div>
@@ -428,10 +418,7 @@
 						<button
 							type="button"
 							onclick={() => applyClassPreset(preset)}
-							class="
-								px-2 py-0.5 bg-surface text-secondary transition-colors
-								hover:bg-accent-subtle hover:text-accent
-							"
+							class="px-2 py-0.5 bg-surface text-secondary transition-colors hover:bg-accent-subtle hover:text-accent"
 						>{preset.label}</button>
 					{/each}
 				</div>

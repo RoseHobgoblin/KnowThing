@@ -13,6 +13,8 @@
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import StarIcon from 'phosphor-svelte/lib/Star'
 	import { calendarBreadcrumbs } from '$lib/utils/breadcrumbs.js'
+	import { createMutation } from '@tanstack/svelte-query'
+	import { api } from '$lib/api'
 
 	let {
 		calendars,
@@ -33,7 +35,11 @@
 
 	let newCalendarName = $state('')
 	let selectedPreset = $state('')
-	let creating = $state(false)
+	type CreatedCalendar = { name: string, slug?: string }
+	const createCalendarMutation = createMutation(() => ({
+		mutationFn: (body: { name: string, staticData: unknown }) =>
+			api<CreatedCalendar>('POST', '/api/calendar', body),
+	}))
 
 	const presetItems = [
 		{ value: '', label: 'Blank' },
@@ -49,7 +55,6 @@
 
 	async function createCalendar() {
 		if (!newCalendarName.trim()) return
-		creating = true
 		const preset = calendarPresets.find(p => p.label === selectedPreset)
 		const staticData = preset?.staticData ?? {
 			first_week_day: 0,
@@ -59,26 +64,16 @@
 			display_moons: false, year_offset: 0, epoch_offset: 0,
 		}
 		try {
-			const res = await fetch('/api/calendar', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					name: newCalendarName.trim(),
-					staticData,
-				}),
+			const cal = await createCalendarMutation.mutateAsync({
+				name: newCalendarName.trim(),
+				staticData,
 			})
-			if (res.ok) {
-				const cal = await res.json()
-				pushSuccess(`Created "${cal.name}"`)
-				newCalendarName = ''
-				if (cal.slug) goto(`/Calendar:${cal.slug}`)
-				else invalidateAll()
-			} else {
-				const body = await res.json().catch(() => ({}))
-				pushError(body.error || 'Failed to create calendar')
-			}
-		} finally {
-			creating = false
+			pushSuccess(`Created "${cal.name}"`)
+			newCalendarName = ''
+			if (cal.slug) goto(`/Calendar:${cal.slug}`)
+			else invalidateAll()
+		} catch (error) {
+			pushError(error instanceof Error ? error.message : 'Failed to create calendar')
 		}
 	}
 </script>
@@ -143,8 +138,8 @@
 			<Select type="single" label="Start from preset" bind:value={selectedPreset} items={presetItems} />
 			<div class="flex gap-2 items-end">
 				<Input bind:value={newCalendarName} placeholder="Calendar name" containerClass="flex-1" />
-				<Button onclick={createCalendar} loading={creating} disabled={!newCalendarName.trim()}>
-					{creating ? 'Creating...' : 'Create'}
+				<Button onclick={createCalendar} loading={createCalendarMutation.isPending} disabled={!newCalendarName.trim()}>
+					{createCalendarMutation.isPending ? 'Creating...' : 'Create'}
 				</Button>
 			</div>
 		</div>

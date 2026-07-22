@@ -9,6 +9,8 @@
 	import RecordModeBanner from '$lib/components/editor/RecordModeBanner.svelte'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import { invalidateAll } from '$app/navigation'
+	import { createMutation } from '@tanstack/svelte-query'
+	import { api } from '$lib/api'
 
 	let { data }: { data: PageData } = $props()
 	const initialSettings = $state.snapshot(untrack(() => data.settings))
@@ -30,9 +32,12 @@
 	let calendarEnabled = $state(initialSettings.calendar_enabled !== 'false')
 	let stripExifOnUpload = $state(initialSettings.strip_exif_on_upload !== 'false')
 
-	let saving = $state(false)
 	let saveError = $state('')
 	let savedAt = $state<Date | null>(null)
+	const saveMutation = createMutation(() => ({
+		mutationFn: (body: Record<string, string>) => api('PUT', '/api/settings', body),
+	}))
+	const saving = $derived(saveMutation.isPending)
 
 	function snapshotState() {
 		return JSON.stringify({
@@ -76,12 +81,9 @@
 	}
 
 	async function save() {
-		saving = true
 		saveError = ''
-		const response = await fetch('/api/settings', {
-			method: 'PUT',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
+		try {
+			await saveMutation.mutateAsync({
 				site_name: siteName,
 				site_tagline: siteTagline,
 				institution_name: institutionName,
@@ -96,19 +98,15 @@
 				wordbook_enabled: String(wordbookEnabled),
 				calendar_enabled: String(calendarEnabled),
 				strip_exif_on_upload: String(stripExifOnUpload),
-			}),
-		})
-		if (response.ok) {
+			})
 			savedSnapshot = currentSnapshot
 			savedAt = new Date()
 			pushSuccess('Settings saved')
-			invalidateAll()
-		} else {
-			const body = await response.json().catch(() => ({}))
-			saveError = body.error || 'Failed to save settings'
+			await invalidateAll()
+		} catch (error) {
+			saveError = error instanceof Error ? error.message : 'Failed to save settings'
 			pushError(saveError)
 		}
-		saving = false
 	}
 </script>
 

@@ -9,6 +9,8 @@
 	import Select from '$lib/components/ui/Select.svelte'
 	import { worldmapBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import { urlSlugify } from '$lib/utils/slugify.js'
+	import { createMutation } from '@tanstack/svelte-query'
+	import { api } from '$lib/api'
 
 	type MapListItem = {
 		id: number
@@ -39,7 +41,9 @@
 	)
 
 	let showCreateForm = $state(false)
-	let creating = $state(false)
+	const createMapMutation = createMutation(() => ({
+		mutationFn: (body: Record<string, unknown>) => api('POST', '/api/maps', body),
+	}))
 	let mapName = $state('')
 	let mapSlug = $state('')
 	let timePeriod = $state('')
@@ -55,7 +59,7 @@
 
 	const linkedPageOptions = $derived([
 		{ value: '', label: 'No linked page' },
-		...data.knowPages.map((page_) => ({ value: page_.slug, label: `${page_.title} (${page_.slug})` })),
+		...data.knowPages.map(page_ => ({ value: page_.slug, label: `${page_.title} (${page_.slug})` })),
 	])
 
 	async function createMap() {
@@ -68,25 +72,15 @@
 			return
 		}
 
-		creating = true
 		try {
-			const response = await fetch('/api/maps', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					name: mapName.trim(),
-					slug: mapSlug.trim(),
-					timePeriod: timePeriod.trim() || null,
-					event: eventName.trim() || null,
-					linkedPageSlug: linkedPageSlug || null,
-					description: description.trim(),
-				}),
+			await createMapMutation.mutateAsync({
+				name: mapName.trim(),
+				slug: mapSlug.trim(),
+				timePeriod: timePeriod.trim() || null,
+				event: eventName.trim() || null,
+				linkedPageSlug: linkedPageSlug || null,
+				description: description.trim(),
 			})
-
-			if (!response.ok) {
-				const body = await response.json().catch(() => ({}))
-				throw new Error(body.error || 'Failed to create map')
-			}
 
 			pushSuccess('Map created')
 			showCreateForm = false
@@ -97,10 +91,8 @@
 			linkedPageSlug = ''
 			description = ''
 			await invalidateAll()
-		} catch (err) {
-			pushError(err instanceof Error ? err.message : 'Failed to create map')
-		} finally {
-			creating = false
+		} catch (error) {
+			pushError(error instanceof Error ? error.message : 'Failed to create map')
 		}
 	}
 </script>
@@ -136,13 +128,13 @@
 				label="Linked wiki page"
 				items={linkedPageOptions}
 				value={linkedPageSlug}
-				onValueChange={(value) => linkedPageSlug = value}
+				onValueChange={value => linkedPageSlug = value}
 				placeholder="Select optional linked page"
 			/>
 			<Input label="Description" bind:value={description} placeholder="Short description for this map" />
 			<div>
-				<Button type="button" onclick={createMap} disabled={creating}>
-					{creating ? 'Creating...' : 'Create Map'}
+				<Button type="button" onclick={createMap} disabled={createMapMutation.isPending}>
+					{createMapMutation.isPending ? 'Creating...' : 'Create Map'}
 				</Button>
 			</div>
 		</div>

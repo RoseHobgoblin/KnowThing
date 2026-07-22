@@ -17,6 +17,8 @@
 	import BracketsCurly from 'phosphor-svelte/lib/BracketsCurly'
 	import ListBullets from 'phosphor-svelte/lib/ListBullets'
 	import Table from 'phosphor-svelte/lib/Table'
+	import { useQueryClient } from '@tanstack/svelte-query'
+	import { api } from '$lib/api'
 
 	let {
 		value = '',
@@ -28,14 +30,16 @@
 
 	let container: HTMLDivElement
 	let view: EditorView
+	const queryClient = useQueryClient()
 
 	// ── Wikitext stream parser ──────────────────────────────────
-	let insideTemplate = false
-	let insideLink = false
-
 	const wikitextLanguage = StreamLanguage.define({
 		startState() { return { insideTemplate: false, insideLink: false } },
 		token(stream, state) {
+			// `stream` is a CodeMirror StringStream, not a String — its `.match(regex)`
+			// matches at the cursor and consumes on success (there is no `.test()`),
+			// so unicorn/prefer-regexp-test misfires here.
+			/* eslint-disable unicorn/prefer-regexp-test */
 			// Multi-line template tracking
 			if (state.insideTemplate) {
 				if (stream.match('}}')) {
@@ -84,13 +88,13 @@
 			}
 
 			// External link
-			if (stream.match(/^\[https?:\/\/[^\]]*\]/)) return 'url'
+			if (stream.match(/^\[https?:\/\/[^\]]*]/)) return 'url'
 
 			// HTML tags
-			if (stream.match(/<\/?[A-Za-z][^>]*>/)) return 'tagName'
+			if (stream.match(/^<\/?[A-Za-z][^>]*>/)) return 'tagName'
 
 			// Table markup
-			if (stream.sol() && stream.match(/^[{|}][-+}!]/)) return 'meta'
+			if (stream.sol() && stream.match(/^[{|}][!+}-]/)) return 'meta'
 			if (stream.sol() && stream.match(/^[!|]/)) return 'meta'
 
 			// Lists
@@ -100,13 +104,14 @@
 			if (stream.sol() && stream.match(/^-{4,}/)) return 'contentSeparator'
 
 			// Category/file
-			if (stream.match(/^\[\[(?:Category|File|Image):/i)) {
+			if (stream.match(/^\[\[(?:category|file|image):/i)) {
 				state.insideLink = true
 				return 'typeName'
 			}
 
 			stream.next()
 			return null
+			/* eslint-enable unicorn/prefer-regexp-test */
 		},
 	})
 
@@ -133,15 +138,18 @@
 		const linkMatch = context.matchBefore(/\[\[[^\]]*/)
 		if (linkMatch) {
 			const query = linkMatch.text.slice(2) // strip [[
-			if (query.length < 1) return null
+			if (query.length === 0) return null
 			try {
-				const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&scope=pages&limit=8`)
-				if (!res.ok) return null
-				const payload = await res.json()
+				const payload = await queryClient.fetchQuery({
+					queryKey: ['search', 'pages', query, 8],
+					queryFn: () => api<{ results?: Array<{ title: string, meta?: string[] }> }>(
+						'GET', `/api/search?q=${encodeURIComponent(query)}&scope=pages&limit=8`,
+					),
+				})
 				const results = payload.results ?? []
 				return {
 					from: linkMatch.from + 2,
-					options: results.map((r: any) => ({
+					options: results.map(r => ({
 						label: r.title,
 						detail: Array.isArray(r.meta) ? r.meta.join(' · ') : '',
 						apply: r.title,
@@ -153,10 +161,10 @@
 		}
 
 		// Check for {{ template completion
-		const templateMatch = context.matchBefore(/\{\{[^}]*/)
+		const templateMatch = context.matchBefore(/{{[^}]*/)
 		if (templateMatch) {
 			const query = templateMatch.text.slice(2)
-			if (query.length < 1) return null
+			if (query.length === 0) return null
 			const builtins = [
 				'Infobox country', 'Infobox person', 'Infobox settlement', 'Infobox language',
 				'Infobox star', 'Infobox planet', 'Infobox system', 'Infobox religion',
@@ -229,11 +237,29 @@
 					...searchKeymap,
 					indentWithTab,
 					// Ctrl+B for bold
-					{ key: 'Mod-b', run: () => { wrapSelection('\'\'\'', '\'\'\'', 'bold text'); return true } },
+					{
+						key: 'Mod-b',
+						run: () => {
+							wrapSelection('\'\'\'', '\'\'\'', 'bold text')
+							return true
+						},
+					},
 					// Ctrl+I for italic
-					{ key: 'Mod-i', run: () => { wrapSelection('\'\'', '\'\'', 'italic text'); return true } },
+					{
+						key: 'Mod-i',
+						run: () => {
+							wrapSelection('\'\'', '\'\'', 'italic text')
+							return true
+						},
+					},
 					// Ctrl+K for link
-					{ key: 'Mod-k', run: () => { wrapSelection('[[', ']]', 'Page Name'); return true } },
+					{
+						key: 'Mod-k',
+						run: () => {
+							wrapSelection('[[', ']]', 'Page Name')
+							return true
+						},
+					},
 				]),
 				EditorView.updateListener.of((update) => {
 					if (update.docChanged) {
@@ -285,10 +311,7 @@
 				type="button"
 				onclick={button.action}
 				title={button.title}
-				class="
-					p-1.5 text-secondary transition-colors
-					hover:bg-raised hover:text-heading
-				"
+				class="p-1.5 text-secondary transition-colors hover:bg-raised hover:text-heading"
 			>
 				<svelte:component this={button.icon} size={16} weight="bold" />
 			</button>

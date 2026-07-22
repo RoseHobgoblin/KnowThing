@@ -12,10 +12,16 @@
 	import TabNavigation from '$lib/components/ui/TabNavigation.svelte'
 	import HelpBlock from '$lib/components/ui/HelpBlock.svelte'
 	import { wordbookEditLanguageBreadcrumbs } from '$lib/utils/breadcrumbs.js'
+	import { createMutation } from '@tanstack/svelte-query'
+	import { api } from '$lib/api'
 
 	let { data }: { data: PageData } = $props()
 
 	const wbName = $derived($page.data.siteConfig?.wordbookName ?? 'Wordbook')
+	const updateMutation = createMutation(() => ({
+		mutationFn: (formData: Record<string, unknown>) =>
+			api('PUT', `/api/languages/${data.language.slug}`, formData),
+	}))
 
 	const validTabs = ['details', 'phonology', 'orthography', 'inflections'] as const
 	type Tab = typeof validTabs[number]
@@ -43,15 +49,7 @@
 	]
 
 	async function handleDetailsSubmit(formData: Record<string, unknown>) {
-		const response = await fetch(`/api/languages/${data.language.slug}`, {
-			method: 'PUT',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(formData),
-		})
-		if (!response.ok) {
-			const error = await response.json()
-			throw new Error(error.error || 'Failed to update language')
-		}
+		await updateMutation.mutateAsync(formData)
 		pushSuccess('Language updated')
 		goto(`/Wordbook/${data.language.slug}`)
 	}

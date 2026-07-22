@@ -2,6 +2,8 @@
 	import type { PageData } from './$types.js'
 	import { goto, replaceState } from '$app/navigation'
 	import { page } from '$app/stores'
+	import { createMutation } from '@tanstack/svelte-query'
+	import { api } from '$lib/api'
 	import { pushSuccess } from '$lib/notifications.svelte'
 	import EntryForm from '$lib/components/wordbook/EntryForm.svelte'
 	import InflectionEditor from '$lib/components/wordbook/InflectionEditor.svelte'
@@ -25,7 +27,7 @@
 	let activeTab = $state<string>(tabFromUrl())
 
 	const hasInflectionSystem = $derived(
-		data.availableClasses.length > 0 || data.inflection.dimensions.length > 0
+		data.availableClasses.length > 0 || data.inflection.dimensions.length > 0,
 	)
 
 	function onNavigationChange(id: string) {
@@ -43,40 +45,28 @@
 
 	const firstPos = $derived(data.definitions[0]?.partOfSpeech || '')
 	const languageSlug = $derived(
-		data.languages.find(l => l.id === data.entry.languageId)?.slug ?? ''
+		data.languages.find(l => l.id === data.entry.languageId)?.slug ?? '',
 	)
+	const updateMutation = createMutation(() => ({
+		mutationFn: ({ resource, body }: { resource: 'entry' | 'definitions', body: unknown }) =>
+			api('PUT', `/api/wordbook/${data.entry.id}${resource === 'definitions' ? '/definitions' : ''}`, body),
+	}))
 
 	async function handleSubmit(formData: Record<string, unknown>) {
-		const res = await fetch(`/api/wordbook/${data.entry.id}`, {
-			method: 'PUT',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				word: formData.word,
-				languageId: formData.languageId,
-				pronunciation: formData.pronunciation,
-				etymology: formData.etymology,
-				notes: formData.notes,
-				pageSlug: formData.pageSlug,
-				tags: formData.tags,
-			}),
+		await updateMutation.mutateAsync({ resource: 'entry', body: {
+			word: formData.word,
+			languageId: formData.languageId,
+			pronunciation: formData.pronunciation,
+			etymology: formData.etymology,
+			notes: formData.notes,
+			pageSlug: formData.pageSlug,
+			tags: formData.tags,
+		},
 		})
-
-		if (!res.ok) {
-			const error = await res.json()
-			throw new Error(error.error || 'Failed to update entry')
-		}
 
 		const defs = formData.defs as Array<{ partOfSpeech?: string, definition: string, usageExample?: string, usageTranslation?: string }>
 		if (defs && defs.length > 0) {
-			const defRes = await fetch(`/api/wordbook/${data.entry.id}/definitions`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ defs }),
-			})
-			if (!defRes.ok) {
-				const error = await defRes.json()
-				throw new Error(error.error || 'Failed to update definitions')
-			}
+			await updateMutation.mutateAsync({ resource: 'definitions', body: { defs } })
 		}
 
 		pushSuccess('Word updated')

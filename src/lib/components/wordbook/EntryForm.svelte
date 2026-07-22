@@ -7,6 +7,9 @@
 	import UnsavedChangesGuard from '$lib/components/editor/UnsavedChangesGuard.svelte'
 	import StickyActionBar from '$lib/components/editor/StickyActionBar.svelte'
 	import FormNotice from '$lib/components/editor/FormNotice.svelte'
+	import { useQueryClient } from '@tanstack/svelte-query'
+	import { api } from '$lib/api'
+	import { cn } from '$lib/utils'
 
 	let {
 		languages = [],
@@ -52,7 +55,7 @@
 		pageSlug: initialEntry.pageSlug || '',
 		tagsInput: initialEntry.tags?.join(', ') || '',
 	}
-	const initialDefRows = initialDefinitionRows.length > 0
+	const resolvedDefinitionRows = initialDefinitionRows.length > 0
 		? initialDefinitionRows.map(d => ({
 			partOfSpeech: d.partOfSpeech || '',
 			definition: d.definition || '',
@@ -61,7 +64,7 @@
 		}))
 		: [{ partOfSpeech: '', definition: '', usageExample: '', usageTranslation: '' }]
 
-	type DefRow = { partOfSpeech: string, definition: string, usageExample: string, usageTranslation: string }
+	type DefinitionRow = { partOfSpeech: string, definition: string, usageExample: string, usageTranslation: string }
 	type EtymRow = { relationType: string, targetId: number | null, query: string, results: Array<{ id: number, word: string, definition: string, languageName: string, languageSlug: string }>, showDropdown: boolean }
 
 	let word = $state(initialValues.word)
@@ -75,15 +78,16 @@
 	let submitting = $state(false)
 	let error = $state('')
 
-	let defs = $state<DefRow[]>(initialDefRows)
+	let defs = $state<DefinitionRow[]>(resolvedDefinitionRows)
 
 	let etymRows = $state<EtymRow[]>([])
 	const searchTimeouts = new SvelteMap<number, ReturnType<typeof setTimeout>>()
+	const queryClient = useQueryClient()
 
 	const currentSnapshot = $derived(JSON.stringify({ word, languageIdStr: languageIdString, pronunciation, etymology, notes, pageSlug, tagsInput, defs, etymRows }))
 	const initialSnapshot = JSON.stringify({
 		...initialValues,
-		defs: initialDefRows,
+		defs: resolvedDefinitionRows,
 		etymRows: [],
 	})
 	const isDirty = $derived(currentSnapshot !== initialSnapshot)
@@ -129,11 +133,11 @@
 			return
 		}
 		searchTimeouts.set(index, setTimeout(async () => {
-			const res = await fetch(`/api/wordbook?q=${encodeURIComponent(row.query.trim())}&limit=8`)
-			if (res.ok) {
-				row.results = await res.json()
-				row.showDropdown = row.results.length > 0
-			}
+			row.results = await queryClient.fetchQuery({
+				queryKey: ['wordbook', 'search', row.query.trim(), 8],
+				queryFn: () => api<EtymRow['results']>('GET', `/api/wordbook?q=${encodeURIComponent(row.query.trim())}&limit=8`),
+			})
+			row.showDropdown = row.results.length > 0
 		}, 300))
 	}
 
@@ -152,7 +156,7 @@
 		notes = initialValues.notes
 		pageSlug = initialValues.pageSlug
 		tagsInput = initialValues.tagsInput
-		defs = initialDefRows
+		defs = resolvedDefinitionRows
 		etymRows = []
 		error = ''
 	}
@@ -165,8 +169,8 @@
 		{ value: 'compound_of', label: 'Compound of' },
 	]
 
-	async function handleSubmit(e: SubmitEvent) {
-		e.preventDefault()
+	async function handleSubmit(event: SubmitEvent) {
+		event.preventDefault()
 		if (!word.trim() || !languageId) {
 			error = 'Word and language are required'
 			return
@@ -202,7 +206,6 @@
 		}
 	}
 
-	const textareaClass = 'w-full px-3 py-2 text-sm text-body bg-page outline-none transition-colors placeholder:text-dim focus:ring-2 focus:ring-accent'
 	const labelClass = 'block text-sm font-medium text-secondary mb-1'
 </script>
 
@@ -226,8 +229,8 @@
 			<button type="button" onclick={addDefinition} class="text-xs text-link hover:text-link-hover hover:underline">+ Add definition</button>
 		</div>
 
-		{#each defs as def, index (def)}
-			<div class="p-3 mb-3 bg-page/50 {defs.length > 1 ? 'relative' : ''}">
+		{#each defs as row, index (row)}
+			<div class={cn('p-3 mb-3 bg-page/50', defs.length > 1 && 'relative')}>
 				{#if defs.length > 1}
 					<div class="flex items-center justify-between mb-2">
 						<span class="text-xs font-medium text-secondary">Definition {index + 1}</span>
@@ -251,12 +254,12 @@
 					</div>
 				{/if}
 				<div class="grid grid-cols-1 gap-3 mb-2 md:grid-cols-4">
-					<Select bind:value={def.partOfSpeech} type="single" items={posItems} placeholder="Part of speech" size="sm" />
-					<Input bind:value={def.definition} placeholder="Definition text..." required={index === 0} containerClass="md:col-span-3" error={!def.definition.trim() && error ? 'Definition required' : ''} />
+					<Select bind:value={row.partOfSpeech} type="single" items={posItems} placeholder="Part of speech" size="sm" />
+					<Input bind:value={row.definition} placeholder="Definition text..." required={index === 0} containerClass="md:col-span-3" error={!row.definition.trim() && error ? 'Definition required' : ''} />
 				</div>
 				<div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-					<Input bind:value={def.usageExample} placeholder="Usage example (in the language)" />
-					<Input bind:value={def.usageTranslation} placeholder="Translation" />
+					<Input bind:value={row.usageExample} placeholder="Usage example (in the language)" />
+					<Input bind:value={row.usageTranslation} placeholder="Translation" />
 				</div>
 			</div>
 		{/each}
@@ -299,11 +302,12 @@
 						onfocus={() => { if (row.results.length > 0) row.showDropdown = true }}
 						onblur={() => setTimeout(() => row.showDropdown = false, 200)}
 						placeholder="Search for a word..."
-						class="
-							w-full px-3 py-1.5 text-sm text-body bg-page outline-none transition-colors
-							placeholder:text-dim
-							focus:ring-2 focus:ring-accent
-							{row.targetId ? 'bg-success-bg' : ''}"
+						class={cn(
+							'w-full px-3 py-1.5 text-sm text-body bg-page outline-none transition-colors',
+							'placeholder:text-dim',
+							'focus:ring-2 focus:ring-accent',
+							row.targetId && 'bg-success-bg',
+						)}
 					/>
 					{#if row.showDropdown}
 						<div class="absolute z-10 top-full inset-x-0 mt-1 bg-surface shadow-lg max-h-40 overflow-y-auto">

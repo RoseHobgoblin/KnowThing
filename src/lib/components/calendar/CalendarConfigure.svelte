@@ -1,6 +1,8 @@
 <script module lang="ts">
 	let _nextId = 0
-	function uid() { return ++_nextId }
+	function uid() {
+		return ++_nextId
+	}
 
 	function parseIntList(csv: string): number[] {
 		if (!csv) return []
@@ -30,6 +32,8 @@
 	import { summarizeZodIssues } from '$lib/utils.js'
 	import TabNavigation from '$lib/components/ui/TabNavigation.svelte'
 	import StickyActionBar from '$lib/components/editor/StickyActionBar.svelte'
+	import { createMutation } from '@tanstack/svelte-query'
+	import { api } from '$lib/api'
 
 	type DraftMonth = {
 		_id: number
@@ -225,7 +229,11 @@
 	let leapDays = $state<DraftLeapDay[]>(draftLeapDays(sd))
 
 	let editSummary = $state('')
-	let saving = $state(false)
+	const calendarMutation = createMutation(() => ({
+		mutationFn: ({ method, body }: { method: 'PUT' | 'DELETE', body?: unknown }) =>
+			api(method, `/api/calendar/${calendar.id}`, body),
+	}))
+	const saving = $derived(calendarMutation.isPending)
 	let saveError = $state('')
 	let initialStaticData = JSON.stringify(initialConfig.static_data)
 
@@ -272,12 +280,12 @@
 				shadow_color: m.shadow_color,
 			})),
 
-			eras: eras.map(e => ({
-				name: e.name,
-				start_year: e.start_year,
-				end_year: e.end_year ? Number.parseInt(e.end_year) : null,
-				format: e.format,
-				reverse_numbering: e.reverse_numbering,
+			eras: eras.map(era => ({
+				name: era.name,
+				start_year: era.start_year,
+				end_year: era.end_year ? Number.parseInt(era.end_year) : null,
+				format: era.format,
+				reverse_numbering: era.reverse_numbering,
 			})),
 
 			seasons: seasons.map(s => ({
@@ -332,30 +340,17 @@
 			return
 		}
 
-		saving = true
 		saveError = ''
 		try {
-			const res = await fetch(`/api/calendar/${calendar.id}`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ staticData: previewConfig.static_data }),
-			})
-			if (!res.ok) {
-				const body = await res.json().catch(() => ({}))
-				saveError = body.error || 'Failed to save calendar configuration'
-				pushError(saveError)
-				return
-			}
+			await calendarMutation.mutateAsync({ method: 'PUT', body: { staticData: previewConfig.static_data } })
 
 			savedAt = new Date()
 			initialStaticData = currentStaticData
 			editSummary = ''
 			pushSuccess('Calendar saved')
-		} catch {
-			saveError = 'Failed to save'
-			pushError('Failed to save')
-		} finally {
-			saving = false
+		} catch (error) {
+			saveError = error instanceof Error ? error.message : 'Failed to save'
+			pushError(saveError)
 		}
 	}
 
@@ -373,10 +368,10 @@
 		)
 		if (!ok) return
 
-		const response = await fetch(`/api/calendar/${calendar.id}`, { method: 'DELETE' })
-		if (!response.ok) {
-			const body = await response.json().catch(() => ({}))
-			pushError(body.error || 'Failed to delete calendar')
+		try {
+			await calendarMutation.mutateAsync({ method: 'DELETE' })
+		} catch (error) {
+			pushError(error instanceof Error ? error.message : 'Failed to delete calendar')
 			return
 		}
 
@@ -477,14 +472,14 @@
 				{#each months as month, index (month._id)}
 					<div class="flex gap-2 items-center group">
 						<span class="text-xs text-secondary w-5 text-right shrink-0">{index + 1}</span>
-						<Input bind:value={month.name} placeholder="Month name" containerClass="flex-1" error={!month.name.trim() ? 'Required' : ''} />
+						<Input bind:value={month.name} placeholder="Month name" containerClass="flex-1" error={month.name.trim() ? '' : 'Required'} />
 						<Input bind:value={month.short_name} placeholder="Abbr" containerClass="w-14" />
 						<div class="flex items-center gap-1">
-							<Input type="number" bind:value={month.length} min={1} containerClass="w-14" class="text-center" error={month.length < 1 ? 'Min 1' : ''} />
+							<Input type="number" bind:value={month.length} min={1} containerClass="w-14" class="text-center" error={month.length === 0 ? 'Min 1' : ''} />
 							<span class="text-xs text-secondary">days</span>
 						</div>
 						<Select type="single" bind:value={month.month_type} items={[{ value: 'regular', label: 'Regular' }, { value: 'intercalary', label: 'Intercalary' }, { value: 'lunisolar_leap', label: 'Lunisolar Leap' }]} containerClass="w-32" size="sm" />
-						<button type="button" onclick={() => months = months.filter((_, i) => i !== index)} class="text-secondary opacity-0 transition-opacity group-hover:opacity-100 hover:text-error">×</button>
+						<button type="button" onclick={() => months = months.filter((_, index_) => index_ !== index)} class="text-secondary opacity-0 transition-opacity group-hover:opacity-100 hover:text-error">×</button>
 					</div>
 				{/each}
 			</section>
@@ -502,9 +497,9 @@
 				{#each weekdays as day, index (day._id)}
 					<div class="flex gap-2 items-center group">
 						<span class="text-xs text-secondary w-5 text-right shrink-0">{index}</span>
-						<Input bind:value={day.name} placeholder="Weekday name" containerClass="flex-1" error={!day.name.trim() ? 'Required' : ''} />
+						<Input bind:value={day.name} placeholder="Weekday name" containerClass="flex-1" error={day.name.trim() ? '' : 'Required'} />
 						<Input bind:value={day.abbreviation} placeholder="Abbr" containerClass="w-16" />
-						<button type="button" onclick={() => weekdays = weekdays.filter((_, i) => i !== index)} class="text-secondary opacity-0 transition-opacity group-hover:opacity-100 hover:text-error">×</button>
+						<button type="button" onclick={() => weekdays = weekdays.filter((_, index_) => index_ !== index)} class="text-secondary opacity-0 transition-opacity group-hover:opacity-100 hover:text-error">×</button>
 					</div>
 				{/each}
 			</section>
@@ -517,8 +512,8 @@
 				{#each leapDays as ld, index (ld._id)}
 					<div class="p-4 space-y-3 bg-page">
 						<div class="flex items-center justify-between">
-							<Input bind:value={ld.name} placeholder="Leap day name" containerClass="flex-1" class="font-medium" error={!ld.name.trim() ? 'Required' : ''} />
-							<button type="button" onclick={() => leapDays = leapDays.filter((_, i) => i !== index)} class="text-secondary ml-2 text-sm hover:text-error">×</button>
+							<Input bind:value={ld.name} placeholder="Leap day name" containerClass="flex-1" class="font-medium" error={ld.name.trim() ? '' : 'Required'} />
+							<button type="button" onclick={() => leapDays = leapDays.filter((_, index_) => index_ !== index)} class="text-secondary ml-2 text-sm hover:text-error">×</button>
 						</div>
 						<div class="grid grid-cols-2 gap-3 md:grid-cols-4">
 							<Select type="single" label="Insert after" bind:value={ld.month_index_str} items={months.map((m, mi) => ({ value: String(mi), label: m.name || `Month ${mi + 1}` }))} />
@@ -543,8 +538,8 @@
 				{#each eras as era, index (era._id)}
 					<div class="p-4 space-y-3 bg-page">
 						<div class="flex items-center justify-between">
-							<Input bind:value={era.name} placeholder="Era name (e.g. FA, AD)" containerClass="flex-1" class="font-medium" error={!era.name.trim() ? 'Required' : ''} />
-							<button type="button" onclick={() => eras = eras.filter((_, i) => i !== index)} class="text-secondary ml-2 text-sm hover:text-error">×</button>
+							<Input bind:value={era.name} placeholder="Era name (e.g. FA, AD)" containerClass="flex-1" class="font-medium" error={era.name.trim() ? '' : 'Required'} />
+							<button type="button" onclick={() => eras = eras.filter((_, index_) => index_ !== index)} class="text-secondary ml-2 text-sm hover:text-error">×</button>
 						</div>
 						<div class="grid grid-cols-2 gap-3 md:grid-cols-4">
 							<Input type="number" label="Starts at year" bind:value={era.start_year} />
@@ -567,7 +562,7 @@
 							<input type="color" bind:value={moon.face_color} class="size-7 cursor-pointer" title="Lit color" />
 							<input type="color" bind:value={moon.shadow_color} class="size-7 cursor-pointer" title="Shadow color" />
 						</div>
-						<Input bind:value={moon.name} placeholder="Moon name" containerClass="flex-1" error={!moon.name.trim() ? 'Required' : ''} />
+						<Input bind:value={moon.name} placeholder="Moon name" containerClass="flex-1" error={moon.name.trim() ? '' : 'Required'} />
 						<div class="flex items-center gap-1">
 							<Input type="number" bind:value={moon.cycle} step="0.01" containerClass="w-20" class="text-center" />
 							<span class="text-xs text-secondary whitespace-nowrap">day cycle</span>
@@ -576,7 +571,7 @@
 							<Input type="number" bind:value={moon.offset} containerClass="w-16" class="text-center" />
 							<span class="text-xs text-secondary">offset</span>
 						</div>
-						<button type="button" onclick={() => moons = moons.filter((_, i) => i !== index)} class="text-secondary opacity-0 transition-opacity group-hover:opacity-100 hover:text-error">×</button>
+						<button type="button" onclick={() => moons = moons.filter((_, index_) => index_ !== index)} class="text-secondary opacity-0 transition-opacity group-hover:opacity-100 hover:text-error">×</button>
 					</div>
 				{/each}
 			</section>
@@ -590,9 +585,9 @@
 					<div class="p-4 space-y-3 bg-page">
 						<div class="flex items-center gap-3">
 							<input type="color" bind:value={season.color} class="size-7 cursor-pointer shrink-0" />
-							<Input bind:value={season.name} placeholder="Season name" containerClass="flex-1" class="font-medium" error={!season.name.trim() ? 'Required' : ''} />
+							<Input bind:value={season.name} placeholder="Season name" containerClass="flex-1" class="font-medium" error={season.name.trim() ? '' : 'Required'} />
 							<Select type="single" bind:value={season.kind} items={[{ value: 'spring', label: 'Spring' }, { value: 'summer', label: 'Summer' }, { value: 'autumn', label: 'Autumn' }, { value: 'winter', label: 'Winter' }, { value: 'custom', label: 'Custom' }]} containerClass="w-24" size="sm" />
-							<button type="button" onclick={() => seasons = seasons.filter((_, i) => i !== index)} class="text-secondary text-sm hover:text-error">×</button>
+							<button type="button" onclick={() => seasons = seasons.filter((_, index_) => index_ !== index)} class="text-secondary text-sm hover:text-error">×</button>
 						</div>
 						<div class="flex items-center gap-3">
 							<Select type="single" bind:value={season.timing_type} items={[{ value: 'dated', label: 'Starts on date' }, { value: 'periodic', label: 'Rolling duration' }]} containerClass="w-36" size="sm" />

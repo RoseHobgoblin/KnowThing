@@ -6,12 +6,17 @@
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import { goto } from '$app/navigation'
 	import KnowArticle from './KnowArticle.svelte'
+	import { createMutation } from '@tanstack/svelte-query'
+	import { api } from '$lib/api'
 
 	let { data }: { data: PageData } = $props()
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
+	const deleteMutation = createMutation(() => ({
+		mutationFn: () => api('DELETE', `/api/pages/${data.slug}`),
+	}))
 
 	const siteName = $derived($page.data.siteConfig?.siteName ?? 'KnowThing')
-	const description = $derived(!data.notFound ? data.description : '')
+	const description = $derived(data.notFound ? '' : data.description)
 	const ogImageUrl = $derived.by(() => {
 		if (data.notFound || !data.card?.image) return null
 		const base = `${$page.url.origin}/api/media/${encodeURIComponent(data.card.image)}`
@@ -24,12 +29,12 @@
 	async function deletePage() {
 		const ok = await confirmDialog.confirm('Delete page', `Delete "${data.title}"? This cannot be undone.`, 'Delete', 'Cancel')
 		if (!ok) return
-		const response = await fetch(`/api/pages/${data.slug}`, { method: 'DELETE' })
-		if (response.ok) {
+		try {
+			await deleteMutation.mutateAsync()
 			pushSuccess(`"${data.title}" deleted`)
 			goto('/')
-		} else {
-			pushError('Failed to delete page')
+		} catch (error) {
+			pushError(error instanceof Error ? error.message : 'Failed to delete page')
 		}
 	}
 </script>

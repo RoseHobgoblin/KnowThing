@@ -14,6 +14,8 @@
 	import PencilSimple from 'phosphor-svelte/lib/PencilSimpleIcon'
 	import Trash from 'phosphor-svelte/lib/TrashIcon'
 	import Copy from 'phosphor-svelte/lib/CopyIcon'
+	import { createMutation, createQuery } from '@tanstack/svelte-query'
+	import { api } from '$lib/api'
 
 	interface Phoneme {
 		id: number
@@ -92,8 +94,6 @@
 	interface LinkedGrapheme { id: number, grapheme: string, environment: string | null }
 
 	let phonemes = $state<Phoneme[]>(initial)
-	let linkedGraphemes = $state<LinkedGrapheme[]>([])
-	let loadingLinked = $state(false)
 	let pickerOpen = $state(false)
 	let pickerFilter = $state<'consonant' | 'vowel'>('consonant')
 	let manualOpen = $state(false)
@@ -102,7 +102,6 @@
 	/** Snapshot of the draft as it was when the dialog last opened. Used to
 	 * detect unsaved changes and protect against accidental close. */
 	let draftSnapshot = $state<Draft>(emptyDraft())
-	let saving = $state(false)
 	let errorMessage = $state('')
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
 
@@ -130,6 +129,35 @@
 		{ value: 'special', label: 'special' },
 	]
 
+	const linkedQuery = createQuery(() => ({
+		queryKey: ['languages', languageSlug, 'phonemes', editingId, 'graphemes'],
+		queryFn: () => api<{ graphemes?: LinkedGrapheme[] }>('GET', `/api/languages/${languageSlug}/phonemes/${editingId}`),
+		enabled: manualOpen && editingId != null,
+	}))
+	const linkedGraphemes = $derived(linkedQuery.data?.graphemes ?? [])
+	const loadingLinked = $derived(linkedQuery.isFetching)
+
+	const addMutation = createMutation(() => ({
+		mutationFn: (body: Record<string, unknown>) =>
+			api<Phoneme>('POST', `/api/languages/${languageSlug}/phonemes`, body),
+	}))
+	const saveMutation = createMutation(() => ({
+		mutationFn: ({ id, body }: { id: number | null, body: Record<string, unknown> }) =>
+			api<Phoneme>(id ? 'PATCH' : 'POST', id
+				? `/api/languages/${languageSlug}/phonemes/${id}`
+				: `/api/languages/${languageSlug}/phonemes`, body),
+	}))
+	const deleteMutation = createMutation(() => ({
+		mutationFn: (id: number) => api<{ affectedGraphemes?: number }>(
+			'DELETE', `/api/languages/${languageSlug}/phonemes/${id}`,
+		),
+	}))
+	const restoreMutation = createMutation(() => ({
+		mutationFn: (body: Record<string, unknown>) =>
+			api<Phoneme>('POST', `/api/languages/${languageSlug}/phonemes`, body),
+	}))
+	const saving = $derived(addMutation.isPending || saveMutation.isPending || restoreMutation.isPending)
+
 	// ───────────────────────────────────────────────────────────────── actions
 	function openPicker(kind: 'consonant' | 'vowel') {
 		pickerFilter = kind
@@ -153,23 +181,9 @@
 			editingId = existing.id
 			draft = draftFrom(existing)
 			draftSnapshot = $state.snapshot(draft) as Draft
-			loadLinkedGraphemes(existing.id)
 			manualOpen = true
 		} else {
 			openManual(kind, axes)
-		}
-	}
-
-	async function loadLinkedGraphemes(phonemeId: number) {
-		linkedGraphemes = []
-		loadingLinked = true
-		try {
-			const response = await fetch(`/api/languages/${languageSlug}/phonemes/${phonemeId}`)
-			if (!response.ok) return
-			const body = await response.json() as { graphemes?: LinkedGrapheme[] }
-			linkedGraphemes = body.graphemes ?? []
-		} finally {
-			loadingLinked = false
 		}
 	}
 
@@ -187,33 +201,17 @@
 			rounded: entry.rounded ?? null,
 			marginal: false,
 		}
-		saving = true
 		try {
-			const response = await fetch(`/api/languages/${languageSlug}/phonemes`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(body),
-			})
-			if (!response.ok) {
-				const error = await response.json().catch(() => null)
-				errorMessage = error?.error ?? 'Failed to add phoneme'
-				return
-			}
-			const created = await response.json() as Phoneme
+			const created = await addMutation.mutateAsync(body)
 			phonemes = [...phonemes, created]
-		} finally {
-			saving = false
+		} catch (error) {
+			errorMessage = error instanceof Error ? error.message : 'Failed to add phoneme'
 		}
 	}
 
 	async function saveManual() {
 		errorMessage = ''
-		saving = true
 		try {
-			const url = editingId
-				? `/api/languages/${languageSlug}/phonemes/${editingId}`
-				: `/api/languages/${languageSlug}/phonemes`
-			const method = editingId ? 'PATCH' : 'POST'
 			// Wipe axis fields that don't apply to this type so changing
 			// consonant → vowel (or back) doesn't leave stale data behind.
 			const isConsonantish = draft.type === 'consonant' || draft.type === 'special' || draft.type === 'diphthong'
@@ -231,17 +229,7 @@
 				marginal: draft.marginal,
 				notes: draft.notes.trim() || null,
 			}
-			const response = await fetch(url, {
-				method,
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(body),
-			})
-			if (!response.ok) {
-				const error = await response.json().catch(() => null)
-				errorMessage = error?.error ?? 'Failed to save phoneme'
-				return
-			}
-			const saved = await response.json() as Phoneme
+			const saved = await saveMutation.mutateAsync({ id: editingId, body })
 			if (editingId) {
 				phonemes = phonemes.map(p => p.id === saved.id ? saved : p)
 			} else {
@@ -251,8 +239,8 @@
 			// spurious "discard changes?" prompt on the closing transition.
 			draftSnapshot = $state.snapshot(draft) as Draft
 			manualOpen = false
-		} finally {
-			saving = false
+		} catch (error) {
+			errorMessage = error instanceof Error ? error.message : 'Failed to save phoneme'
 		}
 	}
 
@@ -296,14 +284,13 @@
 	async function handleDelete(p: Phoneme) {
 		// Skip confirm dialog — the undo toast IS the safety net now. One click,
 		// one toast, six seconds to change your mind. This is the Gmail pattern.
-		const response = await fetch(`/api/languages/${languageSlug}/phonemes/${p.id}`, { method: 'DELETE' })
-		if (!response.ok) {
-			const error = await response.json().catch(() => null)
-			errorMessage = error?.error ?? 'Failed to delete phoneme'
+		let body: { affectedGraphemes?: number }
+		try {
+			body = await deleteMutation.mutateAsync(p.id)
+		} catch (error) {
+			errorMessage = error instanceof Error ? error.message : 'Failed to delete phoneme'
 			return
 		}
-
-		const body = await response.json().catch(() => ({ affectedGraphemes: 0 })) as { affectedGraphemes?: number }
 		const affected = body.affectedGraphemes ?? 0
 
 		// Snapshot the deleted row so we can re-POST on undo.
@@ -322,10 +309,8 @@
 				// the server — that's fine since we've already removed the old
 				// row from local state, and external refs (wiki templates) use
 				// IPA + slug, not the numeric id.
-				const undoResponse = await fetch(`/api/languages/${languageSlug}/phonemes`, {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
+				try {
+					const restored = await restoreMutation.mutateAsync({
 						ipa: snapshot.ipa,
 						type: snapshot.type,
 						place: snapshot.place,
@@ -338,14 +323,11 @@
 						marginal: snapshot.marginal,
 						notes: snapshot.notes,
 						sortOrder: snapshot.sortOrder,
-					}),
-				})
-				if (!undoResponse.ok) {
+					})
+					phonemes = [...phonemes, restored]
+				} catch {
 					pushError(`Couldn't restore /${snapshot.ipa}/`)
-					return
 				}
-				const restored = await undoResponse.json() as Phoneme
-				phonemes = [...phonemes, restored]
 			},
 			// onExpire: nothing to do — server already deleted. Kept for parity.
 			() => {},
@@ -489,7 +471,7 @@
 						{#each unplaced as p (p.id)}
 							<button
 								type="button"
-								class="font-serif text-base px-2 py-0.5 border border-transparent rounded-sm transition-colors {readOnly ? 'cursor-default' : 'cursor-pointer hover:bg-accent-subtle hover:text-accent hover:border-accent-border'}"
+								class={cn('font-serif text-base px-2 py-0.5 border border-transparent rounded-sm transition-colors', readOnly ? 'cursor-default' : 'cursor-pointer hover:bg-accent-subtle hover:text-accent hover:border-accent-border')}
 								onclick={() => openCell(kind, p as Phoneme, {})}
 								disabled={readOnly}
 							>
@@ -520,7 +502,7 @@
 			{#each otherPhonemes as p (p.id)}
 				<button
 					type="button"
-					class="font-serif text-base px-2 py-0.5 border border-transparent rounded-sm transition-colors {readOnly ? 'cursor-default' : 'cursor-pointer hover:bg-accent-subtle hover:text-accent hover:border-accent-border'}"
+					class={cn('font-serif text-base px-2 py-0.5 border border-transparent rounded-sm transition-colors', readOnly ? 'cursor-default' : 'cursor-pointer hover:bg-accent-subtle hover:text-accent hover:border-accent-border')}
 					onclick={() => openCell('consonant', p as Phoneme, {})}
 					disabled={readOnly}
 					title="{p.type}"

@@ -3,6 +3,8 @@
 	import Input from '$lib/components/ui/Input.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import { pushError, pushSuccess } from '$lib/notifications.svelte'
+	import { createMutation, useQueryClient } from '@tanstack/svelte-query'
+	import { api } from '$lib/api'
 
 	type Dialect = { id: number, name: string, slug: string, region: string | null, description: string | null }
 
@@ -19,15 +21,26 @@
 	} = $props()
 
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
+	const queryClient = useQueryClient()
 
 	// ── Dialects ────────────────────────────────────────────────
 	let addingDialect = $state(false)
 	let dialectName = $state('')
 	let dialectRegion = $state('')
-	let savingDialect = $state(false)
 	let editingDialectSlug = $state<string | null>(null)
 	let editName = $state('')
 	let editRegion = $state('')
+	const dialectMutation = createMutation(() => ({
+		mutationFn: ({ method, slug, body }: {
+			method: 'POST' | 'PUT' | 'DELETE'
+			slug?: string
+			body?: unknown
+		}) => api(method, `/api/languages/${languageSlug}/dialects${slug ? `/${slug}` : ''}`, body),
+		onSuccess: () => queryClient.invalidateQueries({ queryKey: ['languages', languageSlug, 'dialects'] }),
+	}))
+	const languageDeleteMutation = createMutation(() => ({
+		mutationFn: () => api('DELETE', `/api/languages/${languageSlug}`),
+	}))
 
 	function slugify(name: string): string {
 		return name.trim().toLowerCase().replaceAll(/[^\da-z]+/g, '-').replaceAll(/^-+|-+$/g, '')
@@ -36,21 +49,12 @@
 	async function addDialect(event: Event) {
 		event.preventDefault()
 		if (!dialectName.trim()) return
-		savingDialect = true
 		try {
-			const response = await fetch(`/api/languages/${languageSlug}/dialects`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					name: dialectName.trim(),
-					slug: slugify(dialectName),
-					region: dialectRegion.trim() || undefined,
-				}),
-			})
-			if (!response.ok) {
-				const body = await response.json()
-				throw new Error(body.error || 'Failed to add dialect')
-			}
+			await dialectMutation.mutateAsync({ method: 'POST', body: {
+				name: dialectName.trim(),
+				slug: slugify(dialectName),
+				region: dialectRegion.trim() || undefined,
+			} })
 			pushSuccess(`Dialect "${dialectName.trim()}" added`)
 			dialectName = ''
 			dialectRegion = ''
@@ -58,8 +62,6 @@
 			await invalidateAll()
 		} catch (error) {
 			pushError(error instanceof Error ? error.message : 'Failed to add dialect')
-		} finally {
-			savingDialect = false
 		}
 	}
 
@@ -72,24 +74,17 @@
 	async function saveEdit(event: Event) {
 		event.preventDefault()
 		if (!editingDialectSlug || !editName.trim()) return
-		savingDialect = true
 		try {
-			const response = await fetch(`/api/languages/${languageSlug}/dialects/${editingDialectSlug}`, {
+			await dialectMutation.mutateAsync({
 				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ name: editName.trim(), region: editRegion.trim() || undefined }),
+				slug: editingDialectSlug,
+				body: { name: editName.trim(), region: editRegion.trim() || undefined },
 			})
-			if (!response.ok) {
-				const body = await response.json()
-				throw new Error(body.error || 'Failed to update dialect')
-			}
 			pushSuccess('Dialect updated')
 			editingDialectSlug = null
 			await invalidateAll()
 		} catch (error) {
 			pushError(error instanceof Error ? error.message : 'Failed to update dialect')
-		} finally {
-			savingDialect = false
 		}
 	}
 
@@ -101,11 +96,7 @@
 		)
 		if (!confirmed) return
 		try {
-			const response = await fetch(`/api/languages/${languageSlug}/dialects/${dialect.slug}`, { method: 'DELETE' })
-			if (!response.ok) {
-				const body = await response.json()
-				throw new Error(body.error || 'Failed to delete dialect')
-			}
+			await dialectMutation.mutateAsync({ method: 'DELETE', slug: dialect.slug })
 			pushSuccess(`Dialect "${dialect.name}" deleted`)
 			await invalidateAll()
 		} catch (error) {
@@ -122,11 +113,7 @@
 		)
 		if (!confirmed) return
 		try {
-			const response = await fetch(`/api/languages/${languageSlug}`, { method: 'DELETE' })
-			if (!response.ok) {
-				const body = await response.json()
-				throw new Error(body.error || 'Failed to delete language')
-			}
+			await languageDeleteMutation.mutateAsync()
 			pushSuccess(`"${languageName}" deleted`)
 			goto('/Wordbook')
 		} catch (error) {
@@ -154,7 +141,7 @@
 				<form onsubmit={saveEdit} class="flex flex-wrap items-end gap-2">
 					<Input label="Name" bind:value={editName} required />
 					<Input label="Region" bind:value={editRegion} />
-					<button type="submit" disabled={savingDialect} class="px-3 py-1.5 bg-accent text-surface text-xs hover:bg-accent-hover disabled:opacity-50">Save</button>
+					<button type="submit" disabled={dialectMutation.isPending} class="px-3 py-1.5 bg-accent text-surface text-xs hover:bg-accent-hover disabled:opacity-50">Save</button>
 					<button type="button" onclick={() => editingDialectSlug = null} class="text-xs text-secondary hover:text-body">Cancel</button>
 				</form>
 			{:else}
@@ -178,7 +165,7 @@
 		<form onsubmit={addDialect} class="flex flex-wrap items-end gap-2 mt-3 pt-3 border-t border-border-subtle">
 			<Input label="Name" bind:value={dialectName} required placeholder="Northern" />
 			<Input label="Region" bind:value={dialectRegion} placeholder="The highlands" />
-			<button type="submit" disabled={savingDialect} class="px-3 py-1.5 bg-accent text-surface text-xs hover:bg-accent-hover disabled:opacity-50">Add</button>
+			<button type="submit" disabled={dialectMutation.isPending} class="px-3 py-1.5 bg-accent text-surface text-xs hover:bg-accent-hover disabled:opacity-50">Add</button>
 			<button type="button" onclick={() => addingDialect = false} class="text-xs text-secondary hover:text-body">Cancel</button>
 		</form>
 	{/if}

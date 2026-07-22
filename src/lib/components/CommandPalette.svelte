@@ -52,7 +52,7 @@
 	)
 
 	const search = createQuery(() => ({
-		queryKey: ['command-search', debounced],
+		queryKey: ['search', 'all', debounced, 8],
 		queryFn: () => api<{ results?: SearchResult[] }>('GET', `/api/search?q=${encodeURIComponent(debounced)}&limit=8`),
 		enabled: debounced.length >= 2,
 	}))

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte'
 	import { goto } from '$app/navigation'
 	import { page } from '$app/stores'
 	import { normalizePermissions } from '$lib/permissions.js'
@@ -8,6 +7,10 @@
 	import Checkbox from '$lib/components/ui/Checkbox.svelte'
 	import Input from '$lib/components/ui/Input.svelte'
 	import Skeleton from '$lib/components/ui/Skeleton.svelte'
+	import { createMutation, createQuery } from '@tanstack/svelte-query'
+	import { api } from '$lib/api'
+	import { cn } from '$lib/utils'
+	import { SvelteURLSearchParams } from 'svelte/reactivity'
 
 	type MediaFile = {
 		id: number
@@ -22,10 +25,8 @@
 		usageCount: number
 	}
 
-	let files = $state<MediaFile[]>([])
-	let total = $state(0)
-	let loading = $state(true)
 	let searchQuery = $state('')
+	let debouncedSearch = $state('')
 	let sortBy = $state('newest')
 	let showUnused = $state(false)
 	let viewMode = $state<'grid' | 'list'>('grid')
@@ -33,12 +34,40 @@
 	const perPage = 50
 
 	// Upload state
-	let uploading = $state(false)
 	let uploadProgress = $state('')
 	let uploadError = $state('')
 	let dragOver = $state(false)
 	let stablePermissions = $state(normalizePermissions($page.data.permissions))
 	const permissions = $derived(stablePermissions)
+	const mediaQuery = createQuery(() => {
+		const params = new SvelteURLSearchParams()
+		if (debouncedSearch) params.set('q', debouncedSearch)
+		params.set('sort', sortBy)
+		if (showUnused) params.set('unused', 'true')
+		params.set('limit', String(perPage))
+		params.set('offset', String(currentPage * perPage))
+		return {
+			queryKey: ['media', 'library', debouncedSearch, sortBy, showUnused, currentPage, perPage],
+			queryFn: () => api<{ files: MediaFile[], total: number }>('GET', `/api/media?${params}`),
+		}
+	})
+	const files = $derived(mediaQuery.data?.files ?? [])
+	const total = $derived(mediaQuery.data?.total ?? 0)
+	const loading = $derived(mediaQuery.isPending)
+	const uploadMutation = createMutation(() => ({
+		mutationFn: async (file: File) => {
+			const formData = new FormData()
+			formData.append('file', file)
+			const response = await fetch('/api/media', { method: 'POST', body: formData })
+			if (!response.ok) {
+				const payload = await response.json().catch(() => null) as { error?: string } | null
+				throw new Error(payload?.error ?? 'Upload failed')
+			}
+			return response.json()
+		},
+		onSuccess: () => mediaQuery.refetch(),
+	}))
+	const uploading = $derived(uploadMutation.isPending)
 
 	$effect(() => {
 		if ($page.data.permissions !== undefined) {
@@ -53,60 +82,32 @@
 		return `${(bytes / 1048576).toFixed(1)} MB`
 	}
 
-	async function loadFiles() {
-		loading = true
-		const params = new URLSearchParams()
-		if (searchQuery) params.set('q', searchQuery)
-		params.set('sort', sortBy)
-		if (showUnused) params.set('unused', 'true')
-		params.set('limit', String(perPage))
-		params.set('offset', String(currentPage * perPage))
-
-		const res = await fetch(`/api/media?${params}`)
-		if (res.ok) {
-			const data = await res.json()
-			files = data.files
-			total = data.total
-		}
-		loading = false
-	}
-
 	let searchTimeout: ReturnType<typeof setTimeout>
 	function handleSearch() {
 		clearTimeout(searchTimeout)
 		searchTimeout = setTimeout(() => {
 			currentPage = 0
-			loadFiles()
+			debouncedSearch = searchQuery.trim()
 		}, 300)
 	}
 
 	async function uploadFile(file: File) {
-		uploading = true
 		uploadError = ''
 		uploadProgress = `Uploading ${file.name}...`
 
-		const formData = new FormData()
-		formData.append('file', file)
-
 		try {
-			const res = await fetch('/api/media', { method: 'POST', body: formData })
-			if (res.ok) {
-				uploadProgress = ''
-				pushSuccess(`Uploaded ${file.name}`)
-				loadFiles()
-			} else {
-				const error = await res.json()
-				pushError(error.error || 'Upload failed')
-			}
-		} catch {
-			pushError('Upload failed')
+			await uploadMutation.mutateAsync(file)
+			uploadProgress = ''
+			pushSuccess(`Uploaded ${file.name}`)
+		} catch (error) {
+			pushError(error instanceof Error ? error.message : 'Upload failed')
 		} finally {
-			uploading = false
+			uploadProgress = ''
 		}
 	}
 
-	function handleFileInput(e: Event) {
-		const input = e.target as HTMLInputElement
+	function handleFileInput(event: Event) {
+		const input = event.target as HTMLInputElement
 		if (input.files) {
 			for (const file of input.files) {
 				uploadFile(file)
@@ -115,11 +116,11 @@
 		}
 	}
 
-	function handleDrop(e: DragEvent) {
-		e.preventDefault()
+	function handleDrop(event: DragEvent) {
+		event.preventDefault()
 		dragOver = false
-		if (e.dataTransfer?.files) {
-			for (const file of e.dataTransfer.files) {
+		if (event.dataTransfer?.files) {
+			for (const file of event.dataTransfer.files) {
 				if (file.type.startsWith('image/')) {
 					uploadFile(file)
 				}
@@ -127,29 +128,23 @@
 		}
 	}
 
-	function handleDragOver(e: DragEvent) {
-		e.preventDefault()
+	function handleDragOver(event: DragEvent) {
+		event.preventDefault()
 		dragOver = true
 	}
 
 	const totalPages = $derived(Math.ceil(total / perPage))
 	const unifiedSearchHref = $derived.by(() => {
-		const params = new URLSearchParams()
+		const params = new SvelteURLSearchParams()
 		params.set('scope', 'media')
 		if (searchQuery.trim()) params.set('q', searchQuery.trim())
 		if (showUnused) params.set('unused', 'true')
 		return `/search?${params.toString()}`
 	})
 
-	let sortByInitialized = false
 	$effect(() => {
-		sortBy  // subscribe to sortBy changes
-		if (!sortByInitialized) { sortByInitialized = true; return }
-		currentPage = 0
-		loadFiles()
+		if (sortBy) currentPage = 0
 	})
-
-	onMount(loadFiles)
 </script>
 
 <svelte:head>
@@ -172,8 +167,10 @@
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	{#if permissions.canManageMedia}
 		<div
-			class="relative border-2 border-dashed p-6 text-center transition-colors
-				{dragOver ? 'border-accent-border bg-accent-subtle' : 'border-transparent bg-surface hover:border-border-strong'}"
+			class={cn(
+				'relative border-2 border-dashed p-6 text-center transition-colors',
+				dragOver ? 'border-accent-border bg-accent-subtle' : 'border-transparent bg-surface hover:border-border-strong',
+			)}
 			ondrop={handleDrop}
 			ondragover={handleDragOver}
 			ondragleave={() => dragOver = false}
@@ -188,11 +185,7 @@
 				{/if}
 			</div>
 			{#if !uploading}
-				<label class="
-					inline-block px-4 py-1.5 bg-accent text-surface text-sm cursor-pointer
-					transition-colors
-					hover:bg-accent-hover
-				">
+				<label class="inline-block px-4 py-1.5 bg-accent text-surface text-sm cursor-pointer transition-colors hover:bg-accent-hover">
 					Choose files
 					<input type="file" accept="image/*" multiple onchange={handleFileInput} class="hidden" />
 				</label>
@@ -214,7 +207,7 @@
 			bind:value={searchQuery}
 			oninput={handleSearch}
 			placeholder="Search files..."
-			class="flex-1 min-w-[200px]"
+			class="flex-1 min-w-50"
 		/>
 
 		<Select
@@ -229,16 +222,16 @@
 			]}
 		/>
 
-		<Checkbox bind:value={showUnused} label="Unused only" onclick={() => { currentPage = 0; loadFiles() }} />
+		<Checkbox bind:value={showUnused} label="Unused only" onclick={() => { currentPage = 0 }} />
 
 		<div class="flex overflow-hidden">
 			<button
 				onclick={() => viewMode = 'grid'}
-				class="px-2.5 py-1.5 text-xs {viewMode === 'grid' ? 'bg-accent text-surface' : 'bg-surface text-secondary hover:bg-page'}"
+				class={cn('px-2.5 py-1.5 text-xs', viewMode === 'grid' ? 'bg-accent text-surface' : 'bg-surface text-secondary hover:bg-page')}
 			>Grid</button>
 			<button
 				onclick={() => viewMode = 'list'}
-				class="px-2.5 py-1.5 text-xs {viewMode === 'list' ? 'bg-accent text-surface' : 'bg-surface text-secondary hover:bg-page'}"
+				class={cn('px-2.5 py-1.5 text-xs', viewMode === 'list' ? 'bg-accent text-surface' : 'bg-surface text-secondary hover:bg-page')}
 			>List</button>
 		</div>
 
@@ -255,7 +248,7 @@
 	{#if loading}
 		{#if viewMode === 'grid'}
 			<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5" aria-busy="true" aria-label="Loading media">
-				{#each Array(12) as _, index (index)}
+				{#each Array.from({ length: 12 }) as _, index (index)}
 					<div class="bg-surface overflow-hidden">
 						<Skeleton class="aspect-square w-full" />
 						<div class="p-2 space-y-1.5">
@@ -267,7 +260,7 @@
 			</div>
 		{:else}
 			<div class="bg-surface divide-y divide-border-subtle" aria-busy="true" aria-label="Loading media">
-				{#each Array(8) as _, index (index)}
+				{#each Array.from({ length: 8 }) as _, index (index)}
 					<div class="flex items-center gap-4 px-4 py-3">
 						<Skeleton class="size-12 shrink-0" />
 						<div class="flex-1 min-w-0 space-y-1.5">
@@ -287,10 +280,7 @@
 			{#each files as file (file.id)}
 				<a
 					href="/media/{encodeURIComponent(file.filename)}"
-					class="
-						group bg-surface overflow-hidden transition-all
-						hover:shadow-md
-					"
+					class="group bg-surface overflow-hidden transition-all hover:shadow-md"
 				>
 					<div class="aspect-square bg-raised flex items-center justify-center overflow-hidden">
 						{#if file.mimeType?.startsWith('image/')}
@@ -321,9 +311,7 @@
 		<div class="bg-surface divide-y divide-border-subtle">
 			{#each files as file (file.id)}
 				<a href="/media/{encodeURIComponent(file.filename)}" class="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-accent-subtle/30">
-					<div class="
-						size-12 bg-raised flex items-center justify-center shrink-0 overflow-hidden
-					">
+					<div class="size-12 bg-raised flex items-center justify-center shrink-0 overflow-hidden">
 						{#if file.mimeType?.startsWith('image/')}
 							<img src="/api/media/{file.filename}?w=150" alt={file.filename} loading="lazy" class="size-full object-cover" />
 						{:else}
@@ -355,25 +343,17 @@
 	{#if totalPages > 1}
 		<div class="flex justify-center gap-2 pt-2">
 			<button
-				onclick={() => { currentPage = Math.max(0, currentPage - 1); loadFiles() }}
+				onclick={() => { currentPage = Math.max(0, currentPage - 1) }}
 				disabled={currentPage === 0}
-				class="
-					px-3 py-1 text-sm
-					disabled:opacity-30
-					hover:bg-page
-				"
+				class="px-3 py-1 text-sm disabled:opacity-30 hover:bg-page"
 			>←</button>
 			<span class="px-3 py-1 text-sm text-secondary">
 				{currentPage + 1} / {totalPages}
 			</span>
 			<button
-				onclick={() => { currentPage = Math.min(totalPages - 1, currentPage + 1); loadFiles() }}
+				onclick={() => { currentPage = Math.min(totalPages - 1, currentPage + 1) }}
 				disabled={currentPage >= totalPages - 1}
-				class="
-					px-3 py-1 text-sm
-					disabled:opacity-30
-					hover:bg-page
-				"
+				class="px-3 py-1 text-sm disabled:opacity-30 hover:bg-page"
 			>→</button>
 		</div>
 	{/if}

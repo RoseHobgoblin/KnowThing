@@ -3,11 +3,12 @@
 	import { createKnowContext } from '$lib/renderer/context.js'
 	import { page } from '$app/stores'
 	import type { WikiNode } from '$lib/parser/types.js'
+	import { createQuery } from '@tanstack/svelte-query'
+	import { api } from '$lib/api'
 
 	let { content = '', domain = 'know' }: { content: string, domain?: string } = $props()
 
-	let ast = $state<WikiNode | null>(null)
-	let loading = $state(false)
+	let debouncedContent = $state('')
 	let debounceTimer: ReturnType<typeof setTimeout>
 
 	const layoutData = $derived($page.data)
@@ -21,36 +22,26 @@
 
 	// Debounced fetch to /api/render
 	$effect(() => {
-		// Track content changes
 		const _c = content
 		clearTimeout(debounceTimer)
 
 		if (!_c.trim()) {
-			ast = null
+			debouncedContent = ''
 			return () => clearTimeout(debounceTimer)
 		}
 
-		loading = true
-		debounceTimer = setTimeout(async () => {
-			try {
-				const res = await fetch('/api/render', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ content: _c }),
-				})
-				if (res.ok) {
-					const data = await res.json()
-					ast = data.ast
-				}
-			} catch {
-				// ignore
-			} finally {
-				loading = false
-			}
-		}, 300)
+		debounceTimer = setTimeout(() => debouncedContent = _c, 300)
 
 		return () => clearTimeout(debounceTimer)
 	})
+
+	const preview = createQuery(() => ({
+		queryKey: ['render-preview', debouncedContent],
+		queryFn: () => api<{ ast: WikiNode }>('POST', '/api/render', { content: debouncedContent }),
+		enabled: debouncedContent.trim().length > 0,
+	}))
+	const ast = $derived(debouncedContent ? preview.data?.ast ?? null : null)
+	const loading = $derived(preview.isFetching)
 </script>
 
 <div class="h-full overflow-y-auto p-4 bg-surface">

@@ -15,6 +15,8 @@
 	import { celestialConfigureBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import { goto } from '$app/navigation'
+	import { createMutation } from '@tanstack/svelte-query'
+	import { api } from '$lib/api'
 	import { page } from '$app/stores'
 	import { normalizePermissions } from '$lib/permissions.js'
 	import { cn, summarizeZodIssues } from '$lib/utils.js'
@@ -82,9 +84,13 @@
 		return ''
 	})
 
-	let saving = $state(false)
 	let saveError = $state('')
 	let savedAt = $state<Date | null>(null)
+	const entityMutation = createMutation(() => ({
+		mutationFn: ({ method, slug, body }: { method: 'PUT' | 'DELETE', slug: string, body?: unknown }) =>
+			api<{ slug?: string }>(method, `/api/celestial/${slug}`, body),
+	}))
+	const saving = $derived(entityMutation.isPending)
 
 	// Key-sorted so dirty tracking never depends on draft key insertion order.
 	function serializeDraft(value: Record<string, any>): string {
@@ -171,22 +177,11 @@
 			return
 		}
 
-		saving = true
 		saveError = ''
 		try {
-			const response = await fetch(`/api/celestial/${savedSlug}`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(buildPayload(config, ctx)),
+			const saved = await entityMutation.mutateAsync({
+				method: 'PUT', slug: savedSlug, body: buildPayload(config, ctx),
 			})
-			if (!response.ok) {
-				const payload = await response.json().catch(() => ({}))
-				saveError = payload.error || `Failed to save ${config.noun.toLowerCase()}`
-				pushError(saveError)
-				return
-			}
-
-			const saved = await response.json().catch(() => null)
 			if (saved?.slug && saved.slug !== savedSlug) {
 				draft.slug = saved.slug
 				// Update URL without navigation so a later exit uses the new slug
@@ -197,11 +192,9 @@
 			savedAt = new Date()
 			initialSnapshot = currentSnapshot
 			pushSuccess(`${config.noun} saved`)
-		} catch {
-			saveError = 'Failed to save'
-			pushError('Failed to save')
-		} finally {
-			saving = false
+		} catch (error) {
+			saveError = error instanceof Error ? error.message : 'Failed to save'
+			pushError(saveError)
 		}
 	}
 
@@ -214,10 +207,10 @@
 		)
 		if (!ok) return
 
-		const response = await fetch(`/api/celestial/${savedSlug}`, { method: 'DELETE' })
-		if (!response.ok) {
-			const payload = await response.json().catch(() => ({}))
-			pushError(payload.error || `Failed to delete ${config.noun.toLowerCase()}`)
+		try {
+			await entityMutation.mutateAsync({ method: 'DELETE', slug: savedSlug })
+		} catch (error) {
+			pushError(error instanceof Error ? error.message : `Failed to delete ${config.noun.toLowerCase()}`)
 			return
 		}
 

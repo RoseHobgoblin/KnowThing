@@ -6,6 +6,8 @@
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import Input from '$lib/components/ui/Input.svelte'
 	import { cn } from '$lib/utils'
+	import { createMutation, createQuery } from '@tanstack/svelte-query'
+	import { api } from '$lib/api'
 
 	type RelatedEntry = {
 		id: number
@@ -82,16 +84,20 @@
 
 	// ── Delete relation ──
 	let deleting = $state<number | null>(null)
+	const deleteMutation = createMutation(() => ({
+		mutationFn: (relationId: number) =>
+			api('DELETE', `/api/wordbook/${entryId}/relations/${relationId}`),
+	}))
 	async function deleteRelation(relationId: number) {
 		const ok = await confirmDialog.confirm('Remove relation', 'Remove this etymological relation?', 'Remove', 'Cancel')
 		if (!ok) return
 		deleting = relationId
-		const response = await fetch(`/api/wordbook/${entryId}/relations/${relationId}`, { method: 'DELETE' })
-		if (response.ok) {
+		try {
+			await deleteMutation.mutateAsync(relationId)
 			pushSuccess('Relation removed')
-			invalidateAll()
-		} else {
-			pushError('Failed to remove relation')
+			await invalidateAll()
+		} catch (error) {
+			pushError(error instanceof Error ? error.message : 'Failed to remove relation')
 		}
 		deleting = null
 	}
@@ -103,11 +109,11 @@
 	let targetQuery = $state('')
 	let targetId = $state<number | null>(null)
 	let notes = $state('')
-	let submitting = $state(false)
 	let formError = $state('')
-	let searchResults = $state<Array<{ id: number, word: string, definition: string, languageName: string, languageSlug: string }>>([])
+	type SearchResult = { id: number, word: string, definition: string, languageName: string, languageSlug: string }
 	let showDropdown = $state(false)
 	let searchTimeout: ReturnType<typeof setTimeout> | null = null
+	let debouncedQuery = $state('')
 
 	onDestroy(() => {
 		if (searchTimeout) clearTimeout(searchTimeout)
@@ -129,21 +135,32 @@
 	})
 
 	const currentHelp = $derived(typeOptions.find(o => o.value === relationType)?.help || '')
+	const search = createQuery(() => ({
+		queryKey: ['wordbook', 'search', debouncedQuery, 10],
+		queryFn: () => api<SearchResult[]>('GET', `/api/wordbook?q=${encodeURIComponent(debouncedQuery)}&limit=10`),
+		enabled: debouncedQuery.length >= 2,
+	}))
+	const searchResults = $derived(search.data ?? [])
+	const addMutation = createMutation(() => ({
+		mutationFn: ({ sourceId, targetId, relationType, notes }: {
+			sourceId: number
+			targetId: number
+			relationType: string
+			notes?: string
+		}) => api('POST', `/api/wordbook/${sourceId}/relations`, { targetId, relationType, notes }),
+	}))
 
 	function handleSearch() {
 		if (searchTimeout) clearTimeout(searchTimeout)
 		targetId = null
 		if (targetQuery.trim().length < 2) {
-			searchResults = []
+			debouncedQuery = ''
 			showDropdown = false
 			return
 		}
-		searchTimeout = setTimeout(async () => {
-			const response = await fetch(`/api/wordbook?q=${encodeURIComponent(targetQuery.trim())}&limit=10`)
-			if (response.ok) {
-				searchResults = await response.json()
-				showDropdown = searchResults.length > 0
-			}
+		searchTimeout = setTimeout(() => {
+			debouncedQuery = targetQuery.trim()
+			showDropdown = true
 		}, 300)
 	}
 
@@ -155,6 +172,7 @@
 
 	function resetForm() {
 		targetQuery = ''
+		debouncedQuery = ''
 		targetId = null
 		notes = ''
 		formError = ''
@@ -174,30 +192,19 @@
 			return
 		}
 		formError = ''
-		submitting = true
-
 		const sourceId = direction === 'from' ? entryId : targetId
 		const tgtId = direction === 'from' ? targetId : entryId
 
 		try {
-			const response = await fetch(`/api/wordbook/${sourceId}/relations`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ targetId: tgtId, relationType, notes: notes.trim() || undefined }),
-			})
-			if (!response.ok) {
-				const error = await response.json()
-				throw new Error(error.error || 'Failed')
-			}
+			await addMutation.mutateAsync({ sourceId, targetId: tgtId, relationType, notes: notes.trim() || undefined })
 			pushSuccess('Relation added')
 			resetForm()
 			showForm = false
-			invalidateAll()
-		} catch (error: any) {
-			formError = error.message
-			pushError(error.message)
-		} finally {
-			submitting = false
+			await invalidateAll()
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to add relation'
+			formError = message
+			pushError(message)
 		}
 	}
 </script>
@@ -291,8 +298,8 @@
 
 			<Input bind:value={notes} placeholder="Notes (optional)" containerClass="w-full" />
 
-			<button type="submit" disabled={submitting || !targetId} class="px-4 py-1.5 bg-accent text-surface text-sm font-medium transition-colors hover:bg-accent-hover disabled:opacity-50">
-				{submitting ? 'Adding...' : 'Add'}
+			<button type="submit" disabled={addMutation.isPending || !targetId} class="px-4 py-1.5 bg-accent text-surface text-sm font-medium transition-colors hover:bg-accent-hover disabled:opacity-50">
+				{addMutation.isPending ? 'Adding...' : 'Add'}
 			</button>
 		</form>
 	</div>

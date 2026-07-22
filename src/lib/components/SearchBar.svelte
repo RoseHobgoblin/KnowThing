@@ -27,7 +27,7 @@
 	}
 
 	const search = createQuery(() => ({
-		queryKey: ['search-suggest', debounced],
+		queryKey: ['search', 'all', debounced, 8],
 		queryFn: () => api<{ results?: SearchResult[] }>('GET', `/api/search?q=${encodeURIComponent(debounced)}&limit=8`),
 		enabled: debounced.length > 0,
 	}))
@@ -79,10 +79,7 @@
 		onkeydown={onKeydown}
 		placeholder="Search pages, wordbook, media..."
 		aria-label="Search"
-		class="
-			w-full px-3 py-1.5 text-sm bg-page transition-colors
-			focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent
-		"
+		class="w-full px-3 py-1.5 text-sm bg-page transition-colors focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent"
 	/>
 
 	<Combobox.Portal>
@@ -90,7 +87,7 @@
 			id="searchbar-results"
 			sideOffset={2}
 			class={results.length > 0
-				? 'z-[9999] max-h-80 w-(--bits-combobox-anchor-width) min-w-(--bits-combobox-anchor-width) overflow-y-auto bg-surface shadow-lg outline-none'
+				? 'z-9999 max-h-80 w-(--bits-combobox-anchor-width) min-w-(--bits-combobox-anchor-width) overflow-y-auto bg-surface shadow-lg outline-none'
 				: 'hidden'}
 		>
 			{#each results as r (r.href)}

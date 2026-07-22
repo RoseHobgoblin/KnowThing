@@ -11,6 +11,8 @@
 	import Input from '$lib/components/ui/Input.svelte'
 	import FormNotice from '$lib/components/editor/FormNotice.svelte'
 	import RecordModeBanner from '$lib/components/editor/RecordModeBanner.svelte'
+	import { createMutation, useQueryClient } from '@tanstack/svelte-query'
+	import { api } from '$lib/api'
 
 	let { data }: { data: PageData } = $props()
 	const initialFile = $state.snapshot(untrack(() => data.file))
@@ -22,12 +24,35 @@
 
 	let description = $state(initialDetails.description)
 	let categoriesInput = $state(initialDetails.categoriesInput)
-	let saving = $state(false)
 	let saveError = $state('')
 	let savedAt = $state<Date | null>(null)
 	let copied = $state(false)
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
 	let stablePermissions = $state(normalizePermissions(data.permissions))
+	const queryClient = useQueryClient()
+	const mediaUrl = $derived(`/api/media/${encodeURIComponent(data.file.filename)}`)
+	const saveMutation = createMutation(() => ({
+		mutationFn: (body: { description: string, categories: string[] }) => api('PUT', mediaUrl, body),
+	}))
+	const deleteMutation = createMutation(() => ({ mutationFn: () => api('DELETE', mediaUrl) }))
+	const versionMutation = createMutation(() => ({
+		mutationFn: (body: { action: 'restore', version: number } | { action: 'rename', newFilename: string }) =>
+			api<{ newFilename?: string, rewrittenPages?: number }>('PATCH', mediaUrl, body),
+	}))
+	const replaceMutation = createMutation(() => ({
+		mutationFn: async (file: File) => {
+			const formData = new FormData()
+			formData.set('file', file)
+			const response = await fetch(mediaUrl, { method: 'POST', body: formData })
+			if (!response.ok) {
+				const payload = await response.json().catch(() => null) as { error?: string } | null
+				throw new Error(payload?.error ?? 'Failed to replace file')
+			}
+		},
+	}))
+	const saving = $derived(saveMutation.isPending)
+	const replacing = $derived(replaceMutation.isPending)
+	const renaming = $derived(versionMutation.isPending)
 
 	const layoutData = $derived($page.data)
 	const permissions = $derived(stablePermissions)
@@ -56,29 +81,20 @@
 	}
 
 	async function saveDetails() {
-		saving = true
 		saveError = ''
 		try {
-			const res = await fetch(`/api/media/${encodeURIComponent(data.file.filename)}`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					description: description.trim(),
-					categories: categoriesInput ? categoriesInput.split(',').map(c => c.trim()).filter(Boolean) : [],
-				}),
+			await saveMutation.mutateAsync({
+				description: description.trim(),
+				categories: categoriesInput ? categoriesInput.split(',').map(c => c.trim()).filter(Boolean) : [],
 			})
-			if (res.ok) {
-				savedSnapshot = currentSnapshot
-				savedAt = new Date()
-				pushSuccess('File details saved')
-				invalidateAll()
-			} else {
-				const body = await res.json().catch(() => ({}))
-				saveError = body.error || 'Failed to save file details'
-				pushError(saveError)
-			}
-		} finally {
-			saving = false
+			savedSnapshot = currentSnapshot
+			savedAt = new Date()
+			await queryClient.invalidateQueries({ queryKey: ['media'] })
+			pushSuccess('File details saved')
+			await invalidateAll()
+		} catch (error) {
+			saveError = error instanceof Error ? error.message : 'Failed to save file details'
+			pushError(saveError)
 		}
 	}
 
@@ -90,13 +106,13 @@
 			'Cancel',
 		)
 		if (!ok) return
-		const res = await fetch(`/api/media/${encodeURIComponent(data.file.filename)}`, { method: 'DELETE' })
-		if (res.ok) {
+		try {
+			await deleteMutation.mutateAsync()
+			await queryClient.invalidateQueries({ queryKey: ['media'] })
 			pushSuccess('File deleted')
 			goto('/dashboard/media')
-		} else {
-			const body = await res.json().catch(() => ({}))
-			pushError(body.error || 'Failed to delete file')
+		} catch (error) {
+			pushError(error instanceof Error ? error.message : 'Failed to delete file')
 		}
 	}
 
@@ -107,28 +123,20 @@
 	}
 
 	let replaceInput: HTMLInputElement | undefined
-	let replacing = $state(false)
 
 	async function onReplaceFile(event: Event) {
 		const input = event.currentTarget as HTMLInputElement
 		const file = input.files?.[0]
 		if (!file) return
 
-		replacing = true
-		const formData = new FormData()
-		formData.set('file', file)
-		const res = await fetch(`/api/media/${encodeURIComponent(data.file.filename)}`, {
-			method: 'POST',
-			body: formData,
-		})
-		replacing = false
 		input.value = ''
-		if (res.ok) {
+		try {
+			await replaceMutation.mutateAsync(file)
+			await queryClient.invalidateQueries({ queryKey: ['media'] })
 			pushSuccess('Uploaded as new version. Previous version archived.')
-			invalidateAll()
-		} else {
-			const body = await res.json().catch(() => ({}))
-			pushError(body.error || 'Failed to replace file')
+			await invalidateAll()
+		} catch (error) {
+			pushError(error instanceof Error ? error.message : 'Failed to replace file')
 		}
 	}
 
@@ -140,22 +148,17 @@
 			'Cancel',
 		)
 		if (!ok) return
-		const res = await fetch(`/api/media/${encodeURIComponent(data.file.filename)}`, {
-			method: 'PATCH',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ action: 'restore', version }),
-		})
-		if (res.ok) {
+		try {
+			await versionMutation.mutateAsync({ action: 'restore', version })
+			await queryClient.invalidateQueries({ queryKey: ['media'] })
 			pushSuccess(`Restored version ${version}.`)
-			invalidateAll()
-		} else {
-			const body = await res.json().catch(() => ({}))
-			pushError(body.error || 'Failed to restore version')
+			await invalidateAll()
+		} catch (error) {
+			pushError(error instanceof Error ? error.message : 'Failed to restore version')
 		}
 	}
 
 	let renameInput = $state(data.file.filename)
-	let renaming = $state(false)
 	let renameOpen = $state(false)
 
 	async function submitRename() {
@@ -164,22 +167,15 @@
 			renameOpen = false
 			return
 		}
-		renaming = true
-		const res = await fetch(`/api/media/${encodeURIComponent(data.file.filename)}`, {
-			method: 'PATCH',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ action: 'rename', newFilename: target }),
-		})
-		renaming = false
-		if (res.ok) {
-			const body = await res.json().catch(() => ({}))
+		try {
+			const body = await versionMutation.mutateAsync({ action: 'rename', newFilename: target })
+			await queryClient.invalidateQueries({ queryKey: ['media'] })
 			const finalName: string = body.newFilename ?? target
 			pushSuccess(`Renamed to ${finalName}. ${body.rewrittenPages ?? 0} page(s) updated.`)
 			renameOpen = false
 			goto(`/media/${encodeURIComponent(finalName)}`)
-		} else {
-			const body = await res.json().catch(() => ({}))
-			pushError(body.error || 'Failed to rename file')
+		} catch (error) {
+			pushError(error instanceof Error ? error.message : 'Failed to rename file')
 		}
 	}
 </script>
@@ -355,7 +351,10 @@
 						/>
 						<button
 							type="button"
-							onclick={() => { renameOpen = !renameOpen; renameInput = data.file.filename }}
+							onclick={() => {
+								renameOpen = !renameOpen
+								renameInput = data.file.filename
+							}}
 							class="w-full text-left px-3 py-2 text-sm text-link transition-colors hover:bg-accent-subtle"
 						>
 							Rename file

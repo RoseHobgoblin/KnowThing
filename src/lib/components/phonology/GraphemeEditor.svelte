@@ -5,11 +5,14 @@
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import PhonemeSequenceInput from './PhonemeSequenceInput.svelte'
 	import { pushUndoable, pushError } from '$lib/notifications.svelte'
+	import { cn } from '$lib/utils'
 	import Plus from 'phosphor-svelte/lib/PlusIcon'
 	import PencilSimple from 'phosphor-svelte/lib/PencilSimpleIcon'
 	import Trash from 'phosphor-svelte/lib/TrashIcon'
 	import Copy from 'phosphor-svelte/lib/CopyIcon'
 	import DotsSixVertical from 'phosphor-svelte/lib/DotsSixVerticalIcon'
+	import { createMutation } from '@tanstack/svelte-query'
+	import { api } from '$lib/api'
 
 	interface PhonemeLink {
 		phonemeId: number
@@ -73,13 +76,30 @@
 	let editingId = $state<number | null>(null)
 	let draft = $state<Draft>(emptyDraft())
 	let draftSnapshot = $state<Draft>(emptyDraft())
-	let saving = $state(false)
 	let errorMessage = $state('')
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
 
 	const dirty = $derived(JSON.stringify(draft) !== JSON.stringify(draftSnapshot))
 
 	let dragIndex = $state<number | null>(null)
+	const saveMutation = createMutation(() => ({
+		mutationFn: ({ id, body }: { id: number | null, body: Record<string, unknown> }) =>
+			api<Grapheme>(id ? 'PATCH' : 'POST', id
+				? `/api/languages/${languageSlug}/graphemes/${id}`
+				: `/api/languages/${languageSlug}/graphemes`, body),
+	}))
+	const deleteMutation = createMutation(() => ({
+		mutationFn: (id: number) => api('DELETE', `/api/languages/${languageSlug}/graphemes/${id}`),
+	}))
+	const restoreMutation = createMutation(() => ({
+		mutationFn: (body: Record<string, unknown>) =>
+			api<Grapheme>('POST', `/api/languages/${languageSlug}/graphemes`, body),
+	}))
+	const reorderMutation = createMutation(() => ({
+		mutationFn: (order: number[]) =>
+			api('POST', `/api/languages/${languageSlug}/graphemes/reorder`, { order }),
+	}))
+	const saving = $derived(saveMutation.isPending || restoreMutation.isPending)
 
 	function openAdd() {
 		draft = emptyDraft()
@@ -98,12 +118,7 @@
 
 	async function saveDraft() {
 		errorMessage = ''
-		saving = true
 		try {
-			const url = editingId
-				? `/api/languages/${languageSlug}/graphemes/${editingId}`
-				: `/api/languages/${languageSlug}/graphemes`
-			const method = editingId ? 'PATCH' : 'POST'
 			const body = {
 				grapheme: draft.grapheme,
 				phonemeIds: draft.phonemeIds,
@@ -111,17 +126,7 @@
 				environment: draft.environment.trim() || null,
 				notes: draft.notes.trim() || null,
 			}
-			const response = await fetch(url, {
-				method,
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(body),
-			})
-			if (!response.ok) {
-				const error = await response.json().catch(() => null)
-				errorMessage = error?.error ?? 'Failed to save grapheme'
-				return
-			}
-			const saved = await response.json() as Grapheme
+			const saved = await saveMutation.mutateAsync({ id: editingId, body })
 			if (editingId) {
 				graphemes = graphemes.map(g => g.id === saved.id ? saved : g)
 			} else {
@@ -129,8 +134,8 @@
 			}
 			draftSnapshot = $state.snapshot(draft) as Draft
 			dialogOpen = false
-		} finally {
-			saving = false
+		} catch (error) {
+			errorMessage = error instanceof Error ? error.message : 'Failed to save grapheme'
 		}
 	}
 
@@ -161,10 +166,10 @@
 	}
 
 	async function handleDelete(g: Grapheme) {
-		const response = await fetch(`/api/languages/${languageSlug}/graphemes/${g.id}`, { method: 'DELETE' })
-		if (!response.ok) {
-			const error = await response.json().catch(() => null)
-			errorMessage = error?.error ?? 'Failed to delete grapheme'
+		try {
+			await deleteMutation.mutateAsync(g.id)
+		} catch (error) {
+			errorMessage = error instanceof Error ? error.message : 'Failed to delete grapheme'
 			return
 		}
 
@@ -175,24 +180,19 @@
 		pushUndoable(
 			`Deleted "${g.grapheme}"`,
 			async () => {
-				const undoResponse = await fetch(`/api/languages/${languageSlug}/graphemes`, {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
+				try {
+					const restored = await restoreMutation.mutateAsync({
 						grapheme: snapshot.grapheme,
 						phonemeIds: snapshot.phonemes.map(p => p.phonemeId),
 						romanization: snapshot.romanization,
 						environment: snapshot.environment,
 						notes: snapshot.notes,
 						sortOrder: snapshot.sortOrder,
-					}),
-				})
-				if (!undoResponse.ok) {
+					})
+					graphemes = [...graphemes, restored]
+				} catch {
 					pushError(`Couldn't restore "${snapshot.grapheme}"`)
-					return
 				}
-				const restored = await undoResponse.json() as Grapheme
-				graphemes = [...graphemes, restored]
 			},
 			() => {},
 		)
@@ -204,19 +204,10 @@
 			.map(id => previous.find(g => g.id === id)!)
 			.filter(Boolean)
 		try {
-			const response = await fetch(`/api/languages/${languageSlug}/graphemes/reorder`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ order: nextOrder }),
-			})
-			if (!response.ok) {
-				graphemes = previous
-				const error = await response.json().catch(() => null)
-				errorMessage = error?.error ?? 'Failed to reorder'
-			}
-		} catch {
+			await reorderMutation.mutateAsync(nextOrder)
+		} catch (error) {
 			graphemes = previous
-			errorMessage = 'Failed to reorder'
+			errorMessage = error instanceof Error ? error.message : 'Failed to reorder'
 		}
 	}
 
@@ -288,37 +279,42 @@
 			<tbody>
 				{#each graphemes as g, index (g.id)}
 					{@const cellClick = readOnly ? undefined : () => openEdit(g)}
-					{@const cellKeydown = readOnly ? undefined : (e: KeyboardEvent) => {
-						if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEdit(g) }
-					}}
-					{@const cellAttrs = readOnly
+					{@const cellKeydown = readOnly
+						? undefined
+						: (event: KeyboardEvent) => {
+							if (event.key === 'Enter' || event.key === ' ') {
+								event.preventDefault()
+								openEdit(g)
+							}
+						}}
+					{@const cellAttributes = readOnly
 						? 'px-3 py-1.5 border-b border-r border-border-subtle'
 						: 'px-3 py-1.5 border-b border-r border-border-subtle cursor-pointer'}
 					<tr
 						class="transition-colors hover:bg-accent-subtle/40"
 						class:opacity-50={dragIndex === index}
 						ondragover={onRowDragOver}
-						ondrop={e => onRowDrop(index, e)}
+						ondrop={event => onRowDrop(index, event)}
 						ondragend={onRowDragEnd}
 					>
 						<td
-							class="px-1 py-1.5 border-b border-r border-border-subtle text-center text-secondary {readOnly ? '' : 'cursor-grab'}"
+							class={cn('px-1 py-1.5 border-b border-r border-border-subtle text-center text-secondary', !readOnly && 'cursor-grab')}
 							draggable={readOnly ? 'false' : 'true'}
-							ondragstart={e => onRowDragStart(index, e)}
+							ondragstart={event => onRowDragStart(index, event)}
 							title={readOnly ? undefined : 'Drag to reorder'}
 						>
 							<DotsSixVertical size={14} />
 						</td>
-						<td class="{cellAttrs} font-serif text-base" onclick={cellClick} onkeydown={cellKeydown} role={readOnly ? undefined : 'button'} tabindex={readOnly ? undefined : 0}>
+						<td class={cn(cellAttributes, 'font-serif text-base')} onclick={cellClick} onkeydown={cellKeydown} role={readOnly ? undefined : 'button'} tabindex={readOnly ? undefined : 0}>
 							{g.grapheme}
 						</td>
 						<td class="px-1 py-1.5 border-b border-r border-border-subtle text-secondary text-center">→</td>
-						<td class="{cellAttrs} font-serif {g.phonemes.length === 0 ? 'text-dim' : ''}" onclick={cellClick} onkeydown={cellKeydown} role={readOnly ? undefined : 'button'} tabindex={readOnly ? undefined : -1}>
+						<td class={cn(cellAttributes, 'font-serif', g.phonemes.length === 0 && 'text-dim')} onclick={cellClick} onkeydown={cellKeydown} role={readOnly ? undefined : 'button'} tabindex={readOnly ? undefined : -1}>
 							{ipaDisplay(g)}
 						</td>
-						<td class="{cellAttrs} text-secondary" onclick={cellClick} onkeydown={cellKeydown} role={readOnly ? undefined : 'button'} tabindex={readOnly ? undefined : -1}>{g.romanization ?? ''}</td>
-						<td class="{cellAttrs} text-secondary" onclick={cellClick} onkeydown={cellKeydown} role={readOnly ? undefined : 'button'} tabindex={readOnly ? undefined : -1}>{g.environment ?? ''}</td>
-						<td class="px-3 py-1.5 border-b border-r border-border-subtle text-dim text-xs max-w-xs truncate {readOnly ? '' : 'cursor-pointer'}" title={g.notes ?? undefined} onclick={cellClick} onkeydown={cellKeydown} role={readOnly ? undefined : 'button'} tabindex={readOnly ? undefined : -1}>
+						<td class={cn(cellAttributes, 'text-secondary')} onclick={cellClick} onkeydown={cellKeydown} role={readOnly ? undefined : 'button'} tabindex={readOnly ? undefined : -1}>{g.romanization ?? ''}</td>
+						<td class={cn(cellAttributes, 'text-secondary')} onclick={cellClick} onkeydown={cellKeydown} role={readOnly ? undefined : 'button'} tabindex={readOnly ? undefined : -1}>{g.environment ?? ''}</td>
+						<td class={cn('px-3 py-1.5 border-b border-r border-border-subtle text-dim text-xs max-w-xs truncate', !readOnly && 'cursor-pointer')} title={g.notes ?? undefined} onclick={cellClick} onkeydown={cellKeydown} role={readOnly ? undefined : 'button'} tabindex={readOnly ? undefined : -1}>
 							{g.notes ?? ''}
 						</td>
 						<td class="px-2 py-1.5 border-b border-border-subtle text-right">
