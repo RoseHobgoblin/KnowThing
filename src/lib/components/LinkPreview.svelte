@@ -1,29 +1,37 @@
 <script lang="ts">
+	import { createQuery } from '@tanstack/svelte-query'
+	import { api } from '$lib/api'
+
 	let {
 		slug,
 		domain = 'know',
-		x,
-		y,
 	}: {
 		slug: string
 		domain?: string
-		x: number
-		y: number
 	} = $props()
 
-	let title = $state('')
-	let summary = $state('')
-	let image = $state<string | null>(null)
-	let imageWidth = $state<number | null>(null)
-	let imageHeight = $state<number | null>(null)
-	let loading = $state(true)
-	let error = $state(false)
-	let popupElement: HTMLDivElement | undefined = $state()
+	type PageSummary = {
+		title: string
+		summary: string
+		image?: string | null
+		imageWidth?: number | null
+		imageHeight?: number | null
+	}
+
+	const query = createQuery(() => ({
+		queryKey: ['page-summary', domain, slug],
+		queryFn: () => api<PageSummary>('GET', `/api/pages/summary?slug=${encodeURIComponent(slug)}&domain=${encodeURIComponent(domain)}`),
+	}))
+
+	const title = $derived(query.data?.title ?? '')
+	const summary = $derived(query.data?.summary ?? '')
+	const image = $derived(query.data?.image ?? null)
+	const imageWidth = $derived(query.data?.imageWidth ?? null)
+	const imageHeight = $derived(query.data?.imageHeight ?? null)
 
 	const STACKED_WIDTH = 320
 	const SIDE_TEXT_WIDTH = 240
 	const SIDE_IMAGE_HEIGHT = 200
-	const POPUP_HEIGHT_MAX = 400
 
 	// Side-by-side (image left, text right) when portrait; stacked otherwise.
 	const isPortrait = $derived(
@@ -38,72 +46,15 @@
 	const stackedAspect = $derived(
 		!isPortrait && image && imageWidth && imageHeight ? `${imageWidth} / ${imageHeight}` : null,
 	)
-
-	const style = $derived.by(() => {
-		const viewportW = globalThis.window === undefined ? 1200 : window.innerWidth
-		const viewportH = globalThis.window === undefined ? 800 : window.innerHeight
-
-		let left = x + 12
-		let top = y + 16
-
-		if (left + popupWidth > viewportW - 16) {
-			left = x - popupWidth - 12
-		}
-		if (top + POPUP_HEIGHT_MAX > viewportH - 16) {
-			top = y - POPUP_HEIGHT_MAX - 8
-		}
-		if (left < 8) left = 8
-		if (top < 8) top = 8
-
-		return `left: ${left}px; top: ${top}px; width: ${popupWidth}px;`
-	})
-
-	$effect(() => {
-		const currentSlug = slug
-		loading = true
-		error = false
-		title = ''
-		summary = ''
-		image = null
-		imageWidth = null
-		imageHeight = null
-
-		const controller = new AbortController()
-
-		fetch(`/api/pages/summary?slug=${encodeURIComponent(currentSlug)}&domain=${encodeURIComponent(domain)}`, {
-			signal: controller.signal,
-		})
-			.then((r) => {
-				if (!r.ok) throw new Error('Not found')
-				return r.json()
-			})
-			.then((data) => {
-				title = data.title
-				summary = data.summary
-				image = data.image ?? null
-				imageWidth = data.imageWidth ?? null
-				imageHeight = data.imageHeight ?? null
-				loading = false
-			})
-			.catch((error_) => {
-				if (error_.name !== 'AbortError') {
-					error = true
-					loading = false
-				}
-			})
-
-		return () => controller.abort()
-	})
 </script>
 
-{#if !error}
+{#if !query.isError}
 	<div
-		bind:this={popupElement}
-		class="link-preview fixed z-50 bg-surface shadow-lg overflow-hidden"
-		style={style}
+		class="link-preview bg-surface shadow-lg overflow-hidden"
+		style="width: {popupWidth}px"
 		role="tooltip"
 	>
-		{#if loading}
+		{#if query.isPending}
 			<div class="p-4">
 				<div class="h-4 w-3/4 bg-skeleton rounded-sm animate-pulse mb-2"></div>
 				<div class="h-3 w-full bg-skeleton-shimmer rounded-sm animate-pulse mb-1"></div>
@@ -152,8 +103,6 @@
 <style>
 	.link-preview {
 		max-height: 280px;
-		pointer-events: none;
-		animation: preview-fade-in 0.15s ease-out;
 		/* Reset cascade — preview can be a DOM child of centered/bold cells like .infobox-title */
 		text-align: left;
 		font-weight: 400;
@@ -161,16 +110,5 @@
 		font-family: var(--font-body);
 		text-transform: none;
 		letter-spacing: normal;
-	}
-
-	@keyframes preview-fade-in {
-		from {
-			opacity: 0;
-			transform: translateY(4px);
-		}
-		to {
-			opacity: 1;
-			transform: translateY(0);
-		}
 	}
 </style>

@@ -28,11 +28,13 @@
 	--color-raised: #1F2030;
 	--color-muted: #252636;
 	--color-subtle: rgba(233, 195, 73, 0.04);
+	--color-table-cell: #16171f;
 
 	/* ── Borders (Ghost Borders — felt, not seen) ────────────── */
 	--color-border: #33302c;
 	--color-border-strong: rgba(77, 70, 53, 0.25);
 	--color-border-subtle: rgba(77, 70, 53, 0.08);
+	--color-border-image: #52482a;
 
 	/* ── Text ────────────────────────────────────────────────── */
 	--color-heading: #F0E6D0;
@@ -182,6 +184,43 @@ h1, h2, h3, h4, h5, h6 {
 	margin-bottom: 1rem;
 }
 
+/* â”€â”€ Tables â”€â”€ */
+
+.know-table {
+	border: 1px solid var(--color-border-strong);
+	border-collapse: collapse;
+	background: var(--color-table-cell);
+}
+
+.know-table :is(th, td) {
+	padding: 0.375rem 0.75rem;
+	background: var(--color-table-cell);
+}
+
+.know-table thead th,
+.know-table .know-th {
+	background: var(--color-surface);
+}
+
+.know-table-divided tbody tr + tr > :is(th, td) {
+	border-top: 1px solid var(--color-border-subtle);
+}
+
+.know-table-notes {
+	margin-top: 0.5rem;
+	padding: 0.5rem 0.75rem;
+	background: var(--color-table-cell);
+	color: var(--color-dim);
+}
+
+/* Category content sits outside the article's float formatting context, so
+   match the available width used by article headings beside an infobox. */
+.article-shell:has(.know-infobox) .article-footer {
+	width: calc(100% - var(--infobox-width) - 1.5rem);
+}
+
+/* Let the article footer rule meet a floated infobox while retaining the
+   breathing room between the article copy and that float. */
 /* ── Infobox card (Scholarly Table — rectilinear) ─────────── */
 
 .know-infobox {
@@ -190,89 +229,126 @@ h1, h2, h3, h4, h5, h6 {
 	margin: 0 0 1.5rem 1.5rem;
 	width: var(--infobox-width);
 	font-size: 0.8rem;
-	border: 2px solid var(--color-border-strong);
-	border-collapse: collapse;
-	background: var(--color-page);
-	border-radius: 0;
-	overflow: hidden;
+	color: var(--color-body);
 }
 
-.know-infobox th,
-.know-infobox td {
-	padding: 0.375rem 0.75rem;
-	vertical-align: top;
-}
-
-.infobox-title {
+.infobox-header {
+	padding: 0.75rem;
 	text-align: center;
+	background: var(--color-raised);
+	border-bottom: 1px solid var(--color-border-subtle);
+}
+
+/* Reset the article-wide gold heading rule for the infobox title. */
+.know-article .infobox-title {
+	margin: 0;
+	padding: 0;
+	border-bottom: none;
 	font-family: var(--font-heading);
 	font-size: 1.05rem;
 	font-weight: 700;
-	padding: 0.75rem;
-	background: var(--color-accent-hover);
-	color: var(--color-accent-text);
-	border-bottom: none;
+	line-height: 1.25;
+	color: var(--color-heading);
 }
 
 .infobox-subtitle {
-	text-align: center;
+	margin-top: 0.2rem;
 	font-style: italic;
-	padding: 0.25rem 0.75rem;
-	color: var(--color-secondary);
 	font-size: 0.8rem;
-	background: var(--color-page);
+	line-height: 1.3;
+	color: var(--color-secondary);
 }
 
-.infobox-image {
+/* Title + image/flag read as one connected pseudo-header: the media sits flush
+   under the title on the same raised panel, the header's border acting as the seam. */
+.infobox-header + .infobox-media,
+.infobox-header + .infobox-header-media {
+	margin-top: 0;
+	background: var(--color-raised);
+}
+
+/* The plain single image is flush to the panel edges (its caption lives below the
+   panel). The flag/coat block (same element also carries .infobox-header-media)
+   keeps its padding — its captions sit inside it. */
+.infobox-header + .infobox-media:not(.infobox-header-media) {
+	padding: 0;
+}
+
+.infobox-media {
 	text-align: center;
-	padding: 0.75rem;
-	background: var(--color-page);
 }
 
-.infobox-image img {
+.infobox-media img {
+	display: block;
 	max-width: 100%;
 	height: auto;
-	border-radius: 0;
+	margin-inline: auto;
+	border: 1px solid var(--color-raised);
+}
+
+.infobox-caption {
+	margin-top: 0.375rem;
+	color: var(--color-secondary);
+	font-size: 0.6875rem;
+	line-height: 1.4;
+	text-align: left;
+}
+
+.infobox-header-media {
+	padding: 0.4rem;
+	background: var(--color-surface);
+}
+
+.infobox-section {
+	margin-top: 0.75rem;
+	background: var(--color-surface);
+}
+
+.infobox-section-title {
+	margin: 0;
+	padding: 0.45rem 0.75rem;
+	color: var(--color-secondary);
+	font-size: 0.6875rem;
+	text-align: left;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	font-family: var(--font-body);
+	font-weight: 600;
+}
+
+.infobox-section-raised .infobox-section-title {
+	background: var(--color-raised);
+	text-align: center;
+}
+
+.infobox-section-rows {
+	padding: 0.375rem 0.75rem;
+}
+
+
+.infobox-row {
+	display: grid;
+	grid-template-columns: minmax(4.75rem, 35%) 1fr;
+	gap: 0.75rem;
+	padding: 0.25rem 0;
+	line-height: 1.35;
 }
 
 .infobox-label {
 	font-weight: 600;
-	width: 35%;
-	background: var(--color-page);
 	color: var(--color-secondary);
-	font-size: 0.6875rem;
+	padding: 0;
+	font-size: 0.625rem;
 	text-transform: uppercase;
-	letter-spacing: 0.03em;
+	letter-spacing: 0.04em;
 }
 
 .infobox-data {
-	width: 65%;
 	color: var(--color-body);
-	background: var(--color-page);
 }
 
-.infobox-section {
-	text-align: center;
-	font-weight: 600;
-	color: var(--color-heading);
-	padding: 0.375rem 0.75rem;
-	font-size: 0.6875rem;
-	text-transform: uppercase;
-	letter-spacing: 0.05em;
-}
-
-.infobox-above {
-	text-align: center;
-	padding: 0.375rem 0.75rem;
-	background: var(--color-surface);
-}
-
-.infobox-below {
-	text-align: center;
-	padding: 0.5rem 0.75rem;
-	font-size: 0.75rem;
-	color: var(--color-dim);
-	background: var(--color-raised);
+.infobox-row + .infobox-row {
+	border-top: 1px solid var(--color-border-subtle);
 }
 
 /* ── Wiki list helpers (ubl / hlist / collapsible) ────────── */
@@ -331,6 +407,10 @@ h1, h2, h3, h4, h5, h6 {
 		float: none;
 		width: 100%;
 		margin: 0 0 1.5rem 0;
+	}
+
+	.article-shell:has(.know-infobox) .article-footer {
+		width: auto;
 	}
 }
 

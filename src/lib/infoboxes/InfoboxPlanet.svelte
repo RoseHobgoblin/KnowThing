@@ -21,64 +21,59 @@
 		'satellites', 'has_rings', 'description',
 	])
 
-	const title = getField(fields, 'name') ?? ''
-	const image = getField(fields, 'image') ?? ''
-	const imageCaption = getField(fields, 'caption') ?? ''
-	const bodyType = getField(fields, 'body_type') ?? ''
+	const title = $derived(getField(fields, 'name') ?? '')
+	const image = $derived(getField(fields, 'image') ?? '')
+	const imageCaption = $derived(getField(fields, 'caption') ?? '')
+	const bodyType = $derived(getField(fields, 'body_type') ?? '')
 
-	const mass = getField(fields, 'mass') ?? ''
-	const radius = getField(fields, 'radius') ?? ''
-	const density = getField(fields, 'density') ?? ''
-	const surfaceGravity = getField(fields, 'surface_gravity') ?? ''
-	const escapeVelocity = getField(fields, 'escape_velocity') ?? ''
-	const temperature = getField(fields, 'temperature') ?? ''
-	const age = getField(fields, 'age') ?? ''
-	const circumference = getField(fields, 'circumference') ?? ''
-	const surfaceArea = getField(fields, 'surface_area') ?? ''
-	const volume = getField(fields, 'volume') ?? ''
+	const mass = $derived(getField(fields, 'mass') ?? '')
+	const radius = $derived(getField(fields, 'radius') ?? '')
+	const density = $derived(getField(fields, 'density') ?? '')
+	const surfaceGravity = $derived(getField(fields, 'surface_gravity') ?? '')
+	const escapeVelocity = $derived(getField(fields, 'escape_velocity') ?? '')
+	const temperature = $derived(getField(fields, 'temperature') ?? '')
+	const age = $derived(getField(fields, 'age') ?? '')
+	const circumference = $derived(getField(fields, 'circumference') ?? '')
+	const surfaceArea = $derived(getField(fields, 'surface_area') ?? '')
+	const volume = $derived(getField(fields, 'volume') ?? '')
 
-	const composition = getField(fields, 'composition') ?? ''
-	const atmosphere = getField(fields, 'atmosphere') ?? ''
-	const surfacePressure = getField(fields, 'surface_pressure') ?? ''
+	const composition = $derived(getField(fields, 'composition') ?? '')
+	const atmosphere = $derived(getField(fields, 'atmosphere') ?? '')
+	const surfacePressure = $derived(getField(fields, 'surface_pressure') ?? '')
 
-	const satelliteOf = getField(fields, 'satellite_of') ?? ''
-	const satelliteOfSlug = getField(fields, 'satellite_of_slug') ?? ''
-	const orbitalPeriod = getField(fields, 'orbital_period') ?? ''
-	const semiMajorAxis = getField(fields, 'semi_major_axis') ?? ''
-	const eccentricity = getField(fields, 'eccentricity') ?? ''
-	const inclination = getField(fields, 'inclination') ?? ''
-	const periapsis = getField(fields, 'periapsis') ?? ''
-	const apoapsis = getField(fields, 'apoapsis') ?? ''
-	const orbitalVelocity = getField(fields, 'orbital_velocity') ?? ''
+	const satelliteOf = $derived(getField(fields, 'satellite_of') ?? '')
+	const satelliteOfSlug = $derived(getField(fields, 'satellite_of_slug') ?? '')
+	const orbitalPeriod = $derived(getField(fields, 'orbital_period') ?? '')
+	const semiMajorAxis = $derived(getField(fields, 'semi_major_axis') ?? '')
+	const eccentricity = $derived(getField(fields, 'eccentricity') ?? '')
+	const inclination = $derived(getField(fields, 'inclination') ?? '')
+	const periapsis = $derived(getField(fields, 'periapsis') ?? '')
+	const apoapsis = $derived(getField(fields, 'apoapsis') ?? '')
+	const orbitalVelocity = $derived(getField(fields, 'orbital_velocity') ?? '')
 
-	const rotationPeriod = getField(fields, 'rotation_period') ?? ''
-	const axialTilt = getField(fields, 'axial_tilt') ?? ''
-	const equatorialVelocity = getField(fields, 'equatorial_velocity') ?? ''
+	const rotationPeriod = $derived(getField(fields, 'rotation_period') ?? '')
+	const axialTilt = $derived(getField(fields, 'axial_tilt') ?? '')
+	const equatorialVelocity = $derived(getField(fields, 'equatorial_velocity') ?? '')
 
-	const apparentMagnitude = getField(fields, 'apparent_magnitude') ?? ''
-	const angularDiameter = getField(fields, 'angular_diameter') ?? ''
-	const albedo = getField(fields, 'albedo') ?? ''
+	const apparentMagnitude = $derived(getField(fields, 'apparent_magnitude') ?? '')
+	const angularDiameter = $derived(getField(fields, 'angular_diameter') ?? '')
+	const albedo = $derived(getField(fields, 'albedo') ?? '')
 
-	const satellites = getField(fields, 'satellites') ?? ''
-	const hasRings = getField(fields, 'has_rings') ?? ''
+	const satellites = $derived(getField(fields, 'satellites') ?? '')
+	const hasRings = $derived(getField(fields, 'has_rings') ?? '')
 
-	const hasComposition = composition || atmosphere || surfacePressure
-	const hasOrbital = satelliteOf || orbitalPeriod || semiMajorAxis || eccentricity || inclination || periapsis || apoapsis || orbitalVelocity
-	const hasRotation = rotationPeriod || axialTilt || equatorialVelocity
-	const hasObservation = apparentMagnitude || angularDiameter || albedo
-	const hasSystem = satellites || hasRings
+	const hasComposition = $derived(composition || atmosphere || surfacePressure)
+	const hasOrbital = $derived(satelliteOf || orbitalPeriod || semiMajorAxis || eccentricity || inclination || periapsis || apoapsis || orbitalVelocity)
+	const hasRotation = $derived(rotationPeriod || axialTilt || equatorialVelocity)
+	const hasObservation = $derived(apparentMagnitude || angularDiameter || albedo)
+	const hasSystem = $derived(satellites || hasRings)
 
-	const remaining = getRemainingFields(fields, KNOWN_KEYS)
+	const remaining = $derived(getRemainingFields(fields, KNOWN_KEYS))
 </script>
 
-<InfoboxShell
-	{title}
-	subtitle={bodyType ? bodyType.charAt(0).toUpperCase() + bodyType.slice(1) : ''}
-	{image}
-	{imageCaption}
->
+<InfoboxShell {title} {image} {imageCaption}>
 	{#if hasOrbital}
-		<InfoboxSection title="Orbital characteristics" />
+		<InfoboxSection title="Orbital characteristics" variant="raised">
 		{#if satelliteOf}
 			<InfoboxRow label="Satellite of" value={satelliteOfSlug ? `[[${satelliteOfSlug}|${satelliteOf}]]` : satelliteOf} />
 		{/if}
@@ -89,9 +84,11 @@
 		<InfoboxRow label="Apoapsis" value={apoapsis} />
 		<InfoboxRow label="Orbital velocity" value={orbitalVelocity} />
 		<InfoboxRow label="Inclination" value={inclination} />
+		</InfoboxSection>
 	{/if}
 
-	<InfoboxSection title="Physical characteristics" />
+	<InfoboxSection title="Physical characteristics" variant="raised">
+	<InfoboxRow label="Type" value={bodyType} />
 	<InfoboxRow label="Mass" value={mass} />
 	<InfoboxRow label="Radius" value={radius} />
 	<InfoboxRow label="Circumference" value={circumference} />
@@ -102,37 +99,46 @@
 	<InfoboxRow label="Escape velocity" value={escapeVelocity} />
 	<InfoboxRow label="Temperature" value={temperature} />
 	<InfoboxRow label="Age" value={age} />
+	</InfoboxSection>
 
 	{#if hasComposition}
-		<InfoboxSection title="Composition" />
+		<InfoboxSection title="Composition" variant="raised">
 		<InfoboxRow label="Composition" value={composition} />
 		<InfoboxRow label="Atmosphere" value={atmosphere} />
 		<InfoboxRow label="Surface pressure" value={surfacePressure} />
+		</InfoboxSection>
 	{/if}
 
 	{#if hasRotation}
-		<InfoboxSection title="Rotation" />
+		<InfoboxSection title="Rotation" variant="raised">
 		<InfoboxRow label="Rotation period" value={rotationPeriod} />
 		<InfoboxRow label="Axial tilt" value={axialTilt} />
 		<InfoboxRow label="Equatorial velocity" value={equatorialVelocity} />
+		</InfoboxSection>
 	{/if}
 
 	{#if hasObservation}
-		<InfoboxSection title="Observation" />
+		<InfoboxSection title="Observation" variant="raised">
 		<InfoboxRow label="Apparent magnitude" value={apparentMagnitude} />
 		<InfoboxRow label="Angular diameter" value={angularDiameter} />
 		<InfoboxRow label="Albedo" value={albedo} />
+		</InfoboxSection>
 	{/if}
 
 	{#if hasSystem}
-		<InfoboxSection title="System" />
+		<InfoboxSection title="System" variant="raised">
 		<InfoboxRow label="Satellites" value={satellites} />
 		{#if hasRings}
 			<InfoboxRow label="Rings" value="Yes" />
 		{/if}
+		</InfoboxSection>
 	{/if}
 
-	{#each remaining as [key, value]}
-		<InfoboxRow label={key} {value} />
-	{/each}
+	{#if remaining.length > 0}
+		<InfoboxSection>
+			{#each remaining as [key, value] (key)}
+				<InfoboxRow label={key} {value} />
+			{/each}
+		</InfoboxSection>
+	{/if}
 </InfoboxShell>

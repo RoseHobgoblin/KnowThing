@@ -5,7 +5,7 @@
 	import Select from '$lib/components/ui/Select.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import Input from '$lib/components/ui/Input.svelte'
-	import LanguageBadge from './LanguageBadge.svelte'
+	import { cn } from '$lib/utils'
 
 	type RelatedEntry = {
 		id: number
@@ -46,6 +46,7 @@
 		etymologyChain = [],
 		narrativeEtymology = '',
 		canEdit = false,
+		compact = false,
 	}: {
 		entryId: number
 		direct: {
@@ -60,6 +61,7 @@
 		etymologyChain?: EtymologyStep[]
 		narrativeEtymology?: string
 		canEdit?: boolean
+		compact?: boolean
 	} = $props()
 
 	const hasAnyContent = $derived(
@@ -74,6 +76,7 @@
 		!!narrativeEtymology ||
 		canEdit,
 	)
+	const originChain = $derived(etymologyChain.toReversed())
 
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
 
@@ -83,8 +86,8 @@
 		const ok = await confirmDialog.confirm('Remove relation', 'Remove this etymological relation?', 'Remove', 'Cancel')
 		if (!ok) return
 		deleting = relationId
-		const res = await fetch(`/api/wordbook/${entryId}/relations/${relationId}`, { method: 'DELETE' })
-		if (res.ok) {
+		const response = await fetch(`/api/wordbook/${entryId}/relations/${relationId}`, { method: 'DELETE' })
+		if (response.ok) {
 			pushSuccess('Relation removed')
 			invalidateAll()
 		} else {
@@ -130,10 +133,17 @@
 	function handleSearch() {
 		if (searchTimeout) clearTimeout(searchTimeout)
 		targetId = null
-		if (targetQuery.trim().length < 2) { searchResults = []; showDropdown = false; return }
+		if (targetQuery.trim().length < 2) {
+			searchResults = []
+			showDropdown = false
+			return
+		}
 		searchTimeout = setTimeout(async () => {
-			const res = await fetch(`/api/wordbook?q=${encodeURIComponent(targetQuery.trim())}&limit=10`)
-			if (res.ok) { searchResults = await res.json(); showDropdown = searchResults.length > 0 }
+			const response = await fetch(`/api/wordbook?q=${encodeURIComponent(targetQuery.trim())}&limit=10`)
+			if (response.ok) {
+				searchResults = await response.json()
+				showDropdown = searchResults.length > 0
+			}
 		}, 300)
 	}
 
@@ -144,13 +154,25 @@
 	}
 
 	function resetForm() {
-		targetQuery = ''; targetId = null; notes = ''; formError = ''
-		direction = 'from'; relationType = 'derived_from'
+		targetQuery = ''
+		targetId = null
+		notes = ''
+		formError = ''
+		direction = 'from'
+		relationType = 'derived_from'
 	}
 
-	async function addRelation(e: SubmitEvent) {
-		e.preventDefault()
-		if (!targetId) { formError = 'Select a target word'; return }
+	function cancelForm() {
+		showForm = false
+		resetForm()
+	}
+
+	async function addRelation(event: SubmitEvent) {
+		event.preventDefault()
+		if (!targetId) {
+			formError = 'Select a target word'
+			return
+		}
 		formError = ''
 		submitting = true
 
@@ -158,17 +180,25 @@
 		const tgtId = direction === 'from' ? targetId : entryId
 
 		try {
-			const res = await fetch(`/api/wordbook/${sourceId}/relations`, {
+			const response = await fetch(`/api/wordbook/${sourceId}/relations`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ targetId: tgtId, relationType, notes: notes.trim() || undefined }),
 			})
-			if (!res.ok) { const error = await res.json(); throw new Error(error.error || 'Failed') }
+			if (!response.ok) {
+				const error = await response.json()
+				throw new Error(error.error || 'Failed')
+			}
 			pushSuccess('Relation added')
 			resetForm()
 			showForm = false
 			invalidateAll()
-		} catch (error: any) { formError = error.message; pushError(error.message) } finally { submitting = false }
+		} catch (error: any) {
+			formError = error.message
+			pushError(error.message)
+		} finally {
+			submitting = false
+		}
 	}
 </script>
 
@@ -189,7 +219,7 @@
 			<button
 				onclick={() => deleteRelation(entry.relationId)}
 				disabled={deleting === entry.relationId}
-				class="text-xs text-error hover:text-error-hover transition-colors ml-1 {deleting === entry.relationId ? 'opacity-50' : ''}"
+				class={cn('text-xs text-error transition-colors ml-1 hover:text-error-hover', deleting === entry.relationId && 'opacity-50')}
 				title="Remove relation"
 			>✕</button>
 		{/if}
@@ -201,18 +231,18 @@
 	<div class="p-4 bg-page">
 		<div class="flex items-center justify-between mb-3">
 			<h4 class="text-xs font-medium uppercase tracking-wide text-dim">Add relation</h4>
-			<button onclick={() => { showForm = false; resetForm() }} class="text-xs text-secondary hover:text-body">Cancel</button>
+			<button onclick={cancelForm} class="text-xs text-secondary hover:text-body">Cancel</button>
 		</div>
 
 		<!-- Direction toggle -->
 		<div class="flex gap-1 mb-3 text-xs">
 			<button
 				onclick={() => direction = 'from'}
-				class="px-3 py-1.5 transition-colors {direction === 'from' ? 'bg-accent text-surface' : 'bg-surface text-secondary hover:bg-page'}"
+				class={cn('px-3 py-1.5 transition-colors', direction === 'from' ? 'bg-accent text-surface' : 'bg-surface text-secondary hover:bg-page')}
 			>This word comes from...</button>
 			<button
 				onclick={() => direction = 'to'}
-				class="px-3 py-1.5 transition-colors {direction === 'to' ? 'bg-accent text-surface' : 'bg-surface text-secondary hover:bg-page'}"
+				class={cn('px-3 py-1.5 transition-colors', direction === 'to' ? 'bg-accent text-surface' : 'bg-surface text-secondary hover:bg-page')}
 			>Another word comes from this...</button>
 		</div>
 
@@ -229,7 +259,7 @@
 					size="sm"
 				/>
 
-				<div class="relative flex-1 min-w-[200px]">
+				<div class="relative flex-1 min-w-50">
 					<input
 						type="text"
 						bind:value={targetQuery}
@@ -241,7 +271,7 @@
 					/>
 					{#if showDropdown}
 						<div class="absolute z-10 top-full inset-x-0 mt-1 bg-surface shadow-lg max-h-48 overflow-y-auto">
-							{#each searchResults as result}
+							{#each searchResults as result (result.id)}
 								<button type="button" onclick={() => selectTarget(result)} class="w-full text-left px-3 py-2 text-sm border-b border-border-subtle hover:bg-accent-subtle last:border-0">
 									<span class="font-medium">{result.word}</span>
 									<span class="text-secondary text-xs ml-1">({result.languageName})</span>
@@ -269,13 +299,15 @@
 {/snippet}
 
 {#if hasAnyContent}
-<div class="space-y-4">
+<div class={compact ? 'space-y-2' : 'space-y-4'}>
 
 	<!-- Etymology chain breadcrumb -->
-	{#if etymologyChain.length > 1}
+	{#if originChain.length > 1}
 		<div class="flex items-center gap-1 flex-wrap text-sm">
-			<span class="text-xs font-medium uppercase tracking-wide text-secondary mr-1">Origin</span>
-			{#each etymologyChain as step, index}
+			{#if !compact}
+				<span class="text-xs font-medium uppercase tracking-wide text-secondary mr-1">Lineage</span>
+			{/if}
+			{#each originChain as step, index (step.id)}
 				{#if index > 0}
 					<span class="text-secondary text-xs">→</span>
 				{/if}
@@ -288,29 +320,32 @@
 					<span class="text-secondary text-xs">({step.languageName})</span>
 				</a>
 			{/each}
+			{#if compact && canEdit}
+				<button onclick={() => showForm = true} class="ml-1 text-xs text-link hover:text-link-hover hover:underline">+ Add relation</button>
+			{/if}
 		</div>
 	{/if}
 
 	<!-- Etymology sources -->
-	{#if direct.derivedFrom.length > 0 || direct.loanFrom.length > 0 || direct.compoundOf.length > 0}
+	{#if (!compact || etymologyChain.length <= 1) && (direct.derivedFrom.length > 0 || direct.loanFrom.length > 0 || direct.compoundOf.length > 0)}
 		<div>
 			<h3 class="text-xs font-medium uppercase tracking-wide text-secondary mb-2">Etymology</h3>
-			{#each direct.derivedFrom as entry}
-				{@render relationRow(entry, '←', 'derived from')}
+			{#each direct.derivedFrom as entry (entry.relationId)}
+				{@render relationRow(entry, '', 'This word is derived from')}
 			{/each}
-			{#each direct.loanFrom as entry}
-				{@render relationRow(entry, '←', 'borrowed from')}
+			{#each direct.loanFrom as entry (entry.relationId)}
+				{@render relationRow(entry, '', 'This word is borrowed from')}
 			{/each}
 			{#if direct.compoundOf.length > 0}
 				<div class="flex items-baseline gap-2 text-sm mb-1.5 flex-wrap">
 					<span class="text-secondary">←</span>
 					<span class="text-dim text-xs">compound of</span>
-					{#each direct.compoundOf as entry, index}
+					{#each direct.compoundOf as entry, index (entry.relationId)}
 						{#if index > 0}<span class="text-secondary">+</span>{/if}
 						<a href="/Wordbook/{entry.languageSlug}/{encodeURIComponent(entry.word)}" class="font-medium text-link italic hover:text-link-hover hover:underline">{entry.word}</a>
 						<span class="text-dim text-xs">({entry.definition})</span>
 						{#if canEdit}
-							<button onclick={() => deleteRelation(entry.relationId)} disabled={deleting === entry.relationId} class="text-xs text-error hover:text-error-hover {deleting === entry.relationId ? 'opacity-50' : ''}" title="Remove">✕</button>
+							<button onclick={() => deleteRelation(entry.relationId)} disabled={deleting === entry.relationId} class={cn('text-xs text-error hover:text-error-hover', deleting === entry.relationId && 'opacity-50')} title="Remove">✕</button>
 						{/if}
 					{/each}
 				</div>
@@ -332,7 +367,7 @@
 	{#if direct.derivedWords.length > 0}
 		<div>
 			<h3 class="text-xs font-medium uppercase tracking-wide text-secondary mb-2">Derived forms</h3>
-			{#each direct.derivedWords as entry}
+			{#each direct.derivedWords as entry (entry.relationId)}
 				{@render relationRow(entry, '→', entry.partOfSpeech || '')}
 			{/each}
 		</div>
@@ -342,7 +377,7 @@
 	{#if direct.loanedTo.length > 0}
 		<div>
 			<h3 class="text-xs font-medium uppercase tracking-wide text-secondary mb-2">Borrowed by</h3>
-			{#each direct.loanedTo as entry}
+			{#each direct.loanedTo as entry (entry.relationId)}
 				{@render relationRow(entry, '→', '')}
 			{/each}
 		</div>
@@ -352,7 +387,7 @@
 	{#if direct.compoundsUsing.length > 0}
 		<div>
 			<h3 class="text-xs font-medium uppercase tracking-wide text-secondary mb-2">Compounds</h3>
-			{#each direct.compoundsUsing as entry}
+			{#each direct.compoundsUsing as entry (entry.relationId)}
 				{@render relationRow(entry, '→', '')}
 			{/each}
 		</div>
@@ -362,13 +397,13 @@
 	{#if cognates.length > 0}
 		<div>
 			<h3 class="text-xs font-medium uppercase tracking-wide text-secondary mb-2">Cognates</h3>
-			{#each cognates as group}
+			{#each cognates as group (group.family)}
 				<div class="mb-3">
 					<div class="text-xs text-secondary font-medium mb-1">{group.family} family</div>
-					{#each group.languages as lang}
+					{#each group.languages as lang (lang.slug)}
 						<div class="flex items-baseline gap-2 text-sm mb-1 ml-3">
 							<span class="text-dim min-w-20">{lang.name}:</span>
-							{#each lang.words as w, index}
+							{#each lang.words as w, index (w.id)}
 								{#if index > 0}<span class="text-secondary">,</span>{/if}
 								<a href="/Wordbook/{lang.slug}/{encodeURIComponent(w.word)}" class="text-link italic hover:text-link-hover hover:underline">{w.word}</a>
 								<span class="text-secondary text-xs">({w.definition})</span>
@@ -381,7 +416,7 @@
 	{/if}
 
 	<!-- Add relation -->
-	{#if canEdit}
+	{#if canEdit && (!compact || etymologyChain.length <= 1)}
 		{#if showForm}
 			{@render addRelationForm()}
 		{:else}

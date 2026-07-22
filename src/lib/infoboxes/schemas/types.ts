@@ -30,6 +30,9 @@ export function isPairRow(row: InfoboxRowSpec): row is PairRow {
 
 export type StaticSection = {
 	heading?: string
+	/** Builds a heading from infobox fields, for linked contextual sections. */
+	headingCompose?: (fields: FieldMap) => string
+	headerStyle?: 'plain' | 'raised'
 	rows: InfoboxRowSpec[]
 }
 
@@ -39,6 +42,7 @@ export type StaticSection = {
  * for that block. Row `keys` and `compose(_, suffix)` inside the section get the current suffix appended/passed.
  */
 export type RepeatSection = {
+	headerStyle?: 'plain' | 'raised'
 	repeat: {
 		discoverKey: string
 		max: number
@@ -65,6 +69,12 @@ export type InfoboxSchema = {
 	title: string[]
 	/** Overrides title resolution when present. */
 	titleCompose?: (fields: FieldMap) => string
+	/**
+	 * Suppress the infobox header entirely. Use when the title would merely echo the
+	 * page `<h1>` (e.g. a gun, a person). The `title`/`subtitle` keys stay registered
+	 * so they're still filtered out of the fallback "remaining fields" list.
+	 */
+	hideTitle?: boolean
 	subtitle?: string[]
 	/** Overrides subtitle resolution when present. */
 	subtitleCompose?: (fields: FieldMap) => string

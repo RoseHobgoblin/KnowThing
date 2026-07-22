@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte'
 	import type { CalendarConfig } from '$lib/calendar/types.js'
 	import Select from '$lib/components/ui/Select.svelte'
 	import { resolveDisplay, daysInYear, absoluteDay, dateFromAbsolute } from '$lib/calendar/date-math.js'
@@ -13,7 +14,7 @@
 		currentAbsoluteDay: number
 	} = $props()
 
-	let selectedCalendarId = $state(calendars[0]?.id ?? 0)
+	let selectedCalendarId = $state(untrack(() => calendars[0]?.id ?? 0))
 
 	const selectedCalendar = $derived(calendars.find(c => c.id === selectedCalendarId) ?? calendars[0])
 

@@ -3,8 +3,8 @@
 	import { positionalArg } from '../args.js'
 
 	let { args }: { args: TemplateArg[] } = $props()
-	const color = positionalArg(args, 0) || '#ccc'
-	const label = positionalArg(args, 1) || ''
+	const color = $derived(positionalArg(args, 0) || '#ccc')
+	const label = $derived(positionalArg(args, 1) || '')
 </script>
 
 <span class="inline-flex items-center gap-1.5 text-sm">

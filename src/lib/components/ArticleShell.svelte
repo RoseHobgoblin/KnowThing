@@ -4,10 +4,12 @@
 	import { breadcrumbJsonLd } from '$lib/utils/breadcrumbs.js'
 	import { page } from '$app/stores'
 	import HouseIcon from 'phosphor-svelte/lib/HouseIcon'
+	import InlineMarkup from '$lib/renderer/InlineMarkup.svelte'
 
 	let {
 		breadcrumbs = [],
 		title,
+		subtitle = '',
 		actions,
 		badges,
 		footer,
@@ -15,6 +17,7 @@
 	}: {
 		breadcrumbs?: Breadcrumb[]
 		title: string
+		subtitle?: string
 		actions?: Snippet
 		badges?: Snippet
 		footer?: Snippet
@@ -42,7 +45,7 @@
 	{/if}
 </svelte:head>
 
-<div class="bg-surface shadow-sm overflow-hidden">
+<div class="article-shell shadow-sm overflow-hidden">
 	<!-- Header -->
 	<div class="px-4 pt-4 md:px-6">
 		{#if breadcrumbs.length > 0}
@@ -77,7 +80,12 @@
 		{/if}
 
 		<div class="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
-			<h1 class="text-2xl font-bold text-heading md:text-3xl">{title}</h1>
+			<div>
+				<h1 class="text-2xl font-bold text-heading md:text-3xl">{title}</h1>
+				{#if subtitle}
+					<div class="mt-1 text-base italic text-secondary"><InlineMarkup text={subtitle} /></div>
+				{/if}
+			</div>
 			{#if actions}
 				<div class="flex gap-3 text-sm md:gap-4">
 					{@render actions()}

@@ -7,7 +7,7 @@
 
 	let { args, variant }: { args: TemplateArg[], variant: Variant } = $props()
 
-	const text = positionalArg(args, 0) || ''
+	const text = $derived(positionalArg(args, 0) || '')
 </script>
 
 {#if variant === 'small'}<small>{text}</small>

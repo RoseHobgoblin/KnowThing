@@ -280,7 +280,7 @@
 <div class="overflow-hidden h-full flex flex-col">
 	<!-- Toolbar -->
 	<div class="flex items-center gap-0.5 px-2 py-1.5 bg-page border-b border-border flex-wrap">
-		{#each toolbar as button}
+		{#each toolbar as button (button.title)}
 			<button
 				type="button"
 				onclick={button.action}

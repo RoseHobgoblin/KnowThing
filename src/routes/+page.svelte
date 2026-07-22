@@ -16,115 +16,105 @@
 	<meta property="og:site_name" content={sc?.siteName ?? 'KnowThing'} />
 </svelte:head>
 
-<div class="space-y-8">
-	<!-- Hero -->
-	<div class="text-center py-6">
-		<h1 class="text-3xl font-bold text-heading md:text-4xl">
-			{sc?.siteName ?? 'KnowThing'}
-		</h1>
-		<p class="text-secondary mt-2">{sc?.siteTagline ?? 'A collaborative encyclopedia'}</p>
-		{#if sc?.institutionName}
-			<p class="text-secondary text-sm mt-1">Maintained by {sc.institutionName}</p>
-		{/if}
-	</div>
+<div class="mx-auto max-w-5xl space-y-5 py-3 md:py-6">
+	<header class="border-b border-border-subtle pb-3 text-center">
+		<h1 class="font-serif text-3xl font-bold text-heading md:text-4xl">{sc?.siteName ?? 'KnowThing'}</h1>
+		<p class="mt-1 text-xs italic text-secondary md:text-sm">
+			{sc?.siteTagline ?? 'A collaborative encyclopedia'}{sc?.institutionName ? ` · maintained by ${sc.institutionName}` : ''}
+		</p>
+		<div class="mt-2 flex flex-wrap justify-center gap-x-5 gap-y-1 text-xs font-medium uppercase tracking-wider text-secondary">
+			{#each [
+				{ label: 'Articles', value: data.stats.articles },
+				{ label: 'Words', value: data.stats.words },
+				{ label: 'Languages', value: data.stats.languages },
+				{ label: 'Media', value: data.stats.media },
+				{ label: 'Contributors', value: data.stats.users },
+			] as stat (stat.label)}
+				<span><strong class="text-heading">{stat.value.toLocaleString()}</strong> {stat.label}</span>
+			{/each}
+		</div>
+	</header>
 
-	<!-- Stats bar -->
-	<div class="grid grid-cols-2 gap-3 md:grid-cols-5">
-		{#each [
-			{ label: 'Articles', value: data.stats.articles },
-			{ label: 'Words', value: data.stats.words },
-			{ label: 'Languages', value: data.stats.languages },
-			{ label: 'Media', value: data.stats.media },
-			{ label: 'Contributors', value: data.stats.users },
-		] as stat (stat.label)}
-			<div class="bg-surface p-3 text-center">
-				<div class="text-xl font-bold text-heading">{stat.value.toLocaleString()}</div>
-				<div class="text-xs text-secondary">{stat.label}</div>
-			</div>
-		{/each}
-	</div>
-
-	<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-		<!-- Featured article -->
-		{#if data.featured}
-			<div class="bg-surface p-5">
-				<h2 class="text-xs font-semibold text-secondary uppercase tracking-wider mb-3">Featured article</h2>
-				<h3 class="text-lg font-bold text-heading mb-2">
-					<a href="/know/{data.featured.slug}" class="text-link transition-colors hover:text-link-hover">{data.featured.title}</a>
-				</h3>
-				{#if data.featured.summary}
-					<p class="text-sm text-body leading-relaxed">{data.featured.summary}</p>
-				{/if}
-				<a href="/know/{data.featured.slug}" class="text-sm text-link mt-3 inline-block transition-colors hover:text-link-hover">
-					Read more →
-				</a>
-			</div>
-		{:else}
-			<div class="bg-surface p-5 text-center">
-				<h2 class="text-xs font-semibold text-secondary uppercase tracking-wider mb-3">Get started</h2>
-				<p class="text-sm text-dim mb-4">No articles yet. Create your first page.</p>
-				<a href="/know/create" class="interactive-frame inline-block bg-accent text-surface px-5 py-2 font-medium text-sm transition-colors hover:bg-accent-hover">Create a page</a>
-			</div>
-		{/if}
-
-		<!-- Today + Word of the day -->
-		<div class="space-y-4">
-			{#if data.calendarInfo}
-				<a href="/calendar" class="interactive-frame block bg-surface p-5 transition-colors group">
-					<h2 class="text-xs font-semibold text-secondary uppercase tracking-wider mb-2">Today</h2>
-					<div class="text-lg font-bold text-heading group-hover:text-link transition-colors">
-						{data.calendarInfo.dayName}, {data.calendarInfo.day} {data.calendarInfo.monthName}
-					</div>
-					<div class="text-sm text-secondary">{data.calendarInfo.yearDisplay}</div>
-					{#if data.calendarInfo.seasonName}
-						<div class="text-xs text-secondary mt-1">{data.calendarInfo.seasonName}</div>
+	<div class="grid grid-cols-1 gap-4 md:grid-cols-12">
+		<div class="space-y-4 md:col-span-8">
+			{#if data.featured}
+				<article class="bg-surface">
+					{#if data.featured.image}
+						<a href="/know/{data.featured.slug}" class="block overflow-hidden">
+							<img src="/api/media/{encodeURIComponent(data.featured.image)}?w=600" alt="" class="h-52 w-full object-cover md:h-64" />
+						</a>
 					{/if}
-				</a>
-			{/if}
-
-			{#if data.randomWord}
-				<a
-					href="/Wordbook/{data.randomWord.languageSlug}/{encodeURIComponent(data.randomWord.word)}"
-					class="interactive-frame block bg-surface p-5 transition-colors group"
-				>
-					<h2 class="text-xs font-semibold text-secondary uppercase tracking-wider mb-2">From the {sc?.wordbookName ?? 'Wordbook'}</h2>
-					<div class="flex items-baseline gap-2">
-						<span class="text-lg font-bold font-serif text-heading group-hover:text-link transition-colors">{data.randomWord.word}</span>
-						{#if data.randomWord.pronunciation}
-							<span class="text-sm text-secondary font-mono">{data.randomWord.pronunciation}</span>
+					<div class="p-4 md:p-5">
+						<div class="mb-1 text-xs font-semibold uppercase tracking-wider text-secondary">Featured article</div>
+						<h2 class="font-serif text-xl font-bold text-heading md:text-2xl">
+							<a href="/know/{data.featured.slug}" class="transition-colors hover:text-link">{data.featured.title}</a>
+						</h2>
+						{#if data.featured.summary}
+							<p class="mt-2 text-sm leading-relaxed text-body">{data.featured.summary}</p>
 						{/if}
+						<a href="/know/{data.featured.slug}" class="mt-3 inline-block text-xs text-link transition-colors hover:text-link-hover">Read more →</a>
 					</div>
-					<div class="text-xs text-dim mt-0.5">{data.randomWord.languageName}</div>
-					{#if data.randomWord.definition}
-						<p class="text-sm text-body mt-2">{data.randomWord.definition}</p>
-					{/if}
-				</a>
+				</article>
+			{:else}
+				<div class="bg-surface p-6">
+					<div class="text-xs font-semibold uppercase tracking-wider text-secondary">Get started</div>
+					<p class="mt-2 text-sm text-dim">No articles yet. Create your first page.</p>
+					<a href="/know/create" class="mt-4 inline-block bg-accent px-5 py-2 text-sm font-medium text-surface transition-colors hover:bg-accent-hover">Create a page</a>
+				</div>
+			{/if}
+
+			{#if data.recentEdits.length > 0}
+				<section class="bg-surface">
+					<div class="flex items-center justify-between border-b border-border-subtle px-4 py-2.5">
+						<h2 class="text-xs font-semibold uppercase tracking-wider text-secondary">Recent changes</h2>
+						<a href="/dashboard/recent" class="text-xs text-link transition-colors hover:text-link-hover">View all →</a>
+					</div>
+					<div class="divide-y divide-border-subtle">
+						{#each data.recentEdits.slice(0, 5) as edit (edit.createdAt)}
+							<div class="flex items-center justify-between gap-4 px-4 py-2 text-xs">
+								<div class="min-w-0">
+									<a href="/know/{edit.pageSlug}" class="font-medium text-link transition-colors hover:text-link-hover">{edit.title}</a>
+									{#if edit.editSummary}<span class="ml-2 text-xs text-dim">{edit.editSummary}</span>{/if}
+								</div>
+								<time class="shrink-0 text-xs text-dim">{new Date(edit.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</time>
+							</div>
+						{/each}
+					</div>
+				</section>
 			{/if}
 		</div>
-	</div>
 
-	<!-- Recent changes -->
-	{#if data.recentEdits.length > 0}
-		<div class="bg-surface">
-			<div class="px-5 py-3 border-b border-border-subtle flex items-center justify-between">
-				<h2 class="text-xs font-semibold text-secondary uppercase tracking-wider">Recent changes</h2>
-				<a href="/dashboard/recent" class="text-xs text-link transition-colors hover:text-link-hover">View all →</a>
-			</div>
-			<div class="divide-y divide-border-subtle">
-				{#each data.recentEdits as edit (edit.createdAt)}
-					<div class="px-5 py-2.5 flex items-center justify-between">
-						<div class="min-w-0">
-							<a href="/know/{edit.pageSlug}" class="text-sm text-link font-medium transition-colors hover:text-link-hover">{edit.title}</a>
-							{#if edit.editSummary}
-								<span class="text-xs text-secondary ml-2">{edit.editSummary}</span>
-							{/if}
-						</div>
-						<time class="text-[11px] text-secondary shrink-0 ml-4">
-							{new Date(edit.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-						</time>
+		<aside class="space-y-4 md:col-span-4">
+			{#if data.randomWord}
+				<a href="/Wordbook/{data.randomWord.languageSlug}/{encodeURIComponent(data.randomWord.word)}" class="interactive-frame block bg-surface p-4 transition-colors group">
+					<div class="text-xs font-semibold uppercase tracking-wider text-secondary">From the {sc?.wordbookName ?? 'Wordbook'}</div>
+					<div class="mt-2 flex items-baseline gap-2">
+						<span class="font-serif text-lg font-bold text-heading transition-colors group-hover:text-link">{data.randomWord.word}</span>
+						{#if data.randomWord.pronunciation}<span class="font-mono text-xs text-secondary">· {data.randomWord.pronunciation}</span>{/if}
 					</div>
-				{/each}
-			</div>
-		</div>
-	{/if}
+					<div class="text-xs uppercase tracking-wide text-dim">{data.randomWord.languageName}</div>
+					{#if data.randomWord.definition}<p class="mt-3 text-xs leading-relaxed text-body">{data.randomWord.definition}</p>{/if}
+				</a>
+			{/if}
+
+			{#if data.calendarInfo}
+				<a href="/calendar" class="interactive-frame block bg-surface p-4 transition-colors group">
+					<div class="text-xs font-semibold uppercase tracking-wider text-secondary">On this day · {data.calendarInfo.name}</div>
+					<div class="mt-2 font-serif text-lg italic text-heading transition-colors group-hover:text-link">{data.calendarInfo.day} {data.calendarInfo.monthName}</div>
+					<div class="text-xs text-body">{data.calendarInfo.dayName}, {data.calendarInfo.yearDisplay}</div>
+					{#if data.calendarInfo.seasonName}<div class="mt-1 text-xs text-dim">{data.calendarInfo.seasonName}</div>{/if}
+				</a>
+			{/if}
+
+			<nav>
+				<div class="mb-2 text-xs font-semibold uppercase tracking-wider text-secondary">Explore</div>
+				<div class="flex flex-wrap gap-1.5">
+					<a href="/special/categories" class="px-2 py-1 text-xs text-secondary hover:text-link">Categories</a>
+					<a href="/worldmap" class="px-2 py-1 text-xs text-secondary hover:text-link">Maps</a>
+					<a href="/celestial" class="px-2 py-1 text-xs text-secondary hover:text-link">Celestial</a>
+					<a href="/Wordbook" class="px-2 py-1 text-xs text-secondary hover:text-link">Languages</a>
+				</div>
+			</nav>
+		</aside>
+	</div>
 </div>

@@ -32,7 +32,7 @@
 	} = $props()
 
 	const id = useId('unit-input')
-	const storageUnit = units.find(u => u.factor === 1) ?? units[0]
+	const storageUnit = $derived(units.find(u => u.factor === 1) ?? units[0])
 
 	/** The largest unit in which the value still reads as a sensible number. */
 	function pickUnit(storedValue: number | null): number {
@@ -103,11 +103,12 @@
 			bind:value={text}
 			{placeholder}
 			aria-invalid={!!error}
-			class={cn(
-				'flex w-full min-w-0 px-3 py-2 pr-20 text-sm text-body bg-page outline-none transition-colors',
-				'placeholder:text-dim focus:ring-2 focus:ring-accent',
-				'aria-invalid:ring-1 aria-invalid:ring-error-border',
-			)}
+			class="
+				flex w-full min-w-0 px-3 py-2 pr-20 text-sm text-body bg-page outline-none transition-colors
+				placeholder:text-dim
+				focus:ring-2 focus:ring-accent
+				aria-invalid:ring-1 aria-invalid:ring-error-border
+			"
 			onfocus={() => focused = true}
 			onblur={() => focused = false}
 			oninput={onInput}

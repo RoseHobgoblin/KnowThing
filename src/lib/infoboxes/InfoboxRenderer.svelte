@@ -34,7 +34,7 @@
 		return [resolveStaticRow(row, suffix)]
 	}
 
-	type ResolvedSection = { heading?: string, rows: ResolvedRow[] }
+	type ResolvedSection = { heading?: string, headerStyle?: 'plain' | 'raised', rows: ResolvedRow[] }
 
 	const resolvedSections: ResolvedSection[] = $derived.by(() => {
 		const out: ResolvedSection[] = []
@@ -46,19 +46,20 @@
 					const heading = getField(fields, `${discoverKey}${suffix}`)
 					if (!heading) continue
 					const rows = section.rows.flatMap(r => expandRow(r, suffix))
-					out.push({ heading, rows })
+					out.push({ heading, headerStyle: section.headerStyle, rows })
 				}
 			} else {
 				const rows = section.rows.flatMap(r => expandRow(r, ''))
 				if (rows.some(r => r.value)) {
-					out.push({ heading: section.heading, rows })
+					const heading = section.headingCompose ? section.headingCompose(fields).trim() : section.heading
+					out.push({ heading, headerStyle: section.headerStyle, rows })
 				}
 			}
 		}
 		return out
 	})
 
-	const title = $derived(schema.titleCompose ? schema.titleCompose(fields).trim() : (getField(fields, ...schema.title) ?? ''))
+	const title = $derived(schema.hideTitle ? '' : (schema.titleCompose ? schema.titleCompose(fields).trim() : (getField(fields, ...schema.title) ?? '')))
 	const subtitle = $derived(
 		schema.subtitleCompose
 			? schema.subtitleCompose(fields).trim()
@@ -88,10 +89,9 @@
 
 <InfoboxShell {title} {subtitle} {image} {imageCaption}>
 	{#if hasHeaderImages}
-		<tr>
-			<td colspan="2" class="p-3">
-				<div class="flex items-start justify-center gap-4 flex-wrap">
-					{#each resolvedHeaderImages as img}
+		<div class="infobox-media infobox-header-media">
+			<div class="flex items-start justify-center gap-4 flex-wrap">
+					{#each resolvedHeaderImages as img, imgIndex (imgIndex)}
 						<figure class="flex flex-col items-center gap-1 m-0" style="width: {img.width}px;">
 							<MediaImage
 								filename={img.file}
@@ -108,20 +108,22 @@
 							{/if}
 						</figure>
 					{/each}
-				</div>
-			</td>
-		</tr>
+			</div>
+		</div>
 	{/if}
-	{#each resolvedSections as section}
-		{#if section.heading}
-			<InfoboxSection_ title={section.heading} />
-		{/if}
-		{#each section.rows as row}
-			<InfoboxRow label={row.label} value={row.value} />
-		{/each}
+	{#each resolvedSections as section, sectionIndex (sectionIndex)}
+		<InfoboxSection_ title={section.heading} variant={section.headerStyle}>
+			{#each section.rows as row, rowIndex (rowIndex)}
+				<InfoboxRow label={row.label} value={row.value} />
+			{/each}
+		</InfoboxSection_>
 	{/each}
 
-	{#each remaining as [key, value]}
-		<InfoboxRow label={key} {value} />
-	{/each}
+	{#if remaining.length > 0}
+		<InfoboxSection_>
+			{#each remaining as [key, value] (key)}
+				<InfoboxRow label={key} {value} />
+			{/each}
+		</InfoboxSection_>
+	{/if}
 </InfoboxShell>

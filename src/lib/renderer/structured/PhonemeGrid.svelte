@@ -22,29 +22,29 @@
 	<span class="text-secondary">[{type}s: no data for "{slug}"]</span>
 {:else}
 	<figure class="my-4 phoneme-grid">
-		<table class="text-sm mx-auto">
+		<table class="know-table know-table-divided text-sm">
 			<thead>
 				<tr>
-					<th class="px-3 py-2 border-b border-r border-border-subtle bg-muted text-left text-heading capitalize">
+					<th class="text-left text-heading capitalize">
 						{type === 'consonant' ? 'Manner' : 'Height'}
 					</th>
-					{#each grid.columns as col}
-						<th class="px-3 py-2 border-b border-r border-border-subtle bg-muted text-heading font-medium capitalize text-center">{col}</th>
+					{#each grid.columns as col (col)}
+						<th class="text-heading font-medium capitalize text-center">{col}</th>
 					{/each}
 				</tr>
 			</thead>
 			<tbody>
-				{#each grid.rows as row}
+				{#each grid.rows as row, rowIndex (rowIndex)}
 					<tr>
-						<th class="px-3 py-1.5 border-b border-r border-border-subtle bg-raised text-left font-medium capitalize text-body">
+						<th class="text-left font-medium capitalize text-body">
 							{row.header}{#if row.subtype} <span class="text-dim text-xs">({row.subtype})</span>{/if}
 						</th>
-						{#each grid.columns as col}
+						{#each grid.columns as col (col)}
 							{@const list = grid.cells.get(cellKey(row, col)) ?? []}
-							<td class="px-3 py-1.5 border-b border-r border-border-subtle text-center align-middle">
+							<td class="text-center align-middle">
 								{#if list.length > 0}
 									<span class="phoneme-cell inline-flex gap-1.5">
-										{#each list as p}
+										{#each list as p, pIndex (pIndex)}
 											<span
 												class="font-serif text-base {p.marginal ? 'text-dim' : ''}"
 												title={p.marginal ? `marginal: ${p.notes ?? p.ipa}` : p.notes ?? undefined}
@@ -65,9 +65,9 @@
 			</tbody>
 		</table>
 		{#if grid.footnotes.length > 0}
-			<figcaption class="mt-2 text-xs text-dim max-w-prose mx-auto">
+			<figcaption class="know-table-notes text-xs max-w-prose mx-auto">
 				<ol class="list-none pl-0 space-y-0.5">
-					{#each grid.footnotes as function_}
+					{#each grid.footnotes as function_ (function_.index)}
 						<li><sup>{function_.index}</sup> <span class="font-serif">{function_.ipa}</span>: {function_.text}</li>
 					{/each}
 				</ol>

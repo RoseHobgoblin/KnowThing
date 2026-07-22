@@ -1,12 +1,11 @@
 <script lang="ts">
 	import { cn } from '$lib/utils'
 	import type { Snippet } from 'svelte'
-	import { useId } from 'bits-ui'
+	import { Checkbox as BitsCheckbox, useId } from 'bits-ui'
 
 	let {
 		id,
 		value = $bindable<boolean | undefined>(),
-		allowIndeterminate = false,
 		onclick,
 		disabled = false,
 		readonly = false,
@@ -18,7 +17,6 @@
 	}: {
 		id?: string
 		value?: boolean | undefined
-		allowIndeterminate?: boolean
 		onclick?: (newValue: boolean | undefined) => void
 		disabled?: boolean
 		readonly?: boolean
@@ -30,30 +28,17 @@
 	} = $props()
 
 	id ??= useId('checkbox')
-
-	function onCheckboxClick() {
-		if (disabled || readonly) return
-
-		if (allowIndeterminate) {
-			if (value === undefined) value = true
-			else if (value === true) value = false
-			else value = undefined
-		} else {
-			value = !value
-		}
-
-		onclick?.(value)
-	}
 </script>
 
 <div class="flex items-start gap-2.5">
-	<button
+	<BitsCheckbox.Root
 		{id}
-		type="button"
-		onclick={onCheckboxClick}
-		aria-checked={value === true}
-		role="checkbox"
 		{disabled}
+		{readonly}
+		bind:checked={() => value === true, (v) => {
+			value = v
+			onclick?.(v)
+		}}
 		class={cn(
 			'flex shrink-0 items-center justify-center size-4 border transition-colors mt-0.5',
 			value
@@ -73,7 +58,7 @@
 				<path d="M4 10a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1z" />
 			</svg>
 		{/if}
-	</button>
+	</BitsCheckbox.Root>
 
 	{#if label}
 		<label

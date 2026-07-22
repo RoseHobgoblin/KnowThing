@@ -26,4 +26,4 @@
 	{href}
 	class="{exists ? 'text-link hover:text-link-hover' : 'text-link-missing'} underline decoration-transparent hover:decoration-current transition-colors"
 	title="{node.namespace}:{node.identifier}"
->{#if node.display}{#each node.display as child}<WikiNodeComponent node={child} />{/each}{:else}{node.identifier}{/if}</a>
+>{#if node.display}{#each node.display as child, index (index)}<WikiNodeComponent node={child} />{/each}{:else}{node.identifier}{/if}</a>

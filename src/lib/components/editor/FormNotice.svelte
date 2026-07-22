@@ -28,7 +28,7 @@
 	{/if}
 	{#if messages.length > 0}
 		<ul class="list-disc pl-5 space-y-1">
-			{#each messages as item}
+			{#each messages as item, index (index)}
 				<li>{item}</li>
 			{/each}
 		</ul>

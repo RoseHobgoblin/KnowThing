@@ -5,4 +5,4 @@
 	let { children }: { children: WikiNode[] } = $props()
 </script>
 
-<sub>{#each children as child}<WikiNodeComponent node={child} />{/each}</sub>
+<sub>{#each children as child, index (index)}<WikiNodeComponent node={child} />{/each}</sub>

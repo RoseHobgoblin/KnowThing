@@ -13,18 +13,18 @@
 	const tableClass = $derived(extractClass(attrs))
 </script>
 
-<table class="know-table border-collapse my-4 {tableClass}">
+<table class="know-table know-table-divided my-4 {tableClass}">
 	<tbody>
-		{#each rows as row}
+		{#each rows as row, rowIndex (rowIndex)}
 			<tr>
-				{#each row.cells as cell}
+				{#each row.cells as cell, cellIndex (cellIndex)}
 					{#if cell.isHeader}
-						<th class="know-th bg-raised px-3 py-1.5 text-left font-bold text-sm">
-							{#each cell.children as child}<WikiNodeComponent node={child} />{/each}
+						<th class="know-th text-left font-bold text-sm">
+							{#each cell.children as child, childIndex (childIndex)}<WikiNodeComponent node={child} />{/each}
 						</th>
 					{:else}
-						<td class="know-td px-3 py-1.5 text-sm">
-							{#each cell.children as child}<WikiNodeComponent node={child} />{/each}
+						<td class="know-td text-sm">
+							{#each cell.children as child, childIndex (childIndex)}<WikiNodeComponent node={child} />{/each}
 						</td>
 					{/if}
 				{/each}

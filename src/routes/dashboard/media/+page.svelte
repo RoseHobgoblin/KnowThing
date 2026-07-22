@@ -255,7 +255,7 @@
 	{#if loading}
 		{#if viewMode === 'grid'}
 			<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5" aria-busy="true" aria-label="Loading media">
-				{#each Array(12) as _}
+				{#each Array(12) as _, index (index)}
 					<div class="bg-surface overflow-hidden">
 						<Skeleton class="aspect-square w-full" />
 						<div class="p-2 space-y-1.5">
@@ -267,7 +267,7 @@
 			</div>
 		{:else}
 			<div class="bg-surface divide-y divide-border-subtle" aria-busy="true" aria-label="Loading media">
-				{#each Array(8) as _}
+				{#each Array(8) as _, index (index)}
 					<div class="flex items-center gap-4 px-4 py-3">
 						<Skeleton class="size-12 shrink-0" />
 						<div class="flex-1 min-w-0 space-y-1.5">
@@ -284,7 +284,7 @@
 		</div>
 	{:else if viewMode === 'grid'}
 		<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-			{#each files as file}
+			{#each files as file (file.id)}
 				<a
 					href="/media/{encodeURIComponent(file.filename)}"
 					class="
@@ -319,7 +319,7 @@
 		</div>
 	{:else}
 		<div class="bg-surface divide-y divide-border-subtle">
-			{#each files as file}
+			{#each files as file (file.id)}
 				<a href="/media/{encodeURIComponent(file.filename)}" class="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-accent-subtle/30">
 					<div class="
 						size-12 bg-raised flex items-center justify-center shrink-0 overflow-hidden

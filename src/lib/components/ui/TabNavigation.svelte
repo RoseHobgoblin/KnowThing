@@ -1,12 +1,14 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte'
 	import { onMount } from 'svelte'
+	import { Tabs } from 'bits-ui'
 	import { cn } from '$lib/utils'
 
 	export interface TabItem {
 		id?: string
 		label: string
 		labelContent?: Snippet<[]>
+		/** Rendered as a plain link styled like a tab, outside the tablist semantics. */
 		href?: string
 		loadFunction?: () => Promise<void>
 		shouldShow?: () => boolean
@@ -49,13 +51,13 @@
 	let loadingSections = $state<Record<string, boolean>>({})
 	let loadedSections = $state<Record<string, boolean>>({})
 
-	let containerElement = $state<HTMLElement>()
-	let tabElements = $state<Record<string, HTMLElement>>({})
+	let containerElement = $state<HTMLElement | null>(null)
+	let tabElements = $state<Record<string, HTMLElement | null>>({})
 	let indicatorReady = $state(false)
 	let indicatorStyle = $state({ transform: '', width: 0, height: 0 })
 
 	function selectTab(id: string) {
-		if (disabled || id === activeSectionId) return
+		if (disabled || !id || id === activeSectionId) return
 		activeSectionId = id
 		onNavigationChange?.(id)
 		loadSection(id)
@@ -118,45 +120,63 @@
 </script>
 
 <div class={cn('flex flex-col', className)}>
-	<div
-		bind:this={containerElement}
-		class={cn(
-			'p-1 relative bg-page',
-			fullWidth ? 'grid grid-flow-col auto-cols-fr w-full gap-1' : 'inline-flex gap-1',
-		)}
-	>
-		<!-- Active indicator -->
-		<div
+	<Tabs.Root bind:value={() => activeSectionId ?? '', v => selectTab(v)}>
+		<Tabs.List
+			bind:ref={containerElement}
 			class={cn(
-				'absolute left-0 top-0 bg-raised shadow-sm',
-				indicatorReady && 'transition-[transform,width] duration-300 ease-out',
+				'p-1 relative bg-page',
+				fullWidth ? 'grid grid-flow-col auto-cols-fr w-full gap-1' : 'inline-flex gap-1',
 			)}
-			style:transform={indicatorStyle.transform}
-			style:width="{indicatorStyle.width}px"
-			style:height="{indicatorStyle.height}px"
-		></div>
-
-		{#each visibleItems as item (item.id)}
-			<svelte:element
-				this={item.href ? 'a' : 'button'}
-				bind:this={tabElements[item.id]}
-				type={item.href ? undefined : 'button'}
-				href={item.href}
-				onclick={() => selectTab(item.id)}
+		>
+			<!-- Active indicator -->
+			<div
 				class={cn(
-					'cursor-pointer font-medium relative z-[1] flex items-center justify-center gap-1.5 whitespace-nowrap transition-colors duration-200',
-					tabClasses[size],
-					item.id === activeSectionId ? 'text-heading' : 'text-secondary hover:text-body',
-					disabled && 'pointer-events-none opacity-60',
+					'absolute left-0 top-0 bg-raised shadow-sm',
+					indicatorReady && 'transition-[transform,width] duration-300 ease-out',
 				)}
-				aria-selected={item.id === activeSectionId}
-			>
-				{#if item.labelContent}
-					{@render item.labelContent()}
+				style:transform={indicatorStyle.transform}
+				style:width="{indicatorStyle.width}px"
+				style:height="{indicatorStyle.height}px"
+			></div>
+
+			{#each visibleItems as item (item.id)}
+				{#if item.href}
+					<a
+						bind:this={tabElements[item.id]}
+						href={item.href}
+						class={cn(
+							'cursor-pointer font-medium relative z-1 flex items-center justify-center gap-1.5 whitespace-nowrap transition-colors duration-200',
+							tabClasses[size],
+							'text-secondary hover:text-body',
+							disabled && 'pointer-events-none opacity-60',
+						)}
+					>
+						{#if item.labelContent}
+							{@render item.labelContent()}
+						{:else}
+							{item.label}
+						{/if}
+					</a>
 				{:else}
-					{item.label}
+					<Tabs.Trigger
+						value={item.id}
+						{disabled}
+						bind:ref={tabElements[item.id]}
+						class={cn(
+							'cursor-pointer font-medium relative z-1 flex items-center justify-center gap-1.5 whitespace-nowrap transition-colors duration-200',
+							tabClasses[size],
+							item.id === activeSectionId ? 'text-heading' : 'text-secondary hover:text-body',
+							disabled && 'pointer-events-none opacity-60',
+						)}
+					>
+						{#if item.labelContent}
+							{@render item.labelContent()}
+						{:else}
+							{item.label}
+						{/if}
+					</Tabs.Trigger>
 				{/if}
-			</svelte:element>
-		{/each}
-	</div>
+			{/each}
+		</Tabs.List>
+	</Tabs.Root>
 </div>

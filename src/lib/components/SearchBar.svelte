@@ -1,187 +1,121 @@
 <script lang="ts">
 	import { goto } from '$app/navigation'
 	import { onDestroy } from 'svelte'
+	import { Combobox } from 'bits-ui'
+	import { createQuery } from '@tanstack/svelte-query'
+	import { api } from '$lib/api'
 	import { sanitizeSnippet } from '$lib/utils.js'
 
-	let query = $state('')
 	type SearchResult = { href: string, title: string, snippet: string, badge: string }
-	let results = $state<SearchResult[]>([])
-	let showResults = $state(false)
-	let selectedIndex = $state(-1)
+
+	let query = $state('')
+	let debounced = $state('')
+	let open = $state(false)
+	let inputRef = $state<HTMLInputElement | null>(null)
 	let debounceTimer: ReturnType<typeof setTimeout>
-	let closeTimer: ReturnType<typeof setTimeout> | undefined
-	let inputEl: HTMLInputElement | undefined = $state()
-	let abortController: AbortController | null = null
 
-	onDestroy(() => {
-		clearTimeout(debounceTimer)
-		clearTimeout(closeTimer)
-		abortController?.abort()
-	})
+	onDestroy(() => clearTimeout(debounceTimer))
 
-	function onInput() {
+	function onInput(event: Event) {
+		query = (event.currentTarget as HTMLInputElement).value
 		clearTimeout(debounceTimer)
-		selectedIndex = -1
 		if (!query.trim()) {
-			results = []
-			showResults = false
+			debounced = ''
 			return
 		}
-		debounceTimer = setTimeout(doSearch, 250)
+		debounceTimer = setTimeout(() => debounced = query.trim(), 250)
 	}
 
-	async function doSearch() {
-		if (!query.trim()) return
-		abortController?.abort()
-		abortController = new AbortController()
-		try {
-			const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&limit=8`, {
-				signal: abortController.signal,
-			})
-			if (res.ok) {
-				const payload = await res.json()
-				results = payload.results ?? []
-				showResults = true
-				selectedIndex = -1
-			}
-		} catch (e) {
-			if (e instanceof DOMException && e.name === 'AbortError') return
-		}
+	const search = createQuery(() => ({
+		queryKey: ['search-suggest', debounced],
+		queryFn: () => api<{ results?: SearchResult[] }>('GET', `/api/search?q=${encodeURIComponent(debounced)}&limit=8`),
+		enabled: debounced.length > 0,
+	}))
+
+	const results = $derived(debounced.length > 0 ? search.data?.results ?? [] : [])
+
+	function reset() {
+		clearTimeout(debounceTimer)
+		query = ''
+		debounced = ''
+		open = false
+		inputRef?.blur()
 	}
 
 	function navigate(href: string) {
-		query = ''
-		results = []
-		showResults = false
-		selectedIndex = -1
-		inputEl?.blur()
+		reset()
 		goto(href)
 	}
 
-	function onKeydown(event: KeyboardEvent) {
-		if (!showResults || results.length === 0) {
-			if (event.key === 'Enter') {
-				event.preventDefault()
-				if (query.trim()) {
-					const searchQuery = query
-					query = ''
-					results = []
-					showResults = false
-					inputEl?.blur()
-					goto(`/search?q=${encodeURIComponent(searchQuery)}`)
-				}
-			}
-			return
-		}
-
-		switch (event.key) {
-			case 'ArrowDown': {
-				event.preventDefault()
-				selectedIndex = selectedIndex < results.length - 1 ? selectedIndex + 1 : 0
-				break
-			}
-			case 'ArrowUp': {
-				event.preventDefault()
-				selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : results.length - 1
-				break
-			}
-			case 'Enter': {
-				event.preventDefault()
-				if (selectedIndex >= 0 && selectedIndex < results.length) {
-					navigate(results[selectedIndex].href)
-				} else if (query.trim()) {
-					const searchQuery = query
-					query = ''
-					results = []
-					showResults = false
-					inputEl?.blur()
-					goto(`/search?q=${encodeURIComponent(searchQuery)}`)
-				}
-				break
-			}
-			case 'Escape': {
-				showResults = false
-				selectedIndex = -1
-				inputEl?.blur()
-				break
-			}
-		}
-	}
-
-	function onSubmit(event: Event) {
-		event.preventDefault()
+	function fullSearch(scope?: string) {
 		if (!query.trim()) return
 		const searchQuery = query
-		query = ''
-		results = []
-		showResults = false
-		inputEl?.blur()
-		goto(`/search?q=${encodeURIComponent(searchQuery)}&scope=all`)
+		reset()
+		goto(`/search?q=${encodeURIComponent(searchQuery)}${scope ? `&scope=${scope}` : ''}`)
 	}
 
-	function close() {
-		closeTimer = setTimeout(() => {
-			showResults = false
-			selectedIndex = -1
-		}, 200)
+	// Enter with no highlighted suggestion falls through to the full search page;
+	// with a highlighted one, bits-ui selects it and onValueChange navigates.
+	function onKeydown(event: KeyboardEvent) {
+		if (event.key !== 'Enter') return
+		if (!document.querySelector('#searchbar-results [data-highlighted]')) {
+			event.preventDefault()
+			fullSearch()
+		}
 	}
 </script>
 
-<form onsubmit={onSubmit} class="relative">
-	<input
-		bind:this={inputEl}
-		type="text"
+<Combobox.Root
+	type="single"
+	inputValue={query}
+	bind:open
+	bind:value={() => '', (href) => { if (href) navigate(href) }}
+>
+	<Combobox.Input
+		bind:ref={inputRef}
 		dir="ltr"
 		autocomplete="off"
-		bind:value={query}
 		oninput={onInput}
 		onkeydown={onKeydown}
-		onfocusin={() => results.length > 0 && (showResults = true)}
-		onfocusout={close}
 		placeholder="Search pages, wordbook, media..."
-		role="combobox"
-		aria-expanded={showResults && results.length > 0}
-		aria-autocomplete="list"
-		aria-activedescendant={selectedIndex >= 0 ? `search-result-${selectedIndex}` : undefined}
+		aria-label="Search"
 		class="
 			w-full px-3 py-1.5 text-sm bg-page transition-colors
 			focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent
 		"
 	/>
 
-	{#if showResults && results.length > 0}
-		<div
-			class="
-				absolute top-full inset-x-0 bg-surface shadow-lg z-50 max-h-80
-				overflow-y-auto mt-0.5
-			"
-			role="listbox"
+	<Combobox.Portal>
+		<Combobox.Content
+			id="searchbar-results"
+			sideOffset={2}
+			class={results.length > 0
+				? 'z-[9999] max-h-80 w-(--bits-combobox-anchor-width) min-w-(--bits-combobox-anchor-width) overflow-y-auto bg-surface shadow-lg outline-none'
+				: 'hidden'}
 		>
-			{#each results as r, i}
-				<a
-					id="search-result-{i}"
-					href={r.href}
-					onclick={(e) => { e.preventDefault(); navigate(r.href) }}
-					class="block px-3 py-2.5 border-b border-border-subtle transition-colors
-						{i === selectedIndex ? 'bg-accent-subtle' : 'hover:bg-accent-subtle'}"
-					role="option"
-					aria-selected={i === selectedIndex}
+			{#each results as r (r.href)}
+				<Combobox.Item
+					value={r.href}
+					label={r.title}
+					class="block px-3 py-2.5 border-b border-border-subtle transition-colors cursor-pointer outline-none data-highlighted:bg-accent-subtle"
 				>
 					<div class="flex items-center gap-2">
 						<div class="font-medium text-sm text-heading">{r.title}</div>
 						<span class="text-xs uppercase tracking-wide text-secondary">{r.badge}</span>
 					</div>
 					{#if r.snippet}
+						<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitizeSnippet escapes all but <mark> -->
 						<div class="text-xs text-dim mt-0.5">{@html sanitizeSnippet(r.snippet)}</div>
 					{/if}
-				</a>
+				</Combobox.Item>
 			{/each}
 			<button
-				type="submit"
+				type="button"
+				onclick={() => fullSearch('all')}
 				class="w-full px-3 py-2 text-left text-xs text-link border-t border-border-subtle hover:bg-accent-subtle"
 			>
 				View all results
 			</button>
-		</div>
-	{/if}
-</form>
+		</Combobox.Content>
+	</Combobox.Portal>
+</Combobox.Root>

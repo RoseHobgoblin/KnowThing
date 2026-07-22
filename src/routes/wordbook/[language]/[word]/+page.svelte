@@ -21,6 +21,7 @@
 	import PencilSimple from 'phosphor-svelte/lib/PencilSimple'
 	import Trash from 'phosphor-svelte/lib/Trash'
 	import { wordbookWordBreadcrumbs } from '$lib/utils/breadcrumbs.js'
+	import { cn } from '$lib/utils'
 
 	let { data }: { data: PageData } = $props()
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
@@ -45,39 +46,39 @@
 	// Add sense form state
 	let addingSenseFor = $state<number | null>(null)
 	let newPos = $state('')
-	let newDef = $state('')
+	let newDefinition = $state('')
 	let newUsage = $state('')
 	let newTranslation = $state('')
 	let submittingSense = $state(false)
 	let senseError = $state('')
 
-	async function addSense(entryId: number, e: Event) {
-		e.preventDefault()
-		if (!newDef.trim()) return
+	async function addSense(entryId: number, event: Event) {
+		event.preventDefault()
+		if (!newDefinition.trim()) return
 		submittingSense = true
 		senseError = ''
 		try {
-			const res = await fetch(`/api/wordbook/${entryId}/definitions`, {
+			const response = await fetch(`/api/wordbook/${entryId}/definitions`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					partOfSpeech: newPos || null,
-					definition: newDef.trim(),
+					definition: newDefinition.trim(),
 					usageExample: newUsage.trim() || null,
 					usageTranslation: newTranslation.trim() || null,
 				}),
 			})
-			if (res.ok) {
+			if (response.ok) {
 				pushSuccess('Definition added')
 				newPos = ''
-				newDef = ''
+				newDefinition = ''
 				newUsage = ''
 				newTranslation = ''
 				addingSenseFor = null
 				invalidateAll()
 			} else {
-				const err = await res.json().catch(() => null)
-				senseError = err?.error || 'Failed to add definition'
+				const error = await response.json().catch(() => null)
+				senseError = error?.error || 'Failed to add definition'
 				pushError(senseError)
 			}
 		} finally {
@@ -85,11 +86,11 @@
 		}
 	}
 
-	async function deleteSense(entryId: number, defId: number) {
+	async function deleteSense(entryId: number, definitionId: number) {
 		const ok = await confirmDialog.confirm('Delete definition', 'Delete this definition?', 'Delete', 'Cancel')
 		if (!ok) return
-		const res = await fetch(`/api/wordbook/${entryId}/definitions/${defId}`, { method: 'DELETE' })
-		if (res.ok) {
+		const response = await fetch(`/api/wordbook/${entryId}/definitions/${definitionId}`, { method: 'DELETE' })
+		if (response.ok) {
 			pushSuccess('Definition deleted')
 			invalidateAll()
 		} else {
@@ -100,8 +101,8 @@
 	async function deleteEntry(entryId: number) {
 		const ok = await confirmDialog.confirm('Delete word', `Delete "${data.word}"? This cannot be undone.`, 'Delete', 'Cancel')
 		if (!ok) return
-		const res = await fetch(`/api/wordbook/${entryId}`, { method: 'DELETE' })
-		if (res.ok) {
+		const response = await fetch(`/api/wordbook/${entryId}`, { method: 'DELETE' })
+		if (response.ok) {
 			pushSuccess(`"${data.word}" deleted`)
 			goto(`/Wordbook/${data.language.slug}`)
 		} else {
@@ -111,8 +112,8 @@
 
 	const posColors = POS_COLORS
 
-	const firstDef = $derived(data.homographs[0]?.definitions[0]?.definition ?? '')
-	const ogDescription = $derived(firstDef ? `${data.word} — ${firstDef}` : `${data.word} in ${data.language.name}`)
+	const firstDefinition = $derived(data.homographs[0]?.definitions[0]?.definition ?? '')
+	const ogDescription = $derived(firstDefinition ? `${data.word} — ${firstDefinition}` : `${data.word} in ${data.language.name}`)
 </script>
 
 <svelte:head>
@@ -143,20 +144,19 @@
 	{#snippet badges()}
 		<div class="flex items-center gap-2 mt-1">
 			<LanguageBadge name={data.language.name} slug={data.language.slug} color={data.language.color} />
-			{#if data.homographs[0]?.entry.pronunciation}
-				<span class="text-secondary font-mono text-sm">{data.homographs[0].entry.pronunciation}</span>
-			{/if}
 		</div>
 	{/snippet}
 
-	{#each data.homographs as hom, homIndex}
+	{#each data.homographs as hom, homIndex (hom.entry.id)}
 		{@const entry = hom.entry}
 		{@const defs = hom.definitions}
 		{@const variants = hom.variants}
 		{@const relations = hom.relations}
 
-		<!-- Headword card -->
-		<div class="bg-raised overflow-hidden mb-4 {homIndex > 0 ? 'mt-6' : ''}">
+		<div class={cn('grid gap-4 lg:grid-cols-[minmax(0,1fr)_13rem]', homIndex > 0 && 'mt-6')}>
+			<div class="space-y-4">
+				<!-- Headword card -->
+				<div class="bg-surface overflow-hidden">
 			<div class="p-4">
 				{#if data.isMultipleHomographs}
 					<h2 class="text-lg font-bold text-heading mb-2">
@@ -164,35 +164,55 @@
 					</h2>
 				{/if}
 
-				<!-- Dialect variants (editable for editors) -->
-				<VariantManager
-					entryId={entry.id}
-					languageSlug={data.language.slug}
-					{variants}
-					canEdit={canManageWordbook}
-				/>
+				<!-- Entry details -->
+				{#if entry.pronunciation || relations.direct || relations.cognates?.length || relations.etymologyChain?.length || entry.etymology}
+					<div class="mb-3 space-y-2 border-b border-border-subtle pb-3">
+						{#if entry.pronunciation}
+							<div class="flex items-baseline gap-4 text-sm">
+								<span class="w-20 shrink-0 text-xs font-semibold uppercase tracking-wider text-secondary">Pronounced</span>
+								<span class="font-mono text-body">{entry.pronunciation}</span>
+							</div>
+						{/if}
+						{#if relations.direct || relations.cognates?.length || relations.etymologyChain?.length || entry.etymology}
+							<div class="flex items-start gap-4">
+								<span class="w-20 shrink-0 pt-0.5 text-xs font-semibold uppercase tracking-wider text-secondary">Etymology</span>
+								<div class="min-w-0 flex-1">
+									<EtymologySection
+										entryId={entry.id}
+										direct={relations.direct}
+										cognates={relations.cognates}
+										etymologyChain={relations.etymologyChain}
+										narrativeEtymology={entry.etymology || ''}
+										canEdit={canManageWordbook}
+										compact
+									/>
+								</div>
+							</div>
+						{/if}
+					</div>
+				{/if}
 
 				<!-- Definitions -->
 				<div class="divide-y divide-border-subtle">
-					{#each defs as def, index}
+					{#each defs as definition, index (definition.id)}
 						<div class="py-3 group first:pt-0">
 							<div class="flex items-baseline gap-2 mb-1">
 								{#if defs.length > 1}
 									<span class="text-xs font-bold text-secondary">{index + 1}.</span>
 								{/if}
-								{#if def.partOfSpeech}
-									<Badge class={posColors[def.partOfSpeech.toLowerCase()] || ''}>{def.partOfSpeech}</Badge>
+								{#if definition.partOfSpeech}
+									<Badge class={posColors[definition.partOfSpeech.toLowerCase()] || ''}>{definition.partOfSpeech}</Badge>
 								{/if}
 								{#if canManageWordbook && defs.length > 1}
-									<button onclick={() => deleteSense(entry.id, def.id)} class="text-error text-xs opacity-0 transition-opacity ml-auto hover:text-error-hover group-hover:opacity-100">×</button>
+									<button onclick={() => deleteSense(entry.id, definition.id)} class="text-error text-xs opacity-0 transition-opacity ml-auto hover:text-error-hover group-hover:opacity-100">×</button>
 								{/if}
 							</div>
-							<p class="text-body"><InlineMarkup text={def.definition} /></p>
-							{#if def.usageExample}
+							<p class="text-body"><InlineMarkup text={definition.definition} /></p>
+							{#if definition.usageExample}
 								<div class="mt-2 pl-3 border-l-2 border-border-subtle">
-									<p class="text-sm italic text-secondary">{def.usageExample}</p>
-									{#if def.usageTranslation}
-										<p class="text-sm text-dim mt-0.5">{def.usageTranslation}</p>
+									<p class="text-sm italic text-secondary">{definition.usageExample}</p>
+									{#if definition.usageTranslation}
+										<p class="text-sm text-dim mt-0.5">{definition.usageTranslation}</p>
 									{/if}
 								</div>
 							{/if}
@@ -203,7 +223,7 @@
 				<!-- Add sense -->
 				{#if canManageWordbook}
 					{#if addingSenseFor === entry.id}
-						<form onsubmit={e => addSense(entry.id, e)} class="mt-3 p-3 bg-page space-y-2">
+						<form onsubmit={event => addSense(entry.id, event)} class="mt-3 p-3 bg-page space-y-2">
 							{#if senseError}
 								<div class="p-2 bg-error-bg border border-error-border text-error text-xs">{senseError}</div>
 							{/if}
@@ -215,7 +235,7 @@
 									size="sm"
 									items={PARTS_OF_SPEECH.map(pos => ({ value: pos, label: pos }))}
 								/>
-								<Input bind:value={newDef} placeholder="Definition..." required containerClass="flex-1" />
+								<Input bind:value={newDefinition} placeholder="Definition..." required containerClass="flex-1" />
 							</div>
 							<div class="flex gap-2">
 								<Input bind:value={newUsage} placeholder="Usage example" containerClass="flex-1" />
@@ -231,28 +251,10 @@
 					{/if}
 				{/if}
 
-				<!-- Inflection table -->
-				<InflectionTable
-					dimensions={hom.inflection.dimensions}
-					forms={hom.inflection.forms}
-					overrides={hom.inflection.overrides}
-					className={hom.inflection.className}
-					stem={hom.inflection.stem}
-					hasInflection={hom.inflection.hasInflection}
-				/>
-				{#if canManageWordbook && (hom.inflection.dimensions.length > 0 || data.availableClasses.length > 0)}
-					<a
-						href="/Wordbook/contribute/{entry.id}?tab=inflection"
-						class="mt-2 inline-block text-xs text-link hover:text-link-hover hover:underline"
-					>
-						{hom.inflection.hasInflection ? 'Edit inflection' : '+ Set up inflection'}
-					</a>
-				{/if}
-
 				<!-- Tags -->
 				{#if entry.tags && entry.tags.length > 0}
 					<div class="flex flex-wrap gap-1.5 mt-4 pt-3 border-t border-border-subtle">
-						{#each entry.tags as tag}
+						{#each entry.tags as tag (tag)}
 							<TagPill {tag} language={data.language.slug} />
 						{/each}
 					</div>
@@ -276,19 +278,47 @@
 			</div>
 		</div>
 
-		<!-- Etymology -->
-		{#if relations.direct || relations.cognates?.length || relations.etymologyChain?.length || entry.etymology}
-			<div class="bg-raised p-4 mb-4">
-				<EtymologySection
-					entryId={entry.id}
-					direct={relations.direct}
-					cognates={relations.cognates}
-					etymologyChain={relations.etymologyChain}
-					narrativeEtymology={entry.etymology || ''}
-					canEdit={canManageWordbook}
+		{#if hom.inflection.hasInflection || (canManageWordbook && data.availableClasses.length > 0)}
+			<section class="bg-surface p-4">
+				<InflectionTable
+					dimensions={hom.inflection.dimensions}
+					forms={hom.inflection.forms}
+					overrides={hom.inflection.overrides}
+					className={hom.inflection.className}
+					stem={hom.inflection.stem}
+					hasInflection={hom.inflection.hasInflection}
 				/>
-			</div>
+				{#if canManageWordbook && (hom.inflection.dimensions.length > 0 || data.availableClasses.length > 0)}
+					<a href="/Wordbook/contribute/{entry.id}?tab=inflection" class="mt-2 inline-block text-xs text-link hover:text-link-hover hover:underline">
+						{hom.inflection.hasInflection ? 'Edit inflection' : '+ Set up inflection'}
+					</a>
+				{/if}
+			</section>
 		{/if}
+
+			</div>
+
+			<aside class="space-y-3">
+				{#if variants.length > 0 || canManageWordbook}
+					<section class="bg-surface p-3">
+						<h2 class="mb-2 text-[0.625rem] font-semibold uppercase tracking-wider text-secondary">Dialect variants</h2>
+						<VariantManager
+							entryId={entry.id}
+							languageSlug={data.language.slug}
+							{variants}
+							canEdit={canManageWordbook}
+						/>
+					</section>
+				{/if}
+
+				{#if entry.pageSlug}
+					<section class="bg-surface p-3">
+						<h2 class="mb-2 text-[0.625rem] font-semibold uppercase tracking-wider text-secondary">Linked article</h2>
+						<a href="/know/{entry.pageSlug}" class="text-xs text-link hover:text-link-hover hover:underline">Read the full article →</a>
+					</section>
+				{/if}
+			</aside>
+		</div>
 	{/each}
 </ArticleShell>
 

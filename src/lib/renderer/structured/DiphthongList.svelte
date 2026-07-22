@@ -13,17 +13,19 @@
 
 {#if slug && rows && rows.length > 0}
 	<figure class="my-4 diphthong-list">
-		<div class="bg-raised px-4 py-2.5 text-center mx-auto w-fit">
-			<span class="phoneme-cell inline-flex gap-3">
-				{#each rows as phoneme}
-					<span
+		<table class="know-table text-sm">
+			<tbody>
+				<tr>
+				{#each rows as phoneme, index (index)}
+					<td
 						class="font-serif text-base {phoneme.marginal ? 'text-dim' : ''}"
 						title={phoneme.notes ?? undefined}
 					>
 						{#if phoneme.marginal}({phoneme.ipa}){:else}{phoneme.ipa}{/if}
-					</span>
+					</td>
 				{/each}
-			</span>
-		</div>
+				</tr>
+			</tbody>
+		</table>
 	</figure>
 {/if}

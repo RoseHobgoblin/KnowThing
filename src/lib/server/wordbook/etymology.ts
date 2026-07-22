@@ -214,8 +214,9 @@ export async function computeCognates(
 ): Promise<CognateGroup[]> {
 	const roots = await findRoots(entryId)
 
-	// Find all ancestors of the current entry so we can exclude them from cognates
-	// (ancestors are not cognates — they're the origin, not siblings)
+	// Exclude the current entry's whole origin and daughter branches. Cognates are
+	// sibling branches descending from a shared root, never a word's ancestors or
+	// descendants.
 	const ancestorResult = await db.execute(sql`
 		WITH RECURSIVE ancestors AS (
 			SELECT ${entryId}::integer AS id, 0 AS depth
@@ -229,6 +230,19 @@ export async function computeCognates(
 		SELECT DISTINCT id FROM ancestors
 	`)
 	const ancestorIds = new Set((ancestorResult as any[]).map((r: any) => r.id as number))
+	const descendantResult = await db.execute(sql`
+		WITH RECURSIVE descendants AS (
+			SELECT ${entryId}::integer AS id, 0 AS depth
+			UNION ALL
+			SELECT lr.source_id, d.depth + 1
+			FROM descendants d
+			JOIN lexicon_relations lr ON lr.target_id = d.id
+			WHERE lr.relation_type IN ('derived_from', 'loan_from')
+			  AND d.depth < 20
+		)
+		SELECT DISTINCT id FROM descendants
+	`)
+	const descendantIds = new Set((descendantResult as any[]).map((r: any) => r.id as number))
 
 	const allDescendants = new Map<number, { word: string, definition: string, pronunciation: string | null, languageName: string, languageSlug: string, languageFamily: string | null, languageId: number }>()
 
@@ -258,8 +272,7 @@ export async function computeCognates(
 		`)
 
 		for (const r of result as any[]) {
-			// Skip ancestors — they're the origin chain, not cognates
-			if (ancestorIds.has(r.id)) continue
+			if (ancestorIds.has(r.id) || descendantIds.has(r.id)) continue
 			allDescendants.set(r.id, {
 				word: r.word,
 				definition: r.definition || '',

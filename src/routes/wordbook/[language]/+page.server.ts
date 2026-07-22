@@ -8,10 +8,6 @@ import {
 	listActiveLetters,
 	listLanguageEntries,
 } from '$lib/server/services/wordbook.js'
-import { getResolvedLinks, serializeResolvedLinks } from '$lib/server/resolved-links.js'
-import { extractCollectionRefs, parseWikitext } from '$lib/parser/index.js'
-import { resolveAllStructuredCollections } from '$lib/server/structured-data.js'
-import type { WikiNode } from '$lib/parser/types.js'
 
 export const load: PageServerLoad = async ({ params, url }) => {
 	const lang = await getLanguageWithFamily(params.language)
@@ -33,27 +29,10 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	const letter = url.searchParams.get('letter') || ''
 	const PAGE_SIZE = 200
 	const page = Math.max(1, Number.parseInt(url.searchParams.get('page') || '1') || 1)
-	const [{ entries, total }, activeLetters, resolvedLinks] = await Promise.all([
+	const [{ entries, total }, activeLetters] = await Promise.all([
 		listLanguageEntries(lang.id, letter || null, { limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }),
 		listActiveLetters(lang.id),
-		getResolvedLinks({ kind: 'language', entityId: lang.id }),
 	])
-
-	// The language's wiki body renders on this page (prose + {{Consonants}} /
-	// {{Vowels}} / {{Orthography}} grids). Cached AST when available.
-	const body = (lang.body ?? '').trim()
-	const bodyAst: WikiNode | null = body
-		? ((lang.bodyParsedAst as WikiNode) ?? parseWikitext(body))
-		: null
-
-	let structuredCollections: Record<string, Record<string, unknown>[]> | null = null
-	if (bodyAst) {
-		const collectionRefs = extractCollectionRefs(bodyAst)
-		if (collectionRefs.length > 0) {
-			const resolved = await resolveAllStructuredCollections(collectionRefs)
-			if (resolved.size > 0) structuredCollections = Object.fromEntries(resolved)
-		}
-	}
 
 	return {
 		language: lang,
@@ -68,8 +47,5 @@ export const load: PageServerLoad = async ({ params, url }) => {
 		paradigmClasses: inflections.classes,
 		activeLetters,
 		currentLetter: letter,
-		resolvedLinks: serializeResolvedLinks(resolvedLinks),
-		bodyAst,
-		structuredCollections,
 	}
 }

@@ -41,7 +41,7 @@
 	title={titleAttribute}
 >
 	{#if node.display}
-		{#each node.display as child}
+		{#each node.display as child, index (index)}
 			<WikiNode node={child} />
 		{/each}
 	{:else}

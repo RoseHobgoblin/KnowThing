@@ -6,9 +6,9 @@
 </script>
 
 <ol class="know-ol list-decimal pl-8 my-2">
-	{#each items as item}
+	{#each items as item, index (index)}
 		<li>
-			{#each item.children as child}<WikiNodeComponent node={child} />{/each}
+			{#each item.children as child, childIndex (childIndex)}<WikiNodeComponent node={child} />{/each}
 		</li>
 	{/each}
 </ol>

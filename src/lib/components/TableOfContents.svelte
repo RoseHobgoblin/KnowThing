@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Collapsible } from 'bits-ui'
 	import type { WikiNode } from '$lib/parser/types.js'
 
 	let { ast }: { ast: WikiNode } = $props()
@@ -15,7 +16,7 @@
 			for (const child of node.children) {
 				if (child.type === 'heading') {
 					const text = extractText(child.children)
-					const id = text.replaceAll(/\s+/g, '_').replaceAll(/[^\w\-]/g, '')
+					const id = text.replaceAll(/\s+/g, '_').replaceAll(/[^\w-]/g, '')
 					entries.push({ level: child.level, text, id })
 				}
 			}
@@ -81,7 +82,7 @@
 				Sections
 			</div>
 			<ol class="space-y-0.5">
-				{#each headings as h}
+				{#each headings as h (h.id)}
 					<li style="padding-left: {(h.level - 2) * 10}px">
 						<a
 							href="#{h.id}"
@@ -99,9 +100,8 @@
 	</nav>
 
 	<!-- Mobile/tablet: floating toggle button + dropdown -->
-	<div class="mb-4·xl:hidden">
-		<button
-			onclick={() => tocOpen = !tocOpen}
+	<Collapsible.Root bind:open={tocOpen} class="mb-4 xl:hidden">
+		<Collapsible.Trigger
 			class="
 				flex items-center gap-1.5 text-xs text-secondary font-medium
 				px-3 py-1.5 bg-surface shadow-sm
@@ -118,12 +118,12 @@
 			>
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
 			</svg>
-		</button>
+		</Collapsible.Trigger>
 
-		{#if tocOpen}
+		<Collapsible.Content>
 			<nav class="mt-2 bg-surface shadow-sm p-3">
 				<ol class="space-y-0.5 text-sm">
-					{#each headings as h}
+					{#each headings as h (h.id)}
 						<li style="padding-left: {(h.level - 2) * 16}px">
 							<a
 								href="#{h.id}"
@@ -139,6 +139,6 @@
 					{/each}
 				</ol>
 			</nav>
-		{/if}
-	</div>
+		</Collapsible.Content>
+	</Collapsible.Root>
 {/if}

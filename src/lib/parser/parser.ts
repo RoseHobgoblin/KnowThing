@@ -220,7 +220,7 @@ function parseTable(
 			const nested = parseTable(tokens, index)
 			// Embed nested table as a cell child
 			if (currentRow.length > 0) {
-				currentRow.at(-1).children.push(nested.node)
+				currentRow.at(-1)!.children.push(nested.node)
 			} else {
 				currentRow.push({
 					isHeader: false,
@@ -237,7 +237,7 @@ function parseTable(
 			const content = (token as { type: 'text_line', content: string }).content
 			if (currentRow.length > 0) {
 				// Append to last cell
-				currentRow.at(-1).children.push(
+				currentRow.at(-1)!.children.push(
 					...parseInline(' ' + content),
 				)
 			}

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte'
 	import WikiNodeComponent from '$lib/renderer/WikiNode.svelte'
 	import { createKnowContext, type KnowRenderContext } from '$lib/renderer/context.js'
 	import { SvelteMap } from 'svelte/reactivity'
@@ -12,6 +13,8 @@
 	import ClockCounterClockwise from 'phosphor-svelte/lib/ClockCounterClockwise'
 	import Trash from 'phosphor-svelte/lib/Trash'
 	import type { WikiNode } from '$lib/parser/types.js'
+	import { buildFieldMap, getField } from '$lib/infoboxes/types.js'
+	import { detectInfoboxType } from '$lib/infoboxes/detect.js'
 
 	let {
 		title,
@@ -55,7 +58,28 @@
 		return map
 	}
 
-	createKnowContext({
+	function findPersonNativeName(node: WikiNode): string {
+		if (node.type === 'template') {
+			const fields = buildFieldMap(node.args)
+			const type = detectInfoboxType(node.name, fields)
+			if (type === 'person' || type === 'royalty' || type === 'officeholder') {
+				return getField(fields, 'native_name') ?? ''
+			}
+		}
+		if ('children' in node) {
+			for (const child of node.children) {
+				const nativeName = findPersonNativeName(child)
+				if (nativeName) return nativeName
+			}
+		}
+		return ''
+	}
+
+	const articleSubtitle = $derived(findPersonNativeName(ast))
+
+	// One-time capture is correct: the parent keys this component on the slug,
+	// so a new article remounts it with fresh context.
+	createKnowContext(untrack(() => ({
 		resolvedLinks: new SvelteMap(Object.entries(rawResolvedLinks ?? {})),
 		mediaBaseUrl: '/api/media',
 		pageBaseUrl: '/know',
@@ -64,12 +88,13 @@
 		structuredData: buildStructuredData(rawStructuredData),
 		structuredCollections: (structuredCollections ?? null) as KnowRenderContext['structuredCollections'],
 		systemMaps: systemMaps as KnowRenderContext['systemMaps'],
-	})
+	})))
 </script>
 
 <ArticleShell
 	breadcrumbs={knowBreadcrumbs(title)}
 	{title}
+	subtitle={articleSubtitle}
 >
 	{#snippet actions()}
 		{#if permissions.canEditContent}

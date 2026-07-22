@@ -5,8 +5,6 @@
 	import AlphabetNav from '$lib/components/wordbook/AlphabetNav.svelte'
 	import WordEntry from '$lib/components/wordbook/WordEntry.svelte'
 	import InflectionSummary from '$lib/components/wordbook/InflectionSummary.svelte'
-	import WikiNodeComponent from '$lib/renderer/WikiNode.svelte'
-	import { createKnowContext } from '$lib/renderer/context.js'
 
 	let { data }: { data: PageData } = $props()
 
@@ -20,15 +18,6 @@
 		data.language.description
 		|| `${Number(data.language.wordCount)} ${Number(data.language.wordCount) === 1 ? 'word' : 'words'} in ${data.language.name}.`,
 	)
-
-	createKnowContext({
-		resolvedLinks: new Map(Object.entries(data.resolvedLinks ?? {})),
-		mediaBaseUrl: '/api/media',
-		pageBaseUrl: '/Wordbook',
-		sourceDomain: 'wordbook',
-		calendarDate: $page.data.calendarDate ?? null,
-		structuredCollections: data.structuredCollections ?? null,
-	})
 
 	// Group entries by accent-folded first grapheme (matches the server's
 	// unaccent bucketing): "é" → E, digraph-safe via Intl.Segmenter, and
@@ -131,23 +120,13 @@
 		Wiki body: prose + {{Consonants}}/{{Vowels}}/{{Orthography}} grids render
 		right here — no more entering data that only a Know article could display.
 	-->
-	{#if data.bodyAst}
-		<article class="know-article mb-6">
-			<WikiNodeComponent node={data.bodyAst} />
-		</article>
-	{/if}
-
 	<!-- Child languages -->
 	{#if data.children.length > 0}
 		<div class="bg-raised p-4 mb-4">
 			<h3 class="text-sm font-semibold text-body mb-2">Descendant languages</h3>
 			<div class="flex flex-wrap gap-2">
-				{#each data.children as child}
-					<a href="/Wordbook/{child.slug}" class="
-						inline-flex items-center gap-1.5 px-3 py-1.5 text-sm
-						transition-colors
-						hover:bg-accent-subtle
-					">
+				{#each data.children as child (child.slug)}
+					<a href="/Wordbook/{child.slug}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm transition-colors hover:bg-accent-subtle">
 						<span class="size-2" style="background-color: {child.color || 'var(--color-accent)'}"></span>
 						<span class="font-medium text-body">{child.name}</span>
 						{#if child.nativeName}
@@ -167,7 +146,7 @@
 		<div class="bg-raised p-4 mb-4">
 			<h3 class="text-sm font-semibold text-body mb-2">Dialects</h3>
 			<div class="space-y-1">
-				{#each data.dialects as dialect}
+				{#each data.dialects as dialect (dialect.id)}
 					<div class="flex items-center gap-2 text-sm">
 						<span class="font-medium text-secondary">{dialect.name}</span>
 						{#if dialect.region}
@@ -202,11 +181,11 @@
 
 	<!-- Entries -->
 	{#if data.entries.length > 0}
-		{#each grouped as [letter, entries]}
+		{#each grouped as [letter, entries] (letter)}
 			<section class="mb-4">
 				<h2 class="text-xl font-bold text-secondary mb-2 pl-1" id="letter-{letter}">{letter}</h2>
 				<div class="bg-raised divide-y divide-border-subtle">
-					{#each entries as entry}
+					{#each entries as entry (entry.id)}
 						<WordEntry {entry} showLanguage={false} />
 					{/each}
 				</div>

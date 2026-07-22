@@ -226,7 +226,7 @@
 			<button type="button" onclick={addDefinition} class="text-xs text-link hover:text-link-hover hover:underline">+ Add definition</button>
 		</div>
 
-		{#each defs as def, index}
+		{#each defs as def, index (def)}
 			<div class="p-3 mb-3 bg-page/50 {defs.length > 1 ? 'relative' : ''}">
 				{#if defs.length > 1}
 					<div class="flex items-center justify-between mb-2">
@@ -288,7 +288,7 @@
 		{#if etymRows.length === 0}
 			<p class="text-xs text-secondary">Click "+ Add source word" to link derivations, loans, or compounds.</p>
 		{/if}
-		{#each etymRows as row, index}
+		{#each etymRows as row, index (row)}
 			<div class="flex gap-2 items-start mb-2">
 				<Select bind:value={row.relationType} type="single" items={etymRelationItems} size="sm" />
 				<div class="relative flex-1">
@@ -307,7 +307,7 @@
 					/>
 					{#if row.showDropdown}
 						<div class="absolute z-10 top-full inset-x-0 mt-1 bg-surface shadow-lg max-h-40 overflow-y-auto">
-							{#each row.results as result}
+							{#each row.results as result (result.id)}
 								<button type="button" onclick={() => selectEtymTarget(index, result)} class="w-full text-left px-3 py-1.5 text-sm border-b border-border-subtle hover:bg-accent-subtle last:border-0">
 									<span class="font-medium">{result.word}</span>
 									<span class="text-secondary text-xs ml-1">({result.languageName})</span>

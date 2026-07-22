@@ -24,64 +24,59 @@
 		'description', 'from',
 	])
 
-	const title = getField(fields, 'name') ?? ''
-	const image = getField(fields, 'image') ?? ''
-	const imageCaption = getField(fields, 'caption') ?? ''
+	const title = $derived(getField(fields, 'name') ?? '')
+	const image = $derived(getField(fields, 'image') ?? '')
+	const imageCaption = $derived(getField(fields, 'caption') ?? '')
 
-	const spectralType = getField(fields, 'spectral_type') ?? ''
-	const mass = getField(fields, 'mass') ?? ''
-	const radius = getField(fields, 'radius') ?? ''
-	const density = getField(fields, 'density') ?? ''
-	const surfaceGravity = getField(fields, 'surface_gravity') ?? ''
-	const escapeVelocity = getField(fields, 'escape_velocity') ?? ''
-	const luminosity = getField(fields, 'luminosity') ?? ''
-	const luminosityVisual = getField(fields, 'luminosity_visual') ?? ''
-	const temperature = getField(fields, 'temperature') ?? ''
-	const age = getField(fields, 'age') ?? ''
-	const color = getField(fields, 'color') ?? ''
-	const metallicity = getField(fields, 'metallicity') ?? ''
-	const habitableZone = getField(fields, 'habitable_zone') ?? ''
+	const spectralType = $derived(getField(fields, 'spectral_type') ?? '')
+	const mass = $derived(getField(fields, 'mass') ?? '')
+	const radius = $derived(getField(fields, 'radius') ?? '')
+	const density = $derived(getField(fields, 'density') ?? '')
+	const surfaceGravity = $derived(getField(fields, 'surface_gravity') ?? '')
+	const escapeVelocity = $derived(getField(fields, 'escape_velocity') ?? '')
+	const luminosity = $derived(getField(fields, 'luminosity') ?? '')
+	const luminosityVisual = $derived(getField(fields, 'luminosity_visual') ?? '')
+	const temperature = $derived(getField(fields, 'temperature') ?? '')
+	const age = $derived(getField(fields, 'age') ?? '')
+	const color = $derived(getField(fields, 'color') ?? '')
+	const metallicity = $derived(getField(fields, 'metallicity') ?? '')
+	const habitableZone = $derived(getField(fields, 'habitable_zone') ?? '')
 
-	const rotationPeriod = getField(fields, 'rotation_period') ?? ''
-	const axialTilt = getField(fields, 'axial_tilt') ?? ''
-	const equatorialVelocity = getField(fields, 'equatorial_velocity') ?? ''
+	const rotationPeriod = $derived(getField(fields, 'rotation_period') ?? '')
+	const axialTilt = $derived(getField(fields, 'axial_tilt') ?? '')
+	const equatorialVelocity = $derived(getField(fields, 'equatorial_velocity') ?? '')
 
-	const orbitalPeriod = getField(fields, 'orbital_period') ?? ''
-	const semiMajorAxis = getField(fields, 'orbital_semimajor', 'semi_major_axis') ?? ''
-	const eccentricity = getField(fields, 'orbital_eccentricity', 'eccentricity') ?? ''
-	const periastron = getField(fields, 'periastron') ?? ''
-	const apastron = getField(fields, 'apastron') ?? ''
+	const orbitalPeriod = $derived(getField(fields, 'orbital_period') ?? '')
+	const semiMajorAxis = $derived(getField(fields, 'orbital_semimajor', 'semi_major_axis') ?? '')
+	const eccentricity = $derived(getField(fields, 'orbital_eccentricity', 'eccentricity') ?? '')
+	const periastron = $derived(getField(fields, 'periastron') ?? '')
+	const apastron = $derived(getField(fields, 'apastron') ?? '')
 
-	const apparentMagnitude = getField(fields, 'apparent_magnitude') ?? ''
-	const apparentMagnitudeBright = getField(fields, 'apparent_magnitude_bright') ?? ''
-	const apparentMagnitudeDim = getField(fields, 'apparent_magnitude_dim') ?? ''
-	const absoluteMagnitude = getField(fields, 'absolute_magnitude') ?? ''
-	const angularDiameter = getField(fields, 'angular_diameter') ?? ''
-	const angularDiameterMax = getField(fields, 'angular_diameter_max') ?? ''
-	const angularDiameterMin = getField(fields, 'angular_diameter_min') ?? ''
+	const apparentMagnitude = $derived(getField(fields, 'apparent_magnitude') ?? '')
+	const apparentMagnitudeBright = $derived(getField(fields, 'apparent_magnitude_bright') ?? '')
+	const apparentMagnitudeDim = $derived(getField(fields, 'apparent_magnitude_dim') ?? '')
+	const absoluteMagnitude = $derived(getField(fields, 'absolute_magnitude') ?? '')
+	const angularDiameter = $derived(getField(fields, 'angular_diameter') ?? '')
+	const angularDiameterMax = $derived(getField(fields, 'angular_diameter_max') ?? '')
+	const angularDiameterMin = $derived(getField(fields, 'angular_diameter_min') ?? '')
 
-	const meanDistance = getField(fields, 'mean_distance') ?? ''
-	const companion = getField(fields, 'companion') ?? ''
-	const companionOf = getField(fields, 'companion_of') ?? ''
-	const companionOfSlug = getField(fields, 'companion_of_slug') ?? ''
-	const planets = getField(fields, 'planets') ?? ''
-	const knownSatellites = getField(fields, 'known_satellites') ?? ''
+	const meanDistance = $derived(getField(fields, 'mean_distance') ?? '')
+	const companion = $derived(getField(fields, 'companion') ?? '')
+	const companionOf = $derived(getField(fields, 'companion_of') ?? '')
+	const companionOfSlug = $derived(getField(fields, 'companion_of_slug') ?? '')
+	const planets = $derived(getField(fields, 'planets') ?? '')
+	const knownSatellites = $derived(getField(fields, 'known_satellites') ?? '')
 
-	const hasRotation = rotationPeriod || axialTilt || equatorialVelocity
-	const hasOrbital = orbitalPeriod || semiMajorAxis || eccentricity || periastron || apastron
-	const hasObservation = apparentMagnitude || apparentMagnitudeBright || absoluteMagnitude || angularDiameter || angularDiameterMax || meanDistance
-	const hasSystem = companion || companionOf || planets || knownSatellites
+	const hasRotation = $derived(rotationPeriod || axialTilt || equatorialVelocity)
+	const hasOrbital = $derived(orbitalPeriod || semiMajorAxis || eccentricity || periastron || apastron)
+	const hasObservation = $derived(apparentMagnitude || apparentMagnitudeBright || absoluteMagnitude || angularDiameter || angularDiameterMax || meanDistance)
+	const hasSystem = $derived(companion || companionOf || planets || knownSatellites)
 
-	const remaining = getRemainingFields(fields, KNOWN_KEYS)
+	const remaining = $derived(getRemainingFields(fields, KNOWN_KEYS))
 </script>
 
-<InfoboxShell
-	{title}
-	subtitle={spectralType}
-	{image}
-	{imageCaption}
->
-	<InfoboxSection title="Stellar properties" />
+<InfoboxShell {title} {image} {imageCaption}>
+	<InfoboxSection title="Stellar properties">
 	<InfoboxRow label="Spectral type" value={spectralType} />
 	<InfoboxRow label="Mass" value={mass} />
 	<InfoboxRow label="Radius" value={radius} />
@@ -97,25 +92,28 @@
 	<InfoboxRow label="Age" value={age} />
 	<InfoboxRow label="Color" value={color} />
 	<InfoboxRow label="Habitable zone" value={habitableZone} />
+	</InfoboxSection>
 
 	{#if hasRotation}
-		<InfoboxSection title="Rotation" />
+		<InfoboxSection title="Rotation">
 		<InfoboxRow label="Rotation period" value={rotationPeriod} />
 		<InfoboxRow label="Equatorial velocity" value={equatorialVelocity} />
 		<InfoboxRow label="Axial tilt" value={axialTilt} />
+		</InfoboxSection>
 	{/if}
 
 	{#if hasOrbital}
-		<InfoboxSection title="Orbit" />
+		<InfoboxSection title="Orbit">
 		<InfoboxRow label="Orbital period" value={orbitalPeriod} />
 		<InfoboxRow label="Semi-major axis" value={semiMajorAxis} />
 		<InfoboxRow label="Eccentricity" value={eccentricity} />
 		<InfoboxRow label="Periastron" value={periastron} />
 		<InfoboxRow label="Apastron" value={apastron} />
+		</InfoboxSection>
 	{/if}
 
 	{#if hasObservation}
-		<InfoboxSection title="Observation" />
+		<InfoboxSection title="Observation">
 		{#if apparentMagnitude}
 			<InfoboxRow label="Apparent magnitude" value={apparentMagnitude} />
 		{/if}
@@ -136,19 +134,25 @@
 		{#if angularDiameterMin}
 			<InfoboxRow label="Angular diameter (min)" value={angularDiameterMin} />
 		{/if}
+		</InfoboxSection>
 	{/if}
 
 	{#if hasSystem}
-		<InfoboxSection title="System" />
+		<InfoboxSection title="System">
 		{#if companionOf}
 			<InfoboxRow label="Companion of" value={companionOfSlug ? `[[${companionOfSlug}|${companionOf}]]` : companionOf} />
 		{/if}
 		<InfoboxRow label="Companion" value={companion} />
 		<InfoboxRow label="Planets" value={planets} />
 		<InfoboxRow label="Known satellites" value={knownSatellites} />
+		</InfoboxSection>
 	{/if}
 
-	{#each remaining as [key, value]}
-		<InfoboxRow label={key} {value} />
-	{/each}
+	{#if remaining.length > 0}
+		<InfoboxSection>
+			{#each remaining as [key, value] (key)}
+				<InfoboxRow label={key} {value} />
+			{/each}
+		</InfoboxSection>
+	{/if}
 </InfoboxShell>

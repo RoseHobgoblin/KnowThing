@@ -4,6 +4,7 @@
 	import Plus from 'phosphor-svelte/lib/PlusIcon'
 	import X from 'phosphor-svelte/lib/XIcon'
 	import DotsSixVertical from 'phosphor-svelte/lib/DotsSixVerticalIcon'
+	import { createSortable } from '$lib/utils/sortable.svelte'
 
 	interface PhonemeOption {
 		id: number
@@ -26,7 +27,6 @@
 	])
 
 	let pendingId = $state<string>('__add__')
-	let dragging = $state<number | null>(null)
 
 	function addPhoneme() {
 		const id = Number(pendingId)
@@ -39,31 +39,15 @@
 		value = value.filter((_, index_) => index_ !== index)
 	}
 
-	function onDragStart(index: number, event: DragEvent) {
-		dragging = index
-		event.dataTransfer?.setData('text/plain', String(index))
-		if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move'
-	}
-
-	function onDragOver(event: DragEvent) {
-		event.preventDefault()
-		if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
-	}
-
-	function onDrop(index: number, event: DragEvent) {
-		event.preventDefault()
-		const from = dragging
-		dragging = null
-		if (from == null || from === index) return
-		const next = [...value]
-		const [moved] = next.splice(from, 1)
-		next.splice(index, 0, moved)
-		value = next
-	}
-
-	function onDragEnd() {
-		dragging = null
-	}
+	const sortable = createSortable({
+		cancel: 'button',
+		onReorder(from, to) {
+			const next = [...value]
+			const [moved] = next.splice(from, 1)
+			next.splice(to, 0, moved)
+			value = next
+		},
+	})
 </script>
 
 <div class="phoneme-sequence-input">
@@ -75,12 +59,10 @@
 				{@const p = optionById.get(pid)}
 				<div
 					class="inline-flex items-center gap-1 px-2 py-1 bg-muted rounded-sm text-sm cursor-grab"
-					class:opacity-50={dragging === index}
-					draggable="true"
-					ondragstart={e => onDragStart(index, e)}
-					ondragover={onDragOver}
-					ondrop={e => onDrop(index, e)}
-					ondragend={onDragEnd}
+					class:opacity-50={sortable.dragIndex === index}
+					class:ring-1={sortable.overIndex === index}
+					class:ring-accent={sortable.overIndex === index}
+					use:sortable.item={index}
 					title={p ? `${p.type}` : 'unknown phoneme'}
 					role="listitem"
 				>

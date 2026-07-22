@@ -1,6 +1,15 @@
 import type { InfoboxSchema } from './types.js'
 import { getField } from '../types.js'
 
+function linkedSectionHeading(
+	fields: Parameters<NonNullable<InfoboxSchema['titleCompose']>>[0],
+	label: string,
+	topic: string = label,
+): string {
+	const country = getField(fields, 'common_name', 'name') ?? ''
+	return country ? `[[${topic} of ${country}|${label}]]` : label
+}
+
 export const countrySchema: InfoboxSchema = {
 	id: 'country',
 	title: ['conventional_long_name', 'name', 'common_name'],
@@ -27,6 +36,9 @@ export const countrySchema: InfoboxSchema = {
 		'population_census', 'population', 'population_estimate',
 		'population_census_year', 'population_year', 'population_estimate_year',
 		'area_km2', 'area',
+		'gdp_ppp', 'gdp_ppp_total', 'gdp_ppp_year',
+		'gdp_nominal', 'gdp', 'gdp_nominal_year', 'gdp_year',
+		'gini', 'gini_year', 'hdi', 'hdi_year',
 		'largest_city', 'largest_settlement',
 	],
 	sections: [
@@ -49,7 +61,7 @@ export const countrySchema: InfoboxSchema = {
 			],
 		},
 		{
-			heading: 'Government',
+			headingCompose: fields => linkedSectionHeading(fields, 'Government', 'Politics'),
 			rows: [
 				{ label: 'Type', keys: ['government_type', 'government'] },
 				{ pair: { labelKey: 'leader_title', valueKey: 'leader_name', max: 14 } },
@@ -57,13 +69,12 @@ export const countrySchema: InfoboxSchema = {
 			],
 		},
 		{
-			heading: 'Establishment',
+			headingCompose: fields => linkedSectionHeading(fields, 'History'),
 			rows: [
 				{ pair: { labelKey: 'established_event', valueKey: 'established_date', max: 13 } },
 			],
 		},
 		{
-			heading: 'Area & Population',
 			rows: [
 				{
 					label: 'Total area',
@@ -80,12 +91,19 @@ export const countrySchema: InfoboxSchema = {
 						return value ? `${value}${year ? ` (${year})` : ''}` : ''
 					},
 				},
+				{ label: 'GDP (PPP)', keys: ['gdp_ppp', 'gdp_ppp_total'] },
+				{ label: 'GDP', keys: ['gdp_nominal', 'gdp'] },
+				{ label: 'Gini', keys: ['gini'] },
+				{ label: 'HDI', keys: ['hdi'] },
+				{ label: 'Currency', keys: ['currency'] },
 			],
 		},
 		{
 			rows: [
-				{ label: 'Currency', keys: ['currency'] },
 				{ label: 'Time zone', keys: ['time_zone'] },
+				{ label: 'Calling code', keys: ['calling_code'] },
+				{ label: 'ISO 3166 code', keys: ['iso3166code', 'iso_3166_code', 'iso_code'] },
+				{ label: 'Internet TLD', keys: ['internet_tld', 'tld'] },
 			],
 		},
 	],

@@ -140,7 +140,7 @@
 						class="px-2 py-1 text-xs text-body bg-surface outline-none focus:ring-2 focus:ring-accent"
 					>
 						<option value="" disabled>Dialect…</option>
-						{#each availableDialects as dialect}
+						{#each availableDialects as dialect (dialect.id)}
 							<option value={String(dialect.id)}>{dialect.name}</option>
 						{/each}
 					</select>
