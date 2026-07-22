@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { CalendarConfig, ResolvedDate } from '$lib/calendar/types.js'
+	import type { CalendarConfig, ResolvedDate } from 'rimecraft'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import CalendarWidget from '$lib/calendar/CalendarWidget.svelte'
 	import { page } from '$app/stores'

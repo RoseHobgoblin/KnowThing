@@ -10,7 +10,7 @@
 
 <script lang="ts">
 	import { untrack } from 'svelte'
-	import type { CalendarConfig, MonthType, SeasonKind, StaticCalendarData } from '$lib/calendar/types.js'
+	import type { CalendarConfig, MonthType, SeasonKind, StaticCalendarData } from 'rimecraft'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import Input from '$lib/components/ui/Input.svelte'
 	import Select from '$lib/components/ui/Select.svelte'

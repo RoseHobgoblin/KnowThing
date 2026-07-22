@@ -1,7 +1,7 @@
 import { error, redirect } from '@sveltejs/kit'
 import { hasRole } from '$lib/server/auth.js'
-import type { CalendarConfig, StaticCalendarData } from '$lib/calendar/types.js'
-import { resolveDisplay } from '$lib/calendar/date-math.js'
+import type { CalendarConfig, StaticCalendarData } from 'rimecraft'
+import { resolveDisplay } from 'rimecraft'
 import {
 	type Calendar,
 	findCalendarBySlugCaseInsensitive,

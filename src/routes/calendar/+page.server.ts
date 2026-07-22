@@ -1,5 +1,5 @@
 import type { PageServerLoad } from './$types.js'
-import type { CalendarConfig, StaticCalendarData } from '$lib/calendar/types.js'
+import type { CalendarConfig, StaticCalendarData } from 'rimecraft'
 import {
 	type Calendar,
 	listAllCalendars,

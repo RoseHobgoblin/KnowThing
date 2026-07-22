@@ -1,0 +1,33 @@
+{
+	"name": "rimecraft",
+	"version": "0.1.0",
+	"description": "A calendar engine for worldbuilding: define invented calendars — arbitrary months, weeks, moons, leap rules, eras and seasons — then reckon dates, weekdays and moon phases across them.",
+	"type": "module",
+	"license": "MIT",
+	"keywords": [
+		"calendar",
+		"worldbuilding",
+		"fantasy-calendar",
+		"computus",
+		"timekeeping",
+		"lunisolar",
+		"leap-year",
+		"procedural-generation"
+	],
+	"sideEffects": false,
+	"exports": {
+		".": {
+			"types": "./src/index.ts",
+			"default": "./src/index.ts"
+		}
+	},
+	"files": [
+		"src",
+		"dist"
+	],
+	"scripts": {
+		"build": "tsc -p tsconfig.json",
+		"typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
+		"test": "vitest run"
+	}
+}

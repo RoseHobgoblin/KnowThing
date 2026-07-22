@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { TemplateArg } from '$lib/parser/types.js'
 	import { resolveMagicWord, resolveParserFunction } from '$lib/parser/magic-words.js'
-	import { resolveCalendarMagicWord } from '$lib/calendar/magic-words.js'
+	import { resolveCalendarMagicWord } from 'rimecraft'
 	import { getKnowContext } from '$lib/renderer/context.js'
 	import { detectInfoboxType } from '$lib/infoboxes/detect.js'
 	import { buildFieldMap } from '$lib/infoboxes/types.js'

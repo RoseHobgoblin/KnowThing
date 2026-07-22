@@ -49,7 +49,10 @@ export function computeYearLayout(data: StaticCalendarData, year: number): Month
 
 	let layout: MonthLayout[]
 
-	if (!hasLunisolar) {
+	if (hasLunisolar) {
+		// Lunisolar: compute leap month insertion (Step 4 will implement this)
+		layout = computeLunisolarLayout(data, year)
+	} else {
 		// Non-lunisolar: static month list
 		layout = data.months.map((month, i) => ({
 			month,
@@ -57,9 +60,6 @@ export function computeYearLayout(data: StaticCalendarData, year: number): Month
 			isLeapMonth: false,
 			displayName: month.name,
 		}))
-	} else {
-		// Lunisolar: compute leap month insertion (Step 4 will implement this)
-		layout = computeLunisolarLayout(data, year)
 	}
 
 	yearCache.set(year, layout)
@@ -200,11 +200,9 @@ function computeLunisolarLayout(data: StaticCalendarData, year: number): MonthLa
 
 /** Helper: compute absolute day of year start without full absoluteDay (avoids circular dependency) */
 function absoluteDayForYearStart(data: StaticCalendarData, year: number, regularMonths: import('./types.js').Month[]): number {
-	let abs = 0
 	const avgYearDays = regularMonths.reduce((sum, m) => sum + m.length, 0)
 	// Rough approximation for epoch-relative positioning — sufficient for phase calculation
-	abs = (year - 1) * avgYearDays
-	return abs
+	return (year - 1) * avgYearDays
 }
 
 // ============================================================================
@@ -430,7 +428,7 @@ export function seasonForDate(data: StaticCalendarData, date: CalendarDate): Sea
 
 	if (dated.length > 0) {
 		// Sort dated seasons by (month, day)
-		const sorted = [...dated].sort((a, b) => {
+		const sorted = dated.toSorted((a, b) => {
 			const at = a.timing as { type: 'dated', month: number, day: number }
 			const bt = b.timing as { type: 'dated', month: number, day: number }
 			return at.month === bt.month ? at.day - bt.day : at.month - bt.month

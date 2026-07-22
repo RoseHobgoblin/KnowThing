@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types.js'
-import { resolveDisplay } from '$lib/calendar/date-math.js'
-import type { CalendarConfig, StaticCalendarData } from '$lib/calendar/types.js'
+import { resolveDisplay } from 'rimecraft'
+import type { CalendarConfig, StaticCalendarData } from 'rimecraft'
 import { extractImagesFromAst, extractSummaryFromAst, parseWikitext } from '$lib/parser/index.js'
 import type { WikiNode } from '$lib/parser/types.js'
 import {

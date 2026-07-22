@@ -1,7 +1,7 @@
 import { getContext, setContext } from 'svelte'
 import { writable, type Writable } from 'svelte/store'
 import type { TemplateArg, WikiNode } from '$lib/parser/types.js'
-import type { CalendarConfig, ResolvedDate } from '$lib/calendar/types.js'
+import type { CalendarConfig, ResolvedDate } from 'rimecraft'
 
 const KNOW_CONTEXT_KEY = 'know-render-context'
 

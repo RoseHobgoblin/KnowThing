@@ -1,6 +1,6 @@
 import type { LayoutServerLoad } from './$types.js'
-import { resolveDisplay } from '$lib/calendar/date-math.js'
-import type { CalendarConfig, ResolvedDate, StaticCalendarData } from '$lib/calendar/types.js'
+import { resolveDisplay } from 'rimecraft'
+import type { CalendarConfig, ResolvedDate, StaticCalendarData } from 'rimecraft'
 import { getSiteConfig } from '$lib/server/settings.js'
 import { hasRole } from '$lib/server/auth.js'
 import type { AppPermissions } from '$lib/permissions.js'

@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { untrack } from 'svelte'
 	import type { MapBody } from './SystemMap.svelte'
-	import type { CalendarConfig } from '$lib/calendar/types.js'
+	import type { CalendarConfig } from 'rimecraft'
 	import { resolveColor } from './colors.js'
 	import { deriveSystemType } from 'tungolcraft'
-	import { resolveDisplay, dateFromAbsolute } from '$lib/calendar/date-math.js'
+	import { resolveDisplay, dateFromAbsolute } from 'rimecraft'
 	import Select from '$lib/components/ui/Select.svelte'
 	import CalendarWidget from '$lib/calendar/CalendarWidget.svelte'
 	import Star from 'phosphor-svelte/lib/Star'

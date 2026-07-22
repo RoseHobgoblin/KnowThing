@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { untrack } from 'svelte'
-	import type { CalendarConfig } from './types.js'
-	import { getMonthGrid, resolveDisplay, moonPhase, phaseName, daysInMonth, formatYearWithEra, seasonForDate } from './date-math.js'
+	import type { CalendarConfig } from 'rimecraft'
+	import { getMonthGrid, resolveDisplay, moonPhase, phaseName, daysInMonth, formatYearWithEra, seasonForDate } from 'rimecraft'
 
 	let {
 		config,

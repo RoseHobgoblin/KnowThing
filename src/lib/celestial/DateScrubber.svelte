@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { untrack } from 'svelte'
-	import type { CalendarConfig } from '$lib/calendar/types.js'
+	import type { CalendarConfig } from 'rimecraft'
 	import Select from '$lib/components/ui/Select.svelte'
-	import { resolveDisplay, daysInYear, absoluteDay, dateFromAbsolute } from '$lib/calendar/date-math.js'
+	import { resolveDisplay, daysInYear, absoluteDay, dateFromAbsolute } from 'rimecraft'
 	import CaretLeft from 'phosphor-svelte/lib/CaretLeft'
 	import CaretRight from 'phosphor-svelte/lib/CaretRight'
 

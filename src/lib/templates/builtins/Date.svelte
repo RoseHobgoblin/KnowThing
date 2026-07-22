@@ -2,8 +2,8 @@
 	import type { TemplateArg } from '$lib/parser/types.js'
 	import { positionalArg } from '../args.js'
 	import { getKnowContext } from '$lib/renderer/context.js'
-	import { fromTimestamp } from '$lib/calendar/know-date.js'
-	import type { ResolvedDate } from '$lib/calendar/types.js'
+	import { fromTimestamp } from 'rimecraft'
+	import type { ResolvedDate } from 'rimecraft'
 
 	let { args }: { args: TemplateArg[] } = $props()
 
