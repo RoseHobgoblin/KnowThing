@@ -9,7 +9,7 @@
 import { G, AU_M, STEFAN_BOLTZMANN, SOLAR_LUMINOSITY } from './constants.js'
 import { m, kelvin, watts } from './units.js'
 import type {
-	Kilograms, Metres, AstronomicalUnits, Days, Kelvin, Watts,
+	Kilograms, Metres, AstronomicalUnits, Days, Seconds, Kelvin, Watts,
 	MetresPerSecond, MetresPerSecondSquared, KgPerCubicMetre, GravitationalParameter,
 } from './units.js'
 
@@ -26,6 +26,21 @@ export function computeSurfaceGravity(massKg: Kilograms, radiusM: Metres): Metre
 /** escape velocity = √(2GM/r) → m/s */
 export function computeEscapeVelocity(massKg: Kilograms, radiusM: Metres): MetresPerSecond {
 	return Math.sqrt((2 * G * massKg) / radiusM) as MetresPerSecond
+}
+
+/**
+ * Critical rotation period below which a self-gravitating body spins itself
+ * apart. Equatorial centrifugal acceleration ω²R reaches surface gravity GM/r²
+ * when ω² = GM/r³ = (4/3)πGρ; substituting ω = 2π/P and cancelling both mass and
+ * radius leaves a period set purely by bulk density:
+ *   P_crit = 2π / √((4/3)πGρ) = √(3π / Gρ)
+ * A body spinning faster than this (a shorter period) cannot hold together by
+ * self-gravity alone. Density in kg/m³ → period in seconds. This is why the check
+ * is a density equation, not a fixed one-hour rule: a dense body tolerates a far
+ * faster spin than a fluffy one.
+ */
+export function computeRotationalBreakupPeriodS(density: KgPerCubicMetre): Seconds {
+	return Math.sqrt((3 * Math.PI) / (G * density)) as Seconds
 }
 
 /**
@@ -99,9 +114,29 @@ export function computeHillSphereAu(semiMajorAxisAu: AstronomicalUnits, bodyMass
 	return (semiMajorAxisAu * (1 - ecc) * Math.cbrt(bodyMassKg / (3 * parentMassKg))) as AstronomicalUnits
 }
 
-/** Roche limit (rigid body): d ≈ R_parent × (2 × ρ_parent / ρ_sat)^(1/3) → metres */
-export function computeRocheLimitM(parentRadiusM: Metres, parentDensity: KgPerCubicMetre, bodyDensity: KgPerCubicMetre): Metres {
-	return (parentRadiusM * Math.cbrt(2 * parentDensity / bodyDensity)) as Metres
+/**
+ * Roche limit — the closest a satellite held together only by its own gravity
+ * can orbit before tidal forces shred it:
+ *   d = C · R_parent · (ρ_parent / ρ_sat)^(1/3)  → metres
+ * The coefficient C depends on how the satellite resists the tide, and the two
+ * cases bracket reality rather than agree:
+ *   'rigid' → C = 2^(1/3) ≈ 1.26. A solid body that keeps its shape; the tide
+ *     must overcome material strength, so it survives closer in. The optimistic
+ *     (inner) bound.
+ *   'fluid' → C ≈ 2.44. A fluid or loose rubble pile the tide freely elongates
+ *     into a football, which then sheds mass from its tips; it gives up first.
+ *     The pessimistic (outer) bound.
+ * Real moons sit between the two. Defaults to 'rigid' — you MUST pick a case
+ * deliberately, because the fluid limit sits ~1.9× farther out than the rigid one.
+ */
+const ROCHE_COEFFICIENT = { rigid: Math.cbrt(2), fluid: 2.44 } as const
+export function computeRocheLimitM(
+	parentRadiusM: Metres,
+	parentDensity: KgPerCubicMetre,
+	bodyDensity: KgPerCubicMetre,
+	rigidity: 'rigid' | 'fluid' = 'rigid',
+): Metres {
+	return (ROCHE_COEFFICIENT[rigidity] * parentRadiusM * Math.cbrt(parentDensity / bodyDensity)) as Metres
 }
 
 /** habitable zone inner/outer bounds (simple luminosity model): √(L/1.1) to √(L/0.53) → AU */

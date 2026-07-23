@@ -529,7 +529,7 @@ const starConfig: CelestialFormConfig = {
 		rotationSection(
 			'2160000', '7.25',
 			'Sidereal rotation period. The Sun\'s equatorial period is ~25.05 days. Stars rotate differentially.',
-			'Angle between the rotational axis and the ecliptic. The Sun is 7.25°.',
+			'Obliquity: angle between the spin axis and the reference-plane (ecliptic) normal. The Sun is 7.25°.',
 		),
 		{
 			id: 'orbit', label: 'Orbit',
@@ -865,7 +865,7 @@ const bodyConfig: CelestialFormConfig = {
 		rotationSection(
 			'86164.1', '23.44',
 			'Sidereal rotation period. Earth is 86,164 s (23h 56m 4s). Not the same as a solar day.',
-			'Angle between the rotational axis and the orbital plane. Earth is 23.44°. Drives seasons.',
+			'Obliquity: angle between the spin axis and the orbital-plane normal (0° = upright, 90° = on its side, 180° = retrograde). Earth is 23.44°. Drives seasons.',
 		),
 		{
 			id: 'observation', label: 'Observation',
@@ -901,6 +901,7 @@ const bodyConfig: CelestialFormConfig = {
 		isSatellite: !!text(ctx, 'parentId'),
 		siblingOrbits: bodySiblingOrbits(ctx),
 		parentHillAu: bodyParentHillAu(ctx),
+		parentMassKg: bodyParentMassKg(ctx),
 	}),
 	overrides: [
 		{

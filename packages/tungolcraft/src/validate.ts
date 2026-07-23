@@ -5,6 +5,9 @@
  * orbits). Advisory, not enforced: a worldbuilder can knowingly build the exotic.
  */
 
+import { computeDensity, computeRotationalBreakupPeriodS } from './physics.js'
+import { kg, m } from './units.js'
+
 export interface PhysicsWarning {
 	field: string
 	message: string
@@ -12,9 +15,24 @@ export interface PhysicsWarning {
 }
 
 // Reference ranges (order-of-magnitude bounds, not hard limits)
-const EARTH_MASS = 5.972e24
 const JUPITER_MASS = 1.898e27
 const SOLAR_MASS = 1.989e30
+
+/**
+ * Satellite-to-parent mass ratio above which a body is better described as a
+ * double/binary system than a moon: the barycenter then sits well outside the
+ * primary and both bodies visibly swing around it. Pluto–Charon (≈ 0.12) is the
+ * canonical borderline case, so ~0.1 is a sensible nag threshold.
+ */
+const SATELLITE_MASS_RATIO_MAX = 0.1
+
+/**
+ * Long-term-stable satellite orbit as a fraction of the parent's Hill radius.
+ * Prograde moons survive to roughly half the Hill radius; retrograde moons,
+ * being more resistant to solar perturbations, hold on out to ~0.7. Beyond the
+ * full Hill radius nothing stays bound at all. (Configurable per call.)
+ */
+const HILL_STABLE_FRACTION = { prograde: 0.5, retrograde: 0.7 } as const
 
 /** A neighbouring body's orbit, for cross-checking overlapping paths. */
 export interface SiblingOrbit {
@@ -43,11 +61,21 @@ export function validateBodyPhysics(params: {
 	siblingOrbits?: SiblingOrbit[]
 	/** Parent body's Hill-sphere radius in AU, for satellite containment. */
 	parentHillAu?: number | null
+	/** Parent body's mass in kg, for the satellite-to-parent mass-ratio check. */
+	parentMassKg?: number | null
+	/**
+	 * A satellite's orbit sense sets how much of the Hill radius stays stable
+	 * (retrograde moons hold on farther out). Defaults to 'prograde'.
+	 */
+	satelliteOrbitSense?: 'prograde' | 'retrograde'
+	/** Override the stable-orbit Hill fraction directly (else set by orbit sense). */
+	hillStableFraction?: number | null
 }): PhysicsWarning[] {
 	const warnings: PhysicsWarning[] = []
 	const { massKg, radiusM, orbitalPeriodDays, semiMajorAxisAu, eccentricity, rotationPeriodS, axialTilt, bodyType, isSatellite } = params
 	const siblingOrbits = params.siblingOrbits ?? []
 	const parentHillAu = params.parentHillAu ?? null
+	const parentMassKg = params.parentMassKg ?? null
 
 	if (massKg != null && massKg <= 0) {
 		warnings.push({ field: 'massKg', message: 'Mass must be positive', severity: 'impossible' })
@@ -69,14 +97,20 @@ export function validateBodyPhysics(params: {
 	}
 
 	// Mass vs body type
-	if (massKg != null && bodyType === 'planet') {
-		if (massKg > 13 * JUPITER_MASS) {
-			warnings.push({ field: 'massKg', message: 'Mass exceeds ~13 Jupiter masses — this is in the brown dwarf range, not a planet', severity: 'warning' })
-		}
+	if (massKg != null && bodyType === 'planet' && massKg > 13 * JUPITER_MASS) {
+		warnings.push({ field: 'massKg', message: 'Mass exceeds ~13 Jupiter masses — this is in the brown dwarf range, not a planet', severity: 'warning' })
 	}
-	if (massKg != null && isSatellite) {
-		if (massKg > 0.5 * EARTH_MASS) {
-			warnings.push({ field: 'massKg', message: 'Satellite mass exceeds half of Earth — unusually massive for a satellite', severity: 'warning' })
+	// Satellite plausibility by mass ratio, not an absolute mass: a body far
+	// lighter than its parent is an ordinary moon; as m_sat/M_parent climbs the
+	// two are better described as a double/binary orbiting a shared barycenter.
+	if (isSatellite && massKg != null && massKg > 0 && parentMassKg != null && parentMassKg > 0) {
+		const ratio = massKg / parentMassKg
+		if (ratio > SATELLITE_MASS_RATIO_MAX) {
+			warnings.push({
+				field: 'massKg',
+				message: `Satellite-to-parent mass ratio ${ratio.toFixed(3)} exceeds ~${SATELLITE_MASS_RATIO_MAX} — the pair reads more as a double/binary body (barycenter outside the parent) than a moon`,
+				severity: 'warning',
+			})
 		}
 	}
 
@@ -93,20 +127,41 @@ export function validateBodyPhysics(params: {
 		warnings.push({ field: 'orbitalPeriodDays', message: 'Orbital period must be positive', severity: 'impossible' })
 	}
 
-	// Rotational break-up: a rotation faster than ~1 hour would tear a massive body
-	// apart. This depends only on spin and mass, not on the orbit, so don't gate it
-	// on an orbital period being present (a newly-created body often has none yet).
-	if (rotationPeriodS != null && rotationPeriodS < 3600 && massKg != null && massKg > 1e20) {
-		warnings.push({ field: 'rotationPeriodS', message: 'Rotation period under 1 hour — centrifugal forces would likely exceed gravity for a body this massive', severity: 'warning' })
+	// Rotational break-up: below the critical spin period P_crit = √(3π/Gρ) a body
+	// cannot hold together by self-gravity. This is a density equation, not a fixed
+	// one-hour rule — a dense body tolerates a much faster spin than a fluffy one —
+	// so it needs both mass and radius. It doesn't depend on the orbit, so a
+	// newly-created body with no period yet is still checked.
+	if (rotationPeriodS != null && rotationPeriodS > 0 && massKg != null && radiusM != null && massKg > 0 && radiusM > 0) {
+		const density = computeDensity(kg(massKg), m(radiusM))
+		const breakupS = computeRotationalBreakupPeriodS(density)
+		if (rotationPeriodS < breakupS) {
+			warnings.push({
+				field: 'rotationPeriodS',
+				message: `Rotation period ${(rotationPeriodS / 3600).toFixed(2)} h is below the ${(breakupS / 3600).toFixed(2)} h break-up period for this body's density (${(density / 1000).toFixed(2)} g/cm³) — equatorial centrifugal force would exceed self-gravity`,
+				severity: 'warning',
+			})
+		}
 	}
 
-	// Axial tilt
-	if (axialTilt != null && (axialTilt < 0 || axialTilt > 360)) {
-		warnings.push({ field: 'axialTilt', message: 'Axial tilt should be 0–360°', severity: 'warning' })
+	// Axial tilt = obliquity: the angle between the spin axis and the orbital-plane
+	// normal (equivalently, the tilt of the equatorial plane relative to the orbital
+	// plane). 0° = upright, 90° = spinning on its side, 180° = fully retrograde. It
+	// is physically defined on [0°, 180°]; 180–360° names the same tilt viewed from
+	// the opposite node, so flag it as non-canonical rather than impossible.
+	if (axialTilt != null && (axialTilt < 0 || axialTilt > 180)) {
+		warnings.push({
+			field: 'axialTilt',
+			message: `Axial tilt ${axialTilt}° falls outside the 0–180° obliquity convention (measured from the orbital-plane normal); 180–360° describes the same physical tilt seen from the opposite node`,
+			severity: 'warning',
+		})
 	}
 
-	// Orbit crossing: does this planet's radial band overlap a sibling's? Crossing
-	// paths are dynamically unstable unless the pair is locked in a resonance.
+	// Orbit crossing: does this planet's radial [periapsis, apoapsis] band overlap a
+	// sibling's? A geometric intersection of the two bands is only a *flag* — whether
+	// the orbits actually destabilise turns on resonance, relative inclination and
+	// orbital phase, none of which a radial-range test can see. So report the
+	// crossing, not a verdict of instability.
 	if (!isSatellite && semiMajorAxisAu != null && semiMajorAxisAu > 0) {
 		const [peri, apo] = orbitalBand(semiMajorAxisAu, eccentricity)
 		for (const sibling of siblingOrbits) {
@@ -115,21 +170,34 @@ export function validateBodyPhysics(params: {
 			if (peri <= sApo && sPeri <= apo) {
 				warnings.push({
 					field: 'semiMajorAxisAu',
-					message: `Orbit overlaps ${sibling.name}'s (their distance ranges cross) — dynamically unstable unless the two are in orbital resonance`,
+					message: `Orbit's radial band [${peri.toFixed(2)}–${apo.toFixed(2)} AU] overlaps ${sibling.name}'s [${sPeri.toFixed(2)}–${sApo.toFixed(2)} AU] — the paths cross in radius. This is a geometric flag; whether it destabilises depends on resonance, inclination and phase.`,
 					severity: 'warning',
 				})
 			}
 		}
 	}
 
-	// Satellite containment: a moon orbiting beyond its parent's Hill sphere is not
-	// gravitationally bound to the parent and would be stripped away by the star.
-	if (isSatellite && semiMajorAxisAu != null && semiMajorAxisAu > 0 && parentHillAu != null && parentHillAu > 0 && semiMajorAxisAu > parentHillAu) {
-		warnings.push({
-			field: 'semiMajorAxisAu',
-			message: `Orbit (${semiMajorAxisAu.toFixed(4)} AU from its parent) lies beyond the parent's Hill sphere (~${parentHillAu.toFixed(4)} AU) — it would not stay bound`,
-			severity: 'warning',
-		})
+	// Satellite containment: a moon's orbit is only stable out to a fraction of the
+	// parent's Hill radius (~0.5 prograde, ~0.7 retrograde), not the full radius —
+	// solar perturbations strip it well before the formal boundary. Beyond the full
+	// Hill radius it is not bound to the parent at all.
+	if (isSatellite && semiMajorAxisAu != null && semiMajorAxisAu > 0 && parentHillAu != null && parentHillAu > 0) {
+		const sense = params.satelliteOrbitSense ?? 'prograde'
+		const fraction = params.hillStableFraction ?? HILL_STABLE_FRACTION[sense]
+		const stableAu = parentHillAu * fraction
+		if (semiMajorAxisAu > parentHillAu) {
+			warnings.push({
+				field: 'semiMajorAxisAu',
+				message: `Orbit (${semiMajorAxisAu.toFixed(4)} AU from its parent) lies beyond the parent's Hill sphere (~${parentHillAu.toFixed(4)} AU) — it is not bound to the parent and would be stripped away`,
+				severity: 'warning',
+			})
+		} else if (semiMajorAxisAu > stableAu) {
+			warnings.push({
+				field: 'semiMajorAxisAu',
+				message: `Orbit (${semiMajorAxisAu.toFixed(4)} AU) exceeds ~${fraction.toFixed(2)}× the parent's Hill radius (~${stableAu.toFixed(4)} of ${parentHillAu.toFixed(4)} AU), the long-term-stable limit for a ${sense} satellite — likely unstable over many orbits`,
+				severity: 'warning',
+			})
+		}
 	}
 
 	return warnings

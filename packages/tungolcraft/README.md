@@ -15,10 +15,10 @@ optional formatting layer).
 
 | Module | Purpose |
 | --- | --- |
-| `physics` | Closed-form derivations: density, surface gravity, escape velocity, Kepler-III period, mean orbital speed + vis-viva speed-at-radius, Hill sphere, Roche limit, habitable zone, luminosity. |
+| `physics` | Closed-form derivations: density, surface gravity, escape velocity, rotational break-up period, Kepler-III period, mean orbital speed + vis-viva speed-at-radius, Hill sphere, rigid/fluid Roche limit, habitable zone, luminosity. |
 | `derive` | Partial-in → complete-out convenience: give what you know, get the rest. |
 | `orbit` | Two-body propagation: mean anomaly + Newton–Raphson Kepler solver, mean motion, and classical elements → position/velocity state vector at a true anomaly or an epoch. |
-| `validate` | The consistency engine: warns on impossible/suspicious configs (moon beyond its Hill sphere, crossing orbits, a "cool O-star", super-Eddington mass). |
+| `validate` | The consistency engine: equation-backed warnings on suspicious configs (spin past the density-set break-up period, satellite mass ratio in the double-body regime, orbit past a fraction of the Hill radius, radial-band crossings, a "cool O-star", super-Eddington mass). |
 | `format` | Human-readable strings (g/cm³, M☉, km/s, …) over the pure numbers. |
 | `constants` | SI reference constants and scales. |
 

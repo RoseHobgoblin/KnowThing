@@ -9,6 +9,7 @@ import {
 	kg, m, au, days, kelvin, watts, solarMasses, muFromMass, solarGm,
 	computeDensity, computeOrbitalPeriodDays, computeMeanOrbitalSpeed, computeOrbitalSpeedAtRadius,
 	computeCircularOrbitSpeed, computeLuminosity, computeHabitableZoneAu,
+	computeRotationalBreakupPeriodS, computeRocheLimitM,
 	star,
 } from './index.js'
 
@@ -22,6 +23,8 @@ computeOrbitalSpeedAtRadius(solarGm(1), au(0.9), au(1))
 computeCircularOrbitSpeed(solarGm(1), au(1))
 computeLuminosity(m(6.9634e8), kelvin(5778))
 computeHabitableZoneAu(watts(3.828e26))
+computeRotationalBreakupPeriodS(computeDensity(kg(5.972e24), m(6.371e6)))
+computeRocheLimitM(m(6.371e6), computeDensity(kg(5.972e24), m(6.371e6)), computeDensity(kg(7.3e22), m(1.7e6)), 'fluid')
 
 // ---- Mixups are rejected at compile time ----
 
@@ -51,6 +54,12 @@ computeCircularOrbitSpeed(au(1), au(1))
 
 // @ts-expect-error a raw luminosity number is not Watts
 computeHabitableZoneAu(3.828e26)
+
+// @ts-expect-error break-up period needs a branded density, not a raw mass
+computeRotationalBreakupPeriodS(kg(5.972e24))
+
+// @ts-expect-error rigidity must be 'rigid' | 'fluid', not an arbitrary string
+computeRocheLimitM(m(6.371e6), computeDensity(kg(5.972e24), m(6.371e6)), computeDensity(kg(7.3e22), m(1.7e6)), 'squishy')
 
 // ---- The builder API's friendly fields are unit-safe too ----
 

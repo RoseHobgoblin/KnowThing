@@ -3,6 +3,8 @@ import {
 	computeDensity,
 	computeSurfaceGravity,
 	computeEscapeVelocity,
+	computeRotationalBreakupPeriodS,
+	computeRocheLimitM,
 	computeOrbitalPeriodDays,
 	computeMeanOrbitalSpeed,
 	computeOrbitalSpeedAtRadius,
@@ -34,6 +36,39 @@ describe('physical formulas at Earth reference values', () => {
 
 	it('escape velocity ≈ 11.19 km/s', () => {
 		expect(computeEscapeVelocity(kg(EARTH_MASS_KG), m(EARTH_RADIUS_M)) / 1000).toBeCloseTo(11.19, 1)
+	})
+})
+
+describe('computeRotationalBreakupPeriodS', () => {
+	const earthDensity = computeDensity(kg(EARTH_MASS_KG), m(EARTH_RADIUS_M))
+
+	it('gives Earth a break-up period of ~1.4 h (~84 min)', () => {
+		expect(computeRotationalBreakupPeriodS(earthDensity) / 3600).toBeCloseTo(1.41, 1)
+	})
+
+	it('depends only on density: a denser body breaks up at a shorter period', () => {
+		const denser = computeDensity(kg(EARTH_MASS_KG * 8), m(EARTH_RADIUS_M))
+		expect(computeRotationalBreakupPeriodS(denser)).toBeLessThan(computeRotationalBreakupPeriodS(earthDensity))
+		// 8× density → period scales as ρ^(-1/2) → 1/√8 of the original.
+		expect(computeRotationalBreakupPeriodS(denser)).toBeCloseTo(computeRotationalBreakupPeriodS(earthDensity) / Math.sqrt(8), 5)
+	})
+})
+
+describe('computeRocheLimitM (rigid vs fluid)', () => {
+	const parentR = m(EARTH_RADIUS_M)
+	const parentRho = computeDensity(kg(EARTH_MASS_KG), m(EARTH_RADIUS_M))
+	const satRho = computeDensity(kg(EARTH_MASS_KG * 0.5), m(EARTH_RADIUS_M * 0.8))
+
+	it('defaults to the rigid limit (coefficient 2^(1/3))', () => {
+		const rigid = computeRocheLimitM(parentR, parentRho, satRho)
+		expect(rigid).toBeCloseTo(EARTH_RADIUS_M * Math.cbrt((2 * parentRho) / satRho), 3)
+	})
+
+	it('places the fluid limit ~1.9× farther out than the rigid one', () => {
+		const rigid = computeRocheLimitM(parentR, parentRho, satRho, 'rigid')
+		const fluid = computeRocheLimitM(parentR, parentRho, satRho, 'fluid')
+		expect(fluid).toBeGreaterThan(rigid)
+		expect(fluid / rigid).toBeCloseTo(2.44 / Math.cbrt(2), 6)
 	})
 })
 
