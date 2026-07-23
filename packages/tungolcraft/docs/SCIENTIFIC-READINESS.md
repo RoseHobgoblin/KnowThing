@@ -147,6 +147,12 @@ the theoretical-modelling specification.
 This is the highest-leverage milestone: a science website can adopt existing
 physics once every answer is explainable.
 
+Status: **reference slice implemented**. Bulk density, elliptical state
+propagation and the Domingos 2006 satellite limit now exercise the result,
+registry, provenance, diagnostic, default-reporting and numerical-quality
+contracts. The remaining existing numerical functions still need catalogue
+wrappers before this milestone is complete.
+
 ### Milestone B — interoperable systems
 
 Add the serialisable body/system schema, explicit frames and binary coordinate
@@ -205,4 +211,3 @@ Tungolcraft is ready for a public theoretical-modelling feature when:
 6. a packed npm artifact passes a clean-room consumer test;
 7. documentation clearly separates derivation, screening, approximation and
    simulation.
-

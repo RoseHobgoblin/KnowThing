@@ -11,6 +11,11 @@ import type { AstronomicalUnits, GravitationalParameter } from './units.js'
 
 const DEG = Math.PI / 180
 
+/** Residual tolerance used by the safeguarded elliptical Kepler solver. */
+export const KEPLER_SOLVER_TOLERANCE = 1e-13
+/** Hard iteration cap used by the safeguarded elliptical Kepler solver. */
+export const KEPLER_SOLVER_MAX_ITERATIONS = 64
+
 /**
  * A 3D vector in the parent-centred inertial frame: the XY-plane is the
  * reference plane (the ecliptic analogue), +X points at the reference
@@ -183,8 +188,8 @@ export function solveKeplerE(M: number, ecc: number): number {
 		: (reducedM < 0 ? -Math.PI : Math.PI)
 	if (E <= lower || E >= upper) E = (lower + upper) / 2
 
-	const tolerance = 1e-13
-	const maxIterations = 64
+	const tolerance = KEPLER_SOLVER_TOLERANCE
+	const maxIterations = KEPLER_SOLVER_MAX_ITERATIONS
 	for (let step = 1; step <= maxIterations; step++) {
 		const residual = E - ecc * Math.sin(E) - reducedM
 		if (Math.abs(residual) <= tolerance) return E + turns * tau

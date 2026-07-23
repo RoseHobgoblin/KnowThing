@@ -90,16 +90,23 @@ documented derivation is acceptable for elementary identities.
 Serialisable scientific values MUST carry explicit units:
 
 ```ts
-export interface Quantity<U extends string = string> {
+export interface QuantityRecord<U extends string = string> {
   value: number
   unit: U
 }
 
-export interface InputRecord<U extends string = string> extends Quantity<U> {
+export interface InputRecord {
+  value: number | string | boolean
+  /** Required for numeric scientific quantities; omitted for categories. */
+  unit?: string
   source: 'caller' | 'default' | 'derived'
   uncertainty?: Uncertainty
 }
 ```
+
+`QuantityRecord` is deliberately distinct from Tungolcraft's existing branded
+numeric `Quantity<Tag>` type. The former is a runtime/JSON record; the latter is
+a compile-time unit guard.
 
 Canonical units SHOULD be SI. Domain-specific display units such as AU and days
 MAY be accepted at an authoring boundary, but the normalised input record MUST
@@ -155,9 +162,10 @@ export interface ModelFailure {
 }
 
 export interface QuantityVector<U extends string> {
-  x: Quantity<U>
-  y: Quantity<U>
-  z: Quantity<U>
+  x: number
+  y: number
+  z: number
+  unit: U
 }
 
 export interface StateVectorOutput {
@@ -349,6 +357,11 @@ models, not duplicated inside every numerical function.
 
 The 0.2 catalogue SHOULD expose existing calculations under these IDs:
 
+The first three reference implementations are now available:
+`body.bulk-density`, `orbit.elliptical-state` and
+`satellite.domingos-2006-limit`. They establish the contract; the other rows
+remain 0.2 work.
+
 | Model ID | Kind | Existing implementation |
 | --- | --- | --- |
 | `body.bulk-density` | exact relation | `computeDensity` |
@@ -410,7 +423,7 @@ interface BenchmarkFixture {
   modelId: string
   modelVersion: string
   inputs: Record<string, InputRecord>
-  expected: Quantity
+  expected: QuantityRecord
   tolerance: { absolute?: number, relative?: number }
   source?: ModelSource
   notes?: string

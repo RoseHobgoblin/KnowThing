@@ -19,6 +19,8 @@ optional formatting layer).
 | `derive` | Partial-in → complete-out convenience: give what you know, get the rest. |
 | `orbit` | Validated two-body propagation: mean anomaly, safeguarded Kepler solver, mean motion, and classical elements → position/velocity state vector at a true anomaly or an epoch. |
 | `validate` | The consistency engine: equation-backed warnings on suspicious configs (spin past the density-set break-up period, barycenter outside the parent, orbit past a published empirical satellite-stability limit, radial-band crossings, a "cool O-star", super-Eddington mass). |
+| `model-registry` | Stable model IDs, scientific-model versions, provenance, assumptions and validity domains. |
+| `catalogue` | Non-throwing, explainable evaluations with runtime units, structured diagnostics, applied defaults and numerical quality. |
 | `format` | Human-readable strings (g/cm³, M☉, km/s, …) over the pure numbers. |
 | `constants` | SI reference constants and scales. |
 
@@ -42,6 +44,37 @@ validateBodyPhysics({
   axialTilt: null, bodyType: 'moon', isSatellite: true, parentHillAu: 0.01,
 })
 // → [{ field: 'semiMajorAxisAu', severity: 'warning', message: '…beyond the parent's Hill sphere…' }]
+```
+
+## Explainable results
+
+Use the catalogue when a result will cross an API boundary or appear on a
+science website. The low-level functions return convenient branded numbers; the
+catalogue returns a complete serialisable scientific record.
+
+```ts
+import { evaluateSatelliteStability } from 'tungolcraft'
+
+const result = evaluateSatelliteStability({
+  hillRadiusAu: 0.01,
+  // Omitted eccentricities and orbit sense are recorded as applied defaults.
+})
+
+if (!result.ok) {
+  // Match stable codes such as `satellite.hill-radius.invalid`.
+  console.error(result.diagnostics)
+} else {
+  console.log(result.output.limit)               // { value: 0.004895, unit: 'AU' }
+  console.log(result.model.id)                    // satellite.domingos-2006-limit
+  console.log(result.model.version)               // 1.0.0
+  console.log(result.model.sources[0]?.doi)       // 10.1111/j.1365-2966.2006.11104.x
+  console.log(result.inputs.orbitSense)           // { value: 'prograde', source: 'default' }
+  console.log(result.uncertainty)                 // { kind: 'not-provided' }
+
+  // Includes output, units, model metadata, all evaluated inputs, assumptions,
+  // validity rules, diagnostics and uncertainty status.
+  const publishableRecord = JSON.stringify(result)
+}
 ```
 
 ## Status
