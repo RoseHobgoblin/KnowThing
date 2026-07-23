@@ -1,6 +1,6 @@
 <script lang="ts">
-	import LockSimple from 'phosphor-svelte/lib/LockSimple'
-	import LockSimpleOpen from 'phosphor-svelte/lib/LockSimpleOpen'
+	import LockSimpleIcon from 'phosphor-svelte/lib/LockSimpleIcon'
+	import LockSimpleOpenIcon from 'phosphor-svelte/lib/LockSimpleOpenIcon'
 	import Input from './Input.svelte'
 
 	let {
@@ -30,7 +30,7 @@
 		} else {
 			unlocked = true
 			if (type === 'number' && derivedValue != null) {
-				const parsed = parseFloat(derivedValue)
+				const parsed = Number.parseFloat(derivedValue)
 				value = isNaN(parsed) ? derivedValue : parsed
 			} else {
 				value = derivedValue
@@ -47,9 +47,9 @@
 		title={unlocked ? 'Re-lock: revert to auto-derived value' : 'Unlock: override with a custom value'}
 	>
 		{#if unlocked}
-			<LockSimpleOpen size={11} weight="bold" />
+			<LockSimpleOpenIcon size={11} weight="bold" />
 		{:else}
-			<LockSimple size={11} weight="bold" />
+			<LockSimpleIcon size={11} weight="bold" />
 		{/if}
 	</button>
 {/snippet}
