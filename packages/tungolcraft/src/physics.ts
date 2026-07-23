@@ -45,10 +45,47 @@ export function computeOrbitalPeriodDays(semiMajorAxisAu: AstronomicalUnits, mu:
 	return (secs / 86_400) as Days
 }
 
-/** mean orbital velocity: v = 2πa / T → m/s */
-export function computeOrbitalVelocity(semiMajorAxisAu: AstronomicalUnits, orbitalPeriodDays: Days): MetresPerSecond {
+/**
+ * Vis-viva instantaneous orbital speed at a given orbital radius:
+ *   v = √( μ (2/r − 1/a) )  → m/s
+ * The one exact speed law of a two-body orbit. Periapsis (r = a(1−e)) is the
+ * fastest point of the orbit, apoapsis (r = a(1+e)) the slowest; a circular
+ * orbit (r = a) collapses to the constant √(μ/a). Radius and semi-major axis
+ * are both in AU; `mu` is the system's total μ = G(M + m) (see `addMu`).
+ */
+export function computeOrbitalSpeedAtRadius(mu: GravitationalParameter, radiusAu: AstronomicalUnits, semiMajorAxisAu: AstronomicalUnits): MetresPerSecond {
+	const r = radiusAu * AU_M
 	const a = semiMajorAxisAu * AU_M
-	return ((2 * Math.PI * a) / (orbitalPeriodDays * 86_400)) as MetresPerSecond
+	return Math.sqrt(mu * (2 / r - 1 / a)) as MetresPerSecond
+}
+
+/**
+ * Circular orbital speed at radius r: v = √(μ/r) → m/s. The speed needed to
+ * hold a circular orbit there — equivalently vis-viva with r = a. For an
+ * eccentric orbit reach for `computeOrbitalSpeedAtRadius` (a specific point) or
+ * `computeMeanOrbitalSpeed` (the time-average) instead.
+ */
+export function computeCircularOrbitSpeed(mu: GravitationalParameter, radiusAu: AstronomicalUnits): MetresPerSecond {
+	const r = radiusAu * AU_M
+	return Math.sqrt(mu / r) as MetresPerSecond
+}
+
+/**
+ * Mean orbital speed — the honest single "how fast does it travel" number:
+ * the length of one full orbit divided by its period, i.e. the time-averaged
+ * speed. The orbit is an ellipse, so the path length is its perimeter (b =
+ * a√(1−e²), via Ramanujan's approximation), *not* 2πa — eccentricity is
+ * respected. A circular orbit (e = 0) reduces exactly to the old 2πa/T. Prefer
+ * this over any single "orbital velocity" for an eccentric orbit, and reach for
+ * `computeOrbitalSpeedAtRadius` when a specific point's speed is wanted.
+ */
+export function computeMeanOrbitalSpeed(semiMajorAxisAu: AstronomicalUnits, orbitalPeriodDays: Days, eccentricity: number = 0): MetresPerSecond {
+	const a = semiMajorAxisAu * AU_M
+	const ecc = eccentricity > 0 && eccentricity < 1 ? eccentricity : 0
+	const b = a * Math.sqrt(1 - ecc * ecc)
+	const h = ((a - b) / (a + b)) ** 2
+	const perimeter = Math.PI * (a + b) * (1 + (3 * h) / (10 + Math.sqrt(4 - 3 * h)))
+	return (perimeter / (orbitalPeriodDays * 86_400)) as MetresPerSecond
 }
 
 /**

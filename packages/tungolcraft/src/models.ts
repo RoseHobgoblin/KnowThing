@@ -17,7 +17,7 @@ import {
 	computeSurfaceGravity,
 	computeEscapeVelocity,
 	computeOrbitalPeriodDays,
-	computeOrbitalVelocity,
+	computeMeanOrbitalSpeed,
 	computePeriastron,
 	computeApastron,
 	computeHabitableZoneAu,
@@ -54,6 +54,8 @@ export interface BodyRow extends CelestialRowLike {
 	atmosphere?: string | null
 	surfacePressure?: string | null
 	inclination?: number | null
+	longitudeAscendingNode?: number | null
+	argumentOfPeriapsis?: number | null
 	apparentMagnitude?: string | null
 	angularDiameter?: string | null
 	albedo?: string | null
@@ -130,9 +132,11 @@ export interface BodyModel {
 	// Orbital.
 	semiMajorAxisAu: number | null
 	orbitalPeriodDays: number | null
-	orbitalVelocityMs: number | null
+	meanOrbitalSpeedMs: number | null
 	eccentricity: number | null
 	inclination: number | null
+	longitudeAscendingNode: number | null
+	argumentOfPeriapsis: number | null
 	periapsisAu: number | null
 	apoapsisAu: number | null
 
@@ -239,8 +243,8 @@ export function deriveBody(row: BodyRow, relations: BodyRelations = {}): BodyMod
 			? computeOrbitalPeriodDays(au(semiMajorAxisAu), addMu(muFromMass(kg(primaryMassKg)), muFromMass(kg(massKg ?? 0))))
 			: null)
 
-	const orbitalVelocityMs = semiMajorAxisAu != null && orbitalPeriodDays != null && orbitalPeriodDays > 0
-		? computeOrbitalVelocity(au(semiMajorAxisAu), days(orbitalPeriodDays))
+	const meanOrbitalSpeedMs = semiMajorAxisAu != null && orbitalPeriodDays != null && orbitalPeriodDays > 0
+		? computeMeanOrbitalSpeed(au(semiMajorAxisAu), days(orbitalPeriodDays), eccentricity ?? 0)
 		: null
 
 	const star = relations.star ? { name: relations.star.name, slug: relations.star.slug } : null
@@ -274,9 +278,11 @@ export function deriveBody(row: BodyRow, relations: BodyRelations = {}): BodyMod
 
 		semiMajorAxisAu,
 		orbitalPeriodDays,
-		orbitalVelocityMs,
+		meanOrbitalSpeedMs,
 		eccentricity,
 		inclination: row.inclination ?? null,
+		longitudeAscendingNode: row.longitudeAscendingNode ?? null,
+		argumentOfPeriapsis: row.argumentOfPeriapsis ?? null,
 		periapsisAu: semiMajorAxisAu != null && eccentricity != null ? computePeriastron(au(semiMajorAxisAu), eccentricity) : null,
 		apoapsisAu: semiMajorAxisAu != null && eccentricity != null ? computeApastron(au(semiMajorAxisAu), eccentricity) : null,
 

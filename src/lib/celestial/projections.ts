@@ -87,7 +87,7 @@ export function bodyInfoboxFields(model: BodyModel): FieldMap {
 	// Computed orbital extras.
 	if (model.periapsisAu != null) f.set('periapsis', formatAu(model.periapsisAu))
 	if (model.apoapsisAu != null) f.set('apoapsis', formatAu(model.apoapsisAu))
-	if (model.orbitalVelocityMs != null) f.set('orbital_velocity', formatOrbitalVelocity(model.orbitalVelocityMs))
+	if (model.meanOrbitalSpeedMs != null) f.set('mean_orbital_speed', formatOrbitalVelocity(model.meanOrbitalSpeedMs))
 
 	// Computed geometry from radius.
 	if (model.circumferenceM != null) f.set('circumference', circumferenceKm(model.circumferenceM))

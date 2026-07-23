@@ -7,7 +7,7 @@
 
 import {
 	computeDensity, computeSurfaceGravity, computeEscapeVelocity,
-	computeOrbitalPeriodDays, computeOrbitalVelocity, computeHillSphereAu,
+	computeOrbitalPeriodDays, computeMeanOrbitalSpeed, computeHillSphereAu,
 	computePeriastron, computeApastron,
 } from './physics.js'
 import {
@@ -35,7 +35,7 @@ export function deriveBodyFields(massKg: number | null, radiusM: number | null):
 
 export interface BodyDerivedOrbitalFields {
 	orbitalPeriodDays: number | null
-	orbitalVelocity: string | null
+	meanOrbitalSpeed: string | null
 	hillSphere: string | null
 }
 
@@ -54,8 +54,8 @@ export function deriveBodyOrbitalFields(
 		period = computeOrbitalPeriodDays(au(semiMajorAxisAu), addMu(muFromMass(kg(parentMassKg)), muFromMass(kg(bodyMassKg ?? 0))))
 	}
 
-	const orbitalVelocity = semiMajorAxisAu != null && period != null && period > 0
-		? formatOrbitalVelocity(computeOrbitalVelocity(au(semiMajorAxisAu), days(period)))
+	const meanOrbitalSpeed = semiMajorAxisAu != null && period != null && period > 0
+		? formatOrbitalVelocity(computeMeanOrbitalSpeed(au(semiMajorAxisAu), days(period), eccentricity ?? 0))
 		: null
 
 	const hillSphere = semiMajorAxisAu != null && bodyMassKg != null && parentMassKg != null
@@ -63,7 +63,7 @@ export function deriveBodyOrbitalFields(
 		? formatHillSphere(computeHillSphereAu(au(semiMajorAxisAu), kg(bodyMassKg), kg(parentMassKg), eccentricity))
 		: null
 
-	return { orbitalPeriodDays: period, orbitalVelocity, hillSphere }
+	return { orbitalPeriodDays: period, meanOrbitalSpeed, hillSphere }
 }
 
 export interface StarDerivedOrbitalFields {

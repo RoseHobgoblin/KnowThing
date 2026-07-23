@@ -4,6 +4,9 @@ import {
 	computeSurfaceGravity,
 	computeEscapeVelocity,
 	computeOrbitalPeriodDays,
+	computeMeanOrbitalSpeed,
+	computeOrbitalSpeedAtRadius,
+	computeCircularOrbitSpeed,
 	computeHabitableZoneAu,
 	computeHillSphereAu,
 	computeLuminosity,
@@ -11,7 +14,7 @@ import {
 	deriveBodyFields,
 	deriveHabitableZoneAu,
 	deriveSystemType,
-	kg, m, au, kelvin, watts,
+	kg, m, au, days, kelvin, watts,
 	muFromMass, addMu, NOMINAL_SOLAR_GM,
 } from './index.js'
 
@@ -69,6 +72,60 @@ describe('two-body μ and IAU nominal parameters', () => {
 	it('uses the IAU nominal solar GM directly for a 1 AU sidereal year', () => {
 		// 2π√(AU³/GM☉ᴺ) — independent of the less-precise tabulated solar mass.
 		expect(computeOrbitalPeriodDays(au(1), NOMINAL_SOLAR_GM)).toBeCloseTo(365.25, 0)
+	})
+})
+
+describe('computeMeanOrbitalSpeed', () => {
+	const EARTH_YEAR_DAYS = 365.25
+
+	it('Earth mean orbital speed ≈ 29.78 km/s', () => {
+		const v = computeMeanOrbitalSpeed(au(1), days(EARTH_YEAR_DAYS))
+		expect(v / 1000).toBeCloseTo(29.78, 1)
+	})
+
+	it('a circular orbit (e = 0) is exactly the 2πa/T of the old formula', () => {
+		const a = au(1), t = days(EARTH_YEAR_DAYS)
+		const circular = computeMeanOrbitalSpeed(a, t, 0)
+		const AU_M = 1.495_978_707e11
+		expect(circular).toBeCloseTo((2 * Math.PI * AU_M) / (EARTH_YEAR_DAYS * 86_400), 3)
+	})
+
+	it('an eccentric orbit travels slower on average than the circular 2πa/T (shorter perimeter than 2πa)', () => {
+		const a = au(1), t = days(EARTH_YEAR_DAYS)
+		expect(computeMeanOrbitalSpeed(a, t, 0.6)).toBeLessThan(computeMeanOrbitalSpeed(a, t, 0))
+	})
+
+	it('treats a null/out-of-range eccentricity as circular', () => {
+		const a = au(1), t = days(EARTH_YEAR_DAYS)
+		const circular = computeMeanOrbitalSpeed(a, t, 0)
+		expect(computeMeanOrbitalSpeed(a, t, 1)).toBe(circular)
+		expect(computeMeanOrbitalSpeed(a, t, -0.3)).toBe(circular)
+	})
+})
+
+describe('computeOrbitalSpeedAtRadius (vis-viva)', () => {
+	it('at r = a equals the circular speed √(μ/a) ≈ 29.78 km/s for Earth', () => {
+		const v = computeOrbitalSpeedAtRadius(NOMINAL_SOLAR_GM, au(1), au(1))
+		expect(v / 1000).toBeCloseTo(29.78, 1)
+	})
+
+	it('is faster at periapsis than at apoapsis', () => {
+		const a = au(1), ecc = 0.2
+		const peri = computeOrbitalSpeedAtRadius(NOMINAL_SOLAR_GM, au(1 - ecc), a)
+		const apo = computeOrbitalSpeedAtRadius(NOMINAL_SOLAR_GM, au(1 + ecc), a)
+		expect(peri).toBeGreaterThan(apo)
+	})
+})
+
+describe('computeCircularOrbitSpeed', () => {
+	it('Earth circular speed √(μ/r) ≈ 29.78 km/s at 1 AU', () => {
+		expect(computeCircularOrbitSpeed(NOMINAL_SOLAR_GM, au(1)) / 1000).toBeCloseTo(29.78, 1)
+	})
+
+	it('equals vis-viva evaluated at r = a', () => {
+		const circular = computeCircularOrbitSpeed(NOMINAL_SOLAR_GM, au(2.5))
+		const visViva = computeOrbitalSpeedAtRadius(NOMINAL_SOLAR_GM, au(2.5), au(2.5))
+		expect(circular).toBeCloseTo(visViva, 6)
 	})
 })
 
@@ -135,7 +192,7 @@ describe('deriveBodyOrbitalFields', () => {
 	it('returns nulls when inputs are missing', () => {
 		expect(deriveBodyOrbitalFields(null, null, null, null)).toEqual({
 			orbitalPeriodDays: null,
-			orbitalVelocity: null,
+			meanOrbitalSpeed: null,
 			hillSphere: null,
 		})
 	})

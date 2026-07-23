@@ -1,5 +1,25 @@
 import { describe, it, expect } from 'vitest'
-import { meanAnomaly, solveKeplerE } from './orbit.js'
+import {
+	meanAnomaly, solveKeplerE, meanMotion, trueAnomaly,
+	stateVectorAtTrueAnomaly, velocityAtTrueAnomaly, stateVectorAtEpoch,
+	type OrbitalElements,
+} from './orbit.js'
+import { au, NOMINAL_SOLAR_GM } from './index.js'
+
+const AU_M = 1.495_978_707e11
+
+/** An Earth-scale, eccentric, un-tilted orbit around a Sun-mass primary. */
+const ORBIT: OrbitalElements = {
+	semiMajorAxisAu: au(1),
+	eccentricity: 0.2,
+	inclinationDeg: 0,
+	longitudeAscendingNodeDeg: 0,
+	argumentOfPeriapsisDeg: 0,
+	epochPhase: 0,
+	mu: NOMINAL_SOLAR_GM,
+}
+
+const magnitude = (v: { x: number, y: number, z: number }) => Math.hypot(v.x, v.y, v.z)
 
 describe('meanAnomaly', () => {
 	it('returns 0 for zero period', () => {
@@ -81,5 +101,95 @@ describe('solveKeplerE', () => {
 
 	it('throws on negative eccentricity', () => {
 		expect(() => solveKeplerE(1, -0.1)).toThrow(RangeError)
+	})
+})
+
+describe('meanMotion', () => {
+	it('implies a ~365.25-day period for a 1 AU orbit around a Sun-mass primary', () => {
+		const n = meanMotion(NOMINAL_SOLAR_GM, au(1))
+		const periodDays = (2 * Math.PI) / n / 86_400
+		expect(periodDays).toBeCloseTo(365.25, 0)
+	})
+
+	it('scales as a^(−3/2)', () => {
+		const inner = meanMotion(NOMINAL_SOLAR_GM, au(1))
+		const outer = meanMotion(NOMINAL_SOLAR_GM, au(4))
+		expect(inner / outer).toBeCloseTo(8, 6) // 4^(3/2)
+	})
+})
+
+describe('trueAnomaly', () => {
+	it('equals the eccentric anomaly for a circular orbit', () => {
+		expect(trueAnomaly(1, 0)).toBeCloseTo(1, 12)
+	})
+
+	it('agrees at the apsides for any eccentricity', () => {
+		expect(trueAnomaly(0, 0.6)).toBeCloseTo(0, 12) // periapsis
+		expect(trueAnomaly(Math.PI, 0.6)).toBeCloseTo(Math.PI, 12) // apoapsis
+	})
+
+	it('runs ahead of the eccentric anomaly between the apsides', () => {
+		expect(trueAnomaly(1, 0.6)).toBeGreaterThan(1)
+	})
+})
+
+describe('stateVectorAtTrueAnomaly', () => {
+	it('places periapsis at a(1−e) along +x with no orbit orientation', () => {
+		const s = stateVectorAtTrueAnomaly(ORBIT, 0)
+		expect(magnitude(s.position) / AU_M).toBeCloseTo(0.8, 6)
+		expect(s.position.x).toBeGreaterThan(0)
+		expect(Math.abs(s.position.y) / AU_M).toBeCloseTo(0, 6)
+		expect(s.position.z).toBe(0)
+	})
+
+	it('velocity at periapsis is purely prograde (+y) and fastest', () => {
+		const peri = stateVectorAtTrueAnomaly(ORBIT, 0)
+		const apo = stateVectorAtTrueAnomaly(ORBIT, Math.PI)
+		expect(Math.abs(peri.velocity.x)).toBeLessThan(1e-3)
+		expect(peri.velocity.y).toBeGreaterThan(0)
+		expect(magnitude(peri.velocity)).toBeGreaterThan(magnitude(apo.velocity))
+	})
+
+	it('satisfies the vis-viva identity |v|² = μ(2/r − 1/a) at an arbitrary point', () => {
+		const s = stateVectorAtTrueAnomaly(ORBIT, 1.2)
+		const r = magnitude(s.position)
+		const a = 1 * AU_M
+		const visViva = NOMINAL_SOLAR_GM * (2 / r - 1 / a)
+		expect(magnitude(s.velocity) ** 2 / visViva).toBeCloseTo(1, 9)
+	})
+
+	it('a 90° inclination throws the body fully out of the reference plane', () => {
+		const polar: OrbitalElements = { ...ORBIT, eccentricity: 0, inclinationDeg: 90 }
+		const s = stateVectorAtTrueAnomaly(polar, Math.PI / 2)
+		const r = magnitude(s.position)
+		expect(Math.abs(s.position.z) / r).toBeCloseTo(1, 6)
+		expect(Math.abs(s.position.x) / r).toBeCloseTo(0, 6)
+	})
+})
+
+describe('velocityAtTrueAnomaly', () => {
+	it('is exactly the velocity half of the full state vector', () => {
+		expect(velocityAtTrueAnomaly(ORBIT, 0.7)).toEqual(stateVectorAtTrueAnomaly(ORBIT, 0.7).velocity)
+	})
+})
+
+describe('stateVectorAtEpoch', () => {
+	it('sits at periapsis at day 0 when epochPhase is 0', () => {
+		const r = magnitude(stateVectorAtEpoch(ORBIT, 0).position)
+		expect(r / AU_M).toBeCloseTo(0.8, 6) // a(1−e)
+	})
+
+	it('stays within [a(1−e), a(1+e)] for any day', () => {
+		for (const day of [30, 91.3, 200, 364]) {
+			const r = magnitude(stateVectorAtEpoch(ORBIT, day).position) / AU_M
+			expect(r).toBeGreaterThanOrEqual(0.8 - 1e-9)
+			expect(r).toBeLessThanOrEqual(1.2 + 1e-9)
+		}
+	})
+
+	it('reaches apoapsis half a period after epoch (epochPhase 0.5)', () => {
+		const half: OrbitalElements = { ...ORBIT, epochPhase: 0.5 }
+		const r = magnitude(stateVectorAtEpoch(half, 0).position) / AU_M
+		expect(r).toBeCloseTo(1.2, 6) // a(1+e)
 	})
 })

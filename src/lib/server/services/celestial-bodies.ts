@@ -203,6 +203,8 @@ async function createCelestialIn(dbx: Dbx, kind: CelestialKind, data: CreateCele
 		semiMajorAxisAu: body.semiMajorAxisAu ?? null,
 		eccentricity: body.eccentricity ?? null,
 		inclination: body.inclination ?? null,
+		longitudeAscendingNode: body.longitudeAscendingNode ?? null,
+		argumentOfPeriapsis: body.argumentOfPeriapsis ?? null,
 		epochPhase: body.epochPhase ?? null,
 		rotationPeriodS: body.rotationPeriodS ?? null,
 		axialTilt: body.axialTilt ?? null,
@@ -344,8 +346,8 @@ export async function updateCelestial(slug: string, raw: unknown) {
 			['temperature', 'age', 'composition', 'atmosphere',
 				'surfacePressure', 'apparentMagnitude', 'angularDiameter', 'albedo'],
 			['massKg', 'radiusM', 'orbitalPeriodDays', 'semiMajorAxisAu',
-				'eccentricity', 'inclination', 'epochPhase', 'rotationPeriodS',
-				'axialTilt', 'parentId', 'satellites'])
+				'eccentricity', 'inclination', 'longitudeAscendingNode', 'argumentOfPeriapsis',
+				'epochPhase', 'rotationPeriodS', 'axialTilt', 'parentId', 'satellites'])
 		if (data.bodyType !== undefined) setClause.bodyType = data.bodyType
 		if (data.hasRings !== undefined) setClause.hasRings = data.hasRings ?? false
 	}

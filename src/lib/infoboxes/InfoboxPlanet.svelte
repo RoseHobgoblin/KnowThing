@@ -14,7 +14,7 @@
 		'circumference', 'surface_area', 'volume',
 		'composition', 'atmosphere', 'surface_pressure',
 		'orbital_period', 'semi_major_axis', 'eccentricity', 'inclination',
-		'periapsis', 'apoapsis', 'orbital_velocity',
+		'periapsis', 'apoapsis', 'mean_orbital_speed',
 		'satellite_of', 'satellite_of_slug', 'parent_star', 'parent_star_slug',
 		'rotation_period', 'axial_tilt', 'equatorial_velocity',
 		'apparent_magnitude', 'angular_diameter', 'albedo',
@@ -49,7 +49,7 @@
 	const inclination = $derived(getField(fields, 'inclination') ?? '')
 	const periapsis = $derived(getField(fields, 'periapsis') ?? '')
 	const apoapsis = $derived(getField(fields, 'apoapsis') ?? '')
-	const orbitalVelocity = $derived(getField(fields, 'orbital_velocity') ?? '')
+	const meanOrbitalSpeed = $derived(getField(fields, 'mean_orbital_speed') ?? '')
 
 	const rotationPeriod = $derived(getField(fields, 'rotation_period') ?? '')
 	const axialTilt = $derived(getField(fields, 'axial_tilt') ?? '')
@@ -63,7 +63,7 @@
 	const hasRings = $derived(getField(fields, 'has_rings') ?? '')
 
 	const hasComposition = $derived(composition || atmosphere || surfacePressure)
-	const hasOrbital = $derived(satelliteOf || orbitalPeriod || semiMajorAxis || eccentricity || inclination || periapsis || apoapsis || orbitalVelocity)
+	const hasOrbital = $derived(satelliteOf || orbitalPeriod || semiMajorAxis || eccentricity || inclination || periapsis || apoapsis || meanOrbitalSpeed)
 	const hasRotation = $derived(rotationPeriod || axialTilt || equatorialVelocity)
 	const hasObservation = $derived(apparentMagnitude || angularDiameter || albedo)
 	const hasSystem = $derived(satellites || hasRings)
@@ -82,7 +82,7 @@
 		<InfoboxRow label="Eccentricity" value={eccentricity} />
 		<InfoboxRow label="Periapsis" value={periapsis} />
 		<InfoboxRow label="Apoapsis" value={apoapsis} />
-		<InfoboxRow label="Orbital velocity" value={orbitalVelocity} />
+		<InfoboxRow label="Mean orbital speed" value={meanOrbitalSpeed} />
 		<InfoboxRow label="Inclination" value={inclination} />
 		</InfoboxSection>
 	{/if}

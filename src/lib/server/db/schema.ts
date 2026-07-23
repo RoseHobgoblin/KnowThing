@@ -555,6 +555,8 @@ export const celestialBodies = pgTable(
 		eccentricity: doublePrecision('eccentricity'),
 		epochPhase: doublePrecision('epoch_phase').default(0),
 		inclination: doublePrecision('inclination'),
+		longitudeAscendingNode: doublePrecision('longitude_ascending_node'),
+		argumentOfPeriapsis: doublePrecision('argument_of_periapsis'),
 
 		// Rotation.
 		rotationPeriodS: doublePrecision('rotation_period_s'),
