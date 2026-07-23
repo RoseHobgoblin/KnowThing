@@ -1,0 +1,62 @@
+name: Tungolcraft scientific package
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/tungolcraft.yml"
+      - "package.json"
+      - "package-lock.json"
+      - "packages/tungolcraft/**"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/tungolcraft.yml"
+      - "package.json"
+      - "package-lock.json"
+      - "packages/tungolcraft/**"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install workspace
+        run: npm ci --ignore-scripts
+
+      - name: Test package
+        run: npm run test --workspace=tungolcraft
+
+      - name: Type-check package
+        run: npm run typecheck --workspace=tungolcraft
+
+      - name: Build package
+        run: npm run build --workspace=tungolcraft
+
+      - name: Verify generated scientific documentation
+        run: npm run documentation:check --workspace=tungolcraft
+
+      - name: Run scientific benchmarks
+        run: node packages/tungolcraft/scripts/run-benchmarks.mjs --json --output artifacts/tungolcraft-benchmarks.json > /dev/null
+
+      - name: Test packed package in a clean consumer
+        run: npm run pack:smoke --workspace=tungolcraft
+
+      - name: Upload scientific evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: tungolcraft-scientific-evidence
+          path: |
+            artifacts/tungolcraft-benchmarks.json
+            packages/tungolcraft/benchmarks/fixtures.json
+            packages/tungolcraft/docs/VALIDATION.md
+            packages/tungolcraft/docs/MODEL-REFERENCE.md

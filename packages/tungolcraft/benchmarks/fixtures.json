@@ -1,0 +1,243 @@
+[
+  {
+    "id": "nasa-earth-bulk-density",
+    "modelId": "body.bulk-density",
+    "modelVersion": "1.0.0",
+    "inputs": {
+      "massKg": { "value": 5.9722e24, "unit": "kg", "source": "caller" },
+      "radiusM": { "value": 6371000, "unit": "m", "source": "caller" }
+    },
+    "expected": { "value": 5513, "unit": "kg/m^3" },
+    "tolerance": { "absolute": 2 },
+    "source": {
+      "type": "documentation",
+      "citation": "NASA NSSDC Pluto/Earth Fact Sheet: Earth mass, volumetric mean radius and mean density",
+      "url": "https://nssdc.gsfc.nasa.gov/planetary/factsheet/plutofact.html"
+    },
+    "notes": "Tolerance covers rounding in the published mass, radius and tabulated density."
+  },
+  {
+    "id": "nasa-earth-surface-gravity",
+    "modelId": "body.surface-gravity",
+    "modelVersion": "1.0.0",
+    "inputs": {
+      "massKg": { "value": 5.9722e24, "unit": "kg", "source": "caller" },
+      "radiusM": { "value": 6371000, "unit": "m", "source": "caller" }
+    },
+    "expected": { "value": 9.82, "unit": "m/s^2" },
+    "tolerance": { "absolute": 0.02 },
+    "source": {
+      "type": "documentation",
+      "citation": "NASA NSSDC Pluto/Earth Fact Sheet: Earth mean surface gravity",
+      "url": "https://nssdc.gsfc.nasa.gov/planetary/factsheet/plutofact.html"
+    },
+    "notes": "Spherical calculation is compared with NASA's rounded mean value."
+  },
+  {
+    "id": "nasa-earth-escape-velocity",
+    "modelId": "body.escape-velocity",
+    "modelVersion": "1.0.0",
+    "inputs": {
+      "massKg": { "value": 5.9722e24, "unit": "kg", "source": "caller" },
+      "radiusM": { "value": 6371000, "unit": "m", "source": "caller" }
+    },
+    "expected": { "value": 11190, "unit": "m/s" },
+    "tolerance": { "absolute": 10 },
+    "source": {
+      "type": "documentation",
+      "citation": "NASA NSSDC Pluto/Earth Fact Sheet: Earth escape velocity",
+      "url": "https://nssdc.gsfc.nasa.gov/planetary/factsheet/plutofact.html"
+    },
+    "notes": "NASA publishes 11.19 km/s; tolerance covers its displayed precision."
+  },
+  {
+    "id": "rotational-breakup-analytic-density",
+    "modelId": "body.rotational-breakup",
+    "modelVersion": "1.0.0",
+    "inputs": {
+      "densityKgM3": { "value": 3000, "unit": "kg/m^3", "source": "caller" }
+    },
+    "expected": { "value": 6860.7575864449, "unit": "s" },
+    "tolerance": { "relative": 1e-12 },
+    "source": {
+      "type": "derivation",
+      "citation": "Independent substitution into Pcrit = sqrt(3 pi / (G rho)) using G = 6.67430e-11 SI"
+    }
+  },
+  {
+    "id": "iau-nominal-solar-kepler-period",
+    "modelId": "orbit.kepler-period",
+    "modelVersion": "1.0.0",
+    "inputs": {
+      "semiMajorAxisAu": { "value": 1, "unit": "AU", "source": "caller" },
+      "muM3S2": { "value": 1.3271244e20, "unit": "m^3/s^2", "source": "caller" }
+    },
+    "expected": { "value": 365.2568983840419, "unit": "d" },
+    "tolerance": { "relative": 1e-12 },
+    "source": {
+      "type": "standard",
+      "citation": "IAU 2012 astronomical unit definition and IAU 2015 Resolution B3 nominal solar mass parameter",
+      "url": "https://www.iau.org/common/Uploaded%20files/IAUGA2015-Resolution-B3-recommended-nominal-conversion.pdf"
+    }
+  },
+  {
+    "id": "iau-nominal-solar-circular-vis-viva",
+    "modelId": "orbit.vis-viva-speed",
+    "modelVersion": "1.0.0",
+    "inputs": {
+      "muM3S2": { "value": 1.3271244e20, "unit": "m^3/s^2", "source": "caller" },
+      "radiusAu": { "value": 1, "unit": "AU", "source": "caller" },
+      "semiMajorAxisAu": { "value": 1, "unit": "AU", "source": "caller" }
+    },
+    "expected": { "value": 29784.691829676933, "unit": "m/s" },
+    "tolerance": { "relative": 1e-12 },
+    "source": {
+      "type": "derivation",
+      "citation": "Circular identity v = sqrt(mu/a) using the IAU nominal solar mass parameter and exact astronomical unit",
+      "url": "https://www.iau.org/common/Uploaded%20files/IAUGA2015-Resolution-B3-recommended-nominal-conversion.pdf"
+    }
+  },
+  {
+    "id": "circular-orbit-mean-speed-identity",
+    "modelId": "orbit.mean-speed",
+    "modelVersion": "1.0.0",
+    "inputs": {
+      "semiMajorAxisAu": { "value": 1, "unit": "AU", "source": "caller" },
+      "orbitalPeriodDays": { "value": 365.25, "unit": "d", "source": "caller" },
+      "eccentricity": { "value": 0, "unit": "1", "source": "caller" }
+    },
+    "expected": { "value": 29785.25436559154, "unit": "m/s" },
+    "tolerance": { "relative": 1e-12 },
+    "source": {
+      "type": "derivation",
+      "citation": "Circular limiting identity vmean = 2 pi a / T using the exact astronomical unit"
+    }
+  },
+  {
+    "id": "circular-state-vector-at-epoch",
+    "modelId": "orbit.elliptical-state",
+    "modelVersion": "1.0.0",
+    "inputs": {
+      "semiMajorAxisAu": { "value": 1, "unit": "AU", "source": "caller" },
+      "eccentricity": { "value": 0, "unit": "1", "source": "caller" },
+      "inclinationDeg": { "value": 0, "unit": "deg", "source": "caller" },
+      "longitudeAscendingNodeDeg": { "value": 0, "unit": "deg", "source": "caller" },
+      "argumentOfPeriapsisDeg": { "value": 0, "unit": "deg", "source": "caller" },
+      "epochPhase": { "value": 0, "unit": "1", "source": "caller" },
+      "muM3S2": { "value": 1.3271244e20, "unit": "m^3/s^2", "source": "caller" },
+      "absoluteDay": { "value": 0, "unit": "d", "source": "caller" },
+      "frameId": { "value": "benchmark-parent-inertial", "source": "caller" }
+    },
+    "outputPath": "position.x",
+    "expected": { "value": 149597870700, "unit": "m" },
+    "tolerance": { "absolute": 0.001 },
+    "source": {
+      "type": "derivation",
+      "citation": "Circular zero-phase state identity x = a using the exact IAU astronomical unit"
+    }
+  },
+  {
+    "id": "hill-radius-exact-scaling-fixture",
+    "modelId": "orbit.hill-radius",
+    "modelVersion": "1.0.0",
+    "inputs": {
+      "semiMajorAxisAu": { "value": 1, "unit": "AU", "source": "caller" },
+      "bodyMassKg": { "value": 3, "unit": "kg", "source": "caller" },
+      "parentMassKg": { "value": 1000000, "unit": "kg", "source": "caller" },
+      "eccentricity": { "value": 0.2, "unit": "1", "source": "caller" }
+    },
+    "expected": { "value": 0.008, "unit": "AU" },
+    "tolerance": { "absolute": 1e-15 },
+    "source": {
+      "type": "derivation",
+      "citation": "Constructed identity rH = 1 AU * 0.8 * cbrt(3/(3*1000000)) = 0.008 AU"
+    }
+  },
+  {
+    "id": "equal-mass-barycenter-midpoint",
+    "modelId": "binary.parent-barycenter-distance",
+    "modelVersion": "1.0.0",
+    "inputs": {
+      "separationAu": { "value": 2, "unit": "AU", "source": "caller" },
+      "parentMassKg": { "value": 1, "unit": "kg", "source": "caller" },
+      "companionMassKg": { "value": 1, "unit": "kg", "source": "caller" }
+    },
+    "expected": { "value": 149597870700, "unit": "m" },
+    "tolerance": { "absolute": 0.001 },
+    "source": {
+      "type": "derivation",
+      "citation": "Equal-mass two-body barycenter is the midpoint of a 2 AU relative separation"
+    }
+  },
+  {
+    "id": "domingos-circular-prograde-coefficient",
+    "modelId": "satellite.domingos-2006-limit",
+    "modelVersion": "1.0.0",
+    "inputs": {
+      "hillRadiusAu": { "value": 0.01, "unit": "AU", "source": "caller" },
+      "parentEccentricity": { "value": 0, "unit": "1", "source": "caller" },
+      "satelliteEccentricity": { "value": 0, "unit": "1", "source": "caller" },
+      "orbitSense": { "value": "prograde", "source": "caller" }
+    },
+    "outputPath": "limit",
+    "expected": { "value": 0.004895, "unit": "AU" },
+    "tolerance": { "absolute": 1e-15 },
+    "source": {
+      "type": "paper",
+      "citation": "Domingos, Winter & Yokoyama (2006), equation 5 circular prograde coefficient 0.4895",
+      "doi": "10.1111/j.1365-2966.2006.11104.x",
+      "url": "https://doi.org/10.1111/j.1365-2966.2006.11104.x"
+    }
+  },
+  {
+    "id": "equal-density-rigid-roche-identity",
+    "modelId": "satellite.roche-limit",
+    "modelVersion": "1.0.0",
+    "inputs": {
+      "parentRadiusM": { "value": 10000000, "unit": "m", "source": "caller" },
+      "parentDensityKgM3": { "value": 5000, "unit": "kg/m^3", "source": "caller" },
+      "satelliteDensityKgM3": { "value": 5000, "unit": "kg/m^3", "source": "caller" },
+      "rigidity": { "value": "rigid", "source": "caller" }
+    },
+    "expected": { "value": 12599210.498948732, "unit": "m" },
+    "tolerance": { "relative": 1e-12 },
+    "source": {
+      "type": "derivation",
+      "citation": "Equal-density rigid identity d = cbrt(2) Rparent"
+    }
+  },
+  {
+    "id": "iau-nominal-solar-stefan-boltzmann",
+    "modelId": "star.stefan-boltzmann-luminosity",
+    "modelVersion": "1.0.0",
+    "inputs": {
+      "radiusM": { "value": 695700000, "unit": "m", "source": "caller" },
+      "temperatureK": { "value": 5772, "unit": "K", "source": "caller" }
+    },
+    "expected": { "value": 3.828e26, "unit": "W" },
+    "tolerance": { "relative": 0.00001 },
+    "source": {
+      "type": "standard",
+      "citation": "IAU 2015 Resolution B3 nominal solar radius, effective temperature and luminosity",
+      "url": "https://www.iau.org/common/Uploaded%20files/IAUGA2015-Resolution-B3-recommended-nominal-conversion.pdf"
+    },
+    "notes": "Uses the exact 2018 CODATA Stefan-Boltzmann constant published by NIST: https://physics.nist.gov/cuu/pdf/all_2018.pdf"
+  },
+  {
+    "id": "simple-hz-solar-luminosity-inner-edge",
+    "modelId": "star.simple-habitable-zone",
+    "modelVersion": "1.0.0",
+    "inputs": {
+      "luminosityW": { "value": 3.828e26, "unit": "W", "source": "caller" }
+    },
+    "outputPath": "inner",
+    "expected": { "value": 0.9534625892455924, "unit": "AU" },
+    "tolerance": { "relative": 1e-12 },
+    "source": {
+      "type": "derivation",
+      "citation": "Model identity inner = sqrt((L/Lnominal-sun)/1.1) at one nominal solar luminosity",
+      "url": "https://www.iau.org/common/Uploaded%20files/IAUGA2015-Resolution-B3-recommended-nominal-conversion.pdf"
+    },
+    "notes": "Validates this named simple screening model, not a modern climate-based habitable-zone prescription."
+  }
+]

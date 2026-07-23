@@ -169,6 +169,13 @@ helpers. Draft 2020-12 input and report schemas ship in the npm package.
 Build the sourced benchmark corpus, tolerance policy and generated model
 reference pages. Make benchmarks part of CI and release artifacts.
 
+Status: **complete**. A version-locked machine-readable corpus covers all
+fourteen catalogue models with primary-source fixtures or isolated analytic
+identities. The deterministic runner enforces declared absolute/relative
+tolerances, generated validation and model-reference pages are checked for
+drift, and package CI uploads the benchmark report and documentation as release
+evidence.
+
 ### Milestone D — uncertainty
 
 Add interval/first-order propagation and seeded Monte Carlo as separate

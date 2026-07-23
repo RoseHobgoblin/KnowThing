@@ -1,8 +1,6 @@
 # tungolcraft
 
 An explainable astrophysics modelling toolkit for arbitrary celestial systems.
-It supports fictional worldbuilding and theoretical scientific scenarios; it
-is not a real-sky ephemeris.
 
 Where a library like [astronomy-engine](https://www.npmjs.com/package/astronomy-engine)
 answers *"where is the real Mars in the sky tonight?"*, Tungolcraft answers a
@@ -34,6 +32,7 @@ declarations.
 | `catalogue` | Non-throwing, explainable evaluations with runtime units, structured diagnostics, applied defaults and numerical quality. |
 | `scenario` | Versioned scientific bodies, explicit time/frames/axis semantics, graph validation and JSON interchange. |
 | `binary-coordinates` | Overflow-resistant relative-axis and relative-state conversions into barycentric component coordinates. |
+| `benchmarks` | Version-locked scientific fixtures, deterministic tolerance evaluation and machine-readable evidence reports. |
 | `format` | Human-readable strings (g/cm³, M☉, km/s, …) over the pure numbers. |
 | `constants` | SI reference constants and scales. |
 
@@ -122,6 +121,21 @@ if (exported.ok) {
 See the [scenario interchange guide](./docs/SCENARIO-INTERCHANGE.md) for body
 graphs, frame conventions, binary coordinates and published JSON Schemas.
 
+## Scientific evidence
+
+```sh
+npm run benchmarks --workspace=tungolcraft
+```
+
+The committed corpus covers all fourteen catalogue models with NASA and IAU
+reference values, the published Domingos satellite coefficient, and isolated
+analytic identities. Every fixture declares its model version, evaluated
+inputs, expected unit-bearing value, source and numerical tolerance.
+
+- [Current validation report](./docs/VALIDATION.md)
+- [Generated model reference](./docs/MODEL-REFERENCE.md)
+- [Machine-readable fixtures](./benchmarks/fixtures.json)
+
 ## Status
 
 Early extraction from the
@@ -129,11 +143,14 @@ Early extraction from the
 The numeric core is stable and unit-tested. Its initial fourteen-model
 catalogue provides explainable, non-throwing results for every existing
 scientific calculation. Versioned scenario interchange, explicit frames and
-binary coordinate transformations are supported. N-body dynamics remain
-outside its current model.
+binary coordinate transformations are supported. All catalogue models have
+version-locked benchmark evidence. N-body dynamics remain outside its current
+model.
 
 ## Direction
 
 - [Scientific-readiness roadmap](./docs/SCIENTIFIC-READINESS.md)
 - [Theoretical-modelling specification](./docs/THEORETICAL-MODELLING-SPEC.md)
 - [Scenario interchange guide](./docs/SCENARIO-INTERCHANGE.md)
+- [Scientific validation](./docs/VALIDATION.md)
+- [Model reference](./docs/MODEL-REFERENCE.md)
