@@ -90,9 +90,12 @@ if (!result.ok) {
 
 ## Status
 
-Early extraction from the [KnowThing](https://github.com/) celestial engine.
-The numeric core is stable and unit-tested; procedural system generation,
-calendar synthesis, and N-body dynamics are outside its current model.
+Early extraction from the
+[KnowThing](https://github.com/RoseHobgoblin/KnowThing) celestial engine.
+The numeric core is stable and unit-tested. Its initial fourteen-model
+catalogue provides explainable, non-throwing results for every existing
+scientific calculation. Serializable system scenarios and N-body dynamics are
+outside its current model.
 
 ## Direction
 

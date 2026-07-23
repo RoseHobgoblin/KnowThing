@@ -23,6 +23,7 @@ export type UnitSymbol =
 	| 'kg'
 	| 'kg/m^3'
 	| 'W'
+	| 'K'
 	| 'm^3/s^2'
 	| 'AU'
 
@@ -137,3 +138,7 @@ export interface SatelliteStabilityOutput {
 	orbitSense: 'prograde' | 'retrograde'
 }
 
+export interface HabitableZoneOutput {
+	inner: QuantityRecord<'AU'>
+	outer: QuantityRecord<'AU'>
+}

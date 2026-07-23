@@ -147,11 +147,11 @@ the theoretical-modelling specification.
 This is the highest-leverage milestone: a science website can adopt existing
 physics once every answer is explainable.
 
-Status: **reference slice implemented**. Bulk density, elliptical state
-propagation and the Domingos 2006 satellite limit now exercise the result,
-registry, provenance, diagnostic, default-reporting and numerical-quality
-contracts. The remaining existing numerical functions still need catalogue
-wrappers before this milestone is complete.
+Status: **complete**. Every existing numerical model in the 0.2 initial
+catalogue now uses the result, registry, provenance, validity, diagnostic,
+default-reporting and uncertainty-absence contracts. Boundary and analytic
+identity tests cover all catalogue entries, and every tested result is checked
+for finite JSON serialization.
 
 ### Milestone B — interoperable systems
 

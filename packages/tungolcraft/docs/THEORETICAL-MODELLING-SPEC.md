@@ -357,10 +357,9 @@ models, not duplicated inside every numerical function.
 
 The 0.2 catalogue SHOULD expose existing calculations under these IDs:
 
-The first three reference implementations are now available:
-`body.bulk-density`, `orbit.elliptical-state` and
-`satellite.domingos-2006-limit`. They establish the contract; the other rows
-remain 0.2 work.
+All fourteen initial models are implemented through the catalogue result
+contract. Each has a stable ID, versioned metadata, assumptions, validity
+rules, provenance, structured diagnostics and finite serialization tests.
 
 | Model ID | Kind | Existing implementation |
 | --- | --- | --- |
