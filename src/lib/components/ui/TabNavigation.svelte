@@ -161,7 +161,7 @@
 					<Tabs.Trigger
 						value={item.id}
 						{disabled}
-						bind:ref={() => tabElements[item.id] ?? null, (el) => (tabElements[item.id] = el)}
+						bind:ref={() => tabElements[item.id] ?? null, element => (tabElements[item.id] = element)}
 						class={cn(
 							'cursor-pointer font-medium relative z-1 flex items-center justify-center gap-1.5 whitespace-nowrap transition-colors duration-200',
 							tabClasses[size],
