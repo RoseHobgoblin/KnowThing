@@ -32,6 +32,8 @@ declarations.
 | `validate` | The consistency engine: equation-backed warnings on suspicious configs (spin past the density-set break-up period, barycenter outside the parent, orbit past a published empirical satellite-stability limit, radial-band crossings, a "cool O-star", super-Eddington mass). |
 | `model-registry` | Stable model IDs, scientific-model versions, provenance, assumptions and validity domains. |
 | `catalogue` | Non-throwing, explainable evaluations with runtime units, structured diagnostics, applied defaults and numerical quality. |
+| `scenario` | Versioned scientific bodies, explicit time/frames/axis semantics, graph validation and JSON interchange. |
+| `binary-coordinates` | Overflow-resistant relative-axis and relative-state conversions into barycentric component coordinates. |
 | `format` | Human-readable strings (g/cm³, M☉, km/s, …) over the pure numbers. |
 | `constants` | SI reference constants and scales. |
 
@@ -88,16 +90,50 @@ if (!result.ok) {
 }
 ```
 
+## Interoperable scenarios
+
+```ts
+import {
+  SCENARIO_SCHEMA_VERSION,
+  parseScenarioJson,
+  serializeScenario,
+} from 'tungolcraft'
+
+const scenario = {
+  schemaVersion: SCENARIO_SCHEMA_VERSION,
+  time: { epoch: 'J2000', scale: 'TDB', secondsPerDay: 86_400 },
+  frames: [{
+    id: 'star-ecliptic',
+    originBodyId: 'star',
+    plane: 'ecliptic',
+    direction: '+X toward the J2000 mean equinox',
+    handedness: 'right',
+  }],
+  bodies: [{ id: 'star', kind: 'star', mass: { value: 1.989e30, unit: 'kg' } }],
+}
+
+const exported = serializeScenario(scenario)
+if (exported.ok) {
+  const imported = parseScenarioJson(exported.json)
+  console.log(imported.ok) // true
+}
+```
+
+See the [scenario interchange guide](./docs/SCENARIO-INTERCHANGE.md) for body
+graphs, frame conventions, binary coordinates and published JSON Schemas.
+
 ## Status
 
 Early extraction from the
 [KnowThing](https://github.com/RoseHobgoblin/KnowThing) celestial engine.
 The numeric core is stable and unit-tested. Its initial fourteen-model
 catalogue provides explainable, non-throwing results for every existing
-scientific calculation. Serializable system scenarios and N-body dynamics are
+scientific calculation. Versioned scenario interchange, explicit frames and
+binary coordinate transformations are supported. N-body dynamics remain
 outside its current model.
 
 ## Direction
 
 - [Scientific-readiness roadmap](./docs/SCIENTIFIC-READINESS.md)
 - [Theoretical-modelling specification](./docs/THEORETICAL-MODELLING-SPEC.md)
+- [Scenario interchange guide](./docs/SCENARIO-INTERCHANGE.md)

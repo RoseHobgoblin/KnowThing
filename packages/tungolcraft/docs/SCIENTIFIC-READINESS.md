@@ -158,6 +158,12 @@ for finite JSON serialization.
 Add the serialisable body/system schema, explicit frames and binary coordinate
 helpers. Provide import/export validation and JSON Schema.
 
+Status: **complete**. Versioned scenario and report records now separate
+scientific bodies from presentation metadata, require explicit time, frame and
+axis semantics, validate graph and dependency integrity, and provide safe JSON
+import/export. Relative binary axes and states have mass-weighted barycentric
+helpers. Draft 2020-12 input and report schemas ship in the npm package.
+
 ### Milestone C — evidence
 
 Build the sourced benchmark corpus, tolerance policy and generated model

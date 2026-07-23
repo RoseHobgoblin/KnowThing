@@ -1,0 +1,211 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/RoseHobgoblin/KnowThing/main/packages/tungolcraft/schemas/scenario.schema.json",
+  "title": "Tungolcraft Scenario Input",
+  "description": "Versioned scientific bodies, explicit time, reference frames and orbit semantics.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "time", "frames", "bodies"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "scenarioId": { "$ref": "#/$defs/nonEmptyString" },
+    "time": { "$ref": "#/$defs/timeContext" },
+    "frames": {
+      "type": "array",
+      "maxItems": 1000,
+      "items": { "$ref": "#/$defs/referenceFrame" }
+    },
+    "bodies": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": { "$ref": "#/$defs/scientificBody" }
+    },
+    "metadata": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": { "$ref": "#/$defs/bodyMetadata" }
+    }
+  },
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": ".*\\S.*"
+    },
+    "positiveNumber": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "timeContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["epoch", "scale", "secondsPerDay"],
+      "properties": {
+        "epoch": { "$ref": "#/$defs/nonEmptyString" },
+        "scale": { "enum": ["model-day", "UTC", "TAI", "TT", "TDB"] },
+        "secondsPerDay": { "$ref": "#/$defs/positiveNumber" }
+      }
+    },
+    "referenceFrame": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "originBodyId", "plane", "direction", "handedness"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "originBodyId": { "$ref": "#/$defs/nonEmptyString" },
+        "plane": { "enum": ["xy-reference", "ecliptic", "equatorial", "custom"] },
+        "direction": { "$ref": "#/$defs/nonEmptyString" },
+        "handedness": { "const": "right" }
+      }
+    },
+    "quantityKg": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unit"],
+      "properties": {
+        "value": { "$ref": "#/$defs/positiveNumber" },
+        "unit": { "const": "kg" }
+      }
+    },
+    "quantityM": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unit"],
+      "properties": {
+        "value": { "$ref": "#/$defs/positiveNumber" },
+        "unit": { "const": "m" }
+      }
+    },
+    "quantityW": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unit"],
+      "properties": {
+        "value": { "$ref": "#/$defs/positiveNumber" },
+        "unit": { "const": "W" }
+      }
+    },
+    "quantityK": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unit"],
+      "properties": {
+        "value": { "$ref": "#/$defs/positiveNumber" },
+        "unit": { "const": "K" }
+      }
+    },
+    "quantityAu": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unit"],
+      "properties": {
+        "value": { "$ref": "#/$defs/positiveNumber" },
+        "unit": { "const": "AU" }
+      }
+    },
+    "quantityMu": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unit"],
+      "properties": {
+        "value": { "$ref": "#/$defs/positiveNumber" },
+        "unit": { "const": "m^3/s^2" }
+      }
+    },
+    "quantityAngle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unit"],
+      "properties": {
+        "value": { "type": "number" },
+        "unit": { "const": "deg" }
+      }
+    },
+    "quantityEccentricity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unit"],
+      "properties": {
+        "value": { "type": "number", "minimum": 0, "exclusiveMaximum": 1 },
+        "unit": { "const": "1" }
+      }
+    },
+    "quantityPhase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unit"],
+      "properties": {
+        "value": { "type": "number", "minimum": 0, "maximum": 1 },
+        "unit": { "const": "1" }
+      }
+    },
+    "ellipticalOrbit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "primaryId",
+        "frameId",
+        "semiMajorAxis",
+        "axisMeaning",
+        "eccentricity",
+        "inclination",
+        "longitudeAscendingNode",
+        "argumentOfPeriapsis",
+        "epochPhase",
+        "mu"
+      ],
+      "properties": {
+        "kind": { "const": "elliptical" },
+        "primaryId": { "$ref": "#/$defs/nonEmptyString" },
+        "frameId": { "$ref": "#/$defs/nonEmptyString" },
+        "semiMajorAxis": { "$ref": "#/$defs/quantityAu" },
+        "axisMeaning": {
+          "enum": ["parent-centred", "relative-separation", "barycentric-component"]
+        },
+        "eccentricity": { "$ref": "#/$defs/quantityEccentricity" },
+        "inclination": { "$ref": "#/$defs/quantityAngle" },
+        "longitudeAscendingNode": { "$ref": "#/$defs/quantityAngle" },
+        "argumentOfPeriapsis": { "$ref": "#/$defs/quantityAngle" },
+        "epochPhase": { "$ref": "#/$defs/quantityPhase" },
+        "mu": { "$ref": "#/$defs/quantityMu" }
+      }
+    },
+    "scientificBody": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "kind": {
+          "enum": ["star", "planet", "moon", "minor-body", "barycenter", "other"]
+        },
+        "mass": { "$ref": "#/$defs/quantityKg" },
+        "radius": { "$ref": "#/$defs/quantityM" },
+        "luminosity": { "$ref": "#/$defs/quantityW" },
+        "temperature": { "$ref": "#/$defs/quantityK" },
+        "orbit": { "$ref": "#/$defs/ellipticalOrbit" }
+      }
+    },
+    "bodyMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bodyId"],
+      "properties": {
+        "bodyId": { "$ref": "#/$defs/nonEmptyString" },
+        "name": { "$ref": "#/$defs/nonEmptyString" },
+        "description": { "$ref": "#/$defs/nonEmptyString" },
+        "classifications": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "fields": {
+          "type": "object",
+          "additionalProperties": {
+            "type": ["string", "number", "boolean"]
+          }
+        }
+      }
+    }
+  }
+}

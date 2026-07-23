@@ -1,0 +1,245 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/RoseHobgoblin/KnowThing/main/packages/tungolcraft/schemas/scenario-report.schema.json",
+  "title": "Tungolcraft Scenario Report",
+  "description": "Serializable multi-model results with explicit time, frames and dependencies.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "time",
+    "frames",
+    "results",
+    "diagnostics",
+    "dependencyGraph"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "scenarioId": { "type": "string", "minLength": 1, "pattern": ".*\\S.*" },
+    "time": {
+      "$ref": "scenario.schema.json#/$defs/timeContext"
+    },
+    "frames": {
+      "type": "array",
+      "maxItems": 1000,
+      "items": { "$ref": "scenario.schema.json#/$defs/referenceFrame" }
+    },
+    "results": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/modelResult" }
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/diagnostic" }
+    },
+    "dependencyGraph": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": { "type": "string", "minLength": 1 },
+        "uniqueItems": true
+      }
+    }
+  },
+  "$defs": {
+    "unit": {
+      "enum": [
+        "1",
+        "rad",
+        "deg",
+        "s",
+        "d",
+        "m",
+        "m/s",
+        "m/s^2",
+        "kg",
+        "kg/m^3",
+        "W",
+        "K",
+        "m^3/s^2",
+        "AU"
+      ]
+    },
+    "inputRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "source"],
+      "properties": {
+        "value": { "type": ["number", "string", "boolean"] },
+        "unit": { "$ref": "#/$defs/unit" },
+        "source": { "enum": ["caller", "default", "derived"] }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "citation"],
+      "properties": {
+        "type": {
+          "enum": ["paper", "standard", "textbook", "derivation", "documentation"]
+        },
+        "citation": { "type": "string" },
+        "doi": { "type": "string" },
+        "url": { "type": "string" }
+      }
+    },
+    "validityRule": {
+      "type": "object",
+      "minProperties": 1
+    },
+    "modelReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version",
+        "title",
+        "summary",
+        "kind",
+        "sources",
+        "assumptions",
+        "validity"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+        "title": { "type": "string" },
+        "summary": { "type": "string" },
+        "kind": {
+          "enum": [
+            "exact-relation",
+            "numerical-solution",
+            "approximation",
+            "empirical-fit",
+            "screening"
+          ]
+        },
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/source" }
+        },
+        "assumptions": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "validity": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/validityRule" }
+        }
+      }
+    },
+    "diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "category", "severity", "message", "fields", "modelId"],
+      "properties": {
+        "code": { "type": "string", "minLength": 1 },
+        "category": {
+          "enum": [
+            "invalid-input",
+            "missing-input",
+            "outside-domain",
+            "numerical-failure",
+            "approximation",
+            "physical-warning"
+          ]
+        },
+        "severity": { "enum": ["info", "warning", "error"] },
+        "message": { "type": "string" },
+        "fields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "evidence": {
+          "type": "object",
+          "additionalProperties": { "type": ["number", "string", "boolean"] }
+        },
+        "modelId": { "type": "string", "minLength": 1 }
+      }
+    },
+    "numerical": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "converged"],
+      "properties": {
+        "method": { "type": "string" },
+        "iterations": { "type": "number" },
+        "residual": { "type": "number" },
+        "tolerance": { "type": "number" },
+        "converged": { "type": "boolean" }
+      }
+    },
+    "uncertainty": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": { "kind": { "const": "not-provided" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "method", "value"],
+          "properties": {
+            "kind": { "const": "propagated" },
+            "method": { "enum": ["first-order", "interval", "monte-carlo"] },
+            "value": {}
+          }
+        }
+      ]
+    },
+    "success": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ok",
+        "output",
+        "model",
+        "inputs",
+        "diagnostics",
+        "uncertainty"
+      ],
+      "properties": {
+        "ok": { "const": true },
+        "output": {},
+        "model": { "$ref": "#/$defs/modelReference" },
+        "inputs": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/inputRecord" }
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/diagnostic" }
+        },
+        "numerical": { "$ref": "#/$defs/numerical" },
+        "uncertainty": { "$ref": "#/$defs/uncertainty" }
+      }
+    },
+    "failure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ok", "model", "inputs", "diagnostics"],
+      "properties": {
+        "ok": { "const": false },
+        "model": { "$ref": "#/$defs/modelReference" },
+        "inputs": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/inputRecord" }
+        },
+        "diagnostics": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/diagnostic" }
+        }
+      }
+    },
+    "modelResult": {
+      "oneOf": [
+        { "$ref": "#/$defs/success" },
+        { "$ref": "#/$defs/failure" }
+      ]
+    }
+  }
+}

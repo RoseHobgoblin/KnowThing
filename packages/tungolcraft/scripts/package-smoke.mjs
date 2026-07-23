@@ -38,6 +38,8 @@ try {
 	assert.ok(packResult.files.some(({ path }) => path === 'LICENSE'))
 	assert.ok(packResult.files.some(({ path }) => path === 'dist/index.js'))
 	assert.ok(packResult.files.some(({ path }) => path === 'dist/index.d.ts'))
+	assert.ok(packResult.files.some(({ path }) => path === 'schemas/scenario.schema.json'))
+	assert.ok(packResult.files.some(({ path }) => path === 'schemas/scenario-report.schema.json'))
 	assert.ok(!packResult.files.some(({ path }) => path.startsWith('src/')))
 	assert.ok(!packResult.files.some(({ path }) => path.endsWith('.test.ts')))
 
@@ -49,9 +51,13 @@ try {
 	writeFileSync(
 		path.join(consumerDirectory, 'runtime.mjs'),
 		[
-			`import { au, computeOrbitalPeriodDays, NOMINAL_SOLAR_GM } from 'tungolcraft'`,
+			`import { readFileSync } from 'node:fs'`,
+			`import { au, computeOrbitalPeriodDays, NOMINAL_SOLAR_GM, SCENARIO_SCHEMA_VERSION } from 'tungolcraft'`,
 			'const period = computeOrbitalPeriodDays(au(1), NOMINAL_SOLAR_GM)',
 			`if (!(period > 365 && period < 366)) throw new Error(\`Unexpected period: \${period}\`)`,
+			`const schemaUrl = import.meta.resolve('tungolcraft/schemas/scenario.schema.json')`,
+			`const schema = JSON.parse(readFileSync(new URL(schemaUrl), 'utf8'))`,
+			`if (schema.properties.schemaVersion.const !== SCENARIO_SCHEMA_VERSION) throw new Error('Scenario schema version mismatch')`,
 			'',
 		].join('\n'),
 	)
@@ -63,9 +69,16 @@ try {
 	writeFileSync(
 		path.join(consumerDirectory, 'types.ts'),
 		[
-			`import { au, computeOrbitalPeriodDays, NOMINAL_SOLAR_GM, type Days } from 'tungolcraft'`,
+			`import { au, computeOrbitalPeriodDays, NOMINAL_SOLAR_GM, SCENARIO_SCHEMA_VERSION, type Days, type ScenarioInput } from 'tungolcraft'`,
 			'const period: Days = computeOrbitalPeriodDays(au(1), NOMINAL_SOLAR_GM)',
+			'const scenario: ScenarioInput = {',
+			'  schemaVersion: SCENARIO_SCHEMA_VERSION,',
+			`  time: { epoch: '0', scale: 'model-day', secondsPerDay: 86400 },`,
+			'  frames: [],',
+			'  bodies: [],',
+			'}',
 			'void period',
+			'void scenario',
 			'',
 		].join('\n'),
 	)

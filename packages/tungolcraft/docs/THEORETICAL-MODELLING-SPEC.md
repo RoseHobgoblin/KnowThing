@@ -127,6 +127,7 @@ type Unit =
   | 'kg'
   | 'kg/m^3'
   | 'W'
+  | 'K'
   | 'm^3/s^2'
   | 'AU'
 ```
@@ -303,6 +304,7 @@ a right-handed, parent-centred inertial frame with the reference plane in XY.
 export interface EllipticalOrbit {
   kind: 'elliptical'
   primaryId: string
+  frameId: string
   semiMajorAxis: Quantity<'AU'>
   axisMeaning: 'parent-centred' | 'relative-separation' | 'barycentric-component'
   eccentricity: Quantity<'1'>
@@ -310,6 +312,7 @@ export interface EllipticalOrbit {
   longitudeAscendingNode: Quantity<'deg'>
   argumentOfPeriapsis: Quantity<'deg'>
   epochPhase: Quantity<'1'>
+  mu: Quantity<'m^3/s^2'>
 }
 ```
 
@@ -329,6 +332,18 @@ For a binary:
 Body IDs MUST be unique. Parent references MUST resolve. The graph MUST be
 acyclic. A scenario validator MUST report duplicate IDs, missing parents,
 cycles, incompatible axis meanings and missing mass required for a derivation.
+
+### 10.5 Scientific and presentation records
+
+`ScientificBody` MUST contain only structured scientific quantities and orbit
+records. Names, prose descriptions, classifications and arbitrary application
+fields belong to a separate `BodyMetadata` record keyed by body ID. Metadata
+MUST NOT be interpreted as numerical model input.
+
+The implemented scenario validator additionally rejects unknown fields,
+non-finite values, negative zero, wrong runtime units, duplicate frame IDs,
+missing frame origins and orbit frames whose origin does not match the orbit
+primary.
 
 ## 11. Uncertainty
 
@@ -400,6 +415,12 @@ export interface ScenarioReport {
 Every derived result MUST list its input dependencies. If an upstream result
 fails, dependants MUST return `missing-input` diagnostics rather than calculate
 from fabricated substitutes.
+
+`ScenarioInput` and `ScenarioReport` use independent schema version `1.0.0`.
+Runtime object validation, safe JSON parse/serialization and report dependency
+validation are implemented. JSON Schema draft 2020-12 documents are published
+as `tungolcraft/schemas/scenario.schema.json` and
+`tungolcraft/schemas/scenario-report.schema.json`.
 
 ## 14. Verification requirements
 

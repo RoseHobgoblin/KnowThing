@@ -31,11 +31,14 @@
 			"types": "./dist/index.d.ts",
 			"import": "./dist/index.js",
 			"default": "./dist/index.js"
-		}
+		},
+		"./schemas/scenario.schema.json": "./schemas/scenario.schema.json",
+		"./schemas/scenario-report.schema.json": "./schemas/scenario-report.schema.json"
 	},
 	"files": [
 		"dist",
-		"docs"
+		"docs",
+		"schemas"
 	],
 	"scripts": {
 		"clean": "node scripts/clean-distribution.mjs",
