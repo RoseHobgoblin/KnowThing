@@ -12,6 +12,7 @@ import {
 	deriveHabitableZoneAu,
 	deriveSystemType,
 	kg, m, au, kelvin, watts,
+	muFromMass, addMu, NOMINAL_SOLAR_GM,
 } from './index.js'
 
 const EARTH_MASS_KG = 5.972e24
@@ -35,13 +36,39 @@ describe('physical formulas at Earth reference values', () => {
 
 describe('computeOrbitalPeriodDays', () => {
 	it('Earth around the Sun ≈ 365 days', () => {
-		expect(computeOrbitalPeriodDays(au(1), kg(SOLAR_MASS_KG))).toBeCloseTo(365, 0)
+		expect(computeOrbitalPeriodDays(au(1), muFromMass(kg(SOLAR_MASS_KG)))).toBeCloseTo(365, 0)
 	})
 
 	it('scales as a^(3/2) (Kepler III)', () => {
-		const oneAu = computeOrbitalPeriodDays(au(1), kg(SOLAR_MASS_KG))
-		const fourAu = computeOrbitalPeriodDays(au(4), kg(SOLAR_MASS_KG))
+		const oneAu = computeOrbitalPeriodDays(au(1), muFromMass(kg(SOLAR_MASS_KG)))
+		const fourAu = computeOrbitalPeriodDays(au(4), muFromMass(kg(SOLAR_MASS_KG)))
 		expect(fourAu / oneAu).toBeCloseTo(8, 3) // 4^1.5 = 8
+	})
+})
+
+describe('two-body μ and IAU nominal parameters', () => {
+	it('muFromMass(M) reproduces the primary-only period', () => {
+		expect(computeOrbitalPeriodDays(au(1), muFromMass(kg(SOLAR_MASS_KG)))).toBeCloseTo(365, 0)
+	})
+
+	it('an equal-mass binary orbits √2 faster than the primary alone (M+m matters)', () => {
+		const a = au(1)
+		const primaryOnly = computeOrbitalPeriodDays(a, muFromMass(kg(SOLAR_MASS_KG)))
+		const bothStars = computeOrbitalPeriodDays(a, addMu(muFromMass(kg(SOLAR_MASS_KG)), muFromMass(kg(SOLAR_MASS_KG))))
+		expect(primaryOnly / bothStars).toBeCloseTo(Math.SQRT2, 6)
+	})
+
+	it('adding a planet-scale companion barely shifts the period (M ≫ m limit)', () => {
+		const a = au(1)
+		const starOnly = computeOrbitalPeriodDays(a, muFromMass(kg(SOLAR_MASS_KG)))
+		const withEarth = computeOrbitalPeriodDays(a, addMu(muFromMass(kg(SOLAR_MASS_KG)), muFromMass(kg(EARTH_MASS_KG))))
+		expect(withEarth).toBeLessThan(starOnly)
+		expect(starOnly / withEarth).toBeCloseTo(1, 5) // < 1e-5 relative
+	})
+
+	it('uses the IAU nominal solar GM directly for a 1 AU sidereal year', () => {
+		// 2π√(AU³/GM☉ᴺ) — independent of the less-precise tabulated solar mass.
+		expect(computeOrbitalPeriodDays(au(1), NOMINAL_SOLAR_GM)).toBeCloseTo(365.25, 0)
 	})
 })
 

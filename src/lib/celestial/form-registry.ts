@@ -15,7 +15,7 @@ import {
 	formatMass,
 	formatRadius,
 	formatTemperatureK,
-	au, kg, m, kelvin, watts,
+	au, kg, m, kelvin, watts, muFromMass,
 } from 'tungolcraft'
 import { validateBodyPhysics, validateStarPhysics, type PhysicsWarning } from 'tungolcraft'
 import { spectralColor } from './colors.js'
@@ -467,8 +467,9 @@ function starEffectivePeriodDays(ctx: FieldContext): number | null {
 	if (stored != null) return stored
 	const semiMajorAxisAu = num(ctx, 'semiMajorAxisAu')
 	const primaryMassKg = starPrimaryMassKg(ctx)
+	// `starPrimaryMassKg` already sums the pair / all system stars, so μ = G × total.
 	return semiMajorAxisAu != null && semiMajorAxisAu > 0 && primaryMassKg != null
-		? computeOrbitalPeriodDays(au(semiMajorAxisAu), kg(primaryMassKg))
+		? computeOrbitalPeriodDays(au(semiMajorAxisAu), muFromMass(kg(primaryMassKg)))
 		: null
 }
 

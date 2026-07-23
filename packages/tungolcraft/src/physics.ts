@@ -10,7 +10,7 @@ import { G, AU_M, STEFAN_BOLTZMANN, SOLAR_LUMINOSITY } from './constants.js'
 import { m, kelvin, watts } from './units.js'
 import type {
 	Kilograms, Metres, AstronomicalUnits, Days, Kelvin, Watts,
-	MetresPerSecond, MetresPerSecondSquared, KgPerCubicMetre,
+	MetresPerSecond, MetresPerSecondSquared, KgPerCubicMetre, GravitationalParameter,
 } from './units.js'
 
 /** density = 3M / (4πr³) → kg/m³ */
@@ -28,10 +28,20 @@ export function computeEscapeVelocity(massKg: Kilograms, radiusM: Metres): Metre
 	return Math.sqrt((2 * G * massKg) / radiusM) as MetresPerSecond
 }
 
-/** orbital period via Kepler's third law: T = 2π√(a³/GM) → days */
-export function computeOrbitalPeriodDays(semiMajorAxisAu: AstronomicalUnits, parentMassKg: Kilograms): Days {
+/**
+ * Orbital period via Kepler's third law in its exact two-body form:
+ *   T = 2π √(a³ / μ),   μ = G(M + m)
+ *
+ * `mu` is the system's *total* standard gravitational parameter — the summed μ of
+ * both partners (see `addMu` / `muFromMass`), not the primary's alone. For M ≫ m
+ * the secondary term is negligible; for comparable masses (binaries) it is not,
+ * which is why the parameter is μ_total rather than a single mass. Working in
+ * μ = GM also sidesteps the G-vs-mass precision mismatch the IAU nominal
+ * constants exist to prevent (Resolution B3, 2015).
+ */
+export function computeOrbitalPeriodDays(semiMajorAxisAu: AstronomicalUnits, mu: GravitationalParameter): Days {
 	const a = semiMajorAxisAu * AU_M
-	const secs = 2 * Math.PI * Math.sqrt(a ** 3 / (G * parentMassKg))
+	const secs = 2 * Math.PI * Math.sqrt(a ** 3 / mu)
 	return (secs / 86_400) as Days
 }
 

@@ -14,7 +14,7 @@
  * rows back with periods filled in.
  */
 import { computeOrbitalPeriodDays } from './physics.js'
-import { au, kg } from './units.js'
+import { au, kg, addMu, muFromMass, type GravitationalParameter } from './units.js'
 
 export interface EffectiveOrbitStar {
 	id: number
@@ -50,9 +50,14 @@ export function totalStellarMassKg(stars: ReadonlyArray<{ massKg?: number | null
 	return total > 0 ? total : null
 }
 
-function derivedPeriod(semiMajorAxisAu: number | null | undefined, primaryMassKg: number | null): number | null {
-	return semiMajorAxisAu != null && semiMajorAxisAu > 0 && primaryMassKg != null
-		? computeOrbitalPeriodDays(au(semiMajorAxisAu), kg(primaryMassKg))
+/** μ = GM from a possibly-missing mass; a null/zero mass contributes nothing. */
+function muOf(massKg: number | null | undefined): GravitationalParameter {
+	return muFromMass(kg(positiveMass(massKg) ?? 0))
+}
+
+function derivedPeriod(semiMajorAxisAu: number | null | undefined, mu: GravitationalParameter | null): number | null {
+	return semiMajorAxisAu != null && semiMajorAxisAu > 0 && mu != null
+		? computeOrbitalPeriodDays(au(semiMajorAxisAu), mu)
 		: null
 }
 
@@ -70,30 +75,35 @@ export function annotateEffectivePeriods<S extends EffectiveOrbitStar, B extends
 
 	const annotatedStars = stars.map((star) => {
 		if (star.orbitalPeriodDays != null) return star
-		// A companion pair orbits with the combined mass of both partners; a
-		// barycentric component orbits with the whole system's stellar mass.
-		let primaryMassKg: number | null = null
+		// A companion pair orbits with the combined μ of both partners; a
+		// barycentric component orbits with the whole system's stellar μ (which
+		// already includes this star, so it is not added again).
+		let mu: GravitationalParameter | null = null
 		if (star.parentStarId != null) {
 			const partnerMassKg = positiveMass(starById.get(star.parentStarId)?.massKg)
-			primaryMassKg = partnerMassKg == null ? null : partnerMassKg + (positiveMass(star.massKg) ?? 0)
+			mu = partnerMassKg == null ? null : addMu(muOf(partnerMassKg), muOf(star.massKg))
 		} else if (star.parentSystemId != null) {
-			primaryMassKg = barycenterMassKg
+			mu = barycenterMassKg == null ? null : muOf(barycenterMassKg)
 		}
-		const period = derivedPeriod(star.semiMajorAxisAu, primaryMassKg)
+		const period = derivedPeriod(star.semiMajorAxisAu, mu)
 		return period == null ? star : { ...star, orbitalPeriodDays: period }
 	})
 
 	const annotatedBodies = bodies.map((body) => {
 		if (body.orbitalPeriodDays != null) return body
-		let primaryMassKg: number | null = null
+		// Two-body μ: the central mass (parent body, star, or system barycenter)
+		// plus this body's own μ. None of those central masses already include it.
+		let mu: GravitationalParameter | null = null
 		if (body.parentId != null) {
-			primaryMassKg = positiveMass(bodyById.get(body.parentId)?.massKg)
+			const parentMassKg = positiveMass(bodyById.get(body.parentId)?.massKg)
+			mu = parentMassKg == null ? null : addMu(muOf(parentMassKg), muOf(body.massKg))
 		} else if (body.starId != null) {
-			primaryMassKg = positiveMass(starById.get(body.starId)?.massKg)
+			const starMassKg = positiveMass(starById.get(body.starId)?.massKg)
+			mu = starMassKg == null ? null : addMu(muOf(starMassKg), muOf(body.massKg))
 		} else if (body.parentSystemId != null) {
-			primaryMassKg = barycenterMassKg
+			mu = barycenterMassKg == null ? null : addMu(muOf(barycenterMassKg), muOf(body.massKg))
 		}
-		const period = derivedPeriod(body.semiMajorAxisAu, primaryMassKg)
+		const period = derivedPeriod(body.semiMajorAxisAu, mu)
 		return period == null ? body : { ...body, orbitalPeriodDays: period }
 	})
 

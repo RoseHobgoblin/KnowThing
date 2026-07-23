@@ -6,14 +6,15 @@
  */
 
 import {
-	kg, m, au, kelvin, watts, solarMasses,
+	kg, m, au, kelvin, watts, solarMasses, muFromMass, solarGm,
 	computeDensity, computeOrbitalPeriodDays, computeLuminosity, computeHabitableZoneAu,
 	star,
 } from './index.js'
 
 // ---- Correct usage type-checks ----
 computeDensity(kg(5.972e24), m(6.371e6))
-computeOrbitalPeriodDays(au(1), kg(1.989e30))
+computeOrbitalPeriodDays(au(1), muFromMass(kg(1.989e30)))
+computeOrbitalPeriodDays(au(1), solarGm(1))
 computeLuminosity(m(6.9634e8), kelvin(5778))
 computeHabitableZoneAu(watts(3.828e26))
 
@@ -28,8 +29,11 @@ computeDensity(5.972e24, 6.371e6)
 // @ts-expect-error AU passed where Kelvin is expected
 computeLuminosity(m(6.9634e8), au(1))
 
-// @ts-expect-error semi-major axis and parent mass swapped (AU vs Kilograms)
-computeOrbitalPeriodDays(kg(1.989e30), au(1))
+// @ts-expect-error semi-major axis and μ swapped (AU vs GravitationalParameter)
+computeOrbitalPeriodDays(muFromMass(kg(1.989e30)), au(1))
+
+// @ts-expect-error a raw mass is not a gravitational parameter — must go through muFromMass
+computeOrbitalPeriodDays(au(1), kg(1.989e30))
 
 // @ts-expect-error a raw luminosity number is not Watts
 computeHabitableZoneAu(3.828e26)

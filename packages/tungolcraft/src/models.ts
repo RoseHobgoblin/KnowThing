@@ -23,7 +23,7 @@ import {
 	computeHabitableZoneAu,
 	computeLuminosity,
 } from './physics.js'
-import { kg, m, au, days, kelvin, watts } from './units.js'
+import { kg, m, au, days, kelvin, watts, addMu, muFromMass } from './units.js'
 
 /** A reference to another celestial entity. */
 export interface Ref {
@@ -232,11 +232,11 @@ export function deriveBody(row: BodyRow, relations: BodyRelations = {}): BodyMod
 
 	// A moon orbits its parent body; a planet orbits the star; a circumbinary
 	// body orbits the system barycenter (whose mass is the total stellar mass).
-	// Its period, if not stored, derives from whichever primary it circles.
+	// Its period, if not stored, derives from the two-body μ = G(central + this).
 	const primaryMassKg = relations.parentBody?.massKg ?? relations.star?.massKg ?? relations.system?.massKg ?? null
 	const orbitalPeriodDays = row.orbitalPeriodDays
 		?? (semiMajorAxisAu != null && primaryMassKg != null && primaryMassKg > 0
-			? computeOrbitalPeriodDays(au(semiMajorAxisAu), kg(primaryMassKg))
+			? computeOrbitalPeriodDays(au(semiMajorAxisAu), addMu(muFromMass(kg(primaryMassKg)), muFromMass(kg(massKg ?? 0))))
 			: null)
 
 	const orbitalVelocityMs = semiMajorAxisAu != null && orbitalPeriodDays != null && orbitalPeriodDays > 0
@@ -310,14 +310,15 @@ export function deriveStar(row: StarRow, relations: StarRelations = {}): StarMod
 
 	// Binary/barycentric orbital period: explicit, else Kepler from the semi-major
 	// axis and the pair's combined mass (companion of a star) or the system's
-	// total stellar mass (component orbiting the barycenter).
+	// total stellar mass (component orbiting the barycenter). Both totals already
+	// include this star, so μ = G × total (no separate self term).
 	const pairMassKg = relations.parentStar?.massKg != null && relations.parentStar.massKg > 0
 		? relations.parentStar.massKg + (massKg ?? 0)
 		: null
 	const primaryMassKg = pairMassKg ?? positive(relations.barycenterMassKg)
 	const orbitalPeriodDays = row.orbitalPeriodDays
 		?? (semiMajorAxisAu != null && primaryMassKg != null
-			? computeOrbitalPeriodDays(au(semiMajorAxisAu), kg(primaryMassKg))
+			? computeOrbitalPeriodDays(au(semiMajorAxisAu), muFromMass(kg(primaryMassKg)))
 			: null)
 
 	return {

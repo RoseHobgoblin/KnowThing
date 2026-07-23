@@ -14,7 +14,7 @@ import {
 	formatDensity, formatSurfaceGravity, formatEscapeVelocity,
 	formatOrbitalVelocity, formatHillSphere, formatAu, formatPeriod, formatAuAsKm,
 } from './format.js'
-import { kg, m, au, days } from './units.js'
+import { kg, m, au, days, addMu, muFromMass } from './units.js'
 
 export interface BodyDerivedFields {
 	density: string | null
@@ -48,9 +48,10 @@ export function deriveBodyOrbitalFields(
 ): BodyDerivedOrbitalFields {
 	let period = orbitalPeriodDays
 
-	// Compute orbital period from Kepler's third law if not provided
+	// Compute orbital period from Kepler's third law if not provided, using the
+	// two-body μ = G(parent + this body).
 	if (period == null && semiMajorAxisAu != null && parentMassKg != null && semiMajorAxisAu > 0 && parentMassKg > 0) {
-		period = computeOrbitalPeriodDays(au(semiMajorAxisAu), kg(parentMassKg))
+		period = computeOrbitalPeriodDays(au(semiMajorAxisAu), addMu(muFromMass(kg(parentMassKg)), muFromMass(kg(bodyMassKg ?? 0))))
 	}
 
 	const orbitalVelocity = semiMajorAxisAu != null && period != null && period > 0
