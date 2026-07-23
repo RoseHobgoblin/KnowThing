@@ -1,6 +1,8 @@
 # tungolcraft
 
-A generative astrophysics engine for **worldbuilding** — not an ephemeris.
+An explainable astrophysics modelling toolkit for arbitrary celestial systems.
+It supports fictional worldbuilding and theoretical scientific scenarios; it
+is not a real-sky ephemeris.
 
 Where a library like [astronomy-engine](https://www.npmjs.com/package/astronomy-engine)
 answers *"where is the real Mars in the sky tonight?"*, Tungolcraft answers a
@@ -10,6 +12,15 @@ bodies**, which a real-sky ephemeris structurally cannot.
 
 Zero runtime dependencies. Pure functions. SI units in, SI units out (with an
 optional formatting layer).
+
+## Install
+
+```sh
+npm install tungolcraft
+```
+
+Tungolcraft is an ES module and publishes compiled JavaScript with TypeScript
+declarations.
 
 ## What's inside
 

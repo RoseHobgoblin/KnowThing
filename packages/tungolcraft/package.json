@@ -1,11 +1,24 @@
 {
 	"name": "tungolcraft",
 	"version": "0.1.0",
-	"description": "A generative astrophysics engine for worldbuilding: derive, validate, and place invented celestial bodies.",
+	"description": "An explainable astrophysics modelling toolkit for arbitrary celestial systems.",
 	"type": "module",
 	"license": "MIT",
+	"author": "J. L. Bowden",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/RoseHobgoblin/KnowThing.git",
+		"directory": "packages/tungolcraft"
+	},
+	"bugs": {
+		"url": "https://github.com/RoseHobgoblin/KnowThing/issues"
+	},
+	"homepage": "https://github.com/RoseHobgoblin/KnowThing/tree/main/packages/tungolcraft#readme",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
 	"keywords": [
 		"astrophysics",
+		"scientific-modelling",
 		"worldbuilding",
 		"orbital-mechanics",
 		"kepler",
@@ -15,17 +28,21 @@
 	"sideEffects": false,
 	"exports": {
 		".": {
-			"types": "./src/index.ts",
-			"default": "./src/index.ts"
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"default": "./dist/index.js"
 		}
 	},
 	"files": [
-		"src",
 		"dist",
 		"docs"
 	],
 	"scripts": {
-		"build": "tsc -p tsconfig.json",
+		"clean": "node scripts/clean-distribution.mjs",
+		"build": "npm run clean && tsc -p tsconfig.json",
+		"prepack": "npm run build",
+		"pack:smoke": "node scripts/package-smoke.mjs",
+		"prepublishOnly": "npm run test && npm run typecheck && npm run pack:smoke",
 		"typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
 		"test": "vitest run --config vitest.config.ts"
 	}
