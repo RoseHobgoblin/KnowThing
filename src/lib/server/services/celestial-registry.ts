@@ -105,6 +105,9 @@ export async function getSystemMapEntities(systemId: number) {
 			WITH RECURSIVE ${CELESTIAL_TREE_CTE}
 			SELECT s.id, s.name, s.slug, s.spectral_type AS "spectralType", s.color,
 				s.mass_kg AS "massKg",
+				s.semi_major_axis_au AS "relativeSemiMajorAxisAu",
+				-- SystemMap still consumes the shared display-oriented field name.
+				-- Both aliases represent binary relative separation for stars.
 				s.semi_major_axis_au AS "semiMajorAxisAu",
 				s.eccentricity,
 				CASE WHEN p.kind = 'star' THEN s.parent_id END AS "parentStarId",
@@ -212,6 +215,7 @@ export interface BodyReference {
 	name: string
 	slug: string
 	massKg: number | null
+	radiusM: number | null
 	/** Nearest star ancestor. */
 	starId: number | null
 	/** Direct parent when the parent is a body (moon relationship). */
@@ -228,7 +232,7 @@ export interface BodyReference {
 export async function listAllBodyReferences(): Promise<BodyReference[]> {
 	const rows = await db.execute(sql`
 		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
-		SELECT pb.id, pb.name, pb.slug, pb.mass_kg AS "massKg",
+		SELECT pb.id, pb.name, pb.slug, pb.mass_kg AS "massKg", pb.radius_m AS "radiusM",
 			t.nearest_star_id AS "starId",
 			CASE WHEN p.kind = 'body' THEN pb.parent_id END AS "parentId",
 			CASE WHEN p.kind = 'system' THEN pb.parent_id END AS "parentSystemId",

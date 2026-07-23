@@ -14,7 +14,7 @@
 		'temperature', 'age', 'color', 'metallicity',
 		'habitable_zone',
 		'rotation_period', 'axial_tilt', 'equatorial_velocity',
-		'orbital_period', 'orbital_semimajor', 'semi_major_axis', 'eccentricity',
+		'orbital_period', 'orbital_semimajor', 'semi_major_axis', 'relative_semi_major_axis', 'eccentricity',
 		'orbital_eccentricity', 'periastron', 'apastron',
 		'apparent_magnitude', 'apparent_magnitude_bright', 'apparent_magnitude_dim',
 		'absolute_magnitude',
@@ -47,7 +47,7 @@
 	const equatorialVelocity = $derived(getField(fields, 'equatorial_velocity') ?? '')
 
 	const orbitalPeriod = $derived(getField(fields, 'orbital_period') ?? '')
-	const semiMajorAxis = $derived(getField(fields, 'orbital_semimajor', 'semi_major_axis') ?? '')
+	const semiMajorAxis = $derived(getField(fields, 'relative_semi_major_axis', 'orbital_semimajor', 'semi_major_axis') ?? '')
 	const eccentricity = $derived(getField(fields, 'orbital_eccentricity', 'eccentricity') ?? '')
 	const periastron = $derived(getField(fields, 'periastron') ?? '')
 	const apastron = $derived(getField(fields, 'apastron') ?? '')

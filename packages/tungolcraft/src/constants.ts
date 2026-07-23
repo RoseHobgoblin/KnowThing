@@ -22,11 +22,12 @@ export const SOLAR_LUMINOSITY = 3.828e26 as Watts
 /**
  * IAU 2015 Resolution B3 nominal standard gravitational parameters GM (m³ s⁻²).
  *
- * GM is measured far more precisely than G and a body's mass separately, so these
- * nominal products — not `G × (a rounded mass)` — are the accurate anchors for
- * solar-system-scaled bodies. Feed them (or `muFromMass` for an arbitrary invented
- * mass) as the μ argument to `computeOrbitalPeriodDays`. See the B3 conversion
- * table: https://www.iau.org/static/resolutions/IAU2015_English.pdf
+ * These are exact SI conversion factors adopted for consistent use of nominal
+ * solar, terrestrial and jovian units. They are based on the 2015 current best
+ * estimates but explicitly are NOT measurements of the present-day bodies and
+ * carry no observational uncertainty. For real-body ephemerides, use a sourced
+ * measured GM instead. See the B3 conversion table:
+ * https://www.iau.org/static/resolutions/IAU2015_English.pdf
  */
 export const NOMINAL_SOLAR_GM = 1.327_124_4e20 as GravitationalParameter
 export const NOMINAL_TERRESTRIAL_GM = 3.986_004e14 as GravitationalParameter

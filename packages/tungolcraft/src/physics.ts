@@ -13,6 +13,24 @@ import type {
 	MetresPerSecond, MetresPerSecondSquared, KgPerCubicMetre, GravitationalParameter,
 } from './units.js'
 
+function requireFinite(name: string, value: number): void {
+	if (!Number.isFinite(value)) throw new RangeError(`${name} must be finite; got ${value}`)
+}
+
+function requirePositive(name: string, value: number): void {
+	requireFinite(name, value)
+	if (value <= 0) throw new RangeError(`${name} must be greater than zero; got ${value}`)
+}
+
+function resolveBoundEccentricity(eccentricity: number | null | undefined): number {
+	if (eccentricity == null) return 0
+	requireFinite('eccentricity', eccentricity)
+	if (eccentricity < 0 || eccentricity >= 1) {
+		throw new RangeError(`eccentricity must be in [0, 1) for a bound orbit; got ${eccentricity}`)
+	}
+	return eccentricity
+}
+
 /** density = 3M / (4πr³) → kg/m³ */
 export function computeDensity(massKg: Kilograms, radiusM: Metres): KgPerCubicMetre {
 	return (massKg / ((4 / 3) * Math.PI * radiusM ** 3)) as KgPerCubicMetre
@@ -40,6 +58,7 @@ export function computeEscapeVelocity(massKg: Kilograms, radiusM: Metres): Metre
  * faster spin than a fluffy one.
  */
 export function computeRotationalBreakupPeriodS(density: KgPerCubicMetre): Seconds {
+	requirePositive('density', density)
 	return Math.sqrt((3 * Math.PI) / (G * density)) as Seconds
 }
 
@@ -55,6 +74,8 @@ export function computeRotationalBreakupPeriodS(density: KgPerCubicMetre): Secon
  * constants exist to prevent (Resolution B3, 2015).
  */
 export function computeOrbitalPeriodDays(semiMajorAxisAu: AstronomicalUnits, mu: GravitationalParameter): Days {
+	requirePositive('semiMajorAxisAu', semiMajorAxisAu)
+	requirePositive('mu', mu)
 	const a = semiMajorAxisAu * AU_M
 	const secs = 2 * Math.PI * Math.sqrt(a ** 3 / mu)
 	return (secs / 86_400) as Days
@@ -69,9 +90,16 @@ export function computeOrbitalPeriodDays(semiMajorAxisAu: AstronomicalUnits, mu:
  * are both in AU; `mu` is the system's total μ = G(M + m) (see `addMu`).
  */
 export function computeOrbitalSpeedAtRadius(mu: GravitationalParameter, radiusAu: AstronomicalUnits, semiMajorAxisAu: AstronomicalUnits): MetresPerSecond {
+	requirePositive('mu', mu)
+	requirePositive('radiusAu', radiusAu)
+	requirePositive('semiMajorAxisAu', semiMajorAxisAu)
 	const r = radiusAu * AU_M
 	const a = semiMajorAxisAu * AU_M
-	return Math.sqrt(mu * (2 / r - 1 / a)) as MetresPerSecond
+	const speedSquared = mu * (2 / r - 1 / a)
+	if (speedSquared < 0) {
+		throw new RangeError('radiusAu lies outside the real-valued vis-viva domain for this semi-major axis')
+	}
+	return Math.sqrt(speedSquared) as MetresPerSecond
 }
 
 /**
@@ -81,6 +109,8 @@ export function computeOrbitalSpeedAtRadius(mu: GravitationalParameter, radiusAu
  * `computeMeanOrbitalSpeed` (the time-average) instead.
  */
 export function computeCircularOrbitSpeed(mu: GravitationalParameter, radiusAu: AstronomicalUnits): MetresPerSecond {
+	requirePositive('mu', mu)
+	requirePositive('radiusAu', radiusAu)
 	const r = radiusAu * AU_M
 	return Math.sqrt(mu / r) as MetresPerSecond
 }
@@ -94,9 +124,15 @@ export function computeCircularOrbitSpeed(mu: GravitationalParameter, radiusAu: 
  * this over any single "orbital velocity" for an eccentric orbit, and reach for
  * `computeOrbitalSpeedAtRadius` when a specific point's speed is wanted.
  */
-export function computeMeanOrbitalSpeed(semiMajorAxisAu: AstronomicalUnits, orbitalPeriodDays: Days, eccentricity: number = 0): MetresPerSecond {
+export function computeMeanOrbitalSpeed(
+	semiMajorAxisAu: AstronomicalUnits,
+	orbitalPeriodDays: Days,
+	eccentricity: number | null = 0,
+): MetresPerSecond {
+	requirePositive('semiMajorAxisAu', semiMajorAxisAu)
+	requirePositive('orbitalPeriodDays', orbitalPeriodDays)
 	const a = semiMajorAxisAu * AU_M
-	const ecc = eccentricity > 0 && eccentricity < 1 ? eccentricity : 0
+	const ecc = resolveBoundEccentricity(eccentricity)
 	const b = a * Math.sqrt(1 - ecc * ecc)
 	const h = ((a - b) / (a + b)) ** 2
 	const perimeter = Math.PI * (a + b) * (1 + (3 * h) / (10 + Math.sqrt(4 - 3 * h)))
@@ -106,11 +142,14 @@ export function computeMeanOrbitalSpeed(semiMajorAxisAu: AstronomicalUnits, orbi
 /**
  * Hill sphere radius: r_H ≈ a(1 − e) × (m / 3M)^(1/3) → AU.
  * The (1 − e) periapsis factor matters for eccentric orbits — the sphere is
- * smallest (and containment tightest) at closest approach. A null or
- * out-of-range eccentricity is treated as a circular orbit.
+ * smallest (and containment tightest) at closest approach. A null eccentricity
+ * means circular; an explicit value outside [0, 1) is rejected.
  */
 export function computeHillSphereAu(semiMajorAxisAu: AstronomicalUnits, bodyMassKg: Kilograms, parentMassKg: Kilograms, eccentricity: number | null = null): AstronomicalUnits {
-	const ecc = eccentricity != null && eccentricity > 0 && eccentricity < 1 ? eccentricity : 0
+	requirePositive('semiMajorAxisAu', semiMajorAxisAu)
+	requirePositive('bodyMassKg', bodyMassKg)
+	requirePositive('parentMassKg', parentMassKg)
+	const ecc = resolveBoundEccentricity(eccentricity)
 	return (semiMajorAxisAu * (1 - ecc) * Math.cbrt(bodyMassKg / (3 * parentMassKg))) as AstronomicalUnits
 }
 
@@ -120,9 +159,9 @@ export function computeHillSphereAu(semiMajorAxisAu: AstronomicalUnits, bodyMass
  *   d = C · R_parent · (ρ_parent / ρ_sat)^(1/3)  → metres
  * The coefficient C depends on how the satellite resists the tide, and the two
  * cases bracket reality rather than agree:
- *   'rigid' → C = 2^(1/3) ≈ 1.26. A solid body that keeps its shape; the tide
- *     must overcome material strength, so it survives closer in. The optimistic
- *     (inner) bound.
+ *   'rigid' → C = 2^(1/3) ≈ 1.26. The idealised satellite remains spherical
+ *     instead of deforming under the tide. This coefficient does not model a
+ *     material tensile strength; a cohesive real body requires a strength model.
  *   'fluid' → C ≈ 2.44. A fluid or loose rubble pile the tide freely elongates
  *     into a football, which then sheds mass from its tips; it gives up first.
  *     The pessimistic (outer) bound.
@@ -136,7 +175,76 @@ export function computeRocheLimitM(
 	bodyDensity: KgPerCubicMetre,
 	rigidity: 'rigid' | 'fluid' = 'rigid',
 ): Metres {
+	requirePositive('parentRadiusM', parentRadiusM)
+	requirePositive('parentDensity', parentDensity)
+	requirePositive('bodyDensity', bodyDensity)
 	return (ROCHE_COEFFICIENT[rigidity] * parentRadiusM * Math.cbrt(parentDensity / bodyDensity)) as Metres
+}
+
+/**
+ * Distance from the parent body's centre to the two-body barycenter:
+ * r_parent = a × m_satellite / (m_parent + m_satellite).
+ */
+export function computeParentBarycenterDistanceM(
+	separationAu: AstronomicalUnits,
+	parentMassKg: Kilograms,
+	satelliteMassKg: Kilograms,
+): Metres {
+	requirePositive('separationAu', separationAu)
+	requirePositive('parentMassKg', parentMassKg)
+	requirePositive('satelliteMassKg', satelliteMassKg)
+	return (separationAu * AU_M * satelliteMassKg / (parentMassKg + satelliteMassKg)) as Metres
+}
+
+export type SatelliteOrbitSense = 'prograde' | 'retrograde'
+
+export interface SatelliteStabilityEstimate {
+	limitAu: AstronomicalUnits
+	/** Limit as a fraction of the conventional Hill radius at the parent's semi-major axis. */
+	hillFraction: number
+	model: 'domingos-2006'
+	citation: '10.1111/j.1365-2966.2006.11104.x'
+	assumptions: readonly string[]
+}
+
+/**
+ * Empirical outer satellite-stability limit from Domingos, Winter & Yokoyama
+ * (2006), equations 5 and 6, for the restricted elliptic three-body problem:
+ *   prograde:  0.4895(1 - 1.0305eP - 0.2738eS)
+ *   retrograde: 0.9309(1 - 1.0764eP - 0.9812eS + 0.9446eP eS)
+ *
+ * `hillRadiusAu` is the conventional Hill radius evaluated at the parent's
+ * semi-major axis, before an additional (1-eP) periapsis factor. The empirical
+ * formula already carries the parent-eccentricity dependence.
+ */
+export function estimateSatelliteStabilityLimitAu(
+	hillRadiusAu: AstronomicalUnits,
+	parentEccentricity: number | null,
+	satelliteEccentricity: number | null,
+	orbitSense: SatelliteOrbitSense = 'prograde',
+): SatelliteStabilityEstimate {
+	requirePositive('hillRadiusAu', hillRadiusAu)
+	const parentEcc = resolveBoundEccentricity(parentEccentricity)
+	const satelliteEcc = resolveBoundEccentricity(satelliteEccentricity)
+	const fraction = orbitSense === 'prograde'
+		? 0.4895 * (1 - 1.0305 * parentEcc - 0.2738 * satelliteEcc)
+		: 0.9309 * (1 - 1.0764 * parentEcc - 0.9812 * satelliteEcc + 0.9446 * parentEcc * satelliteEcc)
+	if (fraction <= 0) {
+		throw new RangeError(
+			`Domingos 2006 yields no positive stable region for eP=${parentEcc}, eS=${satelliteEcc}, sense=${orbitSense}`,
+		)
+	}
+	return {
+		limitAu: (hillRadiusAu * fraction) as AstronomicalUnits,
+		hillFraction: fraction,
+		model: 'domingos-2006',
+		citation: '10.1111/j.1365-2966.2006.11104.x',
+		assumptions: [
+			'restricted elliptic three-body problem',
+			'satellite mass is negligible compared with parent and star',
+			'empirical outer stability boundary, not an N-body guarantee',
+		],
+	}
 }
 
 /** habitable zone inner/outer bounds (simple luminosity model): √(L/1.1) to √(L/0.53) → AU */
@@ -169,12 +277,16 @@ export function deriveHabitableZoneAu(
 
 /** periastron = a(1-e) in AU */
 export function computePeriastron(semiMajorAxisAu: AstronomicalUnits, eccentricity: number): AstronomicalUnits {
-	return (semiMajorAxisAu * (1 - eccentricity)) as AstronomicalUnits
+	requirePositive('semiMajorAxisAu', semiMajorAxisAu)
+	const ecc = resolveBoundEccentricity(eccentricity)
+	return (semiMajorAxisAu * (1 - ecc)) as AstronomicalUnits
 }
 
 /** apastron = a(1+e) in AU */
 export function computeApastron(semiMajorAxisAu: AstronomicalUnits, eccentricity: number): AstronomicalUnits {
-	return (semiMajorAxisAu * (1 + eccentricity)) as AstronomicalUnits
+	requirePositive('semiMajorAxisAu', semiMajorAxisAu)
+	const ecc = resolveBoundEccentricity(eccentricity)
+	return (semiMajorAxisAu * (1 + ecc)) as AstronomicalUnits
 }
 
 /** luminosity from radius + temperature via Stefan-Boltzmann: L = 4πR²σT⁴ → W */

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
 	meanAnomaly, solveKeplerE, meanMotion, trueAnomaly,
 	stateVectorAtTrueAnomaly, velocityAtTrueAnomaly, stateVectorAtEpoch,
+	validateOrbitalElements, OrbitalDomainError,
 	type OrbitalElements,
 } from './orbit.js'
 import { au, NOMINAL_SOLAR_GM } from './index.js'
@@ -22,8 +23,8 @@ const ORBIT: OrbitalElements = {
 const magnitude = (v: { x: number, y: number, z: number }) => Math.hypot(v.x, v.y, v.z)
 
 describe('meanAnomaly', () => {
-	it('returns 0 for zero period', () => {
-		expect(meanAnomaly(0, 0, 100)).toBe(0)
+	it('rejects a zero period instead of manufacturing an anomaly', () => {
+		expect(() => meanAnomaly(0, 0, 100)).toThrow(OrbitalDomainError)
 	})
 
 	it('returns 0 at day 0 with zero epoch phase', () => {
@@ -101,6 +102,38 @@ describe('solveKeplerE', () => {
 
 	it('throws on negative eccentricity', () => {
 		expect(() => solveKeplerE(1, -0.1)).toThrow(RangeError)
+	})
+
+	it('stays converged across a dense high-eccentricity grid', () => {
+		for (const ecc of [0.9, 0.99, 0.999, 0.9999, 0.999_999]) {
+			for (let index = 0; index <= 720; index++) {
+				const M = 2 * Math.PI * index / 720
+				const E = solveKeplerE(M, ecc)
+				expect(Math.abs(E - ecc * Math.sin(E) - M)).toBeLessThan(2e-12)
+			}
+		}
+	})
+})
+
+describe('orbital-domain validation', () => {
+	it('reports every invalid public element rather than relying on an app schema', () => {
+		const issues = validateOrbitalElements({
+			...ORBIT,
+			semiMajorAxisAu: au(-1),
+			eccentricity: 1,
+			inclinationDeg: Number.NaN,
+			mu: 0 as OrbitalElements['mu'],
+		})
+		expect(issues.map(issue => issue.field)).toEqual(expect.arrayContaining([
+			'semiMajorAxisAu', 'eccentricity', 'inclinationDeg', 'mu',
+		]))
+	})
+
+	it('rejects invalid elements at both state-vector entry points', () => {
+		const invalid = { ...ORBIT, eccentricity: 1 }
+		expect(() => stateVectorAtTrueAnomaly(invalid, 0)).toThrow(OrbitalDomainError)
+		expect(() => stateVectorAtEpoch(invalid, 0)).toThrow(OrbitalDomainError)
+		expect(() => stateVectorAtTrueAnomaly(ORBIT, Number.NaN)).toThrow(OrbitalDomainError)
 	})
 })
 

@@ -15,20 +15,25 @@ optional formatting layer).
 
 | Module | Purpose |
 | --- | --- |
-| `physics` | Closed-form derivations: density, surface gravity, escape velocity, rotational break-up period, Kepler-III period, mean orbital speed + vis-viva speed-at-radius, Hill sphere, rigid/fluid Roche limit, habitable zone, luminosity. |
+| `physics` | Closed-form derivations: density, surface gravity, escape velocity, rotational break-up period, Kepler-III period, mean orbital speed + vis-viva speed-at-radius, Hill sphere, empirical satellite-stability limits, barycenter geometry, rigid/fluid Roche limit, habitable zone, luminosity. |
 | `derive` | Partial-in → complete-out convenience: give what you know, get the rest. |
-| `orbit` | Two-body propagation: mean anomaly + Newton–Raphson Kepler solver, mean motion, and classical elements → position/velocity state vector at a true anomaly or an epoch. |
-| `validate` | The consistency engine: equation-backed warnings on suspicious configs (spin past the density-set break-up period, satellite mass ratio in the double-body regime, orbit past a fraction of the Hill radius, radial-band crossings, a "cool O-star", super-Eddington mass). |
+| `orbit` | Validated two-body propagation: mean anomaly, safeguarded Kepler solver, mean motion, and classical elements → position/velocity state vector at a true anomaly or an epoch. |
+| `validate` | The consistency engine: equation-backed warnings on suspicious configs (spin past the density-set break-up period, barycenter outside the parent, orbit past a published empirical satellite-stability limit, radial-band crossings, a "cool O-star", super-Eddington mass). |
 | `format` | Human-readable strings (g/cm³, M☉, km/s, …) over the pure numbers. |
 | `constants` | SI reference constants and scales. |
 
 ## Example
 
 ```ts
-import { computeOrbitalPeriodDays, validateBodyPhysics, SOLAR_MASS_KG } from 'tungolcraft'
+import {
+  au,
+  computeOrbitalPeriodDays,
+  NOMINAL_SOLAR_GM,
+  validateBodyPhysics,
+} from 'tungolcraft'
 
 // Kepler III: an Earth-distance planet around a Sun-mass star
-computeOrbitalPeriodDays(1, SOLAR_MASS_KG) // ≈ 365 days
+computeOrbitalPeriodDays(au(1), NOMINAL_SOLAR_GM) // ≈ 365 days
 
 // Is this invented moon physically bound to its planet?
 validateBodyPhysics({
@@ -43,4 +48,9 @@ validateBodyPhysics({
 
 Early extraction from the [KnowThing](https://github.com/) celestial engine.
 The numeric core is stable and unit-tested; procedural system generation,
-calendar synthesis, and 3D Keplerian elements are on the roadmap.
+calendar synthesis, and N-body dynamics are outside its current model.
+
+## Direction
+
+- [Scientific-readiness roadmap](./docs/SCIENTIFIC-READINESS.md)
+- [Theoretical-modelling specification](./docs/THEORETICAL-MODELLING-SPEC.md)

@@ -19,7 +19,8 @@ import { au, kg, addMu, muFromMass, type GravitationalParameter } from './units.
 export interface EffectiveOrbitStar {
 	id: number
 	massKg?: number | null
-	semiMajorAxisAu?: number | null
+	/** Relative stellar separation orbit (a_rel = a1 + a2), not a barycentric component radius. */
+	relativeSemiMajorAxisAu?: number | null
 	orbitalPeriodDays?: number | null
 	/** Direct parent when the parent is a star (companion pair). */
 	parentStarId?: number | null
@@ -85,7 +86,7 @@ export function annotateEffectivePeriods<S extends EffectiveOrbitStar, B extends
 		} else if (star.parentSystemId != null) {
 			mu = barycenterMassKg == null ? null : muOf(barycenterMassKg)
 		}
-		const period = derivedPeriod(star.semiMajorAxisAu, mu)
+		const period = derivedPeriod(star.relativeSemiMajorAxisAu, mu)
 		return period == null ? star : { ...star, orbitalPeriodDays: period }
 	})
 

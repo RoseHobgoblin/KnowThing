@@ -125,7 +125,7 @@ export function starInfoboxFields(model: StarModel): FieldMap {
 	if (model.gravityMs2 != null) setDerived(f, 'surface_gravity', formatSurfaceGravity(model.gravityMs2))
 	if (model.escapeVelocityMs != null) setDerived(f, 'escape_velocity', formatEscapeVelocity(model.escapeVelocityMs))
 	if (model.orbitalPeriodDays != null) setDerived(f, 'orbital_period', formatPeriod(model.orbitalPeriodDays * 86_400))
-	if (model.semiMajorAxisAu != null) setDerived(f, 'semi_major_axis', formatAuAsKm(model.semiMajorAxisAu))
+	if (model.relativeSemiMajorAxisAu != null) setDerived(f, 'relative_semi_major_axis', formatAuAsKm(model.relativeSemiMajorAxisAu))
 	if (model.rotationPeriodS != null) setDerived(f, 'rotation_period', formatPeriod(model.rotationPeriodS))
 	if (model.temperatureK != null) setDerived(f, 'temperature', formatTemperatureK(model.temperatureK))
 	if (model.luminosityW != null) setDerived(f, 'luminosity', formatLuminosity(model.luminosityW))
@@ -244,7 +244,7 @@ const PLANET_SECTIONS: SectionSpec[] = [
 const STAR_SECTIONS: SectionSpec[] = [
 	{ title: 'Stellar', fields: [['spectral_type', 'Spectral type'], ['mass', 'Mass'], ['radius', 'Radius'], ['temperature', 'Temperature'], ['luminosity', 'Luminosity'], ['luminosity_visual', 'Visual luminosity'], ['density', 'Density'], ['surface_gravity', 'Surface gravity'], ['escape_velocity', 'Escape velocity'], ['metallicity', 'Metallicity'], ['color', 'Color'], ['age', 'Age']] },
 	{ title: 'Environment', fields: [['habitable_zone', 'Habitable zone']] },
-	{ title: 'Orbit', fields: [['companion', 'Companions'], ['companion_of', 'Orbits'], ['orbital_period', 'Orbital period'], ['semi_major_axis', 'Semi-major axis'], ['eccentricity', 'Eccentricity'], ['periastron', 'Periastron'], ['apastron', 'Apastron']] },
+	{ title: 'Orbit', fields: [['companion', 'Companions'], ['companion_of', 'Orbits'], ['orbital_period', 'Orbital period'], ['relative_semi_major_axis', 'Relative semi-major axis'], ['eccentricity', 'Eccentricity'], ['periastron', 'Periastron'], ['apastron', 'Apastron']] },
 	{ title: 'Rotation', fields: [['rotation_period', 'Rotation period'], ['axial_tilt', 'Axial tilt'], ['equatorial_velocity', 'Equatorial velocity']] },
 	{ title: 'Observation', fields: [['apparent_magnitude', 'Apparent magnitude'], ['absolute_magnitude', 'Absolute magnitude'], ['angular_diameter', 'Angular diameter']] },
 	{ title: 'System', fields: [['planets', 'Planets'], ['known_satellites', 'Known satellites']] },

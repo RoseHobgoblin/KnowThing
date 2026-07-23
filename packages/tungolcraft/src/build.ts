@@ -65,6 +65,9 @@ export interface StarInput {
 	radius?: Metres | null
 	temperature?: Kelvin | null
 	luminosity?: Watts | null
+	/** Relative semi-major axis of the stellar pair: a_rel = a1 + a2. */
+	relativeSemiMajorAxis?: AstronomicalUnits | null
+	/** @deprecated Use `relativeSemiMajorAxis`; this alias has the same relative-orbit semantics. */
 	semiMajorAxis?: AstronomicalUnits | null
 	orbitalPeriod?: Days | null
 	eccentricity?: number | null
@@ -123,7 +126,7 @@ export function star(input: StarInput, relations: StarRelations = {}): StarModel
 		radiusM: input.radius,
 		temperatureK: input.temperature,
 		luminosityW: input.luminosity,
-		semiMajorAxisAu: input.semiMajorAxis,
+		relativeSemiMajorAxisAu: input.relativeSemiMajorAxis ?? input.semiMajorAxis,
 		orbitalPeriodDays: input.orbitalPeriod,
 		eccentricity: input.eccentricity,
 		rotationPeriodS: input.rotationPeriod,

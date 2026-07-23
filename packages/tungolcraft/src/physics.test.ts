@@ -9,6 +9,8 @@ import {
 	computeMeanOrbitalSpeed,
 	computeOrbitalSpeedAtRadius,
 	computeCircularOrbitSpeed,
+	computeParentBarycenterDistanceM,
+	estimateSatelliteStabilityLimitAu,
 	computeHabitableZoneAu,
 	computeHillSphereAu,
 	computeLuminosity,
@@ -130,11 +132,12 @@ describe('computeMeanOrbitalSpeed', () => {
 		expect(computeMeanOrbitalSpeed(a, t, 0.6)).toBeLessThan(computeMeanOrbitalSpeed(a, t, 0))
 	})
 
-	it('treats a null/out-of-range eccentricity as circular', () => {
+	it('treats null as circular but rejects an explicitly invalid eccentricity', () => {
 		const a = au(1), t = days(EARTH_YEAR_DAYS)
 		const circular = computeMeanOrbitalSpeed(a, t, 0)
-		expect(computeMeanOrbitalSpeed(a, t, 1)).toBe(circular)
-		expect(computeMeanOrbitalSpeed(a, t, -0.3)).toBe(circular)
+		expect(computeMeanOrbitalSpeed(a, t, null)).toBe(circular)
+		expect(() => computeMeanOrbitalSpeed(a, t, 1)).toThrow(RangeError)
+		expect(() => computeMeanOrbitalSpeed(a, t, -0.3)).toThrow(RangeError)
 	})
 })
 
@@ -184,11 +187,38 @@ describe('computeHillSphereAu', () => {
 		expect(eccentric).toBeCloseTo(circular * 0.75, 10)
 	})
 
-	it('treats a null/omitted/out-of-range eccentricity as circular', () => {
+	it('treats null/omitted eccentricity as circular but rejects invalid values', () => {
 		const circular = computeHillSphereAu(au(1), kg(EARTH_MASS_KG), kg(SOLAR_MASS_KG))
 		expect(computeHillSphereAu(au(1), kg(EARTH_MASS_KG), kg(SOLAR_MASS_KG), null)).toBe(circular)
-		expect(computeHillSphereAu(au(1), kg(EARTH_MASS_KG), kg(SOLAR_MASS_KG), 1)).toBe(circular)
-		expect(computeHillSphereAu(au(1), kg(EARTH_MASS_KG), kg(SOLAR_MASS_KG), -0.3)).toBe(circular)
+		expect(() => computeHillSphereAu(au(1), kg(EARTH_MASS_KG), kg(SOLAR_MASS_KG), 1)).toThrow(RangeError)
+		expect(() => computeHillSphereAu(au(1), kg(EARTH_MASS_KG), kg(SOLAR_MASS_KG), -0.3)).toThrow(RangeError)
+	})
+})
+
+describe('two-body barycenter geometry', () => {
+	it('places an equal-mass pair barycenter halfway along the separation', () => {
+		const distance = computeParentBarycenterDistanceM(
+			au(1),
+			kg(EARTH_MASS_KG),
+			kg(EARTH_MASS_KG),
+		)
+		expect(distance / 1.495_978_707e11).toBeCloseTo(0.5, 12)
+	})
+})
+
+describe('Domingos 2006 satellite stability estimate', () => {
+	it('uses the published circular prograde and retrograde coefficients', () => {
+		const prograde = estimateSatelliteStabilityLimitAu(au(0.01), 0, 0, 'prograde')
+		const retrograde = estimateSatelliteStabilityLimitAu(au(0.01), 0, 0, 'retrograde')
+		expect(prograde.hillFraction).toBeCloseTo(0.4895, 12)
+		expect(retrograde.hillFraction).toBeCloseTo(0.9309, 12)
+		expect(prograde.citation).toBe('10.1111/j.1365-2966.2006.11104.x')
+	})
+
+	it('includes both parent and satellite eccentricity', () => {
+		const circular = estimateSatelliteStabilityLimitAu(au(0.01), 0, 0, 'prograde')
+		const eccentric = estimateSatelliteStabilityLimitAu(au(0.01), 0.2, 0.1, 'prograde')
+		expect(eccentric.limitAu).toBeLessThan(circular.limitAu)
 	})
 })
 

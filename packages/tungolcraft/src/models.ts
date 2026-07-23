@@ -64,6 +64,13 @@ export interface BodyRow extends CelestialRowLike {
 }
 
 export interface StarRow extends CelestialRowLike {
+	/**
+	 * Relative semi-major axis of the stellar pair (the separation orbit), in AU.
+	 * Kepler's two-body period uses this value with μ_total. Database adapters
+	 * may still supply the legacy `semiMajorAxisAu`, which is interpreted with
+	 * these same relative-orbit semantics.
+	 */
+	relativeSemiMajorAxisAu?: number | null
 	spectralType?: string | null
 	luminosityW?: number | null
 	luminosityVisual?: string | null
@@ -88,7 +95,7 @@ export interface BodyRelations {
 
 export interface StarRelations {
 	parentStar?: (Ref & { massKg?: number | null }) | null
-	/** Total stellar mass of the parent system when the star orbits its barycenter. */
+	/** Total stellar mass governing the pair's relative orbit. */
 	barycenterMassKg?: number | null
 	/**
 	 * Stars gravitationally paired with this one, derived from the graph:
@@ -186,7 +193,8 @@ export interface StarModel {
 	escapeVelocityMs: number | null
 
 	// Orbital (binary/multiple).
-	semiMajorAxisAu: number | null
+	/** Semi-major axis of the relative separation orbit, never a component's barycentric radius. */
+	relativeSemiMajorAxisAu: number | null
 	orbitalPeriodDays: number | null
 	eccentricity: number | null
 	periastronAu: number | null
@@ -307,24 +315,23 @@ export function deriveStar(row: StarRow, relations: StarRelations = {}): StarMod
 	const radiusM = positive(row.radiusM)
 	const temperatureK = positive(row.temperatureK)
 	const rotationPeriodS = positive(row.rotationPeriodS)
-	const semiMajorAxisAu = positive(row.semiMajorAxisAu)
+	const relativeSemiMajorAxisAu = positive(row.relativeSemiMajorAxisAu ?? row.semiMajorAxisAu)
 	const eccentricity = row.eccentricity ?? null
 
 	// Luminosity: explicit, else Stefan-Boltzmann from radius + temperature.
 	const luminosityW = positive(row.luminosityW)
 		?? (radiusM != null && temperatureK != null ? computeLuminosity(m(radiusM), kelvin(temperatureK)) : null)
 
-	// Binary/barycentric orbital period: explicit, else Kepler from the semi-major
-	// axis and the pair's combined mass (companion of a star) or the system's
-	// total stellar mass (component orbiting the barycenter). Both totals already
-	// include this star, so μ = G × total (no separate self term).
+	// Binary orbital period: explicit, else Kepler from the *relative* semi-major
+	// axis (a_rel = a1 + a2) and total pair/system mass. A component's own
+	// barycentric radius is intentionally not accepted under this name.
 	const pairMassKg = relations.parentStar?.massKg != null && relations.parentStar.massKg > 0
 		? relations.parentStar.massKg + (massKg ?? 0)
 		: null
 	const primaryMassKg = pairMassKg ?? positive(relations.barycenterMassKg)
 	const orbitalPeriodDays = row.orbitalPeriodDays
-		?? (semiMajorAxisAu != null && primaryMassKg != null
-			? computeOrbitalPeriodDays(au(semiMajorAxisAu), muFromMass(kg(primaryMassKg)))
+		?? (relativeSemiMajorAxisAu != null && primaryMassKg != null
+			? computeOrbitalPeriodDays(au(relativeSemiMajorAxisAu), muFromMass(kg(primaryMassKg)))
 			: null)
 
 	return {
@@ -350,11 +357,11 @@ export function deriveStar(row: StarRow, relations: StarRelations = {}): StarMod
 		gravityMs2: massKg != null && radiusM != null ? computeSurfaceGravity(kg(massKg), m(radiusM)) : null,
 		escapeVelocityMs: massKg != null && radiusM != null ? computeEscapeVelocity(kg(massKg), m(radiusM)) : null,
 
-		semiMajorAxisAu,
+		relativeSemiMajorAxisAu,
 		orbitalPeriodDays,
 		eccentricity,
-		periastronAu: semiMajorAxisAu != null && eccentricity != null ? computePeriastron(au(semiMajorAxisAu), eccentricity) : null,
-		apastronAu: semiMajorAxisAu != null && eccentricity != null ? computeApastron(au(semiMajorAxisAu), eccentricity) : null,
+		periastronAu: relativeSemiMajorAxisAu != null && eccentricity != null ? computePeriastron(au(relativeSemiMajorAxisAu), eccentricity) : null,
+		apastronAu: relativeSemiMajorAxisAu != null && eccentricity != null ? computeApastron(au(relativeSemiMajorAxisAu), eccentricity) : null,
 
 		rotationPeriodS,
 		axialTilt: row.axialTilt ?? null,

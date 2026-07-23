@@ -58,17 +58,18 @@ describe('deriveStar', () => {
 	})
 
 	it('derives a companion star period from the pair\'s combined mass', () => {
-		const companion = { ...SUN, name: 'Sun B', slug: 'sun-b', semiMajorAxisAu: 1 }
+		const companion = { ...SUN, name: 'Sun B', slug: 'sun-b', relativeSemiMajorAxisAu: 1 }
 		const m = deriveStar(companion, { parentStar: { name: 'Sun A', slug: 'sun-a', massKg: SUN.massKg } })
 		// 2 M☉ total → 365.25/√2 days.
 		expect(m.orbitalPeriodDays).toBeCloseTo(365.25 / Math.SQRT2, 0)
 		expect(m.companionOf?.slug).toBe('sun-a')
 	})
 
-	it('derives a barycentric component period from the system stellar mass', () => {
-		const component = { ...SUN, semiMajorAxisAu: 0.5 }
+	it('derives a pair period from the relative axis and system stellar mass', () => {
+		const component = { ...SUN, relativeSemiMajorAxisAu: 1 }
 		const m = deriveStar(component, { barycenterMassKg: 2 * SUN.massKg })
-		expect(m.orbitalPeriodDays).not.toBeNull()
+		expect(m.orbitalPeriodDays).toBeCloseTo(365.25 / Math.SQRT2, 0)
+		expect(m.relativeSemiMajorAxisAu).toBe(1)
 	})
 
 	it('carries companions through from the graph relation', () => {

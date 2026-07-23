@@ -39,7 +39,7 @@ export interface SelectOption { value: string, label: string }
 
 export interface SystemReferenceOption { id: number, name: string }
 export interface StarReferenceOption { id: number, name: string, massKg?: number | null, systemId?: number | null, parentStarId?: number | null }
-export interface BodyReferenceOption { id: number, name: string, massKg?: number | null, starId?: number | null, parentId?: number | null, parentSystemId?: number | null, rootSystemId?: number | null, semiMajorAxisAu?: number | null, eccentricity?: number | null }
+export interface BodyReferenceOption { id: number, name: string, massKg?: number | null, radiusM?: number | null, starId?: number | null, parentId?: number | null, parentSystemId?: number | null, rootSystemId?: number | null, semiMajorAxisAu?: number | null, eccentricity?: number | null }
 
 /** Everything a field's dynamic parts (options, derivations, labels) can see. */
 export interface FieldContext {
@@ -439,9 +439,7 @@ function starEffectiveLuminosityW(ctx: FieldContext): number | null {
 }
 
 /**
- * The mass a star's binary orbit derives its period from: the pair's combined
- * mass when it orbits another star, or the system's total stellar mass when it
- * orbits the barycenter (own draft mass + every other member star).
+ * Total mass governing a stellar pair's relative separation orbit.
  */
 function starPrimaryMassKg(ctx: FieldContext): number | null {
 	const parentStarId = text(ctx, 'parentStarId')
@@ -467,7 +465,8 @@ function starEffectivePeriodDays(ctx: FieldContext): number | null {
 	if (stored != null) return stored
 	const semiMajorAxisAu = num(ctx, 'semiMajorAxisAu')
 	const primaryMassKg = starPrimaryMassKg(ctx)
-	// `starPrimaryMassKg` already sums the pair / all system stars, so μ = G × total.
+	// The stored stellar axis is explicitly the relative separation orbit
+	// (a_rel = a1 + a2); `starPrimaryMassKg` supplies the corresponding total μ.
 	return semiMajorAxisAu != null && semiMajorAxisAu > 0 && primaryMassKg != null
 		? computeOrbitalPeriodDays(au(semiMajorAxisAu), muFromMass(kg(primaryMassKg)))
 		: null
@@ -548,7 +547,7 @@ const starConfig: CelestialFormConfig = {
 						],
 					},
 					{ control: 'number', key: 'orbitalPeriodDays', label: 'Orbital Period', placeholder: '79.91', hint: 'Orbital period for binary/multiple systems. Leave blank — it is derived from semi-major axis and combined mass wherever it is shown.', units: ORBITAL_PERIOD_UNITS },
-					{ control: 'number', key: 'semiMajorAxisAu', label: 'Semi-major Axis', placeholder: '23.4', min: 0, rangeError: 'Must be 0 or greater', hint: 'Half the longest diameter of the binary orbit. Determines the orbit size on the system map.', units: SEMI_MAJOR_AXIS_UNITS },
+					{ control: 'number', key: 'semiMajorAxisAu', label: 'Relative Semi-major Axis', placeholder: '23.4', min: 0, rangeError: 'Must be 0 or greater', hint: 'Semi-major axis of the stars’ separation orbit: a_rel = a₁ + a₂. Do not enter one component’s distance from the barycenter.', units: SEMI_MAJOR_AXIS_UNITS },
 					{ control: 'number', key: 'eccentricity', label: 'Eccentricity', placeholder: '0.0', min: 0, max: 1, rangeError: 'Use a value from 0 to 1', hint: 'How elliptical the binary orbit is. 0 = circular, approaching 1 = extremely elongated.' },
 					{ control: 'number', key: 'epochPhase', label: 'Epoch Phase', placeholder: '0.0', min: 0, max: 1, rangeError: 'Use a value from 0 to 1', hint: 'Position along the orbit at day 0 (0–1). Used for map animation.' },
 				],
@@ -702,6 +701,13 @@ function bodyParentMassKg(ctx: FieldContext): number | null {
 		if (parent?.massKg) return parent.massKg
 	}
 	return bodyPrimaryMassKg(ctx)
+}
+
+function selectedParentBody(ctx: FieldContext): BodyReferenceOption | null {
+	const parentId = text(ctx, 'parentId')
+	return parentId
+		? ctx.siblings.find(sibling => String(sibling.id) === parentId) ?? null
+		: null
 }
 
 function bodyOrbitalDerivations(ctx: FieldContext) {
@@ -902,6 +908,8 @@ const bodyConfig: CelestialFormConfig = {
 		siblingOrbits: bodySiblingOrbits(ctx),
 		parentHillAu: bodyParentHillAu(ctx),
 		parentMassKg: bodyParentMassKg(ctx),
+		parentRadiusM: selectedParentBody(ctx)?.radiusM ?? null,
+		parentOrbitEccentricity: selectedParentBody(ctx)?.eccentricity ?? null,
 	}),
 	overrides: [
 		{

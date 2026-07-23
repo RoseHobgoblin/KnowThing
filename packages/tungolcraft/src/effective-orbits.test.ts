@@ -40,8 +40,8 @@ describe('annotateEffectivePeriods', () => {
 
 	it('derives a circumbinary body period from the total stellar mass', () => {
 		const stars: EffectiveOrbitStar[] = [
-			{ id: 7, massKg: SUN_MASS, parentSystemId: 3, semiMajorAxisAu: 0.1 },
-			{ id: 8, massKg: SUN_MASS, parentSystemId: 3, semiMajorAxisAu: 0.1 },
+			{ id: 7, massKg: SUN_MASS, parentSystemId: 3, relativeSemiMajorAxisAu: 0.2 },
+			{ id: 8, massKg: SUN_MASS, parentSystemId: 3, relativeSemiMajorAxisAu: 0.2 },
 		]
 		const bodies: EffectiveOrbitBody[] = [{ id: 1, parentSystemId: 3, semiMajorAxisAu: 1 }]
 		const { bodies: [tatooine] } = annotateEffectivePeriods(stars, bodies)
@@ -49,20 +49,20 @@ describe('annotateEffectivePeriods', () => {
 		expect(tatooine.orbitalPeriodDays).toBeCloseTo(365.25 / Math.SQRT2, 0)
 	})
 
-	it('derives a barycentric star component period from the total stellar mass', () => {
+	it('derives a binary period from the relative axis, never a component barycentric radius', () => {
 		const stars: EffectiveOrbitStar[] = [
-			{ id: 7, massKg: SUN_MASS, parentSystemId: 3, semiMajorAxisAu: 0.5 },
-			{ id: 8, massKg: SUN_MASS, parentSystemId: 3, semiMajorAxisAu: 0.5 },
+			{ id: 7, massKg: SUN_MASS, parentSystemId: 3, relativeSemiMajorAxisAu: 1 },
+			{ id: 8, massKg: SUN_MASS, parentSystemId: 3, relativeSemiMajorAxisAu: 1 },
 		]
 		const { stars: [a, b] } = annotateEffectivePeriods(stars, [])
-		expect(a.orbitalPeriodDays).not.toBeNull()
+		expect(a.orbitalPeriodDays).toBeCloseTo(365.25 / Math.SQRT2, 0)
 		expect(a.orbitalPeriodDays).toBeCloseTo(b.orbitalPeriodDays!, 6)
 	})
 
 	it('derives a companion star period from the combined pair mass', () => {
 		const stars: EffectiveOrbitStar[] = [
 			{ id: 7, massKg: SUN_MASS },
-			{ id: 8, massKg: SUN_MASS, parentStarId: 7, semiMajorAxisAu: 1 },
+			{ id: 8, massKg: SUN_MASS, parentStarId: 7, relativeSemiMajorAxisAu: 1 },
 		]
 		const { stars: [, companion] } = annotateEffectivePeriods(stars, [])
 		// Combined 2 M☉ → 365.25/√2, clearly not the 1 M☉ 365-day year.

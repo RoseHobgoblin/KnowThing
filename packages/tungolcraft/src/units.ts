@@ -51,8 +51,9 @@ export const mu = (n: number): GravitationalParameter => n as GravitationalParam
 
 /**
  * μ = GM from a mass — the general route for an arbitrary (invented) body. Uses
- * the measured G; where a body is solar-system-scaled, the IAU nominal GM
- * constants (`NOMINAL_SOLAR_GM`, …) are the more precise anchors.
+ * measured G. IAU nominal GM constants are exact conversion factors for values
+ * expressed in nominal solar/terrestrial/jovian units; they are not measured
+ * present-day body parameters.
  */
 export const muFromMass = (massKg: Kilograms): GravitationalParameter => (G * massKg) as GravitationalParameter
 
@@ -72,7 +73,7 @@ export const solarRadii = (n: number): Metres => (n * SOLAR_RADIUS_M) as Metres
 export const earthRadii = (n: number): Metres => (n * EARTH_RADIUS_M) as Metres
 export const jupiterRadii = (n: number): Metres => (n * JUPITER_RADIUS_M) as Metres
 export const solarLuminosities = (n: number): Watts => (n * SOLAR_LUMINOSITY) as Watts
-// μ in reference multiples, from the IAU nominal parameters (higher precision than G × mass).
+// μ in exact IAU nominal-unit multiples (conversion factors, not body measurements).
 export const solarGm = (n: number): GravitationalParameter => (n * NOMINAL_SOLAR_GM) as GravitationalParameter
 export const earthGm = (n: number): GravitationalParameter => (n * NOMINAL_TERRESTRIAL_GM) as GravitationalParameter
 export const jupiterGm = (n: number): GravitationalParameter => (n * NOMINAL_JOVIAN_GM) as GravitationalParameter

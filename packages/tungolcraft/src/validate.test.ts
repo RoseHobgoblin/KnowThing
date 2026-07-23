@@ -90,32 +90,43 @@ describe('validateBodyPhysics — rotational break-up', () => {
 	})
 })
 
-describe('validateBodyPhysics — satellite mass ratio', () => {
-	it('flags a satellite too heavy relative to its parent (double-body regime)', () => {
-		const warnings = body({ isSatellite: true, massKg: 0.2 * EARTH_MASS, parentMassKg: EARTH_MASS })
-		expect(warnings.some(w => w.field === 'massKg' && /mass ratio/.test(w.message))).toBe(true)
+describe('validateBodyPhysics — satellite barycenter geometry', () => {
+	it('flags a pair whose computed barycenter lies outside the parent', () => {
+		const warnings = body({
+			isSatellite: true,
+			massKg: 0.2 * EARTH_MASS,
+			parentMassKg: EARTH_MASS,
+			parentRadiusM: EARTH_RADIUS,
+			semiMajorAxisAu: 0.00257,
+		})
+		expect(warnings.some(w => w.field === 'massKg' && /barycenter/.test(w.message))).toBe(true)
 	})
 
-	it('accepts an ordinary low-ratio moon', () => {
-		const warnings = body({ isSatellite: true, massKg: 0.012 * EARTH_MASS, parentMassKg: EARTH_MASS })
+	it('accepts an ordinary moon whose barycenter remains inside the parent', () => {
+		const warnings = body({
+			isSatellite: true,
+			massKg: 0.012 * EARTH_MASS,
+			parentMassKg: EARTH_MASS,
+			parentRadiusM: EARTH_RADIUS,
+			semiMajorAxisAu: 0.00257,
+		})
 		expect(warnings.some(w => w.field === 'massKg')).toBe(false)
 	})
 
-	it('cannot judge the ratio without a parent mass', () => {
+	it('does not guess without the full geometric inputs', () => {
 		const warnings = body({ isSatellite: true, massKg: 5 * EARTH_MASS, parentMassKg: null })
 		expect(warnings.some(w => w.field === 'massKg')).toBe(false)
 	})
 })
 
-describe('validateBodyPhysics — Hill-fraction stability', () => {
-	// Same 0.006 AU orbit, opposite verdicts: past 0.5 Hill (0.005) but inside 0.7 (0.007).
-	it('flags a prograde moon past ~0.5 Hill even while still inside the Hill sphere', () => {
+describe('validateBodyPhysics — published satellite stability estimate', () => {
+	it('flags a prograde moon past the Domingos 2006 limit while inside the Hill sphere', () => {
 		const warnings = body({ isSatellite: true, semiMajorAxisAu: 0.006, parentHillAu: 0.01 })
 		expect(warnings.some(w => w.field === 'semiMajorAxisAu' && /Hill radius/.test(w.message))).toBe(true)
 		expect(warnings.some(w => /Hill sphere/.test(w.message))).toBe(false)
 	})
 
-	it('lets a retrograde moon hold on farther out (~0.7 Hill)', () => {
+	it('uses the wider published retrograde limit', () => {
 		const warnings = body({ isSatellite: true, semiMajorAxisAu: 0.006, parentHillAu: 0.01, satelliteOrbitSense: 'retrograde' })
 		expect(warnings.some(w => w.field === 'semiMajorAxisAu')).toBe(false)
 	})
@@ -169,14 +180,14 @@ describe('validateBodyPhysics — density outliers', () => {
 		const warnings = body({ massKg: EARTH_MASS, radiusM: EARTH_RADIUS / 20 })
 		const density = warnings.find(w => w.field === 'density')
 		expect(density).toBeDefined()
-		expect(density!.message).toMatch(/outlier/)
+		expect(density!.message).toMatch(/screening envelope/)
 		// Regression: must not resurrect the self-contradictory regime claim.
 		expect(density!.message).not.toMatch(/neutron|white dwarf|degenerate/i)
 	})
 
 	it('flags an implausibly diffuse body regardless of body type', () => {
 		const warnings = body({ massKg: EARTH_MASS, radiusM: EARTH_RADIUS * 20, bodyType: 'asteroid' })
-		expect(warnings.some(w => w.field === 'density' && /outlier/.test(w.message))).toBe(true)
+		expect(warnings.some(w => w.field === 'density' && /screening envelope/.test(w.message))).toBe(true)
 	})
 
 	it('accepts an ordinary rocky density', () => {
