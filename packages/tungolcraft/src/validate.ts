@@ -19,6 +19,17 @@ const JUPITER_MASS = 1.898e27
 const SOLAR_MASS = 1.989e30
 
 /**
+ * Regime-agnostic density outlier bounds (g/cm³). Deliberately NOT tied to a
+ * physical regime — real density plausibility depends on object class and
+ * equation of state (rocky/iron planet, gas giant, brown dwarf, white dwarf,
+ * neutron star), which are a future per-class modelling job. These just bracket
+ * what any ordinary, non-degenerate matter can be: above the densest solid
+ * element (osmium ~22.6) or below the least dense known body (Saturn 0.687).
+ */
+const DENSITY_OUTLIER_HIGH_GCM3 = 25
+const DENSITY_OUTLIER_LOW_GCM3 = 0.01
+
+/**
  * Satellite-to-parent mass ratio above which a body is better described as a
  * double/binary system than a moon: the barycenter then sits well outside the
  * primary and both bodies visibly swing around it. Pluto–Charon (≈ 0.12) is the
@@ -84,15 +95,21 @@ export function validateBodyPhysics(params: {
 		warnings.push({ field: 'radiusM', message: 'Radius must be positive', severity: 'impossible' })
 	}
 
-	// Density check: if both mass and radius are set
+	// Density plausibility. Judging density *properly* needs the object's class and
+	// equation of state — a rocky/iron planet, a gas giant and a stellar remnant obey
+	// entirely different mass–radius relations — and those class-specific envelopes
+	// are not modelled here yet. Until they are, flag only regime-agnostic outliers
+	// (a density no ordinary, non-degenerate matter can produce) and name no physical
+	// regime: the old message wrongly claimed 25 g/cm³ "exceeds neutron-degenerate
+	// matter", which actually sits near 10¹⁴ g/cm³, then contradicted itself with a
+	// 10⁶ g/cm³ white-dwarf figure. See DENSITY_OUTLIER_* for the bounds.
 	if (massKg != null && radiusM != null && massKg > 0 && radiusM > 0) {
-		const density = massKg / ((4 / 3) * Math.PI * radiusM ** 3)
-		const densityGcm3 = density / 1000
+		const densityGcm3 = computeDensity(kg(massKg), m(radiusM)) / 1000
 
-		if (densityGcm3 > 25) {
-			warnings.push({ field: 'density', message: `Density ${densityGcm3.toFixed(1)} g/cm³ exceeds neutron-degenerate matter. White dwarf matter peaks ~10⁶ g/cm³ — is this intentional?`, severity: 'warning' })
-		} else if (densityGcm3 < 0.01 && bodyType === 'planet') {
-			warnings.push({ field: 'density', message: `Density ${densityGcm3.toFixed(4)} g/cm³ is lower than any known atmosphere. Even Saturn is 0.687 g/cm³.`, severity: 'warning' })
+		if (densityGcm3 > DENSITY_OUTLIER_HIGH_GCM3) {
+			warnings.push({ field: 'density', message: `Density ${densityGcm3.toFixed(1)} g/cm³ is a physical outlier — denser than the densest ordinary solid (osmium, ~22.6 g/cm³). Intentional?`, severity: 'warning' })
+		} else if (densityGcm3 < DENSITY_OUTLIER_LOW_GCM3) {
+			warnings.push({ field: 'density', message: `Density ${densityGcm3.toFixed(4)} g/cm³ is a physical outlier — less dense than any known body (Saturn, the least dense planet, is 0.687 g/cm³). Intentional?`, severity: 'warning' })
 		}
 	}
 

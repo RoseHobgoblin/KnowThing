@@ -163,6 +163,28 @@ describe('validateStarPhysics — temperature vs spectral class', () => {
 	})
 })
 
+describe('validateBodyPhysics — density outliers', () => {
+	// A tiny radius on an Earth mass drives density far past any ordinary solid.
+	it('flags an implausibly dense body without naming a physical regime', () => {
+		const warnings = body({ massKg: EARTH_MASS, radiusM: EARTH_RADIUS / 20 })
+		const density = warnings.find(w => w.field === 'density')
+		expect(density).toBeDefined()
+		expect(density!.message).toMatch(/outlier/)
+		// Regression: must not resurrect the self-contradictory regime claim.
+		expect(density!.message).not.toMatch(/neutron|white dwarf|degenerate/i)
+	})
+
+	it('flags an implausibly diffuse body regardless of body type', () => {
+		const warnings = body({ massKg: EARTH_MASS, radiusM: EARTH_RADIUS * 20, bodyType: 'asteroid' })
+		expect(warnings.some(w => w.field === 'density' && /outlier/.test(w.message))).toBe(true)
+	})
+
+	it('accepts an ordinary rocky density', () => {
+		const warnings = body({ massKg: EARTH_MASS, radiusM: EARTH_RADIUS })
+		expect(warnings.some(w => w.field === 'density')).toBe(false)
+	})
+})
+
 describe('validateBodyPhysics — existing checks still hold', () => {
 	it('flags non-positive mass', () => {
 		expect(body({ massKg: -1 }).some(w => w.severity === 'impossible')).toBe(true)
