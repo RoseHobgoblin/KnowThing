@@ -73,4 +73,13 @@ describe('solveKeplerE', () => {
 		// At M=π, E=π is exact for any ecc (sin(π)=0)
 		expect(solveKeplerE(Math.PI, 0.9)).toBeCloseTo(Math.PI, 10)
 	})
+
+	it('throws on unbound eccentricity (e ≥ 1) instead of silently clamping', () => {
+		expect(() => solveKeplerE(1, 1)).toThrow(RangeError)
+		expect(() => solveKeplerE(1, 1.5)).toThrow(RangeError)
+	})
+
+	it('throws on negative eccentricity', () => {
+		expect(() => solveKeplerE(1, -0.1)).toThrow(RangeError)
+	})
 })

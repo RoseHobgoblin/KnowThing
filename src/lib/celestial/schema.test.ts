@@ -4,7 +4,6 @@ import {
 	updatePlanetaryBodySchema,
 	createStarSchema,
 	updateStarSchema,
-	legacySafeEccentricity,
 } from './schema.js'
 
 describe('planetary body schema', () => {
@@ -64,31 +63,5 @@ describe('star schema', () => {
 	it('update rejects orbital data with an explicitly null parent', () => {
 		const result = updateStarSchema.safeParse({ semiMajorAxisAu: 20, parentId: null })
 		expect(result.success).toBe(false)
-	})
-})
-
-describe('legacySafeEccentricity', () => {
-	// The merge re-validation in updateCelestial re-parses {...current, ...patch}
-	// with the create schema. A legacy row saved at e = 1 (valid before the bound was
-	// tightened to < 1) must not brick every future edit — its stored value is clamped
-	// for the validation snapshot so an unrelated patch still merges cleanly.
-	it('clamps a stored e = 1 into the bound range so the merged row still validates', () => {
-		const current = { name: 'Legacy', slug: 'legacy', parentId: 1, eccentricity: 1 }
-		const patch = { name: 'Renamed' }
-		const merged = createPlanetaryBodySchema.safeParse({
-			...current,
-			eccentricity: legacySafeEccentricity(current.eccentricity),
-			...patch,
-		})
-		expect(merged.success).toBe(true)
-	})
-
-	it('passes valid, null, and out-of-range values through as expected', () => {
-		expect(legacySafeEccentricity(0.3)).toBe(0.3)
-		expect(legacySafeEccentricity(null)).toBeNull()
-		expect(legacySafeEccentricity(undefined)).toBeNull()
-		expect(legacySafeEccentricity(1)).toBeLessThan(1)
-		expect(legacySafeEccentricity(1.5)).toBeLessThan(1)
-		expect(legacySafeEccentricity(-0.2)).toBe(0)
 	})
 })

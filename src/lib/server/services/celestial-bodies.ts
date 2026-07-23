@@ -6,7 +6,6 @@ import { celestialBodies } from '$lib/server/db/schema.js'
 import {
 	CREATE_SCHEMAS,
 	UPDATE_SCHEMAS,
-	legacySafeEccentricity,
 	type createSystemSchema,
 	type createStarSchema,
 	type createPlanetaryBodySchema,
@@ -119,7 +118,6 @@ async function loadValidatedParent(dbx: Dbx, kind: CelestialKind, parentId: numb
 function assertMergedValid(kind: CelestialKind, current: CelestialRow, patch: Record<string, unknown>) {
 	const merged = CREATE_SCHEMAS[kind].safeParse({
 		...current,
-		eccentricity: legacySafeEccentricity(current.eccentricity),
 		...patch,
 	})
 	if (!merged.success) throw error(400, merged.error.issues[0].message)
