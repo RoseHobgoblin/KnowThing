@@ -177,6 +177,12 @@
 			: (data.kind === 'body' && !isSatellite ? data.parentStarHz : null),
 	)
 	const contextSelfAu = $derived(data.kind === 'body' && !isSatellite ? data.model?.semiMajorAxisAu ?? null : null)
+	// Provenance for the planet's parent-star HZ, surfaced from the catalogue model
+	// that produced it. Only the body path carries it; a star's own HZ comes from a
+	// different derivation and has no catalogue record to cite here.
+	const contextHzSource = $derived(
+		data.kind === 'body' && !isSatellite ? data.parentStarHz?.source ?? null : null,
+	)
 </script>
 
 <svelte:head>
@@ -278,6 +284,7 @@
 							bodies={contextBodies}
 							moons={contextMoons}
 							hz={contextHz}
+							hzSource={contextHzSource}
 							selfAu={contextSelfAu}
 						/>
 						<CelestialBacklinks links={data.backlinks} />

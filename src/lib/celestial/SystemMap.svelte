@@ -6,6 +6,10 @@
 		bodyType: string
 		semiMajorAxisAu?: number | null
 		eccentricity?: number | null
+		/** Orbit orientation (degrees). Absent/null orbits render apsis-right, as before. */
+		inclination?: number | null
+		longitudeAscendingNode?: number | null
+		argumentOfPeriapsis?: number | null
 		color?: string | null
 		moonCount?: number
 		parentStarId?: number | null
@@ -25,7 +29,14 @@
 	import type { ScaleMode, LabelMode, TrailMode } from './map-settings.js'
 
 	type EntityKey = `star:${number}` | `body:${number}`
-	type OrbitBody = MapBody & { orbitAu: number, ecc: number, isStar: boolean, renderAsSatellite: boolean }
+	type OrbitBody = MapBody & {
+		orbitAu: number
+		ecc: number
+		isStar: boolean
+		renderAsSatellite: boolean
+		/** Projected apsidal rotation (radians): the sky-plane longitude of periapsis Ω+ω. */
+		apseRad: number
+	}
 	type PositionedOrbit = {
 		body: OrbitBody
 		a: number
@@ -80,6 +91,7 @@
 		maxVisualRadius: number
 	}
 
+	const DEG = Math.PI / 180
 	const SIZE = 800
 	const CENTER = SIZE / 2
 	const PADDING = 80
@@ -194,9 +206,23 @@
 		return (index / Math.max(total, 1)) * Math.PI * 2 - Math.PI / 2
 	}
 
-	function ellipsePosition(a: number, b: number, angle: number, cx: number, cy: number) {
+	// Projected sky-plane longitude of periapsis (Ω + ω) in radians. On a flat
+	// top-down map inclination is not modelled, so only the apsidal sum is
+	// meaningful; a null/absent orientation leaves periapsis pointing +x as before.
+	function apseRadOf(body: MapBody): number {
+		return (((body.longitudeAscendingNode ?? 0) + (body.argumentOfPeriapsis ?? 0)) % 360) * DEG
+	}
+
+	// Place a body at eccentric anomaly `angle` on an ellipse whose focus sits at
+	// (cx, cy), then rotate the whole orbit about that focus by `apseRad` so the
+	// apsides point along Ω+ω instead of always toward +x.
+	function ellipsePosition(a: number, b: number, angle: number, cx: number, cy: number, apseRad = 0) {
 		const focusOffset = Math.sqrt(Math.max(a * a - b * b, 0))
-		return { x: cx - focusOffset + a * Math.cos(angle), y: cy + b * Math.sin(angle) }
+		const relativeX = a * Math.cos(angle) - focusOffset
+		const relativeY = b * Math.sin(angle)
+		if (apseRad === 0) return { x: cx + relativeX, y: cy + relativeY }
+		const cos = Math.cos(apseRad), sin = Math.sin(apseRad)
+		return { x: cx + relativeX * cos - relativeY * sin, y: cy + relativeX * sin + relativeY * cos }
 	}
 
 	function parentKeyForBody(body: MapBody, primaryStarId: number | null, _starIds: Set<number>): EntityKey | null {
@@ -338,7 +364,7 @@
 			const key = keyForBody(star, true)
 			if (!isBarycentric(star) || star.id === primaryStarId || seen.has(key)) continue
 			seen.add(key)
-			directOrbiters.push({ ...star, orbitAu: star.semiMajorAxisAu!, ecc: star.eccentricity ?? 0, isStar: true, renderAsSatellite: false })
+			directOrbiters.push({ ...star, orbitAu: star.semiMajorAxisAu!, ecc: star.eccentricity ?? 0, isStar: true, renderAsSatellite: false, apseRad: apseRadOf(star) })
 		}
 
 		const deepCompanionStars: OrbitBody[] = []
@@ -347,9 +373,9 @@
 			if (!star.semiMajorAxisAu || seen.has(key)) continue
 			if (star.parentStarId === primaryStarId) {
 				seen.add(key)
-				directOrbiters.push({ ...star, orbitAu: star.semiMajorAxisAu, ecc: star.eccentricity ?? 0, isStar: true, renderAsSatellite: false })
+				directOrbiters.push({ ...star, orbitAu: star.semiMajorAxisAu, ecc: star.eccentricity ?? 0, isStar: true, renderAsSatellite: false, apseRad: apseRadOf(star) })
 			} else {
-				deepCompanionStars.push({ ...star, orbitAu: star.semiMajorAxisAu, ecc: star.eccentricity ?? 0, isStar: true, renderAsSatellite: true })
+				deepCompanionStars.push({ ...star, orbitAu: star.semiMajorAxisAu, ecc: star.eccentricity ?? 0, isStar: true, renderAsSatellite: true, apseRad: apseRadOf(star) })
 			}
 		}
 
@@ -365,7 +391,7 @@
 				)
 			if (orbitsPrimaryStarDirectly && !seen.has(key)) {
 				seen.add(key)
-				directOrbiters.push({ ...body, orbitAu: body.semiMajorAxisAu!, ecc: body.eccentricity ?? 0, isStar: false, renderAsSatellite: false })
+				directOrbiters.push({ ...body, orbitAu: body.semiMajorAxisAu!, ecc: body.eccentricity ?? 0, isStar: false, renderAsSatellite: false, apseRad: apseRadOf(body) })
 			}
 		}
 
@@ -400,7 +426,7 @@
 			const c = (apoPx - periPx) / 2
 			const b = Math.sqrt(Math.max(a * a - c * c, 0))
 			const angle = computeAngle(body, index, visibleOrbiters.length)
-			const pos = ellipsePosition(a, b, angle, CENTER, CENTER)
+			const pos = ellipsePosition(a, b, angle, CENTER, CENTER, body.apseRad)
 			rawDirectPositions.push({ body, a, b, angle, rawX: pos.x, rawY: pos.y, x: pos.x, y: pos.y })
 		}
 
@@ -435,7 +461,7 @@
 			...deepCompanionStars,
 			...bodies
 				.filter(body => body.semiMajorAxisAu != null && !seen.has(keyForBody(body, false)))
-				.map(body => ({ ...body, orbitAu: body.semiMajorAxisAu!, ecc: body.eccentricity ?? 0, isStar: false, renderAsSatellite: true })),
+				.map(body => ({ ...body, orbitAu: body.semiMajorAxisAu!, ecc: body.eccentricity ?? 0, isStar: false, renderAsSatellite: true, apseRad: apseRadOf(body) })),
 		]
 
 		while (pendingItems.length > 0) {
@@ -631,27 +657,43 @@
 		return { color: theme.accentLight, width: 1, alpha: 0.22 }
 	}
 
-	function drawFullOrbit(ctx: CanvasRenderingContext2D, cx: number, cy: number, a: number, b: number) {
+	// Draw the full orbit as a rigid ellipse rotated about its focus (fx, fy) by
+	// `apseRad`, matching how `ellipsePosition` places the body on it.
+	function drawFullOrbit(
+		ctx: CanvasRenderingContext2D,
+		fx: number,
+		fy: number,
+		a: number,
+		b: number,
+		focusOffset: number,
+		apseRad: number,
+	) {
+		const cos = Math.cos(apseRad), sin = Math.sin(apseRad)
 		ctx.beginPath()
-		ctx.ellipse(cx, cy, a, b, 0, 0, Math.PI * 2)
+		ctx.ellipse(fx - focusOffset * cos, fy - focusOffset * sin, a, b, apseRad, 0, Math.PI * 2)
 		ctx.stroke()
 	}
 
 	function drawShortTrail(
 		ctx: CanvasRenderingContext2D,
-		cx: number,
-		cy: number,
+		fx: number,
+		fy: number,
 		a: number,
 		b: number,
+		focusOffset: number,
 		angle: number,
+		apseRad: number,
 	) {
 		const steps = 32
 		const span = Math.PI * 0.5
+		const cos = Math.cos(apseRad), sin = Math.sin(apseRad)
 		ctx.beginPath()
 		for (let index = 0; index <= steps; index += 1) {
 			const theta = angle - (index / steps) * span
-			const x = cx + a * Math.cos(theta)
-			const y = cy + b * Math.sin(theta)
+			const relativeX = a * Math.cos(theta) - focusOffset
+			const relativeY = b * Math.sin(theta)
+			const x = fx + relativeX * cos - relativeY * sin
+			const y = fy + relativeX * sin + relativeY * cos
 			if (index === 0) ctx.moveTo(x, y)
 			else ctx.lineTo(x, y)
 		}
@@ -738,7 +780,7 @@
 			context.lineWidth = stroke.width
 			context.globalAlpha = stroke.alpha * bodyOpacity(key)
 			if (position.body.isStar) context.setLineDash([4, 3])
-			drawFullOrbit(context, CENTER + scene.cameraOffset.x - focusOffset, CENTER + scene.cameraOffset.y, position.a, position.b)
+			drawFullOrbit(context, CENTER + scene.cameraOffset.x, CENTER + scene.cameraOffset.y, position.a, position.b, focusOffset, position.body.apseRad)
 			context.restore()
 		}
 
@@ -751,10 +793,10 @@
 				context.lineCap = 'round'
 				context.globalAlpha = 0.4 * bodyOpacity(key)
 				const focusOffset = Math.sqrt(Math.max(position.a * position.a - position.b * position.b, 0))
-				const cx = CENTER + scene.cameraOffset.x - focusOffset
-				const cy = CENTER + scene.cameraOffset.y
-				if (trails === 'full') drawFullOrbit(context, cx, cy, position.a, position.b)
-				else drawShortTrail(context, cx, cy, position.a, position.b, position.angle)
+				const fx = CENTER + scene.cameraOffset.x
+				const fy = CENTER + scene.cameraOffset.y
+				if (trails === 'full') drawFullOrbit(context, fx, fy, position.a, position.b, focusOffset, position.body.apseRad)
+				else drawShortTrail(context, fx, fy, position.a, position.b, focusOffset, position.angle, position.body.apseRad)
 				context.restore()
 			}
 		}

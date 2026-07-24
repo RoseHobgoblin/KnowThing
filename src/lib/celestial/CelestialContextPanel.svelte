@@ -3,11 +3,20 @@
 
 	type ContextBody = { id?: number, name: string, slug: string, semiMajorAxisAu?: number | null, bodyType?: string | null }
 
+	type HzSource = {
+		title: string
+		citation: string
+		doi?: string
+		url?: string
+		luminosityDerived: boolean
+	}
+
 	let {
 		model,
 		bodies = [],
 		moons = [],
 		hz = null,
+		hzSource = null,
 		selfAu = null,
 	}: {
 		model: BodyModel | StarModel
@@ -17,6 +26,8 @@
 		moons?: ContextBody[]
 		/** Star: own habitable zone. Planet: parent star's habitable zone. */
 		hz?: { inner: number, outer: number } | null
+		/** Provenance of the catalogue model behind `hz`, when available. */
+		hzSource?: HzSource | null
 		/** Planet: its own orbital distance, to place it on the bar. */
 		selfAu?: number | null
 	} = $props()
@@ -92,7 +103,17 @@
 		{#if hzBand}
 			<div>
 				<div class="flex items-center justify-between text-xs text-secondary mb-1">
-					<span>Habitable zone</span>
+					<span class="flex items-center gap-1">
+						Habitable zone
+						{#if hzSource}
+							{@const tip = `${hzSource.title}${hzSource.luminosityDerived ? ' · luminosity from Stefan–Boltzmann' : ''} — ${hzSource.citation}${hzSource.doi ? ` (doi:${hzSource.doi})` : ''}`}
+							{#if hzSource.url}
+								<a href={hzSource.url} target="_blank" rel="noopener noreferrer" class="text-link hover:text-link-hover" title={tip}>source</a>
+							{:else}
+								<abbr class="cursor-help no-underline border-b border-dotted border-secondary/50" title={tip}>source</abbr>
+							{/if}
+						{/if}
+					</span>
 					<span>{hz!.inner.toFixed(2)}–{hz!.outer.toFixed(2)} AU</span>
 				</div>
 				<div class="relative h-7 bg-raised overflow-hidden">

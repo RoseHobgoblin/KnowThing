@@ -3,8 +3,8 @@ import type { Cookies } from '@sveltejs/kit'
 import type { MapBody } from '$lib/celestial/SystemMap.svelte'
 import { hasRole } from '$lib/server/auth.js'
 import { resolveCelestialModel } from '$lib/server/structured-data.js'
-import { deriveHabitableZoneAu } from 'tungolcraft'
 import type { BodyModel, StarModel } from 'tungolcraft'
+import { resolveParentStarHz, type ParentStarHz } from '$lib/server/celestial/habitable-zone.js'
 import { findNearestStarAncestor } from '$lib/server/celestial/hierarchy.js'
 import {
 	findCelestialBySlugOrName,
@@ -51,7 +51,7 @@ export type CelestialDetailData =
 		allStars: Awaited<ReturnType<typeof listAllStarReferences>>
 		siblings: Awaited<ReturnType<typeof listAllBodyReferences>>
 		model: BodyModel | null
-		parentStarHz: { inner: number, outer: number } | null
+		parentStarHz: ParentStarHz | null
 	})
 
 interface CelestialBaseData {
@@ -131,9 +131,7 @@ export async function loadCelestialDetail(ctx: CelestialDetailContext): Promise<
 	// it — fetched as just the luminosity inputs, not the star's whole model
 	// with its discarded planet/satellite counts.
 	const parentStarHzInputs = nearestStar ? await getStarHzInputs(nearestStar.id) : null
-	const parentStarHz = parentStarHzInputs
-		? deriveHabitableZoneAu(parentStarHzInputs.luminosityW, parentStarHzInputs.radiusM, parentStarHzInputs.temperatureK)
-		: null
+	const parentStarHz = parentStarHzInputs ? resolveParentStarHz(parentStarHzInputs) : null
 	return {
 		kind: 'body',
 		body: entity,
