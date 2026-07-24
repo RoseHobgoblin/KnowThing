@@ -21,6 +21,12 @@ jobs:
           # with "Run Command Timeout", leaving prod on a stale image).
           command_timeout: 60m
           script: |
+            # Fail the whole run if ANY command fails. Without this, a failed
+            # `docker compose build` (e.g. 2026-07-24 tungolcraft resolution
+            # error) was masked: the script continued to `up -d` (redeploying
+            # the STALE image) and `image prune` (always exits 0), so the run
+            # reported green while prod kept running old code for a day+.
+            set -eo pipefail
             cd ~/KnowThing
             git pull origin main
             # Ensure DOMAIN is set for Caddy HTTPS
