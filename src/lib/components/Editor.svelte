@@ -307,13 +307,14 @@
 	<!-- Toolbar -->
 	<div class="flex items-center gap-0.5 px-2 py-1.5 bg-page border-b border-border flex-wrap">
 		{#each toolbar as button (button.title)}
+			{@const ButtonIcon = button.icon}
 			<button
 				type="button"
 				onclick={button.action}
 				title={button.title}
 				class="p-1.5 text-secondary transition-colors hover:bg-raised hover:text-heading"
 			>
-				<svelte:component this={button.icon} size={16} weight="bold" />
+				<ButtonIcon size={16} weight="bold" />
 			</button>
 		{/each}
 	</div>

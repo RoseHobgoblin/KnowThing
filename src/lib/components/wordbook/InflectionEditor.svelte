@@ -180,7 +180,7 @@
 		<div class="flex gap-3 flex-wrap">
 			<!-- Paradigm class -->
 			<div class="flex-1 min-w-50">
-				<label class="block text-xs font-medium text-secondary mb-1">{m.wbc_paradigm_class()}</label>
+				<span class="block text-xs font-medium text-secondary mb-1">{m.wbc_paradigm_class()}</span>
 				{#if filteredClasses.length > 0}
 					<Select
 						type="single"
@@ -211,7 +211,7 @@
 
 			<!-- Stem -->
 			<div class="flex-1 min-w-37.5">
-				<label class="block text-xs font-medium text-secondary mb-1">{m.wbc_stem()}</label>
+				<span class="block text-xs font-medium text-secondary mb-1">{m.wbc_stem()}</span>
 				<Input bind:value={stem} containerClass="w-full" placeholder={m.wbc_eg_value({ value: stemPlaceholder })} />
 				<p class="text-xs text-secondary mt-1">{m.wbc_stem_help()}</p>
 			</div>
@@ -233,9 +233,9 @@
 		<!-- Override grid -->
 		{#if cellKeys.length > 0}
 			<div>
-				<label class="block text-xs font-medium text-secondary mb-1">
+				<span class="block text-xs font-medium text-secondary mb-1">
 					{m.wbc_irregular_forms()}
-				</label>
+				</span>
 				<p class="text-xs text-secondary mb-2">{m.wbc_irregular_forms_help()}</p>
 				<div class="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
 					{#each cellKeys as key (key)}
