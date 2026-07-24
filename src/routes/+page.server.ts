@@ -53,12 +53,14 @@ export const load: PageServerLoad = async () => {
 	return {
 		stats,
 		recentEdits,
-		featured: featured ? {
-			slug: featured.slug,
-			title: featured.title,
-			summary: featuredSummary,
-			image: featuredImage,
-		} : null,
+		featured: featured
+			? {
+				slug: featured.slug,
+				title: featured.title,
+				summary: featuredSummary,
+				image: featuredImage,
+			}
+			: null,
 		randomWord,
 		calendarInfo,
 	}

@@ -1,10 +1,10 @@
 import { z } from 'zod'
-import { normalizeAxis } from './utils.js'
+
 
 /** Environment strings are free-form but normalized to avoid accidental
  * divergence ("Before Front Vowels" vs "before front vowels"). Identical rules
  * to phoneme-axis normalization, so it reuses normalizeAxis. */
-export const normalizeEnvironment = normalizeAxis
+
 
 export const createGraphemeSchema = z.object({
 	grapheme: z.string().min(1, 'Grapheme is required'),
@@ -25,3 +25,5 @@ export function validateReorderPayload(order: number[], existingIds: Set<number>
 	for (const id of order) if (!existingIds.has(id)) return 'mismatch'
 	return 'ok'
 }
+
+export { normalizeAxis as normalizeEnvironment } from './utils.js'

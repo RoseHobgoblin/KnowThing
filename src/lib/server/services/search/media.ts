@@ -28,7 +28,7 @@ export interface MediaListItem {
 	usageCount: number
 }
 
-export async function listMedia(params: MediaSearchParams): Promise<{ files: MediaListItem[]; total: number }> {
+export async function listMedia(params: MediaSearchParams): Promise<{ files: MediaListItem[], total: number }> {
 	const usageCounts = db
 		.select({
 			filename: contentMediaUsage.filename,
@@ -97,7 +97,7 @@ export async function searchMediaUnified(params: MediaSearchParams): Promise<{
 	const { files, total } = await listMedia(params)
 
 	return {
-		results: files.map((file) => ({
+		results: files.map(file => ({
 			kind: 'media',
 			title: file.filename,
 			href: `/media/${encodeURIComponent(file.filename)}`,

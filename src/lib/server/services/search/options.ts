@@ -29,8 +29,8 @@ export async function loadSearchFilterOptions() {
 
 	return {
 		languages: languageOptions,
-		partsOfSpeech: PARTS_OF_SPEECH.map((pos) => ({ value: pos, label: titleCase(pos) })),
-		mediaCategories: mediaCategoryOptions.map((row) => row.category),
+		partsOfSpeech: PARTS_OF_SPEECH.map(pos => ({ value: pos, label: titleCase(pos) })),
+		mediaCategories: mediaCategoryOptions.map(row => row.category),
 	}
 }
 

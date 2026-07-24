@@ -20,11 +20,7 @@
 			{#each data.categories as cat (cat.name)}
 				<a
 					href="/know/category:{slugify(cat.name)}"
-					class="
-						inline-flex items-center gap-1.5 bg-raised text-secondary px-4 py-2 text-sm
-						transition-colors
-						hover:bg-accent-subtle hover:text-link
-					"
+					class="inline-flex items-center gap-1.5 bg-raised text-secondary px-4 py-2 text-sm transition-colors hover:bg-accent-subtle hover:text-link"
 				>
 					{cat.name}
 					<span class="text-xs text-secondary bg-border px-1.5 py-0.5">{cat.count}</span>

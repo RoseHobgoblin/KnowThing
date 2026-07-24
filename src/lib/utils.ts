@@ -10,12 +10,12 @@ export function cn(...inputs: ClassValue[]): string {
 /** Allow only <mark> tags from ts_headline, escape everything else */
 export function sanitizeSnippet(html: string): string {
 	return html
-		.replace(/<mark>/g, '\x00MARK\x00')
-		.replace(/<\/mark>/g, '\x00/MARK\x00')
-		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;')
-		.replace(/\x00MARK\x00/g, '<mark>')
-		.replace(/\x00\/MARK\x00/g, '</mark>')
+		.replaceAll('<mark>', '\u0000MARK\u0000')
+		.replaceAll('</mark>', '\u0000/MARK\u0000')
+		.replaceAll('<', '&lt;')
+		.replaceAll('>', '&gt;')
+		.replaceAll('\u0000MARK\u0000', '<mark>')
+		.replaceAll('\u0000/MARK\u0000', '</mark>')
 }
 
 /** Extract first validation error from a Zod schema */
@@ -27,11 +27,11 @@ export function getZodValidationError(validate: ZodType | undefined, value: unkn
 
 function formatZodIssuePath(path: PropertyKey[]): string {
 	return path
-		.map(segment => {
+		.map((segment) => {
 			if (typeof segment === 'number') return `#${segment + 1}`
 			return String(segment)
-				.replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-				.replace(/_/g, ' ')
+				.replaceAll(/([\da-z])([A-Z])/g, '$1 $2')
+				.replaceAll('_', ' ')
 				.trim()
 		})
 		.join(' > ')

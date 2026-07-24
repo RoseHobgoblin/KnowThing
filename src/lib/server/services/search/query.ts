@@ -69,7 +69,7 @@ function createUnifiedSearchQuerySchema(defaults?: Partial<UnifiedSearchParams>)
 			searchScopeSchema.catch(defaultScope),
 		),
 		sort: z.preprocess(
-			value => value == null ? defaultSort : typeof value === 'string' ? value.trim() : value,
+			value => value == null ? defaultSort : (typeof value === 'string' ? value.trim() : value),
 			searchSortSchema.optional().catch(defaultSort),
 		),
 		limit: z.preprocess(

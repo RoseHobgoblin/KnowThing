@@ -14,7 +14,7 @@
 				src="{ctx.mediaBaseUrl}/{encodeURIComponent(item.filename)}?w=150"
 				alt={item.caption || item.filename}
 				loading="lazy"
-				class="block max-w-[180px] max-h-[180px] object-contain"
+				class="block max-w-45 max-h-45 object-contain"
 			/>
 			{#if item.caption}
 				<figcaption class="text-xs text-secondary pt-1 px-1">{item.caption}</figcaption>

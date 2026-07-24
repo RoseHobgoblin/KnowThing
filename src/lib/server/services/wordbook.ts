@@ -214,9 +214,9 @@ export async function listRecentEntries(limit: number) {
 		LIMIT ${limit}
 	`)
 	return rows as unknown as Array<{
-		id: number, word: string, pronunciation: string | null,
-		definition: string | null, partOfSpeech: string | null,
-		languageName: string, languageSlug: string, languageColor: string | null,
+		id: number, word: string, pronunciation: string | null
+		definition: string | null, partOfSpeech: string | null
+		languageName: string, languageSlug: string, languageColor: string | null
 	}>
 }
 
@@ -227,16 +227,17 @@ export async function getTotalWordCount() {
 
 /** Accent-folded first-letter bucket: "é" → E; non-alphabetic → '#'. */
 const LETTER_BUCKET_SQL = sql`
-	CASE WHEN UPPER(LEFT(unaccent(l.word), 1)) ~ '[[:alpha:]]'
-		THEN UPPER(LEFT(unaccent(l.word), 1))
-		ELSE '#'
-	END`
+  CASE WHEN UPPER(LEFT(unaccent(l.word), 1)) ~ '[[:alpha:]]'
+  	THEN UPPER(LEFT(unaccent(l.word), 1))
+  	ELSE '#'
+  END
+`
 
 export interface LanguageEntriesPage {
 	entries: Array<{
-		id: number, word: string, pronunciation: string | null, tags: string[] | null,
-		languageName: string, languageSlug: string, languageColor: string | null,
-		definition: string | null, partOfSpeech: string | null,
+		id: number, word: string, pronunciation: string | null, tags: string[] | null
+		languageName: string, languageSlug: string, languageColor: string | null
+		definition: string | null, partOfSpeech: string | null
 	}>
 	total: number
 }

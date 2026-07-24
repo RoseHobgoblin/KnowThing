@@ -42,7 +42,7 @@ export interface BuiltinEntry {
 	// (e.g. Hatnote's `variant`) via staticProps, merged by the dispatcher at
 	// render time — that per-entry pairing can't be expressed in a single
 	// registry-wide Component<Props> type.
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 	component: Component<any>
 	staticProps?: Record<string, unknown>
 }

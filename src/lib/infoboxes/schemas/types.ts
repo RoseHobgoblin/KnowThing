@@ -121,12 +121,10 @@ export function knownKeys(schema: InfoboxSchema): Set<string> {
 			return
 		}
 		for (const key of row.keys ?? []) {
-			if (sectionSuffixMax !== null) addWithSuffix(key, sectionSuffixMax)
-			else add(key)
+			if (sectionSuffixMax === null) { add(key) } else { addWithSuffix(key, sectionSuffixMax) }
 		}
 		for (const key of row.consumes ?? []) {
-			if (sectionSuffixMax !== null) addWithSuffix(key, sectionSuffixMax)
-			else add(key)
+			if (sectionSuffixMax === null) { add(key) } else { addWithSuffix(key, sectionSuffixMax) }
 		}
 	}
 

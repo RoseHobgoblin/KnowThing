@@ -54,7 +54,7 @@
 					}
 				}
 			},
-			{ rootMargin: '-80px 0px -70% 0px', threshold: 0 }
+			{ rootMargin: '-80px 0px -70% 0px', threshold: 0 },
 		)
 
 		// Observe heading elements in the article
@@ -70,11 +70,7 @@
 {#if show}
 	<!-- Desktop: sticky sidebar TOC in left gutter -->
 	<nav
-		class="
-			fixed top-32 hidden w-48 max-h-[calc(100vh-10rem)] overflow-y-auto
-			text-xs
-			xl:block
-		"
+		class="fixed top-32 hidden w-48 max-h-[calc(100vh-10rem)] overflow-y-auto text-xs xl:block"
 		style="left: max(1rem, calc((100vw - 56rem) / 2 - 13rem))"
 	>
 		<div class="border-l-2 border-accent-border pl-3">
@@ -102,11 +98,7 @@
 	<!-- Mobile/tablet: floating toggle button + dropdown -->
 	<Collapsible.Root bind:open={tocOpen} class="mb-4 xl:hidden">
 		<Collapsible.Trigger
-			class="
-				flex items-center gap-1.5 text-xs text-secondary font-medium
-				px-3 py-1.5 bg-surface shadow-sm
-				transition-colors hover:text-link
-			"
+			class="flex items-center gap-1.5 text-xs text-secondary font-medium px-3 py-1.5 bg-surface shadow-sm transition-colors hover:text-link"
 		>
 			<svg class="size-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h10M4 18h14" />

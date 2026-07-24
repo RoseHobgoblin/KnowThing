@@ -37,7 +37,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 				mode: mode === 'configure' ? 'configure' : 'view',
 				user: locals.user,
 				loginRedirectPath: `/Celestial:${identifier}${suffix}`,
-				canonicalize: (slug) => `/Celestial:${slug}`,
+				canonicalize: slug => `/Celestial:${slug}`,
 			})
 			return { namespace: 'Celestial' as const, ...data }
 		}
@@ -47,7 +47,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 				mode: mode === 'configure' ? 'configure' : 'view',
 				user: locals.user,
 				loginRedirectPath: `/Calendar:${identifier}${suffix}`,
-				canonicalize: (slug) => `/Calendar:${slug}`,
+				canonicalize: slug => `/Calendar:${slug}`,
 			})
 			return { namespace: 'Calendar' as const, ...data }
 		}

@@ -14,7 +14,7 @@
 	const wbName = $derived($page.data.siteConfig?.wordbookName ?? 'Wordbook')
 	const siteName = $derived($page.data.siteConfig?.siteName ?? 'KnowThing')
 	const description = $derived(
-		`${data.totalWords} ${data.totalWords === 1 ? 'word' : 'words'} across ${data.languages.length} ${data.languages.length === 1 ? 'language' : 'languages'}.`
+		`${data.totalWords} ${data.totalWords === 1 ? 'word' : 'words'} across ${data.languages.length} ${data.languages.length === 1 ? 'language' : 'languages'}.`,
 	)
 
 	createKnowContext({
@@ -54,7 +54,7 @@
 			{#if data.languages.length > 0}
 				<select
 					name="language"
-					class="px-3 py-3 bg-page text-sm text-body focus:outline-none focus:ring-2 focus:ring-accent"
+					class="p-3 bg-page text-sm text-body focus:outline-none focus:ring-2 focus:ring-accent"
 				>
 					<option value="">{m.wb_all_languages()}</option>
 					{#each data.languages as language (language.slug)}

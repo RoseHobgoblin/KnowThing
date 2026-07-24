@@ -51,7 +51,7 @@
 							<a href="/know/{data.featured.slug}" class="transition-colors hover:text-link">{data.featured.title}</a>
 						</h2>
 						{#if data.featured.summary}
-							<p class="mt-2 text-sm leading-relaxed text-body">{data.featured.summary}</p>
+							<p class="mt-2 text-sm/relaxed text-body">{data.featured.summary}</p>
 						{/if}
 						<a href="/know/{data.featured.slug}" class="mt-3 inline-block text-xs text-link transition-colors hover:text-link-hover">{m.home_read_more()}</a>
 					</div>
@@ -94,7 +94,7 @@
 						{#if data.randomWord.pronunciation}<span class="font-mono text-xs text-secondary">· {data.randomWord.pronunciation}</span>{/if}
 					</div>
 					<div class="text-xs uppercase tracking-wide text-dim">{data.randomWord.languageName}</div>
-					{#if data.randomWord.definition}<p class="mt-3 text-xs leading-relaxed text-body">{data.randomWord.definition}</p>{/if}
+					{#if data.randomWord.definition}<p class="mt-3 text-xs/relaxed text-body">{data.randomWord.definition}</p>{/if}
 				</a>
 			{/if}
 

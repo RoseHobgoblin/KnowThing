@@ -38,21 +38,21 @@ const DEFAULTS: SiteConfig = {
 }
 
 const KEY_MAP: Record<string, keyof SiteConfig> = {
-	'site_name': 'siteName',
-	'site_tagline': 'siteTagline',
-	'institution_name': 'institutionName',
-	'footer_text': 'footerText',
-	'nav_wiki_label': 'navWikiLabel',
-	'nav_create_label': 'navCreateLabel',
-	'nav_wordbook_label': 'navWordbookLabel',
-	'nav_calendar_label': 'navCalendarLabel',
-	'nav_search_label': 'navSearchLabel',
-	'wordbook_name': 'wordbookName',
-	'wordbook_enabled': 'wordbookEnabled',
-	'calendar_enabled': 'calendarEnabled',
-	'text_direction': 'textDirection',
-	'logo_url': 'logoUrl',
-	'strip_exif_on_upload': 'stripExifOnUpload',
+	site_name: 'siteName',
+	site_tagline: 'siteTagline',
+	institution_name: 'institutionName',
+	footer_text: 'footerText',
+	nav_wiki_label: 'navWikiLabel',
+	nav_create_label: 'navCreateLabel',
+	nav_wordbook_label: 'navWordbookLabel',
+	nav_calendar_label: 'navCalendarLabel',
+	nav_search_label: 'navSearchLabel',
+	wordbook_name: 'wordbookName',
+	wordbook_enabled: 'wordbookEnabled',
+	calendar_enabled: 'calendarEnabled',
+	text_direction: 'textDirection',
+	logo_url: 'logoUrl',
+	strip_exif_on_upload: 'stripExifOnUpload',
 }
 
 const BOOLEAN_KEYS = new Set<keyof SiteConfig>(['wordbookEnabled', 'calendarEnabled', 'stripExifOnUpload'])

@@ -12,7 +12,7 @@
 
 	type SearchScope = 'all' | 'pages' | 'wordbook' | 'media'
 
-	const scopes: Array<{ value: SearchScope; label: string }> = [
+	const scopes: Array<{ value: SearchScope, label: string }> = [
 		{ value: 'all', label: 'All' },
 		{ value: 'pages', label: 'Pages' },
 		{ value: 'wordbook', label: 'Wordbook' },
@@ -68,7 +68,7 @@
 
 	<SearchScopeTabs
 		currentScope={data.query.scope}
-		scopes={scopes.map((scope) => ({
+		scopes={scopes.map(scope => ({
 			value: scope.value,
 			label: scope.label,
 			href: scopeHref(scope.value),

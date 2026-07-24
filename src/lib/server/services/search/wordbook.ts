@@ -57,13 +57,15 @@ function buildWordbookQueryFilter(query: string, extraIds: number[]) {
 		? sql`OR ${lexicon.id} IN (${sql.join(extraIds.map(id => sql`${id}`), sql`, `)})`
 		: sql``
 
-	return sql`(
-		LOWER(${lexicon.word}) = LOWER(${query})
-		OR LOWER(${lexicon.word}) LIKE LOWER(${query + '%'})
-		OR ${lexicon.word} % ${query}
-		OR lexicon.search_vector @@ websearch_to_tsquery('english', ${query})
-		${extraIdFilter}
-	)`
+	return sql`
+		(
+				LOWER(${lexicon.word}) = LOWER(${query})
+				OR LOWER(${lexicon.word}) LIKE LOWER(${query + '%'})
+				OR ${lexicon.word} % ${query}
+				OR lexicon.search_vector @@ websearch_to_tsquery('english', ${query})
+				${extraIdFilter}
+			)
+	`
 }
 
 export async function searchWordbookEntries(params: WordbookSearchParams) {

@@ -86,9 +86,7 @@
 						<tbody>
 							{#each rowDim.values as row (row)}
 								<tr>
-									<td class="
-										text-xs text-secondary font-medium
-									">{row}</td>
+									<td class="text-xs text-secondary font-medium">{row}</td>
 									{#each colDim.values as col (col)}
 										{@const key = getCellKey(row, col)}
 										{@const form = getForm(key)}
@@ -123,9 +121,7 @@
 							<table class="know-table know-table-divided w-full text-sm">
 								<thead>
 									<tr>
-										<th class="
-											text-left text-xs text-dim font-medium
-										"></th>
+										<th class="text-left text-xs text-dim font-medium"></th>
 										{#each colDim.values as col (col)}
 											<th class="text-center text-xs text-secondary font-medium">{col}</th>
 										{/each}
@@ -134,9 +130,7 @@
 								<tbody>
 									{#each rowDim.values as row (row)}
 										<tr>
-											<td class="
-												text-xs text-secondary font-medium
-											">{row}</td>
+											<td class="text-xs text-secondary font-medium">{row}</td>
 											{#each colDim.values as col (col)}
 												{@const key = getCellKey(row, col, ...extraVals)}
 												{@const form = getForm(key)}

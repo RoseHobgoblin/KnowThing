@@ -3,7 +3,7 @@
 		scopes,
 		currentScope,
 	}: {
-		scopes: Array<{ value: string; label: string; count?: number; href: string }>
+		scopes: Array<{ value: string, label: string, count?: number, href: string }>
 		currentScope: string
 	} = $props()
 </script>

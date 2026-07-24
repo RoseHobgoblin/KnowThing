@@ -72,10 +72,7 @@
 		<button
 			type="submit"
 			disabled={submitting}
-			class="
-				bg-accent text-surface px-4 py-1.5 font-medium transition-colors text-sm
-				hover:bg-accent-hover disabled:opacity-50
-			"
+			class="bg-accent text-surface px-4 py-1.5 font-medium transition-colors text-sm hover:bg-accent-hover disabled:opacity-50"
 		>
 			{submitting ? m.common_creating() : m.know_create_page()}
 		</button>

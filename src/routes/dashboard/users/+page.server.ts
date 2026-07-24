@@ -16,7 +16,7 @@ export const load: PageServerLoad = async (event) => {
 
 	return {
 		users: allUsers,
-		codes: codes.map((code) => ({
+		codes: codes.map(code => ({
 			...code,
 			code: maskRegistrationCode(code.code),
 			isMasked: true,

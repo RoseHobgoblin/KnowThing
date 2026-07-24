@@ -16,7 +16,7 @@
 	{...rest}
 	class={cn(
 		'grid transition-[grid-template-rows,margin] duration-200 ease-in-out',
-		!open && 'grid-rows-[0fr] !m-0',
+		!open && 'grid-rows-[0fr] m-0!',
 		open && 'grid-rows-[1fr]',
 		className,
 	)}

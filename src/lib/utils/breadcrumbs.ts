@@ -171,15 +171,15 @@ export function breadcrumbJsonLd(
 	origin: string = '',
 ): object {
 	const items = [
-		{ '@type': 'ListItem', position: 1, name: rootLabel, item: `${origin}/` },
+		{ '@type': 'ListItem', 'position': 1, 'name': rootLabel, 'item': `${origin}/` },
 	]
 
 	for (let i = 0; i < crumbs.length; i++) {
 		const crumb = crumbs[i]
 		const entry: Record<string, unknown> = {
 			'@type': 'ListItem',
-			position: i + 2,
-			name: crumb.label,
+			'position': i + 2,
+			'name': crumb.label,
 		}
 		if (crumb.href) entry.item = `${origin}${crumb.href}`
 		items.push(entry as typeof items[number])
@@ -188,6 +188,6 @@ export function breadcrumbJsonLd(
 	return {
 		'@context': 'https://schema.org',
 		'@type': 'BreadcrumbList',
-		itemListElement: items,
+		'itemListElement': items,
 	}
 }

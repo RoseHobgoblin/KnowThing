@@ -27,5 +27,5 @@ export const DEFAULT_PERMISSIONS: AppPermissions = {
 }
 
 export function normalizePermissions(permissions?: Partial<AppPermissions> | null): AppPermissions {
-	return { ...DEFAULT_PERMISSIONS, ...(permissions ?? {}) }
+	return { ...DEFAULT_PERMISSIONS, ...permissions }
 }

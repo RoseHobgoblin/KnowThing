@@ -31,7 +31,7 @@
 							</a>
 						{:else}
 							<span class="text-error font-medium text-sm">{w.slug.replaceAll('_', ' ')}</span>
-							<span class="text-xs text-secondary bg-raised px-1.5 py-0.5 rounded">{w.domain}</span>
+							<span class="text-xs text-secondary bg-raised px-1.5 py-0.5 rounded-sm">{w.domain}</span>
 						{/if}
 					</div>
 					<span class="text-xs text-secondary shrink-0">{w.linkCount} {w.linkCount === 1 ? m.dash_link_one() : m.dash_link_other()}</span>

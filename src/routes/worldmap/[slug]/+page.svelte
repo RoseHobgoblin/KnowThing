@@ -38,7 +38,7 @@
 	title={data.map.name}
 >
 	{#snippet actions()}
-		<a class="text-link hover:text-link-hover text-sm" href={`/worldmap/${data.map.slug}/regions`}>
+		<a class="text-link text-sm hover:text-link-hover" href={`/worldmap/${data.map.slug}/regions`}>
 			{m.map_manage_region_assignments()}
 		</a>
 	{/snippet}

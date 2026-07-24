@@ -68,14 +68,8 @@
 
 			<!-- Preview pane -->
 			{#if showPreview}
-				<div class="
-					w-full h-1/2 border-l border-border bg-surface flex flex-col min-h-0 shrink-0
-					md:w-[45%] md:max-w-2xl md:h-auto
-				">
-					<div class="
-						bg-raised px-6 py-1.5 text-xs font-medium text-secondary border-b border-border-subtle uppercase
-						tracking-wide
-					">{m.common_preview()}</div>
+				<div class="w-full h-1/2 border-l border-border bg-surface flex flex-col min-h-0 shrink-0 md:w-[45%] md:max-w-2xl md:h-auto">
+					<div class="bg-raised px-6 py-1.5 text-xs font-medium text-secondary border-b border-border-subtle uppercase tracking-wide">{m.common_preview()}</div>
 					<div class="flex-1 overflow-y-auto px-6 py-4">
 						<LivePreview {content} />
 					</div>
@@ -84,10 +78,7 @@
 		</div>
 
 		<!-- Bottom bar -->
-		<div class="
-			flex flex-col items-stretch gap-2 px-6 py-2.5 bg-surface border-t border-border
-			sm:flex-row sm:items-center sm:gap-3
-		">
+		<div class="flex flex-col items-stretch gap-2 px-6 py-2.5 bg-surface border-t border-border sm:flex-row sm:items-center sm:gap-3">
 			<Input
 				type="text"
 				bind:value={editSummary}
@@ -98,21 +89,13 @@
 				<button
 					type="submit"
 					disabled={submitting}
-					class="
-						flex-1 bg-accent text-accent-text px-5 py-2 font-medium transition-colors text-sm
-						sm:flex-none
-						hover:bg-accent-hover disabled:opacity-50
-					"
+					class="flex-1 bg-accent text-accent-text px-5 py-2 font-medium transition-colors text-sm sm:flex-none hover:bg-accent-hover disabled:opacity-50"
 				>
 					{submitting ? m.common_saving() : m.common_save()}
 				</button>
 				<a
 					href="/know/{data.slug}"
-					class="
-						flex-1 text-center px-5 py-2 text-secondary text-sm
-						sm:flex-none
-						hover:bg-raised
-					"
+					class="flex-1 text-center px-5 py-2 text-secondary text-sm sm:flex-none hover:bg-raised"
 				>
 					{m.common_cancel()}
 				</a>

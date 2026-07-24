@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-const hexColor = z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Color must be a 6-digit hex code like #A1B2C3')
+const hexColor = z.string().regex(/^#[\dA-Fa-f]{6}$/, 'Color must be a 6-digit hex code like #A1B2C3')
 
 export const createCountrySchema = z.object({
 	name: z.string().min(1).max(120),
@@ -13,7 +13,7 @@ export const createCountrySchema = z.object({
 })
 
 export const updateCountrySchema = createCountrySchema.partial().refine(
-	(value) => Object.keys(value).length > 0,
+	value => Object.keys(value).length > 0,
 	'Provide at least one field to update',
 )
 
@@ -31,6 +31,6 @@ export const createWorldMapSchema = z.object({
 })
 
 export const updateWorldMapSchema = createWorldMapSchema.partial().refine(
-	(value) => Object.keys(value).length > 0,
+	value => Object.keys(value).length > 0,
 	'Provide at least one field to update',
 )

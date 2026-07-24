@@ -86,19 +86,13 @@
 			<button
 				type="submit"
 				disabled={submitting}
-				class="
-					px-5 py-2 bg-accent text-surface text-sm font-medium transition-colors
-					hover:bg-accent-hover disabled:opacity-50
-				"
+				class="px-5 py-2 bg-accent text-surface text-sm font-medium transition-colors hover:bg-accent-hover disabled:opacity-50"
 			>
 				{submitting ? m.know_moving_status() : m.know_move_page()}
 			</button>
 			<a
 				href="/know/{data.slug}"
-				class="
-					px-5 py-2 bg-raised text-secondary text-sm font-medium transition-colors
-					hover:bg-border
-				"
+				class="px-5 py-2 bg-raised text-secondary text-sm font-medium transition-colors hover:bg-border"
 			>
 				{m.common_cancel()}
 			</a>

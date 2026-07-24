@@ -88,7 +88,7 @@
 		disabled={!hasSelection}
 		class="px-1.5 py-0.5 transition-colors
 			{follow && hasSelection ? 'bg-accent-subtle text-accent font-medium' : 'hover:bg-raised'}
-			{!hasSelection ? 'opacity-40 cursor-not-allowed' : ''}"
+			{hasSelection ? '' : 'opacity-40 cursor-not-allowed'}"
 		title={hasSelection ? 'Center on selected body' : 'Select a body first'}
 		onclick={() => follow = !follow}
 	>Follow</button>

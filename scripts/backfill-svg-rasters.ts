@@ -23,17 +23,17 @@ const rows = await sql<{
 	hasThumb300: boolean
 	hasThumb600: boolean
 }[]>`
-	SELECT filename, filepath,
-		has_raster AS "hasRaster",
-		has_thumb_150 AS "hasThumb150",
-		has_thumb_300 AS "hasThumb300",
-		has_thumb_600 AS "hasThumb600"
-	FROM media
-	WHERE mime_type = 'image/svg+xml'
-		AND (has_raster = false
-		  OR has_thumb_150 = false
-		  OR has_thumb_300 = false
-		  OR has_thumb_600 = false)
+  SELECT filename, filepath,
+  	has_raster AS "hasRaster",
+  	has_thumb_150 AS "hasThumb150",
+  	has_thumb_300 AS "hasThumb300",
+  	has_thumb_600 AS "hasThumb600"
+  FROM media
+  WHERE mime_type = 'image/svg+xml'
+  	AND (has_raster = false
+  	  OR has_thumb_150 = false
+  	  OR has_thumb_300 = false
+  	  OR has_thumb_600 = false)
 `
 
 console.log(`Found ${rows.length} SVG(s) needing raster work`)
@@ -63,11 +63,11 @@ for (const row of rows) {
 		}
 
 		for (const size of THUMB_SIZES) {
-			const flag = size === 150 ? row.hasThumb150 : size === 300 ? row.hasThumb300 : row.hasThumb600
+			const flag = size === 150 ? row.hasThumb150 : (size === 300 ? row.hasThumb300 : row.hasThumb600)
 			if (flag) continue
 
 			const thumbPath = join(THUMB_DIR, `${size}_${row.filename}.png`)
-			const flagColumn = size === 150 ? 'has_thumb_150' : size === 300 ? 'has_thumb_300' : 'has_thumb_600'
+			const flagColumn = size === 150 ? 'has_thumb_150' : (size === 300 ? 'has_thumb_300' : 'has_thumb_600')
 
 			try {
 				await access(thumbPath)
@@ -87,8 +87,8 @@ for (const row of rows) {
 		}
 
 		ok++
-	} catch (cause) {
-		console.error(`  failed: ${row.filename} —`, cause instanceof Error ? cause.message : cause)
+	} catch (error) {
+		console.error(`  failed: ${row.filename} —`, error instanceof Error ? error.message : error)
 		failed++
 	}
 }

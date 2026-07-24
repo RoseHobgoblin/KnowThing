@@ -20,7 +20,7 @@ import type {
 
 /** Fallback identifier when no explicit slug is given: a kebab-cased name. */
 function slugify(name: string): string {
-	return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+	return name.trim().toLowerCase().replaceAll(/[^\da-z]+/g, '-').replaceAll(/(^-|-$)/g, '')
 }
 
 export interface BodyInput {

@@ -49,7 +49,7 @@
 	const viewBoxValue = $derived(`${viewX} ${viewY} ${effectiveViewWidth} ${effectiveViewHeight}`)
 	const zoomLevel = $derived(Math.min(maxZoom, Math.max(minZoom, width / effectiveViewWidth)))
 	const renderRegions = $derived(
-		[...regions].sort((left, right) => getRegionPaintWeight(right) - getRegionPaintWeight(left) || left.id - right.id)
+		[...regions].sort((left, right) => getRegionPaintWeight(right) - getRegionPaintWeight(left) || left.id - right.id),
 	)
 
 	$effect(() => {
@@ -149,7 +149,7 @@
 		</p>
 		<button
 			type="button"
-			class="px-3 py-1.5 text-xs bg-surface hover:bg-raised text-body"
+			class="px-3 py-1.5 text-xs bg-surface text-body hover:bg-raised"
 			onclick={resetView}
 		>
 			{m.map_reset_view()}
@@ -198,7 +198,7 @@
 				{@const strokeOp = isNothing ? 0 : (isHighlighted ? 1 : (transparentRegions ? 0 : 1))}
 				{@const strokeColor = isHighlighted ? 'var(--color-heading)' : regionStroke}
 				{@const strokeWidth = isHighlighted ? 2.2 : 0.8}
-				
+
 				{#if hasTarget}
 					<a
 						href={`/know/${region.pageSlug}`}

@@ -18,8 +18,8 @@ export async function getSiteSettings() {
 		const result: Record<string, string> = {}
 		for (const row of rows) result[row.key] = row.value
 		return result
-	} catch (err) {
-		if (isMissingSiteSettingsTableError(err)) return {}
+	} catch (error_) {
+		if (isMissingSiteSettingsTableError(error_)) return {}
 		throw error(500, 'Failed to load settings')
 	}
 }
@@ -32,8 +32,8 @@ export async function updateSiteSettings(updates: Record<string, string>) {
 				.insert(siteSettings)
 				.values({ key, value })
 				.onConflictDoUpdate({ target: siteSettings.key, set: { value } })
-		} catch (err) {
-			if (isMissingSiteSettingsTableError(err)) {
+		} catch (error_) {
+			if (isMissingSiteSettingsTableError(error_)) {
 				throw error(503, 'Site settings are unavailable until database migrations are applied.')
 			}
 			throw error(500, 'Failed to update settings')

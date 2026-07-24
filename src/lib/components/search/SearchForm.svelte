@@ -15,7 +15,7 @@
 </script>
 
 <form {action} method="GET" class="flex flex-wrap gap-3 items-end">
-	<div class="min-w-[220px] flex-1">
+	<div class="min-w-55 flex-1">
 		<label for="search-q" class="block text-xs font-medium text-secondary mb-1">Search</label>
 		<input
 			id="search-q"

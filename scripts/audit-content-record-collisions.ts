@@ -4,13 +4,13 @@ const sql = postgres('postgres://knowthing:knowthing@localhost:5432/knowthing')
 
 type Row = { domain: string, slug: string, n: number, ids: number[], parent_paths: (string | null)[] }
 const collisions = await sql<Row[]>`
-	SELECT domain, slug, COUNT(*)::int AS n,
-		ARRAY_AGG(id ORDER BY id) AS ids,
-		ARRAY_AGG(parent_path ORDER BY id) AS parent_paths
-	FROM content_records
-	GROUP BY domain, slug
-	HAVING COUNT(*) > 1
-	ORDER BY domain, slug
+  SELECT domain, slug, COUNT(*)::int AS n,
+  	ARRAY_AGG(id ORDER BY id) AS ids,
+  	ARRAY_AGG(parent_path ORDER BY id) AS parent_paths
+  FROM content_records
+  GROUP BY domain, slug
+  HAVING COUNT(*) > 1
+  ORDER BY domain, slug
 `
 
 if (collisions.length === 0) {

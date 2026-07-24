@@ -11,7 +11,7 @@
 import type { Kilograms, Metres, Watts, GravitationalParameter } from './units.js'
 
 /** Gravitational constant (m³ kg⁻¹ s⁻²). */
-export const G = 6.674_30e-11
+export const G = 6.674_3e-11
 /** One astronomical unit in metres. */
 export const AU_M = 1.495_978_707e11 as Metres
 /** Stefan–Boltzmann constant (W m⁻² K⁻⁴). */

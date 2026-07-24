@@ -104,8 +104,8 @@ async function main() {
 			if (!APPLY) { migrated++; continue }
 			await migrateRow(tx => migrateLanguage(tx, lang, targetSlug))
 			migrated++
-		} catch (e) {
-			console.error(`  ✗ FAILED for language ${lang.slug}:`, e)
+		} catch (error) {
+			console.error(`  ✗ FAILED for language ${lang.slug}:`, error)
 			errors++
 		}
 	}
@@ -118,8 +118,8 @@ async function main() {
 			if (!APPLY) { migrated++; continue }
 			await migrateRow(tx => migrateLexicon(tx, lex, targetSlug))
 			migrated++
-		} catch (e) {
-			console.error(`  ✗ FAILED for lexicon ${lex.word}:`, e)
+		} catch (error) {
+			console.error(`  ✗ FAILED for lexicon ${lex.word}:`, error)
 			errors++
 		}
 	}

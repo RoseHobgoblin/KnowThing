@@ -59,6 +59,6 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	return {
 		map,
-		regions: Array.from(regionMap.values()),
+		regions: [...regionMap.values()],
 	}
 }

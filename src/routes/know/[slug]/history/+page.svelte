@@ -25,10 +25,7 @@
 			<a href="/know/{data.slug}" class="text-link text-sm hover:text-link-hover">{data.title}</a>
 		</div>
 		{#if selectedOld && selectedNew}
-			<button onclick={compareDiff} class="
-				px-4 py-1.5 bg-accent text-surface text-sm transition-colors
-				hover:bg-accent-hover
-			">
+			<button onclick={compareDiff} class="px-4 py-1.5 bg-accent text-surface text-sm transition-colors hover:bg-accent-hover">
 				{m.know_compare_selected()}
 			</button>
 		{/if}
