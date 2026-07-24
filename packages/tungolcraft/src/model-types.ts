@@ -34,11 +34,37 @@ export interface QuantityRecord<U extends UnitSymbol = UnitSymbol> {
 
 export type InputSource = 'caller' | 'default' | 'derived'
 
+export interface StandardDeviationUncertainty<U extends UnitSymbol = UnitSymbol> {
+	kind: 'standard-deviation'
+	value: number
+	unit: U
+}
+
+export interface IntervalUncertainty<U extends UnitSymbol = UnitSymbol> {
+	kind: 'interval'
+	lower: number
+	upper: number
+	unit: U
+	confidence?: number
+}
+
+export interface SamplesUncertainty<U extends UnitSymbol = UnitSymbol> {
+	kind: 'samples'
+	values: readonly number[]
+	unit: U
+}
+
+export type Uncertainty<U extends UnitSymbol = UnitSymbol> =
+	| StandardDeviationUncertainty<U>
+	| IntervalUncertainty<U>
+	| SamplesUncertainty<U>
+
 /** A serialisable evaluated input. Categorical inputs do not carry a unit. */
 export interface InputRecord {
 	value: number | string | boolean
 	unit?: UnitSymbol
 	source: InputSource
+	uncertainty?: Uncertainty
 }
 
 export interface ModelSource {
@@ -96,8 +122,30 @@ export type ResultUncertainty =
 	| { kind: 'not-provided' }
 	| {
 		kind: 'propagated'
-		method: 'first-order' | 'interval' | 'monte-carlo'
-		value: unknown
+		method: 'first-order'
+		value: StandardDeviationUncertainty
+		outputPath?: string
+		dependence: 'single-input' | 'independent'
+		evaluations: number
+	}
+	| {
+		kind: 'propagated'
+		method: 'interval'
+		value: IntervalUncertainty
+		outputPath?: string
+		dependence: 'bounds-only'
+		evaluations: number
+	}
+	| {
+		kind: 'propagated'
+		method: 'monte-carlo'
+		value: SamplesUncertainty
+		outputPath?: string
+		dependence: 'single-input' | 'independent'
+		seed: number
+		sampleCount: number
+		samplingPolicy: 'normal' | 'uniform' | 'empirical'
+		evaluations: number
 	}
 
 interface ModelResultBase {

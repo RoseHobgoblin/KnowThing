@@ -13,6 +13,10 @@ export const SCENARIO_LIMITS = Object.freeze({
 	maxFrames: 1_000,
 	maxDependencyDepth: 256,
 	maxJsonCharacters: 5_000_000,
+	maxUncertainInputs: 16,
+	maxIntervalEvaluations: 65_536,
+	maxMonteCarloSamples: 10_000,
+	maxInputSamples: 10_000,
 })
 
 export type TimeScale = 'model-day' | 'UTC' | 'TAI' | 'TT' | 'TDB'

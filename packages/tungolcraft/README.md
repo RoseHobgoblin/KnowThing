@@ -33,6 +33,7 @@ declarations.
 | `scenario` | Versioned scientific bodies, explicit time/frames/axis semantics, graph validation and JSON interchange. |
 | `binary-coordinates` | Overflow-resistant relative-axis and relative-state conversions into barycentric component coordinates. |
 | `benchmarks` | Version-locked scientific fixtures, deterministic tolerance evaluation and machine-readable evidence reports. |
+| `uncertainty` | First-order, interval and deterministic seeded Monte Carlo propagation over catalogue models. |
 | `format` | Human-readable strings (g/cm³, M☉, km/s, …) over the pure numbers. |
 | `constants` | SI reference constants and scales. |
 
@@ -121,6 +122,33 @@ if (exported.ok) {
 See the [scenario interchange guide](./docs/SCENARIO-INTERCHANGE.md) for body
 graphs, frame conventions, binary coordinates and published JSON Schemas.
 
+## Uncertainty
+
+```ts
+import { propagateCatalogueUncertainty } from 'tungolcraft'
+
+const density = propagateCatalogueUncertainty({
+  modelId: 'body.bulk-density',
+  inputs: {
+    massKg: {
+      value: 5.972e24, unit: 'kg', source: 'caller',
+      uncertainty: { kind: 'standard-deviation', value: 6e20, unit: 'kg' },
+    },
+    radiusM: {
+      value: 6.371e6, unit: 'm', source: 'caller',
+      uncertainty: { kind: 'standard-deviation', value: 10, unit: 'm' },
+    },
+  },
+}, { method: 'first-order', assumeIndependent: true })
+
+if (density.ok) console.log(density.uncertainty)
+```
+
+Interval propagation evaluates bounded corners. Monte Carlo requires and
+reports a seed, sample count and sampling policy. Multi-input probabilistic
+propagation refuses to run until the caller explicitly accepts an independence
+assumption. See the [uncertainty guide](./docs/UNCERTAINTY.md).
+
 ## Scientific evidence
 
 ```sh
@@ -144,13 +172,15 @@ The numeric core is stable and unit-tested. Its initial fourteen-model
 catalogue provides explainable, non-throwing results for every existing
 scientific calculation. Versioned scenario interchange, explicit frames and
 binary coordinate transformations are supported. All catalogue models have
-version-locked benchmark evidence. N-body dynamics remain outside its current
-model.
+version-locked benchmark evidence. First-order, interval and deterministic
+seeded Monte Carlo uncertainty propagation are supported. N-body dynamics
+remain outside its current model.
 
 ## Direction
 
 - [Scientific-readiness roadmap](./docs/SCIENTIFIC-READINESS.md)
 - [Theoretical-modelling specification](./docs/THEORETICAL-MODELLING-SPEC.md)
 - [Scenario interchange guide](./docs/SCENARIO-INTERCHANGE.md)
+- [Uncertainty propagation guide](./docs/UNCERTAINTY.md)
 - [Scientific validation](./docs/VALIDATION.md)
 - [Model reference](./docs/MODEL-REFERENCE.md)

@@ -67,8 +67,50 @@
       "properties": {
         "value": { "type": ["number", "string", "boolean"] },
         "unit": { "$ref": "#/$defs/unit" },
-        "source": { "enum": ["caller", "default", "derived"] }
+        "source": { "enum": ["caller", "default", "derived"] },
+        "uncertainty": { "$ref": "#/$defs/valueUncertainty" }
       }
+    },
+    "valueUncertainty": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "value", "unit"],
+          "properties": {
+            "kind": { "const": "standard-deviation" },
+            "value": { "type": "number", "minimum": 0 },
+            "unit": { "$ref": "#/$defs/unit" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "lower", "upper", "unit"],
+          "properties": {
+            "kind": { "const": "interval" },
+            "lower": { "type": "number" },
+            "upper": { "type": "number" },
+            "unit": { "$ref": "#/$defs/unit" },
+            "confidence": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "values", "unit"],
+          "properties": {
+            "kind": { "const": "samples" },
+            "values": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 10000,
+              "items": { "type": "number" }
+            },
+            "unit": { "$ref": "#/$defs/unit" }
+          }
+        }
+      ]
     },
     "source": {
       "type": "object",
@@ -181,11 +223,76 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "method", "value"],
+          "required": ["kind", "method", "value", "dependence", "evaluations"],
           "properties": {
             "kind": { "const": "propagated" },
-            "method": { "enum": ["first-order", "interval", "monte-carlo"] },
-            "value": {}
+            "method": { "const": "first-order" },
+            "value": {
+              "allOf": [
+                { "$ref": "#/$defs/valueUncertainty" },
+                { "properties": { "kind": { "const": "standard-deviation" } } }
+              ]
+            },
+            "outputPath": {
+              "type": "string",
+              "pattern": "^[A-Z_a-z]\\w*(?:\\.[A-Z_a-z]\\w*)*$"
+            },
+            "dependence": { "enum": ["single-input", "independent"] },
+            "evaluations": { "type": "integer", "minimum": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "method", "value", "dependence", "evaluations"],
+          "properties": {
+            "kind": { "const": "propagated" },
+            "method": { "const": "interval" },
+            "value": {
+              "allOf": [
+                { "$ref": "#/$defs/valueUncertainty" },
+                { "properties": { "kind": { "const": "interval" } } }
+              ]
+            },
+            "outputPath": {
+              "type": "string",
+              "pattern": "^[A-Z_a-z]\\w*(?:\\.[A-Z_a-z]\\w*)*$"
+            },
+            "dependence": { "const": "bounds-only" },
+            "evaluations": { "type": "integer", "minimum": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "method",
+            "value",
+            "dependence",
+            "seed",
+            "sampleCount",
+            "samplingPolicy",
+            "evaluations"
+          ],
+          "properties": {
+            "kind": { "const": "propagated" },
+            "method": { "const": "monte-carlo" },
+            "value": {
+              "allOf": [
+                { "$ref": "#/$defs/valueUncertainty" },
+                { "properties": { "kind": { "const": "samples" } } }
+              ]
+            },
+            "outputPath": {
+              "type": "string",
+              "pattern": "^[A-Z_a-z]\\w*(?:\\.[A-Z_a-z]\\w*)*$"
+            },
+            "dependence": { "enum": ["single-input", "independent"] },
+            "seed": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+            "sampleCount": { "type": "integer", "minimum": 1, "maximum": 10000 },
+            "samplingPolicy": { "enum": ["normal", "uniform", "empirical"] },
+            "evaluations": { "type": "integer", "minimum": 1 }
           }
         }
       ]

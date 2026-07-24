@@ -355,7 +355,14 @@ export type Uncertainty =
 
 export type ResultUncertainty =
   | { kind: 'not-provided' }
-  | { kind: 'propagated', method: 'first-order' | 'interval' | 'monte-carlo', value: Uncertainty }
+  | {
+      kind: 'propagated'
+      method: 'first-order' | 'interval' | 'monte-carlo'
+      value: Uncertainty
+      outputPath?: string
+      dependence: 'single-input' | 'independent' | 'bounds-only'
+      evaluations: number
+    }
 ```
 
 Absence of input uncertainty MUST yield `not-provided`, not a zero-width
@@ -367,6 +374,19 @@ unless the caller selects that assumption.
 
 Uncertainty propagation SHOULD be implemented as a utility over catalogue
 models, not duplicated inside every numerical function.
+
+Implemented by `propagateCatalogueUncertainty`. First-order propagation accepts
+standard deviations and estimates a central-difference Jacobian. Interval
+propagation accepts enclosing intervals and enumerates all corners. Monte Carlo
+accepts normal, uniform or empirical policies matched to the corresponding
+input uncertainty kind and returns the output samples.
+
+Monte Carlo results additionally record `seed`, `sampleCount` and
+`samplingPolicy`. Multi-input first-order and Monte Carlo evaluation require
+`assumeIndependent: true`; covariance is not inferred. The implementation caps
+uncertain inputs at 16, interval corners at 65,536, Monte Carlo samples at
+10,000 and empirical input samples at 10,000. These propagation methods estimate
+uncertainty through a model; they do not quantify model-form error.
 
 ## 12. Initial model catalogue
 

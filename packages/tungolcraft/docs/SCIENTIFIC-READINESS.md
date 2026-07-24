@@ -181,6 +181,15 @@ evidence.
 Add interval/first-order propagation and seeded Monte Carlo as separate
 utilities. Do not bake probabilistic behaviour into every low-level function.
 
+Status: **complete**. Catalogue inputs now accept validated standard-deviation,
+interval or empirical-sample uncertainty. A separate non-throwing propagation
+utility supports central-difference first-order propagation, bounded corner
+enumeration and deterministic seeded Monte Carlo. Every propagated result
+records its scalar output path, dependence treatment and evaluation count;
+Monte Carlo additionally records its seed, sample count and sampling policy.
+Multi-input probabilistic methods require an explicit independence assumption,
+and hard limits bound uncertain inputs, interval corners and samples.
+
 ### Milestone E — model packs
 
 Add higher-level science only as named, replaceable models:

@@ -11,6 +11,7 @@ import {
 	parseScenarioJson,
 	parseScenarioReportJson,
 	partitionBinaryRelativeAxis,
+	propagateCatalogueUncertainty,
 	relativeStateToBarycentric,
 	serializeScenario,
 	serializeScenarioReport,
@@ -217,6 +218,73 @@ describe('scenario validation and JSON interchange', () => {
 	it('publishes unique stable scenario diagnostics', () => {
 		const codes = Object.values(SCENARIO_DIAGNOSTIC_CODES)
 		expect(new Set(codes).size).toBe(codes.length)
+	})
+
+	it('round-trips a fully described propagated uncertainty result', () => {
+		const report = validReport()
+		report.results['earth-model.density'] = propagateCatalogueUncertainty({
+			modelId: 'body.bulk-density',
+			inputs: {
+				massKg: {
+					value: 5.972e24,
+					unit: 'kg',
+					source: 'caller',
+					uncertainty: {
+						kind: 'standard-deviation',
+						value: 1e20,
+						unit: 'kg',
+					},
+				},
+				radiusM: {
+					value: 6.371e6,
+					unit: 'm',
+					source: 'caller',
+				},
+			},
+		}, { method: 'first-order' })
+		expect(validateScenarioReport(report).ok).toBe(true)
+		const serialized = serializeScenarioReport(report)
+		expect(serialized.ok).toBe(true)
+		if (!serialized.ok) throw new Error('Expected report serialization')
+		const parsed = parseScenarioReportJson(serialized.json)
+		expect(parsed.ok).toBe(true)
+		if (!parsed.ok) throw new Error('Expected report parse')
+		expect(parsed.value).toEqual(report)
+	})
+
+	it('rejects inconsistent Monte Carlo result metadata', () => {
+		const report = validReport()
+		const result = propagateCatalogueUncertainty({
+			modelId: 'body.rotational-breakup',
+			inputs: {
+				densityKgM3: {
+					value: 5_500,
+					unit: 'kg/m^3',
+					source: 'caller',
+					uncertainty: {
+						kind: 'standard-deviation',
+						value: 50,
+						unit: 'kg/m^3',
+					},
+				},
+			},
+		}, {
+			method: 'monte-carlo',
+			seed: 7,
+			sampleCount: 8,
+			samplingPolicy: 'normal',
+		})
+		report.results['earth-model.density'] = {
+			...result,
+			uncertainty: {
+				...(result.ok ? result.uncertainty : { kind: 'not-provided' as const }),
+				sampleCount: 9,
+			},
+		} as never
+		expectFailure(
+			validateScenarioReport(report),
+			SCENARIO_DIAGNOSTIC_CODES.uncertaintyInvalid,
+		)
 	})
 })
 

@@ -1,26 +1,14 @@
 import {
-	evaluateBulkDensity,
-	evaluateEllipticalState,
-	evaluateEscapeVelocity,
-	evaluateHillRadius,
-	evaluateKeplerPeriod,
-	evaluateMeanSpeed,
-	evaluateParentBarycenterDistance,
-	evaluateRocheLimit,
-	evaluateRotationalBreakup,
-	evaluateSatelliteStability,
-	evaluateSimpleHabitableZone,
-	evaluateStefanBoltzmannLuminosity,
-	evaluateSurfaceGravity,
-	evaluateVisVivaSpeed,
-} from './catalogue.js'
+	evaluateCatalogueModel,
+	isUnitSymbol,
+	readCatalogueQuantity,
+} from './catalogue-runner.js'
 import { getModelReference, type ModelId } from './model-registry.js'
 import type {
 	InputRecord,
 	ModelResult,
 	ModelSource,
 	QuantityRecord,
-	UnitSymbol,
 } from './model-types.js'
 
 export interface BenchmarkTolerance {
@@ -73,75 +61,7 @@ function evaluatedInputs(
 }
 
 function evaluateFixture(fixture: BenchmarkFixture): ModelResult<unknown> {
-	const input = evaluatedInputs(fixture.inputs)
-	switch (fixture.modelId) {
-		case 'body.bulk-density': return evaluateBulkDensity(input as never)
-		case 'body.surface-gravity': return evaluateSurfaceGravity(input as never)
-		case 'body.escape-velocity': return evaluateEscapeVelocity(input as never)
-		case 'body.rotational-breakup': return evaluateRotationalBreakup(input as never)
-		case 'orbit.kepler-period': return evaluateKeplerPeriod(input as never)
-		case 'orbit.vis-viva-speed': return evaluateVisVivaSpeed(input as never)
-		case 'orbit.mean-speed': return evaluateMeanSpeed(input as never)
-		case 'orbit.elliptical-state': return evaluateEllipticalState(input as never)
-		case 'orbit.hill-radius': return evaluateHillRadius(input as never)
-		case 'binary.parent-barycenter-distance':
-			return evaluateParentBarycenterDistance(input as never)
-		case 'satellite.domingos-2006-limit':
-			return evaluateSatelliteStability(input as never)
-		case 'satellite.roche-limit': return evaluateRocheLimit(input as never)
-		case 'star.stefan-boltzmann-luminosity':
-			return evaluateStefanBoltzmannLuminosity(input as never)
-		case 'star.simple-habitable-zone': return evaluateSimpleHabitableZone(input as never)
-	}
-}
-
-function isUnit(value: unknown): value is UnitSymbol {
-	return typeof value === 'string' && [
-		'1',
-		'rad',
-		'deg',
-		's',
-		'd',
-		'm',
-		'm/s',
-		'm/s^2',
-		'kg',
-		'kg/m^3',
-		'W',
-		'K',
-		'm^3/s^2',
-		'AU',
-	].includes(value)
-}
-
-function readQuantity(output: unknown, path?: string): QuantityRecord | null {
-	let value = output
-	let parent: unknown
-	for (const segment of path?.split('.').filter(Boolean) ?? []) {
-		if (value == null || typeof value !== 'object') return null
-		parent = value
-		value = (value as Record<string, unknown>)[segment]
-	}
-	if (
-		value != null
-		&& typeof value === 'object'
-		&& typeof (value as Record<string, unknown>).value === 'number'
-		&& isUnit((value as Record<string, unknown>).unit)
-	) {
-		return {
-			value: (value as Record<string, number>).value,
-			unit: (value as Record<string, UnitSymbol>).unit,
-		}
-	}
-	if (
-		typeof value === 'number'
-		&& parent != null
-		&& typeof parent === 'object'
-		&& isUnit((parent as Record<string, unknown>).unit)
-	) {
-		return { value, unit: (parent as Record<string, UnitSymbol>).unit }
-	}
-	return null
+	return evaluateCatalogueModel(fixture.modelId, evaluatedInputs(fixture.inputs))
 }
 
 function invalidFixtureResult(fixture: BenchmarkFixture, message: string): BenchmarkResult {
@@ -177,7 +97,7 @@ export function runBenchmarkFixture(fixture: BenchmarkFixture): BenchmarkResult 
 	) {
 		return invalidFixtureResult(fixture, 'Fixture tolerances must be finite and non-negative')
 	}
-	if (!Number.isFinite(fixture.expected.value) || !isUnit(fixture.expected.unit)) {
+	if (!Number.isFinite(fixture.expected.value) || !isUnitSymbol(fixture.expected.unit)) {
 		return invalidFixtureResult(fixture, 'Fixture expected value or unit is invalid')
 	}
 	const result = evaluateFixture(fixture)
@@ -187,7 +107,7 @@ export function runBenchmarkFixture(fixture: BenchmarkFixture): BenchmarkResult 
 			`Model evaluation failed: ${result.diagnostics.map(item => item.code).join(', ')}`,
 		)
 	}
-	const actual = readQuantity(result.output, fixture.outputPath)
+	const actual = readCatalogueQuantity(result.output, fixture.outputPath)
 	if (!actual) {
 		return invalidFixtureResult(
 			fixture,

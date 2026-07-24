@@ -43,6 +43,7 @@ export const SCENARIO_DIAGNOSTIC_CODES = {
 	metadataBodyMissing: 'scenario.metadata.body-missing',
 	metadataDuplicate: 'scenario.metadata.duplicate',
 	reportInvalid: 'scenario.report.invalid',
+	uncertaintyInvalid: 'scenario.uncertainty.invalid',
 	dependencyMissing: 'scenario.dependency.missing',
 	dependencyCycle: 'scenario.dependency.cycle',
 	dependencyDepthExceeded: 'scenario.dependency.depth-exceeded',
@@ -942,7 +943,7 @@ function validateInputsRecord(
 			))
 			continue
 		}
-		checkUnknownFields(input, ['value', 'unit', 'source'], inputPath, diagnostics)
+		checkUnknownFields(input, ['value', 'unit', 'source', 'uncertainty'], inputPath, diagnostics)
 		if (
 			typeof input.value !== 'string'
 			&& typeof input.value !== 'boolean'
@@ -968,7 +969,235 @@ function validateInputsRecord(
 				`${inputPath}.source`,
 			))
 		}
+		if (input.uncertainty != null) {
+			if (typeof input.value !== 'number' || typeof input.unit !== 'string') {
+				diagnostics.push(issue(
+					SCENARIO_DIAGNOSTIC_CODES.uncertaintyInvalid,
+					`${inputPath}.uncertainty requires a numeric input with a unit`,
+					`${inputPath}.uncertainty`,
+				))
+			}
+			validateUncertaintyRecord(
+				input.uncertainty,
+				`${inputPath}.uncertainty`,
+				diagnostics,
+				typeof input.value === 'number' ? input.value : undefined,
+				typeof input.unit === 'string' ? input.unit : undefined,
+			)
+		}
 	}
+}
+
+function validateUncertaintyRecord(
+	value: unknown,
+	path: string,
+	diagnostics: Diagnostic[],
+	nominal?: number,
+	inputUnit?: string,
+): void {
+	if (!isRecord(value)) {
+		diagnostics.push(issue(
+			SCENARIO_DIAGNOSTIC_CODES.uncertaintyInvalid,
+			`${path} must be an uncertainty record`,
+			path,
+		))
+		return
+	}
+	const kind = value.kind
+	let allowed = ['kind']
+	if (kind === 'standard-deviation') allowed = ['kind', 'value', 'unit']
+	if (kind === 'interval') allowed = ['kind', 'lower', 'upper', 'unit', 'confidence']
+	if (kind === 'samples') allowed = ['kind', 'values', 'unit']
+	checkUnknownFields(value, allowed, path, diagnostics)
+	if (!UNITS.has(String(value.unit)) || (inputUnit != null && value.unit !== inputUnit)) {
+		diagnostics.push(issue(
+			SCENARIO_DIAGNOSTIC_CODES.uncertaintyInvalid,
+			`${path}.unit must be registered and match its quantity`,
+			`${path}.unit`,
+		))
+	}
+	if (kind === 'standard-deviation') {
+		if (
+			typeof value.value !== 'number'
+			|| !Number.isFinite(value.value)
+			|| value.value < 0
+		) {
+			diagnostics.push(issue(
+				SCENARIO_DIAGNOSTIC_CODES.uncertaintyInvalid,
+				`${path}.value must be finite and non-negative`,
+				`${path}.value`,
+			))
+		}
+		return
+	}
+	if (kind === 'interval') {
+		if (
+			typeof value.lower !== 'number'
+			|| !Number.isFinite(value.lower)
+			|| typeof value.upper !== 'number'
+			|| !Number.isFinite(value.upper)
+			|| value.lower > value.upper
+			|| (nominal != null && (value.lower > nominal || nominal > value.upper))
+		) {
+			diagnostics.push(issue(
+				SCENARIO_DIAGNOSTIC_CODES.uncertaintyInvalid,
+				`${path} must contain finite ordered bounds enclosing the nominal value`,
+				path,
+			))
+		}
+		if (
+			value.confidence != null
+			&& (
+				typeof value.confidence !== 'number'
+				|| !Number.isFinite(value.confidence)
+				|| value.confidence <= 0
+				|| value.confidence > 1
+			)
+		) {
+			diagnostics.push(issue(
+				SCENARIO_DIAGNOSTIC_CODES.uncertaintyInvalid,
+				`${path}.confidence must be in (0, 1]`,
+				`${path}.confidence`,
+			))
+		}
+		return
+	}
+	if (kind === 'samples') {
+		if (
+			!Array.isArray(value.values)
+			|| value.values.length === 0
+			|| value.values.length > SCENARIO_LIMITS.maxInputSamples
+			|| !value.values.every(sample => typeof sample === 'number' && Number.isFinite(sample))
+		) {
+			diagnostics.push(issue(
+				SCENARIO_DIAGNOSTIC_CODES.uncertaintyInvalid,
+				`${path}.values must be a non-empty bounded array of finite numbers`,
+				`${path}.values`,
+			))
+		}
+		return
+	}
+	diagnostics.push(issue(
+		SCENARIO_DIAGNOSTIC_CODES.uncertaintyInvalid,
+		`${path}.kind is not supported`,
+		`${path}.kind`,
+	))
+}
+
+function validateResultUncertainty(
+	value: unknown,
+	path: string,
+	diagnostics: Diagnostic[],
+): void {
+	if (!isRecord(value)) {
+		diagnostics.push(issue(
+			SCENARIO_DIAGNOSTIC_CODES.uncertaintyInvalid,
+			`${path} must be an uncertainty result`,
+			path,
+		))
+		return
+	}
+	if (value.kind === 'not-provided') {
+		checkUnknownFields(value, ['kind'], path, diagnostics)
+		return
+	}
+	if (value.kind !== 'propagated') {
+		diagnostics.push(issue(
+			SCENARIO_DIAGNOSTIC_CODES.uncertaintyInvalid,
+			`${path}.kind is not supported`,
+			`${path}.kind`,
+		))
+		return
+	}
+	const common = ['kind', 'method', 'value', 'outputPath', 'dependence', 'evaluations']
+	const allowed = value.method === 'monte-carlo'
+		? [...common, 'seed', 'sampleCount', 'samplingPolicy']
+		: common
+	checkUnknownFields(value, allowed, path, diagnostics)
+	validateUncertaintyRecord(value.value, `${path}.value`, diagnostics)
+	if (
+		typeof value.evaluations !== 'number'
+		|| !Number.isInteger(value.evaluations)
+		|| value.evaluations < 1
+	) {
+		diagnostics.push(issue(
+			SCENARIO_DIAGNOSTIC_CODES.uncertaintyInvalid,
+			`${path}.evaluations must be a positive integer`,
+			`${path}.evaluations`,
+		))
+	}
+	if (value.outputPath != null) {
+		checkString(value.outputPath, `${path}.outputPath`, diagnostics)
+		if (
+			typeof value.outputPath === 'string'
+			&& !/^[A-Z_a-z]\w*(?:\.[A-Z_a-z]\w*)*$/.test(value.outputPath)
+		) {
+			diagnostics.push(issue(
+				SCENARIO_DIAGNOSTIC_CODES.uncertaintyInvalid,
+				`${path}.outputPath must be a dot-separated field path`,
+				`${path}.outputPath`,
+			))
+		}
+	}
+	if (value.method === 'first-order') {
+		if (
+			!isRecord(value.value)
+			|| value.value.kind !== 'standard-deviation'
+			|| (value.dependence !== 'single-input' && value.dependence !== 'independent')
+		) {
+			diagnostics.push(issue(
+				SCENARIO_DIAGNOSTIC_CODES.uncertaintyInvalid,
+				`${path} is not a valid first-order propagation record`,
+				path,
+			))
+		}
+		return
+	}
+	if (value.method === 'interval') {
+		if (
+			!isRecord(value.value)
+			|| value.value.kind !== 'interval'
+			|| value.dependence !== 'bounds-only'
+		) {
+			diagnostics.push(issue(
+				SCENARIO_DIAGNOSTIC_CODES.uncertaintyInvalid,
+				`${path} is not a valid interval propagation record`,
+				path,
+			))
+		}
+		return
+	}
+	if (value.method === 'monte-carlo') {
+		if (
+			!isRecord(value.value)
+			|| value.value.kind !== 'samples'
+			|| (value.dependence !== 'single-input' && value.dependence !== 'independent')
+			|| typeof value.seed !== 'number'
+			|| !Number.isInteger(value.seed)
+			|| value.seed < 0
+			|| value.seed > 0xFFFF_FFFF
+			|| typeof value.sampleCount !== 'number'
+			|| !Number.isInteger(value.sampleCount)
+			|| value.sampleCount < 1
+			|| value.sampleCount > SCENARIO_LIMITS.maxMonteCarloSamples
+			|| value.evaluations !== value.sampleCount + 1
+			|| !['normal', 'uniform', 'empirical'].includes(String(value.samplingPolicy))
+			|| !Array.isArray(value.value.values)
+			|| value.value.values.length !== value.sampleCount
+		) {
+			diagnostics.push(issue(
+				SCENARIO_DIAGNOSTIC_CODES.uncertaintyInvalid,
+				`${path} is not a valid bounded Monte Carlo propagation record`,
+				path,
+			))
+		}
+		return
+	}
+	diagnostics.push(issue(
+		SCENARIO_DIAGNOSTIC_CODES.uncertaintyInvalid,
+		`${path}.method is not supported`,
+		`${path}.method`,
+	))
 }
 
 function validateModelResultRecord(
@@ -1023,16 +1252,7 @@ function validateModelResultRecord(
 				`${path}.output`,
 			))
 		}
-		if (!isRecord(value.uncertainty) || (
-			value.uncertainty.kind !== 'not-provided'
-			&& value.uncertainty.kind !== 'propagated'
-		)) {
-			diagnostics.push(issue(
-				SCENARIO_DIAGNOSTIC_CODES.reportInvalid,
-				`${path}.uncertainty is invalid`,
-				`${path}.uncertainty`,
-			))
-		}
+		validateResultUncertainty(value.uncertainty, `${path}.uncertainty`, diagnostics)
 		if (value.numerical != null && !isRecord(value.numerical)) {
 			diagnostics.push(issue(
 				SCENARIO_DIAGNOSTIC_CODES.reportInvalid,

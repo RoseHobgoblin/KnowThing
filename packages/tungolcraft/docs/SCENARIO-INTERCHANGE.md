@@ -18,6 +18,12 @@ Use `validateScenario` for an object already in memory, `parseScenarioJson` at a
 JSON boundary and `serializeScenario` before export. Equivalent report
 functions validate both result serialization and dependency graphs.
 
+Input records may include standard-deviation, interval or empirical-sample
+uncertainty. Successful propagated results include a fully typed uncertainty
+record plus their method, dependence treatment and evaluation count. Monte
+Carlo reports also include their seed, sample count and sampling policy. See the
+[uncertainty guide](./UNCERTAINTY.md).
+
 The validators reject unsupported schema versions, unknown fields, wrong units,
 non-finite numbers, negative zero, unresolved references, duplicate IDs, orbit
 cycles, incompatible frame origins and resource-limit violations.
