@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { untrack } from 'svelte'
-	import { useId } from 'bits-ui'
+	import { Select, useId } from 'bits-ui'
 	import { cn } from '$lib/utils'
 	import Label from './Label.svelte'
 	import Tooltip from './Tooltip.svelte'
 	import QuestionIcon from 'phosphor-svelte/lib/Question'
+	import CaretDown from 'phosphor-svelte/lib/CaretDown'
+	import Check from 'phosphor-svelte/lib/Check'
 
 	export interface UnitOption {
 		/** Display label, e.g. 'kg', 'M☉'. */
@@ -77,9 +79,12 @@
 		if (Number.isFinite(typed)) value = typed * units[unitIndex].factor
 	}
 
-	function cycleUnit() {
-		unitIndex = (unitIndex + 1) % units.length
-		text = format(value, unitIndex)
+	// Switch display unit without changing the stored value — reformats the text
+	// into the newly picked unit's terms.
+	function selectUnit(index: number) {
+		if (index === unitIndex || !units[index]) return
+		unitIndex = index
+		text = format(value, index)
 	}
 </script>
 
@@ -115,15 +120,54 @@
 		/>
 		<div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
 			{#if units.length > 1}
-				<Tooltip content="Change unit — the value converts, storage stays in {storageUnit.label}" side="top">
-					<button
-						type="button"
-						onclick={cycleUnit}
-						class="px-1.5 py-0.5 text-xs font-semibold bg-accent-subtle text-accent border border-accent-border/60 transition-colors hover:bg-accent-subtle/60"
+				<Select.Root
+					type="single"
+					value={String(unitIndex)}
+					onValueChange={v => selectUnit(Number(v))}
+				>
+					<Select.Trigger
+						aria-label="Display unit"
+						title="Change display unit — stored in {storageUnit.label}"
+						class="
+							inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-semibold bg-accent-subtle text-accent border border-accent-border/60 cursor-pointer
+							transition-colors
+							hover:bg-accent-subtle/60
+							data-[state=open]:ring-2 data-[state=open]:ring-accent
+						"
 					>
 						{units[unitIndex].label}
-					</button>
-				</Tooltip>
+						<CaretDown size={10} weight="bold" class="opacity-70" />
+					</Select.Trigger>
+					<Select.Portal>
+						<Select.Content
+							class="
+								z-9999 max-h-64 min-w-24 select-none bg-surface shadow-lg outline-none overflow-hidden
+								data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95
+								data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95
+							"
+						>
+							<Select.Viewport class="overflow-hidden p-0">
+								{#each units as unit, index (index)}
+									<Select.Item
+										value={String(index)}
+										label={unit.label}
+										class="
+											flex items-center justify-between gap-2 w-full px-2.5 py-1.5 text-xs select-none cursor-pointer text-body outline-none transition-colors
+											data-highlighted:bg-raised data-highlighted:text-heading
+										"
+									>
+										{#snippet children({ selected })}
+											<span>{unit.label}</span>
+											{#if selected}
+												<span class="text-accent"><Check size={12} weight="bold" /></span>
+											{/if}
+										{/snippet}
+									</Select.Item>
+								{/each}
+							</Select.Viewport>
+						</Select.Content>
+					</Select.Portal>
+				</Select.Root>
 				{#if units[unitIndex].factor !== storageUnit.factor}
 					<span class="text-xs text-secondary">{storageUnit.label}</span>
 				{/if}
