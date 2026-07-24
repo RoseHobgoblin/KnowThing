@@ -54,7 +54,7 @@ function expectFailure(result: ModelResult<unknown>, code: string): void {
 describe('scientific model registry', () => {
 	it('publishes unique, versioned model references with provenance and validity', () => {
 		const references = listModelReferences()
-		expect(references).toHaveLength(14)
+		expect(references).toHaveLength(20)
 		expect(references.map(model => model.id)).toEqual(Object.values(MODEL_IDS))
 		expect(new Set(references.map(model => model.id)).size).toBe(references.length)
 		for (const model of references) {

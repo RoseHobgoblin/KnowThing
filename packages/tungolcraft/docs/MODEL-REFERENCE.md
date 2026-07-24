@@ -22,6 +22,12 @@ version increment even when the npm API shape does not change.
 | `satellite.roche-limit` | `1.0.0` | `screening` | `equal-density-rigid-roche-identity` | d = C Rparent (ρparent/ρsatellite)^(1/3), C = 2^(1/3) rigid or 2.44 fluid |
 | `star.stefan-boltzmann-luminosity` | `1.0.0` | `exact-relation` | `iau-nominal-solar-stefan-boltzmann` | L = 4πR²σT⁴ using the SI Stefan–Boltzmann constant |
 | `star.simple-habitable-zone` | `1.0.0` | `approximation` | `simple-hz-solar-luminosity-inner-edge` | Tungolcraft simple prescription: inner = √((L/L☉)/1.1), outer = √((L/L☉)/0.53) AU |
+| `star.eker-2018-main-sequence-screen` | `1.0.0` | `screening` | `eker-2018-solar-mass-low-domain` | [Eker et al. (2018), MNRAS 479, 5491–5511, Table 4](https://doi.org/10.1093/mnras/sty1834) |
+| `orbit.stellar-irradiance` | `1.0.0` | `exact-relation` | `nominal-solar-irradiance-at-one-au` | Inverse-square energy conservation: F = L/(4πd²) |
+| `planet.blackbody-equilibrium-temperature` | `1.0.0` | `exact-relation` | `earth-albedo-blackbody-equilibrium-temperature` | Absorbed πR²F(1−A) equals emitted 4πR²σT⁴ |
+| `star.kopparapu-2014-conservative-hz` | `1.0.0` | `approximation` | `kopparapu-2014-solar-conservative-inner-edge` | [Kopparapu et al. (2014), ApJ Letters 787 L29, equations 4–5 and Table 1](https://doi.org/10.1088/2041-8205/787/2/L29) |
+| `satellite.constant-q-eccentricity-damping` | `1.0.0` | `screening` | `constant-q-eccentricity-damping-identity` | [Goldreich & Soter (1966), Icarus 5, 375–389; standard low-e constant-Q form](https://doi.org/10.1016/0019-1035(66)90051-0) |
+| `planet.zeng-2016-rocky-radius` | `1.0.0` | `empirical-fit` | `zeng-2016-earth-like-rocky-radius` | [Zeng, Sasselov & Jacobsen (2016), ApJ 819 127](https://doi.org/10.3847/0004-637X/819/2/127) |
 
 The public `listModelReferences()` registry is the normative machine-readable
 source for complete summaries, assumptions and validity rules. This page is

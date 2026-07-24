@@ -170,7 +170,7 @@ Build the sourced benchmark corpus, tolerance policy and generated model
 reference pages. Make benchmarks part of CI and release artifacts.
 
 Status: **complete**. A version-locked machine-readable corpus covers all
-fourteen catalogue models with primary-source fixtures or isolated analytic
+twenty catalogue models with primary-source fixtures or isolated analytic
 identities. The deterministic runner enforces declared absolute/relative
 tolerances, generated validation and model-reference pages are checked for
 drift, and package CI uploads the benchmark report and documentation as release
@@ -201,6 +201,14 @@ Add higher-level science only as named, replaceable models:
 - class-specific mass-radius or density relations.
 
 Each model pack must satisfy the same provenance, domain and benchmark contract.
+
+Status: **complete**. Five independently versioned packs expose six new named
+catalogue models: the Eker 2018 main-sequence luminosity screen, isotropic
+stellar irradiance, globally redistributed blackbody equilibrium temperature,
+the Kopparapu 2014 conservative habitable zone, constant-Q eccentricity damping
+and the Zeng 2016 rocky-planet mass–radius relation. Every model has explicit
+assumptions and domain diagnostics, supports the Milestone D propagation
+boundary, and has a version-locked primary-source or isolated-equation fixture.
 
 ### Milestone F — external dynamics adapters
 
