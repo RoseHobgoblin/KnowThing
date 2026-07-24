@@ -29,7 +29,7 @@
 	let savedAt = $state<Date | null>(null)
 	let copied = $state(false)
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
-	let stablePermissions = $state(normalizePermissions(data.permissions))
+	let stablePermissions = $state(untrack(() => normalizePermissions(data.permissions)))
 	const queryClient = useQueryClient()
 	const mediaUrl = $derived(`/api/media/${encodeURIComponent(data.file.filename)}`)
 	const saveMutation = createMutation(() => ({
@@ -123,7 +123,7 @@
 		setTimeout(() => (copied = false), 2000)
 	}
 
-	let replaceInput: HTMLInputElement | undefined
+	let replaceInput = $state<HTMLInputElement>()
 
 	async function onReplaceFile(event: Event) {
 		const input = event.currentTarget as HTMLInputElement
@@ -159,7 +159,7 @@
 		}
 	}
 
-	let renameInput = $state(data.file.filename)
+	let renameInput = $state(untrack(() => data.file.filename))
 	let renameOpen = $state(false)
 
 	async function submitRename() {

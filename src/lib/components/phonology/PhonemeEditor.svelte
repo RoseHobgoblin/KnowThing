@@ -17,6 +17,7 @@
 	import { createMutation, createQuery } from '@tanstack/svelte-query'
 	import { api } from '$lib/api'
 	import { m } from '$lib/paraglide/messages.js'
+	import { untrack } from 'svelte'
 
 	interface Phoneme {
 		id: number
@@ -94,7 +95,7 @@
 
 	interface LinkedGrapheme { id: number, grapheme: string, environment: string | null }
 
-	let phonemes = $state<Phoneme[]>(initial)
+	let phonemes = $state<Phoneme[]>(untrack(() => initial))
 	let pickerOpen = $state(false)
 	let pickerFilter = $state<'consonant' | 'vowel'>('consonant')
 	let manualOpen = $state(false)

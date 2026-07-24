@@ -14,6 +14,7 @@
 	import { createMutation } from '@tanstack/svelte-query'
 	import { api } from '$lib/api'
 	import { m } from '$lib/paraglide/messages.js'
+	import { untrack } from 'svelte'
 
 	interface PhonemeLink {
 		phonemeId: number
@@ -72,7 +73,7 @@
 		}
 	}
 
-	let graphemes = $state<Grapheme[]>(initial)
+	let graphemes = $state<Grapheme[]>(untrack(() => initial))
 	let dialogOpen = $state(false)
 	let editingId = $state<number | null>(null)
 	let draft = $state<Draft>(emptyDraft())

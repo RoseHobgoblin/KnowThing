@@ -18,6 +18,7 @@
 	import InlineMarkup from '$lib/renderer/InlineMarkup.svelte'
 	import WikiNodeComponent from '$lib/renderer/WikiNode.svelte'
 	import { createKnowContext } from '$lib/renderer/context.js'
+	import { untrack } from 'svelte'
 	import PencilSimple from 'phosphor-svelte/lib/PencilSimple'
 	import Trash from 'phosphor-svelte/lib/Trash'
 	import { wordbookWordBreadcrumbs } from '$lib/utils/breadcrumbs.js'
@@ -31,14 +32,18 @@
 
 	const layoutData = $derived($page.data)
 
-	createKnowContext({
-		resolvedLinks: new Map(Object.entries(data.resolvedLinks ?? {})),
-		mediaBaseUrl: '/api/media',
-		pageBaseUrl: '/Wordbook',
-		sourceDomain: 'wordbook',
-		calendarDate: layoutData.calendarDate ?? null,
-		structuredCollections: data.structuredCollections ?? null,
-	})
+	// setContext runs once at init — reading current data/store values here is
+	// intentional, so untrack to silence the state_referenced_locally warning.
+	untrack(() =>
+		createKnowContext({
+			resolvedLinks: new Map(Object.entries(data.resolvedLinks ?? {})),
+			mediaBaseUrl: '/api/media',
+			pageBaseUrl: '/Wordbook',
+			sourceDomain: 'wordbook',
+			calendarDate: layoutData.calendarDate ?? null,
+			structuredCollections: data.structuredCollections ?? null,
+		}),
+	)
 	const permissions = $derived(layoutData.permissions)
 	const isAuthenticated = $derived(permissions.isAuthenticated)
 	const canManageWordbook = $derived(permissions.canManageWordbook)
