@@ -30,9 +30,7 @@
 		{href}
 		class="know-link underline decoration-transparent hover:decoration-current transition-colors {exists ? 'text-link' : 'text-error-hover'}"
 		title={exists ? undefined : target}
-	>{#if display}{#each display as child, index (index)}<WikiNodeComponent node={child} />{/each}{:else}{target}{/if}</LinkPreview.Trigger>
-	{#if exists}
-		<LinkPreview.Portal>
+	>{#if display}{#each display as child, index (index)}<WikiNodeComponent node={child} />{/each}{:else}{target}{/if}</LinkPreview.Trigger>{#if exists}<LinkPreview.Portal>
 			<LinkPreview.Content
 				side="bottom"
 				align="start"
@@ -42,6 +40,5 @@
 			>
 				<LinkPreviewCard {slug} domain={href.split('/')[1]} />
 			</LinkPreview.Content>
-		</LinkPreview.Portal>
-	{/if}
+		</LinkPreview.Portal>{/if}
 </LinkPreview.Root>
