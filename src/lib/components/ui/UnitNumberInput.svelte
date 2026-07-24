@@ -5,7 +5,7 @@
 	import Label from './Label.svelte'
 	import Tooltip from './Tooltip.svelte'
 	import QuestionIcon from 'phosphor-svelte/lib/Question'
-	import CaretDown from 'phosphor-svelte/lib/CaretDown'
+	import CaretDownIcon from 'phosphor-svelte/lib/CaretDownIcon'
 	import Check from 'phosphor-svelte/lib/Check'
 
 	export interface UnitOption {
@@ -136,7 +136,7 @@
 						"
 					>
 						{units[unitIndex].label}
-						<CaretDown size={10} weight="bold" class="opacity-70" />
+						<CaretDownIcon size={10} weight="bold" class="opacity-70" />
 					</Select.Trigger>
 					<Select.Portal>
 						<Select.Content
