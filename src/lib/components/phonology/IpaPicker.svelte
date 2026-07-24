@@ -6,6 +6,7 @@
 	import { SvelteSet } from 'svelte/reactivity'
 	import ArrowLeft from 'phosphor-svelte/lib/ArrowLeftIcon'
 	import Plus from 'phosphor-svelte/lib/PlusIcon'
+	import { m } from '$lib/paraglide/messages.js'
 
 	let {
 		open = $bindable(false),
@@ -54,7 +55,7 @@
 	function toggleModifier(id: string) {
 		// Handle mutex groups: turning on a modifier in a mutex group turns off
 		// any other modifier in the same group.
-		const modifier = IPA_MODIFIERS.find(m => m.id === id)
+		const modifier = IPA_MODIFIERS.find(mod => mod.id === id)
 		if (!modifier) return
 		if (selectedModifiers.has(id)) {
 			selectedModifiers.delete(id)
@@ -90,8 +91,8 @@
 
 <Dialog
 	bind:open
-	title={selected ? 'Add modifiers' : 'Choose a phoneme'}
-	subtitle={selected ? `Refine the base symbol /${selected.symbol}/ before adding` : undefined}
+	title={selected ? m.phon_add_modifiers() : m.phon_choose_phoneme()}
+	subtitle={selected ? m.phon_refine_base_symbol({ symbol: selected.symbol }) : undefined}
 	class="max-w-6xl"
 >
 	{#if selected}
@@ -100,32 +101,32 @@
 			<!-- Live preview -->
 			<div class="flex items-center justify-between gap-4 p-4 bg-raised">
 				<div>
-					<div class="text-xs uppercase tracking-wider text-dim mb-1">Result</div>
+					<div class="text-xs uppercase tracking-wider text-dim mb-1">{m.phon_result()}</div>
 					<div class="font-serif text-4xl text-heading">/{composedSymbol}/</div>
 					{#if selectedModifiers.size > 0}
 						<div class="text-xs text-dim mt-1">
 							{[...selectedModifiers]
-								.map(id => IPA_MODIFIERS.find(m => m.id === id)?.label)
+								.map(id => IPA_MODIFIERS.find(mod => mod.id === id)?.label)
 								.filter(Boolean)
 								.join(' · ')}
 						</div>
 					{:else}
-						<div class="text-xs text-secondary mt-1">No modifiers — plain /{selected.symbol}/</div>
+						<div class="text-xs text-secondary mt-1">{m.phon_no_modifiers_plain({ symbol: selected.symbol })}</div>
 					{/if}
 				</div>
 				<div class="flex items-center gap-2">
 					<Button variant="secondary" size="sm" onclick={backToChart}>
-						<ArrowLeft size={14} weight="bold" /> Back
+						<ArrowLeft size={14} weight="bold" /> {m.phon_back()}
 					</Button>
 					<Button size="sm" onclick={commit} disabled={busy}>
-						<Plus size={14} weight="bold" /> Add /{composedSymbol}/
+						<Plus size={14} weight="bold" /> {m.phon_add_symbol({ symbol: composedSymbol })}
 					</Button>
 				</div>
 			</div>
 
 			<!-- Modifier chips -->
 			<div>
-				<div class="text-xs uppercase tracking-wider text-dim mb-2">Modifiers</div>
+				<div class="text-xs uppercase tracking-wider text-dim mb-2">{m.phon_modifiers()}</div>
 				<div class="flex flex-wrap gap-1.5">
 					{#each availableModifiers as modifier (modifier.id)}
 						{@const active = selectedModifiers.has(modifier.id)}
@@ -146,7 +147,7 @@
 					{/each}
 				</div>
 				<p class="text-xs text-secondary mt-2">
-					Click a modifier to toggle it. Mutually exclusive modifiers (e.g. long vs half-long) replace each other.
+					{m.phon_modifiers_help()}
 				</p>
 			</div>
 		</div>
@@ -163,7 +164,7 @@
 								<thead>
 									<tr>
 										<th class="px-2 py-1 border-b border-r border-border-subtle bg-muted text-heading text-left capitalize">
-											{section.id === 'vowels' ? 'Height' : 'Manner'}
+											{section.id === 'vowels' ? m.phon_height() : m.phon_manner()}
 										</th>
 										{#each section.columns as col (col)}
 											<th class="px-2 py-1 border-b border-r border-border-subtle bg-muted text-heading font-medium capitalize text-center">{col}</th>

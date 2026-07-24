@@ -10,12 +10,13 @@
 	import { useQueryClient } from '@tanstack/svelte-query'
 	import { api } from '$lib/api'
 	import { cn } from '$lib/utils'
+	import { m } from '$lib/paraglide/messages.js'
 
 	let {
 		languages = [],
 		initial = {},
 		initialDefinitions = [],
-		submitLabel = 'Save Entry',
+		submitLabel = m.wbc_save_entry(),
 		relationsManagedAt = null,
 		onsubmit,
 	}: {
@@ -164,19 +165,19 @@
 	const languageItems = $derived(languages.map(lang => ({ value: String(lang.id), label: lang.name })))
 	const posItems = $derived(PARTS_OF_SPEECH.map(pos => ({ value: pos, label: pos })))
 	const etymRelationItems = [
-		{ value: 'derived_from', label: 'Derived from' },
-		{ value: 'loan_from', label: 'Borrowed from' },
-		{ value: 'compound_of', label: 'Compound of' },
+		{ value: 'derived_from', label: m.wbc_rel_derived_from() },
+		{ value: 'loan_from', label: m.wbc_rel_loan_from() },
+		{ value: 'compound_of', label: m.wbc_rel_compound_of() },
 	]
 
 	async function handleSubmit(event: SubmitEvent) {
 		event.preventDefault()
 		if (!word.trim() || !languageId) {
-			error = 'Word and language are required'
+			error = m.wbc_word_language_required()
 			return
 		}
 		if (!defs.some(d => d.definition.trim())) {
-			error = 'At least one definition is required'
+			error = m.wbc_definition_at_least_one()
 			return
 		}
 
@@ -200,7 +201,7 @@
 				relations: etymRows.filter(r => r.targetId).map(r => ({ targetId: r.targetId, relationType: r.relationType })),
 			})
 		} catch (error_: any) {
-			error = error_.message || 'Failed to save'
+			error = error_.message || m.wbc_failed_save()
 		} finally {
 			submitting = false
 		}
@@ -213,83 +214,83 @@
 	<UnsavedChangesGuard when={isDirty && !submitting} />
 
 	{#if error}
-		<FormNotice title="Wordbook entry was not saved" message={error} />
+		<FormNotice title={m.wbc_entry_not_saved()} message={error} />
 	{/if}
 
 	<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-		<Input label="Word" bind:value={word} required placeholder="kirathar" error={!word.trim() && error ? 'Word is required' : ''} />
-		<Select label="Language" bind:value={languageIdString} type="single" items={languageItems} required placeholder="Select language..." />
-		<Input label="Pronunciation (IPA)" bind:value={pronunciation} placeholder="/ki.ra.thar/" />
-		<Input label="Tags" bind:value={tagsInput} placeholder="religion, astronomy" />
+		<Input label={m.wbc_word()} bind:value={word} required placeholder="kirathar" error={!word.trim() && error ? m.wbc_word_required() : ''} />
+		<Select label={m.wbc_language()} bind:value={languageIdString} type="single" items={languageItems} required placeholder={m.wbc_select_language()} />
+		<Input label={m.wbc_pronunciation_ipa()} bind:value={pronunciation} placeholder="/ki.ra.thar/" />
+		<Input label={m.wbc_tags()} bind:value={tagsInput} placeholder="religion, astronomy" />
 	</div>
 
 	<div>
 		<div class="flex items-center justify-between mb-2">
-			<div class={labelClass}>Definitions <span class="text-error">*</span></div>
-			<button type="button" onclick={addDefinition} class="text-xs text-link hover:text-link-hover hover:underline">+ Add definition</button>
+			<div class={labelClass}>{m.wbc_definitions()} <span class="text-error">*</span></div>
+			<button type="button" onclick={addDefinition} class="text-xs text-link hover:text-link-hover hover:underline">+ {m.wbc_add_definition()}</button>
 		</div>
 
 		{#each defs as row, index (row)}
 			<div class={cn('p-3 mb-3 bg-page/50', defs.length > 1 && 'relative')}>
 				{#if defs.length > 1}
 					<div class="flex items-center justify-between mb-2">
-						<span class="text-xs font-medium text-secondary">Definition {index + 1}</span>
+						<span class="text-xs font-medium text-secondary">{m.wbc_definition_n({ count: index + 1 })}</span>
 						<span class="flex items-center gap-2">
 							<button
 								type="button"
 								onclick={() => moveDefinition(index, -1)}
 								disabled={index === 0}
-								aria-label="Move definition {index + 1} up"
+								aria-label={m.wbc_move_definition_up({ count: index + 1 })}
 								class="text-xs text-link hover:text-link-hover disabled:opacity-30 disabled:cursor-default"
 							>↑</button>
 							<button
 								type="button"
 								onclick={() => moveDefinition(index, 1)}
 								disabled={index === defs.length - 1}
-								aria-label="Move definition {index + 1} down"
+								aria-label={m.wbc_move_definition_down({ count: index + 1 })}
 								class="text-xs text-link hover:text-link-hover disabled:opacity-30 disabled:cursor-default"
 							>↓</button>
-							<button type="button" onclick={() => removeDefinition(index)} class="text-xs text-error hover:text-error-hover">Remove</button>
+							<button type="button" onclick={() => removeDefinition(index)} class="text-xs text-error hover:text-error-hover">{m.common_remove()}</button>
 						</span>
 					</div>
 				{/if}
 				<div class="grid grid-cols-1 gap-3 mb-2 md:grid-cols-4">
-					<Select bind:value={row.partOfSpeech} type="single" items={posItems} placeholder="Part of speech" size="sm" />
-					<Input bind:value={row.definition} placeholder="Definition text..." required={index === 0} containerClass="md:col-span-3" error={!row.definition.trim() && error ? 'Definition required' : ''} />
+					<Select bind:value={row.partOfSpeech} type="single" items={posItems} placeholder={m.wbc_part_of_speech()} size="sm" />
+					<Input bind:value={row.definition} placeholder={m.wbc_definition_text()} required={index === 0} containerClass="md:col-span-3" error={!row.definition.trim() && error ? m.wbc_definition_required() : ''} />
 				</div>
 				<div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-					<Input bind:value={row.usageExample} placeholder="Usage example (in the language)" />
-					<Input bind:value={row.usageTranslation} placeholder="Translation" />
+					<Input bind:value={row.usageExample} placeholder={m.wbc_usage_example()} />
+					<Input bind:value={row.usageTranslation} placeholder={m.wbc_translation()} />
 				</div>
 			</div>
 		{/each}
 	</div>
 
 	<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-		<Input label="Etymology Notes" bind:value={etymology} placeholder="Narrative etymology notes..." />
-		<Input label="Wiki Article" bind:value={pageSlug} placeholder="kirathar" />
+		<Input label={m.wbc_etymology_notes()} bind:value={etymology} placeholder={m.wbc_etymology_notes_placeholder()} />
+		<Input label={m.wbc_wiki_article()} bind:value={pageSlug} placeholder="kirathar" />
 	</div>
 
 	<div>
-		<Input label="Editorial Notes" bind:value={notes} placeholder="Needs verification..." />
+		<Input label={m.wbc_editorial_notes()} bind:value={notes} placeholder={m.wbc_editorial_notes_placeholder()} />
 	</div>
 
 	{#if relationsManagedAt}
 		<div>
-			<div class={labelClass}>Etymology Links</div>
+			<div class={labelClass}>{m.wbc_etymology_links()}</div>
 			<p class="text-xs text-secondary">
-				Relations for this entry are managed in the Etymology section of
-				<a href={relationsManagedAt} class="text-link hover:text-link-hover hover:underline">the word page</a>.
+				{m.wbc_relations_managed_prefix()}
+				<a href={relationsManagedAt} class="text-link hover:text-link-hover hover:underline">{m.wbc_relations_managed_link()}</a>.
 			</p>
 		</div>
 	{:else}
 	<div>
 		<div class="flex items-center justify-between mb-2">
-			<div class={labelClass}>Etymology Links</div>
-			<button type="button" onclick={addEtymRow} class="text-xs text-link hover:text-link-hover hover:underline">+ Add source word</button>
+			<div class={labelClass}>{m.wbc_etymology_links()}</div>
+			<button type="button" onclick={addEtymRow} class="text-xs text-link hover:text-link-hover hover:underline">+ {m.wbc_add_source_word()}</button>
 		</div>
 		{#if etymRows.length === 0}
-			<p class="text-xs text-secondary">Click "+ Add source word" to link derivations, loans, or compounds.</p>
+			<p class="text-xs text-secondary">{m.wbc_add_source_word_hint()}</p>
 		{/if}
 		{#each etymRows as row, index (row)}
 			<div class="flex gap-2 items-start mb-2">
@@ -301,7 +302,7 @@
 						oninput={() => handleEtymSearch(index)}
 						onfocus={() => { if (row.results.length > 0) row.showDropdown = true }}
 						onblur={() => setTimeout(() => row.showDropdown = false, 200)}
-						placeholder="Search for a word..."
+						placeholder={m.wbc_search_word()}
 						class={cn(
 							'w-full px-3 py-1.5 text-sm text-body bg-page outline-none transition-colors',
 							'placeholder:text-dim',

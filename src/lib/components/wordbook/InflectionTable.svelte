@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages.js'
+
 	type Dimension = {
 		id: number
 		name: string
@@ -40,17 +42,17 @@
 
 {#if hasInflection && dimensions.length > 0 && Object.keys(forms).length === 0}
 	<div class="mt-4 p-3 bg-warning-bg border border-warning-border text-sm text-body">
-		Inflection is assigned but no forms were generated. Check that the paradigm class has rules defined, and that a stem is set.
+		{m.wbc_inflection_no_forms()}
 	</div>
 {:else if hasInflection && dimensions.length > 0 && Object.keys(forms).length > 0}
 	<div class="mt-4">
 		<div class="flex items-baseline gap-2 mb-2">
-			<h3 class="text-xs font-medium uppercase tracking-wide text-secondary">Inflection</h3>
+			<h3 class="text-xs font-medium uppercase tracking-wide text-secondary">{m.wbc_inflection_heading()}</h3>
 			{#if className}
 				<span class="text-xs text-secondary">({className})</span>
 			{/if}
 			{#if stem}
-				<span class="text-xs text-secondary font-mono">stem: {stem}</span>
+				<span class="text-xs text-secondary font-mono">{m.wbc_stem_label({ stem })}</span>
 			{/if}
 		</div>
 

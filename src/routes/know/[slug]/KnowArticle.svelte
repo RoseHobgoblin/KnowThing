@@ -15,6 +15,7 @@
 	import type { WikiNode } from '$lib/parser/types.js'
 	import { buildFieldMap, getField } from '$lib/infoboxes/types.js'
 	import { detectInfoboxType } from '$lib/infoboxes/detect.js'
+	import { m } from '$lib/paraglide/messages.js'
 
 	let {
 		title,
@@ -98,14 +99,14 @@
 >
 	{#snippet actions()}
 		{#if permissions.canEditContent}
-			<a href="/know/{slug}/edit" class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover"><PencilSimple size={14} weight="fill" />Edit</a>
-			<a href="/know/{slug}/move" class="text-dim transition-colors flex items-center gap-1 hover:text-secondary"><ArrowsLeftRight size={14} weight="fill" />Move</a>
-			<a href="/know/{slug}/history" class="text-dim transition-colors flex items-center gap-1 hover:text-secondary"><ClockCounterClockwise size={14} weight="fill" />History</a>
+			<a href="/know/{slug}/edit" class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover"><PencilSimple size={14} weight="fill" />{m.common_edit()}</a>
+			<a href="/know/{slug}/move" class="text-dim transition-colors flex items-center gap-1 hover:text-secondary"><ArrowsLeftRight size={14} weight="fill" />{m.know_move()}</a>
+			<a href="/know/{slug}/history" class="text-dim transition-colors flex items-center gap-1 hover:text-secondary"><ClockCounterClockwise size={14} weight="fill" />{m.know_history()}</a>
 		{:else if permissions.isAuthenticated}
-			<span class="text-secondary text-sm">View only. Editor role required for page actions.</span>
+			<span class="text-secondary text-sm">{m.common_view_only_editor()}</span>
 		{/if}
 		{#if isAdmin}
-			<button onclick={ondeletepage} class="text-error transition-colors flex items-center gap-1 hover:text-error-hover"><Trash size={14} weight="fill" />Delete</button>
+			<button onclick={ondeletepage} class="text-error transition-colors flex items-center gap-1 hover:text-error-hover"><Trash size={14} weight="fill" />{m.common_delete()}</button>
 		{/if}
 	{/snippet}
 
@@ -142,7 +143,7 @@
 
 	{#if updatedAt}
 		<div class="clear-both mt-6 pt-4 border-t border-border-subtle text-xs text-secondary">
-			Last edited {new Date(updatedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+			{m.know_last_edited({ name: new Date(updatedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) })}
 		</div>
 	{/if}
 </ArticleShell>

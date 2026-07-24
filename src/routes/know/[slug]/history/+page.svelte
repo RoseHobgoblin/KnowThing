@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types.js'
+	import { m } from '$lib/paraglide/messages.js'
 
 	let { data }: { data: PageData } = $props()
 
@@ -14,13 +15,13 @@
 </script>
 
 <svelte:head>
-	<title>History: {data.title} — KnowThing</title>
+	<title>{m.know_history_title({ name: data.title })} — KnowThing</title>
 </svelte:head>
 
 <div class="bg-surface shadow-sm">
 	<div class="px-6 py-4 border-b border-border-subtle flex items-center justify-between">
 		<div>
-			<h1 class="text-xl font-bold text-heading">Revision History</h1>
+			<h1 class="text-xl font-bold text-heading">{m.know_revision_history()}</h1>
 			<a href="/know/{data.slug}" class="text-link text-sm hover:text-link-hover">{data.title}</a>
 		</div>
 		{#if selectedOld && selectedNew}
@@ -28,7 +29,7 @@
 				px-4 py-1.5 bg-accent text-surface text-sm transition-colors
 				hover:bg-accent-hover
 			">
-				Compare selected
+				{m.know_compare_selected()}
 			</button>
 		{/if}
 	</div>
@@ -37,8 +38,8 @@
 		<!-- Diff view -->
 		<div class="px-6 py-4 border-b border-border bg-page">
 			<div class="flex items-center justify-between text-xs text-dim mb-3">
-				<span>Older: {data.diffOldLabel}</span>
-				<span>Newer: {data.diffNewLabel}</span>
+				<span>{m.know_older({ name: data.diffOldLabel })}</span>
+				<span>{m.know_newer({ name: data.diffNewLabel })}</span>
 			</div>
 			<div class="font-mono text-xs/relaxed overflow-x-auto">
 				{#each data.diff as part, index (index)}
@@ -55,7 +56,7 @@
 	{/if}
 
 	{#if data.history.length === 0}
-		<div class="p-6 text-center text-dim">No revisions yet.</div>
+		<div class="p-6 text-center text-dim">{m.know_no_revisions()}</div>
 	{:else}
 		<div class="divide-y divide-border-subtle">
 			{#each data.history as rev, index (rev.id)}
@@ -73,7 +74,7 @@
 							{new Date(rev.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
 						</span>
 						<span class="text-secondary mx-1.5">&middot;</span>
-						<span class="text-secondary">{rev.username || 'Unknown'}</span>
+						<span class="text-secondary">{rev.username || m.know_unknown_user()}</span>
 						<span class="text-secondary mx-1.5">&middot;</span>
 						<span class="text-secondary">{(rev.sizeBytes / 1024).toFixed(1)} KB</span>
 						{#if rev.editSummary}

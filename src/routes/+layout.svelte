@@ -69,23 +69,23 @@
 	// siteConfig/permission gating.
 	const paletteActions = $derived.by<PaletteAction[]>(() => {
 		const list: PaletteAction[] = [
-			{ label: sc?.navWikiLabel ?? 'Main Page', href: '/', icon: House, keywords: 'home wiki' },
+			{ label: sc?.navWikiLabel ?? m.nav_main_page(), href: '/', icon: House, keywords: 'home wiki' },
 		]
-		if (sc?.wordbookEnabled !== false) list.push({ label: sc?.navWordbookLabel ?? 'Wordbook', href: '/Wordbook', icon: BookOpen, keywords: 'dictionary lexicon language' })
-		if (sc?.calendarEnabled !== false) list.push({ label: sc?.navCalendarLabel ?? 'Calendar', href: '/calendar', icon: CalendarBlank, keywords: 'date' })
+		if (sc?.wordbookEnabled !== false) list.push({ label: sc?.navWordbookLabel ?? m.nav_wordbook(), href: '/Wordbook', icon: BookOpen, keywords: 'dictionary lexicon language' })
+		if (sc?.calendarEnabled !== false) list.push({ label: sc?.navCalendarLabel ?? m.nav_calendar(), href: '/calendar', icon: CalendarBlank, keywords: 'date' })
 		list.push(
-			{ label: 'World Maps', href: '/worldmap', icon: MapTrifold, keywords: 'map region country' },
-			{ label: 'Celestial', href: '/celestial', icon: Planet, keywords: 'star system planet space' },
-			{ label: 'Categories', href: '/special/categories', icon: Tag, keywords: 'tags' },
-			{ label: 'Random page', href: '/special/random', icon: Shuffle, keywords: 'surprise' },
+			{ label: m.nav_world_maps(), href: '/worldmap', icon: MapTrifold, keywords: 'map region country' },
+			{ label: m.nav_celestial(), href: '/celestial', icon: Planet, keywords: 'star system planet space' },
+			{ label: m.nav_categories(), href: '/special/categories', icon: Tag, keywords: 'tags' },
+			{ label: m.header_random_page(), href: '/special/random', icon: Shuffle, keywords: 'surprise' },
 		)
 		if (permissions.isAuthenticated) {
-			if (permissions.canCreatePages) list.push({ label: sc?.navCreateLabel ?? 'New Page', href: '/know/create', icon: PlusCircle, keywords: 'create write add article' })
-			list.push({ label: 'Recent Changes', href: '/dashboard/recent', icon: ClockCounterClockwise, keywords: 'history activity' })
-			if (permissions.canManageSettings) list.push({ label: 'Settings', href: '/dashboard/settings', icon: GearSix, keywords: 'admin configure preferences' })
-			list.push({ label: 'Account', href: '/auth/account', icon: SignOut, keywords: 'profile logout' })
+			if (permissions.canCreatePages) list.push({ label: sc?.navCreateLabel ?? m.nav_new_page(), href: '/know/create', icon: PlusCircle, keywords: 'create write add article' })
+			list.push({ label: m.nav_recent_changes(), href: '/dashboard/recent', icon: ClockCounterClockwise, keywords: 'history activity' })
+			if (permissions.canManageSettings) list.push({ label: m.nav_settings(), href: '/dashboard/settings', icon: GearSix, keywords: 'admin configure preferences' })
+			list.push({ label: m.auth_account(), href: '/auth/account', icon: SignOut, keywords: 'profile logout' })
 		} else {
-			list.push({ label: 'Log in', href: '/auth/login', icon: SignIn, keywords: 'sign in' })
+			list.push({ label: m.auth_log_in(), href: '/auth/login', icon: SignIn, keywords: 'sign in' })
 		}
 		return list
 	})
@@ -188,7 +188,7 @@
 			<button
 				onclick={() => sidebarOpen = !sidebarOpen}
 				class="p-1 text-secondary hover:text-link md:hidden"
-				aria-label="Toggle menu"
+				aria-label={m.header_toggle_menu()}
 			>
 				<svg class="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					{#if sidebarOpen}
@@ -215,8 +215,8 @@
 				<button
 					type="button"
 					onclick={() => commandPalette.show()}
-					title="Command palette (⌘K)"
-					aria-label="Open command palette"
+					title={m.header_command_palette()}
+					aria-label={m.header_open_command_palette()}
 					class="flex items-center gap-1.5 p-2 text-secondary transition-colors hover:bg-raised hover:text-heading"
 				>
 					<MagnifyingGlass size={18} weight="bold" />
@@ -224,8 +224,8 @@
 				</button>
 				<a
 					href="/special/random"
-					title="Random page"
-					aria-label="Random page"
+					title={m.header_random_page()}
+					aria-label={m.header_random_page()}
 					class="flex items-center justify-center p-2 text-secondary transition-colors hover:bg-raised hover:text-heading"
 				>
 					<Shuffle size={18} weight="fill" />
@@ -236,14 +236,14 @@
 						href="/know/create"
 						class="ml-1 flex items-center gap-1.5 bg-accent px-3 py-1.5 text-sm font-medium text-accent-text transition-colors hover:bg-accent-hover"
 					>
-						<PlusCircle size={16} weight="fill" />{sc?.navCreateLabel ?? 'New Page'}
+						<PlusCircle size={16} weight="fill" />{sc?.navCreateLabel ?? m.nav_new_page()}
 					</a>
 				{:else if !permissions.isAuthenticated}
 					<a
 						href="/auth/login"
 						class="ml-1 flex items-center gap-1.5 px-3 py-1.5 text-sm text-link transition-colors hover:text-link-hover"
 					>
-						<SignIn size={16} weight="fill" />Log in
+						<SignIn size={16} weight="fill" />{m.auth_log_in()}
 					</a>
 				{/if}
 			</div>
@@ -277,7 +277,7 @@
 					{#if sc?.footerText}
 						{sc.footerText}
 					{:else}
-						{sc?.siteName ?? 'KnowThing'} — {sc?.siteTagline ?? 'A collaborative encyclopedia'}
+						{sc?.siteName ?? 'KnowThing'} — {sc?.siteTagline ?? m.footer_tagline()}
 					{/if}
 				</div>
 			</footer>

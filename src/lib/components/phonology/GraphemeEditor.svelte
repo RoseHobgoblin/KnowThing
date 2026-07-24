@@ -13,6 +13,7 @@
 	import DotsSixVertical from 'phosphor-svelte/lib/DotsSixVerticalIcon'
 	import { createMutation } from '@tanstack/svelte-query'
 	import { api } from '$lib/api'
+	import { m } from '$lib/paraglide/messages.js'
 
 	interface PhonemeLink {
 		phonemeId: number
@@ -135,7 +136,7 @@
 			draftSnapshot = $state.snapshot(draft) as Draft
 			dialogOpen = false
 		} catch (error) {
-			errorMessage = error instanceof Error ? error.message : 'Failed to save grapheme'
+			errorMessage = error instanceof Error ? error.message : m.phon_failed_save_grapheme()
 		}
 	}
 
@@ -146,10 +147,10 @@
 	async function cancelDialog() {
 		if (dirty) {
 			const ok = await confirmDialog.confirm(
-				'Discard changes?',
-				'You have unsaved changes to this grapheme. Close without saving?',
-				'Discard',
-				'Keep editing',
+				m.phon_discard_changes(),
+				m.phon_discard_changes_grapheme_body(),
+				m.phon_discard(),
+				m.phon_keep_editing(),
 			)
 			if (!ok) return
 		}
@@ -169,7 +170,7 @@
 		try {
 			await deleteMutation.mutateAsync(g.id)
 		} catch (error) {
-			errorMessage = error instanceof Error ? error.message : 'Failed to delete grapheme'
+			errorMessage = error instanceof Error ? error.message : m.phon_failed_delete_grapheme()
 			return
 		}
 
@@ -178,7 +179,7 @@
 		if (editingId === g.id) dialogOpen = false
 
 		pushUndoable(
-			`Deleted "${g.grapheme}"`,
+			m.phon_grapheme_deleted({ name: g.grapheme }),
 			async () => {
 				try {
 					const restored = await restoreMutation.mutateAsync({
@@ -191,7 +192,7 @@
 					})
 					graphemes = [...graphemes, restored]
 				} catch {
-					pushError(`Couldn't restore "${snapshot.grapheme}"`)
+					pushError(m.phon_couldnt_restore_grapheme({ name: snapshot.grapheme }))
 				}
 			},
 			() => {},
@@ -207,7 +208,7 @@
 			await reorderMutation.mutateAsync(nextOrder)
 		} catch (error) {
 			graphemes = previous
-			errorMessage = error instanceof Error ? error.message : 'Failed to reorder'
+			errorMessage = error instanceof Error ? error.message : m.phon_failed_reorder()
 		}
 	}
 
@@ -252,11 +253,11 @@
 
 {#if graphemes.length === 0}
 	<div class="bg-raised px-4 py-8 text-center text-dim text-sm">
-		No graphemes defined yet. Add the first one to build the orthography.
+		{m.phon_no_graphemes_yet()}
 		{#if !readOnly}
 			<div class="mt-3">
 				<Button size="sm" onclick={openAdd}>
-					<Plus size={14} weight="bold" /> Add grapheme
+					<Plus size={14} weight="bold" /> {m.phon_add_grapheme()}
 				</Button>
 			</div>
 		{/if}
@@ -267,12 +268,12 @@
 			<thead>
 				<tr>
 					<th class="w-8 px-1 py-2 border-b border-r border-border-subtle bg-muted"></th>
-					<th class="px-3 py-2 border-b border-r border-border-subtle bg-muted text-heading font-medium text-left">Script</th>
+					<th class="px-3 py-2 border-b border-r border-border-subtle bg-muted text-heading font-medium text-left">{m.phon_col_script()}</th>
 					<th class="px-3 py-2 border-b border-r border-border-subtle bg-muted text-heading font-medium text-center w-4">→</th>
-					<th class="px-3 py-2 border-b border-r border-border-subtle bg-muted text-heading font-medium text-left">IPA</th>
-					<th class="px-3 py-2 border-b border-r border-border-subtle bg-muted text-heading font-medium text-left">Romanization</th>
-					<th class="px-3 py-2 border-b border-r border-border-subtle bg-muted text-heading font-medium text-left">Environment</th>
-					<th class="px-3 py-2 border-b border-r border-border-subtle bg-muted text-heading font-medium text-left">Notes</th>
+					<th class="px-3 py-2 border-b border-r border-border-subtle bg-muted text-heading font-medium text-left">{m.phon_col_ipa()}</th>
+					<th class="px-3 py-2 border-b border-r border-border-subtle bg-muted text-heading font-medium text-left">{m.phon_col_romanization()}</th>
+					<th class="px-3 py-2 border-b border-r border-border-subtle bg-muted text-heading font-medium text-left">{m.phon_col_environment()}</th>
+					<th class="px-3 py-2 border-b border-r border-border-subtle bg-muted text-heading font-medium text-left">{m.phon_col_notes()}</th>
 					<th class="px-3 py-2 border-b border-border-subtle bg-muted"></th>
 				</tr>
 			</thead>
@@ -301,7 +302,7 @@
 							class={cn('px-1 py-1.5 border-b border-r border-border-subtle text-center text-secondary', !readOnly && 'cursor-grab')}
 							draggable={readOnly ? 'false' : 'true'}
 							ondragstart={event => onRowDragStart(index, event)}
-							title={readOnly ? undefined : 'Drag to reorder'}
+							title={readOnly ? undefined : m.phon_drag_to_reorder()}
 						>
 							<DotsSixVertical size={14} />
 						</td>
@@ -323,8 +324,8 @@
 									type="button"
 									class="text-secondary px-1 hover:text-accent"
 									onclick={() => openEdit(g)}
-									aria-label="Edit grapheme"
-									title="Edit"
+									aria-label={m.phon_edit_grapheme()}
+									title={m.common_edit()}
 								>
 									<PencilSimple size={14} weight="bold" />
 								</button>
@@ -332,8 +333,8 @@
 									type="button"
 									class="text-secondary px-1 hover:text-error"
 									onclick={() => handleDelete(g)}
-									aria-label="Delete grapheme"
-									title="Delete"
+									aria-label={m.phon_delete_grapheme()}
+									title={m.common_delete()}
 								>
 									<Trash size={14} weight="bold" />
 								</button>
@@ -348,7 +349,7 @@
 	{#if !readOnly}
 		<div class="mt-3 flex justify-center">
 			<Button size="sm" variant="secondary" onclick={openAdd}>
-				<Plus size={14} weight="bold" /> Add grapheme
+				<Plus size={14} weight="bold" /> {m.phon_add_grapheme()}
 			</Button>
 		</div>
 	{/if}
@@ -356,31 +357,31 @@
 
 <Dialog
 	bind:open={dialogOpen}
-	title={editingId ? `Edit "${draft.grapheme || '?'}"` : 'Add grapheme'}
+	title={editingId ? m.phon_edit_grapheme_title({ name: draft.grapheme || '?' }) : m.phon_add_grapheme()}
 	unclosable={dirty || saving}
 >
 	<div class="space-y-3 pb-2" role="presentation" onkeydown={onDialogKeydown}>
-		<Input label="Script (case-sensitive; digraphs and PUA characters OK)" bind:value={draft.grapheme} />
+		<Input label={m.phon_grapheme_script_label()} bind:value={draft.grapheme} />
 
 		<div>
-			<div class="text-xs uppercase tracking-wider text-dim mb-1.5">Phoneme sequence</div>
+			<div class="text-xs uppercase tracking-wider text-dim mb-1.5">{m.phon_phoneme_sequence()}</div>
 			<PhonemeSequenceInput bind:value={draft.phonemeIds} options={phonemeInventory} />
 		</div>
 
 		<div class="grid grid-cols-2 gap-3">
-			<Input label="Romanization (optional)" bind:value={draft.romanization} />
+			<Input label={m.phon_romanization_optional()} bind:value={draft.romanization} />
 			<Input
-				label="Environment"
+				label={m.phon_col_environment()}
 				bind:value={draft.environment}
-				hint="e.g. 'before front vowels', 'word-initial', 'isolated form'"
+				hint={m.phon_environment_hint()}
 			/>
 		</div>
 
-		<Input label="Notes (footnote)" bind:value={draft.notes} />
+		<Input label={m.phon_notes_footnote()} bind:value={draft.notes} />
 
 		{#if dirty}
 			<div class="text-xs text-warning bg-warning-bg border border-warning-border px-2 py-1">
-				Unsaved changes — Save to commit, or Cancel to discard.
+				{m.phon_unsaved_changes()}
 			</div>
 		{/if}
 
@@ -391,20 +392,20 @@
 						const g = graphemes.find(x => x.id === editingId)
 						if (g) await handleDelete(g)
 					}}>
-						<Trash size={14} weight="bold" /> Delete
+						<Trash size={14} weight="bold" /> {m.common_delete()}
 					</Button>
 					<Button variant="secondary" size="sm" onclick={duplicate}>
-						<Copy size={14} weight="bold" /> Duplicate
+						<Copy size={14} weight="bold" /> {m.phon_duplicate()}
 					</Button>
 				{/if}
 			</div>
 			<div class="flex gap-2">
-				<Button variant="secondary" onclick={cancelDialog}>Cancel</Button>
+				<Button variant="secondary" onclick={cancelDialog}>{m.common_cancel()}</Button>
 				<Button onclick={saveDraft} loading={saving} disabled={!draft.grapheme.trim()}>
 					{#if editingId}
-						<PencilSimple size={14} weight="bold" /> Save
+						<PencilSimple size={14} weight="bold" /> {m.common_save()}
 					{:else}
-						<Plus size={14} weight="bold" /> Add
+						<Plus size={14} weight="bold" /> {m.common_add()}
 					{/if}
 				</Button>
 			</div>

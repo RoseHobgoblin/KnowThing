@@ -1,21 +1,22 @@
 <script lang="ts">
 	import type { PageData } from './$types.js'
+	import { m } from '$lib/paraglide/messages.js'
 
 	let { data }: { data: PageData } = $props()
 </script>
 
 <svelte:head>
-	<title>Orphaned Pages — KnowThing</title>
+	<title>{m.dash_orphans_title()} — KnowThing</title>
 </svelte:head>
 
 <div class="bg-surface shadow-sm">
 	<div class="px-6 py-4 border-b border-border-subtle">
-		<h1 class="text-xl font-bold text-heading">Orphaned Pages</h1>
-		<p class="text-sm text-dim mt-1">Articles no other page links to.</p>
+		<h1 class="text-xl font-bold text-heading">{m.dash_orphans_title()}</h1>
+		<p class="text-sm text-dim mt-1">{m.dash_orphans_desc()}</p>
 	</div>
 
 	{#if data.orphans.length === 0}
-		<div class="p-6 text-center text-dim">No orphaned pages. Every article has at least one inbound link.</div>
+		<div class="p-6 text-center text-dim">{m.dash_orphans_empty()}</div>
 	{:else}
 		<div class="divide-y divide-border-subtle">
 			{#each data.orphans as p (`${p.domain}/${p.parentPath ?? ''}/${p.slug}`)}

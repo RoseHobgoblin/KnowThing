@@ -11,6 +11,7 @@
 	import { invalidateAll } from '$app/navigation'
 	import { createMutation } from '@tanstack/svelte-query'
 	import { api } from '$lib/api'
+	import { m } from '$lib/paraglide/messages.js'
 
 	let { data }: { data: PageData } = $props()
 	const initialSettings = $state.snapshot(untrack(() => data.settings))
@@ -101,106 +102,106 @@
 			})
 			savedSnapshot = currentSnapshot
 			savedAt = new Date()
-			pushSuccess('Settings saved')
+			pushSuccess(m.settings_saved_toast())
 			await invalidateAll()
 		} catch (error) {
-			saveError = error instanceof Error ? error.message : 'Failed to save settings'
+			saveError = error instanceof Error ? error.message : m.settings_save_failed()
 			pushError(saveError)
 		}
 	}
 </script>
 
 <svelte:head>
-	<title>Site Settings - Dashboard - KnowThing</title>
+	<title>{m.settings_page_title()}</title>
 </svelte:head>
 
 <UnsavedChangesGuard when={isDirty && !saving} />
 
 <div class="space-y-6">
 	<RecordModeBanner
-		modeLabel="Configure Site"
-		title="Site Settings"
-		description="Update branding, feature toggles, and navigation labels here. These changes affect the whole application."
+		modeLabel={m.settings_mode_label()}
+		title={m.settings_title()}
+		description={m.settings_description()}
 	/>
 
 	{#if saveError}
-		<FormNotice title="Settings were not saved" message={saveError} />
+		<FormNotice title={m.settings_not_saved()} message={saveError} />
 	{/if}
 
 	<section class="bg-surface p-5 space-y-4">
 		<div>
-			<h2 class="text-sm font-semibold text-heading">Identity</h2>
-			<p class="text-xs text-secondary mt-0.5">The name and branding of your site.</p>
+			<h2 class="text-sm font-semibold text-heading">{m.settings_identity()}</h2>
+			<p class="text-xs text-secondary mt-0.5">{m.settings_identity_desc()}</p>
 		</div>
 		<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-			<Input label="Site name" bind:value={siteName} placeholder="KnowThing" />
-			<Input label="Tagline" bind:value={siteTagline} placeholder="A collaborative encyclopedia" />
-			<Input label="Institution name" bind:value={institutionName} placeholder="e.g. University of Almisan" />
-			<Input label="Logo URL" bind:value={logoUrl} placeholder="/api/media/logo.png or leave blank for text" />
+			<Input label={m.settings_site_name()} bind:value={siteName} placeholder={m.settings_site_name_placeholder()} />
+			<Input label={m.settings_tagline()} bind:value={siteTagline} placeholder={m.settings_tagline_placeholder()} />
+			<Input label={m.settings_institution_name()} bind:value={institutionName} placeholder={m.settings_institution_placeholder()} />
+			<Input label={m.settings_logo_url()} bind:value={logoUrl} placeholder={m.settings_logo_url_placeholder()} />
 		</div>
 	</section>
 
 	<section class="bg-surface p-5 space-y-4">
 		<div>
-			<h2 class="text-sm font-semibold text-heading">Navigation Labels</h2>
-			<p class="text-xs text-secondary mt-0.5">Customize what the nav bar links are called.</p>
+			<h2 class="text-sm font-semibold text-heading">{m.settings_nav_labels()}</h2>
+			<p class="text-xs text-secondary mt-0.5">{m.settings_nav_labels_desc()}</p>
 		</div>
 		<div class="grid grid-cols-2 gap-4 md:grid-cols-3">
-			<Input label="Main page" bind:value={navWikiLabel} placeholder="Main Page" />
-			<Input label="Create page" bind:value={navCreateLabel} placeholder="New Page" />
-			<Input label="Wordbook" bind:value={navWordbookLabel} placeholder="Wordbook" />
-			<Input label="Calendar" bind:value={navCalendarLabel} placeholder="Calendar" />
-			<Input label="Wordbook display name" bind:value={wordbookName} placeholder="Wordbook" />
+			<Input label={m.settings_main_page()} bind:value={navWikiLabel} placeholder={m.nav_main_page()} />
+			<Input label={m.settings_create_page()} bind:value={navCreateLabel} placeholder={m.nav_new_page()} />
+			<Input label={m.nav_wordbook()} bind:value={navWordbookLabel} placeholder={m.nav_wordbook()} />
+			<Input label={m.nav_calendar()} bind:value={navCalendarLabel} placeholder={m.nav_calendar()} />
+			<Input label={m.settings_wordbook_display_name()} bind:value={wordbookName} placeholder={m.nav_wordbook()} />
 		</div>
 	</section>
 
 	<section class="bg-surface p-5 space-y-4">
 		<div>
-			<h2 class="text-sm font-semibold text-heading">Features</h2>
-			<p class="text-xs text-secondary mt-0.5">Toggle site features on or off.</p>
+			<h2 class="text-sm font-semibold text-heading">{m.settings_features()}</h2>
+			<p class="text-xs text-secondary mt-0.5">{m.settings_features_desc()}</p>
 		</div>
 		<div class="flex flex-col gap-3">
-			<Checkbox bind:value={wordbookEnabled} label="Wordbook">
-				Multilingual dictionary and linguistic database
+			<Checkbox bind:value={wordbookEnabled} label={m.nav_wordbook()}>
+				{m.settings_wordbook_feature_desc()}
 			</Checkbox>
-			<Checkbox bind:value={calendarEnabled} label="Calendar">
-				Custom calendar system with moons, eras, and seasons
+			<Checkbox bind:value={calendarEnabled} label={m.nav_calendar()}>
+				{m.settings_calendar_feature_desc()}
 			</Checkbox>
 		</div>
 	</section>
 
 	<section class="bg-surface p-5 space-y-4">
 		<div>
-			<h2 class="text-sm font-semibold text-heading">Media</h2>
-			<p class="text-xs text-secondary mt-0.5">How uploads are processed and what metadata is preserved.</p>
+			<h2 class="text-sm font-semibold text-heading">{m.settings_media()}</h2>
+			<p class="text-xs text-secondary mt-0.5">{m.settings_media_desc()}</p>
 		</div>
 		<div class="flex flex-col gap-3">
-			<Checkbox bind:value={stripExifOnUpload} label="Strip EXIF on upload">
-				Remove camera, GPS, and other EXIF/IPTC/XMP metadata from uploaded photos. Privacy-preserving for any image taken on a phone. SVGs are unaffected.
+			<Checkbox bind:value={stripExifOnUpload} label={m.settings_strip_exif()}>
+				{m.settings_strip_exif_desc()}
 			</Checkbox>
 		</div>
 	</section>
 
 	<section class="bg-surface p-5 space-y-4">
 		<div>
-			<h2 class="text-sm font-semibold text-heading">Display</h2>
-			<p class="text-xs text-secondary mt-0.5">Visual and layout settings.</p>
+			<h2 class="text-sm font-semibold text-heading">{m.settings_display()}</h2>
+			<p class="text-xs text-secondary mt-0.5">{m.settings_display_desc()}</p>
 		</div>
 		<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 			<div>
-				<span class="text-xs font-medium text-secondary block mb-1">Text direction</span>
+				<span class="text-xs font-medium text-secondary block mb-1">{m.settings_text_direction()}</span>
 				<div class="flex gap-3">
 					<label class="flex items-center gap-2 text-sm text-body cursor-pointer">
 						<input type="radio" bind:group={textDirection} value="ltr" class="accent-accent" />
-						Left-to-right
+						{m.settings_ltr()}
 					</label>
 					<label class="flex items-center gap-2 text-sm text-body cursor-pointer">
 						<input type="radio" bind:group={textDirection} value="rtl" class="accent-accent" />
-						Right-to-left
+						{m.settings_rtl()}
 					</label>
 				</div>
 			</div>
-			<Input label="Custom footer text" bind:value={footerText} placeholder="Leave blank for default footer text" />
+			<Input label={m.settings_footer_text()} bind:value={footerText} placeholder={m.settings_footer_text_placeholder()} />
 		</div>
 	</section>
 
@@ -211,6 +212,6 @@
 		{savedAt}
 		onsave={save}
 		ondiscard={resetDraft}
-		saveLabel="Save changes"
+		saveLabel={m.settings_save_changes()}
 	/>
 </div>

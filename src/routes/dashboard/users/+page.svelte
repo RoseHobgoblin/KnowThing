@@ -10,6 +10,7 @@
 	import Badge from '$lib/components/ui/Badge.svelte'
 	import { createMutation } from '@tanstack/svelte-query'
 	import { api } from '$lib/api'
+	import { m } from '$lib/paraglide/messages.js'
 
 	let { data }: { data: PageData } = $props()
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
@@ -35,22 +36,22 @@
 	async function setRole(userId: number, role: string) {
 		try {
 			await userMutation.mutateAsync({ method: 'PUT', userId, body: { role } })
-			pushSuccess('Role updated')
+			pushSuccess(m.admin_role_updated())
 			await invalidateAll()
 		} catch (error) {
-			pushError(error instanceof Error ? error.message : 'Failed to update role')
+			pushError(error instanceof Error ? error.message : m.admin_role_update_failed())
 		}
 	}
 
 	async function removeUser(userId: number, username: string) {
-		const ok = await confirmDialog.confirm('Delete user', `Delete "${username}"? This cannot be undone.`, 'Delete', 'Cancel')
+		const ok = await confirmDialog.confirm(m.admin_delete_user_title(), m.common_delete_confirm_named({ name: username }), m.common_delete(), m.common_cancel())
 		if (!ok) return
 		try {
 			await userMutation.mutateAsync({ method: 'DELETE', userId })
-			pushSuccess(`"${username}" deleted`)
+			pushSuccess(m.admin_user_deleted({ name: username }))
 			await invalidateAll()
 		} catch (error) {
-			pushError(error instanceof Error ? error.message : 'Failed to delete user')
+			pushError(error instanceof Error ? error.message : m.admin_user_delete_failed())
 		}
 	}
 
@@ -61,27 +62,27 @@
 		try {
 			const result = await codeMutation.mutateAsync(codeRole)
 			generatedCode = result.code
-			pushSuccess('Code generated')
+			pushSuccess(m.admin_code_generated())
 			await invalidateAll()
 		} catch (error) {
-			pushError(error instanceof Error ? error.message : 'Failed to generate code')
+			pushError(error instanceof Error ? error.message : m.admin_code_generate_failed())
 		}
 	}
 
 	function copyCode() {
 		navigator.clipboard.writeText(generatedCode)
-		pushSuccess('Copied to clipboard')
+		pushSuccess(m.admin_copied_to_clipboard())
 	}
 
 	const roleOptions = $derived(isOwner ? ['viewer', 'editor', 'admin'] : ['viewer', 'editor'])
 </script>
 
 <svelte:head>
-	<title>Users — Dashboard — KnowThing</title>
+	<title>{m.admin_users_page_title()}</title>
 </svelte:head>
 
 <div class="space-y-6">
-	<h1 class="text-xl font-bold text-heading">Users</h1>
+	<h1 class="text-xl font-bold text-heading">{m.admin_users()}</h1>
 
 	<div class="bg-surface">
 		<div class="divide-y divide-border-subtle">
@@ -90,15 +91,15 @@
 					<div class="flex items-center gap-2">
 						<span class="font-medium text-body">{user.username}</span>
 						{#if user.role === 'owner'}
-							<Badge variant="accent">Owner</Badge>
+							<Badge variant="accent">{m.admin_owner()}</Badge>
 						{/if}
 						<span class="text-xs text-secondary">
-							joined {new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+							{m.admin_joined({ date: new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) })}
 						</span>
 					</div>
 					<div class="flex items-center gap-2">
 						{#if user.role === 'owner'}
-							<span class="text-xs text-secondary">Owner</span>
+							<span class="text-xs text-secondary">{m.admin_owner()}</span>
 						{:else}
 							<Select
 								type="single"
@@ -108,7 +109,7 @@
 								size="sm"
 							/>
 							{#if user.id !== currentUser?.id}
-								<button onclick={() => removeUser(user.id, user.username)} class="text-xs text-error transition-colors hover:text-error-hover">Delete</button>
+								<button onclick={() => removeUser(user.id, user.username)} class="text-xs text-error transition-colors hover:text-error-hover">{m.common_delete()}</button>
 							{/if}
 						{/if}
 					</div>
@@ -119,35 +120,35 @@
 
 	<!-- Registration codes -->
 		<section class="bg-surface p-5 space-y-4">
-			<h2 class="text-sm font-semibold text-heading">Registration Codes</h2>
-			<p class="text-xs text-secondary">Generate invite codes for new users. Each code can be used once.</p>
-			<p class="text-xs text-secondary">Codes are only shown in full when they are first generated.</p>
+			<h2 class="text-sm font-semibold text-heading">{m.admin_registration_codes()}</h2>
+			<p class="text-xs text-secondary">{m.admin_registration_codes_desc()}</p>
+			<p class="text-xs text-secondary">{m.admin_codes_shown_once()}</p>
 			{#if permissions.canGenerateInviteCodes && !isOwner}
-				<p class="text-xs text-secondary">Owner role is required to generate admin invite codes.</p>
+				<p class="text-xs text-secondary">{m.admin_owner_required_admin_codes()}</p>
 			{/if}
 
 		<div class="flex gap-3 items-end">
 			<Select
 				type="single"
-				label="Role"
+				label={m.auth_role()}
 				bind:value={codeRole}
 				items={roleOptions.map(r => ({ value: r, label: r }))}
 			/>
 			<Button onclick={generateCode} loading={codeMutation.isPending}>
-				{codeMutation.isPending ? 'Generating...' : 'Generate Code'}
+				{codeMutation.isPending ? m.admin_generating() : m.admin_generate_code()}
 			</Button>
 		</div>
 
 		{#if generatedCode}
 			<div class="flex items-center gap-2 bg-raised p-3">
 				<code class="text-body font-mono text-lg flex-1">{generatedCode}</code>
-				<button onclick={copyCode} class="text-xs text-link hover:text-link-hover">Copy</button>
+				<button onclick={copyCode} class="text-xs text-link hover:text-link-hover">{m.admin_copy()}</button>
 			</div>
 		{/if}
 
 		{#if (data.codes as any[]).length > 0}
 			<div class="border-t border-border-subtle pt-3 mt-3">
-				<span class="text-xs text-secondary uppercase tracking-wider">Recent Codes</span>
+				<span class="text-xs text-secondary uppercase tracking-wider">{m.admin_recent_codes()}</span>
 				<div class="mt-2 space-y-1">
 					{#each data.codes as code (code.id)}
 						<div class="flex items-center justify-between text-xs py-1">
@@ -155,14 +156,14 @@
 							<div class="flex items-center gap-2">
 								<span class="text-secondary">{code.role}</span>
 								{#if code.isOwnerOnlyRole}
-									<span class="text-secondary">owner-only</span>
+									<span class="text-secondary">{m.admin_owner_only()}</span>
 								{/if}
 								{#if code.usedBy}
-									<span class="text-accent">used</span>
+									<span class="text-accent">{m.admin_code_used()}</span>
 								{:else if code.expiresAt && new Date(code.expiresAt) < new Date()}
-									<span class="text-error">expired</span>
+									<span class="text-error">{m.admin_code_expired()}</span>
 								{:else}
-									<span class="text-body">available</span>
+									<span class="text-body">{m.admin_code_available()}</span>
 								{/if}
 							</div>
 						</div>

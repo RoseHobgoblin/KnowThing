@@ -5,6 +5,7 @@
 	import { pushError, pushSuccess } from '$lib/notifications.svelte'
 	import { createMutation, useQueryClient } from '@tanstack/svelte-query'
 	import { api } from '$lib/api'
+	import { m } from '$lib/paraglide/messages.js'
 
 	type Dialect = { id: number, name: string, slug: string, region: string | null, description: string | null }
 
@@ -55,13 +56,13 @@
 				slug: slugify(dialectName),
 				region: dialectRegion.trim() || undefined,
 			} })
-			pushSuccess(`Dialect "${dialectName.trim()}" added`)
+			pushSuccess(m.wbc_dialect_added({ name: dialectName.trim() }))
 			dialectName = ''
 			dialectRegion = ''
 			addingDialect = false
 			await invalidateAll()
 		} catch (error) {
-			pushError(error instanceof Error ? error.message : 'Failed to add dialect')
+			pushError(error instanceof Error ? error.message : m.wbc_failed_add_dialect())
 		}
 	}
 
@@ -80,44 +81,44 @@
 				slug: editingDialectSlug,
 				body: { name: editName.trim(), region: editRegion.trim() || undefined },
 			})
-			pushSuccess('Dialect updated')
+			pushSuccess(m.wbc_dialect_updated())
 			editingDialectSlug = null
 			await invalidateAll()
 		} catch (error) {
-			pushError(error instanceof Error ? error.message : 'Failed to update dialect')
+			pushError(error instanceof Error ? error.message : m.wbc_failed_update_dialect())
 		}
 	}
 
 	async function deleteDialect(dialect: Dialect) {
 		const confirmed = await confirmDialog.confirm(
-			`Delete dialect "${dialect.name}"?`,
-			'Dialect variants recorded against it will be removed. This cannot be undone.',
-			'Delete',
+			m.wbc_delete_dialect_confirm_title({ name: dialect.name }),
+			m.wbc_delete_dialect_confirm_body(),
+			m.common_delete(),
 		)
 		if (!confirmed) return
 		try {
 			await dialectMutation.mutateAsync({ method: 'DELETE', slug: dialect.slug })
-			pushSuccess(`Dialect "${dialect.name}" deleted`)
+			pushSuccess(m.wbc_dialect_deleted({ name: dialect.name }))
 			await invalidateAll()
 		} catch (error) {
-			pushError(error instanceof Error ? error.message : 'Failed to delete dialect')
+			pushError(error instanceof Error ? error.message : m.wbc_failed_delete_dialect())
 		}
 	}
 
 	// ── Danger zone ─────────────────────────────────────────────
 	async function deleteLanguage() {
 		const confirmed = await confirmDialog.confirm(
-			`Delete "${languageName}"?`,
-			'Deletion is refused while the language still has entries or descendant languages. This cannot be undone.',
-			'Delete language',
+			m.wbc_delete_language_confirm_title({ name: languageName }),
+			m.wbc_delete_language_confirm_body(),
+			m.wbc_delete_language_button(),
 		)
 		if (!confirmed) return
 		try {
 			await languageDeleteMutation.mutateAsync()
-			pushSuccess(`"${languageName}" deleted`)
+			pushSuccess(m.wbc_language_deleted({ name: languageName }))
 			goto('/Wordbook')
 		} catch (error) {
-			pushError(error instanceof Error ? error.message : 'Failed to delete language')
+			pushError(error instanceof Error ? error.message : m.wbc_failed_delete_language())
 		}
 	}
 </script>
@@ -125,24 +126,24 @@
 <!-- Dialects manager -->
 <section class="bg-raised p-4 mb-4">
 	<div class="flex items-center justify-between mb-3">
-		<h3 class="text-sm font-semibold text-body">Dialects</h3>
+		<h3 class="text-sm font-semibold text-body">{m.wbc_dialects_heading()}</h3>
 		{#if isAdmin && !addingDialect}
-			<button type="button" onclick={() => addingDialect = true} class="text-xs text-link hover:text-link-hover hover:underline">+ Add dialect</button>
+			<button type="button" onclick={() => addingDialect = true} class="text-xs text-link hover:text-link-hover hover:underline">+ {m.wbc_add_dialect()}</button>
 		{/if}
 	</div>
 
 	{#if dialects.length === 0 && !addingDialect}
-		<p class="text-xs text-secondary">No dialects recorded.</p>
+		<p class="text-xs text-secondary">{m.wbc_no_dialects_recorded()}</p>
 	{/if}
 
 	<div class="space-y-2">
 		{#each dialects as dialect (dialect.id)}
 			{#if editingDialectSlug === dialect.slug}
 				<form onsubmit={saveEdit} class="flex flex-wrap items-end gap-2">
-					<Input label="Name" bind:value={editName} required />
-					<Input label="Region" bind:value={editRegion} />
-					<button type="submit" disabled={dialectMutation.isPending} class="px-3 py-1.5 bg-accent text-surface text-xs hover:bg-accent-hover disabled:opacity-50">Save</button>
-					<button type="button" onclick={() => editingDialectSlug = null} class="text-xs text-secondary hover:text-body">Cancel</button>
+					<Input label={m.common_name()} bind:value={editName} required />
+					<Input label={m.wbc_region()} bind:value={editRegion} />
+					<button type="submit" disabled={dialectMutation.isPending} class="px-3 py-1.5 bg-accent text-surface text-xs hover:bg-accent-hover disabled:opacity-50">{m.common_save()}</button>
+					<button type="button" onclick={() => editingDialectSlug = null} class="text-xs text-secondary hover:text-body">{m.common_cancel()}</button>
 				</form>
 			{:else}
 				<div class="flex items-center gap-2 text-sm">
@@ -152,8 +153,8 @@
 					{/if}
 					{#if isAdmin}
 						<span class="ml-auto flex gap-2">
-							<button type="button" onclick={() => startEdit(dialect)} class="text-xs text-link hover:text-link-hover hover:underline">Edit</button>
-							<button type="button" onclick={() => deleteDialect(dialect)} aria-label="Delete dialect {dialect.name}" class="text-xs text-error hover:text-error-hover hover:underline">Delete</button>
+							<button type="button" onclick={() => startEdit(dialect)} class="text-xs text-link hover:text-link-hover hover:underline">{m.common_edit()}</button>
+							<button type="button" onclick={() => deleteDialect(dialect)} aria-label={m.wbc_delete_dialect_aria({ name: dialect.name })} class="text-xs text-error hover:text-error-hover hover:underline">{m.common_delete()}</button>
 						</span>
 					{/if}
 				</div>
@@ -163,10 +164,10 @@
 
 	{#if addingDialect}
 		<form onsubmit={addDialect} class="flex flex-wrap items-end gap-2 mt-3 pt-3 border-t border-border-subtle">
-			<Input label="Name" bind:value={dialectName} required placeholder="Northern" />
-			<Input label="Region" bind:value={dialectRegion} placeholder="The highlands" />
-			<button type="submit" disabled={dialectMutation.isPending} class="px-3 py-1.5 bg-accent text-surface text-xs hover:bg-accent-hover disabled:opacity-50">Add</button>
-			<button type="button" onclick={() => addingDialect = false} class="text-xs text-secondary hover:text-body">Cancel</button>
+			<Input label={m.common_name()} bind:value={dialectName} required placeholder="Northern" />
+			<Input label={m.wbc_region()} bind:value={dialectRegion} placeholder="The highlands" />
+			<button type="submit" disabled={dialectMutation.isPending} class="px-3 py-1.5 bg-accent text-surface text-xs hover:bg-accent-hover disabled:opacity-50">{m.common_add()}</button>
+			<button type="button" onclick={() => addingDialect = false} class="text-xs text-secondary hover:text-body">{m.common_cancel()}</button>
 		</form>
 	{/if}
 </section>
@@ -174,16 +175,16 @@
 <!-- Danger zone (admin only) -->
 {#if isAdmin}
 	<section class="border border-error-border bg-error-bg p-4">
-		<h3 class="text-sm font-semibold text-error-text mb-1">Danger zone</h3>
+		<h3 class="text-sm font-semibold text-error-text mb-1">{m.common_danger_zone()}</h3>
 		<p class="text-xs text-secondary mb-3">
-			A language can only be deleted once it has no entries and no descendant languages.
+			{m.wbc_language_delete_condition()}
 		</p>
 		<button
 			type="button"
 			onclick={deleteLanguage}
 			class="px-3 py-1.5 text-xs border border-error-border text-error transition-colors hover:bg-error hover:text-surface"
 		>
-			Delete this language
+			{m.wbc_delete_this_language()}
 		</button>
 	</section>
 {/if}

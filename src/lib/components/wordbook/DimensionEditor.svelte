@@ -11,6 +11,7 @@
 	import { DIMENSION_PRESETS, CLASS_PRESETS, type DimensionPreset, type ClassPreset } from './dimension-presets.js'
 	import { createMutation, useQueryClient } from '@tanstack/svelte-query'
 	import { api } from '$lib/api'
+	import { m } from '$lib/paraglide/messages.js'
 
 	let { languageSlug, dimensions = [], classes = [], ruleCounts = {} }: {
 		languageSlug: string
@@ -30,15 +31,15 @@
 	}
 
 	function sortLabel(order: number): string {
-		if (order === 0) return 'Rows'
-		if (order === 1) return 'Columns'
-		return 'Sub-table'
+		if (order === 0) return m.wbc_axis_rows()
+		if (order === 1) return m.wbc_axis_columns()
+		return m.wbc_axis_subtable()
 	}
 
 	const SORT_OPTIONS = [
-		{ value: '0', label: 'Rows' },
-		{ value: '1', label: 'Columns' },
-		{ value: '2', label: 'Sub-tables (3D+)' },
+		{ value: '0', label: m.wbc_axis_rows() },
+		{ value: '1', label: m.wbc_axis_columns() },
+		{ value: '2', label: m.wbc_axis_subtables_3d() },
 	]
 
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
@@ -92,7 +93,7 @@
 	const displayAsHint = $derived.by(() => {
 		const taken = [...existingSorts].toSorted()
 		const labels = taken.map(sortLabel).join(', ')
-		return labels ? `${labels} already taken on ${newDimPos}` : ''
+		return labels ? m.wbc_axis_already_taken({ labels, pos: newDimPos }) : ''
 	})
 
 	$effect(() => {
@@ -118,9 +119,9 @@
 			: 0
 		if (otherCells > 0) {
 			const total = otherCells * vals.length
-			return `${newDimAxis.toLowerCase()}: ${vals.join(' · ')} — table will have ${total} cells`
+			return m.wbc_table_shape_with_cells({ axis: newDimAxis.toLowerCase(), values: vals.join(' · '), count: total })
 		}
-		return `${newDimAxis.toLowerCase()}: ${vals.join(' · ')}`
+		return m.wbc_table_shape({ axis: newDimAxis.toLowerCase(), values: vals.join(' · ') })
 	})
 
 	async function addDimension(event: SubmitEvent) {
@@ -134,13 +135,13 @@
 				values: newDimValues.split(',').map(v => v.trim()).filter(Boolean),
 				sortOrder,
 			} })
-			pushSuccess('Dimension created')
+			pushSuccess(m.wbc_dimension_created())
 			newDimName = ''
 			newDimValues = ''
 			showAddDim = false
 			await invalidateAll()
 		} catch (error) {
-			pushError(error instanceof Error ? error.message : 'Failed to create dimension')
+			pushError(error instanceof Error ? error.message : m.wbc_failed_create_dimension())
 		}
 	}
 
@@ -153,22 +154,22 @@
 				values: preset.values,
 				sortOrder: preset.sortOrder,
 			} })
-			pushSuccess(`Added ${preset.name} for ${preset.pos}`)
+			pushSuccess(m.wbc_dimension_added_for({ name: preset.name, pos: preset.pos }))
 			await invalidateAll()
 		} catch (error) {
-			pushError(error instanceof Error ? error.message : 'Failed to create dimension')
+			pushError(error instanceof Error ? error.message : m.wbc_failed_create_dimension())
 		}
 	}
 
 	async function deleteDimension(dimId: number) {
-		const ok = await confirmDialog.confirm('Remove dimension', 'Remove this dimension? This will affect all paradigm rules using it.', 'Remove', 'Cancel')
+		const ok = await confirmDialog.confirm(m.wbc_remove_dimension(), m.wbc_remove_dimension_confirm(), m.common_remove(), m.common_cancel())
 		if (!ok) return
 		try {
 			await dimensionMutation.mutateAsync({ method: 'DELETE', id: dimId })
-			pushSuccess('Dimension removed')
+			pushSuccess(m.wbc_dimension_removed())
 			await invalidateAll()
 		} catch (error) {
-			pushError(error instanceof Error ? error.message : 'Failed to remove dimension')
+			pushError(error instanceof Error ? error.message : m.wbc_failed_remove_dimension())
 		}
 	}
 
@@ -208,25 +209,25 @@
 				name: newClassName.trim(),
 				description: newClassDesc.trim() || undefined,
 			} })
-			pushSuccess('Paradigm class created')
+			pushSuccess(m.wbc_class_created())
 			newClassName = ''
 			newClassDesc = ''
 			showAddClass = false
 			await invalidateAll()
 		} catch (error) {
-			pushError(error instanceof Error ? error.message : 'Failed to create paradigm class')
+			pushError(error instanceof Error ? error.message : m.wbc_failed_create_class())
 		}
 	}
 
 	async function deleteClass(classId: number) {
-		const ok = await confirmDialog.confirm('Delete paradigm class', 'Delete this paradigm class and all its rules?', 'Delete', 'Cancel')
+		const ok = await confirmDialog.confirm(m.wbc_delete_class(), m.wbc_delete_class_confirm(), m.common_delete(), m.common_cancel())
 		if (!ok) return
 		try {
 			await classMutation.mutateAsync({ method: 'DELETE', id: classId })
-			pushSuccess('Paradigm class deleted')
+			pushSuccess(m.wbc_class_deleted())
 			await invalidateAll()
 		} catch (error) {
-			pushError(error instanceof Error ? error.message : 'Failed to delete paradigm class')
+			pushError(error instanceof Error ? error.message : m.wbc_failed_delete_class())
 		}
 	}
 
@@ -272,9 +273,9 @@
 		const nonEmpty = editingRules.filter(r => r.pattern.trim())
 		try {
 			await classMutation.mutateAsync({ method: 'PUT', id: editingClassId, body: { rules: nonEmpty } })
-			pushSuccess('Rules saved')
+			pushSuccess(m.wbc_rules_saved())
 		} catch (error) {
-			pushError(error instanceof Error ? error.message : 'Failed to save rules')
+			pushError(error instanceof Error ? error.message : m.wbc_failed_save_rules())
 		}
 		editingClassId = null
 		await invalidateAll()
@@ -284,7 +285,7 @@
 		const first = editingRules.find(r => r.pattern.trim())
 		if (!first) return ''
 		const out = applyStem(first.pattern, previewStem)
-		return `Class "${editingClassName}": rule for ${cellKeyLabel(first.cellKey)} is ${first.pattern}. With stem ${previewStem} → ${out}.`
+		return m.wbc_preview_ribbon({ name: editingClassName, cell: cellKeyLabel(first.cellKey), pattern: first.pattern, stem: previewStem, result: out })
 	})
 </script>
 
@@ -295,19 +296,19 @@
 	<section class="bg-surface p-4 space-y-3">
 		<div class="flex items-start justify-between gap-2">
 			<div>
-				<h3 class="text-sm font-semibold text-body">1. Dimensions</h3>
-				<p class="text-xs text-secondary mt-0.5">What axes does morphology vary on? E.g. nouns vary by Number; verbs vary by Tense and Person.</p>
+				<h3 class="text-sm font-semibold text-body">{m.wbc_dimensions_heading()}</h3>
+				<p class="text-xs text-secondary mt-0.5">{m.wbc_dimensions_intro()}</p>
 			</div>
-			<button onclick={() => showAddDim = !showAddDim} class="text-xs text-link whitespace-nowrap hover:text-link-hover hover:underline">+ Dimension</button>
+			<button onclick={() => showAddDim = !showAddDim} class="text-xs text-link whitespace-nowrap hover:text-link-hover hover:underline">+ {m.wbc_dimension()}</button>
 		</div>
 
 		{#if showAddDim}
 			<form onsubmit={addDimension} class="p-3 bg-page border-l-2 border-l-accent border-y border-r border-border space-y-2">
-				<div class="text-xs font-medium text-dim mb-1">New dimension</div>
+				<div class="text-xs font-medium text-dim mb-1">{m.wbc_new_dimension()}</div>
 
 				<!-- Click-to-fill chips -->
 				<div class="flex flex-wrap items-center gap-1.5 text-xs">
-					<span class="text-secondary">Try one — click to fill:</span>
+					<span class="text-secondary">{m.wbc_try_one_click_fill()}</span>
 					{#each DIMENSION_PRESETS as preset (preset.label)}
 						<button
 							type="button"
@@ -324,10 +325,10 @@
 						items={PARTS_OF_SPEECH.map(pos => ({ value: pos, label: pos }))}
 						size="sm"
 					/>
-					<Input bind:value={newDimName} placeholder="Name (e.g. Number, Case, Tense)" required containerClass="flex-1 min-w-[160px]" />
+					<Input bind:value={newDimName} placeholder={m.wbc_dimension_name_placeholder()} required containerClass="flex-1 min-w-[160px]" />
 					{#if showDisplayAs}
 						<div class="flex items-center gap-2">
-							<span class="text-xs text-dim whitespace-nowrap">Display as:</span>
+							<span class="text-xs text-dim whitespace-nowrap">{m.wbc_display_as()}</span>
 							<Select
 								type="single"
 								bind:value={newDimSort}
@@ -342,26 +343,26 @@
 					<p class="text-xs text-secondary -mt-1">{displayAsHint}</p>
 				{/if}
 
-				<Input bind:value={newDimValues} placeholder="Values, comma-separated" required containerClass="w-full" />
+				<Input bind:value={newDimValues} placeholder={m.wbc_values_comma_separated()} required containerClass="w-full" />
 
 				{#if newDimShapeLine}
 					<p class="text-xs text-secondary">
-						<span class="text-secondary">Your table will have</span> {newDimShapeLine}
+						<span class="text-secondary">{m.wbc_your_table_will_have()}</span> {newDimShapeLine}
 					</p>
 				{:else}
-					<p class="text-xs text-secondary">Type at least one value, e.g. <code class="bg-surface-dim px-1 rounded-sm">singular, plural</code>.</p>
+					<p class="text-xs text-secondary">{m.wbc_type_at_least_one_value_prefix()} <code class="bg-surface-dim px-1 rounded-sm">singular, plural</code>.</p>
 				{/if}
 
 				<div class="flex gap-2">
-					<button type="submit" disabled={addingDim} class="px-3 py-1 bg-accent text-surface text-xs hover:bg-accent-hover disabled:opacity-50">Add</button>
-					<button type="button" onclick={() => showAddDim = false} class="text-xs text-secondary">Cancel</button>
+					<button type="submit" disabled={addingDim} class="px-3 py-1 bg-accent text-surface text-xs hover:bg-accent-hover disabled:opacity-50">{m.common_add()}</button>
+					<button type="button" onclick={() => showAddDim = false} class="text-xs text-secondary">{m.common_cancel()}</button>
 				</div>
 			</form>
 		{/if}
 
 		{#if dimensions.length === 0 && !showAddDim}
 			<div class="space-y-2">
-				<p class="text-xs text-secondary">No dimensions yet. Pick a starter, or open the form for full control:</p>
+				<p class="text-xs text-secondary">{m.wbc_no_dimensions_pick_starter()}</p>
 				<div class="flex flex-wrap gap-1.5">
 					{#each DIMENSION_PRESETS.slice(0, 4) as preset (preset.label)}
 						<button
@@ -402,18 +403,19 @@
 	<section class="bg-surface p-4 space-y-3">
 		<div class="flex items-start justify-between gap-2">
 			<div>
-				<h3 class="text-sm font-semibold text-body">2. Paradigm classes</h3>
-				<p class="text-xs text-secondary mt-0.5">Group words that inflect identically. <em>cat</em> and <em>dog</em> share rules; <em>mouse</em> needs its own class or overrides.</p>
+				<h3 class="text-sm font-semibold text-body">{m.wbc_classes_heading()}</h3>
+				<!-- eslint-disable-next-line svelte/no-at-html-tags -- localized static markup, not user input -->
+				<p class="text-xs text-secondary mt-0.5">{@html m.wbc_classes_intro()}</p>
 			</div>
-			<button onclick={() => showAddClass = !showAddClass} class="text-xs text-link whitespace-nowrap hover:text-link-hover hover:underline">+ Class</button>
+			<button onclick={() => showAddClass = !showAddClass} class="text-xs text-link whitespace-nowrap hover:text-link-hover hover:underline">+ {m.wbc_class()}</button>
 		</div>
 
 		{#if showAddClass}
 			<form onsubmit={addClass} class="p-3 bg-page border-l-2 border-l-accent-secondary border-y border-r border-border space-y-2">
-				<div class="text-xs font-medium text-dim mb-1">New paradigm class</div>
+				<div class="text-xs font-medium text-dim mb-1">{m.wbc_new_class()}</div>
 
 				<div class="flex flex-wrap items-center gap-1.5 text-xs">
-					<span class="text-secondary">Try one — click to fill:</span>
+					<span class="text-secondary">{m.wbc_try_one_click_fill()}</span>
 					{#each CLASS_PRESETS as preset (preset.label)}
 						<button
 							type="button"
@@ -430,19 +432,20 @@
 						items={PARTS_OF_SPEECH.map(pos => ({ value: pos, label: pos }))}
 						size="sm"
 					/>
-					<Input bind:value={newClassName} placeholder="Name (e.g. Regular, Class I, Vowel-stem)" required containerClass="flex-1 min-w-[180px]" />
+					<Input bind:value={newClassName} placeholder={m.wbc_class_name_placeholder()} required containerClass="flex-1 min-w-[180px]" />
 				</div>
-				<Input bind:value={newClassDesc} placeholder="Description (optional)" containerClass="w-full" />
+				<Input bind:value={newClassDesc} placeholder={m.wbc_description_optional()} containerClass="w-full" />
 
 				{#if newClassCellsHint}
 					<p class="text-xs text-secondary">
-						<span class="text-secondary">This class will have</span> {newClassCellsHint.count} cell{newClassCellsHint.count === 1 ? '' : 's'}:
+						<span class="text-secondary">{m.wbc_this_class_will_have()}</span> {m.wbc_cells_count({ count: newClassCellsHint.count })}:
 						<span class="font-mono text-secondary">{newClassCellsHint.labels.join(' · ')}{newClassCellsHint.truncated ? ' …' : ''}</span>
-						<span class="text-secondary">(from {newClassCellsHint.dimNames})</span>
+						<span class="text-secondary">{m.wbc_cells_from({ dims: newClassCellsHint.dimNames })}</span>
 					</p>
 				{:else}
 					<p class="text-xs text-secondary">
-						No dimensions for <strong>{newClassPos}</strong> yet. The class will have nothing to inflect until you
+						<!-- eslint-disable-next-line svelte/no-at-html-tags -- localized static markup, not user input -->
+						{@html m.wbc_no_dimensions_for_pos({ pos: newClassPos })}
 						<button
 							type="button"
 							onclick={() => {
@@ -451,19 +454,20 @@
 								newDimPos = newClassPos
 							}}
 							class="text-link hover:underline"
-						>add a dimension</button>.
+						>{m.wbc_add_a_dimension()}</button>.
 					</p>
 				{/if}
 
 				<div class="flex gap-2">
-					<button type="submit" disabled={addingClass} class="px-3 py-1 bg-accent text-surface text-xs hover:bg-accent-hover disabled:opacity-50">Add</button>
-					<button type="button" onclick={() => showAddClass = false} class="text-xs text-secondary">Cancel</button>
+					<button type="submit" disabled={addingClass} class="px-3 py-1 bg-accent text-surface text-xs hover:bg-accent-hover disabled:opacity-50">{m.common_add()}</button>
+					<button type="button" onclick={() => showAddClass = false} class="text-xs text-secondary">{m.common_cancel()}</button>
 				</div>
 			</form>
 		{/if}
 
 		{#if classes.length === 0 && !showAddClass}
-			<p class="text-xs text-secondary">No classes yet. Add one — e.g. <code class="bg-surface-dim px-1 rounded-sm">Regular</code> for nouns. Then click it to define rules.</p>
+			<!-- eslint-disable-next-line svelte/no-at-html-tags -- localized static markup, not user input -->
+			<p class="text-xs text-secondary">{@html m.wbc_no_classes_yet()}</p>
 		{:else if classes.length > 0}
 			<div class="space-y-3">
 				{#each allPos.filter(p => classes.some(c => c.partOfSpeech === p)) as pos (pos)}
@@ -482,11 +486,11 @@
 											{cls.name}
 										</button>
 										{#if totalCells === 0}
-											<span class="text-xs px-1.5 py-0.5 border border-warning-border bg-warning-bg text-body">no dimensions yet</span>
+											<span class="text-xs px-1.5 py-0.5 border border-warning-border bg-warning-bg text-body">{m.wbc_badge_no_dimensions()}</span>
 										{:else if ruleN === 0}
-											<span class="text-xs px-1.5 py-0.5 border border-warning-border bg-warning-bg text-body">no rules — click to add ↓</span>
+											<span class="text-xs px-1.5 py-0.5 border border-warning-border bg-warning-bg text-body">{m.wbc_badge_no_rules()}</span>
 										{:else}
-											<span class="text-xs px-1.5 py-0.5 bg-page text-dim">{ruleN} / {totalCells} rules</span>
+											<span class="text-xs px-1.5 py-0.5 bg-page text-dim">{m.wbc_badge_rules_count({ count: ruleN, total: totalCells })}</span>
 										{/if}
 										{#if cls.description}
 											<span class="text-secondary text-xs">— {cls.description}</span>
@@ -497,20 +501,20 @@
 									{#if editingClassId === cls.id}
 										<div class="mt-2 p-3 bg-page space-y-3">
 											{#if loadingRules}
-												<p class="text-xs text-secondary">Loading rules…</p>
+												<p class="text-xs text-secondary">{m.wbc_loading_rules()}</p>
 											{:else if editingRules.length === 0}
 												<p class="text-xs text-secondary">
-													No dimensions defined for <strong>{pos}</strong> yet.
-													Add at least one dimension in section 1 first.
+													<!-- eslint-disable-next-line svelte/no-at-html-tags -- localized static markup, not user input -->
+													{@html m.wbc_no_dimensions_defined_for_pos({ pos })}
 												</p>
 												<div class="flex gap-2">
-													<button onclick={() => editingClassId = null} class="text-xs text-secondary hover:text-dim">Cancel</button>
+													<button onclick={() => editingClassId = null} class="text-xs text-secondary hover:text-dim">{m.common_cancel()}</button>
 												</div>
 											{:else}
 												<div>
-													<h4 class="text-xs font-semibold text-body mb-2">3. Rules for <em>{cls.name}</em></h4>
+													<h4 class="text-xs font-semibold text-body mb-2">{m.wbc_rules_for_heading()} <em>{cls.name}</em></h4>
 													<p class="text-xs text-secondary">
-														Write a pattern for each cell. <code class="bg-surface-dim px-1 rounded-sm">{'{stem}'}</code> is replaced with the word's stem. Leave a cell blank to omit it.
+														{m.wbc_rules_pattern_help_before()} <code class="bg-surface-dim px-1 rounded-sm">{'{stem}'}</code> {m.wbc_rules_pattern_help_after()}
 													</p>
 												</div>
 
@@ -519,7 +523,7 @@
 												{/if}
 
 												<div class="flex items-center gap-2">
-													<span class="text-xs text-dim">Try a stem:</span>
+													<span class="text-xs text-dim">{m.wbc_try_a_stem()}</span>
 													<Input bind:value={previewStem} containerClass="w-32" class="font-mono" />
 												</div>
 
@@ -527,9 +531,9 @@
 													<table class="w-full text-sm">
 														<thead>
 															<tr class="border-b border-border">
-																<th class="text-left text-xs text-dim font-medium py-1 pr-3">Cell</th>
-																<th class="text-left text-xs text-dim font-medium py-1 pr-3">Pattern</th>
-																<th class="text-left text-xs text-dim font-medium py-1">Preview</th>
+																<th class="text-left text-xs text-dim font-medium py-1 pr-3">{m.wbc_col_cell()}</th>
+																<th class="text-left text-xs text-dim font-medium py-1 pr-3">{m.wbc_col_pattern()}</th>
+																<th class="text-left text-xs text-dim font-medium py-1">{m.common_preview()}</th>
 															</tr>
 														</thead>
 														<tbody>
@@ -557,9 +561,9 @@
 														disabled={savingRules}
 														class="px-3 py-1 bg-accent text-surface text-xs hover:bg-accent-hover disabled:opacity-50"
 													>
-														{savingRules ? 'Saving…' : 'Save rules'}
+														{savingRules ? m.common_saving() : m.wbc_save_rules()}
 													</button>
-													<button onclick={() => editingClassId = null} class="text-xs text-secondary hover:text-dim">Cancel</button>
+													<button onclick={() => editingClassId = null} class="text-xs text-secondary hover:text-dim">{m.common_cancel()}</button>
 												</div>
 											{/if}
 										</div>

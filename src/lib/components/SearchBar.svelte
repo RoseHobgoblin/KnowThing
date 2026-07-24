@@ -5,6 +5,7 @@
 	import { createQuery } from '@tanstack/svelte-query'
 	import { api } from '$lib/api'
 	import { sanitizeSnippet } from '$lib/utils.js'
+	import { m } from '$lib/paraglide/messages.js'
 
 	type SearchResult = { href: string, title: string, snippet: string, badge: string }
 
@@ -77,8 +78,8 @@
 		autocomplete="off"
 		oninput={onInput}
 		onkeydown={onKeydown}
-		placeholder="Search pages, wordbook, media..."
-		aria-label="Search"
+		placeholder={m.search_placeholder()}
+		aria-label={m.search_label()}
 		class="w-full px-3 py-1.5 text-sm bg-page transition-colors focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent"
 	/>
 
@@ -111,7 +112,7 @@
 				onclick={() => fullSearch('all')}
 				class="w-full px-3 py-2 text-left text-xs text-link border-t border-border-subtle hover:bg-accent-subtle"
 			>
-				View all results
+				{m.search_view_all_results()}
 			</button>
 		</Combobox.Content>
 	</Combobox.Portal>

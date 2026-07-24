@@ -24,6 +24,7 @@
 	import { cn } from '$lib/utils'
 	import { createMutation } from '@tanstack/svelte-query'
 	import { api } from '$lib/api'
+	import { m } from '$lib/paraglide/messages.js'
 
 	let { data }: { data: PageData } = $props()
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
@@ -76,7 +77,7 @@
 				usageTranslation: newTranslation.trim() || null,
 			},
 			})
-			pushSuccess('Definition added')
+			pushSuccess(m.wb_definition_added())
 			newPos = ''
 			newDefinition = ''
 			newUsage = ''
@@ -84,32 +85,32 @@
 			addingSenseFor = null
 			await invalidateAll()
 		} catch (error) {
-			senseError = error instanceof Error ? error.message : 'Failed to add definition'
+			senseError = error instanceof Error ? error.message : m.wb_failed_add_definition()
 			pushError(senseError)
 		}
 	}
 
 	async function deleteSense(entryId: number, definitionId: number) {
-		const ok = await confirmDialog.confirm('Delete definition', 'Delete this definition?', 'Delete', 'Cancel')
+		const ok = await confirmDialog.confirm(m.wb_delete_definition(), m.wb_delete_definition_confirm(), m.common_delete(), m.common_cancel())
 		if (!ok) return
 		try {
 			await definitionMutation.mutateAsync({ method: 'DELETE', entryId, definitionId })
-			pushSuccess('Definition deleted')
+			pushSuccess(m.wb_definition_deleted())
 			await invalidateAll()
 		} catch (error) {
-			pushError(error instanceof Error ? error.message : 'Failed to delete definition')
+			pushError(error instanceof Error ? error.message : m.wb_failed_delete_definition())
 		}
 	}
 
 	async function deleteEntry(entryId: number) {
-		const ok = await confirmDialog.confirm('Delete word', `Delete "${data.word}"? This cannot be undone.`, 'Delete', 'Cancel')
+		const ok = await confirmDialog.confirm(m.wb_delete_word(), m.common_delete_confirm_named({ name: data.word }), m.common_delete(), m.common_cancel())
 		if (!ok) return
 		try {
 			await deleteEntryMutation.mutateAsync(entryId)
-			pushSuccess(`"${data.word}" deleted`)
+			pushSuccess(m.wb_word_deleted({ name: data.word }))
 			goto(`/Wordbook/${data.language.slug}`)
 		} catch (error) {
-			pushError(error instanceof Error ? error.message : 'Failed to delete word')
+			pushError(error instanceof Error ? error.message : m.wb_failed_delete_word())
 		}
 	}
 
@@ -135,12 +136,12 @@
 >
 	{#snippet actions()}
 		{#if canManageWordbook && data.homographs[0]}
-			<a href="/Wordbook/contribute/{data.homographs[0].entry.id}" class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover"><PencilSimple size={14} weight="fill" />Edit</a>
+			<a href="/Wordbook/contribute/{data.homographs[0].entry.id}" class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover"><PencilSimple size={14} weight="fill" />{m.common_edit()}</a>
 			{#if isAdmin}
-				<button onclick={() => deleteEntry(data.homographs[0].entry.id)} class="text-error transition-colors flex items-center gap-1 hover:text-error-hover"><Trash size={14} weight="fill" />Delete</button>
+				<button onclick={() => deleteEntry(data.homographs[0].entry.id)} class="text-error transition-colors flex items-center gap-1 hover:text-error-hover"><Trash size={14} weight="fill" />{m.common_delete()}</button>
 			{/if}
 		{:else if isAuthenticated}
-			<span class="text-secondary text-sm">View only. Editor role required for wordbook changes.</span>
+			<span class="text-secondary text-sm">{m.common_view_only_editor()}</span>
 		{/if}
 	{/snippet}
 
@@ -172,13 +173,13 @@
 					<div class="mb-3 space-y-2 border-b border-border-subtle pb-3">
 						{#if entry.pronunciation}
 							<div class="flex items-baseline gap-4 text-sm">
-								<span class="w-20 shrink-0 text-xs font-semibold uppercase tracking-wider text-secondary">Pronounced</span>
+								<span class="w-20 shrink-0 text-xs font-semibold uppercase tracking-wider text-secondary">{m.wb_pronounced()}</span>
 								<span class="font-mono text-body">{entry.pronunciation}</span>
 							</div>
 						{/if}
 						{#if relations.direct || relations.cognates?.length || relations.etymologyChain?.length || entry.etymology}
 							<div class="flex items-start gap-4">
-								<span class="w-20 shrink-0 pt-0.5 text-xs font-semibold uppercase tracking-wider text-secondary">Etymology</span>
+								<span class="w-20 shrink-0 pt-0.5 text-xs font-semibold uppercase tracking-wider text-secondary">{m.wb_etymology()}</span>
 								<div class="min-w-0 flex-1">
 									<EtymologySection
 										entryId={entry.id}
@@ -234,23 +235,23 @@
 								<Select
 									type="single"
 									bind:value={newPos}
-									placeholder="Part of speech"
+									placeholder={m.wb_part_of_speech()}
 									size="sm"
 									items={PARTS_OF_SPEECH.map(pos => ({ value: pos, label: pos }))}
 								/>
-								<Input bind:value={newDefinition} placeholder="Definition..." required containerClass="flex-1" />
+								<Input bind:value={newDefinition} placeholder={m.wb_definition_placeholder()} required containerClass="flex-1" />
 							</div>
 							<div class="flex gap-2">
-								<Input bind:value={newUsage} placeholder="Usage example" containerClass="flex-1" />
-								<Input bind:value={newTranslation} placeholder="Translation" containerClass="flex-1" />
+								<Input bind:value={newUsage} placeholder={m.wb_usage_example()} containerClass="flex-1" />
+								<Input bind:value={newTranslation} placeholder={m.wb_translation()} containerClass="flex-1" />
 							</div>
 							<div class="flex gap-2">
-								<button type="submit" disabled={definitionMutation.isPending} class="px-3 py-1.5 bg-accent text-surface text-sm hover:bg-accent-hover disabled:opacity-50">Add</button>
-								<button type="button" onclick={() => addingSenseFor = null} class="text-xs text-secondary hover:text-body">Cancel</button>
+								<button type="submit" disabled={definitionMutation.isPending} class="px-3 py-1.5 bg-accent text-surface text-sm hover:bg-accent-hover disabled:opacity-50">{m.common_add()}</button>
+								<button type="button" onclick={() => addingSenseFor = null} class="text-xs text-secondary hover:text-body">{m.common_cancel()}</button>
 							</div>
 						</form>
 					{:else}
-						<button onclick={() => addingSenseFor = entry.id} class="mt-3 text-sm text-link hover:text-link-hover hover:underline">+ Add definition</button>
+						<button onclick={() => addingSenseFor = entry.id} class="mt-3 text-sm text-link hover:text-link-hover hover:underline">+ {m.wb_add_definition()}</button>
 					{/if}
 				{/if}
 
@@ -274,7 +275,7 @@
 				{#if entry.pageSlug}
 					<div class="mt-3 pt-3 border-t border-border-subtle">
 						<a href="/know/{entry.pageSlug}" class="text-sm text-link hover:text-link-hover hover:underline">
-							Read the full article →
+							{m.wb_read_full_article()} →
 						</a>
 					</div>
 				{/if}
@@ -293,7 +294,7 @@
 				/>
 				{#if canManageWordbook && (hom.inflection.dimensions.length > 0 || data.availableClasses.length > 0)}
 					<a href="/Wordbook/contribute/{entry.id}?tab=inflection" class="mt-2 inline-block text-xs text-link hover:text-link-hover hover:underline">
-						{hom.inflection.hasInflection ? 'Edit inflection' : '+ Set up inflection'}
+						{hom.inflection.hasInflection ? m.wb_edit_inflection() : `+ ${m.wb_set_up_inflection()}`}
 					</a>
 				{/if}
 			</section>
@@ -304,7 +305,7 @@
 			<aside class="space-y-3">
 				{#if variants.length > 0 || canManageWordbook}
 					<section class="bg-surface p-3">
-						<h2 class="mb-2 text-[0.625rem] font-semibold uppercase tracking-wider text-secondary">Dialect variants</h2>
+						<h2 class="mb-2 text-[0.625rem] font-semibold uppercase tracking-wider text-secondary">{m.wb_dialect_variants()}</h2>
 						<VariantManager
 							entryId={entry.id}
 							languageSlug={data.language.slug}
@@ -316,8 +317,8 @@
 
 				{#if entry.pageSlug}
 					<section class="bg-surface p-3">
-						<h2 class="mb-2 text-[0.625rem] font-semibold uppercase tracking-wider text-secondary">Linked article</h2>
-						<a href="/know/{entry.pageSlug}" class="text-xs text-link hover:text-link-hover hover:underline">Read the full article →</a>
+						<h2 class="mb-2 text-[0.625rem] font-semibold uppercase tracking-wider text-secondary">{m.wb_linked_article()}</h2>
+						<a href="/know/{entry.pageSlug}" class="text-xs text-link hover:text-link-hover hover:underline">{m.wb_read_full_article()} →</a>
 					</section>
 				{/if}
 			</aside>

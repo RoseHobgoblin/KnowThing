@@ -9,6 +9,7 @@
 	import { goto } from '$app/navigation'
 	import { createMutation } from '@tanstack/svelte-query'
 	import { api } from '$lib/api'
+	import { m } from '$lib/paraglide/messages.js'
 
 	let { data }: { data: PageData } = $props()
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
@@ -23,75 +24,75 @@
 
 	async function handleChangePassword() {
 		if (newPassword !== confirmPassword) {
-			pushError('Passwords do not match')
+			pushError(m.auth_passwords_no_match())
 			return
 		}
 		try {
 			await accountMutation.mutateAsync({ method: 'PUT', body: { currentPassword, newPassword } })
-			pushSuccess('Password changed. Please log in again.')
+			pushSuccess(m.auth_password_changed())
 			goto('/auth/login')
 		} catch (error) {
-			pushError(error instanceof Error ? error.message : 'Failed to change password')
+			pushError(error instanceof Error ? error.message : m.auth_change_password_failed())
 		}
 	}
 
 	async function handleDeleteAccount() {
 		const ok = await confirmDialog.confirm(
-			'Delete account',
-			'This will permanently delete your account and all your sessions. This cannot be undone.',
-			'Delete my account',
-			'Cancel',
+			m.auth_delete_account_title(),
+			m.auth_delete_account_confirm(),
+			m.auth_delete_account_ok(),
+			m.common_cancel(),
 		)
 		if (!ok) return
 
 		try {
 			await accountMutation.mutateAsync({ method: 'DELETE' })
-			pushSuccess('Account deleted')
+			pushSuccess(m.auth_account_deleted())
 			goto('/')
 		} catch (error) {
-			pushError(error instanceof Error ? error.message : 'Failed to delete account')
+			pushError(error instanceof Error ? error.message : m.auth_delete_account_failed())
 		}
 	}
 </script>
 
 <svelte:head>
-	<title>Account — KnowThing</title>
+	<title>{m.auth_account()} — KnowThing</title>
 </svelte:head>
 
 <ArticleShell
 	breadcrumbs={accountBreadcrumbs()}
-	title="Account"
+	title={m.auth_account()}
 >
 	<!-- Info -->
 	<section class="bg-raised p-4 mb-6">
 		<div class="flex items-center gap-3 text-sm">
-			<span class="text-secondary">Username</span>
+			<span class="text-secondary">{m.auth_username()}</span>
 			<span class="text-body font-medium">{data.username}</span>
 		</div>
 		<div class="flex items-center gap-3 text-sm mt-1">
-			<span class="text-secondary">Role</span>
+			<span class="text-secondary">{m.auth_role()}</span>
 			<span class="text-body font-medium capitalize">{data.role}</span>
 		</div>
 	</section>
 
 	<!-- Change password -->
 	<section class="mb-6">
-		<h2 class="text-sm font-semibold text-heading mb-3">Change Password</h2>
+		<h2 class="text-sm font-semibold text-heading mb-3">{m.auth_change_password()}</h2>
 		<div class="space-y-3 max-w-md">
 			<Input
-				label="Current password"
+				label={m.auth_current_password()}
 				type="password"
 				bind:value={currentPassword}
 				autocomplete="current-password"
 			/>
 			<Input
-				label="New password"
+				label={m.auth_new_password()}
 				type="password"
 				bind:value={newPassword}
 				autocomplete="new-password"
 			/>
 			<Input
-				label="Confirm new password"
+				label={m.auth_confirm_new_password()}
 				type="password"
 				bind:value={confirmPassword}
 				autocomplete="new-password"
@@ -101,7 +102,7 @@
 				disabled={!currentPassword || !newPassword || !confirmPassword}
 				loading={accountMutation.isPending}
 			>
-				{accountMutation.isPending ? 'Changing...' : 'Change Password'}
+				{accountMutation.isPending ? m.auth_changing() : m.auth_change_password()}
 			</Button>
 		</div>
 	</section>
@@ -109,10 +110,10 @@
 	<!-- Delete account -->
 	{#if data.role !== 'owner'}
 		<section class="border-t border-border-subtle pt-6">
-			<h2 class="text-sm font-semibold text-error mb-2">Danger Zone</h2>
-			<p class="text-xs text-dim mb-3">Permanently delete your account. This cannot be undone.</p>
+			<h2 class="text-sm font-semibold text-error mb-2">{m.auth_danger_zone()}</h2>
+			<p class="text-xs text-dim mb-3">{m.auth_delete_account_desc()}</p>
 			<Button variant="danger" onclick={handleDeleteAccount}>
-				Delete Account
+				{m.auth_delete_account()}
 			</Button>
 		</section>
 	{/if}

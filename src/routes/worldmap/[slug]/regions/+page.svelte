@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation'
+	import { m } from '$lib/paraglide/messages.js'
 	import { pushError, pushSuccess } from '$lib/notifications.svelte'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import WorldSvgMap from '$lib/components/worldmap/WorldSvgMap.svelte'
@@ -75,7 +76,7 @@
 			const response = await fetch('/api/media', { method: 'POST', body: formData })
 			if (!response.ok) {
 				const payload = await response.json().catch(() => null) as { error?: string } | null
-				throw new Error(payload?.error ?? 'Failed to upload map SVG')
+				throw new Error(payload?.error ?? m.map_failed_upload())
 			}
 			return response.json() as Promise<{ filename: string }>
 		},
@@ -89,7 +90,7 @@
 	)
 
 	const knowOptions = $derived([
-		{ value: 'NOTHING', label: 'NOTHING (Disable Clickability)' },
+		{ value: 'NOTHING', label: m.map_nothing_option() },
 		...data.knowPages.map(page => ({
 			value: page.slug,
 			label: `${page.title} (${page.slug})`,
@@ -97,7 +98,7 @@
 	])
 
 	const svgMediaOptions = $derived([
-		{ value: '', label: 'Choose existing SVG from media' },
+		{ value: '', label: m.map_choose_existing_svg() },
 		...data.svgMedia.map(file => ({
 			value: file.filename,
 			label: file.filename,
@@ -105,11 +106,11 @@
 	])
 
 	const hasSvgSource = $derived(data.map.hasUploadedSource && data.map.imageMimeType === 'image/svg+xml')
-	const uploadActionLabel = $derived(hasSvgSource ? 'Replace SVG And Ingest' : 'Upload SVG And Ingest')
+	const uploadActionLabel = $derived(hasSvgSource ? m.map_replace_svg_ingest() : m.map_upload_svg_ingest())
 	const uploadHelpText = $derived(
 		hasSvgSource
-			? 'Replace the linked SVG source for this map, then re-ingest colors and paths.'
-			: 'Upload an SVG source for this map to enable ingest.',
+			? m.map_upload_help_replace()
+			: m.map_upload_help_new(),
 	)
 	const currentMapImageUrl = $derived(
 		data.map.imageFilename ? `/api/media/${encodeURIComponent(data.map.imageFilename)}` : null,
@@ -136,10 +137,10 @@
 	async function runIngest() {
 		try {
 			const result = await ingestMutation.mutateAsync()
-			pushSuccess(`Ingested ${result.uniqueColorCount} colors. ${result.createdCountries} new country stubs created.`)
+			pushSuccess(m.map_ingest_success({ colors: result.uniqueColorCount, countries: result.createdCountries }))
 			await invalidateAll()
 		} catch (error) {
-			pushError(error instanceof Error ? error.message : 'Failed to ingest map SVG')
+			pushError(error instanceof Error ? error.message : m.map_failed_ingest())
 		}
 	}
 
@@ -152,16 +153,18 @@
 			.filter(entry => entry.pageSlug.length > 0)
 
 		if (payload.length === 0) {
-			pushError('Choose at least one wiki page before saving')
+			pushError(m.map_choose_one_page())
 			return
 		}
 
 		try {
 			const result = await assignmentsMutation.mutateAsync(payload)
-			pushSuccess(`Saved ${result.updatedCount} assignment${result.updatedCount === 1 ? '' : 's'}`)
+			pushSuccess(result.updatedCount === 1
+				? m.map_saved_assignments_one({ count: result.updatedCount })
+				: m.map_saved_assignments_many({ count: result.updatedCount }))
 			await invalidateAll()
 		} catch (error) {
-			pushError(error instanceof Error ? error.message : 'Failed to save assignments')
+			pushError(error instanceof Error ? error.message : m.map_failed_save_assignments())
 		}
 	}
 
@@ -178,7 +181,7 @@
 
 	async function uploadSvgAndIngest() {
 		if (!selectedSvg && !selectedMediaSvg) {
-			pushError('Select an SVG file first')
+			pushError(m.map_select_svg_first())
 			return
 		}
 
@@ -187,7 +190,7 @@
 
 			if (selectedSvg) {
 				if (selectedSvg.type !== 'image/svg+xml') {
-					throw new Error('Only SVG files are supported for map ingest')
+					throw new Error(m.map_only_svg_supported())
 				}
 
 				const uploaded = await uploadMutation.mutateAsync(selectedSvg)
@@ -196,44 +199,44 @@
 
 			await mapUpdateMutation.mutateAsync(imageFilename)
 
-			pushSuccess(selectedMediaSvg ? 'Existing SVG linked to map' : 'SVG uploaded and linked to map')
+			pushSuccess(selectedMediaSvg ? m.map_existing_linked() : m.map_svg_uploaded_linked())
 			selectedSvg = null
 			selectedMediaSvg = ''
 			await runIngest()
 		} catch (error) {
-			pushError(error instanceof Error ? error.message : 'Failed to upload map SVG')
+			pushError(error instanceof Error ? error.message : m.map_failed_upload())
 		}
 	}
 </script>
 
 <svelte:head>
-	<title>{data.map.name} Region Assignments | World Map</title>
+	<title>{m.map_regions_title({ name: data.map.name })}</title>
 </svelte:head>
 
 <ArticleShell
 	breadcrumbs={worldmapRegionAssignmentsBreadcrumbs(data.map.name, data.map.slug)}
-	title={`Assign Regions: ${data.map.name}`}
+	title={m.map_assign_regions_title({ name: data.map.name })}
 >
 	{#snippet actions()}
 		<Button type="button" onclick={runIngest} disabled={ingesting}>
-			{ingesting ? 'Ingesting SVG...' : 'Re-ingest SVG Colors'}
+			{ingesting ? m.map_ingesting() : m.map_reingest()}
 		</Button>
 	{/snippet}
 
 	<div class="mb-4 text-sm text-secondary">
 		{#if data.map.imageFilename}
 			<div class="mb-2">
-				Map source: <span class="font-mono">{data.map.imageFilename}</span>
+				{m.map_map_source()} <span class="font-mono">{data.map.imageFilename}</span>
 			</div>
 		{/if}
 		{#if currentMapImageUrl && data.map.hasUploadedSource}
 			<div class="mb-3 max-w-xl bg-raised p-2">
-				<p class="mb-2 text-xs text-secondary">Current source preview</p>
-				<img src={currentMapImageUrl} alt="Current map source" class="h-44 w-full object-contain bg-page" />
+				<p class="mb-2 text-xs text-secondary">{m.map_current_source_preview()}</p>
+				<img src={currentMapImageUrl} alt={m.map_alt_current_source()} class="h-44 w-full object-contain bg-page" />
 			</div>
 			{#if data.map.imageWidth && data.map.imageHeight}
 				<div class="mb-3 bg-raised p-2">
-					<p class="mb-2 text-xs text-secondary">Hover a row below to highlight that region's clickable border.</p>
+					<p class="mb-2 text-xs text-secondary">{m.map_hover_row_help()}</p>
 					<WorldSvgMap
 						width={data.map.imageWidth}
 						height={data.map.imageHeight}
@@ -253,11 +256,11 @@
 				</div>
 			{/if}
 		{/if}
-		<span>Total regions: {data.regions.length}</span>
+		<span>{m.map_total_regions({ count: data.regions.length })}</span>
 		<span class="mx-2">·</span>
-		<span>Assigned: {data.assignedCount}</span>
+		<span>{m.map_assigned({ count: data.assignedCount })}</span>
 		<span class="mx-2">·</span>
-		<span>Unassigned: {data.unassignedCount}</span>
+		<span>{m.map_unassigned({ count: data.unassignedCount })}</span>
 	</div>
 
 	<div class="mb-5 bg-raised p-4 space-y-3">
@@ -267,7 +270,7 @@
 			items={svgMediaOptions}
 			value={selectedMediaSvg}
 			onValueChange={onMediaSvgSelected}
-			placeholder="Choose existing SVG from media"
+			placeholder={m.map_choose_existing_svg()}
 		/>
 		<div class="flex flex-col gap-3 sm:flex-row sm:items-center">
 			<input
@@ -277,25 +280,25 @@
 				class="text-sm text-secondary file:mr-3 file:px-3 file:py-1.5 file:border file:border-border file:bg-surface file:text-body"
 			/>
 			<Button type="button" onclick={uploadSvgAndIngest} disabled={uploading || ingesting}>
-				{uploading ? 'Uploading...' : uploadActionLabel}
+				{uploading ? m.map_uploading() : uploadActionLabel}
 			</Button>
 		</div>
 		{#if currentMapImageUrl && data.map.hasUploadedSource}
-			<p class="text-xs text-secondary">Current source stays visible above until you choose a replacement SVG.</p>
+			<p class="text-xs text-secondary">{m.map_current_stays_visible()}</p>
 		{/if}
 		{#if selectedSvgPreviewUrl}
 			<div class="max-w-xl bg-raised p-2">
-				<p class="mb-2 text-xs text-secondary">Selected SVG preview</p>
-				<img src={selectedSvgPreviewUrl} alt="Selected SVG preview" class="h-44 w-full object-contain bg-page" />
+				<p class="mb-2 text-xs text-secondary">{m.map_selected_svg_preview()}</p>
+				<img src={selectedSvgPreviewUrl} alt={m.map_selected_svg_preview()} class="h-44 w-full object-contain bg-page" />
 			</div>
 		{/if}
 	</div>
 
 	{#if data.regions.length === 0}
-		<p class="text-secondary">No regions exist yet. Run SVG ingest to detect colors and create empty country stubs.</p>
+		<p class="text-secondary">{m.map_no_regions()}</p>
 	{:else}
 		<div class="space-y-3">
-			<p class="text-sm text-secondary">Assign wiki pages for each hex color below. Assigned regions stay in the list.</p>
+			<p class="text-sm text-secondary">{m.map_assign_help()}</p>
 			{#each data.regions as region (region.id)}
 				<div
 					class="bg-raised p-3 grid grid-cols-1 gap-3 md:grid-cols-[auto_1fr] md:items-center"
@@ -307,7 +310,7 @@
 						<span class="inline-block size-6" style={`background-color: ${region.hexColor};`}></span>
 						<span class="font-mono">{region.hexColor}</span>
 						{#if region.pageSlug}
-							<span class="text-xs text-secondary">Assigned to {region.pageSlug}</span>
+							<span class="text-xs text-secondary">{m.map_assigned_to({ slug: region.pageSlug })}</span>
 						{/if}
 					</div>
 					<Select
@@ -315,7 +318,7 @@
 						items={knowOptions}
 						value={assignments[region.id] || ''}
 						onValueChange={value => setAssignment(region.id, value)}
-						placeholder="Pick a Know page"
+						placeholder={m.map_pick_know_page()}
 					/>
 				</div>
 			{/each}
@@ -323,7 +326,7 @@
 
 		<div class="mt-5">
 			<Button type="button" onclick={saveAssignments} disabled={saving}>
-				{saving ? 'Saving...' : 'Save Assignments'}
+				{saving ? m.common_saving() : m.map_save_assignments()}
 			</Button>
 		</div>
 	{/if}

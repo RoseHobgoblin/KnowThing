@@ -3,6 +3,7 @@
 	import { pushError, pushSuccess } from '$lib/notifications.svelte'
 	import { createMutation, createQuery } from '@tanstack/svelte-query'
 	import { api } from '$lib/api'
+	import { m } from '$lib/paraglide/messages.js'
 
 	type Variant = {
 		id: number
@@ -62,24 +63,24 @@
 				pronunciation: pronunciation.trim() || undefined,
 				spelling: spelling.trim() || undefined,
 			})
-			pushSuccess('Dialect variant added')
+			pushSuccess(m.wbc_variant_added())
 			adding = false
 			dialectIdString = ''
 			pronunciation = ''
 			spelling = ''
 			await invalidateAll()
 		} catch (error) {
-			pushError(error instanceof Error ? error.message : 'Failed to add variant')
+			pushError(error instanceof Error ? error.message : m.wbc_failed_add_variant())
 		}
 	}
 
 	async function removeVariant(variant: Variant) {
 		try {
 			await removeMutation.mutateAsync(variant.id)
-			pushSuccess('Variant removed')
+			pushSuccess(m.wbc_variant_removed())
 			await invalidateAll()
 		} catch (error) {
-			pushError(error instanceof Error ? error.message : 'Failed to remove variant')
+			pushError(error instanceof Error ? error.message : m.wbc_failed_remove_variant())
 		}
 	}
 </script>
@@ -99,40 +100,40 @@
 					<button
 						type="button"
 						onclick={() => removeVariant(variant)}
-						aria-label="Remove {variant.dialectName} variant"
+						aria-label={m.wbc_remove_variant_aria({ name: variant.dialectName })}
 						class="text-xs text-error opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100 hover:text-error-hover"
-					>remove</button>
+					>{m.common_remove()}</button>
 				{/if}
 			</div>
 		{/each}
 
 		{#if canEdit && !adding}
 			<button type="button" onclick={openAdd} class="text-xs text-link hover:text-link-hover hover:underline">
-				+ Add dialect variant
+				+ {m.wbc_add_dialect_variant()}
 			</button>
 		{/if}
 
 		{#if adding}
 			{#if dialectsQuery.isError}
-				<p class="text-xs text-error">Could not load dialects.</p>
+				<p class="text-xs text-error">{m.wbc_could_not_load_dialects()}</p>
 			{:else if dialectsQuery.isPending}
-				<p class="text-xs text-secondary">Loading dialectsâ€¦</p>
+				<p class="text-xs text-secondary">{m.wbc_loading_dialects()}</p>
 			{:else if dialects.length === 0}
 				<p class="text-xs text-secondary">
-					No dialects exist for this language yet — add one on the
-					<a href="/Wordbook/contribute/language/{languageSlug}" class="text-link hover:underline">language edit page</a>.
+					{m.wbc_no_dialects_add_prefix()}
+					<a href="/Wordbook/contribute/language/{languageSlug}" class="text-link hover:underline">{m.wbc_language_edit_page()}</a>.
 				</p>
 			{:else if availableDialects.length === 0}
-				<p class="text-xs text-secondary">Every dialect already has a variant. Remove one to change it.</p>
+				<p class="text-xs text-secondary">{m.wbc_every_dialect_has_variant()}</p>
 			{:else}
 				<form onsubmit={addVariant} class="flex flex-wrap items-center gap-2 pt-1">
 					<select
 						bind:value={dialectIdString}
 						required
-						aria-label="Dialect"
+						aria-label={m.wbc_dialect()}
 						class="px-2 py-1 text-xs text-body bg-surface outline-none focus:ring-2 focus:ring-accent"
 					>
-						<option value="" disabled>Dialect…</option>
+						<option value="" disabled>{m.wbc_dialect_placeholder()}</option>
 						{#each availableDialects as dialect (dialect.id)}
 							<option value={String(dialect.id)}>{dialect.name}</option>
 						{/each}
@@ -141,18 +142,18 @@
 						type="text"
 						bind:value={pronunciation}
 						placeholder="/pronunciation/"
-						aria-label="Pronunciation"
+						aria-label={m.wbc_pronunciation()}
 						class="px-2 py-1 text-xs font-mono text-body bg-surface outline-none focus:ring-2 focus:ring-accent"
 					/>
 					<input
 						type="text"
 						bind:value={spelling}
-						placeholder="spelling"
-						aria-label="Spelling"
+						placeholder={m.wbc_spelling_placeholder()}
+						aria-label={m.wbc_spelling()}
 						class="px-2 py-1 text-xs text-body bg-surface outline-none focus:ring-2 focus:ring-accent"
 					/>
-					<button type="submit" disabled={addMutation.isPending} class="px-2.5 py-1 bg-accent text-surface text-xs hover:bg-accent-hover disabled:opacity-50">Add</button>
-					<button type="button" onclick={() => adding = false} class="text-xs text-secondary hover:text-body">Cancel</button>
+					<button type="submit" disabled={addMutation.isPending} class="px-2.5 py-1 bg-accent text-surface text-xs hover:bg-accent-hover disabled:opacity-50">{m.common_add()}</button>
+					<button type="button" onclick={() => adding = false} class="text-xs text-secondary hover:text-body">{m.common_cancel()}</button>
 				</form>
 			{/if}
 		{/if}

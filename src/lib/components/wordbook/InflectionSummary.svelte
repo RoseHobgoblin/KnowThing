@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages.js'
+
 	let {
 		languageSlug,
 		dimensions = [],
@@ -29,21 +31,21 @@
 
 <div class="bg-surface p-4">
 	<div class="flex items-center justify-between mb-3">
-		<h3 class="text-sm font-semibold text-body">Inflection System</h3>
+		<h3 class="text-sm font-semibold text-body">{m.wbc_inflection_system()}</h3>
 		{#if canEdit}
 			<a
 				href="/Wordbook/contribute/language/{languageSlug}?tab=inflections"
 				class="text-xs text-link hover:text-link-hover hover:underline"
-			>Edit</a>
+			>{m.common_edit()}</a>
 		{/if}
 	</div>
 
 	{#if grouped.length === 0}
 		<p class="text-xs text-secondary">
-			No inflection dimensions defined yet.
+			{m.wbc_no_inflection_dimensions()}
 			{#if canEdit}
-				<a href="/Wordbook/contribute/language/{languageSlug}?tab=inflections" class="text-link hover:underline">Set one up</a>
-				to enable declension/conjugation tables.
+				<a href="/Wordbook/contribute/language/{languageSlug}?tab=inflections" class="text-link hover:underline">{m.wbc_set_one_up()}</a>
+				{m.wbc_enable_declension_tables()}
 			{/if}
 		</p>
 	{:else}

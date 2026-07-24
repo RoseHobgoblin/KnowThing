@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages.js'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import WorldSvgMap from '$lib/components/worldmap/WorldSvgMap.svelte'
 	import { worldmapDetailBreadcrumbs } from '$lib/utils/breadcrumbs.js'
@@ -28,8 +29,8 @@
 </script>
 
 <svelte:head>
-	<title>{data.map.name} | World Map</title>
-	<meta name="description" content={data.map.description || `Interactive map for ${data.map.name}`} />
+	<title>{m.map_detail_title({ name: data.map.name })}</title>
+	<meta name="description" content={data.map.description || m.map_detail_meta({ name: data.map.name })} />
 </svelte:head>
 
 <ArticleShell
@@ -38,7 +39,7 @@
 >
 	{#snippet actions()}
 		<a class="text-link hover:text-link-hover text-sm" href={`/worldmap/${data.map.slug}/regions`}>
-			Manage Region Assignments
+			{m.map_manage_region_assignments()}
 		</a>
 	{/snippet}
 
@@ -57,6 +58,6 @@
 			regions={data.regions}
 		/>
 	{:else}
-		<p class="text-secondary">Map image dimensions are missing. Set image width and height to render SVG view.</p>
+		<p class="text-secondary">{m.map_dimensions_missing()}</p>
 	{/if}
 </ArticleShell>

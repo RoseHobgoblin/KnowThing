@@ -8,6 +8,7 @@
 	import SaveStatusBadge from '$lib/components/editor/SaveStatusBadge.svelte'
 	import UnsavedChangesGuard from '$lib/components/editor/UnsavedChangesGuard.svelte'
 	import FormNotice from '$lib/components/editor/FormNotice.svelte'
+	import { m } from '$lib/paraglide/messages.js'
 
 	let { form, data }: { form: ActionData, data: PageData } = $props()
 	let content = $state(untrack(() => form?.content ?? ''))
@@ -20,12 +21,12 @@
 </script>
 
 <svelte:head>
-	<title>Create page - KnowThing</title>
+	<title>{m.know_create_page()} - KnowThing</title>
 </svelte:head>
 
 {#if formError}
 	<div class="mb-3">
-		<FormNotice title="Article was not created" message={formError} />
+		<FormNotice title={m.know_article_not_created()} message={formError} />
 	</div>
 {/if}
 
@@ -39,7 +40,7 @@
 				name="title"
 				type="text"
 				required
-				placeholder="Page title"
+				placeholder={m.know_page_title_placeholder()}
 				bind:value={title}
 				error={titleError}
 			/>
@@ -50,7 +51,7 @@
 			type="button"
 			class="px-3 py-1.5 text-sm hover:bg-page {showPreview ? 'bg-accent-subtle border-accent-border' : ''}"
 		>
-			{showPreview ? 'Hide preview' : 'Show preview'}
+			{showPreview ? m.know_hide_preview() : m.know_show_preview()}
 		</button>
 	</div>
 
@@ -61,7 +62,7 @@
 
 		{#if showPreview}
 			<div class="w-1/2 overflow-hidden">
-				<div class="bg-raised px-3 py-1 text-xs font-medium text-dim border-b border-border-strong">Preview</div>
+				<div class="bg-raised px-3 py-1 text-xs font-medium text-dim border-b border-border-strong">{m.common_preview()}</div>
 				<LivePreview {content} />
 			</div>
 		{/if}
@@ -76,7 +77,7 @@
 				hover:bg-accent-hover disabled:opacity-50
 			"
 		>
-			{submitting ? 'Creating...' : 'Create page'}
+			{submitting ? m.common_creating() : m.know_create_page()}
 		</button>
 	</div>
 </form>
