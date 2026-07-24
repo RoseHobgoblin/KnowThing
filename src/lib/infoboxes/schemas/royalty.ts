@@ -55,7 +55,7 @@ export const royaltySchema: InfoboxSchema = {
 				{ label: 'Burial', keys: ['burial_place'] },
 				{
 					label: 'Consort',
-					compose: (fields) => getField(fields, 'spouse', 'consort') ?? '',
+					compose: fields => getField(fields, 'spouse', 'consort') ?? '',
 				},
 				{ label: 'Issue', keys: ['issue'] },
 				{ label: 'House', keys: ['royal_house', 'house', 'dynasty'] },

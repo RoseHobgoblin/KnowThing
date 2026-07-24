@@ -14,6 +14,7 @@
 	import { wordbookEditLanguageBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import { createMutation } from '@tanstack/svelte-query'
 	import { api } from '$lib/api'
+	import { m } from '$lib/paraglide/messages.js'
 
 	let { data }: { data: PageData } = $props()
 
@@ -42,15 +43,15 @@
 	}
 
 	const navItems = [
-		{ id: 'details', label: 'Details' },
-		{ id: 'phonology', label: 'Phonology' },
-		{ id: 'orthography', label: 'Orthography' },
-		{ id: 'inflections', label: 'Inflections' },
+		{ id: 'details', label: m.wb_tab_details() },
+		{ id: 'phonology', label: m.wb_tab_phonology() },
+		{ id: 'orthography', label: m.wb_tab_orthography() },
+		{ id: 'inflections', label: m.wb_tab_inflections() },
 	]
 
 	async function handleDetailsSubmit(formData: Record<string, unknown>) {
 		await updateMutation.mutateAsync(formData)
-		pushSuccess('Language updated')
+		pushSuccess(m.wb_language_updated())
 		goto(`/Wordbook/${data.language.slug}`)
 	}
 </script>
@@ -61,7 +62,7 @@
 
 <ArticleShell
 	breadcrumbs={wordbookEditLanguageBreadcrumbs(wbName, data.language)}
-	title="Edit: {data.language.name}"
+	title={m.wb_edit_colon({ name: data.language.name })}
 >
 	<div class="mb-4">
 		<TabNavigation
@@ -87,7 +88,7 @@
 			}}
 			existingLanguages={data.otherLanguages}
 			onsubmit={handleDetailsSubmit}
-			submitLabel="Save Changes"
+			submitLabel={m.wb_save_changes()}
 		/>
 
 		<div class="mt-6">
@@ -100,9 +101,11 @@
 		</div>
 	{:else if activeTab === 'phonology'}
 		<div class="space-y-3">
-			<HelpBlock title="What is a phoneme?" open>
-				<p>A <strong>phoneme</strong> is a meaningful unit of sound in this language — a sound that can change a word's meaning. List one row per distinctive sound.</p>
-				<p>Use <strong>IPA</strong> in the symbol column. Mark <strong>marginal</strong> for sounds that only appear in loanwords or rare contexts. <em>Place</em>, <em>manner</em>, and <em>voicing</em> are optional but power the chart layout.</p>
+			<HelpBlock title={m.wb_what_is_phoneme()} open>
+				<!-- eslint-disable-next-line svelte/no-at-html-tags -- localized static markup, not user input -->
+				<p>{@html m.wb_phoneme_explain_1()}</p>
+				<!-- eslint-disable-next-line svelte/no-at-html-tags -- localized static markup, not user input -->
+				<p>{@html m.wb_phoneme_explain_2()}</p>
 			</HelpBlock>
 			<PhonemeEditor
 				languageSlug={data.language.slug}
@@ -111,9 +114,11 @@
 		</div>
 	{:else if activeTab === 'orthography'}
 		<div class="space-y-3">
-			<HelpBlock title="What is a grapheme?" open>
-				<p>A <strong>grapheme</strong> is a written symbol or letter cluster. List the script units that represent the language's phonemes.</p>
-				<p><em>Romanization</em> is the Latin-alphabet rendering used in transliteration. <em>Environment</em> describes when this grapheme is used (e.g. "word-initial", "before front vowels"). Link each grapheme to the phoneme(s) it represents.</p>
+			<HelpBlock title={m.wb_what_is_grapheme()} open>
+				<!-- eslint-disable-next-line svelte/no-at-html-tags -- localized static markup, not user input -->
+				<p>{@html m.wb_grapheme_explain_1()}</p>
+				<!-- eslint-disable-next-line svelte/no-at-html-tags -- localized static markup, not user input -->
+				<p>{@html m.wb_grapheme_explain_2()}</p>
 			</HelpBlock>
 			<GraphemeEditor
 				languageSlug={data.language.slug}

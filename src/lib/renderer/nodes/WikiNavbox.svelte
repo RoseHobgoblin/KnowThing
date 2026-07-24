@@ -9,7 +9,7 @@
 	<div class="bg-border px-3 py-1.5 font-bold text-center">{title}</div>
 	{#each groups as group, groupIndex (groupIndex)}
 		<div class="flex border-t border-border-strong">
-			<div class="bg-raised px-3 py-1 font-semibold min-w-[120px] border-r border-border-strong">
+			<div class="bg-raised px-3 py-1 font-semibold min-w-30 border-r border-border-strong">
 				{group.name}
 			</div>
 			<div class="px-3 py-1 flex-1">

@@ -10,6 +10,7 @@
 	import { createMutation, createQuery } from '@tanstack/svelte-query'
 	import { api } from '$lib/api'
 	import { cn } from '$lib/utils'
+	import { m } from '$lib/paraglide/messages.js'
 	import { SvelteURLSearchParams } from 'svelte/reactivity'
 
 	type MediaFile = {
@@ -61,7 +62,7 @@
 			const response = await fetch('/api/media', { method: 'POST', body: formData })
 			if (!response.ok) {
 				const payload = await response.json().catch(() => null) as { error?: string } | null
-				throw new Error(payload?.error ?? 'Upload failed')
+				throw new Error(payload?.error ?? m.admin_upload_failed())
 			}
 			return response.json()
 		},
@@ -93,14 +94,14 @@
 
 	async function uploadFile(file: File) {
 		uploadError = ''
-		uploadProgress = `Uploading ${file.name}...`
+		uploadProgress = m.admin_uploading({ name: file.name })
 
 		try {
 			await uploadMutation.mutateAsync(file)
 			uploadProgress = ''
-			pushSuccess(`Uploaded ${file.name}`)
+			pushSuccess(m.admin_uploaded({ name: file.name }))
 		} catch (error) {
-			pushError(error instanceof Error ? error.message : 'Upload failed')
+			pushError(error instanceof Error ? error.message : m.admin_upload_failed())
 		} finally {
 			uploadProgress = ''
 		}
@@ -148,18 +149,18 @@
 </script>
 
 <svelte:head>
-	<title>Media Library — KnowThing</title>
+	<title>{m.admin_media_page_title()}</title>
 </svelte:head>
 
 <div class="space-y-4">
 	<div class="flex items-center justify-between">
 		<div>
-			<h1 class="text-xl font-bold text-heading">Media Library</h1>
-			<p class="text-sm text-dim">Browse and manage uploaded files. Use unified search for cross-domain search behavior.</p>
+			<h1 class="text-xl font-bold text-heading">{m.admin_media_library()}</h1>
+			<p class="text-sm text-dim">{m.admin_media_library_desc()}</p>
 		</div>
 		<div class="flex items-center gap-3">
-			<a href={unifiedSearchHref} class="text-sm text-link hover:text-link-hover">Open in search</a>
-			<span class="text-sm text-dim">{total} files</span>
+			<a href={unifiedSearchHref} class="text-sm text-link hover:text-link-hover">{m.admin_open_in_search()}</a>
+			<span class="text-sm text-dim">{m.admin_files_count({ count: total })}</span>
 		</div>
 	</div>
 
@@ -177,16 +178,16 @@
 		>
 			<div class="text-dim text-sm mb-2">
 				{#if dragOver}
-					Drop to upload
+					{m.admin_drop_to_upload()}
 				{:else if uploading}
 					{uploadProgress}
 				{:else}
-					Drag & drop images here, or
+					{m.admin_drag_drop_images()}
 				{/if}
 			</div>
 			{#if !uploading}
 				<label class="inline-block px-4 py-1.5 bg-accent text-surface text-sm cursor-pointer transition-colors hover:bg-accent-hover">
-					Choose files
+					{m.admin_choose_files()}
 					<input type="file" accept="image/*" multiple onchange={handleFileInput} class="hidden" />
 				</label>
 			{/if}
@@ -196,7 +197,7 @@
 		</div>
 	{:else if permissions.isAuthenticated}
 		<div class="bg-surface p-6 text-center">
-			<p class="text-sm text-secondary">Editor role required to upload media.</p>
+			<p class="text-sm text-secondary">{m.admin_editor_required_upload()}</p>
 		</div>
 	{/if}
 
@@ -206,7 +207,7 @@
 			type="text"
 			bind:value={searchQuery}
 			oninput={handleSearch}
-			placeholder="Search files..."
+			placeholder={m.admin_search_files_placeholder()}
 			class="flex-1 min-w-50"
 		/>
 
@@ -214,25 +215,25 @@
 			type="single"
 			bind:value={sortBy}
 			items={[
-				{ value: 'newest', label: 'Newest' },
-				{ value: 'oldest', label: 'Oldest' },
-				{ value: 'name', label: 'Name' },
-				{ value: 'size', label: 'Largest' },
-				{ value: 'usage', label: 'Most used' },
+				{ value: 'newest', label: m.admin_sort_newest() },
+				{ value: 'oldest', label: m.admin_sort_oldest() },
+				{ value: 'name', label: m.common_name() },
+				{ value: 'size', label: m.admin_sort_largest() },
+				{ value: 'usage', label: m.admin_sort_most_used() },
 			]}
 		/>
 
-		<Checkbox bind:value={showUnused} label="Unused only" onclick={() => { currentPage = 0 }} />
+		<Checkbox bind:value={showUnused} label={m.admin_unused_only()} onclick={() => { currentPage = 0 }} />
 
 		<div class="flex overflow-hidden">
 			<button
 				onclick={() => viewMode = 'grid'}
 				class={cn('px-2.5 py-1.5 text-xs', viewMode === 'grid' ? 'bg-accent text-surface' : 'bg-surface text-secondary hover:bg-page')}
-			>Grid</button>
+			>{m.admin_grid()}</button>
 			<button
 				onclick={() => viewMode = 'list'}
 				class={cn('px-2.5 py-1.5 text-xs', viewMode === 'list' ? 'bg-accent text-surface' : 'bg-surface text-secondary hover:bg-page')}
-			>List</button>
+			>{m.admin_list()}</button>
 		</div>
 
 		<button
@@ -240,14 +241,14 @@
 			onclick={() => goto(unifiedSearchHref)}
 			class="px-3 py-2 text-xs text-secondary hover:bg-page"
 		>
-			Search View
+			{m.admin_search_view()}
 		</button>
 	</div>
 
 	<!-- File grid/list -->
 	{#if loading}
 		{#if viewMode === 'grid'}
-			<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5" aria-busy="true" aria-label="Loading media">
+			<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5" aria-busy="true" aria-label={m.admin_loading_media()}>
 				{#each Array.from({ length: 12 }) as _, index (index)}
 					<div class="bg-surface overflow-hidden">
 						<Skeleton class="aspect-square w-full" />
@@ -259,7 +260,7 @@
 				{/each}
 			</div>
 		{:else}
-			<div class="bg-surface divide-y divide-border-subtle" aria-busy="true" aria-label="Loading media">
+			<div class="bg-surface divide-y divide-border-subtle" aria-busy="true" aria-label={m.admin_loading_media()}>
 				{#each Array.from({ length: 8 }) as _, index (index)}
 					<div class="flex items-center gap-4 px-4 py-3">
 						<Skeleton class="size-12 shrink-0" />
@@ -273,7 +274,7 @@
 		{/if}
 	{:else if files.length === 0}
 		<div class="text-center py-12 text-secondary">
-			{searchQuery ? 'No files match your search.' : 'No media uploaded yet.'}
+			{searchQuery ? m.admin_no_files_match() : m.admin_no_media_yet()}
 		</div>
 	{:else if viewMode === 'grid'}
 		<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
@@ -291,7 +292,7 @@
 								class="size-full object-cover transition-transform group-hover:scale-105"
 							/>
 						{:else}
-							<span class="text-xs text-secondary">file</span>
+							<span class="text-xs text-secondary">{m.admin_file_label()}</span>
 						{/if}
 					</div>
 					<div class="p-2">
@@ -315,7 +316,7 @@
 						{#if file.mimeType?.startsWith('image/')}
 							<img src="/api/media/{file.filename}?w=150" alt={file.filename} loading="lazy" class="size-full object-cover" />
 						{:else}
-							<span class="text-xs text-secondary">file</span>
+							<span class="text-xs text-secondary">{m.admin_file_label()}</span>
 						{/if}
 					</div>
 					<div class="flex-1 min-w-0">
@@ -325,7 +326,7 @@
 							{#if file.width && file.height}
 								<span class="mx-1">·</span> {file.width}×{file.height}
 							{/if}
-							<span class="mx-1">·</span> {file.usageCount} {file.usageCount === 1 ? 'page' : 'pages'}
+							<span class="mx-1">·</span> {file.usageCount === 1 ? m.admin_usage_page_one({ count: file.usageCount }) : m.admin_usage_page_other({ count: file.usageCount })}
 							{#if file.description}
 								<span class="mx-1">·</span> <span class="text-dim">{file.description}</span>
 							{/if}

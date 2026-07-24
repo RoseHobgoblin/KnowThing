@@ -141,7 +141,7 @@ async function searchWords(params: UnifiedSearchParams): Promise<UnifiedSearchRe
 		offset: params.offset,
 	})
 
-	return results.map((result) => ({
+	return results.map(result => ({
 		kind: 'word',
 		title: result.word,
 		href: `/Wordbook/${result.languageSlug}/${encodeURIComponent(result.word)}`,

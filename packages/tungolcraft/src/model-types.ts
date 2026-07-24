@@ -23,6 +23,7 @@ export type UnitSymbol =
 	| 'kg'
 	| 'kg/m^3'
 	| 'W'
+	| 'W/m^2'
 	| 'K'
 	| 'm^3/s^2'
 	| 'AU'
@@ -189,4 +190,28 @@ export interface SatelliteStabilityOutput {
 export interface HabitableZoneOutput {
 	inner: QuantityRecord<'AU'>
 	outer: QuantityRecord<'AU'>
+}
+
+export interface MainSequenceScreenOutput {
+	expectedLuminosity: QuantityRecord<'W'>
+	expectedLuminositySolar: QuantityRecord<'1'>
+	luminosityRatio: QuantityRecord<'1'>
+	logLuminosityResidualDex: QuantityRecord<'1'>
+	intrinsicScatterDex: QuantityRecord<'1'>
+	withinOneSigma: boolean
+	massDomain: string
+}
+
+export interface KopparapuHabitableZoneOutput extends HabitableZoneOutput {
+	innerEffectiveFlux: QuantityRecord<'1'>
+	outerEffectiveFlux: QuantityRecord<'1'>
+	planetMassClass: '0.1-earth' | '1-earth' | '5-earth'
+}
+
+export interface RockyRadiusOutput {
+	radius: QuantityRecord<'m'>
+	radiusEarth: QuantityRecord<'1'>
+	massEarth: QuantityRecord<'1'>
+	coreMassFraction: QuantityRecord<'1'>
+	compositionClass: 'two-layer-rocky'
 }

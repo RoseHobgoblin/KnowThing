@@ -16,6 +16,8 @@
 	import Copy from 'phosphor-svelte/lib/CopyIcon'
 	import { createMutation, createQuery } from '@tanstack/svelte-query'
 	import { api } from '$lib/api'
+	import { m } from '$lib/paraglide/messages.js'
+	import { untrack } from 'svelte'
 
 	interface Phoneme {
 		id: number
@@ -93,7 +95,7 @@
 
 	interface LinkedGrapheme { id: number, grapheme: string, environment: string | null }
 
-	let phonemes = $state<Phoneme[]>(initial)
+	let phonemes = $state<Phoneme[]>(untrack(() => initial))
 	let pickerOpen = $state(false)
 	let pickerFilter = $state<'consonant' | 'vowel'>('consonant')
 	let manualOpen = $state(false)
@@ -205,7 +207,7 @@
 			const created = await addMutation.mutateAsync(body)
 			phonemes = [...phonemes, created]
 		} catch (error) {
-			errorMessage = error instanceof Error ? error.message : 'Failed to add phoneme'
+			errorMessage = error instanceof Error ? error.message : m.phon_failed_add_phoneme()
 		}
 	}
 
@@ -240,7 +242,7 @@
 			draftSnapshot = $state.snapshot(draft) as Draft
 			manualOpen = false
 		} catch (error) {
-			errorMessage = error instanceof Error ? error.message : 'Failed to save phoneme'
+			errorMessage = error instanceof Error ? error.message : m.phon_failed_save_phoneme()
 		}
 	}
 
@@ -258,10 +260,10 @@
 	async function cancelDialog() {
 		if (dirty) {
 			const ok = await confirmDialog.confirm(
-				'Discard changes?',
-				'You have unsaved changes to this phoneme. Close without saving?',
-				'Discard',
-				'Keep editing',
+				m.phon_discard_changes(),
+				m.phon_discard_changes_phoneme_body(),
+				m.phon_discard(),
+				m.phon_keep_editing(),
 			)
 			if (!ok) return
 		}
@@ -288,7 +290,7 @@
 		try {
 			body = await deleteMutation.mutateAsync(p.id)
 		} catch (error) {
-			errorMessage = error instanceof Error ? error.message : 'Failed to delete phoneme'
+			errorMessage = error instanceof Error ? error.message : m.phon_failed_delete_phoneme()
 			return
 		}
 		const affected = body.affectedGraphemes ?? 0
@@ -299,8 +301,8 @@
 		if (editingId === p.id) manualOpen = false
 
 		const toastMessage = affected > 0
-			? `Deleted /${p.ipa}/. ${affected} ${affected === 1 ? 'grapheme' : 'graphemes'} became silent.`
-			: `Deleted /${p.ipa}/`
+			? m.phon_phoneme_deleted_affected({ ipa: p.ipa, count: affected })
+			: m.phon_phoneme_deleted({ ipa: p.ipa })
 
 		pushUndoable(
 			toastMessage,
@@ -326,7 +328,7 @@
 					})
 					phonemes = [...phonemes, restored]
 				} catch {
-					pushError(`Couldn't restore /${snapshot.ipa}/`)
+					pushError(m.phon_couldnt_restore_phoneme({ ipa: snapshot.ipa }))
 				}
 			},
 			// onExpire: nothing to do — server already deleted. Kept for parity.
@@ -351,10 +353,10 @@
 			{#if !readOnly}
 				<div class="flex gap-2">
 					<Button variant="secondary" size="sm" onclick={() => openPicker(kind)}>
-						<Plus size={14} weight="bold" /> IPA chart
+						<Plus size={14} weight="bold" /> {m.phon_ipa_chart()}
 					</Button>
 					<Button variant="ghost" size="sm" onclick={() => openManual(kind)}>
-						<Plus size={14} weight="bold" /> Custom
+						<Plus size={14} weight="bold" /> {m.phon_custom()}
 					</Button>
 				</div>
 			{/if}
@@ -362,13 +364,13 @@
 
 		{#if !grid || (grid.columns.length === 0 && unplaced.length === 0)}
 			<div class="bg-raised px-4 py-8 text-center text-dim text-sm">
-				No {label.toLowerCase()} defined yet.
+				{m.phon_none_defined_yet({ label: label.toLowerCase() })}
 				{#if !readOnly}
 					<div class="mt-2">
 						<button type="button" class="text-link hover:underline" onclick={() => openPicker(kind)}>
-							Pick from the IPA chart
+							{m.phon_pick_from_ipa_chart()}
 						</button>
-						to get started.
+						{m.phon_to_get_started()}
 					</div>
 				{/if}
 			</div>
@@ -378,7 +380,7 @@
 					<thead>
 						<tr>
 							<th class="px-3 py-2 border-b border-r border-border-subtle bg-muted text-left text-heading capitalize font-medium">
-								{kind === 'consonant' ? 'Manner' : 'Height'}
+								{kind === 'consonant' ? m.phon_manner() : m.phon_height()}
 							</th>
 							{#each grid.columns as col (col)}
 								<th class="px-3 py-2 border-b border-r border-border-subtle bg-muted text-heading font-medium capitalize text-center">
@@ -410,7 +412,7 @@
 															readOnly ? 'cursor-default' : 'cursor-pointer hover:bg-accent-subtle hover:text-accent',
 														)}
 														onclick={() => openCell(kind, p as Phoneme, axes)}
-														title={p.marginal ? `marginal · ${p.notes ?? p.ipa}` : p.notes ?? `${p.ipa} — edit`}
+														title={p.marginal ? m.phon_marginal_title({ detail: p.notes ?? p.ipa }) : p.notes ?? m.phon_ipa_edit_title({ ipa: p.ipa })}
 														disabled={readOnly}
 													>
 														{#if p.marginal}({p.ipa}){:else}{p.ipa}{/if}
@@ -422,7 +424,7 @@
 														type="button"
 														class="text-secondary transition-colors opacity-0 px-1 hover:text-accent group-hover:opacity-100"
 														onclick={() => openCell(kind, null, axes)}
-														title="Add another here"
+														title={m.phon_add_another_here()}
 													>
 														<Plus size={12} weight="bold" />
 													</button>
@@ -433,8 +435,8 @@
 												type="button"
 												class="size-full min-h-8 px-2 py-1.5 text-secondary transition-colors cursor-pointer hover:text-accent hover:bg-accent-subtle"
 												onclick={() => openCell(kind, null, axes)}
-												title="Add {row.header} {col}"
-												aria-label="Add {row.header} {col}"
+												title={m.phon_add_cell({ row: row.header, col })}
+												aria-label={m.phon_add_cell({ row: row.header, col })}
 											>
 												<Plus size={12} weight="bold" class="mx-auto opacity-60" />
 											</button>
@@ -465,7 +467,7 @@
 			{#if unplaced.length > 0}
 				<div class="mt-3 border-t border-border-subtle pt-2">
 					<div class="text-xs text-dim mb-1.5">
-						Unplaced — missing {kind === 'consonant' ? 'place or manner' : 'height or backness'}:
+						{kind === 'consonant' ? m.phon_unplaced_missing_place_manner() : m.phon_unplaced_missing_height_backness()}
 					</div>
 					<div class="flex flex-wrap gap-1.5">
 						{#each unplaced as p (p.id)}
@@ -485,16 +487,16 @@
 	</section>
 {/snippet}
 
-{@render inventorySection('Consonants', 'consonant', consonantGrid, unplacedConsonants)}
-{@render inventorySection('Vowels', 'vowel', vowelGrid, unplacedVowels)}
+{@render inventorySection(m.phon_consonants(), 'consonant', consonantGrid, unplacedConsonants)}
+{@render inventorySection(m.phon_vowels(), 'vowel', vowelGrid, unplacedVowels)}
 
 {#if otherPhonemes.length > 0}
 	<section class="mb-8">
 		<header class="flex items-center justify-between mb-3">
-			<h2 class="text-lg font-semibold text-heading">Other</h2>
+			<h2 class="text-lg font-semibold text-heading">{m.phon_other()}</h2>
 			{#if !readOnly}
 				<Button variant="ghost" size="sm" onclick={() => openManual('diphthong')}>
-					<Plus size={14} weight="bold" /> Custom
+					<Plus size={14} weight="bold" /> {m.phon_custom()}
 				</Button>
 			{/if}
 		</header>
@@ -519,45 +521,45 @@
 
 <Dialog
 	bind:open={manualOpen}
-	title={editingId ? `Edit /${draft.ipa || '?'}/` : 'Add phoneme'}
+	title={editingId ? m.phon_edit_phoneme_title({ ipa: draft.ipa || '?' }) : m.phon_add_phoneme()}
 	unclosable={dirty || saving}
 >
 	<div class="space-y-3 pb-2" role="presentation" onkeydown={onDialogKeydown}>
 		<div class="grid grid-cols-2 gap-3">
-			<Input label="IPA" bind:value={draft.ipa} />
-			<Select label="Type" type="single" items={TYPE_ITEMS} bind:value={draft.type} />
+			<Input label={m.phon_col_ipa()} bind:value={draft.ipa} />
+			<Select label={m.common_type()} type="single" items={TYPE_ITEMS} bind:value={draft.type} />
 		</div>
 
 		{#if draft.type === 'consonant' || draft.type === 'special' || draft.type === 'diphthong'}
 			<div class="grid grid-cols-3 gap-3">
-				<Input label="Place" bind:value={draft.place} />
-				<Input label="Manner" bind:value={draft.manner} />
-				<Select label="Voicing" type="single" items={VOICING_ITEMS} bind:value={draft.voicing} />
+				<Input label={m.phon_place()} bind:value={draft.place} />
+				<Input label={m.phon_manner()} bind:value={draft.manner} />
+				<Select label={m.phon_voicing()} type="single" items={VOICING_ITEMS} bind:value={draft.voicing} />
 			</div>
-			<Input label="Subtype (optional — for sub-rows like aspirated/tense)" bind:value={draft.subtype} />
+			<Input label={m.phon_subtype_label()} bind:value={draft.subtype} />
 		{/if}
 
 		{#if draft.type === 'vowel'}
 			<div class="grid grid-cols-3 gap-3">
-				<Input label="Height" bind:value={draft.height} />
-				<Input label="Backness" bind:value={draft.backness} />
+				<Input label={m.phon_height()} bind:value={draft.height} />
+				<Input label={m.phon_backness()} bind:value={draft.backness} />
 				<div class="flex items-end pb-2">
-					<Checkbox bind:value={draft.rounded} label="Rounded" />
+					<Checkbox bind:value={draft.rounded} label={m.phon_rounded()} />
 				</div>
 			</div>
 		{/if}
 
-		<Input label="Notes (footnote)" bind:value={draft.notes} />
+		<Input label={m.phon_notes_footnote()} bind:value={draft.notes} />
 
 		{#if editingId}
 			<div class="pt-2 border-t border-border-subtle">
-				<div class="text-xs uppercase tracking-wider text-dim mb-1.5">Written as</div>
+				<div class="text-xs uppercase tracking-wider text-dim mb-1.5">{m.phon_written_as()}</div>
 				{#if loadingLinked}
-					<div class="text-xs text-secondary">Loading…</div>
+					<div class="text-xs text-secondary">{m.common_loading()}</div>
 				{:else if linkedGraphemes.length === 0}
 					<div class="text-xs text-secondary italic">
-						No graphemes map to this phoneme yet.
-						<a href="/Wordbook/contribute/language/{languageSlug}?tab=orthography" class="text-link hover:underline">Open orthography →</a>
+						{m.phon_no_graphemes_map()}
+						<a href="/Wordbook/contribute/language/{languageSlug}?tab=orthography" class="text-link hover:underline">{m.phon_open_orthography()}</a>
 					</div>
 				{:else}
 					<div class="flex flex-wrap gap-1.5 items-center">
@@ -569,20 +571,20 @@
 								{/if}
 							</span>
 						{/each}
-						<a href="/Wordbook/contribute/language/{languageSlug}?tab=orthography" class="text-xs text-link ml-1 hover:underline">edit →</a>
+						<a href="/Wordbook/contribute/language/{languageSlug}?tab=orthography" class="text-xs text-link ml-1 hover:underline">{m.phon_edit_arrow()}</a>
 					</div>
 				{/if}
 			</div>
 		{/if}
 
 		<div class="flex items-center gap-2">
-			<Checkbox bind:value={draft.marginal} label="Marginal" />
-			<span class="text-xs text-dim">Renders as (symbol) in the grid — for loanword-only or restricted phonemes.</span>
+			<Checkbox bind:value={draft.marginal} label={m.phon_marginal()} />
+			<span class="text-xs text-dim">{m.phon_marginal_hint()}</span>
 		</div>
 
 		{#if dirty}
 			<div class="text-xs text-warning bg-warning-bg border border-warning-border px-2 py-1">
-				Unsaved changes — Save to commit, or Cancel to discard.
+				{m.phon_unsaved_changes()}
 			</div>
 		{/if}
 
@@ -593,20 +595,20 @@
 						const p = phonemes.find(x => x.id === editingId)
 						if (p) await handleDelete(p)
 					}}>
-						<Trash size={14} weight="bold" /> Delete
+						<Trash size={14} weight="bold" /> {m.common_delete()}
 					</Button>
 					<Button variant="secondary" size="sm" onclick={duplicate}>
-						<Copy size={14} weight="bold" /> Duplicate
+						<Copy size={14} weight="bold" /> {m.phon_duplicate()}
 					</Button>
 				{/if}
 			</div>
 			<div class="flex gap-2">
-				<Button variant="secondary" onclick={cancelDialog}>Cancel</Button>
+				<Button variant="secondary" onclick={cancelDialog}>{m.common_cancel()}</Button>
 				<Button onclick={saveManual} loading={saving} disabled={!draft.ipa.trim()}>
 					{#if editingId}
-						<PencilSimple size={14} weight="bold" /> Save
+						<PencilSimple size={14} weight="bold" /> {m.common_save()}
 					{:else}
-						<Plus size={14} weight="bold" /> Add
+						<Plus size={14} weight="bold" /> {m.common_add()}
 					{/if}
 				</Button>
 			</div>

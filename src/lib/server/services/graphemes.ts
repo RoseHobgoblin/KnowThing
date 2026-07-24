@@ -183,7 +183,7 @@ export async function reorderGraphemes(slug: string, order: number[]) {
 		const existing = new Set(rows.map(r => r.id))
 
 		if (validateReorderPayload(order, existing) !== 'ok') {
-			throw error(400, "Order array must match the language's graphemes exactly")
+			throw error(400, 'Order array must match the language\'s graphemes exactly')
 		}
 
 		for (const [index, id] of order.entries()) {

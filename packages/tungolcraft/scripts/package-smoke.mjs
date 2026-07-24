@@ -42,6 +42,7 @@ try {
 	assert.ok(packResult.files.some(({ path }) => path === 'docs/VALIDATION.md'))
 	assert.ok(packResult.files.some(({ path }) => path === 'docs/MODEL-REFERENCE.md'))
 	assert.ok(packResult.files.some(({ path }) => path === 'docs/UNCERTAINTY.md'))
+	assert.ok(packResult.files.some(({ path }) => path === 'docs/MODEL-PACKS.md'))
 	assert.ok(packResult.files.some(({ path }) => path === 'schemas/scenario.schema.json'))
 	assert.ok(packResult.files.some(({ path }) => path === 'schemas/scenario-report.schema.json'))
 	assert.ok(!packResult.files.some(({ path }) => path.startsWith('src/')))
@@ -56,11 +57,12 @@ try {
 		path.join(consumerDirectory, 'runtime.mjs'),
 		[
 			`import { readFileSync } from 'node:fs'`,
-			`import { au, computeOrbitalPeriodDays, NOMINAL_SOLAR_GM, propagateCatalogueUncertainty, SCENARIO_SCHEMA_VERSION } from 'tungolcraft'`,
+			`import { au, computeOrbitalPeriodDays, getModelPack, NOMINAL_SOLAR_GM, propagateCatalogueUncertainty, SCENARIO_SCHEMA_VERSION } from 'tungolcraft'`,
 			'const period = computeOrbitalPeriodDays(au(1), NOMINAL_SOLAR_GM)',
 			`if (!(period > 365 && period < 366)) throw new Error(\`Unexpected period: \${period}\`)`,
 			`const propagated = propagateCatalogueUncertainty({ modelId: 'body.rotational-breakup', inputs: { densityKgM3: { value: 5500, unit: 'kg/m^3', source: 'caller', uncertainty: { kind: 'standard-deviation', value: 50, unit: 'kg/m^3' } } } }, { method: 'monte-carlo', seed: 42, sampleCount: 8, samplingPolicy: 'normal' })`,
 			`if (!propagated.ok || propagated.uncertainty.kind !== 'propagated') throw new Error('Uncertainty export failed')`,
+			`if (getModelPack('rocky-interiors')?.modelIds[0] !== 'planet.zeng-2016-rocky-radius') throw new Error('Model-pack export failed')`,
 			`const schemaUrl = import.meta.resolve('tungolcraft/schemas/scenario.schema.json')`,
 			`const schema = JSON.parse(readFileSync(new URL(schemaUrl), 'utf8'))`,
 			`if (schema.properties.schemaVersion.const !== SCENARIO_SCHEMA_VERSION) throw new Error('Scenario schema version mismatch')`,

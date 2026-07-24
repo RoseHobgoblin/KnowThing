@@ -75,8 +75,8 @@ export const load: PageServerLoad = async (event) => {
 		listSvgMedia(),
 	])
 
-	const regions = Array.from(groupedRegions.values())
-	const assignedCount = regions.filter((row) => row.pageSlug && String(row.pageSlug).trim().length > 0).length
+	const regions = [...groupedRegions.values()]
+	const assignedCount = regions.filter(row => row.pageSlug && String(row.pageSlug).trim().length > 0).length
 
 	return {
 		map,

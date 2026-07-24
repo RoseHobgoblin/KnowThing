@@ -11,4 +11,4 @@ import type { ParamMatcher } from '@sveltejs/kit'
  *   /Category:Mountains/Sub    ✓ (subpath after identifier kept by [...catchall])
  *   /know/Therne               ✗ (no colon in first segment)
  */
-export const match: ParamMatcher = (param) => /^[A-Za-z][A-Za-z0-9]*:.+/.test(param)
+export const match: ParamMatcher = param => /^[A-Za-z][\dA-Za-z]*:.+/.test(param)

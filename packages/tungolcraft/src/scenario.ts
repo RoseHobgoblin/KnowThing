@@ -70,6 +70,7 @@ const UNITS = new Set([
 	'kg',
 	'kg/m^3',
 	'W',
+	'W/m^2',
 	'K',
 	'm^3/s^2',
 	'AU',

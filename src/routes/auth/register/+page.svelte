@@ -4,6 +4,7 @@
 	import Input from '$lib/components/ui/Input.svelte'
 	import Button from '$lib/components/ui/Button.svelte'
 	import { pushError } from '$lib/notifications.svelte'
+	import { m } from '$lib/paraglide/messages.js'
 
 	let { form, data }: { form: ActionData, data: PageData } = $props()
 	let submitting = $state(false)
@@ -14,11 +15,11 @@
 </script>
 
 <div class="max-w-md mx-auto mt-20 p-6">
-	<h1 class="text-2xl font-bold mb-2">Create account</h1>
+	<h1 class="text-2xl font-bold mb-2">{m.auth_create_account()}</h1>
 	{#if !data.requireCode}
-		<p class="text-sm text-accent mb-6">First user — you'll be the site owner.</p>
+		<p class="text-sm text-accent mb-6">{m.home_first_user_notice()}</p>
 	{:else}
-		<p class="text-sm text-dim mb-6">You need a registration code to create an account.</p>
+		<p class="text-sm text-dim mb-6">{m.auth_need_code()}</p>
 	{/if}
 
 	{#if form?.error}
@@ -29,7 +30,7 @@
 
 	<form method="POST" use:enhance={() => { submitting = true; return async ({ update }) => { submitting = false; await update() } }} class="space-y-4">
 		<Input
-			label="Username"
+			label={m.auth_username()}
 			name="username"
 			type="text"
 			required
@@ -38,7 +39,7 @@
 			autocomplete="username"
 		/>
 		<Input
-			label="Password"
+			label={m.auth_password()}
 			name="password"
 			type="password"
 			required
@@ -46,7 +47,7 @@
 			autocomplete="new-password"
 		/>
 		<Input
-			label="Confirm password"
+			label={m.auth_confirm_password()}
 			name="confirm"
 			type="password"
 			required
@@ -54,20 +55,20 @@
 		/>
 		{#if data.requireCode}
 			<Input
-				label="Registration code"
+				label={m.auth_registration_code()}
 				name="code"
 				type="text"
 				required
-				placeholder="Enter your invite code"
+				placeholder={m.auth_enter_invite_code()}
 				autocomplete="off"
 			/>
 		{/if}
 		<Button type="submit" class="w-full" loading={submitting} disabled={submitting}>
-			{submitting ? 'Registering...' : 'Register'}
+			{submitting ? m.auth_registering() : m.auth_register()}
 		</Button>
 	</form>
 
 	<p class="mt-4 text-sm text-secondary">
-		Already have an account? <a href="/auth/login" class="text-accent hover:underline">Log in</a>
+		{m.auth_have_account()} <a href="/auth/login" class="text-accent hover:underline">{m.auth_log_in()}</a>
 	</p>
 </div>

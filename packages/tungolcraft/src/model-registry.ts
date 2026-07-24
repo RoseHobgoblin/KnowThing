@@ -15,6 +15,12 @@ export const MODEL_IDS = {
 	rocheLimit: 'satellite.roche-limit',
 	stefanBoltzmannLuminosity: 'star.stefan-boltzmann-luminosity',
 	simpleHabitableZone: 'star.simple-habitable-zone',
+	ekerMainSequenceScreen: 'star.eker-2018-main-sequence-screen',
+	stellarIrradiance: 'orbit.stellar-irradiance',
+	blackbodyEquilibriumTemperature: 'planet.blackbody-equilibrium-temperature',
+	kopparapuConservativeHabitableZone: 'star.kopparapu-2014-conservative-hz',
+	constantQEccentricityDamping: 'satellite.constant-q-eccentricity-damping',
+	zengRockyRadius: 'planet.zeng-2016-rocky-radius',
 } as const
 
 export type ModelId = typeof MODEL_IDS[keyof typeof MODEL_IDS]
@@ -286,6 +292,150 @@ const MODEL_REFERENCE_LIST = [
 			'the result is a preliminary screening range, not a habitability prediction',
 		],
 		validity: positive('luminosityW', 'W'),
+	}),
+	reference({
+		id: MODEL_IDS.ekerMainSequenceScreen,
+		version: '1.0.0',
+		title: 'Eker 2018 main-sequence luminosity screen',
+		summary: 'Compares a supplied stellar luminosity with the six-piece empirical mass–luminosity relation.',
+		kind: 'screening',
+		sources: [{
+			type: 'paper',
+			citation: 'Eker et al. (2018), MNRAS 479, 5491–5511, Table 4',
+			doi: '10.1093/mnras/sty1834',
+			url: 'https://arxiv.org/abs/1807.02568',
+		}],
+		assumptions: [
+			'the object is a main-sequence star drawn from the Solar-neighbourhood Galactic-disc population',
+			'the relation represents a population mean; age and metallicity are not independently modelled',
+			'the reported one-sigma classification uses the paper’s intrinsic log-luminosity scatter',
+		],
+		validity: [
+			{ field: 'massKg', operator: 'finite' },
+			{ description: 'massKg must lie between 0.179 and 31 exported solar-mass reference units' },
+			...positive('luminosityW', 'W'),
+		],
+	}),
+	reference({
+		id: MODEL_IDS.stellarIrradiance,
+		version: '1.0.0',
+		title: 'Isotropic stellar irradiance',
+		summary: 'Bolometric flux at an orbital distance from an isotropically radiating source.',
+		kind: 'exact-relation',
+		sources: [{
+			type: 'derivation',
+			citation: 'Inverse-square energy conservation: F = L/(4πd²)',
+		}],
+		assumptions: [
+			'luminosity is bolometric and emitted isotropically',
+			'distance is centre-to-centre and large compared with the radiating source',
+			'attenuation, eclipses and other luminous sources are excluded',
+		],
+		validity: [
+			...positive('luminosityW', 'W'),
+			...positive('distanceAu', 'AU'),
+		],
+	}),
+	reference({
+		id: MODEL_IDS.blackbodyEquilibriumTemperature,
+		version: '1.0.0',
+		title: 'Globally redistributed blackbody equilibrium temperature',
+		summary: 'Radiative-equilibrium temperature from stellar luminosity, distance and Bond albedo.',
+		kind: 'exact-relation',
+		sources: [{
+			type: 'derivation',
+			citation: 'Absorbed πR²F(1−A) equals emitted 4πR²σT⁴',
+		}],
+		assumptions: [
+			'the body is a spherical blackbody in steady radiative equilibrium',
+			'absorbed energy is uniformly redistributed over the entire surface',
+			'Bond albedo is bolometric and internal heating and greenhouse warming are excluded',
+		],
+		validity: [
+			...positive('luminosityW', 'W'),
+			...positive('distanceAu', 'AU'),
+			{ field: 'bondAlbedo', operator: 'gte', value: 0, unit: '1' },
+			{ field: 'bondAlbedo', operator: 'lt', value: 1, unit: '1' },
+		],
+	}),
+	reference({
+		id: MODEL_IDS.kopparapuConservativeHabitableZone,
+		version: '1.0.0',
+		title: 'Kopparapu 2014 conservative habitable zone',
+		summary: 'Runaway-greenhouse inner and maximum-greenhouse outer limits for terrestrial mass classes.',
+		kind: 'approximation',
+		sources: [{
+			type: 'paper',
+			citation: 'Kopparapu et al. (2014), ApJ Letters 787 L29, equations 4–5 and Table 1',
+			doi: '10.1088/2041-8205/787/2/L29',
+			url: 'https://arxiv.org/abs/1404.5292',
+		}],
+		assumptions: [
+			'the host is a main-sequence star',
+			'the inner edge uses the runaway-greenhouse prescription and the outer edge maximum greenhouse',
+			'the one-dimensional cloud-free H2O/CO2 climate assumptions of the paper apply',
+			'planet mass is one of the paper’s discrete 0.1, 1 or 5 Earth-mass coefficient sets',
+		],
+		validity: [
+			...positive('luminosityW', 'W'),
+			{ field: 'effectiveTemperatureK', operator: 'gte', value: 2600, unit: 'K' },
+			{ field: 'effectiveTemperatureK', operator: 'lte', value: 7200, unit: 'K' },
+			{ field: 'planetMassClass', operator: 'one-of', values: ['0.1-earth', '1-earth', '5-earth'] },
+		],
+	}),
+	reference({
+		id: MODEL_IDS.constantQEccentricityDamping,
+		version: '1.0.0',
+		title: 'Constant-Q eccentricity damping timescale',
+		summary: 'Screening e-folding time for eccentricity tides dissipated inside a synchronous secondary.',
+		kind: 'screening',
+		sources: [{
+			type: 'paper',
+			citation: 'Goldreich & Soter (1966), Icarus 5, 375–389; standard low-e constant-Q form',
+			doi: '10.1016/0019-1035(66)90051-0',
+			url: 'https://ntrs.nasa.gov/citations/19660058733',
+		}, {
+			type: 'textbook',
+			citation: 'Murray & Dermott (1999), Solar System Dynamics, equation 4.198',
+		}],
+		assumptions: [
+			'the secondary is synchronously rotating with low eccentricity and zero obliquity',
+			'tides dissipated inside the secondary dominate',
+			'Q and degree-two Love number k2 are constant',
+			'the timescale is a local screening estimate, not an integrated tidal history',
+		],
+		validity: [
+			...positive('semiMajorAxisAu', 'AU'),
+			...positive('satelliteRadiusM', 'm'),
+			...positive('satelliteMassKg', 'kg'),
+			...positive('parentMassKg', 'kg'),
+			...positive('tidalQualityFactor', '1'),
+			...positive('loveNumberK2', '1'),
+		],
+	}),
+	reference({
+		id: MODEL_IDS.zengRockyRadius,
+		version: '1.0.0',
+		title: 'Zeng 2016 two-layer rocky-planet radius',
+		summary: 'PREM-based semi-empirical radius for differentiated iron-core and silicate-mantle planets.',
+		kind: 'empirical-fit',
+		sources: [{
+			type: 'paper',
+			citation: 'Zeng, Sasselov & Jacobsen (2016), ApJ 819 127',
+			doi: '10.3847/0004-637X/819/2/127',
+			url: 'https://arxiv.org/abs/1512.08827',
+		}],
+		assumptions: [
+			'the planet is fully differentiated into an iron core and silicate mantle',
+			'the PREM-based semi-empirical relation represents a solid rocky planet without a volatile envelope',
+			'thermal and compositional variations beyond core mass fraction are excluded',
+		],
+		validity: [
+			{ field: 'massKg', operator: 'finite' },
+			{ description: 'massKg must lie between 1 and 8 exported Earth-mass reference units' },
+			{ field: 'coreMassFraction', operator: 'gte', value: 0, unit: '1' },
+			{ field: 'coreMassFraction', operator: 'lte', value: 0.4, unit: '1' },
+		],
 	}),
 ] as const
 

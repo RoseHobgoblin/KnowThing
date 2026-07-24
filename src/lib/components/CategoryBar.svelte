@@ -11,10 +11,7 @@
 			{#each categories as cat (cat)}
 				<a
 					href="/know/category:{slugify(cat)}"
-					class="
-						inline-block bg-raised text-secondary px-3 py-1 text-xs transition-colors
-						hover:bg-accent-subtle hover:text-link
-					"
+					class="inline-block bg-raised text-secondary px-3 py-1 text-xs transition-colors hover:bg-accent-subtle hover:text-link"
 				>
 					{cat}
 				</a>

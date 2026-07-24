@@ -158,7 +158,6 @@ export async function registerUser(input: {
 	}
 
 	return db.transaction(async (tx) => {
-
 		const [createdUser] = await tx
 			.insert(users)
 			.values({

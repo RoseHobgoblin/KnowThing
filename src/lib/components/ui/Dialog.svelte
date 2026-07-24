@@ -60,11 +60,7 @@
 
 	<Dialog.Portal>
 		<Dialog.Overlay
-			class="
-				fixed inset-0 bg-black/50
-				data-[state=open]:animate-in data-[state=open]:fade-in-0
-				data-[state=closed]:animate-out data-[state=closed]:fade-out-0
-			"
+			class="fixed inset-0 bg-black/50 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0"
 			style={`z-index: ${overlayZ}`}
 		/>
 		<Dialog.Content
@@ -83,10 +79,7 @@
 			{onEscapeKeydown}
 		>
 			{#if !unclosable}
-				<Dialog.Close class="
-					absolute top-3 right-3 z-10 cursor-pointer text-secondary transition-colors
-					hover:text-heading leading-none px-1
-				">
+				<Dialog.Close class="absolute top-3 right-3 z-10 cursor-pointer text-secondary transition-colors leading-none px-1 hover:text-heading">
 					<X size={16} weight="bold" />
 				</Dialog.Close>
 			{/if}

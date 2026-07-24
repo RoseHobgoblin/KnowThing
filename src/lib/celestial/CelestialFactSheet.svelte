@@ -21,7 +21,7 @@
 					{#each section.rows as row (row.label)}
 						<div class="grid grid-cols-[auto_1fr] gap-3 px-3 py-1.5 text-sm border-b border-border-subtle/40 last:border-0">
 							<dt class="text-secondary">{row.label}</dt>
-							<dd class="text-body text-right break-words"><InlineMarkup text={row.value} /></dd>
+							<dd class="text-body text-right wrap-break-word"><InlineMarkup text={row.value} /></dd>
 						</div>
 					{/each}
 				</dl>

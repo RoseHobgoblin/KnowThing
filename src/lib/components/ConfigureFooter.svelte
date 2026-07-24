@@ -47,14 +47,14 @@
 			{showPreview ? 'Hide preview' : 'Show preview'}
 		</button>
 	</div>
-	<div class="flex flex-col min-h-0 md:flex-row gap-4">
-		<div class="flex-1 min-h-[300px]">
+	<div class="flex flex-col min-h-0 gap-4 md:flex-row">
+		<div class="flex-1 min-h-75">
 			<Editor value={initialContent} onchange={v => (content = v)} />
 		</div>
 		{#if showPreview}
-			<div class="flex-1 min-h-[300px] bg-surface flex flex-col">
+			<div class="flex-1 min-h-75 bg-surface flex flex-col">
 				<div class="bg-page px-4 py-1.5 text-xs font-medium text-secondary border-b border-border-subtle uppercase tracking-wide">Preview</div>
-				<div class="flex-1 overflow-y-auto px-4 py-4">
+				<div class="flex-1 overflow-y-auto p-4">
 					<LivePreview {content} />
 				</div>
 			</div>

@@ -35,7 +35,7 @@ function parseSvgColor(value: string) {
 	const trimmed = value.trim()
 	if (trimmed.startsWith('#')) {
 		const normalized = trimmed.length === 4
-			? `#${trimmed.slice(1).split('').map((char) => `${char}${char}`).join('')}`
+			? `#${trimmed.slice(1).split('').map(char => `${char}${char}`).join('')}`
 			: trimmed
 		return normalizeHex(normalized)
 	}
@@ -65,21 +65,21 @@ function getStyleValue(style: string | null, name: string) {
 
 function extractClassFillMap(svgSource: string) {
 	const classFillMap = new Map<string, string>()
-	const styleBlockRegex = /<style\b[^>]*>([\s\S]*?)<\/style>/gi
+	const styleBlockRegex = /<style\b[^>]*>([\S\s]*?)<\/style>/gi
 	let styleMatch: RegExpExecArray | null
 
 	while ((styleMatch = styleBlockRegex.exec(svgSource))) {
 		const stylesheet = styleMatch[1]
-		const ruleRegex = /([^{}]+)\{([^}]*)\}/g
+		const ruleRegex = /([^{}]+){([^}]*)}/g
 		let ruleMatch: RegExpExecArray | null
 
 		while ((ruleMatch = ruleRegex.exec(stylesheet))) {
-			const selectors = ruleMatch[1].split(',').map((selector) => selector.trim()).filter(Boolean)
+			const selectors = ruleMatch[1].split(',').map(selector => selector.trim()).filter(Boolean)
 			const fillValue = getStyleValue(ruleMatch[2], 'fill')
 			if (!fillValue) continue
 
 			for (const selector of selectors) {
-				const classMatches = selector.match(/\.([A-Za-z_][A-Za-z0-9_-]*)/g)
+				const classMatches = selector.match(/\.([A-Z_a-z][\w-]*)/g)
 				if (!classMatches) continue
 				for (const classToken of classMatches) {
 					classFillMap.set(classToken.slice(1), fillValue.trim())
@@ -120,8 +120,8 @@ function resolveEffectiveFill(attributes: string, inheritedFill: string | null, 
 }
 
 function pointsToPathData(pointsRaw: string) {
-	const points = pointsRaw.trim().split(/\s+/).map((pair) => pair.split(',').map((value) => Number.parseFloat(value)))
-	if (points.length === 0 || points.some((pair) => pair.length !== 2 || pair.some((value) => !Number.isFinite(value)))) {
+	const points = pointsRaw.trim().split(/\s+/).map(pair => pair.split(',').map(value => Number.parseFloat(value)))
+	if (points.length === 0 || points.some(pair => pair.length !== 2 || pair.some(value => !Number.isFinite(value)))) {
 		return null
 	}
 
@@ -133,7 +133,7 @@ function rectToPathData(attributes: string) {
 	const y = Number.parseFloat(getAttribute(attributes, 'y') ?? '0')
 	const width = Number.parseFloat(getAttribute(attributes, 'width') ?? '')
 	const height = Number.parseFloat(getAttribute(attributes, 'height') ?? '')
-	if (![x, y, width, height].every((value) => Number.isFinite(value))) {
+	if (![x, y, width, height].every(value => Number.isFinite(value))) {
 		return null
 	}
 
@@ -144,7 +144,7 @@ function circleToPathData(attributes: string) {
 	const cx = Number.parseFloat(getAttribute(attributes, 'cx') ?? '0')
 	const cy = Number.parseFloat(getAttribute(attributes, 'cy') ?? '0')
 	const r = Number.parseFloat(getAttribute(attributes, 'r') ?? '')
-	if (![cx, cy, r].every((value) => Number.isFinite(value))) {
+	if (![cx, cy, r].every(value => Number.isFinite(value))) {
 		return null
 	}
 
@@ -156,7 +156,7 @@ function ellipseToPathData(attributes: string) {
 	const cy = Number.parseFloat(getAttribute(attributes, 'cy') ?? '0')
 	const rx = Number.parseFloat(getAttribute(attributes, 'rx') ?? '')
 	const ry = Number.parseFloat(getAttribute(attributes, 'ry') ?? '')
-	if (![cx, cy, rx, ry].every((value) => Number.isFinite(value))) {
+	if (![cx, cy, rx, ry].every(value => Number.isFinite(value))) {
 		return null
 	}
 
@@ -209,8 +209,8 @@ function extractSvgDimensions(svgSource: string) {
 	}
 
 	if (viewBoxValue) {
-		const parts = viewBoxValue.trim().split(/\s+/).map((value) => Number.parseFloat(value))
-		if (parts.length === 4 && parts.every((part) => Number.isFinite(part))) {
+		const parts = viewBoxValue.trim().split(/\s+/).map(value => Number.parseFloat(value))
+		if (parts.length === 4 && parts.every(part => Number.isFinite(part))) {
 			return { width: parts[2], height: parts[3] }
 		}
 	}
@@ -237,7 +237,7 @@ function extractPathGeometryFromSvg(svgSource: string, waterHexRaw: string) {
 			continue
 		}
 
-		const closingMatch = token.match(/^<\s*\/\s*([A-Za-z][A-Za-z0-9:_-]*)\s*>$/)
+		const closingMatch = token.match(/^<\s*\/\s*([A-Za-z][\w:-]*)\s*>$/)
 		if (closingMatch) {
 			if (fillStack.length > 0) {
 				fillStack.pop()
@@ -246,7 +246,7 @@ function extractPathGeometryFromSvg(svgSource: string, waterHexRaw: string) {
 			continue
 		}
 
-		const openingMatch = token.match(/^<\s*([A-Za-z][A-Za-z0-9:_-]*)([^>]*)>$/)
+		const openingMatch = token.match(/^<\s*([A-Za-z][\w:-]*)([^>]*)>$/)
 		if (!openingMatch) {
 			continue
 		}
@@ -266,13 +266,11 @@ function extractPathGeometryFromSvg(svgSource: string, waterHexRaw: string) {
 				ignoredPathCount += 1
 			} else {
 				const normalizedFill = parseSvgColor(effectiveFill)
-				if (!normalizedFill) {
-					ignoredPathCount += 1
-				} else {
+				if (normalizedFill) {
 					const { r, g, b } = hexToRgb(normalizedFill)
 					const hex = quantizedHex(r, g, b)
 					if (hex !== waterQuantizedHex) {
-						let activeTransform = [...transformStack, localTransform].filter(Boolean).join(' ').trim()
+						const activeTransform = [...transformStack, localTransform].filter(Boolean).join(' ').trim()
 						if (activeTransform) {
 							pathData = `T:${activeTransform}|${pathData}`
 						}
@@ -283,6 +281,8 @@ function extractPathGeometryFromSvg(svgSource: string, waterHexRaw: string) {
 							colorPaths.set(hex, [pathData])
 						}
 					}
+				} else {
+					ignoredPathCount += 1
 				}
 			}
 		}
@@ -294,7 +294,7 @@ function extractPathGeometryFromSvg(svgSource: string, waterHexRaw: string) {
 	}
 
 	return {
-		colors: Array.from(colorPaths.keys()).sort(),
+		colors: [...colorPaths.keys()].sort(),
 		pathsByColor: colorPaths,
 		ignoredColorCount: ignoredPathCount,
 	}
@@ -302,7 +302,7 @@ function extractPathGeometryFromSvg(svgSource: string, waterHexRaw: string) {
 
 function normalizeHex(hex: string) {
 	const trimmed = hex.trim().toUpperCase()
-	if (!/^#[0-9A-F]{6}$/.test(trimmed)) {
+	if (!/^#[\dA-F]{6}$/.test(trimmed)) {
 		throw error(400, `Invalid hex color: ${hex}`)
 	}
 	return trimmed
@@ -356,7 +356,7 @@ async function extractUniqueNonWaterHexColors(filePath: string, waterHexRaw: str
 		colorPixelCounts.set(hex, current + 1)
 	}
 
-	const filtered = Array.from(colorPixelCounts.entries())
+	const filtered = [...colorPixelCounts.entries()]
 		.filter(([, pixelCount]) => pixelCount >= MIN_REGION_PIXEL_COUNT)
 		.map(([hex]) => hex)
 		.sort()
@@ -526,9 +526,9 @@ export async function assignWorldMapRegionsToKnowPages(
 		.from(worldMapRegions)
 		.where(eq(worldMapRegions.mapId, map.id))
 
-	const regionById = new Map(regions.map((region) => [region.regionId, region]))
+	const regionById = new Map(regions.map(region => [region.regionId, region]))
 
-	const uniqueSlugs = Array.from(new Set(assignments.map((assignment) => assignment.pageSlug.trim()).filter(Boolean)))
+	const uniqueSlugs = [...new Set(assignments.map(assignment => assignment.pageSlug.trim()).filter(Boolean))]
 	const pageRows = uniqueSlugs.length === 0
 		? []
 		: await db
@@ -543,7 +543,7 @@ export async function assignWorldMapRegionsToKnowPages(
 				inArray(contentRecords.slug, uniqueSlugs),
 			))
 
-	const pagesBySlug = new Map(pageRows.map((page) => [page.slug, page]))
+	const pagesBySlug = new Map(pageRows.map(page => [page.slug, page]))
 
 	await db.transaction(async (tx) => {
 		for (const assignment of assignments) {

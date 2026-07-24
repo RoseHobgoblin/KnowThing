@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { untrack } from 'svelte'
+	import { m } from '$lib/paraglide/messages.js'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import Button from '$lib/components/ui/Button.svelte'
 	import Input from '$lib/components/ui/Input.svelte'
@@ -79,8 +80,8 @@
 	let slugEdited = $state(false)
 	const slugError = $derived.by(() => {
 		const slug = String(draft.slug ?? '')
-		if (!urlSlugify(slug)) return 'Slug must contain at least one letter or number'
-		if (urlSlugify(slug) !== slug) return 'Use lowercase letters, numbers and hyphens only'
+		if (!urlSlugify(slug)) return m.cel_slug_error_empty()
+		if (urlSlugify(slug) !== slug) return m.cel_slug_error_format()
 		return ''
 	})
 
@@ -162,14 +163,14 @@
 		const value = draft[spec.key]
 		if (typeof value !== 'number') return ''
 		if ((spec.min != null && value < spec.min) || (spec.max != null && value > spec.max)) {
-			return spec.rangeError ?? 'Out of range'
+			return spec.rangeError ?? m.cel_out_of_range()
 		}
 		return ''
 	}
 
 	async function save() {
 		if (validationIssues.length > 0) {
-			saveError = 'Review the highlighted fields before saving.'
+			saveError = m.cel_review_fields()
 			return
 		}
 		if (slugError) {
@@ -191,9 +192,9 @@
 
 			savedAt = new Date()
 			initialSnapshot = currentSnapshot
-			pushSuccess(`${config.noun} saved`)
+			pushSuccess(m.cel_noun_saved({ name: config.noun }))
 		} catch (error) {
-			saveError = error instanceof Error ? error.message : 'Failed to save'
+			saveError = error instanceof Error ? error.message : m.cel_failed_save()
 			pushError(saveError)
 		}
 	}
@@ -203,18 +204,18 @@
 			config.deleteConfirm.title,
 			config.deleteConfirm.message(initialRecord.name),
 			config.deleteConfirm.action,
-			'Cancel',
+			m.common_cancel(),
 		)
 		if (!ok) return
 
 		try {
 			await entityMutation.mutateAsync({ method: 'DELETE', slug: savedSlug })
 		} catch (error) {
-			pushError(error instanceof Error ? error.message : `Failed to delete ${config.noun.toLowerCase()}`)
+			pushError(error instanceof Error ? error.message : m.cel_failed_delete_noun({ name: config.noun.toLowerCase() }))
 			return
 		}
 
-		pushSuccess(`${config.noun} deleted`)
+		pushSuccess(m.cel_noun_deleted({ name: config.noun }))
 		goto(initialParentCrumbs.at(-1)?.href ?? '/celestial')
 	}
 </script>
@@ -281,28 +282,28 @@
 
 <ArticleShell
 	breadcrumbs={celestialConfigureBreadcrumbs(initialParentCrumbs, { name: initialRecord.name, slug: initialRecord.slug })}
-	title="Configure {initialRecord.name}"
+	title={m.cel_configure_named({ name: initialRecord.name })}
 >
 	{#snippet actions()}
 		<div class="flex items-center gap-3">
 			<SaveStatusBadge plain dirty={isDirty} {saving} error={saveError} {savedAt} />
-			<Button variant="secondary" href={viewPath}>Cancel</Button>
-			<Button onclick={save} disabled={!isDirty} loading={saving}>Save changes</Button>
+			<Button variant="secondary" href={viewPath}>{m.common_cancel()}</Button>
+			<Button onclick={save} disabled={!isDirty} loading={saving}>{m.cel_save_changes()}</Button>
 		</div>
 	{/snippet}
 
 	<UnsavedChangesGuard when={isDirty && !saving} />
 	<div class="space-y-4">
 		{#if saveError}
-			<FormNotice title="{config.noun} changes were not saved" message={saveError} />
+			<FormNotice title={m.cel_changes_not_saved({ name: config.noun })} message={saveError} />
 		{/if}
 		{#if validationIssues.length > 0}
-			<FormNotice tone="warning" title="{config.noun} draft needs attention" messages={validationIssues} />
+			<FormNotice tone="warning" title={m.cel_draft_needs_attention({ name: config.noun })} messages={validationIssues} />
 		{/if}
 		{#if physicsWarnings.length > 0}
 			<FormNotice
 				tone="warning"
-				title="Physics plausibility"
+				title={m.cel_physics_plausibility()}
 				messages={physicsWarnings.map(w => `${w.severity === 'impossible' ? '🚫' : '⚠️'} ${w.message}`)}
 			/>
 		{/if}
@@ -348,9 +349,9 @@
 				{#if config.overrides && config.overrides.length > 0}
 					<section class="p-5 space-y-4">
 						<div>
-							<h2 class="text-sm font-semibold text-heading">Overrides</h2>
+							<h2 class="text-sm font-semibold text-heading">{m.cel_overrides()}</h2>
 							<p class="text-xs text-secondary mt-1">
-								These values are computed from what you entered above. Unlock one to pin your own value instead — for exotic or magical {config.noun.toLowerCase()}s the physics can't describe.
+								{m.cel_overrides_help({ name: config.noun.toLowerCase() })}
 							</p>
 						</div>
 						<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -364,7 +365,7 @@
 				{#if permissions.canManageSettings}
 					<section class="border border-error-border bg-error-subtle/40 p-5 space-y-3">
 						<div>
-							<h2 class="text-sm font-semibold text-error">Danger Zone</h2>
+							<h2 class="text-sm font-semibold text-error">{m.common_danger_zone()}</h2>
 							<p class="text-xs text-secondary mt-1">{config.deleteNote}</p>
 						</div>
 						<div>
@@ -399,7 +400,7 @@
 				{#if config.computed && config.computed.length > 0}
 					<div class="bg-surface">
 						<div class="px-3 py-2 flex items-center justify-between gap-2 border-b border-border-subtle">
-							<h3 class="text-xs font-semibold uppercase tracking-wider text-secondary">Computed properties</h3>
+							<h3 class="text-xs font-semibold uppercase tracking-wider text-secondary">{m.cel_computed_properties()}</h3>
 							{#if config.useTabs}
 								<div class="flex">
 									<button
@@ -407,14 +408,14 @@
 										onclick={() => computedScope = 'tab'}
 										class={cn('px-1.5 py-0.5 text-xs border transition-colors', computedScope === 'tab' ? 'border-accent-border bg-accent-subtle text-accent' : 'border-border-subtle text-secondary hover:text-body')}
 									>
-										This tab
+										{m.cel_this_tab()}
 									</button>
 									<button
 										type="button"
 										onclick={() => computedScope = 'all'}
 										class={cn('px-1.5 py-0.5 text-xs border -ml-px transition-colors', computedScope === 'all' ? 'border-accent-border bg-accent-subtle text-accent' : 'border-border-subtle text-secondary hover:text-body')}
 									>
-										All
+										{m.common_all()}
 									</button>
 								</div>
 							{/if}
@@ -426,10 +427,10 @@
 									<span class="text-body text-right font-medium min-w-0">{row.value}</span>
 								</div>
 							{:else}
-								<p class="text-secondary text-xs">Enter values on the left to derive properties.</p>
+								<p class="text-secondary text-xs">{m.cel_enter_values()}</p>
 							{/each}
 							{#if computedRows.length > 0}
-								<p class="text-secondary text-xs pt-1.5 border-t border-border-subtle">Recalculated live from the values you enter.</p>
+								<p class="text-secondary text-xs pt-1.5 border-t border-border-subtle">{m.cel_recalculated_live()}</p>
 							{/if}
 						</div>
 					</div>

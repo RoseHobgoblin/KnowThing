@@ -8,6 +8,7 @@
 	import { cn } from '$lib/utils'
 	import { createMutation, createQuery } from '@tanstack/svelte-query'
 	import { api } from '$lib/api'
+	import { m } from '$lib/paraglide/messages.js'
 
 	type RelatedEntry = {
 		id: number
@@ -89,15 +90,15 @@
 			api('DELETE', `/api/wordbook/${entryId}/relations/${relationId}`),
 	}))
 	async function deleteRelation(relationId: number) {
-		const ok = await confirmDialog.confirm('Remove relation', 'Remove this etymological relation?', 'Remove', 'Cancel')
+		const ok = await confirmDialog.confirm(m.wbc_remove_relation(), m.wbc_remove_relation_confirm(), m.common_remove(), m.common_cancel())
 		if (!ok) return
 		deleting = relationId
 		try {
 			await deleteMutation.mutateAsync(relationId)
-			pushSuccess('Relation removed')
+			pushSuccess(m.wbc_relation_removed())
 			await invalidateAll()
 		} catch (error) {
-			pushError(error instanceof Error ? error.message : 'Failed to remove relation')
+			pushError(error instanceof Error ? error.message : m.wbc_failed_remove_relation())
 		}
 		deleting = null
 	}
@@ -122,15 +123,15 @@
 	const typeOptions = $derived.by(() => {
 		if (direction === 'from') {
 			return [
-				{ value: 'derived_from', label: 'Derived from', help: 'This word evolved from the target word' },
-				{ value: 'loan_from', label: 'Borrowed from', help: 'This word was borrowed from the target word' },
-				{ value: 'compound_of', label: 'Compound of', help: 'The target word is a component of this compound' },
+				{ value: 'derived_from', label: m.wbc_rel_derived_from(), help: m.wbc_rel_help_derived_from() },
+				{ value: 'loan_from', label: m.wbc_rel_loan_from(), help: m.wbc_rel_help_loan_from() },
+				{ value: 'compound_of', label: m.wbc_rel_compound_of(), help: m.wbc_rel_help_compound_of() },
 			]
 		}
 		return [
-			{ value: 'derived_from', label: 'Is ancestor of', help: 'The target word evolved from this word' },
-			{ value: 'loan_from', label: 'Was borrowed by', help: 'The target word borrowed this word' },
-			{ value: 'compound_of', label: 'Used in compound', help: 'The target word is a compound using this word' },
+			{ value: 'derived_from', label: m.wbc_rel_is_ancestor_of(), help: m.wbc_rel_help_is_ancestor_of() },
+			{ value: 'loan_from', label: m.wbc_rel_was_borrowed_by(), help: m.wbc_rel_help_was_borrowed_by() },
+			{ value: 'compound_of', label: m.wbc_rel_used_in_compound(), help: m.wbc_rel_help_used_in_compound() },
 		]
 	})
 
@@ -188,7 +189,7 @@
 	async function addRelation(event: SubmitEvent) {
 		event.preventDefault()
 		if (!targetId) {
-			formError = 'Select a target word'
+			formError = m.wbc_select_target_word()
 			return
 		}
 		formError = ''
@@ -197,12 +198,12 @@
 
 		try {
 			await addMutation.mutateAsync({ sourceId, targetId: tgtId, relationType, notes: notes.trim() || undefined })
-			pushSuccess('Relation added')
+			pushSuccess(m.wbc_relation_added())
 			resetForm()
 			showForm = false
 			await invalidateAll()
 		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Failed to add relation'
+			const message = error instanceof Error ? error.message : m.wbc_failed_add_relation()
 			formError = message
 			pushError(message)
 		}
@@ -227,7 +228,7 @@
 				onclick={() => deleteRelation(entry.relationId)}
 				disabled={deleting === entry.relationId}
 				class={cn('text-xs text-error transition-colors ml-1 hover:text-error-hover', deleting === entry.relationId && 'opacity-50')}
-				title="Remove relation"
+				title={m.wbc_remove_relation()}
 			>✕</button>
 		{/if}
 	</div>
@@ -237,8 +238,8 @@
 {#snippet addRelationForm()}
 	<div class="p-4 bg-page">
 		<div class="flex items-center justify-between mb-3">
-			<h4 class="text-xs font-medium uppercase tracking-wide text-dim">Add relation</h4>
-			<button onclick={cancelForm} class="text-xs text-secondary hover:text-body">Cancel</button>
+			<h4 class="text-xs font-medium uppercase tracking-wide text-dim">{m.wbc_add_relation()}</h4>
+			<button onclick={cancelForm} class="text-xs text-secondary hover:text-body">{m.common_cancel()}</button>
 		</div>
 
 		<!-- Direction toggle -->
@@ -246,11 +247,11 @@
 			<button
 				onclick={() => direction = 'from'}
 				class={cn('px-3 py-1.5 transition-colors', direction === 'from' ? 'bg-accent text-surface' : 'bg-surface text-secondary hover:bg-page')}
-			>This word comes from...</button>
+			>{m.wbc_this_word_comes_from()}</button>
 			<button
 				onclick={() => direction = 'to'}
 				class={cn('px-3 py-1.5 transition-colors', direction === 'to' ? 'bg-accent text-surface' : 'bg-surface text-secondary hover:bg-page')}
-			>Another word comes from this...</button>
+			>{m.wbc_another_word_comes_from_this()}</button>
 		</div>
 
 		<form onsubmit={addRelation} class="space-y-3">
@@ -273,7 +274,7 @@
 						oninput={handleSearch}
 						onfocus={() => { if (searchResults.length > 0) showDropdown = true }}
 						onblur={() => setTimeout(() => showDropdown = false, 200)}
-						placeholder="Search for a word..."
+						placeholder={m.wbc_search_word()}
 						class="w-full px-3 py-1.5 text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent"
 					/>
 					{#if showDropdown}
@@ -296,10 +297,10 @@
 				<p class="text-xs text-secondary -mt-1">{currentHelp}</p>
 			{/if}
 
-			<Input bind:value={notes} placeholder="Notes (optional)" containerClass="w-full" />
+			<Input bind:value={notes} placeholder={m.wbc_notes_optional()} containerClass="w-full" />
 
 			<button type="submit" disabled={addMutation.isPending || !targetId} class="px-4 py-1.5 bg-accent text-surface text-sm font-medium transition-colors hover:bg-accent-hover disabled:opacity-50">
-				{addMutation.isPending ? 'Adding...' : 'Add'}
+				{addMutation.isPending ? m.wbc_adding() : m.common_add()}
 			</button>
 		</form>
 	</div>
@@ -312,7 +313,7 @@
 	{#if originChain.length > 1}
 		<div class="flex items-center gap-1 flex-wrap text-sm">
 			{#if !compact}
-				<span class="text-xs font-medium uppercase tracking-wide text-secondary mr-1">Lineage</span>
+				<span class="text-xs font-medium uppercase tracking-wide text-secondary mr-1">{m.wbc_lineage()}</span>
 			{/if}
 			{#each originChain as step, index (step.id)}
 				{#if index > 0}
@@ -328,7 +329,7 @@
 				</a>
 			{/each}
 			{#if compact && canEdit}
-				<button onclick={() => showForm = true} class="ml-1 text-xs text-link hover:text-link-hover hover:underline">+ Add relation</button>
+				<button onclick={() => showForm = true} class="ml-1 text-xs text-link hover:text-link-hover hover:underline">+ {m.wbc_add_relation()}</button>
 			{/if}
 		</div>
 	{/if}
@@ -336,23 +337,23 @@
 	<!-- Etymology sources -->
 	{#if (!compact || etymologyChain.length <= 1) && (direct.derivedFrom.length > 0 || direct.loanFrom.length > 0 || direct.compoundOf.length > 0)}
 		<div>
-			<h3 class="text-xs font-medium uppercase tracking-wide text-secondary mb-2">Etymology</h3>
+			<h3 class="text-xs font-medium uppercase tracking-wide text-secondary mb-2">{m.wbc_etymology_heading()}</h3>
 			{#each direct.derivedFrom as entry (entry.relationId)}
-				{@render relationRow(entry, '', 'This word is derived from')}
+				{@render relationRow(entry, '', m.wbc_this_word_derived_from())}
 			{/each}
 			{#each direct.loanFrom as entry (entry.relationId)}
-				{@render relationRow(entry, '', 'This word is borrowed from')}
+				{@render relationRow(entry, '', m.wbc_this_word_borrowed_from())}
 			{/each}
 			{#if direct.compoundOf.length > 0}
 				<div class="flex items-baseline gap-2 text-sm mb-1.5 flex-wrap">
 					<span class="text-secondary">←</span>
-					<span class="text-dim text-xs">compound of</span>
+					<span class="text-dim text-xs">{m.wbc_compound_of_label()}</span>
 					{#each direct.compoundOf as entry, index (entry.relationId)}
 						{#if index > 0}<span class="text-secondary">+</span>{/if}
 						<a href="/Wordbook/{entry.languageSlug}/{encodeURIComponent(entry.word)}" class="font-medium text-link italic hover:text-link-hover hover:underline">{entry.word}</a>
 						<span class="text-dim text-xs">({entry.definition})</span>
 						{#if canEdit}
-							<button onclick={() => deleteRelation(entry.relationId)} disabled={deleting === entry.relationId} class={cn('text-xs text-error hover:text-error-hover', deleting === entry.relationId && 'opacity-50')} title="Remove">✕</button>
+							<button onclick={() => deleteRelation(entry.relationId)} disabled={deleting === entry.relationId} class={cn('text-xs text-error hover:text-error-hover', deleting === entry.relationId && 'opacity-50')} title={m.common_remove()}>✕</button>
 						{/if}
 					{/each}
 				</div>
@@ -364,7 +365,7 @@
 	{#if narrativeEtymology}
 		<div>
 			{#if direct.derivedFrom.length === 0 && direct.loanFrom.length === 0 && direct.compoundOf.length === 0}
-				<h3 class="text-xs font-medium uppercase tracking-wide text-secondary mb-2">Etymology</h3>
+				<h3 class="text-xs font-medium uppercase tracking-wide text-secondary mb-2">{m.wbc_etymology_heading()}</h3>
 			{/if}
 			<p class="text-sm/relaxed text-secondary italic">{narrativeEtymology}</p>
 		</div>
@@ -373,7 +374,7 @@
 	<!-- Derived forms -->
 	{#if direct.derivedWords.length > 0}
 		<div>
-			<h3 class="text-xs font-medium uppercase tracking-wide text-secondary mb-2">Derived forms</h3>
+			<h3 class="text-xs font-medium uppercase tracking-wide text-secondary mb-2">{m.wbc_derived_forms_heading()}</h3>
 			{#each direct.derivedWords as entry (entry.relationId)}
 				{@render relationRow(entry, '→', entry.partOfSpeech || '')}
 			{/each}
@@ -383,7 +384,7 @@
 	<!-- Borrowed by -->
 	{#if direct.loanedTo.length > 0}
 		<div>
-			<h3 class="text-xs font-medium uppercase tracking-wide text-secondary mb-2">Borrowed by</h3>
+			<h3 class="text-xs font-medium uppercase tracking-wide text-secondary mb-2">{m.wbc_borrowed_by_heading()}</h3>
 			{#each direct.loanedTo as entry (entry.relationId)}
 				{@render relationRow(entry, '→', '')}
 			{/each}
@@ -393,7 +394,7 @@
 	<!-- Compounds using this -->
 	{#if direct.compoundsUsing.length > 0}
 		<div>
-			<h3 class="text-xs font-medium uppercase tracking-wide text-secondary mb-2">Compounds</h3>
+			<h3 class="text-xs font-medium uppercase tracking-wide text-secondary mb-2">{m.wbc_compounds_heading()}</h3>
 			{#each direct.compoundsUsing as entry (entry.relationId)}
 				{@render relationRow(entry, '→', '')}
 			{/each}
@@ -403,10 +404,10 @@
 	<!-- Cognates -->
 	{#if cognates.length > 0}
 		<div>
-			<h3 class="text-xs font-medium uppercase tracking-wide text-secondary mb-2">Cognates</h3>
+			<h3 class="text-xs font-medium uppercase tracking-wide text-secondary mb-2">{m.wbc_cognates_heading()}</h3>
 			{#each cognates as group (group.family)}
 				<div class="mb-3">
-					<div class="text-xs text-secondary font-medium mb-1">{group.family} family</div>
+					<div class="text-xs text-secondary font-medium mb-1">{m.wbc_family_label({ family: group.family })}</div>
 					{#each group.languages as lang (lang.slug)}
 						<div class="flex items-baseline gap-2 text-sm mb-1 ml-3">
 							<span class="text-dim min-w-20">{lang.name}:</span>
@@ -428,7 +429,7 @@
 			{@render addRelationForm()}
 		{:else}
 			<button onclick={() => showForm = true} class="text-sm text-link hover:text-link-hover hover:underline">
-				+ Add etymological relation
+				+ {m.wbc_add_etymological_relation()}
 			</button>
 		{/if}
 	{/if}
@@ -436,12 +437,12 @@
 </div>
 {:else if canEdit}
 	<div class="py-4">
-		<p class="text-sm text-secondary mb-3">No etymological relations yet.</p>
+		<p class="text-sm text-secondary mb-3">{m.wbc_no_etymological_relations()}</p>
 		{#if showForm}
 			{@render addRelationForm()}
 		{:else}
 			<button onclick={() => showForm = true} class="text-sm text-link hover:text-link-hover hover:underline">
-				+ Add etymological relation
+				+ {m.wbc_add_etymological_relation()}
 			</button>
 		{/if}
 	</div>

@@ -10,6 +10,7 @@
 	import { cn } from '$lib/utils'
 	import { createMutation, createQuery } from '@tanstack/svelte-query'
 	import { api } from '$lib/api'
+	import { m } from '$lib/paraglide/messages.js'
 
 	let {
 		entryId,
@@ -89,24 +90,24 @@
 					Object.entries(overrides).filter(([_, v]) => v.trim()),
 				),
 			})
-			pushSuccess('Inflection saved')
+			pushSuccess(m.wbc_inflection_saved())
 			editing = false
 			await invalidateAll()
 		} catch (error_) {
-			const message = error_ instanceof Error ? error_.message : 'Failed to save'
+			const message = error_ instanceof Error ? error_.message : m.wbc_failed_save()
 			error = message
 			pushError(message)
 		}
 	}
 
 	async function removeInflection() {
-		const ok = await confirmDialog.confirm('Remove inflection', 'Remove inflection data for this entry?', 'Remove', 'Cancel')
+		const ok = await confirmDialog.confirm(m.wbc_remove_inflection(), m.wbc_remove_inflection_confirm(), m.common_remove(), m.common_cancel())
 		if (!ok) return
 		try {
 			await saveMutation.mutateAsync({ classId: null, stem: null, overrides: {} })
-			pushSuccess('Inflection removed')
+			pushSuccess(m.wbc_inflection_removed())
 		} catch (error_) {
-			pushError(error_ instanceof Error ? error_.message : 'Failed to remove inflection')
+			pushError(error_ instanceof Error ? error_.message : m.wbc_failed_remove_inflection())
 		}
 		editing = false
 		await invalidateAll()
@@ -119,7 +120,7 @@
 	// Smart stem placeholder: try to strip the longest non-{stem} suffix
 	// from any rule pattern off the headword.
 	const stemPlaceholder = $derived.by(() => {
-		if (!word) return 'e.g. cat'
+		if (!word) return m.wbc_eg_value({ value: 'cat' })
 		const patterns = Object.values(selectedClassRules)
 		if (patterns.length === 0) return word
 		let best = word
@@ -161,12 +162,12 @@
 {#if editing}
 	<div class="mt-4 p-4 bg-raised space-y-3">
 		<div class="flex items-center justify-between">
-			<h4 class="text-xs font-medium uppercase tracking-wide text-dim">Set up inflection</h4>
+			<h4 class="text-xs font-medium uppercase tracking-wide text-dim">{m.wbc_set_up_inflection()}</h4>
 			<div class="flex gap-2">
 				{#if inflection.hasInflection}
-					<button onclick={removeInflection} class="text-xs text-error hover:underline">Remove</button>
+					<button onclick={removeInflection} class="text-xs text-error hover:underline">{m.common_remove()}</button>
 				{/if}
-				<button onclick={() => editing = false} class="text-xs text-secondary hover:text-body">Cancel</button>
+				<button onclick={() => editing = false} class="text-xs text-secondary hover:text-body">{m.common_cancel()}</button>
 			</div>
 		</div>
 
@@ -179,31 +180,30 @@
 		<div class="flex gap-3 flex-wrap">
 			<!-- Paradigm class -->
 			<div class="flex-1 min-w-50">
-				<label class="block text-xs font-medium text-secondary mb-1">Paradigm class</label>
+				<span class="block text-xs font-medium text-secondary mb-1">{m.wbc_paradigm_class()}</span>
 				{#if filteredClasses.length > 0}
 					<Select
 						type="single"
 						numeric
 						bind:value={selectedClassId}
-						placeholder="Manual (no class)"
+						placeholder={m.wbc_manual_no_class()}
 						items={filteredClasses.map(cls => ({ value: String(cls.id), label: cls.name }))}
 						containerClass="w-full"
 					/>
-					<p class="text-xs text-secondary mt-1">Picks the rule set. Forms below auto-generate from the class's rules + the stem.</p>
+					<p class="text-xs text-secondary mt-1">{m.wbc_paradigm_class_help()}</p>
 				{:else}
 					<div class="p-2 bg-warning-bg border border-warning-border text-xs text-body">
 						{#if availableClasses.length > 0}
-							No paradigm classes for <strong>{partOfSpeech || 'this part of speech'}</strong>.
-							Classes exist for other parts of speech — see
-							<a href="/Wordbook/contribute/language/{languageSlug}?tab=inflections" class="text-link hover:underline">Inflections</a>.
+							<!-- eslint-disable-next-line svelte/no-at-html-tags -- localized static markup, not user input -->
+							{@html m.wbc_no_classes_for_pos({ pos: partOfSpeech || m.wbc_this_part_of_speech() })}
+							<a href="/Wordbook/contribute/language/{languageSlug}?tab=inflections" class="text-link hover:underline">{m.wbc_inflections_link()}</a>.
 						{:else if inflection.dimensions.length > 0}
-							No paradigm classes defined yet.
-							<a href="/Wordbook/contribute/language/{languageSlug}?tab=inflections" class="text-link hover:underline">Create a class</a>,
-							then come back to assign it.
+							{m.wbc_no_classes_defined()}
+							<a href="/Wordbook/contribute/language/{languageSlug}?tab=inflections" class="text-link hover:underline">{m.wbc_create_a_class()}</a>{m.wbc_then_come_back_assign()}
 						{:else}
-							No inflection system set up for this language.
-							<a href="/Wordbook/contribute/language/{languageSlug}?tab=inflections" class="text-link hover:underline">Add dimensions</a>
-							(e.g. Case, Number) and paradigm classes first.
+							{m.wbc_no_inflection_system()}
+							<a href="/Wordbook/contribute/language/{languageSlug}?tab=inflections" class="text-link hover:underline">{m.wbc_add_dimensions()}</a>
+							{m.wbc_add_dimensions_suffix()}
 						{/if}
 					</div>
 				{/if}
@@ -211,15 +211,15 @@
 
 			<!-- Stem -->
 			<div class="flex-1 min-w-37.5">
-				<label class="block text-xs font-medium text-secondary mb-1">Stem</label>
-				<Input bind:value={stem} containerClass="w-full" placeholder={`e.g. ${stemPlaceholder}`} />
-				<p class="text-xs text-secondary mt-1">The unchanging part the rules attach to — usually the word minus its ending.</p>
+				<span class="block text-xs font-medium text-secondary mb-1">{m.wbc_stem()}</span>
+				<Input bind:value={stem} containerClass="w-full" placeholder={m.wbc_eg_value({ value: stemPlaceholder })} />
+				<p class="text-xs text-secondary mt-1">{m.wbc_stem_help()}</p>
 			</div>
 		</div>
 
 		{#if selectedClassId !== null && livePreview.length > 0}
 			<div class="p-2 bg-page">
-				<div class="text-xs text-dim mb-1">Will generate:</div>
+				<div class="text-xs text-dim mb-1">{m.wbc_will_generate()}</div>
 				<div class="text-xs font-mono text-body flex flex-wrap gap-x-3 gap-y-0.5">
 					{#each livePreview as cell (cell.cell)}
 						<span><span class="text-secondary">{cellKeyLabel(cell.cell)}:</span> {cell.form}</span>
@@ -227,16 +227,16 @@
 				</div>
 			</div>
 		{:else if selectedClassId !== null && loadingRules}
-			<div class="text-xs text-secondary">Loading class rules…</div>
+			<div class="text-xs text-secondary">{m.wbc_loading_class_rules()}</div>
 		{/if}
 
 		<!-- Override grid -->
 		{#if cellKeys.length > 0}
 			<div>
-				<label class="block text-xs font-medium text-secondary mb-1">
-					Irregular forms (overrides)
-				</label>
-				<p class="text-xs text-secondary mb-2">Leave blank to use the class rule. Fill a cell only when this word breaks the pattern.</p>
+				<span class="block text-xs font-medium text-secondary mb-1">
+					{m.wbc_irregular_forms()}
+				</span>
+				<p class="text-xs text-secondary mb-2">{m.wbc_irregular_forms_help()}</p>
 				<div class="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
 					{#each cellKeys as key (key)}
 						{@const generated = ruleWouldBe(key)}
@@ -259,7 +259,7 @@
 								class={cn('flex-1', inputClass, 'text-xs', hasOverride && 'border-accent bg-accent-subtle')}
 							/>
 							{#if hasOverride && generated}
-								<span class="text-xs text-secondary whitespace-nowrap" title="Rule would generate this">would be: {generated}</span>
+								<span class="text-xs text-secondary whitespace-nowrap" title={m.wbc_rule_would_generate()}>{m.wbc_would_be({ form: generated })}</span>
 							{/if}
 						</div>
 					{/each}
@@ -272,16 +272,16 @@
 			disabled={saving}
 			class="px-4 py-1.5 bg-accent text-surface text-sm font-medium transition-colors hover:bg-accent-hover disabled:opacity-50"
 		>
-			{saving ? 'Saving…' : 'Save inflection'}
+			{saving ? m.common_saving() : m.wbc_save_inflection()}
 		</button>
 	</div>
 {:else if !inflection.hasInflection}
 	<button onclick={startEditing} class="mt-3 text-sm text-link hover:text-link-hover hover:underline">
-		+ Set up inflection
+		+ {m.wbc_set_up_inflection()}
 	</button>
 {:else}
 	<button onclick={startEditing} class="mt-1 text-xs text-secondary hover:text-link hover:underline">
-		Edit inflection
+		{m.wbc_edit_inflection()}
 	</button>
 {/if}
 

@@ -177,12 +177,12 @@
 
 				<!-- Planets under this star -->
 				{#each planetsForStar(star.id) as planet (planet.id)}
+					{@const PlanetIcon = bodyIcon(planet.bodyType, !!planet.parentId)}
 					<a
 						href="/Celestial:{planet.slug}"
 						class="flex items-center gap-2 px-1.5 py-1 ml-4 transition-colors hover:bg-raised"
 					>
-						<svelte:component
-							this={bodyIcon(planet.bodyType, !!planet.parentId)}
+						<PlanetIcon
 							size={14}
 							weight="fill"
 							class="shrink-0"

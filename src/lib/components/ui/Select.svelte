@@ -4,7 +4,7 @@
 	import { cn, getZodValidationError } from '$lib/utils'
 	import Label from './Label.svelte'
 	import type { ZodType } from 'zod'
-	import CaretDown from 'phosphor-svelte/lib/CaretDown'
+	import CaretDownIcon from 'phosphor-svelte/lib/CaretDownIcon'
 	import CaretUp from 'phosphor-svelte/lib/CaretUp'
 	import Check from 'phosphor-svelte/lib/Check'
 
@@ -143,7 +143,7 @@
 				{:else}
 					<span class="text-secondary">{placeholder}</span>
 				{/if}
-				<span class={cn('ml-auto text-secondary transition-transform duration-200', open && 'rotate-180')}><CaretDown size={12} weight="bold" /></span>
+				<span class={cn('ml-auto text-secondary transition-transform duration-200', open && 'rotate-180')}><CaretDownIcon size={12} weight="bold" /></span>
 			</Select.Trigger>
 			<Select.Portal>
 				<Select.Content
@@ -177,7 +177,7 @@
 							</Select.Item>
 						{/each}
 					</Select.Viewport>
-					<Select.ScrollDownButton class="flex w-full items-center justify-center text-secondary py-1"><CaretDown size={12} weight="bold" /></Select.ScrollDownButton>
+					<Select.ScrollDownButton class="flex w-full items-center justify-center text-secondary py-1"><CaretDownIcon size={12} weight="bold" /></Select.ScrollDownButton>
 				</Select.Content>
 			</Select.Portal>
 		</Select.Root>

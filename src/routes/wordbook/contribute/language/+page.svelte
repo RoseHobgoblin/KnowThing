@@ -8,6 +8,7 @@
 	import { page } from '$app/stores'
 	import { createMutation } from '@tanstack/svelte-query'
 	import { api } from '$lib/api'
+	import { m } from '$lib/paraglide/messages.js'
 
 	let { data }: { data: PageData } = $props()
 
@@ -18,7 +19,7 @@
 
 	async function handleSubmit(formData: Record<string, unknown>) {
 		const lang = await createLanguageMutation.mutateAsync(formData)
-		pushSuccess('Language created')
+		pushSuccess(m.wb_language_created())
 		goto(`/Wordbook/${lang.slug}`)
 	}
 </script>
@@ -29,11 +30,11 @@
 
 <ArticleShell
 	breadcrumbs={wordbookAddLanguageBreadcrumbs(wbName)}
-	title="Add a Language"
+	title={m.wb_add_a_language_heading()}
 >
 	<LanguageForm
 		existingLanguages={data.existingLanguages}
 		onsubmit={handleSubmit}
-		submitLabel="Create Language"
+		submitLabel={m.wb_create_language()}
 	/>
 </ArticleShell>

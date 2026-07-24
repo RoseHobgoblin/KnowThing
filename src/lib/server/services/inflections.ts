@@ -169,8 +169,8 @@ type DatabaseExecutor = Pick<typeof db, 'select' | 'insert' | 'update' | 'delete
 function safeCellKeys(dims: Array<{ values: string[], sortOrder: number }>): string[] {
 	try {
 		return generateCellKeys(dims)
-	} catch (caught) {
-		throw error(400, caught instanceof Error ? caught.message : 'Too many paradigm cells')
+	} catch (error_) {
+		throw error(400, error_ instanceof Error ? error_.message : 'Too many paradigm cells')
 	}
 }
 

@@ -5,6 +5,7 @@
 	import X from 'phosphor-svelte/lib/XIcon'
 	import DotsSixVertical from 'phosphor-svelte/lib/DotsSixVerticalIcon'
 	import { createSortable } from '$lib/utils/sortable.svelte'
+	import { m } from '$lib/paraglide/messages.js'
 
 	interface PhonemeOption {
 		id: number
@@ -22,7 +23,7 @@
 
 	const optionById = $derived(new Map(options.map(o => [o.id, o])))
 	const selectItems = $derived([
-		{ value: '__add__', label: 'Select a phoneme…', disabled: true },
+		{ value: '__add__', label: m.phon_select_a_phoneme(), disabled: true },
 		...options.map(o => ({ value: String(o.id), label: `/${o.ipa}/ — ${o.type}` })),
 	])
 
@@ -53,7 +54,7 @@
 <div class="phoneme-sequence-input">
 	<div class="flex flex-wrap items-center gap-1.5 min-h-10 p-2 bg-raised">
 		{#if value.length === 0}
-			<span class="text-dim text-xs italic">Silent — no phonemes. Add one below, or leave empty for punctuation / silent letters.</span>
+			<span class="text-dim text-xs italic">{m.phon_silent_no_phonemes()}</span>
 		{:else}
 			{#each value as pid, index (pid + ':' + index)}
 				{@const p = optionById.get(pid)}
@@ -63,12 +64,12 @@
 					class:ring-1={sortable.overIndex === index}
 					class:ring-accent={sortable.overIndex === index}
 					use:sortable.item={index}
-					title={p ? `${p.type}` : 'unknown phoneme'}
+					title={p ? `${p.type}` : m.phon_unknown_phoneme()}
 					role="listitem"
 				>
 					<DotsSixVertical size={12} class="text-secondary" />
 					<span class="font-serif">/{p?.ipa ?? '?'}/</span>
-					<button type="button" class="text-secondary hover:text-error" onclick={() => removeAt(index)} aria-label="Remove phoneme">
+					<button type="button" class="text-secondary hover:text-error" onclick={() => removeAt(index)} aria-label={m.phon_remove_phoneme()}>
 						<X size={12} weight="bold" />
 					</button>
 				</div>
@@ -78,10 +79,10 @@
 
 	<div class="flex items-center gap-2 mt-2">
 		<div class="flex-1">
-			<Select type="single" items={selectItems} bind:value={pendingId} placeholder="Pick phoneme to append…" size="sm" />
+			<Select type="single" items={selectItems} bind:value={pendingId} placeholder={m.phon_pick_phoneme_to_append()} size="sm" />
 		</div>
 		<Button size="sm" variant="secondary" onclick={addPhoneme} disabled={pendingId === '__add__'}>
-			<Plus size={14} weight="bold" /> Add
+			<Plus size={14} weight="bold" /> {m.common_add()}
 		</Button>
 	</div>
 </div>

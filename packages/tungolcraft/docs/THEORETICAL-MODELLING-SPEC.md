@@ -127,6 +127,7 @@ type Unit =
   | 'kg'
   | 'kg/m^3'
   | 'W'
+  | 'W/m^2'
   | 'K'
   | 'm^3/s^2'
   | 'AU'
@@ -392,7 +393,7 @@ uncertainty through a model; they do not quantify model-form error.
 
 The 0.2 catalogue SHOULD expose existing calculations under these IDs:
 
-All fourteen initial models are implemented through the catalogue result
+All twenty current models are implemented through the catalogue result
 contract. Each has a stable ID, versioned metadata, assumptions, validity
 rules, provenance, structured diagnostics and finite serialization tests.
 
@@ -412,6 +413,12 @@ rules, provenance, structured diagnostics and finite serialization tests.
 | `satellite.roche-limit` | idealised screening | `computeRocheLimitM` |
 | `star.stefan-boltzmann-luminosity` | exact relation within assumptions | `computeLuminosity` |
 | `star.simple-habitable-zone` | approximation | `computeHabitableZoneAu` |
+| `star.eker-2018-main-sequence-screen` | screening | Eker et al. (2018) six-piece MLR |
+| `orbit.stellar-irradiance` | exact relation | inverse-square bolometric flux |
+| `planet.blackbody-equilibrium-temperature` | exact relation within assumptions | global blackbody energy balance |
+| `star.kopparapu-2014-conservative-hz` | approximation | Kopparapu et al. (2014) equations 4–5 |
+| `satellite.constant-q-eccentricity-damping` | screening | low-e constant-Q tidal timescale |
+| `planet.zeng-2016-rocky-radius` | empirical fit | Zeng et al. (2016) PREM relation |
 
 The model metadata MUST make clear that “exact relation” means exact within the
 declared idealised model, not exact knowledge of a real object.

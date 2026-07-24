@@ -37,7 +37,7 @@
 	} = $props()
 </script>
 
-<div class="sticky bottom-0 z-20 bg-surface/95 backdrop-blur px-4 py-3">
+<div class="sticky bottom-0 z-20 bg-surface/95 backdrop-blur-sm px-4 py-3">
 	<div class="flex flex-col gap-3 md:flex-row md:items-center">
 		<div class="flex items-center gap-2">
 			<SaveStatusBadge {dirty} {saving} {error} {savedAt} />

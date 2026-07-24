@@ -8,6 +8,7 @@
 	import KnowArticle from './KnowArticle.svelte'
 	import { createMutation } from '@tanstack/svelte-query'
 	import { api } from '$lib/api'
+	import { m } from '$lib/paraglide/messages.js'
 
 	let { data }: { data: PageData } = $props()
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
@@ -27,14 +28,14 @@
 	})
 
 	async function deletePage() {
-		const ok = await confirmDialog.confirm('Delete page', `Delete "${data.title}"? This cannot be undone.`, 'Delete', 'Cancel')
+		const ok = await confirmDialog.confirm(m.know_delete_page(), m.common_delete_confirm_named({ name: data.title }), m.common_delete(), m.common_cancel())
 		if (!ok) return
 		try {
 			await deleteMutation.mutateAsync()
-			pushSuccess(`"${data.title}" deleted`)
+			pushSuccess(m.know_page_deleted({ name: data.title }))
 			goto('/')
 		} catch (error) {
-			pushError(error instanceof Error ? error.message : 'Failed to delete page')
+			pushError(error instanceof Error ? error.message : m.know_delete_failed())
 		}
 	}
 </script>
@@ -63,10 +64,10 @@
 		<div class="bg-surface shadow-sm p-8 text-center">
 			<h1 class="text-2xl font-bold mb-3 text-body">{data.title}</h1>
 			<p class="text-dim mb-6">
-				This article doesn't exist yet.
+				{m.know_article_not_exist()}
 			</p>
 			<Button href="/know/create?title={encodeURIComponent(data.title)}&slug={data.slug}" size="lg">
-				Create this page
+				{m.know_create_this_page()}
 			</Button>
 		</div>
 	{:else if data.ast}

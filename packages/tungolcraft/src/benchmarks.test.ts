@@ -14,7 +14,7 @@ const fixtures = JSON.parse(readFileSync(
 
 describe('scientific benchmark corpus', () => {
 	it('covers every initial catalogue model with sources and explicit tolerances', () => {
-		expect(fixtures).toHaveLength(14)
+		expect(fixtures).toHaveLength(20)
 		expect(new Set(fixtures.map(fixture => fixture.id)).size).toBe(fixtures.length)
 		expect(new Set(fixtures.map(fixture => fixture.modelId))).toEqual(
 			new Set(Object.values(MODEL_IDS)),
@@ -31,8 +31,8 @@ describe('scientific benchmark corpus', () => {
 		const report = runBenchmarkFixtures(fixtures, '2026-01-01T00:00:00.000Z')
 		expect(report).toMatchObject({
 			schemaVersion: '1.0.0',
-			total: 14,
-			passed: 14,
+			total: 20,
+			passed: 20,
 			failed: 0,
 		})
 		expect(JSON.stringify(report)).not.toMatch(/NaN|Infinity/)

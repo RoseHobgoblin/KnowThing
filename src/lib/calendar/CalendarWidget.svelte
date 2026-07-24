@@ -159,7 +159,9 @@
 				const season = seasonForDate(config.static_data, { year: viewYear, month: m + 1, day: d })
 				const sName = season?.name ?? 'Unknown'
 
-				if (sName !== currentSeason) {
+				if (sName === currentSeason) {
+					dayCount++
+				} else {
 					// Close previous block
 					if (currentSeason !== null && blockStart) {
 						const prevSeason = seasons.find(s => s.name === currentSeason)
@@ -177,8 +179,6 @@
 					currentSeason = sName
 					blockStart = { month: m, day: d }
 					dayCount = 1
-				} else {
-					dayCount++
 				}
 			}
 		}
@@ -220,7 +220,7 @@
 						type="number"
 						bind:value={jumpYear}
 						placeholder="Year"
-						class="w-20 px-2 py-0.5 text-sm rounded bg-surface text-center focus:outline-none focus:ring-1 focus:ring-accent"
+						class="w-20 px-2 py-0.5 text-sm rounded-sm bg-surface text-center focus:outline-none focus:ring-1 focus:ring-accent"
 					/>
 					<button type="submit" class="text-xs text-link hover:underline">Go</button>
 					<button type="button" onclick={() => showJump = false} class="text-xs text-secondary hover:underline">Cancel</button>
@@ -263,7 +263,7 @@
 		<!-- Weekday headers -->
 		<div class="grid gap-px bg-border" style="grid-template-columns: repeat({grid.weekdays.length}, 1fr)">
 			{#each grid.weekdays as wd, weekdayIndex (weekdayIndex)}
-				<div class="text-center text-[11px] font-semibold text-dim bg-raised py-2 uppercase tracking-wider">{wd}</div>
+				<div class="text-center text-[0.6875rem] font-semibold text-dim bg-raised py-2 uppercase tracking-wider">{wd}</div>
 			{/each}
 		</div>
 
@@ -319,7 +319,7 @@
 										class="h-2.5 text-center leading-xs {isToday ? 'bg-accent text-white' : ''}"
 										style={!isToday && seasonColor ? `background: ${seasonColor}22` : ''}
 									>
-										<span class="text-[6px] {isToday ? 'text-white' : 'text-body'}">{day}</span>
+										<span class="text-[0.375rem] {isToday ? 'text-white' : 'text-body'}">{day}</span>
 									</div>
 								{/if}
 							{/each}
@@ -340,7 +340,7 @@
 				<div class="flex overflow-hidden h-6">
 					{#each seasonBlocks as block, blockIndex (blockIndex)}
 						<div
-							class="flex items-center justify-center text-[9px] font-medium text-white overflow-hidden"
+							class="flex items-center justify-center text-[0.5625rem] font-medium text-white overflow-hidden"
 							style="width: {(block.totalDays / totalDays) * 100}%; background: {block.color}"
 							title="{block.name}: {block.totalDays} days"
 						>

@@ -28,7 +28,7 @@
 <LinkPreview.Root openDelay={400} closeDelay={100}>
 	<LinkPreview.Trigger
 		{href}
-		class="know-link underline decoration-transparent hover:decoration-current transition-colors {exists ? 'text-link' : 'text-error-hover'}"
+		class="know-link underline decoration-transparent transition-colors hover:decoration-current {exists ? 'text-link' : 'text-error-hover'}"
 		title={exists ? undefined : target}
 	>{#if display}{#each display as child, index (index)}<WikiNodeComponent node={child} />{/each}{:else}{target}{/if}</LinkPreview.Trigger>{#if exists}<LinkPreview.Portal>
 			<LinkPreview.Content

@@ -34,6 +34,7 @@ declarations.
 | `binary-coordinates` | Overflow-resistant relative-axis and relative-state conversions into barycentric component coordinates. |
 | `benchmarks` | Version-locked scientific fixtures, deterministic tolerance evaluation and machine-readable evidence reports. |
 | `uncertainty` | First-order, interval and deterministic seeded Monte Carlo propagation over catalogue models. |
+| `model-packs` | Versioned higher-level stellar, energy-balance, climate, tidal and rocky-interior prescriptions. |
 | `format` | Human-readable strings (g/cm³, M☉, km/s, …) over the pure numbers. |
 | `constants` | SI reference constants and scales. |
 
@@ -155,10 +156,11 @@ assumption. See the [uncertainty guide](./docs/UNCERTAINTY.md).
 npm run benchmarks --workspace=tungolcraft
 ```
 
-The committed corpus covers all fourteen catalogue models with NASA and IAU
-reference values, the published Domingos satellite coefficient, and isolated
-analytic identities. Every fixture declares its model version, evaluated
-inputs, expected unit-bearing value, source and numerical tolerance.
+The committed corpus covers all twenty catalogue models with NASA and IAU
+reference values, published Eker, Kopparapu, Goldreich–Soter, Domingos and Zeng
+prescriptions, and isolated analytic identities. Every fixture declares its
+model version, evaluated inputs, expected unit-bearing value, source and
+numerical tolerance.
 
 - [Current validation report](./docs/VALIDATION.md)
 - [Generated model reference](./docs/MODEL-REFERENCE.md)
@@ -168,13 +170,13 @@ inputs, expected unit-bearing value, source and numerical tolerance.
 
 Early extraction from the
 [KnowThing](https://github.com/RoseHobgoblin/KnowThing) celestial engine.
-The numeric core is stable and unit-tested. Its initial fourteen-model
-catalogue provides explainable, non-throwing results for every existing
-scientific calculation. Versioned scenario interchange, explicit frames and
-binary coordinate transformations are supported. All catalogue models have
-version-locked benchmark evidence. First-order, interval and deterministic
-seeded Monte Carlo uncertainty propagation are supported. N-body dynamics
-remain outside its current model.
+The numeric core is stable and unit-tested. Its twenty-model catalogue provides
+explainable, non-throwing results for both foundational calculations and named
+higher-level scientific prescriptions. Versioned scenario interchange,
+explicit frames and binary coordinate transformations are supported. All
+catalogue models have version-locked benchmark evidence. First-order, interval
+and deterministic seeded Monte Carlo uncertainty propagation are supported.
+N-body dynamics remain outside its current model.
 
 ## Direction
 
@@ -182,5 +184,6 @@ remain outside its current model.
 - [Theoretical-modelling specification](./docs/THEORETICAL-MODELLING-SPEC.md)
 - [Scenario interchange guide](./docs/SCENARIO-INTERCHANGE.md)
 - [Uncertainty propagation guide](./docs/UNCERTAINTY.md)
+- [Scientific model-pack guide](./docs/MODEL-PACKS.md)
 - [Scientific validation](./docs/VALIDATION.md)
 - [Model reference](./docs/MODEL-REFERENCE.md)

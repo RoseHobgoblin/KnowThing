@@ -10,10 +10,7 @@
 
 <a
 	href="/Wordbook/{slug}"
-	class="
-		inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium transition-colors
-		hover:opacity-80
-	"
+	class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium transition-colors hover:opacity-80"
 	style="background-color: {bg}; color: {c}; border: 1px solid {border};"
 >
 	<span class="size-1.5" style="background-color: {c};"></span>

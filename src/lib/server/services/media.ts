@@ -27,7 +27,7 @@ const THUMB_SIZES = [150, 300, 600] as const
 const RASTER_WIDTH = 1200
 
 function normalizeCategories(categories?: string[]) {
-	if (!categories) return undefined
+	if (!categories) return
 
 	return categories
 		.map(category => category.trim())
@@ -203,10 +203,10 @@ export async function uploadMediaFile(userId: number, file: File) {
 				if (size === 300) hasThumb300 = true
 				if (size === 600) hasThumb600 = true
 			}
-		} catch (cause) {
+		} catch (error_) {
 			// SVG may reference external fonts/assets sharp can't resolve — article
 			// keeps the crisp SVG, share cards just won't have an image for this one.
-			console.error('SVG rasterization failed:', cause)
+			console.error('SVG rasterization failed:', error_)
 		}
 	} else {
 		try {
@@ -229,8 +229,8 @@ export async function uploadMediaFile(userId: number, file: File) {
 					if (size === 600) hasThumb600 = true
 				}
 			}
-		} catch (cause) {
-			console.error('Image processing failed:', cause)
+		} catch (error_) {
+			console.error('Image processing failed:', error_)
 		}
 	}
 
@@ -384,8 +384,8 @@ export async function replaceMediaFile(userId: number, filename: string, file: F
 					.png()
 					.toFile(join(THUMB_DIR, `${size}_${filename}.png`))
 			}
-		} catch (cause) {
-			console.error('SVG rasterization on replace failed:', cause)
+		} catch (error_) {
+			console.error('SVG rasterization on replace failed:', error_)
 		}
 	} else {
 		try {
@@ -403,8 +403,8 @@ export async function replaceMediaFile(userId: number, filename: string, file: F
 						.toFile(join(THUMB_DIR, `${size}_${filename}`))
 				}
 			}
-		} catch (cause) {
-			console.error('Image processing on replace failed:', cause)
+		} catch (error_) {
+			console.error('Image processing on replace failed:', error_)
 		}
 	}
 
@@ -507,8 +507,8 @@ export async function renameMediaFile(userId: number, oldFilename: string, newFi
 	// Move primary file.
 	try {
 		await fsRename(record.filepath, newFilepath)
-	} catch (cause) {
-		throw error(500, `Could not rename file on disk: ${(cause as Error).message}`)
+	} catch (error_) {
+		throw error(500, `Could not rename file on disk: ${(error_ as Error).message}`)
 	}
 
 	// Move thumbs (different naming for SVG-derived vs raster-original).
@@ -540,10 +540,10 @@ export async function renameMediaFile(userId: number, oldFilename: string, newFi
 		.innerJoin(contentRecords, eq(contentMediaUsage.contentRecordId, contentRecords.id))
 		.where(eq(contentMediaUsage.filename, oldFilename))
 
-	const escapedOld = oldFilename.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')
+	const escapedOld = oldFilename.replaceAll(/[$()*+.?[\\\]^{|}]/g, String.raw`\$&`)
 	// Match the filename only when it's a complete token (not a substring of another name).
 	// Bounded by [|=\s\[\]] and start/end-of-line variants typically present in wikitext.
-	const referenceRegex = new RegExp(`(?<=^|[|=\\s\\[\\n>])${escapedOld}(?=$|[|=\\s\\[\\]\\n<])`, 'g')
+	const referenceRegex = new RegExp(String.raw`(?<=^|[|=\s\[\n>])${escapedOld}(?=$|[|=\s\[\]\n<])`, 'g')
 
 	await db.transaction(async (tx) => {
 		await tx

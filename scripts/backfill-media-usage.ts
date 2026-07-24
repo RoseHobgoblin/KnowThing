@@ -5,7 +5,7 @@ const DATABASE_URL = process.env.DATABASE_URL || 'postgres://knowthing:knowthing
 const sql = postgres(DATABASE_URL)
 
 const records = await sql<{ id: number, slug: string, content: string }[]>`
-	SELECT id, slug, content FROM content_records WHERE content IS NOT NULL
+  SELECT id, slug, content FROM content_records WHERE content IS NOT NULL
 `
 
 console.log(`Re-extracting media usage for ${records.length} content records`)

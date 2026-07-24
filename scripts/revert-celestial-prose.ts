@@ -76,8 +76,8 @@ async function main() {
 			if (!APPLY) { migrated++; continue }
 			await sql.begin(tx => migrateOne(tx, row, targetSlug))
 			migrated++
-		} catch (e) {
-			console.error(`  ✗ FAILED for ${row.kind} ${row.slug}:`, e)
+		} catch (error) {
+			console.error(`  ✗ FAILED for ${row.kind} ${row.slug}:`, error)
 			errors++
 		}
 	}

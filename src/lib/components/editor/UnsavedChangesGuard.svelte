@@ -11,7 +11,7 @@
 
 	beforeNavigate((navigation) => {
 		if (!when) return
-		const ok = window.confirm(message)
+		const ok = globalThis.confirm(message)
 		if (!ok) navigation.cancel()
 	})
 

@@ -5,6 +5,7 @@
 	import AlphabetNav from '$lib/components/wordbook/AlphabetNav.svelte'
 	import WordEntry from '$lib/components/wordbook/WordEntry.svelte'
 	import InflectionSummary from '$lib/components/wordbook/InflectionSummary.svelte'
+	import { m } from '$lib/paraglide/messages.js'
 
 	let { data }: { data: PageData } = $props()
 
@@ -80,10 +81,10 @@
 >
 	{#snippet actions()}
 		{#if canManageWordbook}
-			<a href="/Wordbook/contribute?language={data.language.slug}" class="text-sm text-link hover:text-link-hover hover:underline">+ Add word</a>
-			<a href="/Wordbook/contribute/language/{data.language.slug}" class="text-sm text-secondary hover:text-link hover:underline">Edit language</a>
+			<a href="/Wordbook/contribute?language={data.language.slug}" class="text-sm text-link hover:text-link-hover hover:underline">+ {m.wb_add_word()}</a>
+			<a href="/Wordbook/contribute/language/{data.language.slug}" class="text-sm text-secondary hover:text-link hover:underline">{m.wb_edit_language()}</a>
 		{:else if isAuthenticated}
-			<span class="text-secondary text-sm">View only. Editor role required for wordbook changes.</span>
+			<span class="text-secondary text-sm">{m.common_view_only_editor()}</span>
 		{/if}
 	{/snippet}
 
@@ -113,7 +114,7 @@
 		<a
 			href="/know/{data.language.pageSlug}"
 			class="inline-block mb-4 text-sm text-link hover:text-link-hover hover:underline"
-		>Read the full article →</a>
+		>{m.wb_read_full_article()} →</a>
 	{/if}
 
 	<!--
@@ -123,7 +124,7 @@
 	<!-- Child languages -->
 	{#if data.children.length > 0}
 		<div class="bg-raised p-4 mb-4">
-			<h3 class="text-sm font-semibold text-body mb-2">Descendant languages</h3>
+			<h3 class="text-sm font-semibold text-body mb-2">{m.wb_descendant_languages()}</h3>
 			<div class="flex flex-wrap gap-2">
 				{#each data.children as child (child.slug)}
 					<a href="/Wordbook/{child.slug}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm transition-colors hover:bg-accent-subtle">
@@ -144,7 +145,7 @@
 	<!-- Dialects -->
 	{#if data.dialects.length > 0}
 		<div class="bg-raised p-4 mb-4">
-			<h3 class="text-sm font-semibold text-body mb-2">Dialects</h3>
+			<h3 class="text-sm font-semibold text-body mb-2">{m.wb_dialects()}</h3>
 			<div class="space-y-1">
 				{#each data.dialects as dialect (dialect.id)}
 					<div class="flex items-center gap-2 text-sm">
@@ -193,16 +194,16 @@
 		{/each}
 
 		{#if totalPages > 1}
-			<nav class="flex items-center justify-center gap-3 text-sm mb-4" aria-label="Entry pages">
+			<nav class="flex items-center justify-center gap-3 text-sm mb-4" aria-label={m.wb_entry_pages()}>
 				{#if data.entriesPage > 1}
-					<a href={pageHref(data.entriesPage - 1)} class="text-link hover:text-link-hover hover:underline">← Previous</a>
+					<a href={pageHref(data.entriesPage - 1)} class="text-link hover:text-link-hover hover:underline">← {m.common_previous()}</a>
 				{/if}
 				<span class="text-dim">
 					Page {data.entriesPage} of {totalPages}
 					<span class="text-secondary">({data.entriesTotal} words)</span>
 				</span>
 				{#if data.entriesPage < totalPages}
-					<a href={pageHref(data.entriesPage + 1)} class="text-link hover:text-link-hover hover:underline">Next →</a>
+					<a href={pageHref(data.entriesPage + 1)} class="text-link hover:text-link-hover hover:underline">{m.common_next()} →</a>
 				{/if}
 			</nav>
 		{/if}
@@ -211,10 +212,10 @@
 			{#if data.currentLetter}
 				<p>No words starting with "{data.currentLetter.toUpperCase()}"</p>
 			{:else}
-				<p class="text-lg mb-2">No words yet</p>
+				<p class="text-lg mb-2">{m.wb_no_words_yet()}</p>
 				{#if canManageWordbook}
 					<p class="text-sm">
-						<a href="/Wordbook/contribute?language={data.language.slug}" class="text-link hover:underline">Add the first word</a>
+						<a href="/Wordbook/contribute?language={data.language.slug}" class="text-link hover:underline">{m.wb_add_first_word()}</a>
 					</p>
 				{/if}
 			{/if}

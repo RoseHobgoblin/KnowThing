@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte'
 	import WikiNodeComponent from '$lib/renderer/WikiNode.svelte'
 	import { createKnowContext } from '$lib/renderer/context.js'
 	import { page } from '$app/stores'
@@ -13,12 +14,16 @@
 
 	const layoutData = $derived($page.data)
 
-	createKnowContext({
-		mediaBaseUrl: '/api/media',
-		pageBaseUrl: `/${domain}`,
-		sourceDomain: domain,
-		calendarDate: layoutData.calendarDate ?? null,
-	})
+	// setContext runs once at init — reading current prop/store values here is
+	// intentional, so untrack to silence the state_referenced_locally warning.
+	untrack(() =>
+		createKnowContext({
+			mediaBaseUrl: '/api/media',
+			pageBaseUrl: `/${domain}`,
+			sourceDomain: domain,
+			calendarDate: layoutData.calendarDate ?? null,
+		}),
+	)
 
 	// Debounced fetch to /api/render
 	$effect(() => {

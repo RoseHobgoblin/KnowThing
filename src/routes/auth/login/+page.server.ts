@@ -34,11 +34,11 @@ export const actions: Actions = {
 			})
 			setSessionCookie(event, result.token)
 			throw redirect(302, result.redirectTo)
-		} catch (err: unknown) {
-			if (isHttpError(err)) {
-				return fail(err.status, { error: err.body?.message ?? 'Request failed', username })
+		} catch (error: unknown) {
+			if (isHttpError(error)) {
+				return fail(error.status, { error: error.body?.message ?? 'Request failed', username })
 			}
-			throw err
+			throw error
 		}
 	},
 }

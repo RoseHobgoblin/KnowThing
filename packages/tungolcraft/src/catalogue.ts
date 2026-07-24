@@ -31,17 +31,30 @@ import {
 	type OrbitalElements,
 } from './orbit.js'
 import { MODEL_IDS, getModelReference } from './model-registry.js'
+import {
+	computeBlackbodyEquilibriumTemperatureK,
+	computeConstantQEccentricityDampingTimeS,
+	computeKopparapu2014ConservativeHabitableZone,
+	computeStellarIrradianceWm2,
+	estimateEker2018MainSequence,
+	estimateZeng2016RockyRadius,
+	type KopparapuPlanetMassClass,
+} from './model-packs.js'
+import { EARTH_MASS_KG, SOLAR_MASS_KG } from './constants.js'
 import { au, days, kelvin, kg, m, mu, watts } from './units.js'
 import type { KgPerCubicMetre } from './units.js'
 import type {
 	Diagnostic,
 	HabitableZoneOutput,
 	InputRecord,
+	KopparapuHabitableZoneOutput,
+	MainSequenceScreenOutput,
 	ModelFailure,
 	ModelReference,
 	ModelResult,
 	ModelSuccess,
 	QuantityRecord,
+	RockyRadiusOutput,
 	SatelliteStabilityOutput,
 	StateVectorOutput,
 	UnitSymbol,
@@ -84,6 +97,20 @@ export const DIAGNOSTIC_CODES = {
 	hillRadiusApproximation: 'orbit.hill-radius.approximation',
 	rocheLimitScreening: 'satellite.roche-limit.screening',
 	habitableZoneApproximation: 'star.habitable-zone.approximation',
+	mainSequenceMassOutsideDomain: 'star.main-sequence.mass.outside-domain',
+	mainSequenceEmpiricalFit: 'star.main-sequence.empirical-fit',
+	mainSequenceLuminosityOutlier: 'star.main-sequence.luminosity.outlier',
+	bondAlbedoOutOfRange: 'planet.bond-albedo.out-of-range',
+	equilibriumTemperatureScreening: 'planet.equilibrium-temperature.screening',
+	kopparapuTemperatureOutsideDomain: 'star.kopparapu.temperature.outside-domain',
+	kopparapuMassClassInvalid: 'star.kopparapu.planet-mass-class.invalid',
+	kopparapuClimateApproximation: 'star.kopparapu.climate-model.approximation',
+	tidalQualityFactorNonPositive: 'satellite.tidal-q.non-positive',
+	loveNumberNonPositive: 'satellite.love-number.non-positive',
+	tidalTimescaleScreening: 'satellite.tidal-timescale.screening',
+	rockyMassOutsideDomain: 'planet.rocky-radius.mass.outside-domain',
+	coreMassFractionOutOfRange: 'planet.core-mass-fraction.out-of-range',
+	rockyRadiusEmpiricalFit: 'planet.rocky-radius.empirical-fit',
 	outputNonFinite: 'model.output.non-finite',
 	outputNonPositive: 'model.output.non-positive',
 } as const
@@ -1028,5 +1055,419 @@ export function evaluateSimpleHabitableZone(
 		DIAGNOSTIC_CODES.habitableZoneApproximation,
 		'This fixed-flux annulus is a screening range, not a planetary habitability prediction',
 		['luminosityW'],
+	)])
+}
+
+export interface EkerMainSequenceScreenModelInput {
+	massKg: number
+	luminosityW: number
+}
+
+export function evaluateEkerMainSequenceScreen(
+	input: EkerMainSequenceScreenModelInput,
+): ModelResult<MainSequenceScreenOutput> {
+	const model = getModelReference(MODEL_IDS.ekerMainSequenceScreen)
+	const inputs = {
+		massKg: numericInput(input.massKg, 'kg'),
+		luminosityW: numericInput(input.luminosityW, 'W'),
+	}
+	const diagnostics = [
+		positiveDiagnostic(model, 'massKg', input.massKg, DIAGNOSTIC_CODES.massNonPositive),
+		positiveDiagnostic(
+			model,
+			'luminosityW',
+			input.luminosityW,
+			DIAGNOSTIC_CODES.luminosityNonPositive,
+		),
+	].filter(issue => issue != null)
+	if (diagnostics.length > 0) return failure(model, inputs, diagnostics)
+	const massSolar = input.massKg / SOLAR_MASS_KG
+	if (massSolar < 0.179 || massSolar > 31) {
+		return failure(model, inputs, [diagnostic(
+			model,
+			DIAGNOSTIC_CODES.mainSequenceMassOutsideDomain,
+			'outside-domain',
+			'error',
+			'Eker et al. 2018 covers 0.179–31 solar-mass reference units',
+			['massKg'],
+			{ massSolar },
+		)])
+	}
+
+	const estimate = estimateEker2018MainSequence(input.massKg, input.luminosityW)
+	const values = [
+		estimate.expectedLuminosityW,
+		estimate.expectedLuminositySolar,
+		estimate.luminosityRatio,
+		estimate.logLuminosityResidualDex,
+		estimate.intrinsicScatterDex,
+	]
+	if (!values.every(Number.isFinite)) {
+		return nonFiniteOutputFailure(model, inputs, ['massKg', 'luminosityW'])
+	}
+	const resultDiagnostics: Diagnostic[] = [approximationDiagnostic(
+		model,
+		DIAGNOSTIC_CODES.mainSequenceEmpiricalFit,
+		'This is an empirical population screen; age and metallicity can produce real departures',
+		['massKg', 'luminosityW'],
+	)]
+	if (!estimate.withinOneSigma) {
+		resultDiagnostics.push(diagnostic(
+			model,
+			DIAGNOSTIC_CODES.mainSequenceLuminosityOutlier,
+			'physical-warning',
+			'warning',
+			'The supplied luminosity lies outside the relation’s intrinsic one-sigma scatter',
+			['massKg', 'luminosityW'],
+			{
+				logLuminosityResidualDex: estimate.logLuminosityResidualDex,
+				intrinsicScatterDex: estimate.intrinsicScatterDex,
+			},
+		))
+	}
+	return success(model, inputs, {
+		expectedLuminosity: { value: estimate.expectedLuminosityW, unit: 'W' },
+		expectedLuminositySolar: { value: estimate.expectedLuminositySolar, unit: '1' },
+		luminosityRatio: { value: estimate.luminosityRatio, unit: '1' },
+		logLuminosityResidualDex: { value: estimate.logLuminosityResidualDex, unit: '1' },
+		intrinsicScatterDex: { value: estimate.intrinsicScatterDex, unit: '1' },
+		withinOneSigma: estimate.withinOneSigma,
+		massDomain: estimate.massDomain,
+	}, resultDiagnostics)
+}
+
+export interface StellarIrradianceModelInput {
+	luminosityW: number
+	distanceAu: number
+}
+
+export function evaluateStellarIrradiance(
+	input: StellarIrradianceModelInput,
+): ModelResult<QuantityRecord<'W/m^2'>> {
+	const model = getModelReference(MODEL_IDS.stellarIrradiance)
+	const inputs = {
+		luminosityW: numericInput(input.luminosityW, 'W'),
+		distanceAu: numericInput(input.distanceAu, 'AU'),
+	}
+	const diagnostics = [
+		positiveDiagnostic(
+			model,
+			'luminosityW',
+			input.luminosityW,
+			DIAGNOSTIC_CODES.luminosityNonPositive,
+		),
+		positiveDiagnostic(
+			model,
+			'distanceAu',
+			input.distanceAu,
+			DIAGNOSTIC_CODES.orbitSemiMajorAxisInvalid,
+		),
+	].filter(issue => issue != null)
+	if (diagnostics.length > 0) return failure(model, inputs, diagnostics)
+	const value = computeStellarIrradianceWm2(input.luminosityW, input.distanceAu)
+	if (!Number.isFinite(value)) {
+		return nonFiniteOutputFailure(model, inputs, ['luminosityW', 'distanceAu'])
+	}
+	if (value <= 0) return positiveOutputFailure(model, inputs, 'irradiance')
+	return success(model, inputs, { value, unit: 'W/m^2' })
+}
+
+export interface BlackbodyEquilibriumTemperatureModelInput {
+	luminosityW: number
+	distanceAu: number
+	bondAlbedo: number
+}
+
+export function evaluateBlackbodyEquilibriumTemperature(
+	input: BlackbodyEquilibriumTemperatureModelInput,
+): ModelResult<QuantityRecord<'K'>> {
+	const model = getModelReference(MODEL_IDS.blackbodyEquilibriumTemperature)
+	const inputs = {
+		luminosityW: numericInput(input.luminosityW, 'W'),
+		distanceAu: numericInput(input.distanceAu, 'AU'),
+		bondAlbedo: numericInput(input.bondAlbedo, '1'),
+	}
+	const diagnostics = [
+		positiveDiagnostic(
+			model,
+			'luminosityW',
+			input.luminosityW,
+			DIAGNOSTIC_CODES.luminosityNonPositive,
+		),
+		positiveDiagnostic(
+			model,
+			'distanceAu',
+			input.distanceAu,
+			DIAGNOSTIC_CODES.orbitSemiMajorAxisInvalid,
+		),
+	].filter(issue => issue != null)
+	const albedoIssue = finiteDiagnostic(model, 'bondAlbedo', input.bondAlbedo)
+	if (albedoIssue) diagnostics.push(albedoIssue)
+	else if (input.bondAlbedo < 0 || input.bondAlbedo >= 1) {
+		diagnostics.push(diagnostic(
+			model,
+			DIAGNOSTIC_CODES.bondAlbedoOutOfRange,
+			'invalid-input',
+			'error',
+			'bondAlbedo must be in [0, 1)',
+			['bondAlbedo'],
+			{ value: input.bondAlbedo },
+		))
+	}
+	if (diagnostics.length > 0) return failure(model, inputs, diagnostics)
+	const value = computeBlackbodyEquilibriumTemperatureK(
+		input.luminosityW,
+		input.distanceAu,
+		input.bondAlbedo,
+	)
+	if (!Number.isFinite(value)) {
+		return nonFiniteOutputFailure(model, inputs, ['luminosityW', 'distanceAu', 'bondAlbedo'])
+	}
+	if (value <= 0) return positiveOutputFailure(model, inputs, 'equilibriumTemperature')
+	return success(model, inputs, { value, unit: 'K' }, [approximationDiagnostic(
+		model,
+		DIAGNOSTIC_CODES.equilibriumTemperatureScreening,
+		'Equilibrium temperature excludes greenhouse warming, internal heat and incomplete redistribution',
+		['luminosityW', 'distanceAu', 'bondAlbedo'],
+	)])
+}
+
+export interface KopparapuConservativeHabitableZoneModelInput {
+	luminosityW: number
+	effectiveTemperatureK: number
+	planetMassClass?: KopparapuPlanetMassClass
+}
+
+export function evaluateKopparapuConservativeHabitableZone(
+	input: KopparapuConservativeHabitableZoneModelInput,
+): ModelResult<KopparapuHabitableZoneOutput> {
+	const model = getModelReference(MODEL_IDS.kopparapuConservativeHabitableZone)
+	const rawMassClass: unknown = input.planetMassClass
+	const planetMassClass = rawMassClass == null ? '1-earth' : String(rawMassClass)
+	const inputs = {
+		luminosityW: numericInput(input.luminosityW, 'W'),
+		effectiveTemperatureK: numericInput(input.effectiveTemperatureK, 'K'),
+		planetMassClass: categoricalInput(
+			planetMassClass,
+			rawMassClass == null ? 'default' : 'caller',
+		),
+	}
+	const diagnostics = [
+		positiveDiagnostic(
+			model,
+			'luminosityW',
+			input.luminosityW,
+			DIAGNOSTIC_CODES.luminosityNonPositive,
+		),
+	].filter(issue => issue != null)
+	const temperatureIssue = finiteDiagnostic(
+		model,
+		'effectiveTemperatureK',
+		input.effectiveTemperatureK,
+	)
+	if (temperatureIssue) diagnostics.push(temperatureIssue)
+	else if (input.effectiveTemperatureK < 2600 || input.effectiveTemperatureK > 7200) {
+		diagnostics.push(diagnostic(
+			model,
+			DIAGNOSTIC_CODES.kopparapuTemperatureOutsideDomain,
+			'outside-domain',
+			'error',
+			'Kopparapu et al. 2014 covers stellar effective temperatures from 2600 K to 7200 K',
+			['effectiveTemperatureK'],
+			{ value: input.effectiveTemperatureK },
+		))
+	}
+	if (!['0.1-earth', '1-earth', '5-earth'].includes(planetMassClass)) {
+		diagnostics.push(diagnostic(
+			model,
+			DIAGNOSTIC_CODES.kopparapuMassClassInvalid,
+			'invalid-input',
+			'error',
+			'planetMassClass must be 0.1-earth, 1-earth or 5-earth',
+			['planetMassClass'],
+			{ value: planetMassClass },
+		))
+	}
+	if (diagnostics.length > 0) return failure(model, inputs, diagnostics)
+
+	const zone = computeKopparapu2014ConservativeHabitableZone(
+		input.luminosityW,
+		input.effectiveTemperatureK,
+		planetMassClass as KopparapuPlanetMassClass,
+	)
+	if (![
+		zone.innerAu,
+		zone.outerAu,
+		zone.innerEffectiveFlux,
+		zone.outerEffectiveFlux,
+	].every(Number.isFinite)) {
+		return nonFiniteOutputFailure(
+			model,
+			inputs,
+			['luminosityW', 'effectiveTemperatureK', 'planetMassClass'],
+		)
+	}
+	if (
+		zone.innerAu <= 0
+		|| zone.outerAu <= zone.innerAu
+		|| zone.innerEffectiveFlux <= 0
+		|| zone.outerEffectiveFlux <= 0
+	) {
+		return positiveOutputFailure(model, inputs, 'habitableZone')
+	}
+	return success(model, inputs, {
+		inner: { value: zone.innerAu, unit: 'AU' },
+		outer: { value: zone.outerAu, unit: 'AU' },
+		innerEffectiveFlux: { value: zone.innerEffectiveFlux, unit: '1' },
+		outerEffectiveFlux: { value: zone.outerEffectiveFlux, unit: '1' },
+		planetMassClass: zone.planetMassClass,
+	}, [approximationDiagnostic(
+		model,
+		DIAGNOSTIC_CODES.kopparapuClimateApproximation,
+		'These one-dimensional climate boundaries are screening limits, not a habitability prediction',
+		['luminosityW', 'effectiveTemperatureK', 'planetMassClass'],
+	)])
+}
+
+export interface ConstantQEccentricityDampingModelInput {
+	semiMajorAxisAu: number
+	satelliteRadiusM: number
+	satelliteMassKg: number
+	parentMassKg: number
+	tidalQualityFactor: number
+	loveNumberK2: number
+}
+
+export function evaluateConstantQEccentricityDamping(
+	input: ConstantQEccentricityDampingModelInput,
+): ModelResult<QuantityRecord<'s'>> {
+	const model = getModelReference(MODEL_IDS.constantQEccentricityDamping)
+	const inputs = {
+		semiMajorAxisAu: numericInput(input.semiMajorAxisAu, 'AU'),
+		satelliteRadiusM: numericInput(input.satelliteRadiusM, 'm'),
+		satelliteMassKg: numericInput(input.satelliteMassKg, 'kg'),
+		parentMassKg: numericInput(input.parentMassKg, 'kg'),
+		tidalQualityFactor: numericInput(input.tidalQualityFactor, '1'),
+		loveNumberK2: numericInput(input.loveNumberK2, '1'),
+	}
+	const diagnostics = [
+		positiveDiagnostic(
+			model,
+			'semiMajorAxisAu',
+			input.semiMajorAxisAu,
+			DIAGNOSTIC_CODES.orbitSemiMajorAxisInvalid,
+		),
+		positiveDiagnostic(
+			model,
+			'satelliteRadiusM',
+			input.satelliteRadiusM,
+			DIAGNOSTIC_CODES.radiusNonPositive,
+		),
+		positiveDiagnostic(
+			model,
+			'satelliteMassKg',
+			input.satelliteMassKg,
+			DIAGNOSTIC_CODES.massNonPositive,
+		),
+		positiveDiagnostic(
+			model,
+			'parentMassKg',
+			input.parentMassKg,
+			DIAGNOSTIC_CODES.parentMassNonPositive,
+		),
+		positiveDiagnostic(
+			model,
+			'tidalQualityFactor',
+			input.tidalQualityFactor,
+			DIAGNOSTIC_CODES.tidalQualityFactorNonPositive,
+		),
+		positiveDiagnostic(
+			model,
+			'loveNumberK2',
+			input.loveNumberK2,
+			DIAGNOSTIC_CODES.loveNumberNonPositive,
+		),
+	].filter(issue => issue != null)
+	if (diagnostics.length > 0) return failure(model, inputs, diagnostics)
+	const value = computeConstantQEccentricityDampingTimeS(
+		input.semiMajorAxisAu,
+		input.satelliteRadiusM,
+		input.satelliteMassKg,
+		input.parentMassKg,
+		input.tidalQualityFactor,
+		input.loveNumberK2,
+	)
+	if (!Number.isFinite(value)) {
+		return nonFiniteOutputFailure(model, inputs, Object.keys(inputs))
+	}
+	if (value <= 0) return positiveOutputFailure(model, inputs, 'dampingTime')
+	return success(model, inputs, { value, unit: 's' }, [approximationDiagnostic(
+		model,
+		DIAGNOSTIC_CODES.tidalTimescaleScreening,
+		'Constant-Q low-eccentricity damping is a local screening timescale, not an integrated evolution',
+		Object.keys(inputs),
+	)])
+}
+
+export interface ZengRockyRadiusModelInput {
+	massKg: number
+	coreMassFraction: number
+}
+
+export function evaluateZengRockyRadius(
+	input: ZengRockyRadiusModelInput,
+): ModelResult<RockyRadiusOutput> {
+	const model = getModelReference(MODEL_IDS.zengRockyRadius)
+	const inputs = {
+		massKg: numericInput(input.massKg, 'kg'),
+		coreMassFraction: numericInput(input.coreMassFraction, '1'),
+	}
+	const massIssue = positiveDiagnostic(
+		model,
+		'massKg',
+		input.massKg,
+		DIAGNOSTIC_CODES.massNonPositive,
+	)
+	if (massIssue) return failure(model, inputs, [massIssue])
+	const massEarth = input.massKg / EARTH_MASS_KG
+	if (massEarth < 1 || massEarth > 8) {
+		return failure(model, inputs, [diagnostic(
+			model,
+			DIAGNOSTIC_CODES.rockyMassOutsideDomain,
+			'outside-domain',
+			'error',
+			'Zeng et al. 2016 covers planets from 1 to 8 Earth-mass reference units',
+			['massKg'],
+			{ massEarth },
+		)])
+	}
+	const coreIssue = finiteDiagnostic(model, 'coreMassFraction', input.coreMassFraction)
+	if (coreIssue) return failure(model, inputs, [coreIssue])
+	if (input.coreMassFraction < 0 || input.coreMassFraction > 0.4) {
+		return failure(model, inputs, [diagnostic(
+			model,
+			DIAGNOSTIC_CODES.coreMassFractionOutOfRange,
+			'outside-domain',
+			'error',
+			'coreMassFraction must lie in the published range [0, 0.4]',
+			['coreMassFraction'],
+			{ value: input.coreMassFraction },
+		)])
+	}
+	const estimate = estimateZeng2016RockyRadius(input.massKg, input.coreMassFraction)
+	if (![estimate.radiusM, estimate.radiusEarth].every(Number.isFinite)) {
+		return nonFiniteOutputFailure(model, inputs, ['massKg', 'coreMassFraction'])
+	}
+	return success(model, inputs, {
+		radius: { value: estimate.radiusM, unit: 'm' },
+		radiusEarth: { value: estimate.radiusEarth, unit: '1' },
+		massEarth: { value: estimate.massEarth, unit: '1' },
+		coreMassFraction: { value: estimate.coreMassFraction, unit: '1' },
+		compositionClass: 'two-layer-rocky',
+	}, [approximationDiagnostic(
+		model,
+		DIAGNOSTIC_CODES.rockyRadiusEmpiricalFit,
+		'This PREM-based two-layer relation excludes volatile envelopes and broader composition diversity',
+		['massKg', 'coreMassFraction'],
 	)])
 }

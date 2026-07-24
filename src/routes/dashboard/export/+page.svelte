@@ -2,6 +2,7 @@
 	import type { PageData, ActionData } from './$types.js'
 
 	import Button from '$lib/components/ui/Button.svelte'
+	import { m } from '$lib/paraglide/messages.js'
 
 	let { data, form }: { data: PageData, form: ActionData } = $props()
 
@@ -22,18 +23,18 @@
 </script>
 
 <svelte:head>
-	<title>Export — KnowThing</title>
+	<title>{m.dash_nav_export()} — KnowThing</title>
 </svelte:head>
 
 <div class="bg-surface shadow-sm p-6">
-	<h1 class="text-xl font-bold text-heading mb-2">Export Backup</h1>
+	<h1 class="text-xl font-bold text-heading mb-2">{m.dash_export_heading()}</h1>
 	<p class="text-sm text-dim mb-6">
-		Download all articles as a JSON file. This includes {data.pageCount} articles.
+		{m.dash_export_desc({ count: data.pageCount })}
 	</p>
 
 	<form method="POST">
 		<Button type="submit" size="lg">
-			Download Export
+			{m.dash_export_download_button()}
 		</Button>
 	</form>
 </div>

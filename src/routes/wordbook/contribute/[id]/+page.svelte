@@ -11,6 +11,7 @@
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import TabNavigation from '$lib/components/ui/TabNavigation.svelte'
 	import { wordbookEditBreadcrumbs } from '$lib/utils/breadcrumbs.js'
+	import { m } from '$lib/paraglide/messages.js'
 
 	let { data }: { data: PageData } = $props()
 
@@ -39,8 +40,8 @@
 	}
 
 	const navItems = $derived([
-		{ id: 'entry', label: 'Entry' },
-		{ id: 'inflection', label: 'Inflection', shouldShow: () => hasInflectionSystem },
+		{ id: 'entry', label: m.wb_tab_entry() },
+		{ id: 'inflection', label: m.wb_tab_inflection(), shouldShow: () => hasInflectionSystem },
 	])
 
 	const firstPos = $derived(data.definitions[0]?.partOfSpeech || '')
@@ -69,7 +70,7 @@
 			await updateMutation.mutateAsync({ resource: 'definitions', body: { defs } })
 		}
 
-		pushSuccess('Word updated')
+		pushSuccess(m.wb_word_updated())
 		const lang = data.languages.find(l => l.id === formData.languageId)
 		if (lang) {
 			goto(`/Wordbook/${lang.slug}/${encodeURIComponent(String(formData.word))}`)
@@ -85,7 +86,7 @@
 
 <ArticleShell
 	breadcrumbs={wordbookEditBreadcrumbs(wbName, data.entry.word)}
-	title="Edit: {data.entry.word}"
+	title={m.wb_edit_colon({ name: data.entry.word })}
 >
 	{#if hasInflectionSystem}
 		<div class="mb-4">
@@ -119,7 +120,7 @@
 				? `/Wordbook/${languageSlug}/${encodeURIComponent(data.entry.word)}`
 				: '/Wordbook'}
 			onsubmit={handleSubmit}
-			submitLabel="Save Changes"
+			submitLabel={m.wb_save_changes()}
 		/>
 	{:else if activeTab === 'inflection'}
 		<div class="space-y-3">

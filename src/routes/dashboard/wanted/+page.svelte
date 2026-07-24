@@ -1,21 +1,22 @@
 <script lang="ts">
 	import type { PageData } from './$types.js'
+	import { m } from '$lib/paraglide/messages.js'
 
 	let { data }: { data: PageData } = $props()
 </script>
 
 <svelte:head>
-	<title>Wanted Pages — KnowThing</title>
+	<title>{m.dash_wanted_title()} — KnowThing</title>
 </svelte:head>
 
 <div class="bg-surface shadow-sm">
 	<div class="px-6 py-4 border-b border-border-subtle">
-		<h1 class="text-xl font-bold text-heading">Wanted Pages</h1>
-		<p class="text-sm text-dim mt-1">Pages linked to but not yet created, sorted by demand.</p>
+		<h1 class="text-xl font-bold text-heading">{m.dash_wanted_title()}</h1>
+		<p class="text-sm text-dim mt-1">{m.dash_wanted_desc()}</p>
 	</div>
 
 	{#if data.wanted.length === 0}
-		<div class="p-6 text-center text-dim">No wanted pages. All linked articles exist.</div>
+		<div class="p-6 text-center text-dim">{m.dash_wanted_empty()}</div>
 	{:else}
 		<div class="divide-y divide-border-subtle">
 			{#each data.wanted as w (`${w.domain}/${w.slug}`)}
@@ -30,10 +31,10 @@
 							</a>
 						{:else}
 							<span class="text-error font-medium text-sm">{w.slug.replaceAll('_', ' ')}</span>
-							<span class="text-xs text-secondary bg-raised px-1.5 py-0.5 rounded">{w.domain}</span>
+							<span class="text-xs text-secondary bg-raised px-1.5 py-0.5 rounded-sm">{w.domain}</span>
 						{/if}
 					</div>
-					<span class="text-xs text-secondary shrink-0">{w.linkCount} {w.linkCount === 1 ? 'link' : 'links'}</span>
+					<span class="text-xs text-secondary shrink-0">{w.linkCount} {w.linkCount === 1 ? m.dash_link_one() : m.dash_link_other()}</span>
 				</div>
 			{/each}
 		</div>

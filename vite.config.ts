@@ -10,7 +10,7 @@ export default defineConfig({
 			// The `tungolcraft` workspace package is consumed as raw TS (its exports
 			// point at ./src/index.ts), so the dev server must be allowed to serve
 			// files from packages/ — outside SvelteKit's default src/-only allowlist.
-			allow: [fileURLToPath(new URL('./packages', import.meta.url))],
+			allow: [fileURLToPath(new URL('packages', import.meta.url))],
 		},
 	},
 	plugins: [

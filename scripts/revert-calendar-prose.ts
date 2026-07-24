@@ -66,8 +66,8 @@ async function main() {
 			if (!APPLY) { migrated++; continue }
 			await sql.begin(tx => migrateOne(tx, cal, targetSlug))
 			migrated++
-		} catch (e) {
-			console.error(`  ✗ FAILED for calendar ${cal.slug}:`, e)
+		} catch (error) {
+			console.error(`  ✗ FAILED for calendar ${cal.slug}:`, error)
 			errors++
 		}
 	}

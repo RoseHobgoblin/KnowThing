@@ -15,6 +15,7 @@
 	import { calendarBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import { createMutation } from '@tanstack/svelte-query'
 	import { api } from '$lib/api'
+	import { m } from '$lib/paraglide/messages.js'
 
 	let {
 		calendars,
@@ -42,7 +43,7 @@
 	}))
 
 	const presetItems = [
-		{ value: '', label: 'Blank' },
+		{ value: '', label: m.cal_preset_blank() },
 		...calendarPresets.map(p => ({ value: p.label, label: `${p.label} — ${p.description}` })),
 	]
 
@@ -68,12 +69,12 @@
 				name: newCalendarName.trim(),
 				staticData,
 			})
-			pushSuccess(`Created "${cal.name}"`)
+			pushSuccess(m.cal_created({ name: cal.name }))
 			newCalendarName = ''
 			if (cal.slug) goto(`/Calendar:${cal.slug}`)
 			else invalidateAll()
 		} catch (error) {
-			pushError(error instanceof Error ? error.message : 'Failed to create calendar')
+			pushError(error instanceof Error ? error.message : m.cal_create_failed())
 		}
 	}
 </script>
@@ -82,7 +83,7 @@
 	<title>Calendar — KnowThing</title>
 </svelte:head>
 
-<ArticleShell breadcrumbs={calendarBreadcrumbs()} title="Calendar">
+<ArticleShell breadcrumbs={calendarBreadcrumbs()} title={m.nav_calendar()}>
 	{#if primary}
 		{@const resolved = resolveDisplay(primary.config)}
 		<div class="grid grid-cols-1 gap-6 mb-8 lg:grid-cols-[minmax(0,28rem)_1fr]">
@@ -96,19 +97,19 @@
 				</p>
 				<div class="flex flex-wrap gap-x-4 gap-y-1">
 					{#if resolved.era_name}
-						<p class="text-sm text-secondary">Era: <span class="text-body">{resolved.era_name}</span></p>
+						<p class="text-sm text-secondary">{m.cal_era_label()} <span class="text-body">{resolved.era_name}</span></p>
 					{/if}
 					{#if resolved.season_name}
-						<p class="text-sm text-secondary">Season: <span class="text-body">{resolved.season_name}</span></p>
+						<p class="text-sm text-secondary">{m.cal_season_label()} <span class="text-body">{resolved.season_name}</span></p>
 					{/if}
 				</div>
-				<a href="/Calendar:{primary.slug}" class="inline-block mt-1 text-sm text-link font-medium transition-colors hover:text-link-hover">View full page →</a>
+				<a href="/Calendar:{primary.slug}" class="inline-block mt-1 text-sm text-link font-medium transition-colors hover:text-link-hover">{m.cal_view_full_page()} →</a>
 			</div>
 		</div>
 	{/if}
 
 	{#if calendars.length > 0}
-		<h2 class="text-sm font-semibold text-heading uppercase tracking-wider mb-3">All Calendars</h2>
+		<h2 class="text-sm font-semibold text-heading uppercase tracking-wider mb-3">{m.cal_all_calendars()}</h2>
 		<div class="space-y-1.5">
 			{#each calendars as cal (cal.id)}
 				<a href="/Calendar:{cal.slug}" class="
@@ -129,23 +130,23 @@
 			{/each}
 		</div>
 	{:else}
-		<p class="text-dim text-center py-8">No calendars configured yet.</p>
+		<p class="text-dim text-center py-8">{m.cal_none_configured()}</p>
 	{/if}
 
 	{#if permissions.canManageSettings}
 		<div class="mt-8 bg-raised p-5 space-y-3">
-			<h2 class="text-sm font-semibold text-heading">New Calendar</h2>
-			<Select type="single" label="Start from preset" bind:value={selectedPreset} items={presetItems} />
+			<h2 class="text-sm font-semibold text-heading">{m.cal_new_calendar()}</h2>
+			<Select type="single" label={m.cal_start_from_preset()} bind:value={selectedPreset} items={presetItems} />
 			<div class="flex gap-2 items-end">
-				<Input bind:value={newCalendarName} placeholder="Calendar name" containerClass="flex-1" />
+				<Input bind:value={newCalendarName} placeholder={m.cal_calendar_name_placeholder()} containerClass="flex-1" />
 				<Button onclick={createCalendar} loading={createCalendarMutation.isPending} disabled={!newCalendarName.trim()}>
-					{createCalendarMutation.isPending ? 'Creating...' : 'Create'}
+					{createCalendarMutation.isPending ? m.common_creating() : m.cal_create()}
 				</Button>
 			</div>
 		</div>
 	{:else if permissions.isAuthenticated}
 		<div class="mt-8 bg-raised p-5">
-			<p class="text-sm text-secondary">Admin role required to create calendars.</p>
+			<p class="text-sm text-secondary">{m.cal_admin_required()}</p>
 		</div>
 	{/if}
 </ArticleShell>

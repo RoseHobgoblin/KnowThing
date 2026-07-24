@@ -28,7 +28,7 @@ export interface WordbookPath {
  */
 export function parseWordbookPath(target: string): WordbookPath | null {
 	const slashIndex = target.indexOf('/')
-	if (slashIndex < 0) return null
+	if (slashIndex === -1) return null
 	const prefix = target.slice(0, slashIndex)
 	if (prefix.toLowerCase() !== 'wordbook') return null
 
@@ -36,7 +36,7 @@ export function parseWordbookPath(target: string): WordbookPath | null {
 	if (!rest) return null
 
 	const nextSlash = rest.indexOf('/')
-	if (nextSlash < 0) {
+	if (nextSlash === -1) {
 		return { language: rest }
 	}
 	const language = rest.slice(0, nextSlash)

@@ -23,8 +23,8 @@
 		class="
 			italic border-b border-dotted transition-colors
 			{exists
-			? 'text-link border-accent-border hover:text-link-hover hover:border-accent-hover'
-			: 'text-link-missing border-error-border hover:border-error'}
+				? 'text-link border-accent-border hover:text-link-hover hover:border-accent-hover'
+				: 'text-link-missing border-error-border hover:border-error'}
 		"
 		title="{word} ({lang}){exists ? '' : ' — not yet in the wordbook'}"
 	>{word}</a>

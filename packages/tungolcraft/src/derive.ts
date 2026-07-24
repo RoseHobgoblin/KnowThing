@@ -93,8 +93,8 @@ export function deriveDisplayStrings(
 	rotationPeriodS: number | null,
 ): DisplayStringFields {
 	return {
-		orbitalPeriod: orbitalPeriodDays != null ? formatPeriod(orbitalPeriodDays * 86_400) : null,
-		semiMajorAxis: semiMajorAxisAu != null ? formatAuAsKm(semiMajorAxisAu) : null,
-		rotationPeriod: rotationPeriodS != null ? formatPeriod(rotationPeriodS) : null,
+		orbitalPeriod: orbitalPeriodDays == null ? null : formatPeriod(orbitalPeriodDays * 86_400),
+		semiMajorAxis: semiMajorAxisAu == null ? null : formatAuAsKm(semiMajorAxisAu),
+		rotationPeriod: rotationPeriodS == null ? null : formatPeriod(rotationPeriodS),
 	}
 }

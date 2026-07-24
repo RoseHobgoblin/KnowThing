@@ -25,8 +25,8 @@ export function sanitizeSvg(buffer: Buffer): Buffer {
 	return Buffer.from(cleaned, 'utf8')
 }
 
-const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47])
-const JPEG = Buffer.from([0xff, 0xd8, 0xff])
+const PNG = Buffer.from([0x89, 0x50, 0x4E, 0x47])
+const JPEG = Buffer.from([0xFF, 0xD8, 0xFF])
 const GIF87 = Buffer.from('GIF87a', 'ascii')
 const GIF89 = Buffer.from('GIF89a', 'ascii')
 const WEBP_RIFF = Buffer.from('RIFF', 'ascii')
@@ -51,20 +51,20 @@ export async function verifyMimeType(buffer: Buffer, claimed: string): Promise<v
 		let i = 0
 		while (i < head.length) {
 			const ch = head.charCodeAt(i)
-			if (ch === 0x09 || ch === 0x0a || ch === 0x0d || ch === 0x20 || ch === 0xfeff) { i++; continue }
+			if (ch === 0x09 || ch === 0x0A || ch === 0x0D || ch === 0x20 || ch === 0xFEFF) { i++; continue }
 			if (head.startsWith('<?', i)) {
 				const end = head.indexOf('?>', i + 2)
-				if (end < 0) break
+				if (end === -1) break
 				i = end + 2; continue
 			}
 			if (head.startsWith('<!--', i)) {
 				const end = head.indexOf('-->', i + 4)
-				if (end < 0) break
+				if (end === -1) break
 				i = end + 3; continue
 			}
 			if (head.startsWith('<!doctype', i)) {
 				const end = head.indexOf('>', i + 9)
-				if (end < 0) break
+				if (end === -1) break
 				i = end + 1; continue
 			}
 			break
@@ -91,10 +91,8 @@ export async function verifyMimeType(buffer: Buffer, claimed: string): Promise<v
 	if (claimed === 'image/gif' && !buffer.subarray(0, 6).equals(GIF87) && !buffer.subarray(0, 6).equals(GIF89)) {
 		throw error(400, 'File does not match its declared type (expected GIF).')
 	}
-	if (claimed === 'image/webp') {
-		if (!buffer.subarray(0, 4).equals(WEBP_RIFF) || !buffer.subarray(8, 12).equals(WEBP_WEBP)) {
-			throw error(400, 'File does not match its declared type (expected WebP).')
-		}
+	if (claimed === 'image/webp' && (!buffer.subarray(0, 4).equals(WEBP_RIFF) || !buffer.subarray(8, 12).equals(WEBP_WEBP))) {
+		throw error(400, 'File does not match its declared type (expected WebP).')
 	}
 
 	// Cross-verify with sharp for any raster format.
@@ -106,8 +104,8 @@ export async function verifyMimeType(buffer: Buffer, claimed: string): Promise<v
 			if (detected && detected !== expected) {
 				throw error(400, `File contents (${detected}) do not match declared type (${claimed}).`)
 			}
-		} catch (cause) {
-			if ((cause as { status?: number }).status === 400) throw cause
+		} catch (error_) {
+			if ((error_ as { status?: number }).status === 400) throw error_
 			throw error(400, 'Unable to verify image type from file contents.')
 		}
 	}

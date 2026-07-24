@@ -243,9 +243,9 @@ export async function updateMap(slug: string, data: UpdateMapInput) {
 		if (conflict) throw error(409, 'A map with this slug already exists')
 	}
 
-	const nextLinkedPageSlug = data.linkedPageSlug !== undefined
-		? (data.linkedPageSlug?.trim() || null)
-		: undefined
+	const nextLinkedPageSlug = data.linkedPageSlug === undefined
+		? undefined
+		: (data.linkedPageSlug?.trim() || null)
 
 	const [updated] = await db
 		.update(worldMaps)

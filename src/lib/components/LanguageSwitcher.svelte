@@ -3,7 +3,7 @@
 	import type { Component } from 'svelte'
 	import { getLocale, setLocale, locales } from '$lib/paraglide/runtime.js'
 	import { cn } from '$lib/utils.js'
-	import CaretDown from 'phosphor-svelte/lib/CaretDown'
+	import CaretDownIcon from 'phosphor-svelte/lib/CaretDownIcon'
 	import Check from 'phosphor-svelte/lib/Check'
 	import Gb from 'svelte-flag-icons/Gb.svelte'
 	import Id from 'svelte-flag-icons/Id.svelte'
@@ -42,7 +42,7 @@
 		class="flex items-center gap-1.5 p-2 text-secondary transition-colors cursor-pointer hover:bg-raised hover:text-heading"
 	>
 		<CurrentFlag size="18" class="rounded-xs" ariaLabel={meta[current].label} />
-		<CaretDown size={12} weight="bold" class={cn('transition-transform', open && 'rotate-180')} />
+		<CaretDownIcon size={12} weight="bold" class={cn('transition-transform', open && 'rotate-180')} />
 	</Select.Trigger>
 	<Select.Portal>
 		<Select.Content

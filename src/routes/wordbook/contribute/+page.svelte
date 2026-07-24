@@ -8,6 +8,7 @@
 	import { page } from '$app/stores'
 	import { createMutation } from '@tanstack/svelte-query'
 	import { api } from '$lib/api'
+	import { m } from '$lib/paraglide/messages.js'
 
 	let { data }: { data: PageData } = $props()
 
@@ -18,7 +19,7 @@
 
 	async function handleSubmit(formData: Record<string, unknown>) {
 		const entry = await createEntryMutation.mutateAsync(formData)
-		pushSuccess('Word created')
+		pushSuccess(m.wb_word_created())
 		const lang = data.languages.find(l => l.id === formData.languageId)
 		if (lang) {
 			goto(`/Wordbook/${lang.slug}/${encodeURIComponent(entry.word)}`)
@@ -34,23 +35,23 @@
 
 <ArticleShell
 	breadcrumbs={wordbookContributeBreadcrumbs(wbName)}
-	title="Add a Word"
+	title={m.wb_add_a_word_heading()}
 >
 	{#snippet actions()}
-		<a href="/Wordbook/contribute/language" class="text-link hover:underline">+ New language</a>
+		<a href="/Wordbook/contribute/language" class="text-link hover:underline">+ {m.wb_new_language()}</a>
 	{/snippet}
 
 	{#if data.languages.length === 0}
 		<div class="p-6 bg-accent-subtle border border-accent-border text-center">
-			<p class="text-accent-text mb-2">No languages have been created yet.</p>
-			<a href="/Wordbook/contribute/language" class="text-link font-medium hover:underline">Create a language first →</a>
+			<p class="text-accent-text mb-2">{m.wb_no_languages_created()}</p>
+			<a href="/Wordbook/contribute/language" class="text-link font-medium hover:underline">{m.wb_create_language_first()} →</a>
 		</div>
 	{:else}
 		<EntryForm
 			languages={data.languages}
 			initial={data.preselectedLanguageId ? { languageId: data.preselectedLanguageId } : {}}
 			onsubmit={handleSubmit}
-			submitLabel="Add Entry"
+			submitLabel={m.wb_add_entry()}
 		/>
 	{/if}
 </ArticleShell>

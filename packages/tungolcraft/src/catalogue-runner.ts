@@ -1,9 +1,13 @@
 import {
 	evaluateBulkDensity,
+	evaluateBlackbodyEquilibriumTemperature,
+	evaluateConstantQEccentricityDamping,
+	evaluateEkerMainSequenceScreen,
 	evaluateEllipticalState,
 	evaluateEscapeVelocity,
 	evaluateHillRadius,
 	evaluateKeplerPeriod,
+	evaluateKopparapuConservativeHabitableZone,
 	evaluateMeanSpeed,
 	evaluateParentBarycenterDistance,
 	evaluateRocheLimit,
@@ -11,8 +15,10 @@ import {
 	evaluateSatelliteStability,
 	evaluateSimpleHabitableZone,
 	evaluateStefanBoltzmannLuminosity,
+	evaluateStellarIrradiance,
 	evaluateSurfaceGravity,
 	evaluateVisVivaSpeed,
+	evaluateZengRockyRadius,
 } from './catalogue.js'
 import type { ModelId } from './model-registry.js'
 import type {
@@ -51,6 +57,16 @@ export function evaluateCatalogueModel(
 		case 'star.stefan-boltzmann-luminosity':
 			return evaluateStefanBoltzmannLuminosity(input as never)
 		case 'star.simple-habitable-zone': return evaluateSimpleHabitableZone(input as never)
+		case 'star.eker-2018-main-sequence-screen':
+			return evaluateEkerMainSequenceScreen(input as never)
+		case 'orbit.stellar-irradiance': return evaluateStellarIrradiance(input as never)
+		case 'planet.blackbody-equilibrium-temperature':
+			return evaluateBlackbodyEquilibriumTemperature(input as never)
+		case 'star.kopparapu-2014-conservative-hz':
+			return evaluateKopparapuConservativeHabitableZone(input as never)
+		case 'satellite.constant-q-eccentricity-damping':
+			return evaluateConstantQEccentricityDamping(input as never)
+		case 'planet.zeng-2016-rocky-radius': return evaluateZengRockyRadius(input as never)
 		default: {
 			const unknownId = String(modelId)
 			const model: ModelReference = {
@@ -97,6 +113,7 @@ export function isUnitSymbol(value: unknown): value is UnitSymbol {
 		'kg',
 		'kg/m^3',
 		'W',
+		'W/m^2',
 		'K',
 		'm^3/s^2',
 		'AU',

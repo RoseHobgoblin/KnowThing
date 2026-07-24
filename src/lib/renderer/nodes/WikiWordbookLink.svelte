@@ -37,7 +37,7 @@
 
 <a
 	{href}
-	class="{exists ? 'text-link hover:text-link-hover' : 'text-link-missing'} underline decoration-transparent hover:decoration-current transition-colors"
+	class="{exists ? 'text-link hover:text-link-hover' : 'text-link-missing'} underline decoration-transparent transition-colors hover:decoration-current"
 	title={titleAttribute}
 >
 	{#if node.display}

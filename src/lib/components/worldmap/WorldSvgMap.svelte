@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages.js'
+
 	type WorldRegion = {
 		id: number
 		hexColor: string
@@ -47,7 +49,7 @@
 	const viewBoxValue = $derived(`${viewX} ${viewY} ${effectiveViewWidth} ${effectiveViewHeight}`)
 	const zoomLevel = $derived(Math.min(maxZoom, Math.max(minZoom, width / effectiveViewWidth)))
 	const renderRegions = $derived(
-		[...regions].sort((left, right) => getRegionPaintWeight(right) - getRegionPaintWeight(left) || left.id - right.id)
+		[...regions].sort((left, right) => getRegionPaintWeight(right) - getRegionPaintWeight(left) || left.id - right.id),
 	)
 
 	$effect(() => {
@@ -143,14 +145,14 @@
 <div class="space-y-3">
 	<div class="flex items-center justify-between gap-3">
 		<p class="text-sm text-secondary">
-			Zoom: {zoomLevel.toFixed(2)}x · Regions: {regions.length}
+			{m.map_zoom_regions({ zoom: zoomLevel.toFixed(2), count: regions.length })}
 		</p>
 		<button
 			type="button"
-			class="px-3 py-1.5 text-xs bg-surface hover:bg-raised text-body"
+			class="px-3 py-1.5 text-xs bg-surface text-body hover:bg-raised"
 			onclick={resetView}
 		>
-			Reset view
+			{m.map_reset_view()}
 		</button>
 	</div>
 
@@ -168,7 +170,7 @@
 			onpointerup={onPointerUp}
 			onpointercancel={onPointerUp}
 			role="img"
-			aria-label="Interactive world map"
+			aria-label={m.map_interactive_world_map()}
 		>
 			<rect x="0" y="0" width={width} height={height} fill={waterHex} />
 
@@ -196,7 +198,7 @@
 				{@const strokeOp = isNothing ? 0 : (isHighlighted ? 1 : (transparentRegions ? 0 : 1))}
 				{@const strokeColor = isHighlighted ? 'var(--color-heading)' : regionStroke}
 				{@const strokeWidth = isHighlighted ? 2.2 : 0.8}
-				
+
 				{#if hasTarget}
 					<a
 						href={`/know/${region.pageSlug}`}
