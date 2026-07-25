@@ -464,6 +464,7 @@
 	"know_page_deleted": "\"{name}\" deleted",
 	"know_delete_failed": "Failed to delete page",
 	"know_article_not_exist": "This article doesn't exist yet.",
+	"know_archived_banner": "This page is archived. Its content is kept for reference and its addresses keep working, but it is no longer actively maintained.",
 	"know_create_this_page": "Create this page",
 	"know_move": "Move",
 	"know_history": "History",

@@ -464,6 +464,7 @@
 	"know_page_deleted": "\"{name}\" dihapus",
 	"know_delete_failed": "Gagal menghapus halaman",
 	"know_article_not_exist": "Artikel ini belum ada.",
+	"know_archived_banner": "Halaman ini diarsipkan. Isinya disimpan sebagai referensi dan alamatnya tetap berfungsi, tetapi tidak lagi dikelola secara aktif.",
 	"know_create_this_page": "Buat halaman ini",
 	"know_move": "Pindahkan",
 	"know_history": "Riwayat",

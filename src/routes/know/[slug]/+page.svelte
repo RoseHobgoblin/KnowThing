@@ -71,6 +71,11 @@
 			</Button>
 		</div>
 	{:else if data.ast}
+		{#if data.archived}
+			<div class="bg-surface border-l-4 border-border text-dim p-4 mb-4 text-sm" role="note">
+				{m.know_archived_banner()}
+			</div>
+		{/if}
 		<KnowArticle
 			title={data.title}
 			slug={data.slug}

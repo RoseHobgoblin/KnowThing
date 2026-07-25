@@ -402,3 +402,53 @@ export async function countSpinelessRows(
 	`)
 	return (rows as unknown as SpinelessRowCount[]).filter(row => row.rows > 0)
 }
+
+export interface SpineWorkItem {
+	id: number
+	kind: string
+	detail: string
+}
+
+/** Backfill/merge decisions awaiting editorial triage (0050's queue). */
+export async function findUnresolvedWorkItems(dbx: EntitySpineDatabase): Promise<SpineWorkItem[]> {
+	const rows = await dbx.execute(sql`
+		SELECT id, kind, detail FROM spine_work_items
+		WHERE resolved_at IS NULL
+		ORDER BY id
+	`)
+	return rows as unknown as SpineWorkItem[]
+}
+
+export interface SpinePreflightReport {
+	/** True only when every gate below is clear. */
+	ready: boolean
+	unresolvedWorkItems: SpineWorkItem[]
+	spinelessRows: SpinelessRowCount[]
+	canonicalViolations: CanonicalRouteViolation[]
+	mergeChains: MergeChainViolation[]
+}
+
+/**
+ * The collision preflight (migration-order step 5) and the invariant gates
+ * (step 7) in one report: the reader cutover requires the work-item queue
+ * drained and the collision set empty; the writer flip additionally
+ * requires zero spine-less rows. Ready = everything empty.
+ */
+export async function spinePreflight(dbx: EntitySpineDatabase): Promise<SpinePreflightReport> {
+	const [unresolvedWorkItems, spinelessRows, canonicalViolations, mergeChains] = await Promise.all([
+		findUnresolvedWorkItems(dbx),
+		countSpinelessRows(dbx),
+		findCanonicalRouteViolations(dbx),
+		findMergeChainViolations(dbx),
+	])
+	return {
+		ready: unresolvedWorkItems.length === 0
+			&& spinelessRows.length === 0
+			&& canonicalViolations.length === 0
+			&& mergeChains.length === 0,
+		unresolvedWorkItems,
+		spinelessRows,
+		canonicalViolations,
+		mergeChains,
+	}
+}

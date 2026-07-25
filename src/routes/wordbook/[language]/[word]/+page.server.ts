@@ -12,6 +12,7 @@ import { listClassesForLanguage } from '$lib/server/services/inflections.js'
 import { getResolvedLinks, serializeResolvedLinks } from '$lib/server/resolved-links.js'
 import { extractCollectionRefs, parseWikitext } from '$lib/parser/index.js'
 import { resolveAllStructuredCollections } from '$lib/server/structured-data.js'
+import { resolveWordbookRead } from '$lib/server/services/entity-resolver.js'
 import type { WikiNode } from '$lib/parser/types.js'
 
 function groupBy<T>(items: T[], keyFn: (item: T) => number): Map<number, T[]> {
@@ -25,16 +26,35 @@ function groupBy<T>(items: T[], keyFn: (item: T) => number): Map<number, T[]> {
 }
 
 export const load: PageServerLoad = async ({ params }) => {
-	const word = decodeURIComponent(params.word).normalize('NFC')
+	let word = decodeURIComponent(params.word).normalize('NFC')
 
-	const lang = await getLanguageBySlug(params.language)
+	// Reader flip: the five-step Wordbook resolution algorithm. Former
+	// language names and retired word addresses resolve and 301 to the
+	// canonical pair; the homograph sibling set renders on every canonical
+	// page. Unrouted segments fall back to the legacy lookup below.
+	const routed = await resolveWordbookRead(params.language, word)
+	if (routed.state === 'resolved' && routed.needsRedirect) {
+		redirect(301, routed.canonicalHref)
+	}
+
+	let lang: Awaited<ReturnType<typeof getLanguageBySlug>>
+	if (routed.state === 'resolved') {
+		lang = await getLanguageBySlug(routed.language.slug)
+		word = routed.lexeme.word
+	} else if (routed.state === 'word-missing') {
+		// Red link: the resolved language scope is preserved even when the
+		// segment was a former name.
+		error(404, `No entry for "${word}" in ${routed.language.name}`)
+	} else {
+		lang = await getLanguageBySlug(params.language)
+	}
 	if (!lang) error(404, 'Language not found')
 
 	const entries = await listHomographs(lang.id, word)
 	if (entries.length === 0) error(404, `No entry for "${word}" in ${lang.name}`)
 
 	const storedWord = entries[0].word
-	if (decodeURIComponent(params.word) !== storedWord) {
+	if (routed.state !== 'resolved' && decodeURIComponent(params.word) !== storedWord) {
 		redirect(301, `/Wordbook/${params.language}/${encodeURIComponent(storedWord)}`)
 	}
 

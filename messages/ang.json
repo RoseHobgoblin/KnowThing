@@ -464,6 +464,7 @@
 	"know_page_deleted": "\"{name}\" done away",
 	"know_delete_failed": "Could not do away with leaf",
 	"know_article_not_exist": "This writ isn't here yet.",
+	"know_archived_banner": "This writ is laid away. Its lore is kept for beholding and its paths still work, but it is no longer tended.",
 	"know_create_this_page": "Make this leaf",
 	"know_move": "Flit",
 	"know_history": "Past",

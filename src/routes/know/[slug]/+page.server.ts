@@ -7,12 +7,25 @@ import { lookupMediaInfo, resolveCardImageSync } from '$lib/server/services/page
 import { findPageCaseInsensitive, findPageInAnyDomain } from '$lib/server/services/pages.js'
 import { buildHref } from '$lib/server/resolved-links.js'
 import { findLanguageMatchByPageSlug, findWordbookMatchByTitle } from '$lib/server/services/wordbook.js'
+import { resolveKnowPageRead } from '$lib/server/services/entity-resolver.js'
 
 export const load: PageServerLoad = async ({ params }) => {
-	const record = await findPageCaseInsensitive('know', params.slug)
+	// Reader flip: resolve through entity routes first. Canonical → render,
+	// retired addresses → 301, archived → render with a banner. Unrouted
+	// slugs fall through to the legacy lookup below.
+	const routed = await resolveKnowPageRead(params.slug)
+	if (routed?.kind === 'redirect') {
+		redirect(301, routed.href)
+	}
+	const archived = routed?.kind === 'article' && routed.archived
 
-	// Canonical redirect: if slug casing doesn't match stored form
-	if (record && record.slug !== params.slug) {
+	const record = routed?.kind === 'article'
+		? routed.record
+		: await findPageCaseInsensitive('know', params.slug)
+
+	// Canonical redirect for unrouted records: if slug casing doesn't match
+	// the stored form (routed reads already canonicalized above).
+	if (!routed && record && record.slug !== params.slug) {
 		redirect(301, `/know/${record.slug}`)
 	}
 
@@ -34,6 +47,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		const normalizedSlug = params.slug[0].toUpperCase() + params.slug.slice(1)
 		return {
 			notFound: true,
+			archived: false,
 			slug: normalizedSlug,
 			title: normalizedSlug.replaceAll('_', ' '),
 			ast: null,
@@ -84,6 +98,7 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	return {
 		notFound: false,
+		archived,
 		slug: record.slug,
 		title: record.title,
 		content: record.content,

@@ -18,6 +18,12 @@ import { eq, sql, and } from 'drizzle-orm'
 import type { NamespaceKey } from '../namespaces/registry.js'
 import type { WordbookPath } from '../sections/wordbook-path.js'
 import { buildWordbookHref } from '../sections/wordbook-path.js'
+import {
+	getLanguageFacet,
+	getLexiconFacet,
+	resolveAddress,
+	resolveTypedFacet,
+} from './services/entity-resolver.js'
 
 export type EntityKind =
 	| 'celestial-system'
@@ -76,17 +82,53 @@ export async function resolveNamespaceTarget(
 }
 
 async function dispatchResolve(ns: NamespaceKey, identifier: string): Promise<ResolvedTarget> {
+	// Reader flip: entity namespaces resolve THROUGH ROUTES first, so wiki
+	// canonicals, legacy hyphen slugs, and every retired alias all heal to
+	// the same page. The legacy table lookups stay as the fallback for
+	// spine-less rows. Non-entity namespaces are resolved before any routes
+	// lookup, exactly as before.
 	switch (ns) {
-		case 'Celestial': return resolveCelestial(identifier)
-		case 'Calendar': return resolveSimple('calendar', calendars, identifier)
-		case 'Category': return resolveSimple('category', categories, identifier)
-		case 'Country': return resolveSimple('country', countries, identifier)
-		case 'Map': return resolveSimple('map', worldMaps, identifier)
+		case 'Celestial': return await resolveCelestialViaRoutes(identifier) ?? resolveCelestial(identifier)
+		case 'Calendar': return await resolveSimpleViaRoutes('calendar', 'Calendar', identifier) ?? resolveSimple('calendar', calendars, identifier)
+		case 'Category': return await resolveSimpleViaRoutes('category', 'Category', identifier) ?? resolveSimple('category', categories, identifier)
+		case 'Country': return await resolveSimpleViaRoutes('country', 'Country', identifier) ?? resolveSimple('country', countries, identifier)
+		case 'Map': return await resolveSimpleViaRoutes('map', 'Map', identifier) ?? resolveSimple('map', worldMaps, identifier)
 		case 'CarveCraft': return missing(ns, identifier) // Phase 8 wires this up
 		case 'Template': return resolveTemplate(identifier)
 		case 'File':
 		case 'Image': return missing(ns, identifier) // handled by image nodes, not here
 		case 'Special': return missing(ns, identifier)
+	}
+}
+
+async function resolveCelestialViaRoutes(identifier: string): Promise<ResolvedTarget | null> {
+	const target = await resolveTypedFacet(db, 'celestial', identifier)
+	if (!target) return null
+	let kind: EntityKind = 'celestial-body'
+	if (target.kind === 'system') kind = 'celestial-system'
+	else if (target.kind === 'star') kind = 'celestial-star'
+	return {
+		kind,
+		href: buildNamespaceHref('Celestial', target.slug),
+		title: target.title,
+		exists: true,
+		entityId: target.typedId,
+	}
+}
+
+async function resolveSimpleViaRoutes(
+	facet: 'calendar' | 'category' | 'country' | 'map',
+	ns: NamespaceKey,
+	identifier: string,
+): Promise<ResolvedTarget | null> {
+	const target = await resolveTypedFacet(db, facet, identifier)
+	if (!target) return null
+	return {
+		kind: facet,
+		href: buildNamespaceHref(ns, target.slug),
+		title: target.title,
+		exists: true,
+		entityId: target.typedId,
 	}
 }
 
@@ -179,6 +221,67 @@ async function resolveTemplate(identifier: string): Promise<ResolvedTarget> {
 }
 
 /**
+ * Route-resolved Wordbook target: the language entity is known; find the
+ * word by scoped route first, then by headword text inside the resolved
+ * language. Results keep the legacy shape — hrefs carry the stored language
+ * slug + word text, and 301 to the canonical address on click.
+ */
+async function resolveRoutedWordbookTarget(
+	path: WordbookPath,
+	languageEntityId: number,
+	langRow: { id: number, slug: string, name: string },
+): Promise<ResolvedTarget> {
+	if (!path.word) {
+		return {
+			kind: 'wordbook-language',
+			href: buildWordbookHref({ language: langRow.slug }),
+			title: langRow.name,
+			exists: true,
+			entityId: langRow.id,
+		}
+	}
+
+	const wordAddress = await resolveAddress(db, 'wordbook', path.word, languageEntityId)
+	const lexRow = wordAddress ? await getLexiconFacet(db, wordAddress.entityId) : null
+	if (lexRow) {
+		return {
+			kind: 'wordbook-word',
+			href: buildWordbookHref({ language: langRow.slug, word: lexRow.word }),
+			title: `${lexRow.word} (${langRow.name})`,
+			exists: true,
+			entityId: lexRow.id,
+		}
+	}
+
+	// Legacy word lookup inside the route-resolved language, then red link —
+	// the unresolved word keeps the resolved language scope.
+	const wordLower = path.word.toLowerCase()
+	const [entry] = await db
+		.select({ id: lexicon.id, word: lexicon.word })
+		.from(lexicon)
+		.where(and(
+			eq(lexicon.languageId, langRow.id),
+			sql`LOWER(${lexicon.word}) = ${wordLower}`,
+		))
+		.limit(1)
+	if (entry) {
+		return {
+			kind: 'wordbook-word',
+			href: buildWordbookHref({ language: langRow.slug, word: entry.word }),
+			title: `${entry.word} (${langRow.name})`,
+			exists: true,
+			entityId: entry.id,
+		}
+	}
+	return {
+		kind: null,
+		href: buildWordbookHref({ language: langRow.slug, word: path.word }),
+		title: `${path.word} (${langRow.name})`,
+		exists: false,
+	}
+}
+
+/**
  * Resolve a Wordbook slash-path target (`Lang` or `Lang/Word`).
  */
 export async function resolveWordbookPath(
@@ -188,6 +291,20 @@ export async function resolveWordbookPath(
 	const ckey = cacheKey('wordbook', path.word ? `${path.language}/${path.word}` : path.language)
 	const cached = cache.get(ckey)
 	if (cached) return cached
+
+	// Reader flip: the language segment resolves through ALL language routes
+	// (canonical or not), so mentions written under former language names
+	// heal — never by comparing canonical slug strings. Legacy slug lookup
+	// remains the fallback for spine-less rows.
+	const routedLang = await resolveAddress(db, 'know', path.language)
+	if (routedLang) {
+		const langRow = await getLanguageFacet(db, routedLang.entityId)
+		if (langRow) {
+			const result = await resolveRoutedWordbookTarget(path, routedLang.entityId, langRow)
+			cache.set(ckey, result)
+			return result
+		}
+	}
 
 	const langLower = path.language.toLowerCase()
 	const [lang] = await db
