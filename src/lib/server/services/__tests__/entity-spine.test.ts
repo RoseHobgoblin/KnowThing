@@ -28,6 +28,7 @@ import {
 	repointCanonicalRoute,
 	type EntitySpineDatabase,
 } from '../entity-spine.js'
+import { mintEntitySlug } from '$lib/utils/slugify.js'
 
 const url = process.env.TEST_DATABASE_URL
 
@@ -72,10 +73,21 @@ describe.runIf(!!url)('entity spine (integration)', () => {
 	})
 
 	beforeEach(async () => {
-		// Order matters: routes, relations, and facet rows reference entities.
+		// Detach backfilled facet rows before wiping entities (FKs), then
+		// clear the spine tables. Throwaway databases only.
+		await db.execute(sql`DELETE FROM content_records WHERE domain = 'know'`)
+		await db.execute(sql`UPDATE content_records SET entity_id = NULL WHERE entity_id IS NOT NULL`)
+		await db.execute(sql`UPDATE calendars SET entity_id = NULL WHERE entity_id IS NOT NULL`)
+		await db.execute(sql`UPDATE languages SET entity_id = NULL WHERE entity_id IS NOT NULL`)
+		await db.execute(sql`UPDATE lexicon SET entity_id = NULL WHERE entity_id IS NOT NULL`)
+		await db.execute(sql`UPDATE celestial_bodies SET entity_id = NULL WHERE entity_id IS NOT NULL`)
+		await db.execute(sql`UPDATE countries SET entity_id = NULL WHERE entity_id IS NOT NULL`)
+		await db.execute(sql`UPDATE world_maps SET entity_id = NULL WHERE entity_id IS NOT NULL`)
+		await db.execute(sql`UPDATE categories SET entity_id = NULL WHERE entity_id IS NOT NULL`)
+		await db.execute(sql`UPDATE entity_revisions SET entity_id = NULL WHERE entity_id IS NOT NULL`)
 		await db.execute(sql`DELETE FROM entity_routes`)
 		await db.execute(sql`DELETE FROM relations`)
-		await db.execute(sql`DELETE FROM content_records WHERE entity_id IS NOT NULL`)
+		await db.execute(sql`DELETE FROM entity_articles`)
 		await db.execute(sql`UPDATE entities SET merged_into_id = NULL, status = 'active'`)
 		await db.execute(sql`DELETE FROM entities`)
 	})
@@ -336,6 +348,24 @@ describe.runIf(!!url)('entity spine (integration)', () => {
 			await expectSqlState(db.execute(
 				sql`INSERT INTO relations (from_id, to_id, type_key, properties) VALUES (${from}, ${to2}, 'compound_of', '{"position": 1}')`,
 			), '23505')
+		})
+
+		it('mints identical slugs through the SQL twin (spine_mint_slug) and the TS path', async () => {
+			// The 0050 backfill mints with spine_mint_slug; the app mints with
+			// mintEntitySlug. One rules-set, two implementations — pinned here.
+			const vectors = [
+				'Aide the Sun', 'sun', 'The Old-Tongue', 'Sun (star)', 'x  y',
+				'd\'Arte', 'the-sun', 'Boek', 'op de boek', 'BOEK', 'bœk',
+				'boék', 'boék', 'énheduanna',
+			]
+			for (const name of vectors) {
+				const [row] = await db.execute(sql`
+					SELECT spine_mint_slug('know', ${name}) AS know,
+						spine_mint_slug('wordbook', ${name}) AS wordbook
+				`) as unknown as Array<{ know: string, wordbook: string }>
+				expect(row.know, `know slug for ${JSON.stringify(name)}`).toBe(mintEntitySlug('know', name))
+				expect(row.wordbook, `wordbook slug for ${JSON.stringify(name)}`).toBe(mintEntitySlug('wordbook', name))
+			}
 		})
 
 		it('seeds derived types that reject nothing here — no rows, no indexes (doctrine)', async () => {

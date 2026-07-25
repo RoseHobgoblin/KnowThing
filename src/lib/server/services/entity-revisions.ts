@@ -26,9 +26,11 @@ export async function recordEntityRevision(
 	snapshot: EntityRevisionSnapshot,
 	userId: number | null,
 ): Promise<void> {
+	// Live writes keep the legacy tuple; spine_consolidate_revisions() maps
+	// the delta onto (entity_id, facet_key) at the writer flip.
 	await db.insert(entityRevisions).values({
-		entityType,
-		entityId,
+		legacyEntityType: entityType,
+		legacyEntityId: entityId,
 		title: snapshot.title,
 		snapshot,
 		editSummary: snapshot.editSummary ?? null,
@@ -45,8 +47,8 @@ export async function listEntityRevisions(
 		.select()
 		.from(entityRevisions)
 		.where(and(
-			eq(entityRevisions.entityType, entityType),
-			eq(entityRevisions.entityId, entityId),
+			eq(entityRevisions.legacyEntityType, entityType),
+			eq(entityRevisions.legacyEntityId, entityId),
 		))
 		.orderBy(desc(entityRevisions.createdAt))
 		.limit(limit)

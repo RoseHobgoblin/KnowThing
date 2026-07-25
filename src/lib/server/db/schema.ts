@@ -948,12 +948,24 @@ export const categories = pgTable(
 	],
 )
 
+/**
+ * THE sole revision store (0050 consolidation). Legacy identity survives in
+ * the legacy_* audit columns; the spine identity is (entity_id, facet_key).
+ * Rows copied from the legacy stores carry (source_store, source_id) so the
+ * consolidation is re-runnable; live writes use source_store 'live'.
+ */
 export const entityRevisions = pgTable(
 	'entity_revisions',
 	{
 		id: serial('id').primaryKey(),
-		entityType: text('entity_type').notNull(),
-		entityId: integer('entity_id').notNull(),
+		legacyEntityType: text('legacy_entity_type').notNull(),
+		legacyEntityId: integer('legacy_entity_id').notNull(),
+		// Spine attachment; NULL until spine_consolidate_revisions() maps the
+		// legacy tuple (re-run at the writer flip for the delta).
+		entityId: integer('entity_id').references(() => entities.id),
+		facetKey: text('facet_key'),
+		sourceStore: text('source_store').notNull().default('live'),
+		sourceId: integer('source_id'),
 		title: text('title').notNull(),
 		snapshot: jsonb('snapshot').notNull(),
 		editSummary: text('edit_summary'),
@@ -961,9 +973,27 @@ export const entityRevisions = pgTable(
 		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 	},
 	table => [
-		index('idx_entity_revisions_entity').on(table.entityType, table.entityId, table.createdAt),
+		index('idx_entity_revisions_entity').on(table.legacyEntityType, table.legacyEntityId, table.createdAt),
+		index('idx_entity_revisions_spine').on(table.entityId, table.facetKey, table.createdAt),
+		uniqueIndex('entity_revisions_source_uq')
+			.on(table.sourceStore, table.sourceId)
+			.where(sql`${table.sourceStore} <> 'live'`),
 	],
 )
+
+/**
+ * Editorial queue for spine decisions the backfill/merge machinery refuses
+ * to guess (address collisions, facet conflicts, shared page slugs). The
+ * collision preflight requires this drained before the reader cutover.
+ */
+export const spineWorkItems = pgTable('spine_work_items', {
+	id: serial('id').primaryKey(),
+	kind: text('kind').notNull(),
+	detail: text('detail').notNull(),
+	context: jsonb('context').notNull().default({}),
+	resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+	createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+})
 
 export const entityCategories = pgTable(
 	'entity_categories',

@@ -115,11 +115,13 @@ export async function saveEntityBody(
 
 	if (!existing) return { ok: false, status: 404, error: `${input.kind} ${input.entityId} not found` }
 
-	// Snapshot prior body into entity_revisions BEFORE overwriting.
+	// Snapshot prior body into entity_revisions BEFORE overwriting. Live
+	// writes keep the legacy tuple; spine_consolidate_revisions() maps the
+	// delta onto (entity_id, facet_key) at the writer flip.
 	if (existing.body) {
 		await database.insert(entityRevisions).values({
-			entityType: input.kind,
-			entityId: input.entityId,
+			legacyEntityType: input.kind,
+			legacyEntityId: input.entityId,
 			title: input.title,
 			snapshot: { title: input.title, content: existing.body, sizeBytes: existing.bodySizeBytes ?? 0 },
 			editSummary: input.editSummary,
