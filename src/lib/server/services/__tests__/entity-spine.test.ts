@@ -58,12 +58,16 @@ describe.runIf(!!url)('entity spine (integration)', () => {
 	let client: postgres.Sql
 	let db: EntitySpineDatabase
 
-	beforeAll(() => {
+	beforeAll(async () => {
 		client = postgres(url!, { max: 1, onnotice: () => {} })
 		db = drizzle(client) as unknown as EntitySpineDatabase
-	})
+		// The DB suites share one database and wipe it between tests —
+		// serialize across parallel vitest workers.
+		await client`SELECT pg_advisory_lock(730_100, 0)`
+	}, 120_000)
 
 	afterAll(async () => {
+		await client`SELECT pg_advisory_unlock(730_100, 0)`
 		await client?.end()
 	})
 
