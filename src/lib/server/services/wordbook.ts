@@ -13,6 +13,13 @@ import {
 	users,
 } from '$lib/server/db/schema.js'
 import { getInflectionTable, rebuildInflectedForms } from '$lib/server/wordbook/inflection.js'
+import {
+	archiveEntity,
+	createEntityWithRoute,
+	mintOrAttachFacetEntity,
+	repointCanonicalRoute,
+} from '$lib/server/services/entity-spine.js'
+import { mintLexemeSlug } from '$lib/utils/slugify.js'
 
 const VALID_RELATION_TYPES = new Set(['derived_from', 'loan_from', 'compound_of'])
 
@@ -105,6 +112,8 @@ export async function deleteWordbookEntry(entryId: number, userId: number) {
 		await snapshotEntry(entryId, userId, 'Entry deleted', tx)
 		const [deleted] = await tx.delete(lexicon).where(eq(lexicon.id, entryId)).returning()
 		if (!deleted) throw error(404, 'Entry not found')
+		// Archive, never hard-delete: the word's routes keep resolving.
+		await archiveEntity(tx, deleted.entityId)
 		return { success: true }
 	})
 }
@@ -492,6 +501,35 @@ async function resolveHomographNumber(
 	return Math.max(...existing.map(entry => entry.homographNumber)) + 1
 }
 
+/**
+ * Compatibility writer (0049): a lexeme's scoped route needs its language on
+ * the spine first. Languages created before the spine get lazily minted here.
+ */
+async function ensureLanguageEntity(tx: DatabaseExecutor, languageId: number): Promise<number> {
+	const [language] = await tx
+		.select({ id: languages.id, name: languages.name, slug: languages.slug, entityId: languages.entityId })
+		.from(languages)
+		.where(eq(languages.id, languageId))
+	if (!language) throw error(404, 'Language not found')
+	if (language.entityId != null) return language.entityId
+
+	const { entityId } = await mintOrAttachFacetEntity(tx, {
+		displayName: language.name,
+		namespace: 'know',
+		legacySlugs: [language.slug],
+		hasFacet: async (id) => {
+			const [row] = await tx
+				.select({ id: languages.id })
+				.from(languages)
+				.where(eq(languages.entityId, id))
+				.limit(1)
+			return !!row
+		},
+	})
+	await tx.update(languages).set({ entityId }).where(eq(languages.id, languageId))
+	return entityId
+}
+
 export async function createWordbookEntry(input: CreateWordbookEntryInput) {
 	const word = input.word.trim()
 	const normalizedDefinitions = normalizeDefinitions(input.defs, input.definition)
@@ -499,6 +537,16 @@ export async function createWordbookEntry(input: CreateWordbookEntryInput) {
 
 	return db.transaction(async (tx) => {
 		const homographNumber = await resolveHomographNumber(tx, word, input.languageId, input.isHomograph)
+
+		// One entity per homograph; the scoped route slug carries the homograph
+		// suffix (`boek`, `boek-2`) and is stable once minted.
+		const languageEntityId = await ensureLanguageEntity(tx, input.languageId)
+		const entityId = await createEntityWithRoute(tx, {
+			displayName: word,
+			namespace: 'wordbook',
+			slug: mintLexemeSlug(word, homographNumber),
+			scopeEntityId: languageEntityId,
+		})
 
 		const [entry] = await tx
 			.insert(lexicon)
@@ -511,6 +559,7 @@ export async function createWordbookEntry(input: CreateWordbookEntryInput) {
 				pageSlug: input.pageSlug?.trim() || null,
 				tags: normalizedTags,
 				homographNumber,
+				entityId,
 			})
 			.returning()
 
@@ -604,6 +653,18 @@ export async function updateWordbookEntry(
 			})
 			.where(eq(lexicon.id, entryId))
 			.returning()
+
+		// Repoint the scoped canonical route when the headword identity (or its
+		// spelling) moved; the old word URL keeps 301ing via the demoted route.
+		if (updated.entityId != null && (identityChanged || nextWord !== current.word)) {
+			const languageEntityId = await ensureLanguageEntity(tx, nextLanguageId)
+			await repointCanonicalRoute(tx, updated.entityId, {
+				namespace: 'wordbook',
+				slug: mintLexemeSlug(nextWord, updated.homographNumber),
+				scopeEntityId: languageEntityId,
+				displayName: nextWord,
+			})
+		}
 
 		return updated
 	})

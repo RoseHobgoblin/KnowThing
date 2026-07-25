@@ -1,13 +1,18 @@
 import { error } from '@sveltejs/kit'
 import { and, eq, ne, sql } from 'drizzle-orm'
 import { db } from '$lib/server/db/index.js'
-import { contentRecords } from '$lib/server/db/schema.js'
+import { contentRecords, entities } from '$lib/server/db/schema.js'
 import {
 	createContentRecord,
 	moveContentRecord,
 	saveContentRecord,
 	type ContentRecord,
 } from '$lib/server/services/content-records.js'
+import {
+	mintOrAttachFacetEntity,
+	repointCanonicalRoute,
+	type EntitySpineDatabase,
+} from '$lib/server/services/entity-spine.js'
 import { slugify } from '$lib/renderer/context.js'
 
 export interface CreateKnowPageInput {
@@ -89,6 +94,15 @@ async function assertNoKnowSlugConflict(slug: string, excludedRecordId?: number)
 	}
 }
 
+async function hasArticleFacet(tx: EntitySpineDatabase, entityId: number): Promise<boolean> {
+	const [row] = await tx
+		.select({ id: contentRecords.id })
+		.from(contentRecords)
+		.where(eq(contentRecords.entityId, entityId))
+		.limit(1)
+	return !!row
+}
+
 export async function createKnowPage(input: CreateKnowPageInput): Promise<ContentRecord> {
 	const title = input.title.trim()
 	const slug = normalizeKnowSlug(title, input.slug)
@@ -96,27 +110,55 @@ export async function createKnowPage(input: CreateKnowPageInput): Promise<Conten
 	await assertNoCrossDomainSlugCollision(slug)
 	await assertNoKnowSlugConflict(slug)
 
-	return db.transaction(tx => createContentRecord(tx, {
-		domain: 'know',
-		slug,
-		title,
-		content: input.content,
-		editSummary: 'Page created',
-		userId: input.userId,
-	}))
+	return db.transaction(async (tx) => {
+		const record = await createContentRecord(tx, {
+			domain: 'know',
+			slug,
+			title,
+			content: input.content,
+			editSummary: 'Page created',
+			userId: input.userId,
+		})
+
+		// Compatibility writer (0049): every new page is a spine entity with a
+		// canonical route — or the article facet of an existing one.
+		const { entityId } = await mintOrAttachFacetEntity(tx, {
+			displayName: title,
+			namespace: 'know',
+			slug,
+			hasFacet: id => hasArticleFacet(tx, id),
+		})
+		const [attached] = await tx
+			.update(contentRecords)
+			.set({ entityId })
+			.where(eq(contentRecords.id, record.id))
+			.returning()
+		return attached
+	})
 }
 
 export async function updateKnowPage(input: UpdateKnowPageInput): Promise<ContentRecord> {
 	const existing = await getKnowPageRecord(input.slug)
 	if (!existing) throw error(404, 'Page not found')
 
-	const result = await db.transaction(tx => saveContentRecord(tx, {
-		contentRecordId: existing.id,
-		content: input.content,
-		editSummary: input.editSummary || '',
-		userId: input.userId,
-		title: input.title,
-	}))
+	const result = await db.transaction(async (tx) => {
+		const saved = await saveContentRecord(tx, {
+			contentRecordId: existing.id,
+			content: input.content,
+			editSummary: input.editSummary || '',
+			userId: input.userId,
+			title: input.title,
+		})
+
+		// Keep the spine's display identity in step with a title edit.
+		if (saved.ok && existing.entityId != null && saved.record.title !== existing.title) {
+			await tx
+				.update(entities)
+				.set({ displayName: saved.record.title, updatedAt: new Date() })
+				.where(eq(entities.id, existing.entityId))
+		}
+		return saved
+	})
 
 	if (!result.ok) throw error(result.status, result.error)
 	return result.record
@@ -134,10 +176,24 @@ export async function moveKnowPage(input: MoveKnowPageInput): Promise<ContentRec
 		await assertNoKnowSlugConflict(newSlug, existing.id)
 	}
 
-	return db.transaction(tx => moveContentRecord(tx, {
-		contentRecordId: existing.id,
-		newSlug,
-		newTitle,
-		userId: input.userId,
-	}))
+	return db.transaction(async (tx) => {
+		const moved = await moveContentRecord(tx, {
+			contentRecordId: existing.id,
+			newSlug,
+			newTitle,
+			userId: input.userId,
+		})
+
+		// A move is a rename: demote the old canonical route (it 301s forever),
+		// promote/insert the new address. Pre-spine pages (entityId NULL) are
+		// left for the backfill phase.
+		if (existing.entityId != null) {
+			await repointCanonicalRoute(tx, existing.entityId, {
+				namespace: 'know',
+				slug: newSlug,
+				displayName: newTitle,
+			})
+		}
+		return moved
+	})
 }

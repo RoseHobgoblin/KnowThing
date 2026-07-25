@@ -2,6 +2,7 @@ import { error } from '@sveltejs/kit'
 import { db } from '$lib/server/db/index.js'
 import { eq } from 'drizzle-orm'
 import { deleteContentByDomainSlug } from '$lib/server/services/content-records.js'
+import { archiveEntity } from '$lib/server/services/entity-spine.js'
 import { urlSlugify } from '$lib/utils/slugify.js'
 import type { PgTable, PgColumn } from 'drizzle-orm/pg-core'
 
@@ -109,11 +110,13 @@ export async function deleteCelestialEntity(
 		const [removed] = await tx
 			.delete(table)
 			.where(eq(slugColumn, slug))
-			.returning() as Array<{ slug?: string }>
+			.returning() as Array<{ slug?: string, entityId?: number | null }>
 
 		if (!removed) return null
 
 		if (removed.slug) await deleteContentByDomainSlug(tx, 'celestial', removed.slug)
+		// Archive, never hard-delete: routes keep resolving (banner, not 404).
+		await archiveEntity(tx, removed.entityId ?? null)
 		return removed
 	})
 

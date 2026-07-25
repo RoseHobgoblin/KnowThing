@@ -4,7 +4,13 @@ import type { z } from 'zod'
 import { db } from '$lib/server/db/index.js'
 import { calendars } from '$lib/server/db/schema.js'
 import { deleteContentByDomainSlug } from '$lib/server/services/content-records.js'
-import { urlSlugify } from '$lib/utils/slugify.js'
+import {
+	archiveEntity,
+	mintOrAttachFacetEntity,
+	repointCanonicalRoute,
+	type EntitySpineDatabase,
+} from '$lib/server/services/entity-spine.js'
+import { mintEntitySlug, urlSlugify } from '$lib/utils/slugify.js'
 import type {
 	createCalendarSchema,
 	updateCalendarSchema,
@@ -76,8 +82,31 @@ export async function createCalendar(data: CreateCalendarInput) {
 			})
 			.returning()
 
-		return { ...cal, slug }
+		// Compatibility writer (0049): canonical know route in wiki style; the
+		// hyphen slug lives on as a noncanonical alias.
+		const { entityId } = await mintOrAttachFacetEntity(tx, {
+			displayName: cal.name,
+			namespace: 'know',
+			legacySlugs: [cal.slug],
+			hasFacet: id => hasCalendarFacet(tx, id),
+		})
+		const [attached] = await tx
+			.update(calendars)
+			.set({ entityId })
+			.where(eq(calendars.id, cal.id))
+			.returning()
+
+		return { ...attached, slug }
 	})
+}
+
+async function hasCalendarFacet(tx: EntitySpineDatabase, entityId: number): Promise<boolean> {
+	const [row] = await tx
+		.select({ id: calendars.id })
+		.from(calendars)
+		.where(eq(calendars.entityId, entityId))
+		.limit(1)
+	return !!row
 }
 
 export async function updateCalendar(id: number, data: UpdateCalendarInput) {
@@ -87,6 +116,12 @@ export async function updateCalendar(id: number, data: UpdateCalendarInput) {
 		if (isPrimary) {
 			await tx.update(calendars).set({ isPrimary: false }).where(eq(calendars.isPrimary, true))
 		}
+
+		const [current] = await tx
+			.select({ id: calendars.id, name: calendars.name, slug: calendars.slug, entityId: calendars.entityId })
+			.from(calendars)
+			.where(eq(calendars.id, id))
+		if (!current) throw error(404, 'Calendar not found')
 
 		const [updated] = await tx
 			.update(calendars)
@@ -100,7 +135,15 @@ export async function updateCalendar(id: number, data: UpdateCalendarInput) {
 			.where(eq(calendars.id, id))
 			.returning()
 
-		if (!updated) throw error(404, 'Calendar not found')
+		// Rename → canonical route follows the name (old address 301s). The
+		// stored hyphen slug never changes on update, so no new alias needed.
+		if (updated.entityId != null && updated.name !== current.name) {
+			await repointCanonicalRoute(tx, updated.entityId, {
+				namespace: 'know',
+				slug: mintEntitySlug('know', updated.name),
+				displayName: updated.name,
+			})
+		}
 		return updated
 	})
 }
@@ -112,6 +155,8 @@ export async function deleteCalendar(id: number) {
 	return db.transaction(async (tx) => {
 		await deleteContentByDomainSlug(tx, 'calendar', cal.slug)
 		await tx.delete(calendars).where(eq(calendars.id, id))
+		// Archive, never hard-delete: routes keep resolving (banner, not 404).
+		await archiveEntity(tx, cal.entityId)
 		return { success: true }
 	})
 }

@@ -88,6 +88,8 @@ export const contentRecords = pgTable(
 		plainText: text('plain_text').notNull().default(''),
 		parsedAst: jsonb('parsed_ast'),
 		sizeBytes: integer('size_bytes').notNull().default(0),
+		// Entity spine (0049): NULL = predates the spine, backfilled later.
+		entityId: integer('entity_id').references((): AnyPgColumn => entities.id),
 		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 	},
@@ -95,6 +97,7 @@ export const contentRecords = pgTable(
 		uniqueIndex('uq_cr_domain_slug').on(table.domain, sql`LOWER(${table.slug})`),
 		index('idx_cr_domain').on(table.domain),
 		index('idx_cr_updated').on(table.updatedAt),
+		uniqueIndex('content_records_entity_uq').on(table.entityId).where(sql`${table.entityId} IS NOT NULL`),
 	],
 )
 
@@ -192,12 +195,16 @@ export const calendars = pgTable('calendars', {
 	isPrimary: boolean('is_primary').default(false).notNull(),
 	staticData: jsonb('static_data').notNull(),
 	planetId: integer('planet_id').references((): AnyPgColumn => celestialBodies.id, { onDelete: 'set null' }),
+	// Entity spine (0049): NULL = predates the spine, backfilled later.
+	entityId: integer('entity_id').references((): AnyPgColumn => entities.id),
 	body: text('body').notNull().default(''),
 	bodyParsedAst: jsonb('body_parsed_ast'),
 	bodyPlainText: text('body_plain_text').notNull().default(''),
 	bodySizeBytes: integer('body_size_bytes').notNull().default(0),
 	bodyUpdatedAt: timestamp('body_updated_at', { withTimezone: true }),
-})
+}, table => [
+	uniqueIndex('calendars_entity_uq').on(table.entityId).where(sql`${table.entityId} IS NOT NULL`),
+])
 
 // ============================================================================
 // Site Settings
@@ -298,12 +305,15 @@ export const languages = pgTable(
 		bodyPlainText: text('body_plain_text').notNull().default(''),
 		bodySizeBytes: integer('body_size_bytes').notNull().default(0),
 		bodyUpdatedAt: timestamp('body_updated_at', { withTimezone: true }),
+		// Entity spine (0049): NULL = predates the spine, backfilled later.
+		entityId: integer('entity_id').references((): AnyPgColumn => entities.id),
 		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 	},
 	table => [
 		index('idx_languages_slug').on(table.slug),
 		index('idx_languages_parent').on(table.parentLanguageId),
+		uniqueIndex('languages_entity_uq').on(table.entityId).where(sql`${table.entityId} IS NOT NULL`),
 	],
 )
 
@@ -419,6 +429,9 @@ export const lexicon = pgTable(
 		// Trigger-maintained (trg_lexicon_search): word A, definitions B,
 		// etymology+pronunciation C, body_plain_text D. Never write from app code.
 		searchVector: tsvector('search_vector'),
+		// Entity spine (0049): NULL = predates the spine, backfilled later.
+		// One entity per homograph row.
+		entityId: integer('entity_id').references((): AnyPgColumn => entities.id),
 		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 	},
@@ -433,6 +446,7 @@ export const lexicon = pgTable(
 			sql`LOWER(${table.word})`,
 			table.homographNumber,
 		),
+		uniqueIndex('lexicon_entity_uq').on(table.entityId).where(sql`${table.entityId} IS NOT NULL`),
 	],
 )
 
@@ -600,6 +614,8 @@ export const celestialBodies = pgTable(
 		bodyPlainText: text('body_plain_text').notNull().default(''),
 		bodySizeBytes: integer('body_size_bytes').notNull().default(0),
 		bodyUpdatedAt: timestamp('body_updated_at', { withTimezone: true }),
+		// Entity spine (0049): NULL = predates the spine, backfilled later.
+		entityId: integer('entity_id').references((): AnyPgColumn => entities.id),
 		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 	},
@@ -607,6 +623,7 @@ export const celestialBodies = pgTable(
 		index('idx_celestial_bodies_slug').on(table.slug),
 		index('idx_celestial_bodies_parent').on(table.parentId),
 		index('idx_celestial_bodies_kind_parent').on(table.kind, table.parentId),
+		uniqueIndex('celestial_bodies_entity_uq').on(table.entityId).where(sql`${table.entityId} IS NOT NULL`),
 	],
 )
 
@@ -633,11 +650,14 @@ export const worldMaps = pgTable(
 		bodyPlainText: text('body_plain_text').notNull().default(''),
 		bodySizeBytes: integer('body_size_bytes').notNull().default(0),
 		bodyUpdatedAt: timestamp('body_updated_at', { withTimezone: true }),
+		// Entity spine (0049): NULL = predates the spine, backfilled later.
+		entityId: integer('entity_id').references((): AnyPgColumn => entities.id),
 		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 	},
 	table => [
 		index('idx_world_maps_slug').on(table.slug),
+		uniqueIndex('world_maps_entity_uq').on(table.entityId).where(sql`${table.entityId} IS NOT NULL`),
 	],
 )
 
@@ -660,12 +680,15 @@ export const countries = pgTable(
 		bodyPlainText: text('body_plain_text').notNull().default(''),
 		bodySizeBytes: integer('body_size_bytes').notNull().default(0),
 		bodyUpdatedAt: timestamp('body_updated_at', { withTimezone: true }),
+		// Entity spine (0049): NULL = predates the spine, backfilled later.
+		entityId: integer('entity_id').references((): AnyPgColumn => entities.id),
 		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 	},
 	table => [
 		index('idx_countries_slug').on(table.slug),
 		index('idx_countries_page_slug').on(table.pageSlug),
+		uniqueIndex('countries_entity_uq').on(table.entityId).where(sql`${table.entityId} IS NOT NULL`),
 	],
 )
 
@@ -791,6 +814,114 @@ export const inflectedForms = pgTable(
 )
 
 // ============================================================================
+// Entity spine (migration 0049 — additive). One `entities` table as shared
+// identity for all content; addresses in `entity_routes`; article prose in
+// `entity_articles`; authored semantic edges in `relations` governed by
+// `relation_types`. Typed tables carry a nullable `entity_id` and become
+// facets. CHECK constraints (status/merge coherence, namespace list, NFC
+// slugs, wordbook scoping, compound_of property shape) live in the SQL
+// migration — this file declares structure the ORM needs.
+// ============================================================================
+
+export const entities = pgTable(
+	'entities',
+	{
+		id: serial('id').primaryKey(),
+		displayName: text('display_name').notNull(),
+		status: text('status').notNull().default('active'), // 'active' | 'archived' | 'merged'
+		// Merged losers point at the FINAL survivor — never at another merged
+		// entity (no chains; enforced by the merge service under lock).
+		mergedIntoId: integer('merged_into_id').references((): AnyPgColumn => entities.id),
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+	},
+	table => [
+		index('idx_entities_merged_into').on(table.mergedIntoId),
+	],
+)
+
+export const entityRoutes = pgTable(
+	'entity_routes',
+	{
+		id: serial('id').primaryKey(),
+		entityId: integer('entity_id')
+			.references(() => entities.id)
+			.notNull(),
+		namespace: text('namespace').notNull(), // 'know' | 'wordbook' | 'category'
+		// Wordbook lexeme routes are scoped by their language entity
+		// (namespace='wordbook' ⟺ scope_entity_id IS NOT NULL).
+		scopeEntityId: integer('scope_entity_id').references(() => entities.id),
+		slug: text('slug').notNull(),
+		isCanonical: boolean('is_canonical').notNull().default(false),
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+	},
+	table => [
+		// The real index (0049) is NULLS NOT DISTINCT so unscoped duplicates
+		// collide — drizzle's index builder can't express that; SQL is truth.
+		uniqueIndex('entity_routes_address_uq')
+			.on(table.namespace, table.scopeEntityId, sql`LOWER(${table.slug})`),
+		uniqueIndex('entity_routes_one_canonical_uq')
+			.on(table.entityId)
+			.where(sql`${table.isCanonical}`),
+		index('idx_entity_routes_entity').on(table.entityId),
+		index('idx_entity_routes_scope').on(table.scopeEntityId),
+	],
+)
+
+export const entityArticles = pgTable('entity_articles', {
+	entityId: integer('entity_id')
+		.references(() => entities.id)
+		.primaryKey(),
+	body: text('body').notNull().default(''),
+	parsedAst: jsonb('parsed_ast'),
+	plainText: text('plain_text').notNull().default(''),
+	sizeBytes: integer('size_bytes').notNull().default(0),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
+export const relationTypes = pgTable('relation_types', {
+	key: text('key').primaryKey(),
+	fromLabel: text('from_label').notNull(),
+	toLabel: text('to_label').notNull(),
+	symmetric: boolean('symmetric').notNull().default(false),
+	acyclic: boolean('acyclic').notNull().default(false),
+	// Affects traversal only — no closure rows are ever stored.
+	transitive: boolean('transitive').notNull().default(false),
+	uniqueFrom: boolean('unique_from').notNull().default(false),
+	uniqueTo: boolean('unique_to').notNull().default(false),
+	// [] = unrestricted; nonempty = endpoint must have ANY listed facet.
+	fromFacets: text('from_facets').array().notNull().default([]),
+	toFacets: text('to_facets').array().notNull().default([]),
+	// Derived types never get rows in `relations`; on them, unique_from and
+	// acyclic are documentation only — enforced at the typed source.
+	derived: boolean('derived').notNull().default(false),
+	description: text('description').notNull().default(''),
+})
+
+export const relations = pgTable(
+	'relations',
+	{
+		id: serial('id').primaryKey(),
+		fromId: integer('from_id')
+			.references(() => entities.id)
+			.notNull(),
+		toId: integer('to_id')
+			.references(() => entities.id)
+			.notNull(),
+		typeKey: text('type_key')
+			.references(() => relationTypes.key)
+			.notNull(),
+		properties: jsonb('properties').notNull().default({}),
+		notes: text('notes'),
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+	},
+	table => [
+		index('idx_relations_from').on(table.fromId, table.typeKey),
+		index('idx_relations_to').on(table.toId, table.typeKey),
+	],
+)
+
+// ============================================================================
 // Namespace migration scaffolding (Phase 1 — additive). Wired up by later
 // phases. See docs/MIGRATION-PHASE-0-AUDIT.md and the migration plan.
 // ============================================================================
@@ -806,11 +937,14 @@ export const categories = pgTable(
 		bodyPlainText: text('body_plain_text').notNull().default(''),
 		bodySizeBytes: integer('body_size_bytes').notNull().default(0),
 		bodyUpdatedAt: timestamp('body_updated_at', { withTimezone: true }),
+		// Entity spine (0049): NULL = predates the spine, backfilled later.
+		entityId: integer('entity_id').references((): AnyPgColumn => entities.id),
 		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 	},
 	table => [
 		index('idx_categories_slug').on(sql`LOWER(${table.slug})`),
+		uniqueIndex('categories_entity_uq').on(table.entityId).where(sql`${table.entityId} IS NOT NULL`),
 	],
 )
 

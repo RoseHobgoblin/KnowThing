@@ -3,6 +3,13 @@ import { and, eq, sql } from 'drizzle-orm'
 import type { z } from 'zod'
 import { db } from '$lib/server/db/index.js'
 import { worldMaps } from '$lib/server/db/schema.js'
+import {
+	archiveEntity,
+	mintOrAttachFacetEntity,
+	repointCanonicalRoute,
+	type EntitySpineDatabase,
+} from '$lib/server/services/entity-spine.js'
+import { mintEntitySlug } from '$lib/utils/slugify.js'
 import type { createWorldMapSchema, updateWorldMapSchema } from '$lib/worldmap/schema.js'
 
 type CreateMapInput = z.infer<typeof createWorldMapSchema>
@@ -205,28 +212,53 @@ export async function createMap(data: CreateMapInput) {
 
 	const linkedPageSlug = data.linkedPageSlug?.trim() || null
 
-	const [map] = await db
-		.insert(worldMaps)
-		.values({
-			name: data.name.trim(),
-			slug: normalizedSlug,
-			imageFilename: data.imageFilename?.trim() || `${normalizedSlug}.png`,
-			imageWidth: data.imageWidth ?? null,
-			imageHeight: data.imageHeight ?? null,
-			waterHex: data.waterHex,
-			timePeriod: data.timePeriod?.trim() || null,
-			event: data.event?.trim() || null,
-			linkedPageSlug,
-			description: data.description?.trim() || '',
+	return db.transaction(async (tx) => {
+		const [map] = await tx
+			.insert(worldMaps)
+			.values({
+				name: data.name.trim(),
+				slug: normalizedSlug,
+				imageFilename: data.imageFilename?.trim() || `${normalizedSlug}.png`,
+				imageWidth: data.imageWidth ?? null,
+				imageHeight: data.imageHeight ?? null,
+				waterHex: data.waterHex,
+				timePeriod: data.timePeriod?.trim() || null,
+				event: data.event?.trim() || null,
+				linkedPageSlug,
+				description: data.description?.trim() || '',
+			})
+			.returning()
+
+		// Compatibility writer (0049): canonical know route in wiki style; the
+		// hyphen slug lives on as a noncanonical alias.
+		const { entityId } = await mintOrAttachFacetEntity(tx, {
+			displayName: map.name,
+			namespace: 'know',
+			legacySlugs: [map.slug],
+			hasFacet: id => hasMapFacet(tx, id),
 		})
-		.returning()
-	return map
+		const [attached] = await tx
+			.update(worldMaps)
+			.set({ entityId })
+			.where(eq(worldMaps.id, map.id))
+			.returning()
+		return attached
+	})
+}
+
+async function hasMapFacet(tx: EntitySpineDatabase, entityId: number): Promise<boolean> {
+	const [row] = await tx
+		.select({ id: worldMaps.id })
+		.from(worldMaps)
+		.where(eq(worldMaps.entityId, entityId))
+		.limit(1)
+	return !!row
 }
 
 export async function updateMap(slug: string, data: UpdateMapInput) {
 	const normalized = slug.toLowerCase()
 	const [current] = await db
-		.select({ id: worldMaps.id, slug: worldMaps.slug })
+		.select({ id: worldMaps.id, slug: worldMaps.slug, name: worldMaps.name, entityId: worldMaps.entityId })
 		.from(worldMaps)
 		.where(eq(worldMaps.slug, normalized))
 
@@ -247,33 +279,50 @@ export async function updateMap(slug: string, data: UpdateMapInput) {
 		? undefined
 		: (data.linkedPageSlug?.trim() || null)
 
-	const [updated] = await db
-		.update(worldMaps)
-		.set({
-			name: data.name?.trim(),
-			slug: data.slug?.trim().toLowerCase(),
-			imageFilename: data.imageFilename?.trim(),
-			imageWidth: data.imageWidth,
-			imageHeight: data.imageHeight,
-			waterHex: data.waterHex,
-			timePeriod: data.timePeriod?.trim() || (data.timePeriod === null ? null : undefined),
-			event: data.event?.trim() || (data.event === null ? null : undefined),
-			linkedPageSlug: nextLinkedPageSlug,
-			description: data.description?.trim(),
-			updatedAt: new Date(),
-		})
-		.where(eq(worldMaps.id, current.id))
-		.returning()
-	return updated
+	return db.transaction(async (tx) => {
+		const [updated] = await tx
+			.update(worldMaps)
+			.set({
+				name: data.name?.trim(),
+				slug: data.slug?.trim().toLowerCase(),
+				imageFilename: data.imageFilename?.trim(),
+				imageWidth: data.imageWidth,
+				imageHeight: data.imageHeight,
+				waterHex: data.waterHex,
+				timePeriod: data.timePeriod?.trim() || (data.timePeriod === null ? null : undefined),
+				event: data.event?.trim() || (data.event === null ? null : undefined),
+				linkedPageSlug: nextLinkedPageSlug,
+				description: data.description?.trim(),
+				updatedAt: new Date(),
+			})
+			.where(eq(worldMaps.id, current.id))
+			.returning()
+
+		// Rename → canonical route follows the name (old address 301s); a
+		// changed hyphen slug is preserved as a noncanonical alias.
+		if (updated.entityId != null && (updated.name !== current.name || updated.slug !== current.slug)) {
+			await repointCanonicalRoute(tx, updated.entityId, {
+				namespace: 'know',
+				slug: mintEntitySlug('know', updated.name),
+				displayName: updated.name,
+				legacySlugs: [updated.slug],
+			})
+		}
+		return updated
+	})
 }
 
 export async function deleteMap(slug: string) {
 	const normalized = slug.toLowerCase()
-	const [deleted] = await db
-		.delete(worldMaps)
-		.where(eq(worldMaps.slug, normalized))
-		.returning({ id: worldMaps.id })
+	return db.transaction(async (tx) => {
+		const [deleted] = await tx
+			.delete(worldMaps)
+			.where(eq(worldMaps.slug, normalized))
+			.returning({ id: worldMaps.id, entityId: worldMaps.entityId })
 
-	if (!deleted) throw error(404, 'Map not found')
-	return { ok: true }
+		if (!deleted) throw error(404, 'Map not found')
+		// Archive, never hard-delete: routes keep resolving (banner, not 404).
+		await archiveEntity(tx, deleted.entityId)
+		return { ok: true }
+	})
 }

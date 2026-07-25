@@ -3,6 +3,13 @@ import { and, eq, sql } from 'drizzle-orm'
 import type { z } from 'zod'
 import { db } from '$lib/server/db/index.js'
 import { countries } from '$lib/server/db/schema.js'
+import {
+	archiveEntity,
+	mintOrAttachFacetEntity,
+	repointCanonicalRoute,
+	type EntitySpineDatabase,
+} from '$lib/server/services/entity-spine.js'
+import { mintEntitySlug } from '$lib/utils/slugify.js'
 import type { createCountrySchema, updateCountrySchema } from '$lib/worldmap/schema.js'
 
 type CreateCountryInput = z.infer<typeof createCountrySchema>
@@ -49,6 +56,15 @@ export async function getCountryBySlug(slug: string) {
 	return country
 }
 
+async function hasCountryFacet(tx: EntitySpineDatabase, entityId: number): Promise<boolean> {
+	const [row] = await tx
+		.select({ id: countries.id })
+		.from(countries)
+		.where(eq(countries.entityId, entityId))
+		.limit(1)
+	return !!row
+}
+
 export async function createCountry(data: CreateCountryInput) {
 	const normalizedSlug = data.slug.trim().toLowerCase()
 	const [existing] = await db
@@ -58,25 +74,41 @@ export async function createCountry(data: CreateCountryInput) {
 
 	if (existing) throw error(409, 'A country with this slug already exists')
 
-	const [country] = await db
-		.insert(countries)
-		.values({
-			name: data.name.trim(),
-			slug: normalizedSlug,
-			pageSlug: data.pageSlug.trim(),
-			capital: data.capital?.trim() || null,
-			governance: data.governance?.trim() || null,
-			color: data.color ?? null,
-			extra: data.extra,
+	return db.transaction(async (tx) => {
+		const [country] = await tx
+			.insert(countries)
+			.values({
+				name: data.name.trim(),
+				slug: normalizedSlug,
+				pageSlug: data.pageSlug.trim(),
+				capital: data.capital?.trim() || null,
+				governance: data.governance?.trim() || null,
+				color: data.color ?? null,
+				extra: data.extra,
+			})
+			.returning()
+
+		// Compatibility writer (0049): canonical know route in wiki style; the
+		// hyphen slug lives on as a noncanonical alias.
+		const { entityId } = await mintOrAttachFacetEntity(tx, {
+			displayName: country.name,
+			namespace: 'know',
+			legacySlugs: [country.slug],
+			hasFacet: id => hasCountryFacet(tx, id),
 		})
-		.returning()
-	return country
+		const [attached] = await tx
+			.update(countries)
+			.set({ entityId })
+			.where(eq(countries.id, country.id))
+			.returning()
+		return attached
+	})
 }
 
 export async function updateCountry(slug: string, data: UpdateCountryInput) {
 	const normalized = slug.toLowerCase()
 	const [current] = await db
-		.select({ id: countries.id, slug: countries.slug })
+		.select({ id: countries.id, slug: countries.slug, name: countries.name, entityId: countries.entityId })
 		.from(countries)
 		.where(eq(countries.slug, normalized))
 
@@ -93,30 +125,47 @@ export async function updateCountry(slug: string, data: UpdateCountryInput) {
 		if (conflict) throw error(409, 'A country with this slug already exists')
 	}
 
-	const [updated] = await db
-		.update(countries)
-		.set({
-			name: data.name?.trim(),
-			slug: data.slug?.trim().toLowerCase(),
-			pageSlug: data.pageSlug?.trim(),
-			capital: data.capital?.trim() || (data.capital === null ? null : undefined),
-			governance: data.governance?.trim() || (data.governance === null ? null : undefined),
-			color: data.color === undefined ? undefined : data.color,
-			extra: data.extra,
-			updatedAt: new Date(),
-		})
-		.where(eq(countries.id, current.id))
-		.returning()
-	return updated
+	return db.transaction(async (tx) => {
+		const [updated] = await tx
+			.update(countries)
+			.set({
+				name: data.name?.trim(),
+				slug: data.slug?.trim().toLowerCase(),
+				pageSlug: data.pageSlug?.trim(),
+				capital: data.capital?.trim() || (data.capital === null ? null : undefined),
+				governance: data.governance?.trim() || (data.governance === null ? null : undefined),
+				color: data.color === undefined ? undefined : data.color,
+				extra: data.extra,
+				updatedAt: new Date(),
+			})
+			.where(eq(countries.id, current.id))
+			.returning()
+
+		// Rename → canonical route follows the name (old address 301s); a
+		// changed hyphen slug is preserved as a noncanonical alias.
+		if (updated.entityId != null && (updated.name !== current.name || updated.slug !== current.slug)) {
+			await repointCanonicalRoute(tx, updated.entityId, {
+				namespace: 'know',
+				slug: mintEntitySlug('know', updated.name),
+				displayName: updated.name,
+				legacySlugs: [updated.slug],
+			})
+		}
+		return updated
+	})
 }
 
 export async function deleteCountry(slug: string) {
 	const normalized = slug.toLowerCase()
-	const [deleted] = await db
-		.delete(countries)
-		.where(eq(countries.slug, normalized))
-		.returning({ id: countries.id })
+	return db.transaction(async (tx) => {
+		const [deleted] = await tx
+			.delete(countries)
+			.where(eq(countries.slug, normalized))
+			.returning({ id: countries.id, entityId: countries.entityId })
 
-	if (!deleted) throw error(404, 'Country not found')
-	return { ok: true }
+		if (!deleted) throw error(404, 'Country not found')
+		// Archive, never hard-delete: routes keep resolving (banner, not 404).
+		await archiveEntity(tx, deleted.entityId)
+		return { ok: true }
+	})
 }

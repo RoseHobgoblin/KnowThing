@@ -13,6 +13,7 @@ import {
 } from '$lib/server/db/schema.js'
 import { db } from '$lib/server/db/index.js'
 import { deleteContentRecord } from '$lib/server/services/content-records.js'
+import { archiveEntity } from '$lib/server/services/entity-spine.js'
 
 export async function listPages() {
 	return db
@@ -40,7 +41,7 @@ export async function getPage(domain: string, slug: string) {
 
 async function assertPage(domain: string, slug: string) {
 	const [record] = await db
-		.select({ id: contentRecords.id, title: contentRecords.title })
+		.select({ id: contentRecords.id, title: contentRecords.title, entityId: contentRecords.entityId })
 		.from(contentRecords)
 		.where(and(eq(contentRecords.domain, domain), eq(contentRecords.slug, slug)))
 		.limit(1)
@@ -51,7 +52,12 @@ async function assertPage(domain: string, slug: string) {
 
 export async function deletePage(domain: string, slug: string) {
 	const existing = await assertPage(domain, slug)
-	await deleteContentRecord(db, existing.id)
+	await db.transaction(async (tx) => {
+		await deleteContentRecord(tx, existing.id)
+		// Archive, never hard-delete: the entity and all its routes survive,
+		// so the address keeps resolving (banner, not 404).
+		await archiveEntity(tx, existing.entityId)
+	})
 	return { ok: true }
 }
 

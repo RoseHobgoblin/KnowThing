@@ -3,6 +3,13 @@ import { asc, eq, ne, sql } from 'drizzle-orm'
 import type { z } from 'zod'
 import { db } from '$lib/server/db/index.js'
 import { languages } from '$lib/server/db/schema.js'
+import {
+	archiveEntity,
+	mintOrAttachFacetEntity,
+	repointCanonicalRoute,
+	type EntitySpineDatabase,
+} from '$lib/server/services/entity-spine.js'
+import { mintEntitySlug } from '$lib/utils/slugify.js'
 import { isDescendant, queryLanguagesWithFamily } from '$lib/server/wordbook/language-tree.js'
 import {
 	type createLanguageSchema,
@@ -43,27 +50,52 @@ export async function getLanguageBySlug(slug: string) {
 	return result[0]
 }
 
+async function hasLanguageFacet(tx: EntitySpineDatabase, entityId: number): Promise<boolean> {
+	const [row] = await tx
+		.select({ id: languages.id })
+		.from(languages)
+		.where(eq(languages.entityId, entityId))
+		.limit(1)
+	return !!row
+}
+
 export async function createLanguage(data: CreateLanguageInput) {
 	const type = data.languageType && (LANGUAGE_TYPES as readonly string[]).includes(data.languageType)
 		? data.languageType
 		: 'language'
 
-	const [lang] = await db
-		.insert(languages)
-		.values({
-			name: data.name.trim(),
-			slug: data.slug.trim().toLowerCase(),
-			nativeName: data.nativeName?.trim() || null,
-			script: data.script?.trim() || 'Latin',
-			family: data.family?.trim() || null,
-			color: data.color?.trim() || '#d97706',
-			description: data.description?.trim() || null,
-			pageSlug: data.pageSlug?.trim() || null,
-			parentLanguageId: data.parentLanguageId || null,
-			languageType: type,
+	return db.transaction(async (tx) => {
+		const [lang] = await tx
+			.insert(languages)
+			.values({
+				name: data.name.trim(),
+				slug: data.slug.trim().toLowerCase(),
+				nativeName: data.nativeName?.trim() || null,
+				script: data.script?.trim() || 'Latin',
+				family: data.family?.trim() || null,
+				color: data.color?.trim() || '#d97706',
+				description: data.description?.trim() || null,
+				pageSlug: data.pageSlug?.trim() || null,
+				parentLanguageId: data.parentLanguageId || null,
+				languageType: type,
+			})
+			.returning()
+
+		// Compatibility writer (0049): canonical know route in wiki style; the
+		// legacy hyphen slug lives on as a noncanonical alias.
+		const { entityId } = await mintOrAttachFacetEntity(tx, {
+			displayName: lang.name,
+			namespace: 'know',
+			legacySlugs: [lang.slug],
+			hasFacet: id => hasLanguageFacet(tx, id),
 		})
-		.returning()
-	return lang
+		const [attached] = await tx
+			.update(languages)
+			.set({ entityId })
+			.where(eq(languages.id, lang.id))
+			.returning()
+		return attached
+	})
 }
 
 /**
@@ -72,7 +104,10 @@ export async function createLanguage(data: CreateLanguageInput) {
  */
 export async function deleteLanguage(slug: string) {
 	return db.transaction(async (tx) => {
-		const [lang] = await tx.select({ id: languages.id }).from(languages).where(eq(languages.slug, slug))
+		const [lang] = await tx
+			.select({ id: languages.id, entityId: languages.entityId })
+			.from(languages)
+			.where(eq(languages.slug, slug))
 		if (!lang) throw error(404, 'Language not found')
 
 		const [{ wordCount }] = await tx.execute(
@@ -92,12 +127,16 @@ export async function deleteLanguage(slug: string) {
 		}
 
 		await tx.delete(languages).where(eq(languages.id, lang.id))
+		await archiveEntity(tx, lang.entityId)
 		return { success: true }
 	})
 }
 
 export async function updateLanguage(slug: string, data: UpdateLanguageInput) {
-	const [current] = await db.select({ id: languages.id }).from(languages).where(eq(languages.slug, slug))
+	const [current] = await db
+		.select({ id: languages.id, name: languages.name, entityId: languages.entityId })
+		.from(languages)
+		.where(eq(languages.slug, slug))
 	if (!current) throw error(404, 'Language not found')
 
 	if (data.parentLanguageId !== undefined && data.parentLanguageId !== null && await isDescendant(current.id, data.parentLanguageId)) {
@@ -106,23 +145,36 @@ export async function updateLanguage(slug: string, data: UpdateLanguageInput) {
 
 	const validType = data.languageType && (LANGUAGE_TYPES as readonly string[]).includes(data.languageType)
 
-	const [updated] = await db
-		.update(languages)
-		.set({
-			...(data.name && { name: data.name.trim() }),
-			...(data.nativeName !== undefined && { nativeName: data.nativeName?.trim() || null }),
-			...(data.script !== undefined && { script: data.script?.trim() || 'Latin' }),
-			...(data.family !== undefined && { family: data.family?.trim() || null }),
-			...(data.color !== undefined && { color: data.color?.trim() || '#d97706' }),
-			...(data.description !== undefined && { description: data.description?.trim() || null }),
-			...(data.pageSlug !== undefined && { pageSlug: data.pageSlug?.trim() || null }),
-			...(data.parentLanguageId !== undefined && { parentLanguageId: data.parentLanguageId || null }),
-			...(validType && { languageType: data.languageType! }),
-			updatedAt: new Date(),
-		})
-		.where(eq(languages.slug, slug))
-		.returning()
+	return db.transaction(async (tx) => {
+		const [updated] = await tx
+			.update(languages)
+			.set({
+				...(data.name && { name: data.name.trim() }),
+				...(data.nativeName !== undefined && { nativeName: data.nativeName?.trim() || null }),
+				...(data.script !== undefined && { script: data.script?.trim() || 'Latin' }),
+				...(data.family !== undefined && { family: data.family?.trim() || null }),
+				...(data.color !== undefined && { color: data.color?.trim() || '#d97706' }),
+				...(data.description !== undefined && { description: data.description?.trim() || null }),
+				...(data.pageSlug !== undefined && { pageSlug: data.pageSlug?.trim() || null }),
+				...(data.parentLanguageId !== undefined && { parentLanguageId: data.parentLanguageId || null }),
+				...(validType && { languageType: data.languageType! }),
+				updatedAt: new Date(),
+			})
+			.where(eq(languages.slug, slug))
+			.returning()
 
-	if (!updated) throw error(404, 'Language not found')
-	return updated
+		if (!updated) throw error(404, 'Language not found')
+
+		// Renaming a language touches ZERO lexeme rows: their scoped routes hang
+		// off the language's entity id, so only the language's own canonical
+		// route moves. The old name keeps 301ing via the demoted route.
+		if (current.entityId != null && updated.name !== current.name) {
+			await repointCanonicalRoute(tx, current.entityId, {
+				namespace: 'know',
+				slug: mintEntitySlug('know', updated.name),
+				displayName: updated.name,
+			})
+		}
+		return updated
+	})
 }

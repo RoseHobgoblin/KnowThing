@@ -24,6 +24,11 @@ import {
 	BODY_OVERRIDE_MAP,
 } from '$lib/server/celestial/update-helpers.js'
 import { moveContentByDomainSlug } from '$lib/server/services/content-records.js'
+import {
+	mintOrAttachFacetEntity,
+	repointCanonicalRoute,
+} from '$lib/server/services/entity-spine.js'
+import { mintEntitySlug } from '$lib/utils/slugify.js'
 
 type CreateSystemInput = z.infer<typeof createSystemSchema>
 type CreateStarInput = z.infer<typeof createStarSchema>
@@ -95,7 +100,7 @@ export async function getCelestialBySlug(slug: string) {
 }
 
 /** db or a transaction — creation helpers run against either. */
-type Dbx = Pick<typeof db, 'delete' | 'insert' | 'select' | 'update'>
+type Dbx = Pick<typeof db, 'delete' | 'insert' | 'select' | 'update' | 'execute'>
 
 async function assertSlugAvailable(dbx: Dbx, slug: string) {
 	const [existing] = await dbx.select({ id: celestialBodies.id }).from(celestialBodies).where(eq(celestialBodies.slug, slug))
@@ -217,8 +222,28 @@ async function createCelestialIn(dbx: Dbx, kind: CelestialKind, data: CreateCele
 	})
 }
 
+async function hasCelestialFacet(dbx: Dbx, entityId: number): Promise<boolean> {
+	const [row] = await dbx
+		.select({ id: celestialBodies.id })
+		.from(celestialBodies)
+		.where(eq(celestialBodies.entityId, entityId))
+		.limit(1)
+	return !!row
+}
+
 async function insertRow(dbx: Dbx, values: typeof celestialBodies.$inferInsert) {
 	const [created] = await dbx.insert(celestialBodies).values(values).returning()
+
+	// Compatibility writer (0049): canonical know route in wiki style; the
+	// hyphen slug lives on as a noncanonical alias.
+	const { entityId } = await mintOrAttachFacetEntity(dbx, {
+		displayName: created.name,
+		namespace: 'know',
+		legacySlugs: [created.slug],
+		hasFacet: id => hasCelestialFacet(dbx, id),
+	})
+	await dbx.update(celestialBodies).set({ entityId }).where(eq(celestialBodies.id, created.id))
+
 	const [refetched] = await dbx.select().from(celestialBodies).where(eq(celestialBodies.id, created.id))
 	return refetched ?? created
 }
@@ -369,6 +394,18 @@ export async function updateCelestial(slug: string, raw: unknown) {
 		// Keep any legacy content record keyed to this entity's slug in sync.
 		if (typeof setClause.slug === 'string' && setClause.slug !== current.slug) {
 			await moveContentByDomainSlug(tx, 'celestial', current.slug, setClause.slug)
+		}
+
+		// Rename → canonical route follows the name (old address 301s); an
+		// explicit hyphen-slug change is preserved as a noncanonical alias.
+		const renamed = saved.name !== current.name || saved.slug !== current.slug
+		if (saved.entityId != null && renamed) {
+			await repointCanonicalRoute(tx, saved.entityId, {
+				namespace: 'know',
+				slug: mintEntitySlug('know', saved.name),
+				displayName: saved.name,
+				legacySlugs: [saved.slug],
+			})
 		}
 
 		const [refetched] = await tx.select().from(celestialBodies).where(eq(celestialBodies.id, saved.id))
