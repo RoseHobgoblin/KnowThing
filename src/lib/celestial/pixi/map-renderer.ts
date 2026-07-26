@@ -62,6 +62,10 @@ function labelSpecFor(kind: EntityKind, dotRadius: number): { size: number, offs
 	return { size: 9, offsetY: dotRadius + 12 }
 }
 
+function trapWheel(event: WheelEvent): void {
+	event.preventDefault()
+}
+
 export type MapSettingsState = {
 	scale: ScaleMode
 	labels: LabelMode
@@ -222,7 +226,6 @@ export async function createSystemMapRenderer(
 	// Pixi v8 attaches its own wheel listener as passive, so pixi-viewport can't
 	// stop the page from scrolling while the user zooms. Trap wheel on the canvas
 	// with a non-passive listener (as the old canvas renderer did).
-	const trapWheel = (event: WheelEvent) => event.preventDefault()
 	app.canvas.addEventListener('wheel', trapWheel, { passive: false })
 
 	// --- Renderer state ---
