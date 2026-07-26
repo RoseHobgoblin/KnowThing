@@ -219,6 +219,12 @@ export async function createSystemMapRenderer(
 	app.renderer.events.cursorStyles.default = 'grab'
 	app.renderer.events.cursorStyles.grabbing = 'grabbing'
 
+	// Pixi v8 attaches its own wheel listener as passive, so pixi-viewport can't
+	// stop the page from scrolling while the user zooms. Trap wheel on the canvas
+	// with a non-passive listener (as the old canvas renderer did).
+	const trapWheel = (event: WheelEvent) => event.preventDefault()
+	app.canvas.addEventListener('wheel', trapWheel, { passive: false })
+
 	// --- Renderer state ---
 	let stars: MapBody[] = []
 	let bodies: MapBody[] = []
@@ -763,6 +769,7 @@ export async function createSystemMapRenderer(
 
 		destroy() {
 			destroyed = true
+			app.canvas.removeEventListener('wheel', trapWheel)
 			document.removeEventListener('visibilitychange', onVisibilityChange)
 			intersectionObserver.disconnect()
 			hud.destroy()
