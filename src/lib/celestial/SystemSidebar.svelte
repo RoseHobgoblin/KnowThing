@@ -39,7 +39,8 @@
 
 	let selectedCalendarId = $state(untrack(() => calendars[0]?.id ?? 0))
 	const selectedCalendar = $derived(calendars.find(c => c.id === selectedCalendarId) ?? calendars[0])
-	const currentDate = $derived(selectedCalendar ? dateFromAbsolute(selectedCalendar.static_data, currentAbsoluteDay) : null)
+	// The day is fractional while the orrery is playing — floor before calendar math.
+	const currentDate = $derived(selectedCalendar ? dateFromAbsolute(selectedCalendar.static_data, Math.floor(currentAbsoluteDay)) : null)
 	const resolved = $derived(selectedCalendar && currentDate ? resolveDisplay(selectedCalendar, currentDate) : null)
 
 	const systemType = $derived(deriveSystemType(stars.length))
