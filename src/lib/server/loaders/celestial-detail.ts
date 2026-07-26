@@ -1,6 +1,6 @@
 import { error, redirect } from '@sveltejs/kit'
 import type { Cookies } from '@sveltejs/kit'
-import type { MapBody } from '$lib/celestial/SystemMap.svelte'
+import type { MapBody } from '$lib/celestial/system-layout.js'
 import { hasRole } from '$lib/server/auth.js'
 import { resolveCelestialModel } from '$lib/server/structured-data.js'
 import type { BodyModel, StarModel } from 'tungolcraft'

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { untrack } from 'svelte'
-	import type { MapBody } from './SystemMap.svelte'
+	import type { MapBody } from './system-layout.js'
 	import type { CalendarConfig } from 'rimecraft'
 	import { resolveColor } from './colors.js'
 	import { deriveSystemType } from 'tungolcraft'

@@ -2,7 +2,7 @@ import { db } from './db/index.js'
 import { celestialBodies, phonemes, languages, languageDialects, lexicon, definitions, graphemes, graphemePhonemes } from './db/schema.js'
 import { eq, and, or, sql, asc, inArray } from 'drizzle-orm'
 import type { FieldMap } from '$lib/infoboxes/types.js'
-import type { MapBody } from '$lib/celestial/SystemMap.svelte'
+import type { MapBody } from '$lib/celestial/system-layout.js'
 import { deriveSystemType } from 'tungolcraft'
 import {
 	deriveBody, deriveStar,
