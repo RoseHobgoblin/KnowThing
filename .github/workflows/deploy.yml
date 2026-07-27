@@ -28,7 +28,13 @@ jobs:
             # reported green while prod kept running old code for a day+.
             set -eo pipefail
             cd ~/KnowThing
-            git pull origin main
+            # fetch + hard reset instead of `git pull`: a force-push to main
+            # rewrites history the prod checkout already has, and `git pull`
+            # then dies with "Need to specify how to reconcile divergent
+            # branches" (the 2026-07-27 wedge), leaving prod on stale code.
+            # Reset makes the deploy immune to history rewrites.
+            git fetch origin main
+            git reset --hard origin/main
             # Ensure DOMAIN is set for Caddy HTTPS
             grep -q '^DOMAIN=' .env 2>/dev/null || echo 'DOMAIN=knowthing.al' >> .env
             # No --no-cache: the COPY layers already invalidate on content
