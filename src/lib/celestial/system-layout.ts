@@ -126,6 +126,35 @@ export type SatelliteLayout = {
 	focusOffset: number
 	index: number
 	count: number
+	/** Outer extent (px) of this satellite's schematic zone. */
+	zone: number
+	/**
+	 * Zone radius proportional to the satellite's real semi-major axis relative
+	 * to its siblings — the "unfolded" LOD target when zoomed into a subsystem.
+	 */
+	proportionalRadius: number
+	proportionalSemiMinor: number
+	proportionalFocusOffset: number
+}
+
+/**
+ * Satellite orbit geometry blended between the schematic zone layout (t = 0)
+ * and the proportional layout (t = 1). The renderer drives t from how large
+ * the subsystem currently appears on screen.
+ */
+export function blendedSatelliteGeometry(
+	satellite: SatelliteLayout,
+	t: number,
+): { radius: number, semiMinor: number, focusOffset: number } {
+	const clamped = Math.min(1, Math.max(0, t))
+	if (clamped === 0) {
+		return { radius: satellite.orbitRadius, semiMinor: satellite.orbitSemiMinor, focusOffset: satellite.focusOffset }
+	}
+	return {
+		radius: satellite.orbitRadius + (satellite.proportionalRadius - satellite.orbitRadius) * clamped,
+		semiMinor: satellite.orbitSemiMinor + (satellite.proportionalSemiMinor - satellite.orbitSemiMinor) * clamped,
+		focusOffset: satellite.focusOffset + (satellite.proportionalFocusOffset - satellite.focusOffset) * clamped,
+	}
 }
 
 export type SystemLayout = {
@@ -476,11 +505,21 @@ export function buildLayout(stars: MapBody[], bodies: MapBody[], scale: ScaleMod
 				zone = Math.min(Math.max(halfGap, minZone), SAT_MAX_ZONE)
 			}
 
+			const groupMaxAu = Math.max(...groupSatellites.map(satellite => satellite.orbitAu), 0)
+
 			for (const [index, satellite] of groupSatellites.entries()) {
 				const t = groupSatellites.length === 1 ? 0.5 : index / (groupSatellites.length - 1)
 				const orbitRadius = SAT_INNER_MARGIN + t * (zone - SAT_INNER_MARGIN)
 				const orbitSemiMinor = orbitRadius * Math.sqrt(1 - satellite.ecc * satellite.ecc)
 				const focusOffset = orbitRadius * satellite.ecc
+				// Unfolded target: radius proportional to the real semi-major axis
+				// relative to the outermost sibling. The floor keeps the innermost
+				// orbit outside the (screen-constant, tiny-in-world-units) parent dot.
+				const proportionalRadius = groupMaxAu > 0 && satellite.orbitAu > 0
+					? Math.max(2, (satellite.orbitAu / groupMaxAu) * zone)
+					: orbitRadius
+				const proportionalSemiMinor = proportionalRadius * Math.sqrt(1 - satellite.ecc * satellite.ecc)
+				const proportionalFocusOffset = proportionalRadius * satellite.ecc
 				const key = keyForBody(satellite, satellite.isStar)
 
 				satellites.push({
@@ -491,6 +530,10 @@ export function buildLayout(stars: MapBody[], bodies: MapBody[], scale: ScaleMod
 					focusOffset,
 					index,
 					count: groupSatellites.length,
+					zone,
+					proportionalRadius,
+					proportionalSemiMinor,
+					proportionalFocusOffset,
 				})
 				anchored.add(key)
 			}
@@ -503,8 +546,16 @@ export function buildLayout(stars: MapBody[], bodies: MapBody[], scale: ScaleMod
 /**
  * Raw (camera-independent) world positions for every entity in the layout,
  * keyed by entity. The primary star is included at the map center.
+ *
+ * `satelliteBlend` (per-satellite, 0..1) morphs satellite orbits from the
+ * schematic zone layout toward the proportional one — the moon-LOD unfold.
+ * Omitted, satellites stay schematic (canvas-era parity).
  */
-export function computePositions(layout: SystemLayout, currentAbsoluteDay?: number | null): Map<EntityKey, BodyPosition> {
+export function computePositions(
+	layout: SystemLayout,
+	currentAbsoluteDay?: number | null,
+	satelliteBlend?: (satellite: SatelliteLayout) => number,
+): Map<EntityKey, BodyPosition> {
 	const positions = new Map<EntityKey, BodyPosition>()
 	if (layout.primaryStar) {
 		positions.set(keyForBody(layout.primaryStar, true), { x: CENTER, y: CENTER, angle: 0 })
@@ -523,9 +574,10 @@ export function computePositions(layout: SystemLayout, currentAbsoluteDay?: numb
 		const parent = positions.get(satellite.parentKey)
 		if (!parent) continue
 		const angle = computeAngle(satellite.body, satellite.index, satellite.count, currentAbsoluteDay)
-		const ellipseCx = parent.x - satellite.focusOffset
-		const x = ellipseCx + satellite.orbitRadius * Math.cos(angle)
-		const y = parent.y + satellite.orbitSemiMinor * Math.sin(angle)
+		const geometry = blendedSatelliteGeometry(satellite, satelliteBlend?.(satellite) ?? 0)
+		const ellipseCx = parent.x - geometry.focusOffset
+		const x = ellipseCx + geometry.radius * Math.cos(angle)
+		const y = parent.y + geometry.semiMinor * Math.sin(angle)
 		positions.set(keyForBody(satellite.body, satellite.body.isStar), { x, y, angle })
 	}
 

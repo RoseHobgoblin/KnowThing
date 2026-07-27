@@ -24,11 +24,13 @@ import {
 	computePositions,
 	computeCameraOffset,
 	buildSelectionFamily,
+	blendedSatelliteGeometry,
 } from '../system-layout.js'
 import type {
 	MapBody,
 	EntityKey,
 	SystemLayout,
+	SatelliteLayout,
 	BodyPosition,
 	ThemePalette,
 } from '../system-layout.js'
@@ -43,6 +45,16 @@ const LOG_RING_DECADES = [0.01, 0.1, 1, 10, 100, 1000]
 const MIN_ZOOM = 0.25
 const MAX_ZOOM = 40
 const GLOW_TEXTURE_SIZE = 128
+// Moon-LOD unfold: a subsystem starts migrating from its schematic zone layout
+// to proportional orbits when the zone spans this many screen px, and is fully
+// unfolded at the second threshold.
+const UNFOLD_START_SCREEN_PX = 120
+const UNFOLD_END_SCREEN_PX = 300
+
+function smoothstep(edgeStart: number, edgeEnd: number, value: number): number {
+	const t = Math.min(1, Math.max(0, (value - edgeStart) / (edgeEnd - edgeStart)))
+	return t * t * (3 - 2 * t)
+}
 
 function dotRadiusFor(kind: EntityKind, isStar: boolean): number {
 	if (kind === 'primary') return 10
@@ -120,10 +132,9 @@ type EntityNode = {
 	sat?: {
 		container: Container
 		graphics: Graphics
-		orbitRadius: number
-		orbitSemiMinor: number
-		focusOffset: number
-		parentKey: EntityKey
+		layout: SatelliteLayout
+		/** Geometry at the current unfold blend; refreshed in applyPositions. */
+		display: { radius: number, semiMinor: number, focusOffset: number }
 		dashed: boolean
 	}
 }
@@ -397,10 +408,8 @@ export async function createSystemMapRenderer(
 			node.sat = {
 				container: satContainer,
 				graphics: satGraphics,
-				orbitRadius: satellite.orbitRadius,
-				orbitSemiMinor: satellite.orbitSemiMinor,
-				focusOffset: satellite.focusOffset,
-				parentKey: satellite.parentKey,
+				layout: satellite,
+				display: blendedSatelliteGeometry(satellite, 0),
 				dashed: body.isStar,
 			}
 			nodes.set(node.key, node)
@@ -452,9 +461,13 @@ export async function createSystemMapRenderer(
 		return 0.35
 	}
 
+	function unfoldBlend(satellite: SatelliteLayout): number {
+		return smoothstep(UNFOLD_START_SCREEN_PX, UNFOLD_END_SCREEN_PX, satellite.zone * viewport.scale.x)
+	}
+
 	function applyPositions(): void {
 		if (!layout) return
-		positions = computePositions(layout, day)
+		positions = computePositions(layout, day, unfoldBlend)
 		const camera = computeCameraOffset(layout, positions, selectedId, settings.follow)
 		worldRoot.position.set(camera.x, camera.y)
 
@@ -464,8 +477,9 @@ export async function createSystemMapRenderer(
 			node.container.position.set(position.x, position.y)
 			node.angle = position.angle
 			if (node.sat) {
-				const parent = positions.get(node.sat.parentKey)
-				if (parent) node.sat.container.position.set(parent.x - node.sat.focusOffset, parent.y)
+				node.sat.display = blendedSatelliteGeometry(node.sat.layout, unfoldBlend(node.sat.layout))
+				const parent = positions.get(node.sat.layout.parentKey)
+				if (parent) node.sat.container.position.set(parent.x - node.sat.display.focusOffset, parent.y)
 			}
 		}
 
@@ -531,9 +545,9 @@ export async function createSystemMapRenderer(
 		const width = isSelected ? 1.5 : 0.5
 		node.sat.graphics.clear()
 		if (node.sat.dashed) {
-			dashedEllipsePath(node.sat.graphics, node.sat.orbitRadius, node.sat.orbitSemiMinor, 4 / zoomLevel, 3 / zoomLevel)
+			dashedEllipsePath(node.sat.graphics, node.sat.display.radius, node.sat.display.semiMinor, 4 / zoomLevel, 3 / zoomLevel)
 		} else {
-			node.sat.graphics.ellipse(0, 0, node.sat.orbitRadius, node.sat.orbitSemiMinor)
+			node.sat.graphics.ellipse(0, 0, node.sat.display.radius, node.sat.display.semiMinor)
 		}
 		node.sat.graphics.stroke({ width: width / zoomLevel, color: cssToTint(color).tint })
 		node.sat.graphics.alpha = opacityOf(key)
@@ -543,7 +557,10 @@ export async function createSystemMapRenderer(
 		const isSelected = node.key === selectedId
 		const isHovered = hoveredKey === node.key
 		if (node.kind === 'satellite') {
-			return settings.labels === 'all' || isHovered || isSelected
+			if (settings.labels === 'all' || isHovered || isSelected) return true
+			// Once a subsystem is unfolded, its moons are the subject of the view —
+			// surface their names in 'major' mode too.
+			return settings.labels === 'major' && node.sat != null && unfoldBlend(node.sat.layout) > 0.5
 		}
 		switch (settings.labels) {
 			case 'off': return false
@@ -640,12 +657,11 @@ export async function createSystemMapRenderer(
 		zoomLevel = newZoomLevel
 		if (zoomChanged) {
 			applyZoomScales()
-			for (const node of nodes.values()) {
-				strokeOrbit(node)
-				strokeSatelliteOrbit(node)
-			}
+			// Zoom drives the moon-LOD unfold blend, so satellite geometry and
+			// positions shift with it — recompute before restroking.
+			applyPositions()
+			applyStyles()
 			rebuildRings()
-			redrawTrails()
 		}
 
 		gridSprite.tilePosition.set(viewport.x / base, viewport.y / base)

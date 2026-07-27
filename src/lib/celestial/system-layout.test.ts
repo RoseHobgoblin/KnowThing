@@ -21,6 +21,7 @@ import {
 	computePositions,
 	computeCameraOffset,
 	buildScene,
+	blendedSatelliteGeometry,
 	type MapBody,
 	type OrbitBody,
 	type EntityKey,
@@ -285,6 +286,57 @@ describe('buildLayout', () => {
 		// Parent moon must be placed before its own satellite
 		expect(keys.indexOf('body:12')).toBeLessThan(keys.indexOf('body:13'))
 		expect(layout.satellites.find(satellite => satellite.body.id === 13)?.parentKey).toBe('body:12')
+	})
+})
+
+describe('moon-LOD unfold (proportional satellite geometry)', () => {
+	// A planet with three moons at 1:2:4 real spacing, circular orbits.
+	const planet = body({ id: 20, starId: 1, semiMajorAxisAu: 2 })
+	const moons = [
+		body({ id: 21, starId: 1, parentId: 20, semiMajorAxisAu: 0.001 }),
+		body({ id: 22, starId: 1, parentId: 20, semiMajorAxisAu: 0.002 }),
+		body({ id: 23, starId: 1, parentId: 20, semiMajorAxisAu: 0.004 }),
+	]
+	const layout = buildLayout([soleStar], [planet, ...moons], 'log')
+	const byId = (id: number) => layout.satellites.find(satellite => satellite.body.id === id)!
+
+	const distanceToParent = (blend?: () => number) => {
+		const positions = computePositions(layout, 42, blend)
+		const parent = positions.get('body:20')!
+		const moon = positions.get('body:21')!
+		return Math.hypot(moon.x - parent.x, moon.y - parent.y)
+	}
+
+	it('proportional radii follow real semi-major-axis ratios, outermost at the zone edge', () => {
+		const zone = byId(21).zone
+		expect(byId(23).proportionalRadius).toBeCloseTo(zone)
+		expect(byId(22).proportionalRadius).toBeCloseTo(Math.max(2, zone / 2))
+		expect(byId(21).proportionalRadius).toBeCloseTo(Math.max(2, zone / 4))
+	})
+
+	it('schematic radii stay evenly spaced (unchanged by the proportional set)', () => {
+		const radii = [byId(21).orbitRadius, byId(22).orbitRadius, byId(23).orbitRadius]
+		expect(radii[1] - radii[0]).toBeCloseTo(radii[2] - radii[1])
+	})
+
+	it('blendedSatelliteGeometry interpolates between the two layouts', () => {
+		const satellite = byId(21)
+		expect(blendedSatelliteGeometry(satellite, 0).radius).toBeCloseTo(satellite.orbitRadius)
+		expect(blendedSatelliteGeometry(satellite, 1).radius).toBeCloseTo(satellite.proportionalRadius)
+		expect(blendedSatelliteGeometry(satellite, 0.5).radius).toBeCloseTo(
+			(satellite.orbitRadius + satellite.proportionalRadius) / 2,
+		)
+		// Out-of-range t clamps
+		expect(blendedSatelliteGeometry(satellite, 2).radius).toBeCloseTo(satellite.proportionalRadius)
+		expect(blendedSatelliteGeometry(satellite, -1).radius).toBeCloseTo(satellite.orbitRadius)
+	})
+
+	it('computePositions places satellites at the blended radius', () => {
+		const satellite = byId(21)
+		expect(distanceToParent()).toBeCloseTo(satellite.orbitRadius)
+		expect(distanceToParent(() => 1)).toBeCloseTo(satellite.proportionalRadius)
+		const half = distanceToParent(() => 0.5)
+		expect(half).toBeCloseTo((satellite.orbitRadius + satellite.proportionalRadius) / 2)
 	})
 })
 
