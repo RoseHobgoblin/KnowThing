@@ -423,7 +423,107 @@ rules, provenance, structured diagnostics and finite serialization tests.
 The model metadata MUST make clear that “exact relation” means exact within the
 declared idealised model, not exact knowledge of a real object.
 
-## 13. Scenario report
+## 13. External engine adapter protocol
+
+Expensive N-body and climate integrations MUST remain outside the
+zero-dependency core. Tungolcraft MAY prepare, validate, serialize and interpret
+their inputs and outputs through the versioned external-run protocol.
+
+### 13.1 Common request semantics
+
+Every request MUST declare:
+
+- schema version and a caller-controlled request ID;
+- external engine ID, version, kind and title;
+- the scenario epoch, time scale and `secondsPerDay` convention;
+- a non-negative start offset, positive duration and positive output interval,
+  all in seconds;
+- all engine-specific parameters as named scalar values.
+
+Numeric engine parameters MUST include a non-empty unit. Categorical parameters
+MUST NOT carry a unit. Parameter names and values MUST NOT be inferred, renamed
+or silently defaulted by the generic protocol.
+
+Requests MUST reject unknown fields, duplicate identifiers, non-finite numbers,
+negative zero and values beyond the documented resource limits. The
+`outputInterval` MUST NOT exceed the run duration.
+
+### 13.2 Dynamics handoff
+
+A dynamics request MUST contain one or more bodies. Every body MUST have a
+unique ID, a positive mass in kilograms and an explicit Cartesian initial state
+in metres and metres per second. All states MUST name and use the request's
+single common frame.
+
+The preparer MUST validate the source scenario and body IDs. Every selected body
+MUST have mass and a supplied state. Presentation metadata MUST NOT be copied to
+the engine request.
+
+Tungolcraft MUST NOT silently convert labelled orbital axes into a common-frame
+state. In particular, a `parent-centred`, `relative-separation` or
+`barycentric-component` orbit MUST be converted deliberately by the caller or a
+named model before it crosses the adapter boundary.
+
+### 13.3 Climate handoff
+
+A climate request MUST identify one body in the validated scenario and provide
+one or more uniquely named boundary conditions. Every boundary-condition value
+MUST be finite and carry a non-empty unit.
+
+Boundary-condition IDs are adapter semantics. The protocol MUST NOT treat two
+engines as physically equivalent merely because they accept similarly named
+quantities. It MUST NOT infer atmospheric composition, albedo, redistribution,
+cloud prescription or equilibrium state from an underspecified scenario.
+
+### 13.4 Adapter lifecycle
+
+An `ExternalEngineAdapter` MUST expose three stages:
+
+1. `prepare`, which translates a validated public request to engine input;
+2. `execute`, which owns transport and external execution;
+3. `interpret`, which produces a normalized public result.
+
+The Tungolcraft core MUST perform no external I/O until a caller supplies an
+adapter and explicitly invokes it. A thrown stage or a malformed interpreted
+result MUST become a structured failed result with the stable
+`external.adapter.failure` diagnostic.
+
+### 13.5 Normalized result semantics
+
+Every result MUST repeat the request ID and kind and MUST record exact engine
+and adapter identities and versions. A result interpreted against a request
+MUST match its request, engine and scenario identity.
+
+A successful dynamics result MUST contain strictly increasing time samples in the requested
+window. Each sample MUST contain every requested body exactly once in the
+requested frame, with finite SI Cartesian state vectors.
+
+A successful climate result MUST contain uniquely named, explicitly unit-bearing
+scalar channels. Channel sample times MUST be ordered, finite and within the
+requested window. No normalized channel name implies a physical guarantee.
+
+Successful results MUST NOT contain error diagnostics. Failed results MUST
+contain at least one error diagnostic and MUST NOT contain output. Structural
+success MUST NOT be presented as proof of convergence, conservation, dynamical
+stability, climate equilibrium, habitability or observational accuracy.
+
+### 13.6 Limits and versioning
+
+Version `1.0.0` caps a request at 10,000 dynamics bodies and 1,000 parameters.
+Results are capped at 100,000 time samples and 1,000 climate channels. Parsed or
+serialized JSON is capped at 50 million characters.
+
+The external-run schema version and adapter version are independent of the
+external engine version. A change to required fields, units, identity checks or
+field semantics MUST increment the external-run schema version. New
+engine-specific parameter or output-channel IDs do not by themselves change the
+generic schema.
+
+Implemented by `prepareDynamicsRun`, `prepareClimateRun`,
+`validateExternalRunRequest`, `validateExternalRunResult` and
+`runExternalAdapter`, with standalone request and result JSON Schemas.
+
+## 14. Scenario report
 
 The scenario layer SHOULD provide:
 
@@ -449,7 +549,7 @@ validation are implemented. JSON Schema draft 2020-12 documents are published
 as `tungolcraft/schemas/scenario.schema.json` and
 `tungolcraft/schemas/scenario-report.schema.json`.
 
-## 14. Verification requirements
+## 15. Verification requirements
 
 Every model MUST include:
 
@@ -487,7 +587,7 @@ drift, model-version mismatch, invalid units or failed evaluation. Generated
 `VALIDATION.md` and `MODEL-REFERENCE.md` pages are checked in CI, while the
 machine-readable report is retained as a workflow artifact.
 
-## 15. Package and compatibility requirements
+## 16. Package and compatibility requirements
 
 Before publishing 0.2:
 
@@ -501,7 +601,7 @@ Before publishing 0.2:
 - a changelog and machine-readable package version MUST identify breaking
   scientific-model changes.
 
-## 16. Security and resource limits
+## 17. Security and resource limits
 
 Scenario evaluation MUST bound:
 
@@ -514,7 +614,7 @@ Scenario evaluation MUST bound:
 The core MUST not execute caller-supplied equations or code. Custom models are
 registered by trusted application code, not deserialised from public input.
 
-## 17. Acceptance criteria for 0.2
+## 18. Acceptance criteria for 0.2
 
 Tungolcraft 0.2 satisfies this specification when:
 
@@ -530,7 +630,7 @@ Tungolcraft 0.2 satisfies this specification when:
 - no application schema is required to keep package APIs inside their declared
   domains.
 
-## 18. Deferred work
+## 19. Deferred work
 
 The following may be specified later and are not 0.2 blockers:
 

@@ -43,8 +43,11 @@ try {
 	assert.ok(packResult.files.some(({ path }) => path === 'docs/MODEL-REFERENCE.md'))
 	assert.ok(packResult.files.some(({ path }) => path === 'docs/UNCERTAINTY.md'))
 	assert.ok(packResult.files.some(({ path }) => path === 'docs/MODEL-PACKS.md'))
+	assert.ok(packResult.files.some(({ path }) => path === 'docs/EXTERNAL-ADAPTERS.md'))
 	assert.ok(packResult.files.some(({ path }) => path === 'schemas/scenario.schema.json'))
 	assert.ok(packResult.files.some(({ path }) => path === 'schemas/scenario-report.schema.json'))
+	assert.ok(packResult.files.some(({ path }) => path === 'schemas/external-run-request.schema.json'))
+	assert.ok(packResult.files.some(({ path }) => path === 'schemas/external-run-result.schema.json'))
 	assert.ok(!packResult.files.some(({ path }) => path.startsWith('src/')))
 	assert.ok(!packResult.files.some(({ path }) => path.endsWith('.test.ts')))
 
@@ -57,7 +60,7 @@ try {
 		path.join(consumerDirectory, 'runtime.mjs'),
 		[
 			`import { readFileSync } from 'node:fs'`,
-			`import { au, computeOrbitalPeriodDays, getModelPack, NOMINAL_SOLAR_GM, propagateCatalogueUncertainty, SCENARIO_SCHEMA_VERSION } from 'tungolcraft'`,
+			`import { au, computeOrbitalPeriodDays, EXTERNAL_RUN_SCHEMA_VERSION, getModelPack, NOMINAL_SOLAR_GM, propagateCatalogueUncertainty, SCENARIO_SCHEMA_VERSION } from 'tungolcraft'`,
 			'const period = computeOrbitalPeriodDays(au(1), NOMINAL_SOLAR_GM)',
 			`if (!(period > 365 && period < 366)) throw new Error(\`Unexpected period: \${period}\`)`,
 			`const propagated = propagateCatalogueUncertainty({ modelId: 'body.rotational-breakup', inputs: { densityKgM3: { value: 5500, unit: 'kg/m^3', source: 'caller', uncertainty: { kind: 'standard-deviation', value: 50, unit: 'kg/m^3' } } } }, { method: 'monte-carlo', seed: 42, sampleCount: 8, samplingPolicy: 'normal' })`,
@@ -66,6 +69,9 @@ try {
 			`const schemaUrl = import.meta.resolve('tungolcraft/schemas/scenario.schema.json')`,
 			`const schema = JSON.parse(readFileSync(new URL(schemaUrl), 'utf8'))`,
 			`if (schema.properties.schemaVersion.const !== SCENARIO_SCHEMA_VERSION) throw new Error('Scenario schema version mismatch')`,
+			`const externalSchemaUrl = import.meta.resolve('tungolcraft/schemas/external-run-request.schema.json')`,
+			`const externalSchema = JSON.parse(readFileSync(new URL(externalSchemaUrl), 'utf8'))`,
+			`if (!externalSchema.$defs || EXTERNAL_RUN_SCHEMA_VERSION !== '1.0.0') throw new Error('External adapter schema export failed')`,
 			'',
 		].join('\n'),
 	)
@@ -77,7 +83,7 @@ try {
 	writeFileSync(
 		path.join(consumerDirectory, 'types.ts'),
 		[
-			`import { au, computeOrbitalPeriodDays, NOMINAL_SOLAR_GM, SCENARIO_SCHEMA_VERSION, type Days, type ScenarioInput } from 'tungolcraft'`,
+			`import { au, computeOrbitalPeriodDays, EXTERNAL_RUN_SCHEMA_VERSION, NOMINAL_SOLAR_GM, SCENARIO_SCHEMA_VERSION, type Days, type ExternalRunRequest, type ScenarioInput } from 'tungolcraft'`,
 			'const period: Days = computeOrbitalPeriodDays(au(1), NOMINAL_SOLAR_GM)',
 			'const scenario: ScenarioInput = {',
 			'  schemaVersion: SCENARIO_SCHEMA_VERSION,',
@@ -87,6 +93,8 @@ try {
 			'}',
 			'void period',
 			'void scenario',
+			'void EXTERNAL_RUN_SCHEMA_VERSION',
+			'void (null as ExternalRunRequest | null)',
 			'',
 		].join('\n'),
 	)

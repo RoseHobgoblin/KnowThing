@@ -35,6 +35,7 @@ declarations.
 | `benchmarks` | Version-locked scientific fixtures, deterministic tolerance evaluation and machine-readable evidence reports. |
 | `uncertainty` | First-order, interval and deterministic seeded Monte Carlo propagation over catalogue models. |
 | `model-packs` | Versioned higher-level stellar, energy-balance, climate, tidal and rocky-interior prescriptions. |
+| `external-adapters` | Versioned, engine-neutral dynamics and climate handoffs with normalized result validation. |
 | `format` | Human-readable strings (g/cm³, M☉, km/s, …) over the pure numbers. |
 | `constants` | SI reference constants and scales. |
 
@@ -123,6 +124,40 @@ if (exported.ok) {
 See the [scenario interchange guide](./docs/SCENARIO-INTERCHANGE.md) for body
 graphs, frame conventions, binary coordinates and published JSON Schemas.
 
+## External engines
+
+Tungolcraft prepares explicit, unit-bearing requests for external dynamics and
+climate engines without embedding those solvers in the core. Adapters own
+engine-specific translation and execution; returned samples are checked against
+request, engine, frame, body, time-window and provenance contracts.
+
+```ts
+import { prepareDynamicsRun, runExternalAdapter } from 'tungolcraft'
+
+const prepared = prepareDynamicsRun({
+  scenario,
+  requestId: 'nbody-001',
+  engine: { id: 'my.engine', version: '1.0.0', kind: 'dynamics', title: 'My engine' },
+  frameId: 'system-barycentric',
+  states,
+  window: {
+    startOffset: { value: 0, unit: 's' },
+    duration: { value: 31_557_600, unit: 's' },
+    outputInterval: { value: 86_400, unit: 's' },
+  },
+})
+
+if (prepared.ok) {
+  const result = await runExternalAdapter(adapter, prepared.value)
+  console.log(result.ok, result.provenance)
+}
+```
+
+The core performs no I/O unless an adapter is explicitly supplied and run. See
+the [external adapter guide](./docs/EXTERNAL-ADAPTERS.md) for dynamics and
+climate contracts, JSON Schemas, implementation guidance and scientific
+non-claims.
+
 ## Uncertainty
 
 ```ts
@@ -176,7 +211,8 @@ higher-level scientific prescriptions. Versioned scenario interchange,
 explicit frames and binary coordinate transformations are supported. All
 catalogue models have version-locked benchmark evidence. First-order, interval
 and deterministic seeded Monte Carlo uncertainty propagation are supported.
-N-body dynamics remain outside its current model.
+N-body and full climate simulation remain external, with a versioned adapter
+boundary for preparing requests and validating normalized results.
 
 ## Direction
 
@@ -185,5 +221,6 @@ N-body dynamics remain outside its current model.
 - [Scenario interchange guide](./docs/SCENARIO-INTERCHANGE.md)
 - [Uncertainty propagation guide](./docs/UNCERTAINTY.md)
 - [Scientific model-pack guide](./docs/MODEL-PACKS.md)
+- [External engine adapter guide](./docs/EXTERNAL-ADAPTERS.md)
 - [Scientific validation](./docs/VALIDATION.md)
 - [Model reference](./docs/MODEL-REFERENCE.md)

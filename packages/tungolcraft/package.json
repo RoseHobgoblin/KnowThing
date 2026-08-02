@@ -33,7 +33,9 @@
 			"default": "./dist/index.js"
 		},
 		"./schemas/scenario.schema.json": "./schemas/scenario.schema.json",
-		"./schemas/scenario-report.schema.json": "./schemas/scenario-report.schema.json"
+		"./schemas/scenario-report.schema.json": "./schemas/scenario-report.schema.json",
+		"./schemas/external-run-request.schema.json": "./schemas/external-run-request.schema.json",
+		"./schemas/external-run-result.schema.json": "./schemas/external-run-result.schema.json"
 	},
 	"files": [
 		"benchmarks",

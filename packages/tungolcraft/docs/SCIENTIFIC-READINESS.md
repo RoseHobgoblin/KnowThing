@@ -217,6 +217,16 @@ implementing them in the zero-dependency core. Tungolcraft should prepare,
 validate and interpret scenarios; specialised engines can perform expensive
 integration.
 
+Status: **complete**. The versioned external-run protocol now covers explicit
+dynamics and climate handoffs, strict runtime validation, standalone JSON
+Schemas, normalized result validation and an injected three-stage adapter
+interface (`prepare`, `execute`, `interpret`). Dynamics requests require
+common-frame Cartesian SI states and masses; climate requests require named,
+unit-bearing boundary conditions. Engine and adapter versions, request identity,
+time semantics, resource limits and failure diagnostics survive the round trip.
+The core performs no external I/O and makes no claim that a structurally valid
+engine result is converged, physically correct or observationally accurate.
+
 ## Explicit non-goals for the core
 
 - predicting the real night sky;
