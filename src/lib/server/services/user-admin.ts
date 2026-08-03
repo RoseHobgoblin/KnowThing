@@ -2,7 +2,7 @@ import { error } from '@sveltejs/kit'
 import { eq } from 'drizzle-orm'
 import { db } from '$lib/server/db/index.js'
 import { users } from '$lib/server/db/schema.js'
-import { ROLE_HIERARCHY, deleteUser, type Role } from '$lib/server/auth.js'
+import { ROLE_HIERARCHY, type Role } from '$lib/server/auth.js'
 
 export async function deleteManagedUser(admin: { id: number, role: string }, targetUserId: number): Promise<void> {
 	if (targetUserId === admin.id) {
@@ -15,7 +15,7 @@ export async function deleteManagedUser(admin: { id: number, role: string }, tar
 		throw error(400, 'Cannot delete the owner')
 	}
 
-	await deleteUser(targetUserId)
+	await db.delete(users).where(eq(users.id, targetUserId))
 }
 
 export async function changeManagedUserRole(
@@ -47,7 +47,7 @@ export async function changeManagedUserRole(
 
 	const [updated] = await db
 		.update(users)
-		.set({ role })
+		.set({ role, updatedAt: new Date() })
 		.where(eq(users.id, targetUserId))
 		.returning({ role: users.role })
 

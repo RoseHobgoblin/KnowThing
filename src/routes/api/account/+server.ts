@@ -1,7 +1,8 @@
 import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
-import { requireAuth, clearSessionCookie } from '$lib/server/auth.js'
-import { changeOwnPassword, deleteOwnAccount } from '$lib/server/services/auth.js'
+import { requireAuth } from '$lib/server/auth.js'
+import { auth } from '$lib/server/better-auth.js'
+import { deleteOwnAccount, revokeAllUserSessions } from '$lib/server/services/auth.js'
 import { parseBody, handleServiceCall } from '$lib/server/utils.js'
 import { changePasswordSchema } from '$lib/server/http/account/schemas.js'
 
@@ -13,12 +14,16 @@ export const PUT: RequestHandler = async (event) => {
 	if (data instanceof Response) return data
 
 	return handleServiceCall(async () => {
-		await changeOwnPassword({
-			userId: user.id,
-			currentPassword: data.currentPassword,
-			newPassword: data.newPassword,
+		await auth.api.changePassword({
+			body: {
+				currentPassword: data.currentPassword,
+				newPassword: data.newPassword,
+				revokeOtherSessions: true,
+			},
+			headers: event.request.headers,
 		})
-		clearSessionCookie(event)
+		await auth.api.signOut({ headers: event.request.headers })
+		await revokeAllUserSessions(user.id)
 		return json({ success: true, message: 'Password changed. Please log in again.' })
 	})
 }
@@ -28,8 +33,8 @@ export const DELETE: RequestHandler = async (event) => {
 	const user = requireAuth(event)
 
 	return handleServiceCall(async () => {
+		await auth.api.signOut({ headers: event.request.headers })
 		await deleteOwnAccount(user)
-		clearSessionCookie(event)
 		return json({ success: true })
 	})
 }

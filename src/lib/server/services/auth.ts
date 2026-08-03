@@ -1,68 +1,18 @@
-import { error } from '@sveltejs/kit'
-import bcrypt from 'bcrypt'
 import crypto from 'node:crypto'
+import { error } from '@sveltejs/kit'
+import { hashPassword } from 'better-auth/crypto'
 import { and, eq, gt, isNull, or, sql } from 'drizzle-orm'
 import { db } from '$lib/server/db/index.js'
-import { loginAttempts, registrationCodes, sessions, users } from '$lib/server/db/schema.js'
+import { accounts, registrationCodes, sessions, users } from '$lib/server/db/schema.js'
 import type { Role } from '$lib/server/auth.js'
-import { deleteSession } from '$lib/server/auth.js'
-
-const SALT_ROUNDS = 12
-
-function createSessionRecord() {
-	return {
-		token: crypto.randomBytes(32).toString('hex'),
-		expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-	}
-}
-
-export interface LoginResult {
-	token: string
-	redirectTo: string
-	user: {
-		id: number
-		username: string
-		role: string
-	}
-}
 
 function normalizeUsername(username: string): string {
-	return username.trim()
+	return username.trim().toLowerCase()
 }
 
 export function sanitizeRedirectTarget(redirectTo: string | null | undefined): string {
-	if (!redirectTo) return '/'
-	if (!redirectTo.startsWith('/')) return '/'
-	if (redirectTo.startsWith('//')) return '/'
+	if (!redirectTo?.startsWith('/') || redirectTo.startsWith('//')) return '/'
 	return redirectTo
-}
-
-async function recordLoginAttempt(username: string, ip: string | null, success: boolean): Promise<void> {
-	await db.insert(loginAttempts).values({
-		username: username.toLowerCase(),
-		ipAddress: ip,
-		success,
-	})
-}
-
-async function verifyCredentials(username: string, password: string) {
-	const [user] = await db
-		.select({
-			id: users.id,
-			username: users.username,
-			passwordHash: users.passwordHash,
-			role: users.role,
-		})
-		.from(users)
-		.where(eq(users.username, username))
-		.limit(1)
-
-	if (!user) return null
-
-	const valid = await bcrypt.compare(password, user.passwordHash)
-	if (!valid) return null
-
-	return { id: user.id, username: user.username, role: user.role }
 }
 
 export async function hasAnyUser(): Promise<boolean> {
@@ -70,141 +20,109 @@ export async function hasAnyUser(): Promise<boolean> {
 	return existing.length > 0
 }
 
-export async function checkLoginThrottle(username: string): Promise<boolean> {
-	const windowStart = new Date(Date.now() - 15 * 60 * 1000)
-
-	const [result] = await db
-		.select({ count: sql<number>`count(*)::int` })
-		.from(loginAttempts)
+/** Lazily replace a verified legacy bcrypt credential with Better Auth's scrypt format. */
+export async function upgradeLegacyPassword(username: string, plainTextPassword: string): Promise<void> {
+	const [credential] = await db
+		.select({ id: accounts.id, password: accounts.password })
+		.from(accounts)
+		.innerJoin(users, eq(accounts.userId, users.id))
 		.where(and(
-			eq(loginAttempts.username, username.toLowerCase()),
-			eq(loginAttempts.success, false),
-			gt(loginAttempts.createdAt, windowStart),
+			eq(users.username, normalizeUsername(username)),
+			eq(accounts.providerId, 'credential'),
 		))
+		.limit(1)
 
-	return (result?.count ?? 0) < 5
+	if (!credential?.password?.startsWith('$2')) return
+	const upgradedPassword = await hashPassword(plainTextPassword)
+	await db
+		.update(accounts)
+		.set({ password: upgradedPassword, updatedAt: new Date() })
+		.where(and(eq(accounts.id, credential.id), eq(accounts.password, credential.password)))
 }
 
-export async function loginUser(input: {
-	username: string
-	password: string
-	ip: string | null
-	redirectTo?: string | null
-}): Promise<LoginResult> {
-	const username = normalizeUsername(input.username)
-	const allowed = await checkLoginThrottle(username)
-	if (!allowed) {
-		throw error(429, 'Too many login attempts. Try again in 15 minutes.')
-	}
-
-	const user = await verifyCredentials(username, input.password)
-	if (!user) {
-		await recordLoginAttempt(username, input.ip, false)
-		throw error(401, 'Invalid username or password')
-	}
-
-	await recordLoginAttempt(username, input.ip, true)
-	const session = createSessionRecord()
-	await db.insert(sessions).values({ userId: user.id, token: session.token, expiresAt: session.expiresAt })
-
-	return {
-		token: session.token,
-		redirectTo: sanitizeRedirectTarget(input.redirectTo),
-		user,
-	}
-}
-
+/**
+ * Registration remains an application concern because KnowThing uses invite
+ * codes rather than public email signup. Credentials are written in Better
+ * Auth's account format and all sessions are subsequently created by it.
+ */
 export async function registerUser(input: {
 	username: string
 	password: string
 	code?: string
-}): Promise<{ token: string, user: { id: number, username: string, role: string } }> {
-	const username = normalizeUsername(input.username)
-	const passwordHash = await bcrypt.hash(input.password, SALT_ROUNDS)
-
-	type ValidRegistrationCode = {
-		id: number
-		role: string
-	}
-	const existingUsers = await db.select({ id: users.id }).from(users).limit(1)
-	const isFirstUser = existingUsers.length === 0
+}): Promise<{ id: number, username: string, role: Role }> {
+	const displayUsername = input.username.trim()
+	const username = normalizeUsername(displayUsername)
+	const password = await hashPassword(input.password)
 	const now = new Date()
-	let validCode: ValidRegistrationCode | null = null
-
-	if (!isFirstUser && !input.code?.trim()) {
-		throw error(400, 'Registration code is required')
-	}
-
-	if (!isFirstUser) {
-		const code = input.code!.trim()
-		const [regCode] = await db
-			.select({ id: registrationCodes.id, role: registrationCodes.role })
-			.from(registrationCodes)
-			.where(and(
-				eq(registrationCodes.code, code),
-				isNull(registrationCodes.usedBy),
-				or(
-					isNull(registrationCodes.expiresAt),
-					gt(registrationCodes.expiresAt, now),
-				),
-			))
-			.limit(1)
-
-		if (!regCode) {
-			throw error(400, 'Invalid or expired registration code')
-		}
-
-		validCode = regCode
-	}
 
 	return db.transaction(async (tx) => {
+		// Serialise first-owner selection; without this, two empty-site signups
+		// can both observe zero users and both become owner.
+		await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('knowthing:first-owner'))`)
+
+		const [existingUser] = await tx.select({ id: users.id }).from(users).limit(1)
+		const isFirstUser = !existingUser
+		let role: Role = 'owner'
+		let registrationCodeId: number | null = null
+
+		if (!isFirstUser) {
+			const code = input.code?.trim()
+			if (!code) throw error(400, 'Registration code is required')
+
+			const [registrationCode] = await tx
+				.select({ id: registrationCodes.id, role: registrationCodes.role })
+				.from(registrationCodes)
+				.where(and(
+					eq(registrationCodes.code, code),
+					isNull(registrationCodes.usedBy),
+					or(isNull(registrationCodes.expiresAt), gt(registrationCodes.expiresAt, now)),
+				))
+				.limit(1)
+
+			if (!registrationCode) throw error(400, 'Invalid or expired registration code')
+			registrationCodeId = registrationCode.id
+			role = registrationCode.role as Role
+		}
+
 		const [createdUser] = await tx
 			.insert(users)
 			.values({
 				username,
-				passwordHash,
-				role: isFirstUser ? 'owner' : 'editor',
+				displayUsername,
+				name: displayUsername,
+				email: `user-${crypto.randomUUID()}@users.knowthing.invalid`,
+				emailVerified: false,
+				role,
+				updatedAt: now,
 			})
-			.returning({ id: users.id, username: users.username, role: users.role })
+			.returning({ id: users.id, username: users.displayUsername, role: users.role })
 
-		if (validCode) {
+		await tx.insert(accounts).values({
+			accountId: String(createdUser.id),
+			providerId: 'credential',
+			userId: createdUser.id,
+			password,
+			createdAt: now,
+			updatedAt: now,
+		})
+
+		if (registrationCodeId !== null) {
 			const [claimedCode] = await tx
 				.update(registrationCodes)
 				.set({ usedBy: createdUser.id, usedAt: now })
 				.where(and(
-					eq(registrationCodes.id, validCode.id),
+					eq(registrationCodes.id, registrationCodeId),
 					isNull(registrationCodes.usedBy),
 				))
-				.returning({ role: registrationCodes.role })
-
-			if (!claimedCode) {
-				throw new Error('Registration code was just used. Please request a new one.')
-			}
-
-			if (claimedCode.role !== 'editor') {
-				const [updatedUser] = await tx
-					.update(users)
-					.set({ role: claimedCode.role })
-					.where(eq(users.id, createdUser.id))
-					.returning({ id: users.id, username: users.username, role: users.role })
-
-				const session = createSessionRecord()
-				await tx.insert(sessions).values({
-					userId: updatedUser.id,
-					token: session.token,
-					expiresAt: session.expiresAt,
-				})
-				return { token: session.token, user: updatedUser }
-			}
+				.returning({ id: registrationCodes.id })
+			if (!claimedCode) throw error(409, 'Registration code was just used. Please request a new one.')
 		}
 
-		const session = createSessionRecord()
-		await tx.insert(sessions).values({
-			userId: createdUser.id,
-			token: session.token,
-			expiresAt: session.expiresAt,
-		})
-		return { token: session.token, user: createdUser }
+		return {
+			id: createdUser.id,
+			username: createdUser.username ?? displayUsername,
+			role: createdUser.role as Role,
+		}
 	})
 }
 
@@ -218,7 +136,7 @@ export async function createRegistrationCode(input: {
 		throw error(403, 'Only the owner can create admin invite codes')
 	}
 
-	const code = crypto.randomBytes(6).toString('hex')
+	const code = crypto.randomBytes(16).toString('base64url')
 	const expiresAt = input.expiresInHours
 		? new Date(Date.now() + input.expiresInHours * 60 * 60 * 1000)
 		: null
@@ -233,36 +151,12 @@ export async function createRegistrationCode(input: {
 	return code
 }
 
-export async function changeOwnPassword(input: {
-	userId: number
-	currentPassword: string
-	newPassword: string
-}): Promise<void> {
-	const [dbUser] = await db
-		.select({ passwordHash: users.passwordHash })
-		.from(users)
-		.where(eq(users.id, input.userId))
-
-	if (!dbUser) throw error(404, 'User not found')
-
-	const valid = await bcrypt.compare(input.currentPassword, dbUser.passwordHash)
-	if (!valid) throw error(401, 'Current password is incorrect')
-
-	const passwordHash = await bcrypt.hash(input.newPassword, SALT_ROUNDS)
-	await db.update(users).set({ passwordHash }).where(eq(users.id, input.userId))
-	await db.delete(sessions).where(eq(sessions.userId, input.userId))
-}
-
 export async function deleteOwnAccount(user: { id: number, role: string }): Promise<void> {
-	if (user.role === 'owner') {
-		throw error(400, 'The site owner cannot delete their own account')
-	}
-
-	await db.delete(sessions).where(eq(sessions.userId, user.id))
+	if (user.role === 'owner') throw error(400, 'The site owner cannot delete their own account')
 	await db.delete(users).where(eq(users.id, user.id))
 }
 
-export async function logoutSession(token: string | undefined): Promise<void> {
-	if (!token) return
-	await deleteSession(token)
+/** Ensure sensitive account changes invalidate every server-side session. */
+export async function revokeAllUserSessions(userId: number): Promise<void> {
+	await db.delete(sessions).where(eq(sessions.userId, userId))
 }

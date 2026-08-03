@@ -1,12 +1,16 @@
 import { fail, isHttpError, redirect } from '@sveltejs/kit'
+import { APIError } from 'better-auth/api'
 import { z } from 'zod'
 import type { Actions, PageServerLoad } from './$types.js'
-import { setSessionCookie } from '$lib/server/auth.js'
+import { auth } from '$lib/server/better-auth.js'
 import { hasAnyUser, registerUser } from '$lib/server/services/auth.js'
 
 const registerSchema = z.object({
-	username: z.string().min(3, 'Username must be at least 3 characters'),
-	password: z.string().min(8, 'Password must be at least 8 characters'),
+	username: z.string()
+		.min(3, 'Username must be at least 3 characters')
+		.max(64, 'Username must be at most 64 characters')
+		.regex(/^[^@\s]+$/u, 'Username cannot contain spaces or @'),
+	password: z.string().min(8, 'Password must be at least 8 characters').max(128, 'Password is too long'),
 	confirm: z.string(),
 	code: z.string().optional(),
 })
@@ -35,11 +39,17 @@ export const actions: Actions = {
 		}
 
 		try {
-			const result = await registerUser({ username, password, code })
-			setSessionCookie(event, result.token)
+			await registerUser({ username, password, code })
+			await auth.api.signInUsername({
+				body: { username, password },
+				headers: event.request.headers,
+			})
 		} catch (error: unknown) {
 			if (isHttpError(error)) {
 				return fail(error.status, { error: error.body?.message ?? 'Request failed', username })
+			}
+			if (error instanceof APIError) {
+				return fail(error.statusCode, { error: error.message, username })
 			}
 			const message = error instanceof Error ? error.message : 'Unknown error'
 			if (message.includes('Registration code was just used')) {
@@ -48,6 +58,7 @@ export const actions: Actions = {
 			if (message.includes('unique') || message.includes('duplicate')) {
 				return fail(409, { error: 'Username already taken', username })
 			}
+			// eslint-disable-next-line local/no-console-server -- preserve the private server-side cause
 			console.error('register failed', error)
 			return fail(500, { error: 'Registration failed', username })
 		}

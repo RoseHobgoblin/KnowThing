@@ -1,9 +1,10 @@
+/* eslint-disable local/no-console-server, unicorn/no-process-exit -- standalone migration CLI */
 import postgres from 'postgres'
 import { readFileSync, readdirSync } from 'node:fs'
-import { join, dirname } from 'node:path'
+import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
+const currentDirectory = path.dirname(fileURLToPath(import.meta.url))
 
 async function migrate() {
 	const url = process.env.DATABASE_URL
@@ -24,17 +25,26 @@ async function migrate() {
 	`
 
 	// Auto-discover all .sql migration files, sorted by name
-	const migrationsDir = join(__dirname, '../../../../drizzle')
-	const files = readdirSync(migrationsDir)
-		.filter(f => f.endsWith('.sql'))
+	const migrationsDirectory = path.join(currentDirectory, '../../../../drizzle')
+	const files = readdirSync(migrationsDirectory)
+		// 0000 is Drizzle Kit's schema snapshot, not part of the app's
+		// historical hand-written migration chain (0001+).
+		.filter(f => f.endsWith('.sql') && f !== '0000_flat_speedball.sql')
 		.toSorted()
 
 	for (const migrationFile of files) {
-		const applied = await sql`SELECT name FROM _migrations WHERE name = ${migrationFile}`
-		if (applied.length === 0) {
-			const migrationSql = readFileSync(join(migrationsDir, migrationFile), 'utf-8')
-			await sql.unsafe(migrationSql)
-			await sql`INSERT INTO _migrations (name) VALUES (${migrationFile})`
+		const migrationSql = readFileSync(path.join(migrationsDirectory, migrationFile), 'utf8')
+		const applied = await sql.begin(async (tx) => {
+			await tx`SELECT pg_advisory_xact_lock(hashtext('knowthing:migrations'))`
+			const [existing] = await tx`SELECT name FROM _migrations WHERE name = ${migrationFile}`
+			if (existing) return false
+
+			await tx.unsafe(migrationSql)
+			await tx`INSERT INTO _migrations (name) VALUES (${migrationFile})`
+			return true
+		})
+
+		if (applied) {
 			console.log(`  apply: ${migrationFile}`)
 		} else {
 			console.log(`  skip: ${migrationFile} (already applied)`)
@@ -45,7 +55,9 @@ async function migrate() {
 	console.log('Migrations complete.')
 }
 
-migrate().catch((error) => {
+try {
+	await migrate()
+} catch (error) {
 	console.error('Migration failed:', error)
 	process.exit(1)
-})
+}

@@ -25,37 +25,44 @@ async function migrate() {
 		// Read migration files
 		const migrationsDir = join(import.meta.dirname, '..', 'drizzle')
 		const files = readdirSync(migrationsDir)
-			.filter(f => f.endsWith('.sql'))
-			.sort()
+			// 0000 is Drizzle Kit's schema snapshot, not part of the app's
+			// historical hand-written migration chain (0001+).
+			.filter(f => f.endsWith('.sql') && f !== '0000_flat_speedball.sql')
+			.toSorted()
 
 		for (const file of files) {
-			const [applied] = await sql`SELECT name FROM _migrations WHERE name = ${file}`
-			if (applied) {
-				console.log(`  skip: ${file} (already applied)`)
-				continue
-			}
-
 			const migrationSql = readFileSync(join(migrationsDir, file), 'utf-8')
-			await sql.unsafe(migrationSql)
-			await sql`INSERT INTO _migrations (name) VALUES (${file})`
-			console.log(`  applied: ${file}`)
+			const applied = await sql.begin(async (tx) => {
+				await tx`SELECT pg_advisory_xact_lock(hashtext('knowthing:migrations'))`
+				const [existing] = await tx`SELECT name FROM _migrations WHERE name = ${file}`
+				if (existing) return false
+
+				await tx.unsafe(migrationSql)
+				await tx`INSERT INTO _migrations (name) VALUES (${file})`
+				return true
+			})
+			console.log(applied ? `  applied: ${file}` : `  skip: ${file} (already applied)`)
 		}
 
 		await sql.end()
 		console.log('Migrations complete.')
 	} catch (error) {
 		console.error('Migration failed:', error.message)
-		// Don't exit — table might already exist from a previous run
 		try { await sql.end() } catch {}
+		throw error
 	}
 }
 
 // ── Validate environment ────────────────────────────────────
 function validateEnvironment() {
-	const required = ['DATABASE_URL']
+	const required = ['DATABASE_URL', 'BETTER_AUTH_SECRET']
 	const missing = required.filter(k => !process.env[k])
 	if (missing.length > 0) {
 		console.error(`FATAL: Missing required env vars: ${missing.join(', ')}`)
+		process.exit(1)
+	}
+	if (!process.env.BETTER_AUTH_URL && !process.env.ORIGIN) {
+		console.error('FATAL: BETTER_AUTH_URL or ORIGIN must be set to the public application URL')
 		process.exit(1)
 	}
 

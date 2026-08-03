@@ -11,7 +11,10 @@ COPY . .
 # (its `dist/` is gitignored, so absent on a clean checkout); without this,
 # `vite build` fails with "Failed to resolve entry for package tungolcraft".
 RUN npm run build --workspaces --if-present
-RUN npm run build
+# Better Auth validates its secret while Vite evaluates server modules. This
+# value exists only in the throwaway build stage; runtime requires the real
+# BETTER_AUTH_SECRET and scripts/start.js fails closed when it is absent.
+RUN BETTER_AUTH_SECRET=build-stage-placeholder-only-7f53a91d9c4e2b68 npm run build
 RUN npm prune --omit=dev
 
 # ── Production stage ─────────────────────────────────────────
@@ -32,7 +35,6 @@ RUN mkdir -p /app/uploads
 
 ENV NODE_ENV=production
 ENV PORT=3000
-ENV ORIGIN=http://localhost:3000
 
 EXPOSE 3000
 

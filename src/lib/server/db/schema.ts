@@ -4,6 +4,7 @@ import {
 	serial,
 	text,
 	integer,
+	bigint,
 	doublePrecision,
 	timestamp,
 	boolean,
@@ -33,9 +34,14 @@ const tsvector = customType<{ data: string }>({
 export const users = pgTable('users', {
 	id: serial('id').primaryKey(),
 	username: text('username').unique().notNull(),
-	passwordHash: text('password_hash').notNull(),
+	displayUsername: text('display_username'),
+	name: text('name').notNull(),
+	email: text('email').unique().notNull(),
+	emailVerified: boolean('email_verified').notNull().default(false),
+	image: text('image'),
 	role: text('role').notNull().default('editor'), // 'owner' | 'admin' | 'editor' | 'viewer'
 	createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 })
 
 export const sessions = pgTable('sessions', {
@@ -45,6 +51,55 @@ export const sessions = pgTable('sessions', {
 		.notNull(),
 	token: text('token').unique().notNull(),
 	expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+	createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+	ipAddress: text('ip_address'),
+	userAgent: text('user_agent'),
+})
+
+export const accounts = pgTable(
+	'accounts',
+	{
+		id: serial('id').primaryKey(),
+		accountId: text('account_id').notNull(),
+		providerId: text('provider_id').notNull(),
+		userId: integer('user_id')
+			.references(() => users.id, { onDelete: 'cascade' })
+			.notNull(),
+		accessToken: text('access_token'),
+		refreshToken: text('refresh_token'),
+		idToken: text('id_token'),
+		accessTokenExpiresAt: timestamp('access_token_expires_at', { withTimezone: true }),
+		refreshTokenExpiresAt: timestamp('refresh_token_expires_at', { withTimezone: true }),
+		scope: text('scope'),
+		password: text('password'),
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+	},
+	table => [
+		index('idx_accounts_user_id').on(table.userId),
+		uniqueIndex('uq_accounts_provider_account').on(table.providerId, table.accountId),
+	],
+)
+
+export const verifications = pgTable(
+	'verifications',
+	{
+		id: serial('id').primaryKey(),
+		identifier: text('identifier').notNull(),
+		value: text('value').notNull(),
+		expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+	},
+	table => [index('idx_verifications_identifier').on(table.identifier)],
+)
+
+export const authRateLimits = pgTable('auth_rate_limits', {
+	id: serial('id').primaryKey(),
+	key: text('key').unique().notNull(),
+	count: integer('count').notNull(),
+	lastRequest: bigint('last_request', { mode: 'number' }).notNull(),
 })
 
 export const registrationCodes = pgTable('registration_codes', {
@@ -57,20 +112,6 @@ export const registrationCodes = pgTable('registration_codes', {
 	expiresAt: timestamp('expires_at', { withTimezone: true }),
 	createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 })
-
-export const loginAttempts = pgTable(
-	'login_attempts',
-	{
-		id: serial('id').primaryKey(),
-		username: text('username').notNull(),
-		ipAddress: text('ip_address'),
-		success: boolean('success').notNull().default(false),
-		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-	},
-	table => [
-		index('idx_login_attempts_username').on(table.username, table.createdAt),
-	],
-)
 
 // ============================================================================
 // Unified Content Records

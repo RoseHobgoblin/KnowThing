@@ -1,8 +1,9 @@
-import { fail, isHttpError, redirect } from '@sveltejs/kit'
+import { fail, redirect } from '@sveltejs/kit'
+import { APIError } from 'better-auth/api'
 import { z } from 'zod'
 import type { Actions, PageServerLoad } from './$types.js'
-import { setSessionCookie } from '$lib/server/auth.js'
-import { loginUser } from '$lib/server/services/auth.js'
+import { auth } from '$lib/server/better-auth.js'
+import { sanitizeRedirectTarget, upgradeLegacyPassword } from '$lib/server/services/auth.js'
 
 const loginSchema = z.object({
 	username: z.string().min(1, 'Username is required'),
@@ -26,19 +27,18 @@ export const actions: Actions = {
 		const { username, password } = parsed.data
 
 		try {
-			const result = await loginUser({
-				username,
-				password,
-				ip: event.getClientAddress(),
-				redirectTo: event.url.searchParams.get('redirect'),
+			await auth.api.signInUsername({
+				body: { username, password },
+				headers: event.request.headers,
 			})
-			setSessionCookie(event, result.token)
-			throw redirect(302, result.redirectTo)
+			await upgradeLegacyPassword(username, password)
 		} catch (error: unknown) {
-			if (isHttpError(error)) {
-				return fail(error.status, { error: error.body?.message ?? 'Request failed', username })
+			if (error instanceof APIError) {
+				return fail(error.statusCode, { error: error.message, username })
 			}
 			throw error
 		}
+
+		throw redirect(302, sanitizeRedirectTarget(event.url.searchParams.get('redirect')))
 	},
 }

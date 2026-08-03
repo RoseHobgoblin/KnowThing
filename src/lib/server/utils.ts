@@ -1,4 +1,5 @@
 import { isHttpError, json } from '@sveltejs/kit'
+import { APIError } from 'better-auth/api'
 import type { z } from 'zod'
 
 /**
@@ -56,6 +57,9 @@ export async function handleServiceCall<T>(function_: () => Promise<T>): Promise
 	} catch (error: unknown) {
 		if (isHttpError(error)) {
 			return json({ error: error.body?.message ?? 'Request failed' }, { status: error.status })
+		}
+		if (error instanceof APIError) {
+			return json({ error: error.message }, { status: error.statusCode })
 		}
 		const pgCode = (error as { code?: string })?.code
 		if (pgCode && PG_ERROR_RESPONSES[pgCode]) {

@@ -1,13 +1,10 @@
 import { redirect } from '@sveltejs/kit'
 import type { Actions } from './$types.js'
-import { getSessionToken, clearSessionCookie } from '$lib/server/auth.js'
-import { logoutSession } from '$lib/server/services/auth.js'
+import { auth } from '$lib/server/better-auth.js'
 
 export const actions: Actions = {
 	default: async (event) => {
-		const token = getSessionToken(event)
-		await logoutSession(token)
-		clearSessionCookie(event)
+		await auth.api.signOut({ headers: event.request.headers })
 		throw redirect(302, '/')
 	},
 }

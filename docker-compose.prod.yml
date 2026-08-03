@@ -8,10 +8,12 @@ services:
     ports:
       - "3500:${PORT:-3000}"
     environment:
-      DATABASE_URL: postgres://knowthing:${DB_PASSWORD:-knowthing}@db:5432/knowthing
+      DATABASE_URL: postgres://knowthing:${DB_PASSWORD:?DB_PASSWORD is required}@db:5432/knowthing
       UPLOAD_DIR: /app/uploads
       PORT: ${PORT:-3000}
-      ORIGIN: https://${DOMAIN:-localhost}
+      ORIGIN: https://${DOMAIN:?DOMAIN is required}
+      BETTER_AUTH_URL: https://${DOMAIN:?DOMAIN is required}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET is required}
       BODY_SIZE_LIMIT: "15000000"
       NODE_ENV: production
     volumes:
@@ -30,7 +32,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: knowthing
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-knowthing}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
       POSTGRES_DB: knowthing
     volumes:
       - pgdata:/var/lib/postgresql/data
