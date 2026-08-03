@@ -396,17 +396,17 @@ export function buildLayout(stars: MapBody[], bodies: MapBody[], scale: ScaleMod
 		}
 	}
 
-	directOrbiters.sort((a, b) => a.orbitAu - b.orbitAu)
+	const sortedDirectOrbiters = directOrbiters.toSorted((a, b) => a.orbitAu - b.orbitAu)
 
-	const maxAu = Math.max(...directOrbiters.map(body => body.orbitAu), 1)
+	const maxAu = Math.max(...sortedDirectOrbiters.map(body => body.orbitAu), 1)
 
 	const effectiveMaxAu = scale === 'inner'
-		? innerBoundaryAu(directOrbiters)
+		? innerBoundaryAu(sortedDirectOrbiters)
 		: maxAu
 
 	const visibleOrbiters = scale === 'inner'
-		? directOrbiters.filter(body => body.orbitAu <= effectiveMaxAu)
-		: directOrbiters
+		? sortedDirectOrbiters.filter(body => body.orbitAu <= effectiveMaxAu)
+		: sortedDirectOrbiters
 
 	const outermostVisibleEcc = visibleOrbiters.at(-1)?.ecc ?? 0
 	const maxVisualRadius = (CENTER - PADDING) / (1 + outermostVisibleEcc)
@@ -429,7 +429,7 @@ export function buildLayout(stars: MapBody[], bodies: MapBody[], scale: ScaleMod
 	}
 
 	if (scale === 'inner') {
-		for (const body of directOrbiters) {
+		for (const body of sortedDirectOrbiters) {
 			if (body.orbitAu > effectiveMaxAu) {
 				const a = maxVisualRadius * 2
 				directOrbits.push({ body, a, b: a, index: 0, count: 1, outOfRange: true })
@@ -484,7 +484,7 @@ export function buildLayout(stars: MapBody[], bodies: MapBody[], scale: ScaleMod
 		pendingItems.push(...unresolved)
 
 		for (const [parentKey, groupSatellites] of groups.entries()) {
-			groupSatellites.sort((a, b) => a.orbitAu - b.orbitAu)
+			const sortedSatellites = groupSatellites.toSorted((a, b) => a.orbitAu - b.orbitAu)
 
 			// Dynamic zone sizing based on gap to nearest neighbour
 			const parentR = orbiterRadiiByKey.get(parentKey)
@@ -501,14 +501,14 @@ export function buildLayout(stars: MapBody[], bodies: MapBody[], scale: ScaleMod
 					}
 				}
 				const halfGap = Math.min(gapBelow, gapAbove) * SAT_ZONE_FRACTION
-				const minZone = Math.max(SAT_MIN_ZONE, groupSatellites.length * 6)
+				const minZone = Math.max(SAT_MIN_ZONE, sortedSatellites.length * 6)
 				zone = Math.min(Math.max(halfGap, minZone), SAT_MAX_ZONE)
 			}
 
-			const groupMaxAu = Math.max(...groupSatellites.map(satellite => satellite.orbitAu), 0)
+			const groupMaxAu = Math.max(...sortedSatellites.map(satellite => satellite.orbitAu), 0)
 
-			for (const [index, satellite] of groupSatellites.entries()) {
-				const t = groupSatellites.length === 1 ? 0.5 : index / (groupSatellites.length - 1)
+			for (const [index, satellite] of sortedSatellites.entries()) {
+				const t = sortedSatellites.length === 1 ? 0.5 : index / (sortedSatellites.length - 1)
 				const orbitRadius = SAT_INNER_MARGIN + t * (zone - SAT_INNER_MARGIN)
 				const orbitSemiMinor = orbitRadius * Math.sqrt(1 - satellite.ecc * satellite.ecc)
 				const focusOffset = orbitRadius * satellite.ecc
@@ -529,7 +529,7 @@ export function buildLayout(stars: MapBody[], bodies: MapBody[], scale: ScaleMod
 					orbitSemiMinor,
 					focusOffset,
 					index,
-					count: groupSatellites.length,
+					count: sortedSatellites.length,
 					zone,
 					proportionalRadius,
 					proportionalSemiMinor,

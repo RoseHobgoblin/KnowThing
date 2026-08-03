@@ -199,7 +199,7 @@ export async function getEtymologyChain(entryId: number): Promise<EtymologyStep[
 		relation: r.relation as string | null,
 	}))
 
-	return steps.sort((a, b) => {
+	return steps.toSorted((a, b) => {
 		if (a.relation === null && b.relation !== null) return -1
 		if (a.relation !== null && b.relation === null) return 1
 		return 0
@@ -320,17 +320,15 @@ export async function computeCognates(
 	for (const [family, langMap] of familyMap) {
 		groups.push({
 			family,
-			languages: [...langMap.values()].sort((a, b) => a.name.localeCompare(b.name)),
+			languages: [...langMap.values()].toSorted((a, b) => a.name.localeCompare(b.name)),
 		})
 	}
 
-	groups.sort((a, b) => {
+	return groups.toSorted((a, b) => {
 		if (currentFamily) {
 			if (a.family === currentFamily && b.family !== currentFamily) return -1
 			if (a.family !== currentFamily && b.family === currentFamily) return 1
 		}
 		return a.family.localeCompare(b.family)
 	})
-
-	return groups
 }

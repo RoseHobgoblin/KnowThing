@@ -6,7 +6,7 @@
 	} = $props()
 
 	const sorted = $derived(
-		[...activeLetters].map(l => l.toUpperCase()).sort((a, b) => a.localeCompare(b)),
+		activeLetters.map(l => l.toUpperCase()).toSorted((a, b) => a.localeCompare(b)),
 	)
 </script>
 

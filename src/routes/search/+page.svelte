@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { SvelteURLSearchParams } from 'svelte/reactivity'
 	import type { PageData } from './$types.js'
 	import SearchForm from '$lib/components/search/SearchForm.svelte'
 	import SearchScopeTabs from '$lib/components/search/SearchScopeTabs.svelte'
@@ -24,7 +25,7 @@
 	}
 
 	function buildHref(basePath: string, scope: SearchScope, page = 1) {
-		const params = new URLSearchParams()
+		const params = new SvelteURLSearchParams()
 		if (data.query.q) params.set('q', data.query.q)
 		params.set('scope', scope)
 		params.set('page', String(page))

@@ -49,7 +49,7 @@
 	const viewBoxValue = $derived(`${viewX} ${viewY} ${effectiveViewWidth} ${effectiveViewHeight}`)
 	const zoomLevel = $derived(Math.min(maxZoom, Math.max(minZoom, width / effectiveViewWidth)))
 	const renderRegions = $derived(
-		[...regions].sort((left, right) => getRegionPaintWeight(right) - getRegionPaintWeight(left) || left.id - right.id),
+		regions.toSorted((left, right) => getRegionPaintWeight(right) - getRegionPaintWeight(left) || left.id - right.id),
 	)
 
 	$effect(() => {

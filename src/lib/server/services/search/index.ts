@@ -86,7 +86,7 @@ export async function searchUnified(params: UnifiedSearchParams): Promise<Unifie
 			}
 
 			const merged = [...byHref.values()]
-				.sort((a, b) => b.rank - a.rank || a.title.localeCompare(b.title))
+				.toSorted((a, b) => b.rank - a.rank || a.title.localeCompare(b.title))
 			// Totals overlap the same way; correct by the duplicates we can see.
 			// (Beyond the fetch window the residual overlap is negligible and
 			// only affects the page count, never which results render.)

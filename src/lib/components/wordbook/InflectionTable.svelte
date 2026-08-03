@@ -18,7 +18,7 @@
 	} = $props()
 
 	// Sort dimensions by sortOrder: first = rows, second = columns
-	const sorted = $derived([...dimensions].sort((a, b) => a.sortOrder - b.sortOrder))
+	const sorted = $derived(dimensions.toSorted((a, b) => a.sortOrder - b.sortOrder))
 	const rowDim = $derived(sorted[0])
 	const colDim = $derived(sorted[1])
 	const extraDims = $derived(sorted.slice(2))

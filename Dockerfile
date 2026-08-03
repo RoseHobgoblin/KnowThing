@@ -1,5 +1,5 @@
 # ── Build stage ──────────────────────────────────────────────
-FROM node:20-alpine AS build
+FROM node:24-alpine AS build
 
 WORKDIR /app
 
@@ -12,15 +12,12 @@ COPY . .
 # `vite build` fails with "Failed to resolve entry for package tungolcraft".
 RUN npm run build --workspaces --if-present
 RUN npm run build
-RUN npm prune --production
+RUN npm prune --omit=dev
 
 # ── Production stage ─────────────────────────────────────────
-FROM node:20-alpine
+FROM node:24-alpine
 
 WORKDIR /app
-
-# bcrypt needs these at runtime
-RUN apk add --no-cache python3 make g++
 
 COPY --from=build /app/build ./build
 COPY --from=build /app/node_modules ./node_modules

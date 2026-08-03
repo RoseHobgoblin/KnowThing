@@ -294,7 +294,7 @@ function extractPathGeometryFromSvg(svgSource: string, waterHexRaw: string) {
 	}
 
 	return {
-		colors: [...colorPaths.keys()].sort(),
+		colors: [...colorPaths.keys()].toSorted(),
 		pathsByColor: colorPaths,
 		ignoredColorCount: ignoredPathCount,
 	}
@@ -359,7 +359,7 @@ async function extractUniqueNonWaterHexColors(filePath: string, waterHexRaw: str
 	const filtered = [...colorPixelCounts.entries()]
 		.filter(([, pixelCount]) => pixelCount >= MIN_REGION_PIXEL_COUNT)
 		.map(([hex]) => hex)
-		.sort()
+		.toSorted()
 
 	return {
 		colors: filtered,

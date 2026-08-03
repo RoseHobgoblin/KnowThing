@@ -92,7 +92,7 @@ class MediaLightboxStore {
 	}
 
 	private sortAndSelect(filename: string) {
-		this.items.sort(inDocumentOrder)
+		this.items = this.items.toSorted(inDocumentOrder)
 		this.index = this.items.findIndex(it => it.filename === filename)
 	}
 

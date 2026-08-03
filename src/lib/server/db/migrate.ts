@@ -27,7 +27,7 @@ async function migrate() {
 	const migrationsDir = join(__dirname, '../../../../drizzle')
 	const files = readdirSync(migrationsDir)
 		.filter(f => f.endsWith('.sql'))
-		.sort()
+		.toSorted()
 
 	for (const migrationFile of files) {
 		const applied = await sql`SELECT name FROM _migrations WHERE name = ${migrationFile}`

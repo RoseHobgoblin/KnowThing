@@ -113,8 +113,8 @@ export function buildPhonemeGrid(
 	// Within a cell: voiceless before voiced (consonant convention), unrounded
 	// before rounded (vowel convention), plain before geminate.
 	// Wikipedia-style IPA chart ordering.
-	for (const list of cells.values()) {
-		list.sort((a, b) => {
+	for (const [key, list] of cells) {
+		cells.set(key, list.toSorted((a, b) => {
 			const voicingOrder: Record<string, number> = { voiceless: 0, voiced: 1 }
 			const voicingDelta = (voicingOrder[a.voicing ?? ''] ?? 2) - (voicingOrder[b.voicing ?? ''] ?? 2)
 			if (voicingDelta !== 0) return voicingDelta
@@ -123,7 +123,7 @@ export function buildPhonemeGrid(
 			const roundA = a.rounded === true ? 1 : (a.rounded === false ? 0 : 2)
 			const roundB = b.rounded === true ? 1 : (b.rounded === false ? 0 : 2)
 			return roundA - roundB
-		})
+		}))
 	}
 
 	return { columns, rows: rowPairs, cells, footnotes }

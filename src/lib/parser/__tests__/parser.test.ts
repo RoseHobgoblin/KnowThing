@@ -188,7 +188,7 @@ describe('extractImagesFromAst', () => {
 		const ast = parseWikitext(
 			'{{Infobox country\n| image_flag = Flag_of_Onchera.svg\n| image_coat = Coat.png\n| capital = Amallu\n}}',
 		)
-		expect(extractImagesFromAst(ast).sort()).toEqual(['Coat.png', 'Flag_of_Onchera.svg'])
+		expect(extractImagesFromAst(ast).toSorted()).toEqual(['Coat.png', 'Flag_of_Onchera.svg'])
 	})
 
 	it('ignores free-form text in template arguments', () => {
