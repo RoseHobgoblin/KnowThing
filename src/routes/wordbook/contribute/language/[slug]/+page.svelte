@@ -52,7 +52,9 @@
 	async function handleDetailsSubmit(formData: Record<string, unknown>) {
 		await updateMutation.mutateAsync(formData)
 		pushSuccess(m.wb_language_updated())
-		goto(`/Wordbook/${data.language.slug}`)
+		// Awaited so LanguageForm stays in its submitting state — and its unsaved-changes
+		// guard stays disarmed — until the navigation away has completed.
+		await goto(`/Wordbook/${data.language.slug}`)
 	}
 </script>
 

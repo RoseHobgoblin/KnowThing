@@ -72,10 +72,12 @@
 
 		pushSuccess(m.wb_word_updated())
 		const lang = data.languages.find(l => l.id === formData.languageId)
+		// Awaited so EntryForm stays in its submitting state — and its unsaved-changes
+		// guard stays disarmed — until the navigation away has completed.
 		if (lang) {
-			goto(`/Wordbook/${lang.slug}/${encodeURIComponent(String(formData.word))}`)
+			await goto(`/Wordbook/${lang.slug}/${encodeURIComponent(String(formData.word))}`)
 		} else {
-			goto('/Wordbook')
+			await goto('/Wordbook')
 		}
 	}
 </script>

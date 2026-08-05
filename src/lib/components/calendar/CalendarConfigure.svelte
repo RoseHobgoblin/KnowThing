@@ -304,6 +304,8 @@
 	const dayLengthHours = $derived(Math.round((dayLengthSeconds / 3600) * 100) / 100)
 	const currentStaticData = $derived(JSON.stringify(previewConfig.static_data))
 	const isDirty = $derived(currentStaticData !== initialStaticData || editSummary.trim().length > 0)
+	// Once the calendar is gone there is nothing left to lose, so the guard must stand down.
+	let deleted = $state(false)
 	let stablePermissions = $state(normalizePermissions($page.data.permissions))
 	const permissions = $derived(stablePermissions)
 	const validationIssues = $derived.by(() => {
@@ -376,8 +378,9 @@
 			return
 		}
 
+		deleted = true
 		pushSuccess(m.cal_deleted())
-		goto('/calendar')
+		await goto('/calendar')
 	}
 </script>
 
@@ -385,7 +388,7 @@
 	breadcrumbs={calendarConfigureBreadcrumbs(calendar)}
 	title={m.cal_configure_named({ name: calendar.name })}
 >
-	<UnsavedChangesGuard when={isDirty && !saving} />
+	<UnsavedChangesGuard when={isDirty && !saving && !deleted} />
 	<div class="space-y-6">
 		<div class="flex items-center justify-between gap-3 bg-surface px-4 py-3">
 			<div>
@@ -409,16 +412,16 @@
 
 		<!-- Preview -->
 		<details class="bg-raised">
-			<summary class="px-4 py-3 cursor-pointer text-sm font-semibold text-heading select-none transition-colors hover:bg-surface">{m.common_preview()}</summary>
+			<summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-heading transition-colors select-none hover:bg-surface">{m.common_preview()}</summary>
 			<div class="px-4 pb-4">
 				{#if months.length > 0 && weekdays.length > 0}
-					<div class="max-w-md mx-auto">
+					<div class="mx-auto max-w-md">
 						{#key JSON.stringify(previewConfig.static_data)}
 							<CalendarWidget config={previewConfig} />
 						{/key}
 					</div>
 				{:else}
-					<p class="text-sm text-secondary text-center py-6">{m.cal_preview_empty()}</p>
+					<p class="py-6 text-center text-sm text-secondary">{m.cal_preview_empty()}</p>
 				{/if}
 			</div>
 		</details>
@@ -426,53 +429,53 @@
 		<TabNavigation navItems={calendarTabs} bind:activeSectionId={activeTab} fullWidth size="sm" />
 
 		{#if activeTab === 'identity'}
-			<section class="bg-raised p-5 space-y-4">
+			<section class="space-y-4 bg-raised p-5">
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-					<div><span class="text-xs font-medium text-secondary block mb-1">{m.common_name()}</span><p class="text-sm text-body">{calendar.name}</p></div>
-					<div><span class="text-xs font-medium text-secondary block mb-1">{m.common_description()}</span><p class="text-sm text-body">{calendar.description || '—'}</p></div>
+					<div><span class="mb-1 block text-xs font-medium text-secondary">{m.common_name()}</span><p class="text-sm text-body">{calendar.name}</p></div>
+					<div><span class="mb-1 block text-xs font-medium text-secondary">{m.common_description()}</span><p class="text-sm text-body">{calendar.description || '—'}</p></div>
 				</div>
 				<Checkbox bind:value={displayMoons} label={m.cal_show_moon_phases()} />
 			</section>
 		{:else if activeTab === 'time'}
-			<section class="bg-raised p-5 space-y-4">
+			<section class="space-y-4 bg-raised p-5">
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
 					<div>
-						<div class="flex items-center gap-1 mb-1">
+						<div class="mb-1 flex items-center gap-1">
 							<span class="text-xs font-medium text-secondary">{m.cal_epoch_offset()}</span>
-							<Tooltip content={m.cal_epoch_offset_tooltip()} side="top"><span class="text-secondary text-xs cursor-help">i</span></Tooltip>
+							<Tooltip content={m.cal_epoch_offset_tooltip()} side="top"><span class="cursor-help text-xs text-secondary">i</span></Tooltip>
 						</div>
 						<Input type="number" bind:value={epochOffset} />
 					</div>
 					<div>
-						<div class="flex items-center gap-1 mb-1">
+						<div class="mb-1 flex items-center gap-1">
 							<span class="text-xs font-medium text-secondary">{m.cal_day_length()}</span>
-							<Tooltip content={m.cal_day_length_tooltip()} side="top"><span class="text-secondary text-xs cursor-help">i</span></Tooltip>
+							<Tooltip content={m.cal_day_length_tooltip()} side="top"><span class="cursor-help text-xs text-secondary">i</span></Tooltip>
 						</div>
 						<Input type="number" bind:value={dayLengthSeconds} min={1} />
 						{#if dayLengthSeconds < 1}
-							<p class="text-xs text-error mt-1">{m.cal_day_length_min()}</p>
+							<p class="mt-1 text-xs text-error">{m.cal_day_length_min()}</p>
 						{:else}
-						<p class="text-xs text-secondary mt-1">{m.cal_hours({ count: dayLengthHours })}</p>
+						<p class="mt-1 text-xs text-secondary">{m.cal_hours({ count: dayLengthHours })}</p>
 						{/if}
 					</div>
 					<div>
-						<div class="flex items-center gap-1 mb-1">
+						<div class="mb-1 flex items-center gap-1">
 							<span class="text-xs font-medium text-secondary">{m.cal_year_display_offset()}</span>
-							<Tooltip content={m.cal_year_display_offset_tooltip()} side="top"><span class="text-secondary text-xs cursor-help">i</span></Tooltip>
+							<Tooltip content={m.cal_year_display_offset_tooltip()} side="top"><span class="cursor-help text-xs text-secondary">i</span></Tooltip>
 						</div>
 						<Input type="number" bind:value={yearOffset} />
 					</div>
 				</div>
 			</section>
 		{:else if activeTab === 'months'}
-			<section class="bg-raised p-5 space-y-3">
+			<section class="space-y-3 bg-raised p-5">
 				<div class="flex items-center justify-between border-b border-border-subtle pb-2">
 					<div><h2 class="text-sm font-semibold text-heading">{m.cal_months()}</h2><p class="text-xs text-secondary">{m.cal_months_summary({ count: months.length, days: totalDaysInYear })}</p></div>
-					<button type="button" onclick={() => months = [...months, emptyMonth()]} class="text-xs text-link font-medium hover:underline">+ {m.cal_add_month()}</button>
+					<button type="button" onclick={() => months = [...months, emptyMonth()]} class="text-xs font-medium text-link hover:underline">+ {m.cal_add_month()}</button>
 				</div>
 				{#each months as month, index (month._id)}
-					<div class="flex gap-2 items-center group">
-						<span class="text-xs text-secondary w-5 text-right shrink-0">{index + 1}</span>
+					<div class="group flex items-center gap-2">
+						<span class="w-5 shrink-0 text-right text-xs text-secondary">{index + 1}</span>
 						<Input bind:value={month.name} placeholder={m.cal_month_name_placeholder()} containerClass="flex-1" error={month.name.trim() ? '' : m.common_required()} />
 						<Input bind:value={month.short_name} placeholder={m.cal_abbr_placeholder()} containerClass="w-14" />
 						<div class="flex items-center gap-1">
@@ -485,19 +488,19 @@
 				{/each}
 			</section>
 		{:else if activeTab === 'weekdays'}
-			<section class="bg-raised p-5 space-y-3">
+			<section class="space-y-3 bg-raised p-5">
 				<div class="flex items-center justify-between border-b border-border-subtle pb-2">
 					<div><h2 class="text-sm font-semibold text-heading">{m.cal_weekdays()}</h2><p class="text-xs text-secondary">{m.cal_weekday_week_length({ count: weekdays.length })}</p></div>
-					<button type="button" onclick={() => weekdays = [...weekdays, emptyWeekday()]} class="text-xs text-link font-medium hover:underline">+ {m.cal_add_weekday()}</button>
+					<button type="button" onclick={() => weekdays = [...weekdays, emptyWeekday()]} class="text-xs font-medium text-link hover:underline">+ {m.cal_add_weekday()}</button>
 				</div>
-				<div class="flex items-center gap-1 mb-1">
+				<div class="mb-1 flex items-center gap-1">
 					<span class="text-xs font-medium text-secondary">{m.cal_first_weekday()}</span>
 					<Input type="number" bind:value={firstWeekDay} min={0} max={weekdays.length - 1} containerClass="w-14 ml-2" class="text-center" error={firstWeekDay < 0 || firstWeekDay >= weekdays.length ? m.cal_invalid() : ''} />
 					{#if weekdays[firstWeekDay]}<span class="text-xs text-secondary">({weekdays[firstWeekDay].name || '...'})</span>{/if}
 				</div>
 				{#each weekdays as day, index (day._id)}
-					<div class="flex gap-2 items-center group">
-						<span class="text-xs text-secondary w-5 text-right shrink-0">{index}</span>
+					<div class="group flex items-center gap-2">
+						<span class="w-5 shrink-0 text-right text-xs text-secondary">{index}</span>
 						<Input bind:value={day.name} placeholder={m.cal_weekday_name_placeholder()} containerClass="flex-1" error={day.name.trim() ? '' : m.common_required()} />
 						<Input bind:value={day.abbreviation} placeholder={m.cal_abbr_placeholder()} containerClass="w-16" />
 						<button type="button" onclick={() => weekdays = weekdays.filter((_, index_) => index_ !== index)} class="text-secondary opacity-0 transition-opacity group-hover:opacity-100 hover:text-error">×</button>
@@ -505,16 +508,16 @@
 				{/each}
 			</section>
 		{:else if activeTab === 'leapdays'}
-			<section class="bg-raised p-5 space-y-3">
+			<section class="space-y-3 bg-raised p-5">
 				<div class="flex items-center justify-between border-b border-border-subtle pb-2">
 					<h2 class="text-sm font-semibold text-heading">{m.cal_leap_days()}</h2>
-					<button type="button" onclick={() => leapDays = [...leapDays, emptyLeapDay()]} class="text-xs text-link font-medium hover:underline">+ {m.cal_add_leap_day()}</button>
+					<button type="button" onclick={() => leapDays = [...leapDays, emptyLeapDay()]} class="text-xs font-medium text-link hover:underline">+ {m.cal_add_leap_day()}</button>
 				</div>
 				{#each leapDays as ld, index (ld._id)}
-					<div class="p-4 space-y-3 bg-page">
+					<div class="space-y-3 bg-page p-4">
 						<div class="flex items-center justify-between">
 							<Input bind:value={ld.name} placeholder={m.cal_leap_day_name_placeholder()} containerClass="flex-1" class="font-medium" error={ld.name.trim() ? '' : m.common_required()} />
-							<button type="button" onclick={() => leapDays = leapDays.filter((_, index_) => index_ !== index)} class="text-secondary ml-2 text-sm hover:text-error">×</button>
+							<button type="button" onclick={() => leapDays = leapDays.filter((_, index_) => index_ !== index)} class="ml-2 text-sm text-secondary hover:text-error">×</button>
 						</div>
 						<div class="grid grid-cols-2 gap-3 md:grid-cols-4">
 							<Select type="single" label={m.cal_insert_after()} bind:value={ld.month_index_str} items={months.map((mo, mi) => ({ value: String(mi), label: mo.name || m.cal_month_n({ n: mi + 1 }) }))} />
@@ -531,16 +534,16 @@
 				{/each}
 			</section>
 		{:else if activeTab === 'eras'}
-			<section class="bg-raised p-5 space-y-3">
+			<section class="space-y-3 bg-raised p-5">
 				<div class="flex items-center justify-between border-b border-border-subtle pb-2">
 					<div><h2 class="text-sm font-semibold text-heading">{m.cal_eras()}</h2><p class="text-xs text-secondary">{m.cal_eras_desc()}</p></div>
-					<button type="button" onclick={() => eras = [...eras, emptyEra()]} class="text-xs text-link font-medium hover:underline">+ {m.cal_add_era()}</button>
+					<button type="button" onclick={() => eras = [...eras, emptyEra()]} class="text-xs font-medium text-link hover:underline">+ {m.cal_add_era()}</button>
 				</div>
 				{#each eras as era, index (era._id)}
-					<div class="p-4 space-y-3 bg-page">
+					<div class="space-y-3 bg-page p-4">
 						<div class="flex items-center justify-between">
 							<Input bind:value={era.name} placeholder={m.cal_era_name_placeholder()} containerClass="flex-1" class="font-medium" error={era.name.trim() ? '' : m.common_required()} />
-							<button type="button" onclick={() => eras = eras.filter((_, index_) => index_ !== index)} class="text-secondary ml-2 text-sm hover:text-error">×</button>
+							<button type="button" onclick={() => eras = eras.filter((_, index_) => index_ !== index)} class="ml-2 text-sm text-secondary hover:text-error">×</button>
 						</div>
 						<div class="grid grid-cols-2 gap-3 md:grid-cols-4">
 							<Input type="number" label={m.cal_starts_at_year()} bind:value={era.start_year} />
@@ -552,21 +555,21 @@
 				{/each}
 			</section>
 		{:else if activeTab === 'moons'}
-			<section class="bg-raised p-5 space-y-3">
+			<section class="space-y-3 bg-raised p-5">
 				<div class="flex items-center justify-between border-b border-border-subtle pb-2">
 					<div><h2 class="text-sm font-semibold text-heading">{m.cal_moons()}</h2><p class="text-xs text-secondary">{m.cal_moons_desc()}</p></div>
-					<button type="button" onclick={() => moons = [...moons, emptyMoon()]} class="text-xs text-link font-medium hover:underline">+ {m.cal_add_moon()}</button>
+					<button type="button" onclick={() => moons = [...moons, emptyMoon()]} class="text-xs font-medium text-link hover:underline">+ {m.cal_add_moon()}</button>
 				</div>
 				{#each moons as moon, index (moon._id)}
-					<div class="flex gap-3 items-center group p-3 bg-page">
-						<div class="flex gap-1 shrink-0">
+					<div class="group flex items-center gap-3 bg-page p-3">
+						<div class="flex shrink-0 gap-1">
 							<input type="color" bind:value={moon.face_color} class="size-7 cursor-pointer" title={m.cal_lit_color()} />
 							<input type="color" bind:value={moon.shadow_color} class="size-7 cursor-pointer" title={m.cal_shadow_color()} />
 						</div>
 						<Input bind:value={moon.name} placeholder={m.cal_moon_name_placeholder()} containerClass="flex-1" error={moon.name.trim() ? '' : m.common_required()} />
 						<div class="flex items-center gap-1">
 							<Input type="number" bind:value={moon.cycle} step="0.01" containerClass="w-20" class="text-center" />
-							<span class="text-xs text-secondary whitespace-nowrap">{m.cal_day_cycle()}</span>
+							<span class="text-xs whitespace-nowrap text-secondary">{m.cal_day_cycle()}</span>
 						</div>
 						<div class="flex items-center gap-1">
 							<Input type="number" bind:value={moon.offset} containerClass="w-16" class="text-center" />
@@ -577,18 +580,18 @@
 				{/each}
 			</section>
 		{:else if activeTab === 'seasons'}
-			<section class="bg-raised p-5 space-y-3">
+			<section class="space-y-3 bg-raised p-5">
 				<div class="flex items-center justify-between border-b border-border-subtle pb-2">
 					<div><h2 class="text-sm font-semibold text-heading">{m.cal_seasons()}</h2><p class="text-xs text-secondary">{m.cal_seasons_desc()}</p></div>
-					<button type="button" onclick={() => seasons = [...seasons, emptySeason()]} class="text-xs text-link font-medium hover:underline">+ {m.cal_add_season()}</button>
+					<button type="button" onclick={() => seasons = [...seasons, emptySeason()]} class="text-xs font-medium text-link hover:underline">+ {m.cal_add_season()}</button>
 				</div>
 				{#each seasons as season, index (season._id)}
-					<div class="p-4 space-y-3 bg-page">
+					<div class="space-y-3 bg-page p-4">
 						<div class="flex items-center gap-3">
-							<input type="color" bind:value={season.color} class="size-7 cursor-pointer shrink-0" />
+							<input type="color" bind:value={season.color} class="size-7 shrink-0 cursor-pointer" />
 							<Input bind:value={season.name} placeholder={m.cal_season_name_placeholder()} containerClass="flex-1" class="font-medium" error={season.name.trim() ? '' : m.common_required()} />
 							<Select type="single" bind:value={season.kind} items={[{ value: 'spring', label: m.cal_season_spring() }, { value: 'summer', label: m.cal_season_summer() }, { value: 'autumn', label: m.cal_season_autumn() }, { value: 'winter', label: m.cal_season_winter() }, { value: 'custom', label: m.cal_season_custom() }]} containerClass="w-24" size="sm" />
-							<button type="button" onclick={() => seasons = seasons.filter((_, index_) => index_ !== index)} class="text-secondary text-sm hover:text-error">×</button>
+							<button type="button" onclick={() => seasons = seasons.filter((_, index_) => index_ !== index)} class="text-sm text-secondary hover:text-error">×</button>
 						</div>
 						<div class="flex items-center gap-3">
 							<Select type="single" bind:value={season.timing_type} items={[{ value: 'dated', label: m.cal_timing_dated() }, { value: 'periodic', label: m.cal_timing_periodic() }]} containerClass="w-36" size="sm" />
@@ -623,16 +626,16 @@
 			</div>
 
 		{#if permissions.canManageSettings}
-			<section class="border border-error-border bg-error-subtle/40 p-5 space-y-3">
+			<section class="bg-error-subtle/40 space-y-3 border border-error-border p-5">
 				<div>
 					<h2 class="text-sm font-semibold text-error">{m.common_danger_zone()}</h2>
-					<p class="text-xs text-secondary mt-1">{m.cal_danger_zone_desc()}</p>
+					<p class="mt-1 text-xs text-secondary">{m.cal_danger_zone_desc()}</p>
 				</div>
 				<div>
 					<button
 						type="button"
 						onclick={deleteCalendar}
-						class="px-4 py-2 text-sm border border-error-border text-error hover:bg-error-subtle"
+						class="border border-error-border px-4 py-2 text-sm text-error hover:bg-error-subtle"
 					>
 						{m.cal_delete_button()}
 					</button>

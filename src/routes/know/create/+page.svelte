@@ -31,10 +31,21 @@
 {/if}
 
 <UnsavedChangesGuard when={isDirty && !submitting} />
-<form method="POST" use:enhance={() => { submitting = true; return async ({ update }) => { submitting = false; await update() } }} class="flex flex-col" style="height: calc(100vh - 220px);">
+<form
+	method="POST"
+	use:enhance={() => {
+		submitting = true
+		return async ({ update }) => {
+			await update()
+			submitting = false
+		}
+	}}
+	class="flex flex-col"
+	style="height: calc(100vh - 220px);"
+>
 	<input type="hidden" name="content" value={content} />
 
-	<div class="flex items-center gap-4 mb-3">
+	<div class="mb-3 flex items-center gap-4">
 		<div class="flex-1">
 			<Input
 				name="title"
@@ -49,30 +60,30 @@
 		<button
 			onclick={() => (showPreview = !showPreview)}
 			type="button"
-			class="px-3 py-1.5 text-sm hover:bg-page {showPreview ? 'bg-accent-subtle border-accent-border' : ''}"
+			class="px-3 py-1.5 text-sm hover:bg-page {showPreview ? 'border-accent-border bg-accent-subtle' : ''}"
 		>
 			{showPreview ? m.know_hide_preview() : m.know_show_preview()}
 		</button>
 	</div>
 
-	<div class="flex-1 flex gap-4 min-h-0">
+	<div class="flex min-h-0 flex-1 gap-4">
 		<div class="{showPreview ? 'w-1/2' : 'w-full'}">
 			<Editor value={form?.content ?? ''} onchange={v => (content = v)} />
 		</div>
 
 		{#if showPreview}
 			<div class="w-1/2 overflow-hidden">
-				<div class="bg-raised px-3 py-1 text-xs font-medium text-dim border-b border-border-strong">{m.common_preview()}</div>
+				<div class="border-b border-border-strong bg-raised px-3 py-1 text-xs font-medium text-dim">{m.common_preview()}</div>
 				<LivePreview {content} />
 			</div>
 		{/if}
 	</div>
 
-	<div class="mt-3 pt-3 border-t border-border">
+	<div class="mt-3 border-t border-border pt-3">
 		<button
 			type="submit"
 			disabled={submitting}
-			class="bg-accent text-surface px-4 py-1.5 font-medium transition-colors text-sm hover:bg-accent-hover disabled:opacity-50"
+			class="bg-accent px-4 py-1.5 text-sm font-medium text-surface transition-colors hover:bg-accent-hover disabled:opacity-50"
 		>
 			{submitting ? m.common_creating() : m.know_create_page()}
 		</button>

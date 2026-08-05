@@ -27,7 +27,7 @@
 	<title>{m.know_move_title({ name: data.title })} - KnowThing</title>
 </svelte:head>
 
-<div class="bg-surface shadow-sm p-6 max-w-lg">
+<div class="max-w-lg bg-surface p-6 shadow-sm">
 	<RecordModeBanner
 		modeLabel={m.know_move_article_mode()}
 		title={m.know_rename_relocate()}
@@ -46,8 +46,8 @@
 		use:enhance={() => {
 			submitting = true
 			return async ({ update }) => {
-				submitting = false
 				await update()
+				submitting = false
 			}
 		}}
 		class="space-y-4"
@@ -68,7 +68,7 @@
 		/>
 
 		<div>
-			<label for="slug" class="block text-sm font-medium text-secondary mb-1">{m.know_new_slug()}</label>
+			<label for="slug" class="mb-1 block text-sm font-medium text-secondary">{m.know_new_slug()}</label>
 			<div class="flex items-center gap-1 text-sm text-secondary">
 				<span>/know/</span>
 				<Input
@@ -86,13 +86,13 @@
 			<button
 				type="submit"
 				disabled={submitting}
-				class="px-5 py-2 bg-accent text-surface text-sm font-medium transition-colors hover:bg-accent-hover disabled:opacity-50"
+				class="bg-accent px-5 py-2 text-sm font-medium text-surface transition-colors hover:bg-accent-hover disabled:opacity-50"
 			>
 				{submitting ? m.know_moving_status() : m.know_move_page()}
 			</button>
 			<a
 				href="/know/{data.slug}"
-				class="px-5 py-2 bg-raised text-secondary text-sm font-medium transition-colors hover:bg-border"
+				class="bg-raised px-5 py-2 text-sm font-medium text-secondary transition-colors hover:bg-border"
 			>
 				{m.common_cancel()}
 			</a>

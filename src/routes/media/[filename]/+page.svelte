@@ -61,6 +61,8 @@
 	const currentSnapshot = $derived(JSON.stringify({ description, categoriesInput }))
 	let savedSnapshot = $state(JSON.stringify(initialDetails))
 	const isDirty = $derived(currentSnapshot !== savedSnapshot)
+	// Once the file is gone there is nothing left to lose, so the guard must stand down.
+	let deleted = $state(false)
 
 	$effect(() => {
 		if (layoutData.permissions !== undefined) {
@@ -110,8 +112,9 @@
 		try {
 			await deleteMutation.mutateAsync()
 			await queryClient.invalidateQueries({ queryKey: ['media'] })
+			deleted = true
 			pushSuccess(m.media_file_deleted())
-			goto('/dashboard/media')
+			await goto('/dashboard/media')
 		} catch (error) {
 			pushError(error instanceof Error ? error.message : m.media_delete_failed())
 		}
@@ -185,7 +188,7 @@
 	<title>{m.media_page_title({ filename: data.file.filename })}</title>
 </svelte:head>
 
-<UnsavedChangesGuard when={isDirty && !saving} />
+<UnsavedChangesGuard when={isDirty && !saving && !deleted} />
 
 <div class="space-y-6">
 	<nav class="text-sm text-dim">

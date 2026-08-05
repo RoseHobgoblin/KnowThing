@@ -11,20 +11,15 @@
 
 	beforeNavigate((navigation) => {
 		if (!when) return
-		const ok = globalThis.confirm(message)
-		if (!ok) navigation.cancel()
-	})
 
-	$effect(() => {
-		if (!when) return
-
-		const handler = (event: BeforeUnloadEvent) => {
-			event.preventDefault()
-			event.returnValue = message
-			return message
+		// Full unload (reload, tab close, external link): cancelling a `leave`
+		// navigation makes SvelteKit raise the browser's own dialog. A confirm()
+		// here would be ignored by the browser and stack a second prompt.
+		if (navigation.type === 'leave') {
+			navigation.cancel()
+			return
 		}
 
-		window.addEventListener('beforeunload', handler)
-		return () => window.removeEventListener('beforeunload', handler)
+		if (!globalThis.confirm(message)) navigation.cancel()
 	})
 </script>

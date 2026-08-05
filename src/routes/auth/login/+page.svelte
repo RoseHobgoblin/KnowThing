@@ -14,16 +14,26 @@
 	})
 </script>
 
-<div class="max-w-md mx-auto mt-20 p-6">
-	<h1 class="text-2xl font-bold mb-6">{m.auth_log_in()}</h1>
+<div class="mx-auto mt-20 max-w-md p-6">
+	<h1 class="mb-6 text-2xl font-bold">{m.auth_log_in()}</h1>
 
 	{#if form?.error}
-		<div class="bg-error-bg border border-error-border text-error-text px-4 py-2 mb-4 text-sm">
+		<div class="mb-4 border border-error-border bg-error-bg px-4 py-2 text-sm text-error-text">
 			{form.error}
 		</div>
 	{/if}
 
-	<form method="POST" use:enhance={() => { submitting = true; return async ({ update }) => { submitting = false; await update() } }} class="space-y-4">
+	<form
+		method="POST"
+		use:enhance={() => {
+			submitting = true
+			return async ({ update }) => {
+				await update()
+				submitting = false
+			}
+		}}
+		class="space-y-4"
+	>
 		<Input
 			label={m.auth_username()}
 			name="username"

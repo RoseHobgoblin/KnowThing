@@ -20,7 +20,9 @@
 	async function handleSubmit(formData: Record<string, unknown>) {
 		const lang = await createLanguageMutation.mutateAsync(formData)
 		pushSuccess(m.wb_language_created())
-		goto(`/Wordbook/${lang.slug}`)
+		// Awaited so LanguageForm stays in its submitting state — and its unsaved-changes
+		// guard stays disarmed — until the navigation away has completed.
+		await goto(`/Wordbook/${lang.slug}`)
 	}
 </script>
 

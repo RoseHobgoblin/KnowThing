@@ -100,6 +100,8 @@
 	let initialSnapshot = $state(serializeDraft(untrack(() => draft)))
 	const currentSnapshot = $derived(serializeDraft(draft))
 	const isDirty = $derived(currentSnapshot !== initialSnapshot)
+	// Once the record is gone there is nothing left to lose, so the guard must stand down.
+	let deleted = $state(false)
 
 	let stablePermissions = $state(normalizePermissions($page.data.permissions))
 	const permissions = $derived(stablePermissions)
@@ -215,8 +217,9 @@
 			return
 		}
 
+		deleted = true
 		pushSuccess(m.cel_noun_deleted({ name: config.noun }))
-		goto(initialParentCrumbs.at(-1)?.href ?? '/celestial')
+		await goto(initialParentCrumbs.at(-1)?.href ?? '/celestial')
 	}
 </script>
 
@@ -292,7 +295,7 @@
 		</div>
 	{/snippet}
 
-	<UnsavedChangesGuard when={isDirty && !saving} />
+	<UnsavedChangesGuard when={isDirty && !saving && !deleted} />
 	<div class="space-y-4">
 		{#if saveError}
 			<FormNotice title={m.cel_changes_not_saved({ name: config.noun })} message={saveError} />
@@ -323,10 +326,10 @@
 			</div>
 		{/if}
 
-		<div class="grid grid-cols-1 gap-4 items-start lg:grid-cols-[1fr_280px]">
-			<div class="space-y-4 min-w-0">
+		<div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-[1fr_280px]">
+			<div class="min-w-0 space-y-4">
 				{#each visibleSections as section (section.id)}
-					<section class="p-5 space-y-4">
+					<section class="space-y-4 p-5">
 						{#if section.intro}
 							<p class="text-xs text-secondary">{section.intro}</p>
 						{/if}
@@ -347,10 +350,10 @@
 				{/each}
 
 				{#if config.overrides && config.overrides.length > 0}
-					<section class="p-5 space-y-4">
+					<section class="space-y-4 p-5">
 						<div>
 							<h2 class="text-sm font-semibold text-heading">{m.cel_overrides()}</h2>
-							<p class="text-xs text-secondary mt-1">
+							<p class="mt-1 text-xs text-secondary">
 								{m.cel_overrides_help({ name: config.noun.toLowerCase() })}
 							</p>
 						</div>
@@ -363,16 +366,16 @@
 				{/if}
 
 				{#if permissions.canManageSettings}
-					<section class="border border-error-border bg-error-subtle/40 p-5 space-y-3">
+					<section class="bg-error-subtle/40 space-y-3 border border-error-border p-5">
 						<div>
 							<h2 class="text-sm font-semibold text-error">{m.common_danger_zone()}</h2>
-							<p class="text-xs text-secondary mt-1">{config.deleteNote}</p>
+							<p class="mt-1 text-xs text-secondary">{config.deleteNote}</p>
 						</div>
 						<div>
 							<button
 								type="button"
 								onclick={deleteEntity}
-								class="px-4 py-2 text-sm border border-error-border text-error hover:bg-error-subtle"
+								class="border border-error-border px-4 py-2 text-sm text-error hover:bg-error-subtle"
 							>
 								{config.deleteConfirm.action}
 							</button>
@@ -383,15 +386,15 @@
 
 			<aside class="space-y-4 lg:sticky lg:top-4">
 				{#if preview}
-					<div class="bg-surface p-4 flex items-center gap-3">
+					<div class="flex items-center gap-3 bg-surface p-4">
 						<span
-							class="size-10 rounded-full shrink-0"
+							class="size-10 shrink-0 rounded-full"
 							style:background-color={preview.color ?? 'var(--color-border, currentColor)'}
 						></span>
 						<div class="min-w-0">
-							<div class="text-sm font-semibold text-heading truncate">{preview.title}</div>
+							<div class="truncate text-sm font-semibold text-heading">{preview.title}</div>
 							{#if preview.subtitle}
-								<div class="text-xs text-secondary truncate">{preview.subtitle}</div>
+								<div class="truncate text-xs text-secondary">{preview.subtitle}</div>
 							{/if}
 						</div>
 					</div>
@@ -399,38 +402,38 @@
 
 				{#if config.computed && config.computed.length > 0}
 					<div class="bg-surface">
-						<div class="px-3 py-2 flex items-center justify-between gap-2 border-b border-border-subtle">
-							<h3 class="text-xs font-semibold uppercase tracking-wider text-secondary">{m.cel_computed_properties()}</h3>
+						<div class="flex items-center justify-between gap-2 border-b border-border-subtle px-3 py-2">
+							<h3 class="text-xs font-semibold tracking-wider text-secondary uppercase">{m.cel_computed_properties()}</h3>
 							{#if config.useTabs}
 								<div class="flex">
 									<button
 										type="button"
 										onclick={() => computedScope = 'tab'}
-										class={cn('px-1.5 py-0.5 text-xs border transition-colors', computedScope === 'tab' ? 'border-accent-border bg-accent-subtle text-accent' : 'border-border-subtle text-secondary hover:text-body')}
+										class={cn('border px-1.5 py-0.5 text-xs transition-colors', computedScope === 'tab' ? 'border-accent-border bg-accent-subtle text-accent' : 'border-border-subtle text-secondary hover:text-body')}
 									>
 										{m.cel_this_tab()}
 									</button>
 									<button
 										type="button"
 										onclick={() => computedScope = 'all'}
-										class={cn('px-1.5 py-0.5 text-xs border -ml-px transition-colors', computedScope === 'all' ? 'border-accent-border bg-accent-subtle text-accent' : 'border-border-subtle text-secondary hover:text-body')}
+										class={cn('-ml-px border px-1.5 py-0.5 text-xs transition-colors', computedScope === 'all' ? 'border-accent-border bg-accent-subtle text-accent' : 'border-border-subtle text-secondary hover:text-body')}
 									>
 										{m.common_all()}
 									</button>
 								</div>
 							{/if}
 						</div>
-						<div class="px-3 py-2.5 space-y-1.5 text-sm">
+						<div class="space-y-1.5 px-3 py-2.5 text-sm">
 							{#each computedRows as row (row.label)}
 								<div class="flex justify-between gap-4">
-									<span class="text-secondary shrink-0">{row.label}</span>
-									<span class="text-body text-right font-medium min-w-0">{row.value}</span>
+									<span class="shrink-0 text-secondary">{row.label}</span>
+									<span class="min-w-0 text-right font-medium text-body">{row.value}</span>
 								</div>
 							{:else}
-								<p class="text-secondary text-xs">{m.cel_enter_values()}</p>
+								<p class="text-xs text-secondary">{m.cel_enter_values()}</p>
 							{/each}
 							{#if computedRows.length > 0}
-								<p class="text-secondary text-xs pt-1.5 border-t border-border-subtle">{m.cel_recalculated_live()}</p>
+								<p class="border-t border-border-subtle pt-1.5 text-xs text-secondary">{m.cel_recalculated_live()}</p>
 							{/if}
 						</div>
 					</div>

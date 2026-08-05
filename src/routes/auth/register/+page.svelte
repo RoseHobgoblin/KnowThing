@@ -28,7 +28,17 @@
 		</div>
 	{/if}
 
-	<form method="POST" use:enhance={() => { submitting = true; return async ({ update }) => { submitting = false; await update() } }} class="space-y-4">
+	<form
+		method="POST"
+		use:enhance={() => {
+			submitting = true
+			return async ({ update }) => {
+				await update()
+				submitting = false
+			}
+		}}
+		class="space-y-4"
+	>
 		<Input
 			label={m.auth_username()}
 			name="username"

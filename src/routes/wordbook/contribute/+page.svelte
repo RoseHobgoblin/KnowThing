@@ -21,10 +21,12 @@
 		const entry = await createEntryMutation.mutateAsync(formData)
 		pushSuccess(m.wb_word_created())
 		const lang = data.languages.find(l => l.id === formData.languageId)
+		// Awaited so EntryForm stays in its submitting state — and its unsaved-changes
+		// guard stays disarmed — until the navigation away has completed.
 		if (lang) {
-			goto(`/Wordbook/${lang.slug}/${encodeURIComponent(entry.word)}`)
+			await goto(`/Wordbook/${lang.slug}/${encodeURIComponent(entry.word)}`)
 		} else {
-			goto('/Wordbook')
+			await goto('/Wordbook')
 		}
 	}
 </script>

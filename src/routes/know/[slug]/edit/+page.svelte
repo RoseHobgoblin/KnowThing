@@ -26,7 +26,17 @@
 
 <div>
 	<UnsavedChangesGuard when={isDirty && !submitting} />
-	<form method="POST" use:enhance={() => { submitting = true; return async ({ update }) => { submitting = false; await update() } }} class="flex flex-col h-[calc(100vh-5rem)]">
+	<form
+		method="POST"
+		use:enhance={() => {
+			submitting = true
+			return async ({ update }) => {
+				await update()
+				submitting = false
+			}
+		}}
+		class="flex h-[calc(100vh-5rem)] flex-col"
+	>
 		<input type="hidden" name="content" value={content} />
 		<input type="hidden" name="summary" value={editSummary} />
 
@@ -43,8 +53,8 @@
 		{/if}
 
 		<!-- Top bar -->
-		<div class="flex items-center justify-between px-6 py-2 bg-surface border-b border-border">
-			<h1 class="text-sm font-bold text-secondary truncate">
+		<div class="flex items-center justify-between border-b border-border bg-surface px-6 py-2">
+			<h1 class="truncate text-sm font-bold text-secondary">
 				{m.know_editing_label()} <span class="text-heading">{data.title}</span>
 			</h1>
 			<div class="flex items-center gap-2">
@@ -52,7 +62,7 @@
 				<button
 					type="button"
 					onclick={() => (showPreview = !showPreview)}
-					class="px-3 py-1 text-xs text-secondary hover:bg-raised {showPreview ? 'bg-accent-subtle border-accent-border text-accent' : ''}"
+					class="px-3 py-1 text-xs text-secondary hover:bg-raised {showPreview ? 'border-accent-border bg-accent-subtle text-accent' : ''}"
 				>
 					{showPreview ? m.know_hide_preview() : m.know_show_preview()}
 				</button>
@@ -60,16 +70,16 @@
 		</div>
 
 		<!-- Editor + Preview -->
-		<div class="flex-1 flex flex-col min-h-0 md:flex-row">
+		<div class="flex min-h-0 flex-1 flex-col md:flex-row">
 			<!-- Editor pane -->
-			<div class="flex-1 min-h-0 min-w-0 overflow-hidden {showPreview ? 'h-1/2 md:h-auto' : ''}">
+			<div class="min-h-0 min-w-0 flex-1 overflow-hidden {showPreview ? 'h-1/2 md:h-auto' : ''}">
 				<Editor value={data.content} onchange={v => (content = v)} />
 			</div>
 
 			<!-- Preview pane -->
 			{#if showPreview}
-				<div class="w-full h-1/2 border-l border-border bg-surface flex flex-col min-h-0 shrink-0 md:w-[45%] md:max-w-2xl md:h-auto">
-					<div class="bg-raised px-6 py-1.5 text-xs font-medium text-secondary border-b border-border-subtle uppercase tracking-wide">{m.common_preview()}</div>
+				<div class="flex h-1/2 min-h-0 w-full shrink-0 flex-col border-l border-border bg-surface md:h-auto md:w-[45%] md:max-w-2xl">
+					<div class="border-b border-border-subtle bg-raised px-6 py-1.5 text-xs font-medium tracking-wide text-secondary uppercase">{m.common_preview()}</div>
 					<div class="flex-1 overflow-y-auto px-6 py-4">
 						<LivePreview {content} />
 					</div>
@@ -78,7 +88,7 @@
 		</div>
 
 		<!-- Bottom bar -->
-		<div class="flex flex-col items-stretch gap-2 px-6 py-2.5 bg-surface border-t border-border sm:flex-row sm:items-center sm:gap-3">
+		<div class="flex flex-col items-stretch gap-2 border-t border-border bg-surface px-6 py-2.5 sm:flex-row sm:items-center sm:gap-3">
 			<Input
 				type="text"
 				bind:value={editSummary}
@@ -89,13 +99,13 @@
 				<button
 					type="submit"
 					disabled={submitting}
-					class="flex-1 bg-accent text-accent-text px-5 py-2 font-medium transition-colors text-sm sm:flex-none hover:bg-accent-hover disabled:opacity-50"
+					class="flex-1 bg-accent px-5 py-2 text-sm font-medium text-accent-text transition-colors hover:bg-accent-hover disabled:opacity-50 sm:flex-none"
 				>
 					{submitting ? m.common_saving() : m.common_save()}
 				</button>
 				<a
 					href="/know/{data.slug}"
-					class="flex-1 text-center px-5 py-2 text-secondary text-sm sm:flex-none hover:bg-raised"
+					class="flex-1 px-5 py-2 text-center text-sm text-secondary hover:bg-raised sm:flex-none"
 				>
 					{m.common_cancel()}
 				</a>
