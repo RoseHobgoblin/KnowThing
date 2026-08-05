@@ -49,6 +49,10 @@
 		{ id: 'inflections', label: m.wb_tab_inflections() },
 	]
 
+	// Deleting the language happens in LanguageAdminPanels, a sibling of the edit form
+	// that owns the guard — so the signal has to travel up here and back down.
+	let languageDeleted = $state(false)
+
 	async function handleDetailsSubmit(formData: Record<string, unknown>) {
 		await updateMutation.mutateAsync(formData)
 		pushSuccess(m.wb_language_updated())
@@ -91,6 +95,7 @@
 			existingLanguages={data.otherLanguages}
 			onsubmit={handleDetailsSubmit}
 			submitLabel={m.wb_save_changes()}
+			recordGone={languageDeleted}
 		/>
 
 		<div class="mt-6">
@@ -99,6 +104,7 @@
 				languageName={data.language.name}
 				dialects={data.dialects}
 				isAdmin={$page.data.isAdmin}
+				ondeleted={() => (languageDeleted = true)}
 			/>
 		</div>
 	{:else if activeTab === 'phonology'}

@@ -15,6 +15,7 @@
 		existingLanguages = [],
 		onsubmit,
 		submitLabel = m.common_save(),
+		recordGone = false,
 	}: {
 		initial?: {
 			name?: string
@@ -31,6 +32,9 @@
 		existingLanguages: Array<{ id: number, name: string }>
 		onsubmit: (data: Record<string, unknown>) => Promise<void>
 		submitLabel?: string
+		/** Set by the parent once the language is deleted elsewhere on the page, so the
+		 * guard stops defending edits to a record that no longer exists. */
+		recordGone?: boolean
 	} = $props()
 	const initialSnapshot = $state.snapshot(untrack(() => initial))
 	const initialValues = {
@@ -152,7 +156,7 @@
 </script>
 
 <form onsubmit={handleSubmit} class="space-y-4">
-	<UnsavedChangesGuard when={isDirty && !submitting} />
+	<UnsavedChangesGuard when={isDirty && !submitting && !recordGone} />
 
 	{#if error}
 		<FormNotice title={m.wbc_language_not_saved()} message={error} />

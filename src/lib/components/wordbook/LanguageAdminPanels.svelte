@@ -14,11 +14,15 @@
 		languageName,
 		dialects = [],
 		isAdmin = false,
+		ondeleted,
 	}: {
 		languageSlug: string
 		languageName: string
 		dialects?: Dialect[]
 		isAdmin?: boolean
+		/** Fired after the language is deleted, before navigating away, so the parent
+		 * can stand down any unsaved-changes guard still defending the edit form. */
+		ondeleted?: () => void
 	} = $props()
 
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
@@ -115,8 +119,9 @@
 		if (!confirmed) return
 		try {
 			await languageDeleteMutation.mutateAsync()
+			ondeleted?.()
 			pushSuccess(m.wbc_language_deleted({ name: languageName }))
-			goto('/Wordbook')
+			await goto('/Wordbook')
 		} catch (error) {
 			pushError(error instanceof Error ? error.message : m.wbc_failed_delete_language())
 		}

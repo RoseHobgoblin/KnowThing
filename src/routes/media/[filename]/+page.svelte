@@ -61,8 +61,10 @@
 	const currentSnapshot = $derived(JSON.stringify({ description, categoriesInput }))
 	let savedSnapshot = $state(JSON.stringify(initialDetails))
 	const isDirty = $derived(currentSnapshot !== savedSnapshot)
-	// Once the file is gone there is nothing left to lose, so the guard must stand down.
-	let deleted = $state(false)
+	// Set once this URL stops resolving — the file was deleted, or renamed so it now
+	// lives at a different path. Either way the server-side change already happened,
+	// so prompting about unsaved edits can only strand the user on a dead page.
+	let recordGone = $state(false)
 
 	$effect(() => {
 		if (layoutData.permissions !== undefined) {
@@ -112,7 +114,7 @@
 		try {
 			await deleteMutation.mutateAsync()
 			await queryClient.invalidateQueries({ queryKey: ['media'] })
-			deleted = true
+			recordGone = true
 			pushSuccess(m.media_file_deleted())
 			await goto('/dashboard/media')
 		} catch (error) {
@@ -177,7 +179,8 @@
 			const finalName: string = body.newFilename ?? target
 			pushSuccess(m.media_renamed_toast({ name: finalName, count: body.rewrittenPages ?? 0 }))
 			renameOpen = false
-			goto(`/media/${encodeURIComponent(finalName)}`)
+			recordGone = true
+			await goto(`/media/${encodeURIComponent(finalName)}`)
 		} catch (error) {
 			pushError(error instanceof Error ? error.message : m.media_rename_failed())
 		}
@@ -188,7 +191,7 @@
 	<title>{m.media_page_title({ filename: data.file.filename })}</title>
 </svelte:head>
 
-<UnsavedChangesGuard when={isDirty && !saving && !deleted} />
+<UnsavedChangesGuard when={isDirty && !saving && !recordGone} />
 
 <div class="space-y-6">
 	<nav class="text-sm text-dim">
