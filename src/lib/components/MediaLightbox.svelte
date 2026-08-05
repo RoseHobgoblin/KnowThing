@@ -39,7 +39,7 @@
 		}
 	}
 
-	function prevImage(event: MouseEvent) {
+	function previousImage(event: MouseEvent) {
 		event.stopPropagation()
 		mediaLightbox.prev()
 	}
@@ -76,14 +76,14 @@
 				onclick={onbackdropclick}
 				{onkeydown}
 			>
-				<div class="flex items-center justify-between px-4 py-2 text-sm text-white/80 border-b border-white/10">
-					<span class="font-mono truncate max-w-[60vw]">{current.filename}</span>
+				<div class="flex items-center justify-between border-b border-white/10 px-4 py-2 text-sm text-white/80">
+					<span class="max-w-[60vw] truncate font-mono">{current.filename}</span>
 					<div class="flex items-center gap-3">
 						{#if mediaLightbox.hasGallery}
-							<span class="text-xs tabular-nums text-white/60">{mediaLightbox.position} / {mediaLightbox.count}</span>
+							<span class="text-xs text-white/60 tabular-nums">{mediaLightbox.position} / {mediaLightbox.count}</span>
 						{/if}
 						<Dialog.Close
-							class="p-2 rounded-sm transition-colors hover:bg-white/10"
+							class="rounded-sm p-2 transition-colors hover:bg-white/10"
 							aria-label="Close"
 						>
 							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -99,7 +99,7 @@
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<!-- svelte-ignore a11y_click_events_have_key_events -->
 				<div
-					class="flex-1 flex items-center justify-center p-4 overflow-hidden relative"
+					class="relative flex flex-1 items-center justify-center overflow-hidden p-4"
 					onclick={onbackdropclick}
 					{ontouchstart}
 					{ontouchend}
@@ -107,8 +107,8 @@
 					{#if mediaLightbox.hasGallery}
 						<button
 							type="button"
-							onclick={prevImage}
-							class="absolute left-2 top-1/2 -translate-y-1/2 p-2 text-white/70 rounded-full transition-colors hover:text-white hover:bg-white/10 md:left-4"
+							onclick={previousImage}
+							class="absolute top-1/2 left-2 -translate-y-1/2 rounded-full p-2 text-white/70 transition-colors hover:bg-white/10 hover:text-white md:left-4"
 							aria-label="Previous image"
 						>
 							<CaretLeft size={28} weight="bold" />
@@ -118,14 +118,14 @@
 					<img
 						src="/api/media/{encodeURIComponent(current.filename)}"
 						alt={current.alt}
-						class="max-w-full max-h-full object-contain"
+						class="max-h-full max-w-full object-contain"
 					/>
 
 					{#if mediaLightbox.hasGallery}
 						<button
 							type="button"
 							onclick={nextImage}
-							class="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-white/70 rounded-full transition-colors hover:text-white hover:bg-white/10 md:right-4"
+							class="absolute top-1/2 right-2 -translate-y-1/2 rounded-full p-2 text-white/70 transition-colors hover:bg-white/10 hover:text-white md:right-4"
 							aria-label="Next image"
 						>
 							<CaretRight size={28} weight="bold" />
@@ -133,15 +133,15 @@
 					{/if}
 				</div>
 
-				<div class="px-4 py-3 text-sm text-white/80 border-t border-white/10 flex items-end justify-between gap-4">
-					<div class="flex-1 min-w-0">
+				<div class="flex items-end justify-between gap-4 border-t border-white/10 px-4 py-3 text-sm text-white/80">
+					<div class="min-w-0 flex-1">
 						{#if current.caption}
 							<div class="text-white"><InlineMarkup text={current.caption} /></div>
 						{/if}
 					</div>
 					<a
 						href="/media/{encodeURIComponent(current.filename)}"
-						class="shrink-0 text-white/90 underline whitespace-nowrap hover:text-white"
+						class="shrink-0 whitespace-nowrap text-white/90 underline hover:text-white"
 					>
 						View file details →
 					</a>

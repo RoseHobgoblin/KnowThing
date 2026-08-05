@@ -49,14 +49,14 @@
 	const loading = $derived(preview.isFetching)
 </script>
 
-<div class="h-full overflow-y-auto p-4 bg-surface">
+<div class="h-full overflow-y-auto bg-surface p-4">
 	{#if loading && !ast}
-		<p class="text-secondary text-sm italic">Loading preview...</p>
+		<p class="text-sm text-secondary italic">Loading preview...</p>
 	{:else if ast}
 		<article class="know-article">
 			<WikiNodeComponent node={ast} />
 		</article>
 	{:else}
-		<p class="text-secondary text-sm italic">Start typing to see a preview</p>
+		<p class="text-sm text-secondary italic">Start typing to see a preview</p>
 	{/if}
 </div>
