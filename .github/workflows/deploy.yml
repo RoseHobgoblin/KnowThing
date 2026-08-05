@@ -10,6 +10,8 @@ jobs:
     steps:
       - name: Deploy to server
         uses: appleboy/ssh-action@v1
+        env:
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           port: ${{ secrets.SERVER_PORT }}
@@ -20,6 +22,8 @@ jobs:
           # (the 2026-07-16 and first 2026-07-17 deploys both died mid-build
           # with "Run Command Timeout", leaving prod on a stale image).
           command_timeout: 60m
+          # Forwarded into the remote shell so the script below can seed .env.
+          envs: BETTER_AUTH_SECRET
           script: |
             # Fail the whole run if ANY command fails. Without this, a failed
             # `docker compose build` (e.g. 2026-07-24 tungolcraft resolution
@@ -37,6 +41,20 @@ jobs:
             git reset --hard origin/main
             # Ensure DOMAIN is set for Caddy HTTPS
             grep -q '^DOMAIN=' .env 2>/dev/null || echo 'DOMAIN=knowthing.al' >> .env
+            # docker-compose.prod.yml declares BETTER_AUTH_SECRET with `:?`, so a
+            # missing value aborts compose at interpolation before the build even
+            # starts — that is what broke every deploy from 2026-08-03 (the Better
+            # Auth commit) until 2026-08-05. Seeding it here keeps a rebuilt box
+            # from failing the same way. Never echo the value.
+            # The -n guard matters: writing an empty value would satisfy the grep on
+            # later runs while compose's `:?` still rejects it, wedging the deploy.
+            if ! grep -q '^BETTER_AUTH_SECRET=' .env 2>/dev/null; then
+              if [ -z "$BETTER_AUTH_SECRET" ]; then
+                echo "FATAL: BETTER_AUTH_SECRET absent from .env and no GitHub secret to seed it with" >&2
+                exit 1
+              fi
+              printf 'BETTER_AUTH_SECRET=%s\n' "$BETTER_AUTH_SECRET" >> .env
+            fi
             # No --no-cache: the COPY layers already invalidate on content
             # change, and rebuilding node_modules from scratch every deploy
             # is what blew the timeout.
