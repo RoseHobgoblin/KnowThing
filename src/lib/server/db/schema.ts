@@ -95,12 +95,23 @@ export const verifications = pgTable(
 	table => [index('idx_verifications_identifier').on(table.identifier)],
 )
 
+/** Better Auth's own limiter table. Owned by Better Auth — the application's
+ * limiter uses `rateLimits` below rather than sharing keys in here. */
 export const authRateLimits = pgTable('auth_rate_limits', {
 	id: serial('id').primaryKey(),
 	key: text('key').unique().notNull(),
 	count: integer('count').notNull(),
 	lastRequest: bigint('last_request', { mode: 'number' }).notNull(),
 })
+
+/** Backing store for `rate-limiter-flexible`'s `RateLimiterDrizzle`. The column
+ * names and types are dictated by that adapter (key / points / expire), so do
+ * not rename them. See `$lib/server/rate-limit.ts`. */
+export const rateLimits = pgTable('rate_limits', {
+	key: text('key').primaryKey(),
+	points: integer('points').notNull(),
+	expire: timestamp('expire', { withTimezone: true, mode: 'date' }),
+}, table => [index('idx_rate_limits_expire').on(table.expire)])
 
 export const registrationCodes = pgTable('registration_codes', {
 	id: serial('id').primaryKey(),

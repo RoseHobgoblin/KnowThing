@@ -5,7 +5,10 @@ import { parseWikitext } from '$lib/parser/index.js'
 import { parseBody } from '$lib/server/utils.js'
 
 const renderSchema = z.object({
-	content: z.string(),
+	// The only parser entry point open to anonymous callers, so it needs its own
+	// ceiling: BODY_SIZE_LIMIT is process-wide and was raised to 15MB for media
+	// uploads, which would otherwise apply here too.
+	content: z.string().max(200_000),
 })
 
 /** POST /api/render — parse wikitext, return AST JSON (for live preview) */

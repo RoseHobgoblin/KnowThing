@@ -4,6 +4,7 @@ import { z } from 'zod'
 import type { Actions, PageServerLoad } from './$types.js'
 import { auth } from '$lib/server/better-auth.js'
 import { hasAnyUser, registerUser } from '$lib/server/services/auth.js'
+import { refundCredentialAttempt, spendCredentialAttempt } from '$lib/server/rate-limit.js'
 
 const registerSchema = z.object({
 	username: z.string()
@@ -38,12 +39,18 @@ export const actions: Actions = {
 			return fail(400, { error: 'Passwords do not match', username })
 		}
 
+		// Registration codes are guessable in principle, so attempts are metered
+		// from the same budget as sign-in.
+		const limited = await spendCredentialAttempt(event)
+		if (limited) return fail(429, { error: limited, username })
+
 		try {
 			await registerUser({ username, password, code })
 			await auth.api.signInUsername({
 				body: { username, password },
 				headers: event.request.headers,
 			})
+			await refundCredentialAttempt(event)
 		} catch (error: unknown) {
 			if (isHttpError(error)) {
 				return fail(error.status, { error: error.body?.message ?? 'Request failed', username })

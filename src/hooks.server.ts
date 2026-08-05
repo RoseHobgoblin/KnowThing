@@ -4,7 +4,7 @@ import { building } from '$app/environment'
 import { svelteKitHandler } from 'better-auth/svelte-kit'
 import { auth, authTrustedOrigins } from '$lib/server/better-auth.js'
 import { toAuthUser } from '$lib/server/auth.js'
-import { checkRateLimit } from '$lib/server/rate-limit.js'
+import { applyRateLimitHeaders, enforceRateLimit, rateLimitedResponse } from '$lib/server/rate-limit.js'
 
 /**
  * Canonicalise legacy URLs to their post-namespace-flip forms. Runs first so
@@ -49,22 +49,22 @@ const verifyRequestOrigin: Handle = async ({ event, resolve }) => {
 	return resolve(event)
 }
 
+/** Per-client request budgets. Policy lives in `$lib/server/rate-limit.js`. */
 const rateLimit: Handle = async ({ event, resolve }) => {
-	const isWrite = event.request.method !== 'GET' && event.request.method !== 'HEAD'
-	const shouldLimit = isWrite || event.url.pathname.startsWith('/api/')
-	const isCredentialSubmission = isWrite && (
-		event.url.pathname === '/auth/login'
-		|| event.url.pathname === '/auth/register'
-	)
-	const allowed = !shouldLimit || await checkRateLimit(
-		event.getClientAddress(),
-		isWrite,
-		isCredentialSubmission ? { scope: 'credentials', limit: 5 } : undefined,
-	)
-	if (!allowed) {
-		return new Response('Too many requests', { status: 429 })
+	const decision = await enforceRateLimit(event)
+	if (decision && !decision.allowed) return rateLimitedResponse(event, decision)
+
+	const response = await resolve(event)
+	if (decision) {
+		try {
+			applyRateLimitHeaders(response.headers, decision)
+		} catch {
+			// A route that returns a `fetch()` response verbatim hands back
+			// immutable headers. Reporting the budget is a courtesy; losing it
+			// is not worth failing the request over.
+		}
 	}
-	return resolve(event)
+	return response
 }
 
 const betterAuth: Handle = async ({ event, resolve }) => {

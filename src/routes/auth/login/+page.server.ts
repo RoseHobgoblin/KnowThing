@@ -4,6 +4,7 @@ import { z } from 'zod'
 import type { Actions, PageServerLoad } from './$types.js'
 import { auth } from '$lib/server/better-auth.js'
 import { sanitizeRedirectTarget, upgradeLegacyPassword } from '$lib/server/services/auth.js'
+import { refundCredentialAttempt, spendCredentialAttempt } from '$lib/server/rate-limit.js'
 
 const loginSchema = z.object({
 	username: z.string().min(1, 'Username is required'),
@@ -26,12 +27,17 @@ export const actions: Actions = {
 		}
 		const { username, password } = parsed.data
 
+		const limited = await spendCredentialAttempt(event)
+		if (limited) return fail(429, { error: limited, username })
+
 		try {
 			await auth.api.signInUsername({
 				body: { username, password },
 				headers: event.request.headers,
 			})
 			await upgradeLegacyPassword(username, password)
+			// Only failures should count against the budget.
+			await refundCredentialAttempt(event)
 		} catch (error: unknown) {
 			if (error instanceof APIError) {
 				return fail(error.statusCode, { error: error.message, username })

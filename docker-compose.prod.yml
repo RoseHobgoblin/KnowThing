@@ -6,7 +6,11 @@ services:
       dockerfile: Dockerfile
     restart: on-failure
     ports:
-      - "3500:${PORT:-3000}"
+      # Loopback only. nginx on the host proxies to 127.0.0.1:3500; publishing
+      # on 0.0.0.0 also served the app at http://<host>:3500 in cleartext,
+      # bypassing TLS and letting any caller forge the forwarding headers that
+      # ADDRESS_HEADER below is configured to trust.
+      - "127.0.0.1:3500:${PORT:-3000}"
     environment:
       DATABASE_URL: postgres://knowthing:${DB_PASSWORD:?DB_PASSWORD is required}@db:5432/knowthing
       UPLOAD_DIR: /app/uploads
@@ -15,6 +19,20 @@ services:
       BETTER_AUTH_URL: https://${DOMAIN:?DOMAIN is required}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET is required}
       BODY_SIZE_LIMIT: "15000000"
+      # Without these, getClientAddress() returns the Docker bridge gateway for
+      # every request and the rate limiter degrades into a single global budget
+      # shared by the whole internet. nginx sets
+      # `X-Forwarded-For $proxy_add_x_forwarded_for`, which appends the real peer
+      # to whatever the client sent, so only the rightmost entry can be trusted;
+      # XFF_DEPTH counts from the right and 1 is exactly one proxy hop.
+      # This is safe only because the port above is bound to loopback — if it is
+      # ever republished on 0.0.0.0, remove these two first.
+      ADDRESS_HEADER: x-forwarded-for
+      XFF_DEPTH: "1"
+      # Better Auth has no hop-depth concept, so point it at X-Real-IP, which
+      # nginx overwrites with the real peer address on every request and a client
+      # therefore cannot spoof.
+      BETTER_AUTH_IP_HEADERS: x-real-ip
       NODE_ENV: production
     volumes:
       - uploads:/app/uploads

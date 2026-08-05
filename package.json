@@ -68,6 +68,7 @@
 		"pixi-viewport": "^6.0.3",
 		"pixi.js": "^8.19.0",
 		"postgres": "^3.4.8",
+		"rate-limiter-flexible": "^11.2.0",
 		"rimecraft": "*",
 		"runed": "^0.37.1",
 		"sharp": "^0.35.3",
