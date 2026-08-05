@@ -14,6 +14,7 @@
 	import { createMutation } from '@tanstack/svelte-query'
 	import { api } from '$lib/api'
 	import { m } from '$lib/paraglide/messages.js'
+	import { createSortable } from '$lib/utils/sortable.svelte'
 	import { untrack } from 'svelte'
 
 	interface PhonemeLink {
@@ -83,7 +84,6 @@
 
 	const dirty = $derived(JSON.stringify(draft) !== JSON.stringify(draftSnapshot))
 
-	let dragIndex = $state<number | null>(null)
 	const saveMutation = createMutation(() => ({
 		mutationFn: ({ id, body }: { id: number | null, body: Record<string, unknown> }) =>
 			api<Grapheme>(id ? 'PATCH' : 'POST', id
@@ -213,34 +213,18 @@
 		}
 	}
 
-	function onRowDragStart(index: number, event: DragEvent) {
-		dragIndex = index
-		if (event.dataTransfer) {
-			event.dataTransfer.effectAllowed = 'move'
-			event.dataTransfer.setData('text/plain', String(index))
-		}
-	}
-
-	function onRowDragOver(event: DragEvent) {
-		event.preventDefault()
-		if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
-	}
-
-	function onRowDragEnd() {
-		// Cancelled drop (Esc / outside any droppable) — clear visual state.
-		dragIndex = null
-	}
-
-	function onRowDrop(index: number, event: DragEvent) {
-		event.preventDefault()
-		const from = dragIndex
-		dragIndex = null
-		if (from == null || from === index) return
-		const next = [...graphemes]
-		const [moved] = next.splice(from, 1)
-		next.splice(index, 0, moved)
-		commitReorder(next.map(g => g.id))
-	}
+	const sortable = createSortable({
+		handle: '[data-drag-handle]',
+		cancel: 'button',
+		axis: 'y',
+		get disabled() { return readOnly },
+		onReorder(from, to) {
+			const next = [...graphemes]
+			const [moved] = next.splice(from, 1)
+			next.splice(to, 0, moved)
+			commitReorder(next.map(g => g.id))
+		},
+	})
 
 	function ipaDisplay(g: Grapheme): string {
 		if (g.phonemes.length === 0) return '—'
@@ -294,15 +278,13 @@
 						: 'px-3 py-1.5 border-b border-r border-border-subtle cursor-pointer'}
 					<tr
 						class="transition-colors hover:bg-accent-subtle/40"
-						class:opacity-50={dragIndex === index}
-						ondragover={onRowDragOver}
-						ondrop={event => onRowDrop(index, event)}
-						ondragend={onRowDragEnd}
+						class:opacity-50={sortable.dragIndex === index}
+						class:bg-accent-subtle={sortable.overIndex === index}
+						use:sortable.item={index}
 					>
 						<td
 							class={cn('px-1 py-1.5 border-b border-r border-border-subtle text-center text-secondary', !readOnly && 'cursor-grab')}
-							draggable={readOnly ? 'false' : 'true'}
-							ondragstart={event => onRowDragStart(index, event)}
+							data-drag-handle={readOnly ? undefined : ''}
 							title={readOnly ? undefined : m.phon_drag_to_reorder()}
 						>
 							<DotsSixVertical size={14} />

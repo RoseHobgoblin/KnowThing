@@ -92,15 +92,13 @@ export function resolveParserFunction(name: string, args: TemplateArgument[]): s
 			// Can't resolve client-side — return the "doesn't exist" branch
 			return vals[2] ?? ''
 
-		case '#expr':
+		case '#expr': {
 			// Basic math — only handle simple cases
-			try {
-				const sanitized = (vals[0] ?? '').replaceAll(/[^\d ()*+./\-]/g, '')
-				if (!sanitized) return '0'
-				return String(new Function(`"use strict"; return (${sanitized})`)())
-			} catch {
-				return 'Expression error'
-			}
+			const source = (vals[0] ?? '').trim()
+			if (!source) return '0'
+			const result = evaluateExpression(source)
+			return result === null ? 'Expression error' : String(result)
+		}
 
 		case 'lc':
 		case 'lc:':
@@ -155,6 +153,86 @@ export function resolveParserFunction(name: string, args: TemplateArgument[]): s
 		default:
 			return null
 	}
+}
+
+/**
+ * Recursive-descent evaluator for the arithmetic subset {{#expr:}} supports:
+ * decimal numbers, `+ - * /`, unary sign, and parentheses. Deliberately not
+ * `new Function` — that is an eval on page content, runs during SSR, and dies
+ * under a strict CSP. Returns null on anything it can't parse.
+ */
+function evaluateExpression(source: string): number | null {
+	let position = 0
+
+	const skipSpace = () => {
+		while (position < source.length && /\s/.test(source[position])) position++
+	}
+
+	const peek = (): string | undefined => {
+		skipSpace()
+		return source[position]
+	}
+
+	// primary := number | '(' expr ')'
+	const parsePrimary = (): number | null => {
+		const char = peek()
+		if (char === undefined) return null
+		if (char === '(') {
+			position++
+			const inner = parseSum()
+			if (inner === null || peek() !== ')') return null
+			position++
+			return inner
+		}
+		const match = /^\d*\.?\d+/.exec(source.slice(position))
+		if (!match) return null
+		position += match[0].length
+		return Number(match[0])
+	}
+
+	// factor := ('+' | '-') factor | primary
+	const parseFactor = (): number | null => {
+		const char = peek()
+		if (char === '+' || char === '-') {
+			position++
+			const operand = parseFactor()
+			return operand === null ? null : (char === '-' ? -operand : operand)
+		}
+		return parsePrimary()
+	}
+
+	// product := factor (('*' | '/') factor)*
+	const parseProduct = (): number | null => {
+		let left = parseFactor()
+		if (left === null) return null
+		for (;;) {
+			const operator = peek()
+			if (operator !== '*' && operator !== '/') return left
+			position++
+			const right = parseFactor()
+			if (right === null) return null
+			left = operator === '*' ? left * right : left / right
+		}
+	}
+
+	// sum := product (('+' | '-') product)*
+	function parseSum(): number | null {
+		let left = parseProduct()
+		if (left === null) return null
+		for (;;) {
+			const operator = peek()
+			if (operator !== '+' && operator !== '-') return left
+			position++
+			const right = parseProduct()
+			if (right === null) return null
+			left = operator === '+' ? left + right : left - right
+		}
+	}
+
+	const value = parseSum()
+	// Trailing junk means the input wasn't a well-formed expression.
+	if (value === null || peek() !== undefined) return null
+	return Number.isNaN(value) ? null : value
 }
 
 export interface MagicWordContext {
