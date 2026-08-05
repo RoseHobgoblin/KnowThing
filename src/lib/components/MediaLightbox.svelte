@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { onMount } from 'svelte'
 	import { Dialog } from 'bits-ui'
 	import { page } from '$app/stores'
+	import { afterNavigate } from '$app/navigation'
 	import { mediaLightbox } from './mediaLightbox.svelte.ts'
 	import InlineMarkup from '$lib/renderer/InlineMarkup.svelte'
 	import CaretLeft from 'phosphor-svelte/lib/CaretLeftIcon'
@@ -15,7 +15,10 @@
 		mediaLightbox.sync($page.state.media ?? null)
 	})
 
-	onMount(() => mediaLightbox.adoptHash())
+	// Deep links wait for `afterNavigate` rather than `onMount`: `replaceState`
+	// pokes SvelteKit's root component, which isn't assigned yet while the
+	// layout's children are still mounting during hydration.
+	afterNavigate(() => mediaLightbox.adoptHash())
 
 	function close() {
 		mediaLightbox.close()
