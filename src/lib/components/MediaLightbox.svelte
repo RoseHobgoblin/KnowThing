@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { untrack } from 'svelte'
+	import { onMount } from 'svelte'
 	import { Dialog } from 'bits-ui'
 	import { page } from '$app/stores'
 	import { mediaLightbox } from './mediaLightbox.svelte.ts'
@@ -8,15 +8,14 @@
 	import CaretRight from 'phosphor-svelte/lib/CaretRightIcon'
 
 	const current = $derived(mediaLightbox.current)
-	const pathname = $derived($page.url.pathname)
 
-	let lastPathname = untrack(() => pathname)
+	// `page.state` is SvelteKit's shallow-routing state: it survives back/forward
+	// and is cleared on navigation, so it's the only thing the viewer follows.
 	$effect(() => {
-		if (pathname !== lastPathname) {
-			lastPathname = pathname
-			mediaLightbox.syncFromHash()
-		}
+		mediaLightbox.sync($page.state.media ?? null)
 	})
+
+	onMount(() => mediaLightbox.adoptHash())
 
 	function close() {
 		mediaLightbox.close()
@@ -114,7 +113,7 @@
 					{/if}
 
 					<img
-						src="/api/media/{current.filename}"
+						src="/api/media/{encodeURIComponent(current.filename)}"
 						alt={current.alt}
 						class="max-w-full max-h-full object-contain"
 					/>

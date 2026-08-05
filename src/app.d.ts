@@ -6,6 +6,11 @@ declare global {
 		interface Locals {
 			user: AuthUser | null
 		}
+
+		interface PageState {
+			/** Filename shown by the media lightbox — see `mediaLightbox.svelte.ts`. */
+			media?: string
+		}
 	}
 }
 
