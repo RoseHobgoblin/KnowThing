@@ -48,6 +48,24 @@ export async function getResolvedLinks(source: number | EntitySource): Promise<M
 			eq(contentLinks.sourceEntityId, src.kind === 'know' ? src.contentRecordId : src.entityId),
 		))
 
+	return resolveLinkRows(rows)
+}
+
+/** One outbound link plus whatever the `content_records` lookup found for it. */
+interface LinkRow {
+	targetDomain: string
+	targetSlug: string
+	resolvedId: number | null
+	targetParentPath: string | null
+	resolvedSlug: string | null
+}
+
+/**
+ * Shared tail of link resolution: turn looked-up rows into the href/exists map,
+ * applying cross-domain and structured-entity fallthrough to anything that
+ * didn't resolve in its own domain.
+ */
+async function resolveLinkRows(rows: LinkRow[]): Promise<Map<string, ResolvedLink>> {
 	const result = new Map<string, ResolvedLink>()
 
 	// Collect unresolved slugs (with their source domain) for cross-domain fallthrough
@@ -111,6 +129,55 @@ export async function getResolvedLinks(source: number | EntitySource): Promise<M
 	}
 
 	return result
+}
+
+/**
+ * Resolve link targets that are not (yet) recorded in `content_links` — i.e.
+ * wikilinks in unsaved wikitext, for the editor's live preview. Applies the
+ * same rules as `getResolvedLinks` (cross-domain and structured-entity
+ * fallthrough included) so the preview agrees with what renders after save.
+ *
+ * Callers pass targets in the same shape `updateContentEffects` would store:
+ * same-domain links already slugified, cross-domain identifiers verbatim.
+ */
+export async function resolveLinkTargets(
+	targets: { domain: string, slug: string }[],
+): Promise<Map<string, ResolvedLink>> {
+	// Dedupe on the same key the result map uses, so a doc that links one page
+	// fifty times costs one lookup.
+	const unique = new Map<string, { domain: string, slug: string }>()
+	for (const { domain, slug } of targets) {
+		const trimmed = slug.trim()
+		if (trimmed) unique.set(`${domain}:${trimmed.toLowerCase()}`, { domain, slug: trimmed })
+	}
+	const pairs = [...unique.values()]
+	if (pairs.length === 0) return new Map()
+
+	const matches = await db
+		.select({
+			id: contentRecords.id,
+			domain: contentRecords.domain,
+			slug: contentRecords.slug,
+			parentPath: contentRecords.parentPath,
+		})
+		.from(contentRecords)
+		.where(sql`(${sql.join(
+			pairs.map(p => sql`(${contentRecords.domain} = ${p.domain} AND LOWER(${contentRecords.slug}) = LOWER(${p.slug}))`),
+			sql` OR `,
+		)})`)
+
+	const byKey = new Map(matches.map(m => [`${m.domain}:${m.slug.toLowerCase()}`, m]))
+
+	return resolveLinkRows(pairs.map(({ domain, slug }) => {
+		const match = byKey.get(`${domain}:${slug.toLowerCase()}`)
+		return {
+			targetDomain: domain,
+			targetSlug: slug,
+			resolvedId: match?.id ?? null,
+			targetParentPath: match?.parentPath ?? null,
+			resolvedSlug: match?.slug ?? null,
+		}
+	}))
 }
 
 async function resolveCelestialFallthrough(

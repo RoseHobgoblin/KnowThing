@@ -1,7 +1,9 @@
 import { json } from '@sveltejs/kit'
 import { z } from 'zod'
 import type { RequestHandler } from './$types.js'
-import { parseWikitext } from '$lib/parser/index.js'
+import { extractDomainLinksFromAst, extractLinksFromAst, parseWikitext } from '$lib/parser/index.js'
+import { resolveLinkTargets, serializeResolvedLinks } from '$lib/server/resolved-links.js'
+import { wikiSlugify } from '$lib/utils/slugify.js'
 import { parseBody } from '$lib/server/utils.js'
 
 const renderSchema = z.object({
@@ -9,13 +11,31 @@ const renderSchema = z.object({
 	// ceiling: BODY_SIZE_LIMIT is process-wide and was raised to 15MB for media
 	// uploads, which would otherwise apply here too.
 	content: z.string().max(200_000),
+	// Domain the wikitext is being edited in — same-domain links resolve here first.
+	domain: z.string().max(32).default('know'),
 })
 
-/** POST /api/render — parse wikitext, return AST JSON (for live preview) */
+// Ceiling on how many distinct link targets one preview will resolve. A normal
+// article is far under this; the cap keeps a hostile 200KB body of nothing but
+// wikilinks from turning one anonymous request into an unbounded lookup.
+const MAX_PREVIEW_LINK_TARGETS = 500
+
+/** POST /api/render — parse wikitext, return AST JSON + link map (for live preview) */
 export const POST: RequestHandler = async ({ request }) => {
 	const data = await parseBody(request, renderSchema)
 	if (data instanceof Response) return data
 
 	const ast = parseWikitext(data.content)
-	return json({ ast })
+
+	// Mirror how `updateContentEffects` records links on save — same-domain
+	// targets slugified, cross-domain identifiers verbatim — so a link that
+	// renders live in the preview still renders live once saved.
+	const targets = [
+		...extractLinksFromAst(ast).map(target => ({ domain: data.domain, slug: wikiSlugify(target) })),
+		...extractDomainLinksFromAst(ast).map(({ domain, target }) => ({ domain, slug: target })),
+	].slice(0, MAX_PREVIEW_LINK_TARGETS)
+
+	const resolvedLinks = await resolveLinkTargets(targets)
+
+	return json({ ast, resolvedLinks: serializeResolvedLinks(resolvedLinks) })
 }
