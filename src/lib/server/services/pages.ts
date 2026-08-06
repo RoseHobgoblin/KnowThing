@@ -12,7 +12,7 @@ import {
 	users,
 } from '$lib/server/db/schema.js'
 import { db } from '$lib/server/db/index.js'
-import { deleteContentRecord } from '$lib/server/services/content-records.js'
+import { deleteContentRecord, saveContentRecord } from '$lib/server/services/content-records.js'
 
 export async function listPages() {
 	return db
@@ -109,6 +109,34 @@ export async function getPageRevision(domain: string, slug: string, revisionId: 
 
 	if (!rev) throw error(404, 'Revision not found')
 	return rev
+}
+
+/**
+ * Roll a page back to an earlier revision. Non-destructive: the rollback is
+ * applied as an ordinary edit, so the pre-restore state stays in history one
+ * step back and the rollback itself can be rolled back the same way. Title
+ * travels with the content, so restoring past a rename restores the old title
+ * (but never the old slug — moves are separate).
+ */
+export async function restorePageRevision(
+	domain: string,
+	slug: string,
+	revisionId: number,
+	userId: number,
+) {
+	const record = await assertPage(domain, slug)
+	const revision = await getPageRevision(domain, slug, revisionId)
+
+	const result = await db.transaction(tx => saveContentRecord(tx, {
+		contentRecordId: record.id,
+		content: revision.content,
+		title: revision.title,
+		editSummary: `Restored to revision ${revisionId}`,
+		userId,
+	}))
+
+	if (!result.ok) throw error(result.status, result.error)
+	return { success: true, restoredFrom: revisionId }
 }
 
 export async function loadPageForMove(domain: string, slug: string) {
