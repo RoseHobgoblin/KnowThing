@@ -2,7 +2,7 @@
 
 **Status:** Proposed next-stage architecture  
 **Last updated:** 7 August 2026  
-**Related documents:** [Celestial Upgrades](./Celestial-Upgrades.md), [Celestial Body Rendering](./Celestial-Body-Rendering.md), [Celestial Surface Models](./Celestial-Surface-Models.md), [Celestial Data Provenance and Ingest](./Celestial-Data-Provenance-and-Ingest.md), [Celestial Calendar Integration](./Celestial-Calendar-Integration.md)
+**Related documents:** [Atlas Architecture](./Atlas-Architecture.md), [Celestial Upgrades](./Celestial-Upgrades.md), [Celestial Body Rendering](./Celestial-Body-Rendering.md), [Celestial Surface Models](./Celestial-Surface-Models.md), [Celestial Data Provenance and Ingest](./Celestial-Data-Provenance-and-Ingest.md), [Celestial Calendar Integration](./Celestial-Calendar-Integration.md)
 
 ## Decision
 

@@ -1,6 +1,6 @@
 # KnowThing: WorldMap
 
-> **Far-future project.** This document captures the full vision for an interactive 3D world map system integrated with KnowThing's structured data layer.
+> **Legacy prototype vision.** This document describes the original color-coded WorldMap concept. The target product architecture is now [KnowThing Atlas](./Atlas-Architecture.md). The colored raster/SVG workflow remains useful as an Atlas import adapter, but this document's image-centric data model is not the canonical target.
 
 ## Core Concept
 

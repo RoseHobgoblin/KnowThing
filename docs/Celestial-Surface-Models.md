@@ -1,6 +1,6 @@
 # Celestial Surface Models
 
-**Related document:** [Celestial Data Provenance and Ingest](./Celestial-Data-Provenance-and-Ingest.md)
+**Related documents:** [Atlas Architecture](./Atlas-Architecture.md), [Celestial Data Provenance and Ingest](./Celestial-Data-Provenance-and-Ingest.md)
 
 ## Product Boundary
 

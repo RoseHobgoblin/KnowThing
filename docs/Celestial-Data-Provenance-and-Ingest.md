@@ -1,7 +1,7 @@
 # Celestial Data Provenance and Ingest
 
 **Status:** Proposed architecture  
-**Related documents:** [Celestial Surface Models](./Celestial-Surface-Models.md), [Celestial Orrery Roadmap](./Celestial-Orrery-Roadmap.md), [Celestial Body Rendering](./Celestial-Body-Rendering.md)
+**Related documents:** [Atlas Architecture](./Atlas-Architecture.md), [Celestial Surface Models](./Celestial-Surface-Models.md), [Celestial Orrery Roadmap](./Celestial-Orrery-Roadmap.md), [Celestial Body Rendering](./Celestial-Body-Rendering.md)
 
 ## Decision Summary
 
