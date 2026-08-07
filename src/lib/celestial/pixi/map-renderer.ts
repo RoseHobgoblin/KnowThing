@@ -218,7 +218,9 @@ export async function createSystemMapRenderer(
 	let stars: MapBody[] = []
 	let bodies: MapBody[] = []
 	let day: number | null = null
-	let settings: MapSettingsState = { scale: 'log', labels: 'major', trails: 'off', follow: false, view: 'plan' }
+	let settings: MapSettingsState = {
+		scale: 'log', labels: 'major', trails: 'off', follow: false, view: 'plan', visibility: 'enhanced',
+	}
 	let selectedId: EntityKey | null = null
 	let hoveredKey: EntityKey | null = null
 	let layout: SystemLayout | null = null

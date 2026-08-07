@@ -2,6 +2,7 @@ export type ScaleMode = 'log' | 'proportional' | 'compact' | 'inner'
 export type LabelMode = 'off' | 'hovered' | 'major' | 'all'
 export type TrailMode = 'off' | 'short' | 'full'
 export type ViewMode = 'plan' | 'orrery'
+export type VisibilityMode = 'physical' | 'enhanced' | 'markers'
 
 export interface MapSettings {
 	scale: ScaleMode
@@ -9,6 +10,7 @@ export interface MapSettings {
 	trails: TrailMode
 	follow: boolean
 	view: ViewMode
+	visibility: VisibilityMode
 }
 
 export const DEFAULT_MAP_SETTINGS: MapSettings = {
@@ -17,4 +19,5 @@ export const DEFAULT_MAP_SETTINGS: MapSettings = {
 	trails: 'off',
 	follow: false,
 	view: 'orrery',
+	visibility: 'enhanced',
 }

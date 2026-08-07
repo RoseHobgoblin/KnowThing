@@ -94,6 +94,7 @@
 	let mapTrails = $state(DEFAULT_MAP_SETTINGS.trails)
 	let mapFollow = $state(DEFAULT_MAP_SETTINGS.follow)
 	let mapView = $state(DEFAULT_MAP_SETTINGS.view)
+	let mapVisibility = $state(DEFAULT_MAP_SETTINGS.visibility)
 	let mapSelectedId = $state<`star:${number}` | `body:${number}` | null>(null)
 
 	// This component instance is reused across client-side navigation between
@@ -107,6 +108,7 @@
 		untrack(() => {
 			currentAbsoluteDay = day
 			mapView = DEFAULT_MAP_SETTINGS.view
+			mapVisibility = DEFAULT_MAP_SETTINGS.visibility
 			mapSelectedId = null
 		})
 	})
@@ -238,6 +240,7 @@
 						<MapControls
 							bind:labels={mapLabels}
 							bind:trails={mapTrails}
+							bind:visibility={mapVisibility}
 							bind:follow={mapFollow}
 							hasSelection={mapSelectedId != null}
 						/>
@@ -250,6 +253,7 @@
 								scale={mapScale}
 								labels={mapLabels}
 								trails={mapTrails}
+								visibility={mapVisibility}
 								follow={mapFollow}
 								bind:view={mapView}
 								bind:selectedId={mapSelectedId}

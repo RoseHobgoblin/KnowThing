@@ -52,6 +52,7 @@
 	let trails = $state(DEFAULT_MAP_SETTINGS.trails)
 	let follow = $state(DEFAULT_MAP_SETTINGS.follow)
 	let view = $state(DEFAULT_MAP_SETTINGS.view)
+	let visibility = $state(DEFAULT_MAP_SETTINGS.visibility)
 	let selectedId = $state<EntityKey | null>(null)
 	let currentAbsoluteDay = $state(12_345.25)
 	let playing = $state(false)
@@ -73,7 +74,7 @@
 
 <main class="min-h-screen bg-page p-3 text-heading" data-testid="celestial-fixture">
 	<div class="mx-auto max-w-7xl overflow-hidden border border-border-subtle bg-surface">
-		<MapControls bind:labels bind:trails bind:follow hasSelection={selectedId != null} />
+		<MapControls bind:labels bind:trails bind:visibility bind:follow hasSelection={selectedId != null} />
 		<div class="h-[min(76vh,54rem)] min-h-112" data-testid="map-frame">
 			<SystemMap
 				systemName="Aurelia fixture"
@@ -83,6 +84,7 @@
 				{scale}
 				{labels}
 				{trails}
+				{visibility}
 				{follow}
 				bind:view
 				bind:selectedId

@@ -16,7 +16,9 @@ import {
 import { rotatePerifocalToInertial } from 'tungolcraft'
 import { physicalBodyExtent, physicalBodyRadius } from '../body-sizing.js'
 import { resolveColor, spectralColor } from '../colors.js'
+import type { VisibilityMode } from '../map-settings.js'
 import type { MapBody } from '../system-layout.js'
+import { resolveBodyVisibility, type VisibilityBodyKind } from './visibility-controller.js'
 
 export type BodyVisual = {
 	anchor: Group
@@ -26,7 +28,8 @@ export type BodyVisual = {
 	radius: number
 	extent: number
 	getScreenExtentPx(): number
-	setWorldUnitsPerPixel(worldUnitsPerPixel: number): void
+	getPickRadiusPx(): number
+	setVisibility(mode: VisibilityMode, worldUnitsPerPixel: number): void
 	setSelected(selected: boolean, related: boolean): void
 	setDay(day: number | null): void
 	dispose(): void
@@ -92,6 +95,7 @@ export function createBodyVisual(args: {
 
 	let ringGeometry: RingGeometry | null = null
 	let ringMaterial: MeshBasicMaterial | null = null
+	let ringMesh: Mesh | null = null
 	if (body.hasRings) {
 		ringGeometry = new RingGeometry(radius * 1.3, extent, 96)
 		ringMaterial = new MeshBasicMaterial({
@@ -101,10 +105,12 @@ export function createBodyVisual(args: {
 			side: DoubleSide,
 			depthWrite: false,
 		})
-		tiltGroup.add(new Mesh(ringGeometry, ringMaterial))
+		ringMesh = new Mesh(ringGeometry, ringMaterial)
+		tiltGroup.add(ringMesh)
 	}
 
 	let glowMaterial: SpriteMaterial | null = null
+	let glow: Sprite | null = null
 	if (isStar) {
 		glowMaterial = new SpriteMaterial({
 			map: glowTexture,
@@ -114,12 +120,11 @@ export function createBodyVisual(args: {
 			depthWrite: false,
 			blending: AdditiveBlending,
 		})
-		const glow = new Sprite(glowMaterial)
+		glow = new Sprite(glowMaterial)
 		glow.scale.set(radius * 5, radius * 5, 1)
 		anchor.add(glow)
 	}
 
-	const markerDiameterPx = isStar ? 7 : (isSatellite ? 4 : 5)
 	const markerMaterial = new SpriteMaterial({
 		map: markerTexture,
 		color,
@@ -146,7 +151,10 @@ export function createBodyVisual(args: {
 	selectionMarker.scale.setScalar(1)
 	selectionMarker.renderOrder = 10
 	anchor.add(selectionMarker)
-	let screenExtentPx = markerDiameterPx / 2
+	const visibilityKind: VisibilityBodyKind = isStar ? 'star' : (isSatellite ? 'satellite' : 'body')
+	let screenExtentPx = 0
+	let pickRadiusPx = 8
+	let markerActive = false
 
 	return {
 		anchor,
@@ -158,27 +166,37 @@ export function createBodyVisual(args: {
 		getScreenExtentPx() {
 			return screenExtentPx
 		},
-		setWorldUnitsPerPixel(worldUnitsPerPixel) {
+		getPickRadiusPx() {
+			return pickRadiusPx
+		},
+		setVisibility(mode, worldUnitsPerPixel) {
 			const safeWorldUnitsPerPixel = Math.max(worldUnitsPerPixel, Number.EPSILON)
 			const projectedRadiusPx = extent / safeWorldUnitsPerPixel
-			const markerVisible = projectedRadiusPx < markerDiameterPx * 0.7
-			markerMaterial.opacity = markerVisible ? 0.9 : 0
-			overviewMarker.scale.setScalar(markerDiameterPx * safeWorldUnitsPerPixel)
+			const visibility = resolveBodyVisibility({
+				mode,
+				kind: visibilityKind,
+				projectedRadiusPx,
+				previous: { markerActive },
+			})
+			markerActive = visibility.markerActive
+			mesh.visible = visibility.meshVisible
+			if (ringMesh) ringMesh.visible = visibility.meshVisible
+			markerMaterial.opacity = visibility.markerOpacity
+			overviewMarker.scale.setScalar(visibility.markerDiameterPx * safeWorldUnitsPerPixel)
+			if (glowMaterial) glowMaterial.opacity = visibility.glowOpacity
+			if (glow) glow.visible = visibility.glowOpacity > 0
 			const selectionRadius = Math.max(
 				extent + safeWorldUnitsPerPixel * 3,
 				safeWorldUnitsPerPixel * 8,
 			)
 			selectionMarker.scale.set(selectionRadius * 2, selectionRadius * 2, 1)
-			screenExtentPx = markerVisible ? markerDiameterPx / 2 : projectedRadiusPx
+			screenExtentPx = visibility.screenExtentPx
+			pickRadiusPx = visibility.pickRadiusPx
 		},
 		setSelected(selected, related) {
 			// Selection is an annotation, never a mutation of the body's size.
 			mesh.scale.setScalar(radius)
 			selectionMaterial.opacity = selected ? 0.95 : (related ? 0.18 : 0)
-			if (material instanceof MeshStandardMaterial) {
-				material.emissive.copy(selected ? color : new Color(0x000000))
-				material.emissiveIntensity = selected ? 0.22 : 0
-			}
 		},
 		setDay(day) {
 			if (day == null || body.rotationPeriodS == null || body.rotationPeriodS === 0) return

@@ -13,9 +13,43 @@ test.describe('celestial map', () => {
 	test('renders Orrery and Plan at desktop width', async ({ page }) => {
 		await page.setViewportSize({ width: 1280, height: 900 })
 		await ready(page)
+		await expect(page.locator('[data-camera-projection="perspective"]')).toBeVisible()
 		await expect(page.getByTestId('map-frame')).toHaveScreenshot('orrery-desktop.png')
 		await page.getByRole('button', { name: 'Plan', exact: true }).click()
+		await expect(page.locator('[data-camera-projection="orthographic"]')).toBeVisible()
+		await expect(page.getByRole('button', { name: /Reset/ })).toBeHidden()
 		await expect(page.getByTestId('map-frame')).toHaveScreenshot('plan-desktop.png')
+	})
+
+	test('orbits around the target with primary drag in perspective', async ({ page }) => {
+		await page.setViewportSize({ width: 1100, height: 850 })
+		await ready(page)
+		const canvas = page.locator('canvas')
+		const box = await canvas.boundingBox()
+		expect(box).not.toBeNull()
+		await page.mouse.move(box!.x + box!.width * 0.55, box!.y + box!.height * 0.55)
+		await page.mouse.down()
+		await page.mouse.move(box!.x + box!.width * 0.68, box!.y + box!.height * 0.43, { steps: 8 })
+		await page.mouse.up()
+		await expect(page.getByRole('button', { name: /Reset/ })).toBeVisible()
+	})
+
+	test('switches between literal and assisted body visibility without moving the camera', async ({ page }) => {
+		await page.setViewportSize({ width: 1100, height: 850 })
+		await ready(page)
+		const map = page.locator('[data-render-state="ready"]')
+		await expect(map).toHaveAttribute('data-visibility-mode', 'enhanced')
+		await expect(page.getByTestId('map-frame')).toHaveScreenshot('visibility-enhanced-desktop.png')
+
+		await page.getByRole('button', { name: 'Physical', exact: true }).click()
+		await expect(map).toHaveAttribute('data-visibility-mode', 'physical')
+		await expect(page.getByText(/Orrery · Physical/)).toBeVisible()
+		await expect(page.getByTestId('map-frame')).toHaveScreenshot('visibility-physical-desktop.png')
+
+		await page.getByRole('button', { name: 'Markers', exact: true }).click()
+		await expect(map).toHaveAttribute('data-visibility-mode', 'markers')
+		await expect(page.getByText(/Orrery · Markers/)).toBeVisible()
+		await expect(page.getByTestId('map-frame')).toHaveScreenshot('visibility-markers-desktop.png')
 	})
 
 	test('keeps the physical orrery bounded in a tall container', async ({ page }) => {

@@ -6,6 +6,7 @@ import {
 	Group,
 	MOUSE,
 	OrthographicCamera,
+	PerspectiveCamera,
 	Scene,
 	SphereGeometry,
 	SRGBColorSpace,
@@ -43,19 +44,28 @@ import type {
 	SystemMapRenderer,
 } from '../renderer-types.js'
 import { createBodyVisual, type BodyVisual } from './body-visual.js'
+import {
+	orthographicZoomForWorldUnitsPerPixel,
+	perspectiveDistanceForWorldUnitsPerPixel,
+	perspectiveDistanceToFrameSphere,
+	perspectiveWorldUnitsPerPixel,
+} from './camera-math.js'
 
 const MIN_ZOOM = 0.1
 const MAX_ZOOM = 1_000_000
+const ORRERY_FOV_DEG = 50
 const VIEW_TRANSITION_MS = 450
 const FLY_TO_MS = 600
 const PATH_SEGMENTS = 160
-const KEYBOARD_PAN_SPEED = 280
+const KEYBOARD_PAN_SPEED_PX = 210
+const PLAN_CAMERA_DISTANCE = 1_000
+const FOCUS_RADIUS_PX = 60
 const PAN_KEYS = new Set([
 	'KeyW', 'KeyA', 'KeyS', 'KeyD',
 	'ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight',
 ])
 const DEFAULT_SETTINGS: MapSettingsState = {
-	scale: 'log', labels: 'major', trails: 'off', follow: false, view: 'orrery',
+	scale: 'log', labels: 'major', trails: 'off', follow: false, view: 'orrery', visibility: 'enhanced',
 }
 
 type EntityNode = {
@@ -148,7 +158,7 @@ function formatPhysicalDistance(au: number): string {
 
 function unavailableRenderer(canvas: HTMLCanvasElement, reason: string, callbacks: MapRendererCallbacks): SystemMapRenderer {
 	callbacks.onUnavailable?.(reason)
-	callbacks.onOverlayChange?.({ labels: [], indicators: [], scaleLabel: '', legend: null, modeLabel: '', status: 'unavailable' })
+	callbacks.onOverlayChange?.({ labels: [], indicators: [], scaleLabel: '', legend: null, modeLabel: '', projection: null, status: 'unavailable' })
 	return {
 		canvas,
 		setData() {}, setDay() {}, setSettings() {}, setSelected() {}, setTheme() {}, resize() {}, resetView() {}, destroy() {},
@@ -176,7 +186,13 @@ export async function createSystemMapRenderer(
 
 	let renderer: WebGLRenderer
 	try {
-		renderer = new WebGLRenderer({ canvas, context, antialias: true, powerPreference: 'high-performance' })
+		renderer = new WebGLRenderer({
+			canvas,
+			context,
+			antialias: true,
+			powerPreference: 'high-performance',
+			logarithmicDepthBuffer: true,
+		})
 	} catch (error) {
 		return unavailableRenderer(canvas, error instanceof Error ? error.message : 'Three.js could not initialize WebGL 2.', callbacks)
 	}
@@ -201,15 +217,20 @@ export async function createSystemMapRenderer(
 	let height = Math.max(1, Math.round(host.getBoundingClientRect().height || width))
 	let halfWidth = SIZE / 2
 	let halfHeight = SIZE / 2
-	const camera = new OrthographicCamera(-halfWidth, halfWidth, halfHeight, -halfHeight, 0.1, 10_000)
-	camera.up.set(0, 0, 1)
-	const controls = new OrbitControls(camera, canvas)
+	const planCamera = new OrthographicCamera(-halfWidth, halfWidth, halfHeight, -halfHeight, 0.1, 10_000)
+	const orreryCamera = new PerspectiveCamera(ORRERY_FOV_DEG, width / height, 0.001, 10_000)
+	planCamera.up.set(0, 0, 1)
+	orreryCamera.up.set(0, 0, 1)
+	let camera: OrthographicCamera | PerspectiveCamera = orreryCamera
+	const controls = new OrbitControls<OrthographicCamera | PerspectiveCamera>(camera, canvas)
 	controls.enableDamping = true
 	controls.dampingFactor = 0.085
 	controls.screenSpacePanning = true
 	controls.zoomToCursor = true
 	controls.minZoom = MIN_ZOOM
 	controls.maxZoom = MAX_ZOOM
+	controls.minDistance = 0.001
+	controls.maxDistance = 10_000
 	controls.minPolarAngle = 0.015
 	controls.maxPolarAngle = Math.PI / 2 - 0.015
 	controls.touches.ONE = TOUCH.ROTATE
@@ -246,32 +267,108 @@ export async function createSystemMapRenderer(
 	let suppressClick = false
 	let lastFrameAt = performance.now()
 	const pressedPanKeys = new Set<string>()
+	const scratchWorld = new Vector3()
+	const scratchView = new Vector3()
 
-	function setCameraForView(view: MapSettingsState['view'], preserveTarget = false) {
-		const target = preserveTarget ? controls.target.clone() : new Vector3()
-		const distance = 1_000
+	function defaultCameraDirection(view: MapSettingsState['view']): Vector3 {
 		if (view === 'plan') {
-			// A tiny fixed polar offset avoids the Z-up look-at singularity while
-			// keeping +X horizontal instead of introducing an arbitrary camera roll.
-			const polar = controls.minPolarAngle
-			camera.position.set(
-				target.x,
-				target.y - Math.sin(polar) * distance,
-				target.z + Math.cos(polar) * distance,
-			)
-		} else {
-			const polar = 42 * Math.PI / 180
-			const azimuth = 35 * Math.PI / 180
-			const horizontal = Math.sin(polar) * distance
-			camera.position.set(
-				target.x + Math.sin(azimuth) * horizontal,
-				target.y - Math.cos(azimuth) * horizontal,
-				target.z + Math.cos(polar) * distance,
-			)
+			// The tiny Y component avoids the Z-up look-at singularity without
+			// introducing a visible roll in the top-down Plan view.
+			const polar = 0.015
+			return new Vector3(0, -Math.sin(polar), Math.cos(polar)).normalize()
 		}
+		const polar = 42 * Math.PI / 180
+		const azimuth = 35 * Math.PI / 180
+		return new Vector3(
+			Math.sin(azimuth) * Math.sin(polar),
+			-Math.cos(azimuth) * Math.sin(polar),
+			Math.cos(polar),
+		).normalize()
+	}
+
+	function orreryFrameDistance(): number {
+		return perspectiveDistanceToFrameSphere(
+			Math.max(layout.maxVisualRadius, SIZE * 0.45),
+			width / height,
+			ORRERY_FOV_DEG,
+		)
+	}
+
+	function updateControlDistanceLimits() {
+		const frameDistance = orreryFrameDistance()
+		controls.minDistance = frameDistance / MAX_ZOOM
+		controls.maxDistance = frameDistance / MIN_ZOOM
+	}
+
+	function resetCameraForView(view: MapSettingsState['view'], target = new Vector3()) {
+		camera = view === 'plan' ? planCamera : orreryCamera
+		controls.object = camera
 		controls.target.copy(target)
+		camera.zoom = 1
+		const distance = view === 'plan' ? PLAN_CAMERA_DISTANCE : orreryFrameDistance()
+		camera.position.copy(target).addScaledVector(defaultCameraDirection(view), distance)
 		camera.lookAt(target)
 		camera.updateProjectionMatrix()
+		updateControlDistanceLimits()
+	}
+
+	function switchCameraForView(view: MapSettingsState['view'], immediate: boolean) {
+		const activeView = camera === planCamera ? 'plan' : 'orrery'
+		const activeZoom = camera === planCamera
+			? camera.zoom
+			: orreryFrameDistance() / Math.max(camera.position.distanceTo(controls.target), Number.EPSILON)
+		const activeDirection = camera.position.clone().sub(controls.target).normalize()
+		const sourceWasDefault = controls.target.lengthSq() <= 0.01
+			&& Math.abs(activeZoom - 1) <= 0.001
+			&& activeDirection.dot(defaultCameraDirection(activeView)) >= 0.9999
+		const target = sourceWasDefault ? new Vector3() : controls.target.clone()
+		const matchedScale = worldUnitsPerPixelAt(target)
+		const sourceDirection = camera.position.clone().sub(controls.target)
+		if (sourceDirection.lengthSq() < Number.EPSILON) sourceDirection.copy(defaultCameraDirection(view))
+		else sourceDirection.normalize()
+
+		camera = view === 'plan' ? planCamera : orreryCamera
+		controls.object = camera
+		controls.target.copy(target)
+
+		let distance = PLAN_CAMERA_DISTANCE
+		if (camera === planCamera) {
+			camera.zoom = sourceWasDefault
+				? 1
+				: Math.min(
+					MAX_ZOOM,
+					Math.max(MIN_ZOOM, orthographicZoomForWorldUnitsPerPixel(halfHeight * 2, height, matchedScale)),
+				)
+		} else {
+			camera.zoom = 1
+			distance = sourceWasDefault
+				? orreryFrameDistance()
+				: perspectiveDistanceForWorldUnitsPerPixel(matchedScale, height, ORRERY_FOV_DEG)
+		}
+		camera.updateProjectionMatrix()
+		updateControlDistanceLimits()
+
+		const fromCamera = target.clone().addScaledVector(sourceDirection, distance)
+		const toCamera = target.clone().addScaledVector(defaultCameraDirection(view), distance)
+		camera.position.copy(immediate ? toCamera : fromCamera)
+		camera.lookAt(target)
+		configureControls()
+
+		if (immediate) {
+			fly = null
+			controls.update()
+		} else {
+			fly = {
+				startedAt: performance.now(),
+				duration: VIEW_TRANSITION_MS,
+				fromCamera,
+				toCamera,
+				fromTarget: target.clone(),
+				toTarget: target,
+				fromZoom: camera.zoom,
+				toZoom: camera.zoom,
+			}
+		}
 	}
 
 	function configureControls() {
@@ -283,7 +380,7 @@ export async function createSystemMapRenderer(
 		controls.touches.ONE = plan ? TOUCH.PAN : TOUCH.ROTATE
 	}
 
-	setCameraForView('orrery')
+	resetCameraForView('orrery')
 	configureControls()
 
 	function resizeLineMaterials() {
@@ -291,6 +388,9 @@ export async function createSystemMapRenderer(
 	}
 
 	function resize(nextWidth: number, nextHeight: number) {
+		const previousOrreryZoom = camera === orreryCamera
+			? orreryFrameDistance() / Math.max(camera.position.distanceTo(controls.target), Number.EPSILON)
+			: null
 		width = Math.max(1, Math.round(nextWidth))
 		height = Math.max(1, Math.round(nextHeight))
 		if (width >= height) {
@@ -300,11 +400,19 @@ export async function createSystemMapRenderer(
 			halfWidth = SIZE / 2
 			halfHeight = halfWidth * height / width
 		}
-		camera.left = -halfWidth
-		camera.right = halfWidth
-		camera.top = halfHeight
-		camera.bottom = -halfHeight
-		camera.updateProjectionMatrix()
+		planCamera.left = -halfWidth
+		planCamera.right = halfWidth
+		planCamera.top = halfHeight
+		planCamera.bottom = -halfHeight
+		planCamera.updateProjectionMatrix()
+		orreryCamera.aspect = width / height
+		orreryCamera.updateProjectionMatrix()
+		if (previousOrreryZoom != null) {
+			const direction = camera.position.clone().sub(controls.target).normalize()
+			camera.position.copy(controls.target).addScaledVector(direction, orreryFrameDistance() / previousOrreryZoom)
+			fly = null
+		}
+		updateControlDistanceLimits()
 		renderer.setSize(width, height, false)
 		resizeLineMaterials()
 		schedule()
@@ -489,13 +597,32 @@ export async function createSystemMapRenderer(
 		}
 	}
 
-	function worldUnitsPerPixel(): number {
-		return halfHeight * 2 / (height * camera.zoom)
+	function worldUnitsPerPixelAt(position: Vector3): number {
+		if (camera === planCamera) return halfHeight * 2 / (height * camera.zoom)
+		camera.updateMatrixWorld()
+		scratchView.copy(position).applyMatrix4(camera.matrixWorldInverse)
+		return perspectiveWorldUnitsPerPixel(Math.max(-scratchView.z, Number.EPSILON), height, ORRERY_FOV_DEG)
 	}
 
 	function updateVisualScales() {
-		const scale = worldUnitsPerPixel()
-		for (const node of nodes.values()) node.visual.setWorldUnitsPerPixel(scale)
+		camera.updateMatrixWorld()
+		for (const node of nodes.values()) {
+			node.visual.anchor.getWorldPosition(scratchWorld)
+			node.visual.setVisibility(settings.visibility, worldUnitsPerPixelAt(scratchWorld))
+		}
+	}
+
+	function updatePerspectiveClipping() {
+		if (camera !== orreryCamera) return
+		const distance = Math.max(camera.position.distanceTo(controls.target), Number.EPSILON)
+		const frameDistance = orreryFrameDistance()
+		const near = Math.max(1e-9, distance / 1_000)
+		const far = Math.max(frameDistance * 4, distance + SIZE * 2)
+		if (Math.abs(camera.near - near) / near > 0.001 || Math.abs(camera.far - far) / far > 0.001) {
+			camera.near = near
+			camera.far = far
+			camera.updateProjectionMatrix()
+		}
 	}
 
 	function publishOverlay() {
@@ -544,18 +671,19 @@ export async function createSystemMapRenderer(
 		const scaleBarPixels = 80
 		const scaleBarAu = layout.worldUnitsPerAu == null
 			? null
-			: scaleBarPixels * worldUnitsPerPixel() / layout.worldUnitsPerAu
+			: scaleBarPixels * worldUnitsPerPixelAt(controls.target) / layout.worldUnitsPerAu
 		const snapshot: OverlaySnapshot = {
 			labels,
 			indicators,
-			scaleLabel: 'Physical distance',
+			scaleLabel: camera === orreryCamera ? 'Physical distance at focus' : 'Physical distance',
 			legend: scaleBarAu == null
 				? null
 				: {
 					pixels: scaleBarPixels,
 					label: formatPhysicalDistance(scaleBarAu),
 				},
-			modeLabel: settings.view === 'plan' ? 'Plan' : 'Orrery',
+			modeLabel: `${settings.view === 'plan' ? 'Plan' : 'Orrery'} · ${settings.visibility[0].toUpperCase()}${settings.visibility.slice(1)}`,
+			projection: camera === orreryCamera ? 'perspective' : 'orthographic',
 			status: dataReceived ? 'ready' : 'initializing',
 		}
 		const signature = JSON.stringify(snapshot, (_key, value) => typeof value === 'number' ? Math.round(value * 2) / 2 : value)
@@ -565,8 +693,19 @@ export async function createSystemMapRenderer(
 		}
 	}
 
+	function cameraZoomLevel(): number {
+		if (camera === planCamera) return camera.zoom
+		return orreryFrameDistance() / Math.max(camera.position.distanceTo(controls.target), Number.EPSILON)
+	}
+
 	function notifyView() {
-		callbacks.onViewChange({ zoomLevel: camera.zoom, isMoved: Math.abs(camera.zoom - 1) > 0.001 || controls.target.lengthSq() > 0.01 })
+		const zoomLevel = cameraZoomLevel()
+		const direction = camera.position.clone().sub(controls.target).normalize()
+		const orientationMoved = direction.dot(defaultCameraDirection(settings.view)) < 0.9999
+		callbacks.onViewChange({
+			zoomLevel,
+			isMoved: Math.abs(zoomLevel - 1) > 0.001 || controls.target.lengthSq() > 0.01 || orientationMoved,
+		})
 	}
 
 	function applyKeyboardPan(deltaSeconds: number): boolean {
@@ -579,7 +718,7 @@ export async function createSystemMapRenderer(
 		const right = new Vector3().setFromMatrixColumn(camera.matrixWorld, 0)
 		const up = new Vector3().setFromMatrixColumn(camera.matrixWorld, 1)
 		const direction = right.multiplyScalar(horizontal).add(up.multiplyScalar(vertical)).normalize()
-		const distance = KEYBOARD_PAN_SPEED * deltaSeconds / camera.zoom
+		const distance = KEYBOARD_PAN_SPEED_PX * deltaSeconds * worldUnitsPerPixelAt(controls.target)
 		camera.position.addScaledVector(direction, distance)
 		controls.target.addScaledVector(direction, distance)
 		fly = null
@@ -610,6 +749,7 @@ export async function createSystemMapRenderer(
 			if (progress >= 1) fly = null
 			else animate = true
 		}
+		updatePerspectiveClipping()
 		updateVisualScales()
 		renderer.render(scene, camera)
 		publishOverlay()
@@ -630,7 +770,7 @@ export async function createSystemMapRenderer(
 			const point = projectNode(node)
 			if (!point.inside) continue
 			const distance = Math.hypot(pointer.x - point.x, pointer.y - point.y)
-			const pickRadius = Math.max(8, node.visual.getScreenExtentPx() + 3)
+			const pickRadius = node.visual.getPickRadiusPx()
 			if (distance <= pickRadius && (!nearest || distance < nearest.distance)) nearest = { node, position: pointer, distance }
 		}
 		return nearest
@@ -664,14 +804,33 @@ export async function createSystemMapRenderer(
 		callbacks.onHover(null, null)
 		canvas.style.cursor = ''
 		const target = hit.node.visual.anchor.position.clone()
-		const offset = camera.position.clone().sub(controls.target)
-		const targetZoom = Math.min(
-			MAX_ZOOM,
-			Math.max(camera.zoom, 60 * worldUnitsPerPixel() * camera.zoom / Math.max(hit.node.visual.radius, Number.EPSILON)),
-		)
+		const offsetDirection = camera.position.clone().sub(controls.target).normalize()
+		let targetZoom = camera.zoom
+		let targetDistance = camera.position.distanceTo(controls.target)
+		if (camera === planCamera) {
+			targetZoom = Math.min(
+				MAX_ZOOM,
+				Math.max(
+					camera.zoom,
+					FOCUS_RADIUS_PX * worldUnitsPerPixelAt(target) * camera.zoom
+						/ Math.max(hit.node.visual.radius, Number.EPSILON),
+				),
+			)
+		} else {
+			const focusDistance = perspectiveDistanceForWorldUnitsPerPixel(
+				Math.max(hit.node.visual.radius, Number.EPSILON) / FOCUS_RADIUS_PX,
+				height,
+				ORRERY_FOV_DEG,
+			)
+			targetDistance = Math.min(
+				targetDistance,
+				Math.max(controls.minDistance, hit.node.visual.extent * 2.5, focusDistance),
+			)
+		}
+		const targetCamera = target.clone().addScaledVector(offsetDirection, targetDistance)
 		if (globalThis.matchMedia('(prefers-reduced-motion: reduce)').matches) {
 			controls.target.copy(target)
-			camera.position.copy(target).add(offset)
+			camera.position.copy(targetCamera)
 			camera.zoom = targetZoom
 			camera.updateProjectionMatrix()
 			fly = null
@@ -680,7 +839,7 @@ export async function createSystemMapRenderer(
 				startedAt: performance.now(),
 				duration: FLY_TO_MS,
 				fromTarget: controls.target.clone(), toTarget: target,
-				fromCamera: camera.position.clone(), toCamera: target.clone().add(offset),
+				fromCamera: camera.position.clone(), toCamera: targetCamera,
 				fromZoom: camera.zoom, toZoom: targetZoom,
 			}
 		}
@@ -689,7 +848,7 @@ export async function createSystemMapRenderer(
 	function handleContextLost(event: Event) {
 		event.preventDefault()
 		callbacks.onUnavailable?.('The graphics context was lost. Reload the page to restore the interactive map.')
-		callbacks.onOverlayChange?.({ labels: [], indicators: [], scaleLabel: '', legend: null, modeLabel: '', status: 'unavailable' })
+		callbacks.onOverlayChange?.({ labels: [], indicators: [], scaleLabel: '', legend: null, modeLabel: '', projection: null, status: 'unavailable' })
 	}
 	function handleKeyDown(event: KeyboardEvent) {
 		if (!PAN_KEYS.has(event.code) || event.altKey || event.ctrlKey || event.metaKey) return
@@ -733,7 +892,10 @@ export async function createSystemMapRenderer(
 	intersectionObserver.observe(host)
 
 	resize(width, height)
-	callbacks.onOverlayChange?.({ labels: [], indicators: [], scaleLabel: '', legend: null, modeLabel: 'Orrery', status: 'initializing' })
+	callbacks.onOverlayChange?.({
+		labels: [], indicators: [], scaleLabel: '', legend: null,
+		modeLabel: 'Orrery · Enhanced', projection: 'perspective', status: 'initializing',
+	})
 	rebuild()
 
 	return {
@@ -758,28 +920,15 @@ export async function createSystemMapRenderer(
 			if (viewChanged) {
 				viewFrom = viewBlend
 				viewTo = settings.view === 'orrery' ? 1 : 0
-				if (globalThis.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+				const reducedMotion = globalThis.matchMedia('(prefers-reduced-motion: reduce)').matches
+				if (reducedMotion) {
 					viewBlend = viewTo
 					viewStartedAt = null
-					setCameraForView(settings.view, true)
+					switchCameraForView(settings.view, true)
 					applyPositions()
 				} else {
 					viewStartedAt = performance.now()
-					const fromCamera = camera.position.clone()
-					const fromTarget = controls.target.clone()
-					setCameraForView(settings.view, true)
-					fly = {
-						startedAt: viewStartedAt,
-						duration: VIEW_TRANSITION_MS,
-						fromCamera,
-						fromTarget,
-						toCamera: camera.position.clone(),
-						toTarget: controls.target.clone(),
-						fromZoom: camera.zoom,
-						toZoom: camera.zoom,
-					}
-					camera.position.copy(fromCamera)
-					controls.target.copy(fromTarget)
+					switchCameraForView(settings.view, false)
 				}
 			}
 			if (!settings.follow) lastFollowPosition = null
@@ -798,10 +947,14 @@ export async function createSystemMapRenderer(
 		},
 		resize,
 		resetView() {
-			camera.zoom = 1
-			controls.target.set(0, 0, 0)
-			setCameraForView(settings.view)
+			fly = null
+			viewStartedAt = null
+			viewBlend = settings.view === 'orrery' ? 1 : 0
+			viewFrom = viewBlend
+			viewTo = viewBlend
+			resetCameraForView(settings.view)
 			lastFollowPosition = null
+			applyPositions()
 			controls.update()
 			schedule()
 		},

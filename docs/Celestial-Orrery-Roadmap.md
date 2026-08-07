@@ -256,6 +256,8 @@ Labels, marker annotations, scale, time controls, selected-object data, and stat
 
 ### Phase 1: Split Plan and Orrery camera models
 
+Status: implemented.
+
 Implement `PlanCameraRig` and `OrreryCameraRig`, make Orrery perspective, and preserve the current focus, follow, WASD, mouse, touch, reset, resize, and reduced-motion behaviour.
 
 Acceptance criteria:
@@ -268,6 +270,8 @@ Acceptance criteria:
 - Focused rings can be inspected without near-plane clipping.
 
 ### Phase 2: Finish the visibility model
+
+Status: implemented. Physical keeps literal meshes and literal picking; Enhanced adds fading discoverability markers and minimum pick targets; Markers uses larger symbols and omits only subpixel meshes. Selection is reticle-only, marker fade uses hysteresis, and none of these modes writes to mesh scale or orbital layout.
 
 Add Physical, Enhanced, and Markers modes through the visibility controller. Replace any remaining overview-size or selection-size mutation with markers and reticles.
 
@@ -367,7 +371,7 @@ The following decisions should be made during the relevant phase, not encoded ac
 
 ## Immediate Next Work
 
-Implement the perspective Orrery camera split before adding more materials, overlays, or simulation-like features. It is the foundational change: physical lighting, angular visibility, depth, focus transitions, and convincing body inspection all depend on it.
+Implement Phase 3 star-derived lighting and exposure. The perspective camera split and visibility controller now provide the depth, angular-size, and literal-versus-assisted presentation boundaries that lighting needs.
 
 Do not reintroduce layout scales to compensate for an inadequate camera. Do not make bodies larger to compensate for an inadequate marker system. Fix the camera and visibility layers at their proper boundaries.
 

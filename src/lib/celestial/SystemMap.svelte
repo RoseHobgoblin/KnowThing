@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte'
 	import { resolve } from '$app/paths'
 	import { cn } from '$lib/utils.js'
-	import type { LabelMode, ScaleMode, TrailMode, ViewMode } from './map-settings.js'
+	import type { LabelMode, ScaleMode, TrailMode, ViewMode, VisibilityMode } from './map-settings.js'
 	import type { EntityKey, MapBody, ThemePalette } from './system-layout.js'
 	import { keyForBody, timingUnavailable } from './system-layout.js'
 	import type { OverlaySnapshot, SystemMapRenderer } from './renderer-types.js'
@@ -12,7 +12,7 @@
 		secondary: '#A09882', dim: '#7A7264', heading: '#F0E6D0', faint: '#55504A',
 	}
 	const EMPTY_OVERLAY: OverlaySnapshot = {
-		labels: [], indicators: [], scaleLabel: '', legend: null, modeLabel: 'Orrery', status: 'initializing',
+		labels: [], indicators: [], scaleLabel: '', legend: null, modeLabel: 'Orrery · Enhanced', projection: 'perspective', status: 'initializing',
 	}
 
 	let {
@@ -25,6 +25,7 @@
 		trails = 'off',
 		follow = false,
 		view = $bindable('orrery'),
+		visibility = 'enhanced',
 		selectedId = $bindable(null),
 	}: {
 		systemName: string
@@ -36,6 +37,7 @@
 		trails?: TrailMode
 		follow?: boolean
 		view?: ViewMode
+		visibility?: VisibilityMode
 		selectedId?: EntityKey | null
 	} = $props()
 
@@ -139,7 +141,7 @@
 	})
 
 	$effect(() => {
-		renderer?.setSettings({ scale, labels, trails, follow, view })
+		renderer?.setSettings({ scale, labels, trails, follow, view, visibility })
 	})
 	$effect(() => {
 		renderer?.setDay(currentAbsoluteDay ?? null)
@@ -172,6 +174,8 @@
 	class="relative size-full min-h-80 overflow-hidden bg-page"
 	bind:this={wrapperElement}
 	data-render-state={unavailableReason ? 'unavailable' : overlay.status}
+	data-camera-projection={overlay.projection ?? 'unavailable'}
+	data-visibility-mode={visibility}
 >
 	<div bind:this={canvasHost} class="absolute inset-0" aria-hidden={unavailableReason != null}></div>
 
@@ -233,7 +237,7 @@
 				{/if}
 			</div>
 			<div class="absolute bottom-2 left-2 hidden bg-surface/60 px-2 py-1 text-[0.65rem] text-secondary sm:block">
-				WASD / arrows pan
+				{view === 'orrery' ? 'Drag to orbit · WASD / arrows pan' : 'WASD / arrows pan'}
 			</div>
 		</div>
 	{/if}

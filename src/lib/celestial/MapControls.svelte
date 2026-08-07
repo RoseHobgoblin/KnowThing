@@ -1,15 +1,17 @@
 <script lang="ts">
 	import { cn } from '$lib/utils.js'
-	import type { LabelMode, TrailMode } from './map-settings.js'
+	import type { LabelMode, TrailMode, VisibilityMode } from './map-settings.js'
 
 	let {
 		labels = $bindable('major'),
 		trails = $bindable('off'),
+		visibility = $bindable('enhanced'),
 		follow = $bindable(false),
 		hasSelection = false,
 	}: {
 		labels: LabelMode
 		trails: TrailMode
+		visibility: VisibilityMode
 		follow: boolean
 		hasSelection?: boolean
 	} = $props()
@@ -28,9 +30,34 @@
 		{ value: 'short', label: 'Short' },
 		{ value: 'full', label: 'Full' },
 	]
+
+	const visibilityItems: SegmentItem<VisibilityMode>[] = [
+		{ value: 'physical', label: 'Physical', title: 'Literal relative sizes with no visibility marker or minimum pick target' },
+		{ value: 'enhanced', label: 'Enhanced', title: 'Physical bodies with subtle markers and usable pick targets while they are tiny' },
+		{ value: 'markers', label: 'Markers', title: 'Prominent symbols for dense systems; subpixel meshes are omitted' },
+	]
 </script>
 
 <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-border-subtle bg-page px-3 py-1.5 text-xs text-secondary select-none">
+	<!-- Visibility -->
+	<div class="flex items-center gap-1">
+		<span class="tracking-wider text-secondary uppercase">Visibility</span>
+		<div class="flex">
+			{#each visibilityItems as item (item.value)}
+				<button
+					type="button"
+					class={cn(
+						'px-1.5 py-0.5 transition-colors',
+						visibility === item.value ? 'bg-accent-subtle font-medium text-accent' : 'hover:bg-raised',
+					)}
+					title={item.title}
+					aria-pressed={visibility === item.value}
+					onclick={() => visibility = item.value}
+				>{item.label}</button>
+			{/each}
+		</div>
+	</div>
+
 	<!-- Labels -->
 	<div class="flex items-center gap-1">
 		<span class="tracking-wider text-secondary uppercase">Labels</span>

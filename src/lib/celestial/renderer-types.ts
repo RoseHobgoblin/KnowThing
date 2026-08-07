@@ -1,4 +1,4 @@
-import type { LabelMode, ScaleMode, TrailMode, ViewMode } from './map-settings.js'
+import type { LabelMode, ScaleMode, TrailMode, ViewMode, VisibilityMode } from './map-settings.js'
 import type { EntityKey, MapBody, ThemePalette } from './system-layout.js'
 
 export type MapSettingsState = {
@@ -7,6 +7,7 @@ export type MapSettingsState = {
 	trails: TrailMode
 	follow: boolean
 	view: ViewMode
+	visibility: VisibilityMode
 }
 
 export type ProjectedLabel = {
@@ -34,6 +35,7 @@ export type OverlaySnapshot = {
 	scaleLabel: string
 	legend: { pixels: number, label: string } | null
 	modeLabel: string
+	projection: 'orthographic' | 'perspective' | null
 	status: 'initializing' | 'ready' | 'unavailable'
 }
 
