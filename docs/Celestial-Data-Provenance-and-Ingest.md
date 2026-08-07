@@ -67,7 +67,7 @@ It does not use radius, mass, surface gravity, pressure, or temperature to synth
 
 ### Generated channels
 
-The fallback samples seeded three-dimensional simplex noise on the unit sphere, producing a seam-free 2:1 equirectangular plate. The system-map implementation currently generates a 256 x 128 overview texture.
+The fallback samples seeded three-dimensional simplex noise on the unit sphere, producing a seam-free 2:1 equirectangular plate. The current live implementation generates a 1024 x 512 texture in a worker and shares it through a bounded cache; projected-size LOD remains future work.
 
 | Class | Illustrative behavior |
 |---|---|

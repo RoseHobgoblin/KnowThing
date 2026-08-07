@@ -19,8 +19,10 @@ import {
 } from 'tungolcraft'
 import { validateBodyPhysics, validateStarPhysics, type PhysicsWarning } from 'tungolcraft'
 import { spectralColor } from './colors.js'
-import { parseSurfaceRecipe, SURFACE_RECIPE_VERSION, type SurfaceMapChannel } from './surface-model.js'
-import { parseStellarSurfaceRecipe, STELLAR_SURFACE_RECIPE_VERSION } from './stellar-surface-model.js'
+import { parseSurfaceRecipe, type SurfaceMapChannel } from './surface-model.js'
+import { surfaceRecipeFromDraft } from './surface-editor.js'
+import { parseStellarSurfaceRecipe } from './stellar-surface-model.js'
+import { stellarSurfaceRecipeFromDraft } from './stellar-surface-editor.js'
 
 /**
  * Declarative field registry for the celestial configure forms.
@@ -631,15 +633,7 @@ const starConfig: CelestialFormConfig = {
 		const currentExtra = typeof ctx.draft.extra === 'object' && ctx.draft.extra !== null
 			? ctx.draft.extra as Record<string, unknown>
 			: {}
-		const photosphere = text(ctx, 'stellarPhotosphereMap').trim()
-		const stellarSurface = {
-			version: STELLAR_SURFACE_RECIPE_VERSION,
-			fallback: text(ctx, 'stellarSurfaceFallback') || 'procedural',
-			morphology: text(ctx, 'stellarMorphology') || 'auto',
-			seed: num(ctx, 'stellarSurfaceSeed'),
-			activity: num(ctx, 'stellarActivity'),
-			maps: photosphere ? { photosphere } : {},
-		}
+		const stellarSurface = stellarSurfaceRecipeFromDraft(ctx.draft)
 		return {
 			parentId: text(ctx, 'parentStarId')
 				? Number(text(ctx, 'parentStarId'))
@@ -1034,23 +1028,10 @@ const bodyConfig: CelestialFormConfig = {
 	// the star, a circumbinary body orbits the system barycenter.
 	passthroughKeys: ['extra'],
 	extraPayload: (ctx) => {
-		const maps: Partial<Record<SurfaceMapChannel, string>> = {}
-		for (const channel of ['albedo', 'elevation', 'normal', 'roughness', 'clouds', 'emissive'] as SurfaceMapChannel[]) {
-			const filename = text(ctx, `surfaceMap_${channel}`).trim()
-			if (filename) maps[channel] = filename
-		}
 		const currentExtra = typeof ctx.draft.extra === 'object' && ctx.draft.extra !== null
 			? ctx.draft.extra as Record<string, unknown>
 			: {}
-		const surface = {
-			version: SURFACE_RECIPE_VERSION,
-			fallback: text(ctx, 'surfaceFallback') || 'procedural',
-			class: text(ctx, 'surfaceClass') || 'auto',
-			seed: num(ctx, 'surfaceSeed'),
-			hydrosphereFraction: num(ctx, 'surfaceHydrosphere'),
-			cloudCoverage: num(ctx, 'surfaceCloudCoverage'),
-			maps,
-		}
+		const surface = surfaceRecipeFromDraft(ctx.draft)
 		const common = { extra: { ...currentExtra, surface } }
 		const parentId = text(ctx, 'parentId')
 		if (parentId) return { parentId: Number(parentId), ...common }

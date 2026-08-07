@@ -75,7 +75,7 @@ The adaptation intentionally removed or constrained claims that the prototype co
 - height shading is not baked into albedo, because lighting belongs to the material and scene;
 - generated relief, roughness, clouds, and color remain independent channels.
 
-The overview fallback is currently generated at 256 x 128. That is enough for system-map inspection without making every system-map body carry a large texture. Uploaded maps currently keep their own resolution. A later focused-body renderer should select validated higher-resolution tiles or generated LODs.
+The live procedural fallback is currently generated at 1024 x 512 in a worker and shared through a bounded cache. Uploaded maps currently keep their own resolution. A later focused-body renderer should select validated higher-resolution tiles or generated LODs instead of using one resolution at every apparent size.
 
 ## Scientific and GIS Data
 

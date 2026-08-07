@@ -13,9 +13,11 @@
 	import UnsavedChangesGuard from '$lib/components/editor/UnsavedChangesGuard.svelte'
 	import SaveStatusBadge from '$lib/components/editor/SaveStatusBadge.svelte'
 	import FormNotice from '$lib/components/editor/FormNotice.svelte'
+	import CelestialSurfacePreview from '$lib/components/celestial/CelestialSurfacePreview.svelte'
 	import { celestialConfigureBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import { goto } from '$app/navigation'
+	import { resolve } from '$app/paths'
 	import { createMutation } from '@tanstack/svelte-query'
 	import { api } from '$lib/api'
 	import { page } from '$app/stores'
@@ -38,6 +40,10 @@
 		type StarReferenceOption,
 		type BodyReferenceOption,
 	} from '$lib/celestial/form-registry.js'
+	import { surfaceRecipeFromDraft } from '$lib/celestial/surface-editor.js'
+	import { stellarSurfaceRecipeFromDraft } from '$lib/celestial/stellar-surface-editor.js'
+	import { spectralColor } from '$lib/celestial/colors.js'
+	import type { MapBody } from '$lib/celestial/system-layout.js'
 
 	type CelestialCrumb = { label: string, href: string }
 
@@ -150,6 +156,39 @@
 	})
 
 	const preview = $derived(config.preview ? config.preview(ctx) : null)
+	const surfacePreviewBody = $derived.by<MapBody | null>(() => {
+		if (kind !== 'body') return null
+		return {
+			id: Number(initialRecord.id ?? 0),
+			name: String(draft.name || 'Unnamed body'),
+			slug: String(draft.slug || 'unnamed-body'),
+			bodyType: String(draft.bodyType || 'planet'),
+			temperatureK: typeof initialRecord.temperatureK === 'number' ? initialRecord.temperatureK : null,
+			temperature: typeof draft.temperature === 'string' ? draft.temperature : null,
+			composition: typeof draft.composition === 'string' ? draft.composition : null,
+			atmosphere: typeof draft.atmosphere === 'string' ? draft.atmosphere : null,
+			color: typeof initialRecord.color === 'string' ? initialRecord.color : null,
+			surface: surfaceRecipeFromDraft(draft),
+		}
+	})
+	const stellarPreviewBody = $derived.by<MapBody | null>(() => {
+		if (kind !== 'star') return null
+		return {
+			id: Number(initialRecord.id ?? 0),
+			name: String(draft.name || 'Unnamed star'),
+			slug: String(draft.slug || 'unnamed-star'),
+			bodyType: 'star',
+			isStar: true,
+			spectralType: typeof draft.spectralType === 'string' ? draft.spectralType : null,
+			temperatureK: typeof draft.temperatureK === 'number' ? draft.temperatureK : null,
+			rotationPeriodS: typeof draft.rotationPeriodS === 'number' ? draft.rotationPeriodS : null,
+			color: spectralColor(
+				typeof draft.spectralType === 'string' ? draft.spectralType : null,
+				typeof draft.color === 'string' ? draft.color : null,
+			),
+			stellarSurface: stellarSurfaceRecipeFromDraft(draft),
+		}
+	})
 
 	// The computed panel scopes to the active tab's rows by default; the switch
 	// widens it to everything derivable about the entity.
@@ -219,7 +258,12 @@
 
 		deleted = true
 		pushSuccess(m.cel_noun_deleted({ name: config.noun }))
-		await goto(initialParentCrumbs.at(-1)?.href ?? '/celestial')
+		const parentHref = initialParentCrumbs.at(-1)?.href
+		if (parentHref?.startsWith('/Celestial:')) {
+			await goto(resolve('/[...ns_path=namespaced]', { ns_path: parentHref.slice(1) }))
+		} else {
+			await goto(resolve('/celestial'))
+		}
 	}
 </script>
 
@@ -329,7 +373,7 @@
 		<div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-[1fr_280px]">
 			<div class="min-w-0 space-y-4">
 				{#each visibleSections as section (section.id)}
-					<section class="space-y-4 p-5">
+					<section class="space-y-4 p-5 bg-surface">
 						{#if section.intro}
 							<p class="text-xs text-secondary">{section.intro}</p>
 						{/if}
@@ -350,7 +394,7 @@
 				{/each}
 
 				{#if config.overrides && config.overrides.length > 0}
-					<section class="space-y-4 p-5">
+					<section class="space-y-4 p-5 bg-surface">
 						<div>
 							<h2 class="text-sm font-semibold text-heading">{m.cel_overrides()}</h2>
 							<p class="mt-1 text-xs text-secondary">
@@ -372,20 +416,18 @@
 							<p class="mt-1 text-xs text-secondary">{config.deleteNote}</p>
 						</div>
 						<div>
-							<button
-								type="button"
-								onclick={deleteEntity}
-								class="border border-error-border px-4 py-2 text-sm text-error hover:bg-error-subtle"
-							>
-								{config.deleteConfirm.action}
-							</button>
+							<Button variant="danger" onclick={deleteEntity}>{config.deleteConfirm.action}</Button>
 						</div>
 					</section>
 				{/if}
 			</div>
 
-			<aside class="space-y-4 lg:sticky lg:top-4">
-				{#if preview}
+			<aside class="space-y-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
+				{#if surfacePreviewBody}
+					<CelestialSurfacePreview body={surfacePreviewBody} />
+				{:else if stellarPreviewBody}
+					<CelestialSurfacePreview body={stellarPreviewBody} isStar />
+				{:else if preview}
 					<div class="flex items-center gap-3 bg-surface p-4">
 						<span
 							class="size-10 shrink-0 rounded-full"
@@ -403,20 +445,20 @@
 				{#if config.computed && config.computed.length > 0}
 					<div class="bg-surface">
 						<div class="flex items-center justify-between gap-2 border-b border-border-subtle px-3 py-2">
-							<h3 class="text-xs font-semibold tracking-wider text-secondary uppercase">{m.cel_computed_properties()}</h3>
+							<h3 class="text-xs font-semibold tracking-wider uppercase">{m.cel_computed_properties()}</h3>
 							{#if config.useTabs}
-								<div class="flex">
+								<div class="flex shrink-0">
 									<button
 										type="button"
 										onclick={() => computedScope = 'tab'}
-										class={cn('border px-1.5 py-0.5 text-xs transition-colors', computedScope === 'tab' ? 'border-accent-border bg-accent-subtle text-accent' : 'border-border-subtle text-secondary hover:text-body')}
+										class={cn('border px-1 py-0.5 text-xs whitespace-nowrap transition-colors', computedScope === 'tab' ? 'border-accent-border bg-accent-subtle text-accent' : 'border-border-subtle text-secondary hover:text-body')}
 									>
 										{m.cel_this_tab()}
 									</button>
 									<button
 										type="button"
 										onclick={() => computedScope = 'all'}
-										class={cn('-ml-px border px-1.5 py-0.5 text-xs transition-colors', computedScope === 'all' ? 'border-accent-border bg-accent-subtle text-accent' : 'border-border-subtle text-secondary hover:text-body')}
+										class={cn('-ml-px border px-1 py-0.5 text-xs whitespace-nowrap transition-colors', computedScope === 'all' ? 'border-accent-border bg-accent-subtle text-accent' : 'border-border-subtle text-secondary hover:text-body')}
 									>
 										{m.common_all()}
 									</button>
