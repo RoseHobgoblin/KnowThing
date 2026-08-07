@@ -10,7 +10,8 @@
  *                        safe to call every animation frame.
  *   buildScene()       — composes both into the flat scene a renderer consumes.
  */
-import { meanAnomaly, solveKeplerE } from 'tungolcraft'
+import { meanAnomaly, partitionBinaryRelativeAxis, rotatePerifocalToInertial, solveKeplerE } from 'tungolcraft'
+import { overviewBodyExtent } from './body-sizing.js'
 import type { ScaleMode } from './map-settings.js'
 
 export interface MapBody {
@@ -18,6 +19,8 @@ export interface MapBody {
 	name: string
 	slug: string
 	bodyType: string
+	massKg?: number | null
+	radiusM?: number | null
 	semiMajorAxisAu?: number | null
 	eccentricity?: number | null
 	/** Orbit orientation (degrees). Absent/null orbits render apsis-right, as before. */
@@ -34,6 +37,18 @@ export interface MapBody {
 	parentId?: number | null
 	orbitalPeriodDays?: number | null
 	epochPhase?: number | null
+	rotationPeriodS?: number | null
+	axialTilt?: number | null
+	temperatureK?: number | null
+	luminosityW?: number | null
+	composition?: string | null
+	atmosphere?: string | null
+	albedo?: string | null
+	hasRings?: boolean | null
+	relativeSemiMajorAxisAu?: number | null
+	effectivePeriodSource?: 'stored' | 'derived' | 'unavailable'
+	placementProvenance?: 'physical' | 'schematic'
+	placementNote?: string | null
 }
 
 export type EntityKey = `star:${number}` | `body:${number}`
@@ -115,6 +130,8 @@ export type DirectOrbitLayout = {
 	count: number
 	/** Inner-mode body beyond the boundary, parked on an oversized circle. */
 	outOfRange: boolean
+	/** Signed mass fraction for a resolved two-star relative orbit. */
+	binaryFactor?: number
 }
 
 /** Day-independent orbit geometry for a satellite, local to its parent anchor. */
@@ -165,6 +182,9 @@ export type SystemLayout = {
 	effectiveMaxAu: number
 	auMin: number
 	maxVisualRadius: number
+	/** Shared linear scene conversion. Null means the legacy schematic layout. */
+	worldUnitsPerAu: number | null
+	distanceModel: 'physical' | 'schematic'
 }
 
 export type BodyPosition = {
@@ -172,6 +192,8 @@ export type BodyPosition = {
 	y: number
 	angle: number
 }
+
+export type BodyPosition3D = BodyPosition & { z: number }
 
 export const DEG = Math.PI / 180
 export const SIZE = 800
@@ -185,6 +207,7 @@ export const SAT_INNER_MARGIN = 10
 export const SAT_MIN_ZONE = 20
 export const SAT_MAX_ZONE = 80
 export const SAT_ZONE_FRACTION = 0.4
+export const ORBIT_CLEARANCE = 8
 
 export function keyForBody(body: MapBody, isStar: boolean): EntityKey {
 	return `${isStar ? 'star' : 'body'}:${body.id}` as EntityKey
@@ -197,12 +220,21 @@ export function bodyRadius(body: { isStar: boolean, renderAsSatellite?: boolean 
 }
 
 export function computeAngle(body: OrbitBody, index: number, total: number, currentAbsoluteDay?: number | null) {
-	if (currentAbsoluteDay != null && body.orbitAu > 0) {
-		const periodDays = body.orbitalPeriodDays ?? (body.orbitAu ** 1.5 * 365.25)
-		const M = meanAnomaly(periodDays, body.epochPhase ?? 0, currentAbsoluteDay)
+	if (currentAbsoluteDay != null && body.orbitAu > 0 && body.orbitalPeriodDays != null && body.orbitalPeriodDays > 0) {
+		const M = meanAnomaly(body.orbitalPeriodDays, body.epochPhase ?? 0, currentAbsoluteDay)
 		return solveKeplerE(M, body.ecc)
 	}
+	if (currentAbsoluteDay != null && body.epochPhase != null) {
+		return solveKeplerE(body.epochPhase * Math.PI * 2, body.ecc)
+	}
 	return (index / Math.max(total, 1)) * Math.PI * 2 - Math.PI / 2
+}
+
+export function timingUnavailable(body: MapBody): boolean {
+	if (body.semiMajorAxisAu == null || body.semiMajorAxisAu <= 0) return false
+	return body.effectivePeriodSource === 'unavailable'
+		|| body.orbitalPeriodDays == null
+		|| body.orbitalPeriodDays <= 0
 }
 
 // Projected sky-plane longitude of periapsis (Ω + ω) in radians. On a flat
@@ -307,18 +339,22 @@ export function innerBoundaryAu(orbiters: OrbitBody[]): number {
 
 export function scaleAuToPixel(au: number, scale: ScaleMode, auMin: number, auMax: number, rMax: number): number {
 	switch (scale) {
-		case 'log': {
+		case 'log':
+		case 'inner': {
 			if (auMin >= auMax) return (MIN_FIRST_ORBIT + rMax) / 2
 			const logMin = Math.log(auMin)
 			const logRange = Math.log(auMax) - logMin
-			const t = (Math.log(au) - logMin) / logRange
+			const t = Math.min(1, Math.max(0, (Math.log(Math.max(au, auMin)) - logMin) / logRange))
 			return MIN_FIRST_ORBIT + t * (rMax - MIN_FIRST_ORBIT)
 		}
-		case 'proportional':
-		case 'inner':
-			return R_GUARD + (au / auMax) * (rMax - R_GUARD)
+		case 'proportional': {
+			if (auMin >= auMax) return (MIN_FIRST_ORBIT + rMax) / 2
+			const t = Math.min(1, Math.max(0, (au - auMin) / (auMax - auMin)))
+			return MIN_FIRST_ORBIT + t * (rMax - MIN_FIRST_ORBIT)
+		}
 		case 'compact': {
-			const t = (au / auMax) ** COMPACT_EXPONENT
+			if (auMin >= auMax) return (MIN_FIRST_ORBIT + rMax) / 2
+			const t = Math.min(1, Math.max(0, (au - auMin) / (auMax - auMin))) ** COMPACT_EXPONENT
 			return MIN_FIRST_ORBIT + t * (rMax - MIN_FIRST_ORBIT)
 		}
 	}
@@ -352,16 +388,211 @@ export function isBarycentric(star: MapBody): boolean {
 	return star.parentSystemId != null && star.semiMajorAxisAu != null && star.semiMajorAxisAu > 0
 }
 
+/**
+ * Fit orbit lanes using the solid extents that Three.js actually renders.
+ * Bodies sharing the same real semi-major axis share a lane (co-orbitals and
+ * resolved binary components), while distinct lanes cannot touch at a circular
+ * cross-section. Distance transforms remain preferences rather than permission
+ * to overlap.
+ */
+export function enforceOrbitClearance(
+	orbiters: OrbitBody[],
+	desiredRadii: number[],
+	rMax: number,
+	centerExtent = 0,
+): number[] {
+	if (orbiters.length === 0) return []
+	type Lane = { orbitAu: number, extent: number, desired: number, indices: number[] }
+	const lanes: Lane[] = []
+	for (const [index, body] of orbiters.entries()) {
+		const extent = overviewBodyExtent(body, body.isStar, body.renderAsSatellite)
+		const previous = lanes.at(-1)
+		if (previous && Math.abs(previous.orbitAu - body.orbitAu) <= Math.max(1e-9, body.orbitAu * 1e-8)) {
+			previous.extent = Math.max(previous.extent, extent)
+			previous.desired = Math.max(previous.desired, desiredRadii[index] ?? MIN_FIRST_ORBIT)
+			previous.indices.push(index)
+		} else {
+			lanes.push({
+				orbitAu: body.orbitAu,
+				extent,
+				desired: desiredRadii[index] ?? MIN_FIRST_ORBIT,
+				indices: [index],
+			})
+		}
+	}
+
+	const structuralWidth = centerExtent + lanes[0].extent + lanes.slice(1).reduce(
+		(total, lane, index) => total + lanes[index].extent + lane.extent,
+		0,
+	)
+	const clearance = Math.min(
+		ORBIT_CLEARANCE,
+		Math.max(0.75, (rMax - structuralWidth) / lanes.length),
+	)
+	const minimums = Array.from({ length: lanes.length }, () => 0)
+	minimums[0] = Math.max(MIN_FIRST_ORBIT, centerExtent + lanes[0].extent + clearance)
+	for (let index = 1; index < lanes.length; index++) {
+		minimums[index] = minimums[index - 1]
+			+ lanes[index - 1].extent
+			+ lanes[index].extent
+			+ clearance
+	}
+
+	const fit = (preferenceWeight: number) => {
+		const result = minimums.map((minimum, index) =>
+			minimum + Math.max(0, lanes[index].desired - minimum) * preferenceWeight,
+		)
+		for (let index = 1; index < result.length; index++) {
+			result[index] = Math.max(
+				result[index],
+				result[index - 1] + lanes[index - 1].extent + lanes[index].extent + clearance,
+			)
+		}
+		return result
+	}
+
+	let laneRadii = fit(1)
+	if (laneRadii.at(-1)! > rMax && minimums.at(-1)! <= rMax) {
+		let low = 0
+		let high = 1
+		for (let iteration = 0; iteration < 32; iteration++) {
+			const middle = (low + high) / 2
+			if (fit(middle).at(-1)! <= rMax) low = middle
+			else high = middle
+		}
+		laneRadii = fit(low)
+	}
+
+	const result = Array.from({ length: orbiters.length }, () => 0)
+	for (const [laneIndex, lane] of lanes.entries()) {
+		for (const bodyIndex of lane.indices) result[bodyIndex] = laneRadii[laneIndex]
+	}
+	return result
+}
+
+export type ResolvedBinary = {
+	primary: MapBody
+	secondary: MapBody
+	relativeSemiMajorAxisAu: number
+	eccentricity: number
+	inclination: number
+	longitudeAscendingNode: number
+	argumentOfPeriapsis: number
+	orbitalPeriodDays: number | null
+	epochPhase: number | null
+	primaryFactor: number
+	secondaryFactor: number
+}
+
+const approximatelyEqual = (left: number, right: number) =>
+	Math.abs(left - right) <= Math.max(1e-9, Math.abs(left), Math.abs(right)) * 1e-8
+
+function coherentValue(
+	left: number | null | undefined,
+	right: number | null | undefined,
+): { ok: boolean, value: number | null } {
+	if (left != null && right != null && !approximatelyEqual(left, right)) return { ok: false, value: null }
+	return { ok: true, value: left ?? right ?? null }
+}
+
+/** Resolve only the two binary shapes whose semantics are unambiguous. */
+export function resolveSimpleBinary(stars: MapBody[]): ResolvedBinary | null {
+	if (stars.length !== 2) return null
+	let primary: MapBody
+	let secondary: MapBody
+	const [first, second] = stars
+	const sameSystemPair = first.parentSystemId != null
+		&& first.parentSystemId === second.parentSystemId
+	const parentChildPair = second.parentStarId === first.id || first.parentStarId === second.id
+	if (sameSystemPair) {
+		;[primary, secondary] = [first, second]
+	} else if (parentChildPair) {
+		primary = second.parentStarId === first.id ? first : second
+		secondary = primary === first ? second : first
+	} else {
+		return null
+	}
+	if (primary.massKg == null || primary.massKg <= 0 || secondary.massKg == null || secondary.massKg <= 0) {
+		return null
+	}
+
+	const axis = coherentValue(
+		primary.relativeSemiMajorAxisAu ?? primary.semiMajorAxisAu,
+		secondary.relativeSemiMajorAxisAu ?? secondary.semiMajorAxisAu,
+	)
+	const eccentricity = coherentValue(primary.eccentricity, secondary.eccentricity)
+	const inclination = coherentValue(primary.inclination, secondary.inclination)
+	const node = coherentValue(primary.longitudeAscendingNode, secondary.longitudeAscendingNode)
+	const periapsis = coherentValue(primary.argumentOfPeriapsis, secondary.argumentOfPeriapsis)
+	const period = coherentValue(primary.orbitalPeriodDays, secondary.orbitalPeriodDays)
+	const phase = coherentValue(primary.epochPhase, secondary.epochPhase)
+	if (![axis, eccentricity, inclination, node, periapsis, period, phase].every(field => field.ok)) return null
+	if (axis.value == null || axis.value <= 0) return null
+
+	const partition = partitionBinaryRelativeAxis({
+		relativeSemiMajorAxisAu: axis.value,
+		primaryMassKg: primary.massKg,
+		secondaryMassKg: secondary.massKg,
+	})
+	if (!partition.ok) return null
+	return {
+		primary,
+		secondary,
+		relativeSemiMajorAxisAu: axis.value,
+		eccentricity: eccentricity.value ?? 0,
+		inclination: inclination.value ?? 0,
+		longitudeAscendingNode: node.value ?? 0,
+		argumentOfPeriapsis: periapsis.value ?? 0,
+		orbitalPeriodDays: period.value,
+		epochPhase: phase.value,
+		primaryFactor: -partition.value.primaryBarycentricSemiMajorAxis.value / axis.value,
+		secondaryFactor: partition.value.secondaryBarycentricSemiMajorAxis.value / axis.value,
+	}
+}
+
 export function buildLayout(stars: MapBody[], bodies: MapBody[], scale: ScaleMode): SystemLayout {
-	const centerCandidate = stars.find(star => !star.parentStarId && !isBarycentric(star))
-	const primaryStar = centerCandidate ?? (stars.some(isBarycentric) ? null : stars[0] ?? null)
-	const primaryStarId = primaryStar?.id ?? null
-	const companionStars = stars.filter(star => star.parentStarId)
+	const resolvedBinary = resolveSimpleBinary(stars)
+	const hasStellarOrbitShape = stars.some(star => star.parentStarId != null || star.parentSystemId != null)
+	const layoutStars = !resolvedBinary && hasStellarOrbitShape
+		? stars.map(star => ({
+			...star,
+			placementProvenance: 'schematic' as const,
+			placementNote: 'Schematic stellar placement—binary data is incomplete, conflicting, or higher-order.',
+		}))
+		: stars
+	const centerCandidate = resolvedBinary ? undefined : layoutStars.find(star => !star.parentStarId && !isBarycentric(star))
+	const primaryStar = centerCandidate ?? (layoutStars.some(isBarycentric) ? null : layoutStars[0] ?? null)
+	const resolvedPrimaryStar = resolvedBinary ? null : primaryStar
+	const primaryStarId = resolvedPrimaryStar?.id ?? null
+	const companionStars = layoutStars.filter(star => star.parentStarId)
 	const directOrbiters: OrbitBody[] = []
 	const seen = new Set<EntityKey>()
 
+	if (resolvedBinary) {
+		const shared = {
+			semiMajorAxisAu: resolvedBinary.relativeSemiMajorAxisAu,
+			orbitAu: resolvedBinary.relativeSemiMajorAxisAu,
+			eccentricity: resolvedBinary.eccentricity,
+			ecc: resolvedBinary.eccentricity,
+			inclination: resolvedBinary.inclination,
+			longitudeAscendingNode: resolvedBinary.longitudeAscendingNode,
+			argumentOfPeriapsis: resolvedBinary.argumentOfPeriapsis,
+			orbitalPeriodDays: resolvedBinary.orbitalPeriodDays,
+			epochPhase: resolvedBinary.epochPhase,
+			isStar: true as const,
+			renderAsSatellite: false as const,
+			placementProvenance: 'physical' as const,
+			placementNote: 'Mass-partitioned about the binary barycenter',
+		}
+		for (const star of [resolvedBinary.primary, resolvedBinary.secondary]) seen.add(keyForBody(star, true))
+		directOrbiters.push(
+			{ ...resolvedBinary.primary, ...shared, apseRad: apseRadOf({ ...resolvedBinary.primary, ...shared }) },
+			{ ...resolvedBinary.secondary, ...shared, apseRad: apseRadOf({ ...resolvedBinary.secondary, ...shared }) },
+		)
+	}
+
 	// Barycentric components orbit the (empty or stub) center directly.
-	for (const star of stars) {
+	for (const star of layoutStars) {
 		const key = keyForBody(star, true)
 		if (!isBarycentric(star) || star.id === primaryStarId || seen.has(key)) continue
 		seen.add(key)
@@ -408,23 +639,28 @@ export function buildLayout(stars: MapBody[], bodies: MapBody[], scale: ScaleMod
 		? sortedDirectOrbiters.filter(body => body.orbitAu <= effectiveMaxAu)
 		: sortedDirectOrbiters
 
-	const outermostVisibleEcc = visibleOrbiters.at(-1)?.ecc ?? 0
-	const maxVisualRadius = (CENTER - PADDING) / (1 + outermostVisibleEcc)
+	const maximumVisibleEcc = Math.max(...visibleOrbiters.map(body => body.ecc), 0)
+	const maxVisualRadius = (CENTER - PADDING) / (1 + maximumVisibleEcc)
 
 	const auMin = visibleOrbiters[0]?.orbitAu ?? 1
-	const rawRadii = visibleOrbiters.map(body =>
-		scaleAuToPixel(body.orbitAu, scale, auMin, effectiveMaxAu, maxVisualRadius),
-	)
-	const finalRadii = enforceMinGaps(rawRadii, maxVisualRadius)
+	const uniqueOrbitAxes = [...new Set(visibleOrbiters.map(body => body.orbitAu))]
+	const rawRadii = visibleOrbiters.map((body) => {
+		if (scale !== 'compact') {
+			return scaleAuToPixel(body.orbitAu, scale, auMin, effectiveMaxAu, maxVisualRadius)
+		}
+		const slot = uniqueOrbitAxes.indexOf(body.orbitAu)
+		const t = uniqueOrbitAxes.length === 1 ? 0.5 : slot / (uniqueOrbitAxes.length - 1)
+		return MIN_FIRST_ORBIT + t * (maxVisualRadius - MIN_FIRST_ORBIT)
+	})
+	const centerExtent = resolvedPrimaryStar
+		? overviewBodyExtent(resolvedPrimaryStar, true, false)
+		: 0
+	const finalRadii = enforceOrbitClearance(visibleOrbiters, rawRadii, maxVisualRadius, centerExtent)
 
 	const directOrbits: DirectOrbitLayout[] = []
 	for (const [index, body] of visibleOrbiters.entries()) {
-		const gapDelta = finalRadii[index] - rawRadii[index]
-		const periPx = scaleAuToPixel(body.orbitAu * (1 - body.ecc), scale, auMin, effectiveMaxAu, maxVisualRadius) + gapDelta
-		const apoPx = scaleAuToPixel(body.orbitAu * (1 + body.ecc), scale, auMin, effectiveMaxAu, maxVisualRadius) + gapDelta
-		const a = (periPx + apoPx) / 2
-		const c = (apoPx - periPx) / 2
-		const b = Math.sqrt(Math.max(a * a - c * c, 0))
+		const a = finalRadii[index]
+		const b = a * Math.sqrt(Math.max(0, 1 - body.ecc * body.ecc))
 		directOrbits.push({ body, a, b, index, count: visibleOrbiters.length, outOfRange: false })
 	}
 
@@ -540,7 +776,84 @@ export function buildLayout(stars: MapBody[], bodies: MapBody[], scale: ScaleMod
 		}
 	}
 
-	return { primaryStar, directOrbits, satellites, effectiveMaxAu, auMin, maxVisualRadius }
+	if (resolvedBinary && directOrbits.length >= 2) {
+		const reference = directOrbits.find(orbit => orbit.body.isStar && orbit.body.id === resolvedBinary.primary.id)
+		for (const orbit of directOrbits) {
+			if (!orbit.body.isStar || (orbit.body.id !== resolvedBinary.primary.id && orbit.body.id !== resolvedBinary.secondary.id)) continue
+			if (reference) {
+				orbit.a = reference.a
+				orbit.b = reference.b
+			}
+			if (orbit.body.id === resolvedBinary.primary.id) orbit.binaryFactor = resolvedBinary.primaryFactor
+			if (orbit.body.id === resolvedBinary.secondary.id) orbit.binaryFactor = resolvedBinary.secondaryFactor
+		}
+	}
+
+	return {
+		primaryStar: resolvedPrimaryStar,
+		directOrbits,
+		satellites,
+		effectiveMaxAu,
+		auMin,
+		maxVisualRadius,
+		worldUnitsPerAu: null,
+		distanceModel: 'schematic',
+	}
+}
+
+/**
+ * Data-faithful orrery geometry. Every local vector uses the same linear AU to
+ * world-unit conversion; no body or orbit is moved to create visual clearance.
+ * Overview visibility belongs to the renderer's screen-space marker LOD.
+ */
+export function buildPhysicalLayout(stars: MapBody[], bodies: MapBody[]): SystemLayout {
+	// Reuse the thoroughly tested parent/binary topology, then discard every
+	// schematic radius it produced.
+	const topology = buildLayout(stars, bodies, 'proportional')
+	const centralRadiusAu = topology.primaryStar?.radiusM != null && topology.primaryStar.radiusM > 0
+		? topology.primaryStar.radiusM / 149_597_870_700
+		: 0
+	const maximumApoapsisAu = Math.max(
+		...topology.directOrbits
+			.filter(orbit => !orbit.outOfRange)
+			.map(orbit => orbit.body.orbitAu * (1 + orbit.body.ecc) * Math.abs(orbit.binaryFactor ?? 1)),
+		centralRadiusAu * 4,
+		0.05,
+	)
+	const worldUnitsPerAu = (CENTER - PADDING) / maximumApoapsisAu
+	const directOrbits = topology.directOrbits
+		.filter(orbit => !orbit.outOfRange)
+		.map((orbit) => {
+			const a = orbit.body.orbitAu * worldUnitsPerAu
+			return {
+				...orbit,
+				a,
+				b: a * Math.sqrt(Math.max(0, 1 - orbit.body.ecc * orbit.body.ecc)),
+				outOfRange: false,
+			}
+		})
+	const satellites = topology.satellites.map((satellite) => {
+		const orbitRadius = satellite.body.orbitAu * worldUnitsPerAu
+		const orbitSemiMinor = orbitRadius * Math.sqrt(Math.max(0, 1 - satellite.body.ecc * satellite.body.ecc))
+		return {
+			...satellite,
+			orbitRadius,
+			orbitSemiMinor,
+			focusOffset: orbitRadius * satellite.body.ecc,
+			zone: orbitRadius * (1 + satellite.body.ecc),
+			proportionalRadius: orbitRadius,
+			proportionalSemiMinor: orbitSemiMinor,
+			proportionalFocusOffset: orbitRadius * satellite.body.ecc,
+		}
+	})
+	return {
+		...topology,
+		directOrbits,
+		satellites,
+		maxVisualRadius: maximumApoapsisAu * worldUnitsPerAu,
+		worldUnitsPerAu,
+		distanceModel: 'physical',
+	}
 }
 
 /**
@@ -565,7 +878,12 @@ export function computePositions(
 		const angle = computeAngle(orbit.body, orbit.index, orbit.count, currentAbsoluteDay)
 		const apseRad = orbit.outOfRange ? 0 : orbit.body.apseRad
 		const pos = ellipsePosition(orbit.a, orbit.b, angle, CENTER, CENTER, apseRad)
-		positions.set(keyForBody(orbit.body, orbit.body.isStar), { x: pos.x, y: pos.y, angle })
+		const factor = orbit.binaryFactor ?? 1
+		positions.set(keyForBody(orbit.body, orbit.body.isStar), {
+			x: CENTER + (pos.x - CENTER) * factor,
+			y: CENTER + (pos.y - CENTER) * factor,
+			angle,
+		})
 	}
 
 	// Satellites are topologically ordered, so a parent's position always
@@ -582,6 +900,94 @@ export function computePositions(
 	}
 
 	return positions
+}
+
+function rotateOrbitVector(
+	body: OrbitBody,
+	vector: { x: number, y: number, z: number },
+	viewBlend: number,
+): { x: number, y: number, z: number } {
+	const plan = rotatePerifocalToInertial(vector, {
+		inclinationDeg: 0,
+		longitudeAscendingNodeDeg: body.longitudeAscendingNode ?? 0,
+		argumentOfPeriapsisDeg: body.argumentOfPeriapsis ?? 0,
+	})
+	if (viewBlend <= 0) return plan
+	const orrery = rotatePerifocalToInertial(vector, {
+		inclinationDeg: body.inclination ?? 0,
+		longitudeAscendingNodeDeg: body.longitudeAscendingNode ?? 0,
+		argumentOfPeriapsisDeg: body.argumentOfPeriapsis ?? 0,
+	})
+	const t = Math.min(1, Math.max(0, viewBlend))
+	return {
+		x: plan.x + (orrery.x - plan.x) * t,
+		y: plan.y + (orrery.y - plan.y) * t,
+		z: plan.z + (orrery.z - plan.z) * t,
+	}
+}
+
+/** 3D body positions in the same 800-unit world, with Plan at z=0. */
+export function computePositions3D(
+	layout: SystemLayout,
+	currentAbsoluteDay?: number | null,
+	viewBlend = 1,
+	satelliteBlend?: (satellite: SatelliteLayout) => number,
+): Map<EntityKey, BodyPosition3D> {
+	const positions = new Map<EntityKey, BodyPosition3D>()
+	if (layout.primaryStar) {
+		positions.set(keyForBody(layout.primaryStar, true), { x: CENTER, y: CENTER, z: 0, angle: 0 })
+	}
+
+	for (const orbit of layout.directOrbits) {
+		const angle = computeAngle(orbit.body, orbit.index, orbit.count, currentAbsoluteDay)
+		const focusOffset = orbit.outOfRange ? 0 : Math.sqrt(Math.max(orbit.a * orbit.a - orbit.b * orbit.b, 0))
+		const local = { x: orbit.a * Math.cos(angle) - focusOffset, y: orbit.b * Math.sin(angle), z: 0 }
+		const rotated = orbit.outOfRange ? local : rotateOrbitVector(orbit.body, local, viewBlend)
+		const factor = orbit.binaryFactor ?? 1
+		positions.set(keyForBody(orbit.body, orbit.body.isStar), {
+			x: CENTER + rotated.x * factor,
+			y: CENTER + rotated.y * factor,
+			z: rotated.z * factor,
+			angle,
+		})
+	}
+
+	for (const satellite of layout.satellites) {
+		const parent = positions.get(satellite.parentKey)
+		if (!parent) continue
+		const angle = computeAngle(satellite.body, satellite.index, satellite.count, currentAbsoluteDay)
+		const geometry = blendedSatelliteGeometry(satellite, satelliteBlend?.(satellite) ?? 0)
+		const local = {
+			x: geometry.radius * Math.cos(angle) - geometry.focusOffset,
+			y: geometry.semiMinor * Math.sin(angle),
+			z: 0,
+		}
+		const rotated = rotateOrbitVector(satellite.body, local, viewBlend)
+		positions.set(keyForBody(satellite.body, satellite.body.isStar), {
+			x: parent.x + rotated.x,
+			y: parent.y + rotated.y,
+			z: parent.z + rotated.z,
+			angle,
+		})
+	}
+	return positions
+}
+
+export function orbitPoint3D(
+	body: OrbitBody,
+	a: number,
+	b: number,
+	eccentricAnomaly: number,
+	viewBlend: number,
+	binaryFactor = 1,
+): { x: number, y: number, z: number } {
+	const focusOffset = Math.sqrt(Math.max(a * a - b * b, 0))
+	const rotated = rotateOrbitVector(body, {
+		x: a * Math.cos(eccentricAnomaly) - focusOffset,
+		y: b * Math.sin(eccentricAnomaly),
+		z: 0,
+	}, viewBlend)
+	return { x: rotated.x * binaryFactor, y: rotated.y * binaryFactor, z: rotated.z * binaryFactor }
 }
 
 export function computeCameraOffset(

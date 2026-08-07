@@ -21,7 +21,16 @@ export const KEPLER_SOLVER_MAX_ITERATIONS = 64
  * reference plane (the ecliptic analogue), +X points at the reference
  * direction. Metres for a position, m/s for a velocity.
  */
-export interface Vec3 { x: number, y: number, z: number }
+export interface CartesianVector3 { x: number, y: number, z: number }
+
+/** Unit-agnostic orbital orientation, in degrees. */
+export interface OrbitalOrientation {
+	inclinationDeg: number
+	longitudeAscendingNodeDeg: number
+	argumentOfPeriapsisDeg: number
+}
+
+export type Vec3 = CartesianVector3
 
 /** A body's instantaneous two-body state: position (m) and velocity (m/s). */
 export interface StateVector { position: Vec3, velocity: Vec3 }
@@ -241,16 +250,26 @@ export function trueAnomaly(eccentricAnomalyRad: number, ecc: number): number {
 /**
  * Rotate a perifocal-frame vector (orbit in its own plane, +x toward periapsis)
  * into the parent inertial frame via the 3-1-3 rotation R = R_z(Ω)·R_x(i)·R_z(ω).
- * Perifocal vectors are planar (z = 0), so only the first two columns matter.
+ * The vector's units are preserved. Orbital positions normally enter with
+ * z = 0, but the complete rotation is exposed for any finite Cartesian vector.
  */
-function perifocalToInertial(v: Vec3, incRad: number, nodeRad: number, argRad: number): Vec3 {
+export function rotatePerifocalToInertial(
+	vector: CartesianVector3,
+	orientation: OrbitalOrientation,
+): CartesianVector3 {
+	for (const [name, value] of Object.entries({ ...vector, ...orientation })) {
+		assertFinite(name, value)
+	}
+	const incRad = orientation.inclinationDeg * DEG
+	const nodeRad = orientation.longitudeAscendingNodeDeg * DEG
+	const argRad = orientation.argumentOfPeriapsisDeg * DEG
 	const cw = Math.cos(argRad), sw = Math.sin(argRad)
 	const ci = Math.cos(incRad), si = Math.sin(incRad)
 	const co = Math.cos(nodeRad), so = Math.sin(nodeRad)
 	return {
-		x: (co * cw - so * sw * ci) * v.x + (-co * sw - so * cw * ci) * v.y,
-		y: (so * cw + co * sw * ci) * v.x + (-so * sw + co * cw * ci) * v.y,
-		z: (sw * si) * v.x + (cw * si) * v.y,
+		x: (co * cw - so * sw * ci) * vector.x + (-co * sw - so * cw * ci) * vector.y + so * si * vector.z,
+		y: (so * cw + co * sw * ci) * vector.x + (-so * sw + co * cw * ci) * vector.y - co * si * vector.z,
+		z: (sw * si) * vector.x + (cw * si) * vector.y + vector.z * ci,
 	}
 }
 
@@ -272,12 +291,14 @@ export function stateVectorAtTrueAnomaly(elements: OrbitalElements, trueAnomalyR
 	const k = Math.sqrt(mu / p)
 	const posPerifocal: Vec3 = { x: r * cosNu, y: r * sinNu, z: 0 }
 	const velPerifocal: Vec3 = { x: -k * sinNu, y: k * (ecc + cosNu), z: 0 }
-	const inc = elements.inclinationDeg * DEG
-	const node = elements.longitudeAscendingNodeDeg * DEG
-	const arg = elements.argumentOfPeriapsisDeg * DEG
+	const orientation: OrbitalOrientation = {
+		inclinationDeg: elements.inclinationDeg,
+		longitudeAscendingNodeDeg: elements.longitudeAscendingNodeDeg,
+		argumentOfPeriapsisDeg: elements.argumentOfPeriapsisDeg,
+	}
 	return {
-		position: perifocalToInertial(posPerifocal, inc, node, arg),
-		velocity: perifocalToInertial(velPerifocal, inc, node, arg),
+		position: rotatePerifocalToInertial(posPerifocal, orientation),
+		velocity: rotatePerifocalToInertial(velPerifocal, orientation),
 	}
 }
 

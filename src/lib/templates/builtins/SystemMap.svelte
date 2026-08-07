@@ -12,7 +12,7 @@
 </script>
 
 {#if data}
-	<div class="my-4">
+	<div class="my-4 h-[clamp(20rem,60vh,40rem)]">
 		<SystemMapView systemName={data.systemName} stars={data.stars} bodies={data.bodies} />
 	</div>
 {:else}

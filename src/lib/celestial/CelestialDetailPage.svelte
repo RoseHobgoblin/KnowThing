@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { untrack } from 'svelte'
 	import { page } from '$app/stores'
+	import { resolve } from '$app/paths'
 	import { normalizePermissions } from '$lib/permissions.js'
 	import CelestialStatGrid from '$lib/celestial/CelestialStatGrid.svelte'
 	import CelestialFactSheet from '$lib/celestial/CelestialFactSheet.svelte'
@@ -92,6 +93,7 @@
 	let mapLabels = $state(DEFAULT_MAP_SETTINGS.labels)
 	let mapTrails = $state(DEFAULT_MAP_SETTINGS.trails)
 	let mapFollow = $state(DEFAULT_MAP_SETTINGS.follow)
+	let mapView = $state(DEFAULT_MAP_SETTINGS.view)
 	let mapSelectedId = $state<`star:${number}` | `body:${number}` | null>(null)
 
 	// This component instance is reused across client-side navigation between
@@ -104,6 +106,7 @@
 		const day = computeInitialDay()
 		untrack(() => {
 			currentAbsoluteDay = day
+			mapView = DEFAULT_MAP_SETTINGS.view
 			mapSelectedId = null
 		})
 	})
@@ -134,7 +137,6 @@
 		}))
 	})
 
-	const configurePath = $derived(`/Celestial:${raw.slug}/configure`)
 
 	// The raw row carries only the unified parent edge; the registry reference
 	// lists derive the legacy-shaped fields (systemId/parentStarId for stars,
@@ -218,41 +220,46 @@
 	>
 		{#snippet actions()}
 			{#if permissions.canConfigureCelestial}
-				<a href={configurePath} class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover">
+				<a
+					href={resolve('/[...ns_path=namespaced]', { ns_path: `Celestial:${raw.slug}/configure` })}
+					class="flex items-center gap-1 font-medium text-link transition-colors hover:text-link-hover"
+				>
 					<GearSixIcon size={14} weight="fill" />Configure
 				</a>
 			{:else if permissions.isAuthenticated && !permissions.canConfigureCelestial}
-				<span class="text-secondary text-sm">View only. Editor role required for celestial changes.</span>
+				<span class="text-sm text-secondary">View only. Editor role required for celestial changes.</span>
 			{/if}
 		{/snippet}
 
 		{#if kind === 'system' && data.kind === 'system'}
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-[1fr_280px]">
-				<div class="overflow-hidden">
+				<div class="min-w-0 overflow-hidden">
 					{#if data.systemStars && data.systemStars.length > 0}
 						<MapControls
-							bind:scale={mapScale}
 							bind:labels={mapLabels}
 							bind:trails={mapTrails}
 							bind:follow={mapFollow}
 							hasSelection={mapSelectedId != null}
 						/>
-						<SystemMap
-							systemName={raw.name}
-							stars={data.systemStars}
-							bodies={data.systemBodies ?? []}
-							{currentAbsoluteDay}
-							scale={mapScale}
-							labels={mapLabels}
-							trails={mapTrails}
-							follow={mapFollow}
-							bind:selectedId={mapSelectedId}
-						/>
+						<div class="h-[clamp(28rem,72vh,56rem)]">
+							<SystemMap
+								systemName={raw.name}
+								stars={data.systemStars}
+								bodies={data.systemBodies ?? []}
+								{currentAbsoluteDay}
+								scale={mapScale}
+								labels={mapLabels}
+								trails={mapTrails}
+								follow={mapFollow}
+								bind:view={mapView}
+								bind:selectedId={mapSelectedId}
+							/>
+						</div>
 						{#if systemCalendarConfigs.length > 0}
 							<DateScrubber calendars={systemCalendarConfigs} bind:currentAbsoluteDay />
 						{/if}
 					{:else}
-						<div class="flex items-center justify-center h-64 text-dim">
+						<div class="flex h-64 items-center justify-center text-dim">
 							No stars registered in this system.
 						</div>
 					{/if}

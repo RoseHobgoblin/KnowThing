@@ -1,10 +1,13 @@
 import { sveltekit } from '@sveltejs/kit/vite'
 import tailwindcss from '@tailwindcss/vite'
 import { paraglideVitePlugin } from '@inlang/paraglide-js'
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import { fileURLToPath } from 'node:url'
 
 export default defineConfig({
+	test: {
+		include: ['src/**/*.test.ts', 'packages/**/*.test.ts'],
+	},
 	server: {
 		fs: {
 			// The `tungolcraft` workspace package is consumed as raw TS (its exports

@@ -35,3 +35,7 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .codex-devserver.err.log
 .codex-devserver.out.log
+
+# Playwright output (committed image baselines live under e2e/__screenshots__).
+/test-results
+/playwright-report

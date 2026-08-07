@@ -1,14 +1,13 @@
 <script lang="ts">
-	import type { ScaleMode, LabelMode, TrailMode } from './map-settings.js'
+	import { cn } from '$lib/utils.js'
+	import type { LabelMode, TrailMode } from './map-settings.js'
 
 	let {
-		scale = $bindable('log'),
 		labels = $bindable('major'),
 		trails = $bindable('off'),
 		follow = $bindable(false),
 		hasSelection = false,
 	}: {
-		scale: ScaleMode
 		labels: LabelMode
 		trails: TrailMode
 		follow: boolean
@@ -16,13 +15,6 @@
 	} = $props()
 
 	type SegmentItem<T extends string> = { value: T, label: string, title?: string }
-
-	const scaleItems: SegmentItem<ScaleMode>[] = [
-		{ value: 'log', label: 'Log', title: 'Logarithmic scale (default)' },
-		{ value: 'proportional', label: 'Linear', title: 'True proportional distances' },
-		{ value: 'compact', label: 'Compact', title: 'Compressed power-law scale' },
-		{ value: 'inner', label: 'Inner', title: 'Inner system only' },
-	]
 
 	const labelItems: SegmentItem<LabelMode>[] = [
 		{ value: 'off', label: 'Off' },
@@ -38,30 +30,18 @@
 	]
 </script>
 
-<div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-3 py-1.5 bg-page border-b border-border-subtle text-xs text-secondary select-none">
-	<!-- Scale -->
-	<div class="flex items-center gap-1">
-		<span class="text-secondary uppercase tracking-wider">Scale</span>
-		<div class="flex">
-			{#each scaleItems as item (item.value)}
-				<button
-					type="button"
-					title={item.title}
-					class="px-1.5 py-0.5 transition-colors {scale === item.value ? 'bg-accent-subtle text-accent font-medium' : 'hover:bg-raised'}"
-					onclick={() => scale = item.value}
-				>{item.label}</button>
-			{/each}
-		</div>
-	</div>
-
+<div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-border-subtle bg-page px-3 py-1.5 text-xs text-secondary select-none">
 	<!-- Labels -->
 	<div class="flex items-center gap-1">
-		<span class="text-secondary uppercase tracking-wider">Labels</span>
+		<span class="tracking-wider text-secondary uppercase">Labels</span>
 		<div class="flex">
 			{#each labelItems as item (item.value)}
 				<button
 					type="button"
-					class="px-1.5 py-0.5 transition-colors {labels === item.value ? 'bg-accent-subtle text-accent font-medium' : 'hover:bg-raised'}"
+					class={cn(
+						'px-1.5 py-0.5 transition-colors',
+						labels === item.value ? 'bg-accent-subtle font-medium text-accent' : 'hover:bg-raised',
+					)}
 					onclick={() => labels = item.value}
 				>{item.label}</button>
 			{/each}
@@ -70,12 +50,15 @@
 
 	<!-- Trails -->
 	<div class="flex items-center gap-1">
-		<span class="text-secondary uppercase tracking-wider">Trails</span>
+		<span class="tracking-wider text-secondary uppercase">Trails</span>
 		<div class="flex">
 			{#each trailItems as item (item.value)}
 				<button
 					type="button"
-					class="px-1.5 py-0.5 transition-colors {trails === item.value ? 'bg-accent-subtle text-accent font-medium' : 'hover:bg-raised'}"
+					class={cn(
+						'px-1.5 py-0.5 transition-colors',
+						trails === item.value ? 'bg-accent-subtle font-medium text-accent' : 'hover:bg-raised',
+					)}
 					onclick={() => trails = item.value}
 				>{item.label}</button>
 			{/each}
@@ -86,9 +69,11 @@
 	<button
 		type="button"
 		disabled={!hasSelection}
-		class="px-1.5 py-0.5 transition-colors
-			{follow && hasSelection ? 'bg-accent-subtle text-accent font-medium' : 'hover:bg-raised'}
-			{hasSelection ? '' : 'opacity-40 cursor-not-allowed'}"
+		class={cn(
+			'px-1.5 py-0.5 transition-colors',
+			follow && hasSelection ? 'bg-accent-subtle font-medium text-accent' : 'hover:bg-raised',
+			!hasSelection && 'cursor-not-allowed opacity-40',
+		)}
 		title={hasSelection ? 'Center on selected body' : 'Select a body first'}
 		onclick={() => follow = !follow}
 	>Follow</button>

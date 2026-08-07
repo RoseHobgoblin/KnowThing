@@ -34,7 +34,8 @@ import type {
 	BodyPosition,
 	ThemePalette,
 } from '../system-layout.js'
-import type { ScaleMode, LabelMode, TrailMode } from '../map-settings.js'
+import type { MapRendererCallbacks, MapSettingsState, SystemMapRenderer } from '../renderer-types.js'
+export type { MapRendererCallbacks, MapSettingsState, SystemMapRenderer } from '../renderer-types.js'
 import { resolveColor } from '../colors.js'
 import { dashedEllipsePath, trailPath, makeRadialGlowTexture, cssToTint } from './draw-helpers.js'
 import { createHud, FONT_STACK } from './hud.js'
@@ -76,32 +77,6 @@ function labelSpecFor(kind: EntityKind, dotRadius: number): { size: number, offs
 
 function trapWheel(event: WheelEvent): void {
 	event.preventDefault()
-}
-
-export type MapSettingsState = {
-	scale: ScaleMode
-	labels: LabelMode
-	trails: TrailMode
-	follow: boolean
-}
-
-export type MapRendererCallbacks = {
-	/** Hover state for the DOM tooltip; position is CSS px within the canvas. */
-	onHover: (body: MapBody | null, position: { x: number, y: number } | null) => void
-	onSelect: (id: EntityKey | null) => void
-	onViewChange: (view: { zoomLevel: number, isMoved: boolean }) => void
-}
-
-export type SystemMapRenderer = {
-	setData(stars: MapBody[], bodies: MapBody[]): void
-	setDay(day: number | null): void
-	setSettings(settings: MapSettingsState): void
-	setSelected(id: EntityKey | null): void
-	setTheme(theme: ThemePalette): void
-	resize(screenSize: number): void
-	resetView(): void
-	destroy(): void
-	readonly canvas: HTMLCanvasElement
 }
 
 type EntityKind = 'primary' | 'direct' | 'satellite'
@@ -243,7 +218,7 @@ export async function createSystemMapRenderer(
 	let stars: MapBody[] = []
 	let bodies: MapBody[] = []
 	let day: number | null = null
-	let settings: MapSettingsState = { scale: 'log', labels: 'major', trails: 'off', follow: false }
+	let settings: MapSettingsState = { scale: 'log', labels: 'major', trails: 'off', follow: false, view: 'plan' }
 	let selectedId: EntityKey | null = null
 	let hoveredKey: EntityKey | null = null
 	let layout: SystemLayout | null = null
@@ -764,7 +739,7 @@ export async function createSystemMapRenderer(
 			viewDirty = true
 		},
 
-		resize(newScreenSize) {
+		resize(newScreenSize, _newScreenHeight) {
 			if (newScreenSize <= 0 || newScreenSize === screenSize) return
 			const keptZoomLevel = zoomLevel
 			const center = { x: viewport.center.x, y: viewport.center.y }

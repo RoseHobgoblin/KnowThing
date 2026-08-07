@@ -1,0 +1,98 @@
+<script lang="ts">
+	import { onMount } from 'svelte'
+	import MapControls from '$lib/celestial/MapControls.svelte'
+	import SystemMap from '$lib/celestial/SystemMap.svelte'
+	import { DEFAULT_MAP_SETTINGS } from '$lib/celestial/map-settings.js'
+	import type { EntityKey, MapBody } from '$lib/celestial/system-layout.js'
+
+	const stars: MapBody[] = [{
+		id: 1, name: 'Aurelia', slug: 'aurelia', bodyType: 'star', massKg: 1.989e30,
+		radiusM: 695_700_000, spectralType: 'G2V', color: 'yellow-white',
+		rotationPeriodS: 2_160_000, axialTilt: 7.25, temperatureK: 5772, luminosityW: 3.828e26,
+	}]
+	const bodies: MapBody[] = [
+		{
+			id: 10, name: 'Cinder', slug: 'cinder', bodyType: 'terrestrial', starId: 1,
+			semiMajorAxisAu: 0.42, eccentricity: 0.12, inclination: 4,
+			longitudeAscendingNode: 24, argumentOfPeriapsis: 68, orbitalPeriodDays: 99,
+			epochPhase: 0.18, effectivePeriodSource: 'stored', radiusM: 4_900_000,
+			rotationPeriodS: 78_000, axialTilt: 11, color: 'orange-red',
+		},
+		{
+			id: 11, name: 'Pelagos', slug: 'pelagos', bodyType: 'ocean', starId: 1,
+			semiMajorAxisAu: 1.1, eccentricity: 0.04, inclination: 18,
+			longitudeAscendingNode: 47, argumentOfPeriapsis: 15, orbitalPeriodDays: 421,
+			epochPhase: 0.36, effectivePeriodSource: 'derived', radiusM: 7_100_000,
+			rotationPeriodS: 91_000, axialTilt: 27, color: 'blue', moonCount: 1,
+		},
+		{
+			id: 12, name: 'Nacre', slug: 'nacre', bodyType: 'moon', starId: 1, parentId: 11,
+			semiMajorAxisAu: 0.0028, eccentricity: 0.07, inclination: 31,
+			longitudeAscendingNode: 110, argumentOfPeriapsis: 42, orbitalPeriodDays: 28,
+			epochPhase: 0.1, effectivePeriodSource: 'stored', radiusM: 1_850_000,
+			rotationPeriodS: 2_419_200, axialTilt: 6, color: 'white',
+		},
+		{
+			id: 13, name: 'Brontes', slug: 'brontes', bodyType: 'gas giant', starId: 1,
+			semiMajorAxisAu: 5.4, eccentricity: 0.19, inclination: 39,
+			longitudeAscendingNode: 205, argumentOfPeriapsis: 124, orbitalPeriodDays: 4_580,
+			epochPhase: 0.66, effectivePeriodSource: 'stored', radiusM: 62_000_000,
+			rotationPeriodS: 38_000, axialTilt: 19, color: 'pale yellow', hasRings: true,
+		},
+		{
+			id: 14, name: 'Far Lantern', slug: 'far-lantern', bodyType: 'dwarf planet', starId: 1,
+			semiMajorAxisAu: 28, eccentricity: 0.32, inclination: 57,
+			longitudeAscendingNode: 310, argumentOfPeriapsis: 211, epochPhase: 0.42,
+			effectivePeriodSource: 'unavailable', radiusM: 950_000, color: 'white',
+		},
+	]
+
+	let scale = $state(DEFAULT_MAP_SETTINGS.scale)
+	let labels = $state(DEFAULT_MAP_SETTINGS.labels)
+	let trails = $state(DEFAULT_MAP_SETTINGS.trails)
+	let follow = $state(DEFAULT_MAP_SETTINGS.follow)
+	let view = $state(DEFAULT_MAP_SETTINGS.view)
+	let selectedId = $state<EntityKey | null>(null)
+	let currentAbsoluteDay = $state(12_345.25)
+	let playing = $state(false)
+
+	onMount(() => {
+		let frame = 0
+		let previous = performance.now()
+		const tick = (now: number) => {
+			if (playing) currentAbsoluteDay += (now - previous) / 2_000
+			previous = now
+			frame = requestAnimationFrame(tick)
+		}
+		frame = requestAnimationFrame(tick)
+		return () => cancelAnimationFrame(frame)
+	})
+</script>
+
+<svelte:head><title>Celestial map fixture</title></svelte:head>
+
+<main class="min-h-screen bg-page p-3 text-heading" data-testid="celestial-fixture">
+	<div class="mx-auto max-w-7xl overflow-hidden border border-border-subtle bg-surface">
+		<MapControls bind:labels bind:trails bind:follow hasSelection={selectedId != null} />
+		<div class="h-[min(76vh,54rem)] min-h-112" data-testid="map-frame">
+			<SystemMap
+				systemName="Aurelia fixture"
+				{stars}
+				{bodies}
+				{currentAbsoluteDay}
+				{scale}
+				{labels}
+				{trails}
+				{follow}
+				bind:view
+				bind:selectedId
+			/>
+		</div>
+		<div class="flex items-center gap-3 border-t border-border-subtle px-3 py-2 text-xs text-secondary">
+			<button class="bg-raised px-2 py-1 text-heading" onclick={() => { playing = !playing }}>{playing ? 'Pause' : 'Play'}</button>
+			<button class="bg-raised px-2 py-1 text-heading" onclick={() => { currentAbsoluteDay += 0.25 }}>Advance ¼ day</button>
+			<span data-testid="fixture-day">Day {currentAbsoluteDay.toFixed(3)}</span>
+			<span data-testid="fixture-selection">{selectedId ?? 'none'}</span>
+		</div>
+	</div>
+</main>

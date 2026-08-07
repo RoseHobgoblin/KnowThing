@@ -4,7 +4,6 @@ import {
 	CENTER,
 	MIN_FIRST_ORBIT,
 	MIN_ADJACENT_GAP,
-	R_GUARD,
 	SAT_MIN_ZONE,
 	SAT_MAX_ZONE,
 	keyForBody,
@@ -16,16 +15,22 @@ import {
 	innerBoundaryAu,
 	scaleAuToPixel,
 	enforceMinGaps,
+	enforceOrbitClearance,
 	buildSelectionFamily,
 	buildLayout,
+	buildPhysicalLayout,
 	computePositions,
 	computeCameraOffset,
 	buildScene,
 	blendedSatelliteGeometry,
+	computePositions3D,
+	resolveSimpleBinary,
+	timingUnavailable,
 	type MapBody,
 	type OrbitBody,
 	type EntityKey,
 } from './system-layout.js'
+import { overviewBodyExtent } from './body-sizing.js'
 
 function star(overrides: Partial<MapBody> & { id: number }): MapBody {
 	return {
@@ -58,7 +63,7 @@ function orbiter(orbitAu: number, ecc = 0): OrbitBody {
 
 // A single-star system: primary + two planets + a moon on the outer planet.
 const soleStar = star({ id: 1 })
-const innerPlanet = body({ id: 10, starId: 1, semiMajorAxisAu: 0.5 })
+const innerPlanet = body({ id: 10, starId: 1, semiMajorAxisAu: 0.5, orbitalPeriodDays: 100 })
 const outerPlanet = body({ id: 11, starId: 1, semiMajorAxisAu: 5, eccentricity: 0.2 })
 const moon = body({ id: 12, starId: 1, parentId: 11, semiMajorAxisAu: 0.002 })
 
@@ -126,12 +131,16 @@ describe('scaleAuToPixel', () => {
 		expect(scaleAuToPixel(1, 'log', 2, 2, rMax)).toBeCloseTo((MIN_FIRST_ORBIT + rMax) / 2)
 	})
 
-	it('proportional and inner: linear from the guard radius', () => {
-		for (const mode of ['proportional', 'inner'] as const) {
-			expect(scaleAuToPixel(0, mode, auMin, auMax, rMax)).toBeCloseTo(R_GUARD)
-			expect(scaleAuToPixel(auMax, mode, auMin, auMax, rMax)).toBeCloseTo(rMax)
-			expect(scaleAuToPixel(auMax / 2, mode, auMin, auMax, rMax)).toBeCloseTo(R_GUARD + (rMax - R_GUARD) / 2)
-		}
+	it('proportional maps the visible distance range linearly', () => {
+		expect(scaleAuToPixel(auMin, 'proportional', auMin, auMax, rMax)).toBeCloseTo(MIN_FIRST_ORBIT)
+		expect(scaleAuToPixel(auMax, 'proportional', auMin, auMax, rMax)).toBeCloseTo(rMax)
+		expect(scaleAuToPixel((auMin + auMax) / 2, 'proportional', auMin, auMax, rMax))
+			.toBeCloseTo(MIN_FIRST_ORBIT + (rMax - MIN_FIRST_ORBIT) / 2)
+	})
+
+	it('inner uses the adaptive logarithmic transform within its selected cluster', () => {
+		expect(scaleAuToPixel(auMin, 'inner', auMin, auMax, rMax)).toBeCloseTo(MIN_FIRST_ORBIT)
+		expect(scaleAuToPixel(auMax, 'inner', auMin, auMax, rMax)).toBeCloseTo(rMax)
 	})
 
 	it('compact: power curve between first orbit and rMax', () => {
@@ -139,6 +148,63 @@ describe('scaleAuToPixel', () => {
 		const half = scaleAuToPixel(auMax / 2, 'compact', auMin, auMax, rMax)
 		// Compact compresses the outer system: half the distance lands past the linear midpoint
 		expect(half).toBeGreaterThan(MIN_FIRST_ORBIT + (rMax - MIN_FIRST_ORBIT) / 2)
+	})
+})
+
+describe('collision-aware orbit lanes', () => {
+	it('reserves the rendered body and ring extents in dense systems for every scale', () => {
+		const denseBodies = Array.from({ length: 14 }, (_, index) => body({
+			id: 100 + index,
+			starId: 1,
+			semiMajorAxisAu: 0.2 + index * 0.055,
+			radiusM: index % 3 === 0 ? 69_900_000 : 6_371_000,
+			hasRings: index % 4 === 0,
+		}))
+		for (const mode of ['log', 'proportional', 'compact', 'inner'] as const) {
+			const layout = buildLayout([star({ id: 1, radiusM: 695_700_000 })], denseBodies, mode)
+			const visible = layout.directOrbits.filter(orbit => !orbit.outOfRange)
+			for (let index = 1; index < visible.length; index++) {
+				const previous = visible[index - 1]
+				const current = visible[index]
+				const required = overviewBodyExtent(previous.body, previous.body.isStar, false)
+					+ overviewBodyExtent(current.body, current.body.isStar, false)
+				expect(current.a - previous.a).toBeGreaterThan(required)
+			}
+			expect(visible.at(-1)!.a).toBeLessThanOrEqual(layout.maxVisualRadius + 1e-6)
+		}
+	})
+
+	it('allows coherent co-orbitals to share one lane', () => {
+		const coOrbitals = [orbiter(1), orbiter(1), orbiter(2)]
+		const result = enforceOrbitClearance(coOrbitals, [40, 40, 42], 300, 7)
+		expect(result[0]).toBe(result[1])
+		expect(result[2]).toBeGreaterThan(result[1])
+	})
+})
+
+describe('physical orrery layout', () => {
+	it('uses one linear AU conversion for every direct orbit', () => {
+		const worlds = [
+			body({ id: 201, starId: 1, semiMajorAxisAu: 0.5 }),
+			body({ id: 202, starId: 1, semiMajorAxisAu: 1 }),
+			body({ id: 203, starId: 1, semiMajorAxisAu: 5 }),
+		]
+		const layout = buildPhysicalLayout([soleStar], worlds)
+		expect(layout.distanceModel).toBe('physical')
+		expect(layout.worldUnitsPerAu).not.toBeNull()
+		for (const orbit of layout.directOrbits) {
+			expect(orbit.a / orbit.body.orbitAu).toBeCloseTo(layout.worldUnitsPerAu!)
+		}
+		expect(layout.directOrbits[1].a / layout.directOrbits[0].a).toBeCloseTo(2)
+		expect(layout.directOrbits[2].a / layout.directOrbits[1].a).toBeCloseTo(5)
+	})
+
+	it('uses the same AU conversion for nested satellite vectors', () => {
+		const layout = buildPhysicalLayout([soleStar], [outerPlanet, moon])
+		const planetOrbit = layout.directOrbits.find(orbit => orbit.body.id === outerPlanet.id)!
+		const moonOrbit = layout.satellites.find(orbit => orbit.body.id === moon.id)!
+		expect(planetOrbit.a / outerPlanet.semiMajorAxisAu!).toBeCloseTo(layout.worldUnitsPerAu!)
+		expect(moonOrbit.orbitRadius / moon.semiMajorAxisAu!).toBeCloseTo(layout.worldUnitsPerAu!)
 	})
 })
 
@@ -388,6 +454,101 @@ describe('computePositions', () => {
 			expect(position.x).toBeLessThanOrEqual(SIZE)
 			expect(position.y).toBeGreaterThanOrEqual(0)
 			expect(position.y).toBeLessThanOrEqual(SIZE)
+		}
+	})
+
+	it('freezes honestly when timing is unavailable', () => {
+		const fixed = body({ id: 80, starId: 1, semiMajorAxisAu: 1, epochPhase: 0.25, effectivePeriodSource: 'unavailable' })
+		const fixedLayout = buildLayout([soleStar], [fixed], 'log')
+		const day0 = computePositions(fixedLayout, 0).get('body:80')!
+		const day100 = computePositions(fixedLayout, 100).get('body:80')!
+		expect(day100).toEqual(day0)
+		expect(timingUnavailable(fixed)).toBe(true)
+	})
+})
+
+describe('computePositions3D', () => {
+	it('Plan preserves the current XY placement and flattens z', () => {
+		const layout = buildLayout([soleStar], [innerPlanet, outerPlanet, moon], 'log')
+		const flat = computePositions(layout, 42)
+		const plan = computePositions3D(layout, 42, 0)
+		for (const [key, position] of flat) {
+			expect(plan.get(key)?.x).toBeCloseTo(position.x)
+			expect(plan.get(key)?.y).toBeCloseTo(position.y)
+			expect(plan.get(key)?.z).toBeCloseTo(0)
+		}
+	})
+
+	it('Orrery applies full inclination and nested moons inherit parent z', () => {
+		const tiltedPlanet = body({
+			id: 90, starId: 1, semiMajorAxisAu: 2, orbitalPeriodDays: 10,
+			inclination: 90, longitudeAscendingNode: 0, argumentOfPeriapsis: 0,
+		})
+		const tiltedMoon = body({
+			id: 91, starId: 1, parentId: 90, semiMajorAxisAu: 0.01, orbitalPeriodDays: 2,
+			inclination: 45,
+		})
+		const layout = buildLayout([soleStar], [tiltedPlanet, tiltedMoon], 'log')
+		const positions = computePositions3D(layout, 2.5, 1)
+		const planet = positions.get('body:90')!
+		const moonPosition = positions.get('body:91')!
+		expect(Math.abs(planet.z)).toBeGreaterThan(1)
+		expect(moonPosition.z).not.toBeCloseTo(planet.z)
+	})
+})
+
+describe('resolved stellar binaries', () => {
+	it('puts equal masses on equal and opposite sides of the barycenter', () => {
+		const primary = star({ id: 100, massKg: 2, parentSystemId: 7, semiMajorAxisAu: 1, orbitalPeriodDays: 10 })
+		const secondary = star({ id: 101, massKg: 2, parentSystemId: 7, semiMajorAxisAu: 1, orbitalPeriodDays: 10 })
+		const resolution = resolveSimpleBinary([primary, secondary])!
+		expect(resolution.primaryFactor).toBeCloseTo(-0.5)
+		expect(resolution.secondaryFactor).toBeCloseTo(0.5)
+		const positions = computePositions3D(buildLayout([primary, secondary], [], 'log'), 2, 1)
+		const p = positions.get('star:100')!
+		const s = positions.get('star:101')!
+		expect(p.x - CENTER).toBeCloseTo(-(s.x - CENTER))
+		expect(p.y - CENTER).toBeCloseTo(-(s.y - CENTER))
+		expect(p.z).toBeCloseTo(-s.z)
+	})
+
+	it('partitions one coherent relative axis while keeping the weighted barycenter at zero', () => {
+		const primary = star({ id: 101, massKg: 3, parentSystemId: 7, semiMajorAxisAu: 2, orbitalPeriodDays: 20 })
+		const secondary = star({ id: 102, massKg: 1, parentSystemId: 7, semiMajorAxisAu: 2, orbitalPeriodDays: 20 })
+		const resolution = resolveSimpleBinary([primary, secondary])!
+		expect(resolution.primaryFactor).toBeCloseTo(-0.25)
+		expect(resolution.secondaryFactor).toBeCloseTo(0.75)
+		const layout = buildLayout([primary, secondary], [], 'log')
+		const positions = computePositions3D(layout, 3, 1)
+		const p = positions.get('star:101')!
+		const s = positions.get('star:102')!
+		expect(3 * (p.x - CENTER) + (s.x - CENTER)).toBeCloseTo(0)
+		expect(3 * (p.y - CENTER) + (s.y - CENTER)).toBeCloseTo(0)
+		expect(3 * p.z + s.z).toBeCloseTo(0)
+	})
+
+	it('rejects conflicting axes and leaves the pair schematic', () => {
+		const primary = star({ id: 101, massKg: 1, parentSystemId: 7, semiMajorAxisAu: 1 })
+		const secondary = star({ id: 102, massKg: 1, parentSystemId: 7, semiMajorAxisAu: 2 })
+		expect(resolveSimpleBinary([primary, secondary])).toBeNull()
+		const layout = buildLayout([primary, secondary], [], 'log')
+		expect(layout.directOrbits.every(orbit => orbit.binaryFactor == null)).toBe(true)
+		expect(layout.directOrbits.every(orbit => orbit.body.placementProvenance === 'schematic')).toBe(true)
+		expect(layout.directOrbits[0].body.placementNote).toMatch(/incomplete, conflicting, or higher-order/)
+	})
+})
+
+describe('scale-mode determinism', () => {
+	it.each(['log', 'proportional', 'compact', 'inner'] as const)('%s stays finite, bounded, and deterministic', (scale) => {
+		const layout = buildLayout([soleStar], [innerPlanet, outerPlanet, moon], scale)
+		const first = computePositions3D(layout, 123.5, 1)
+		const second = computePositions3D(layout, 123.5, 1)
+		expect(second).toEqual(first)
+		for (const position of first.values()) {
+			expect([position.x, position.y, position.z, position.angle].every(Number.isFinite)).toBe(true)
+			expect(Math.abs(position.x - CENTER)).toBeLessThanOrEqual(SIZE)
+			expect(Math.abs(position.y - CENTER)).toBeLessThanOrEqual(SIZE)
+			expect(Math.abs(position.z)).toBeLessThanOrEqual(SIZE)
 		}
 	})
 })

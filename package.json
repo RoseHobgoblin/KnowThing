@@ -17,18 +17,22 @@
 		"lint": "eslint .",
 		"test": "vitest run",
 		"test:watch": "vitest",
+		"test:e2e": "playwright test",
+		"test:e2e:update": "playwright test --update-snapshots",
 		"db:migrate": "node --env-file=.env --loader ts-node/esm src/lib/server/db/migrate.ts"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^2.0.3",
 		"@eslint/js": "^10.0.1",
 		"@inlang/paraglide-js": "^2.22.0",
+		"@playwright/test": "^1.62.1",
 		"@stylistic/eslint-plugin": "^5.10.0",
 		"@sveltejs/kit": "^2.70.2",
 		"@sveltejs/vite-plugin-svelte": "^6.2.4",
 		"@tailwindcss/typography": "^0.5.19",
 		"@tailwindcss/vite": "^4.2.2",
 		"@types/bcrypt": "^6.0.0",
+		"@types/three": "^0.185.4",
 		"drizzle-kit": "^0.31.10",
 		"eslint": "^10.1.0",
 		"eslint-plugin-better-tailwindcss": "^4.3.2",
@@ -75,6 +79,7 @@
 		"svelte-flag-icons": "^3.0.1",
 		"svelte-sonner": "^1.1.1",
 		"tailwind-merge": "^3.5.0",
+		"three": "^0.185.1",
 		"tungolcraft": "*",
 		"zod": "^4.3.6"
 	}

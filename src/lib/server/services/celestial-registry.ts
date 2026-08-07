@@ -12,6 +12,11 @@ import {
 	type EffectiveOrbitBody,
 } from 'tungolcraft'
 
+function periodSource(stored: boolean, period: number | null | undefined) {
+	if (stored) return 'stored' as const
+	return period == null ? 'unavailable' as const : 'derived' as const
+}
+
 /**
  * Read-side registry over the unified `celestial_bodies` table.
  *
@@ -105,6 +110,11 @@ export async function getSystemMapEntities(systemId: number) {
 			WITH RECURSIVE ${CELESTIAL_TREE_CTE}
 			SELECT s.id, s.name, s.slug, s.spectral_type AS "spectralType", s.color,
 				s.mass_kg AS "massKg",
+				s.radius_m AS "radiusM",
+				s.rotation_period_s AS "rotationPeriodS",
+				s.axial_tilt AS "axialTilt",
+				s.temperature_k AS "temperatureK",
+				s.luminosity_w AS "luminosityW",
 				s.semi_major_axis_au AS "relativeSemiMajorAxisAu",
 				-- SystemMap still consumes the shared display-oriented field name.
 				-- Both aliases represent binary relative separation for stars.
@@ -127,6 +137,15 @@ export async function getSystemMapEntities(systemId: number) {
 			WITH RECURSIVE ${CELESTIAL_TREE_CTE}
 			SELECT pb.id, pb.name, pb.slug, pb.body_type AS "bodyType",
 				pb.mass_kg AS "massKg",
+				pb.radius_m AS "radiusM",
+				pb.rotation_period_s AS "rotationPeriodS",
+				pb.axial_tilt AS "axialTilt",
+				pb.temperature_k AS "temperatureK",
+				pb.luminosity_w AS "luminosityW",
+				pb.composition,
+				pb.atmosphere,
+				pb.albedo,
+				pb.has_rings AS "hasRings",
 				pb.semi_major_axis_au AS "semiMajorAxisAu",
 				pb.eccentricity,
 				pb.inclination,
@@ -145,10 +164,21 @@ export async function getSystemMapEntities(systemId: number) {
 			ORDER BY pb.semi_major_axis_au NULLS LAST, pb.name
 		`),
 	])
-	return annotateEffectivePeriods(
-		stars as unknown as (EffectiveOrbitStar & Record<string, unknown>)[],
-		bodies as unknown as (EffectiveOrbitBody & Record<string, unknown>)[],
-	)
+	const starRows = stars as unknown as (EffectiveOrbitStar & Record<string, unknown>)[]
+	const bodyRows = bodies as unknown as (EffectiveOrbitBody & Record<string, unknown>)[]
+	const storedStarPeriods = new Set(starRows.filter(row => row.orbitalPeriodDays != null).map(row => row.id))
+	const storedBodyPeriods = new Set(bodyRows.filter(row => row.orbitalPeriodDays != null).map(row => row.id))
+	const annotated = annotateEffectivePeriods(starRows, bodyRows)
+	return {
+		stars: annotated.stars.map(row => ({
+			...row,
+			effectivePeriodSource: periodSource(storedStarPeriods.has(row.id), row.orbitalPeriodDays),
+		})),
+		bodies: annotated.bodies.map(row => ({
+			...row,
+			effectivePeriodSource: periodSource(storedBodyPeriods.has(row.id), row.orbitalPeriodDays),
+		})),
+	}
 }
 
 export async function getCalendarsForSystem(systemId: number) {
