@@ -135,17 +135,18 @@ export function createPlanetSurfaceVisual(args: {
 	}
 
 	const loader = new TextureLoader()
-	function loadChannel(channel: SurfaceMapChannel, color: boolean, apply: (texture: Texture) => void): void {
+	function loadChannel(channel: SurfaceMapChannel, apply: (texture: Texture) => void): void {
 		const channelPlan = plan.channels[channel]
-		if (channelPlan.source !== 'uploaded' || !channelPlan.filename) return
+		const binding = channelPlan.binding
+		if (channelPlan.source !== 'uploaded' || !binding) return
 		const pending = loader.load(
-			surfaceMediaUrl(channelPlan.filename),
+			surfaceMediaUrl(binding),
 			(loaded) => {
 				if (disposed) {
 					loaded.dispose()
 					return
 				}
-				configureTexture(loaded, color)
+				configureTexture(loaded, binding.interpretation.colorSpace === 'srgb')
 				apply(loaded)
 				onTextureChange?.()
 			},
@@ -159,32 +160,33 @@ export function createPlanetSurfaceVisual(args: {
 		ownedTextures.add(pending)
 	}
 
-	loadChannel('albedo', true, setColorMap)
-	loadChannel('roughness', false, (texture) => {
+	loadChannel('albedo', setColorMap)
+	loadChannel('roughness', (texture) => {
 		material.roughness = 1
 		material.roughnessMap = texture
 		material.needsUpdate = true
 	})
-	loadChannel('elevation', false, (texture) => {
+	loadChannel('elevation', (texture) => {
 		material.bumpMap = texture
 		material.bumpScale = 0.055
 		material.needsUpdate = true
 	})
-	loadChannel('normal', false, (texture) => {
+	loadChannel('normal', (texture) => {
 		material.normalMap = texture
 		// A supplied normal map is more authoritative than fallback/height bump.
 		material.bumpMap = null
-		material.normalScale.setScalar(0.72)
+		const normalY = plan.channels.normal.binding?.interpretation.normalY === 'down' ? -0.72 : 0.72
+		material.normalScale.set(0.72, normalY)
 		material.needsUpdate = true
 	})
-	loadChannel('emissive', true, (texture) => {
+	loadChannel('emissive', (texture) => {
 		material.emissive.set(0xFFFFFF)
 		material.emissiveMap = texture
 		material.emissiveIntensity = 0.7
 		material.needsUpdate = true
 	})
 	if (plan.channels.clouds.source === 'uploaded') {
-		loadChannel('clouds', false, (texture) => {
+		loadChannel('clouds', (texture) => {
 			if (!cloudMaterial || !cloudMesh) return
 			cloudMaterial.alphaMap = texture
 			cloudMaterial.needsUpdate = true

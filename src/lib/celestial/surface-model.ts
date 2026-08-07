@@ -1,4 +1,10 @@
-export const SURFACE_RECIPE_VERSION = 1 as const
+import {
+	mediaAssetContentUrl,
+	parseMediaAssetBinding,
+	type MediaAssetBinding,
+} from '$lib/media/asset-binding.js'
+
+export const SURFACE_RECIPE_VERSION = 2 as const
 
 export type SurfaceClass = 'auto' | 'rocky' | 'terrestrial' | 'gas' | 'ice'
 export type ResolvedSurfaceClass = Exclude<SurfaceClass, 'auto'>
@@ -13,7 +19,7 @@ export type SurfaceRecipe = {
 	seed: number | null
 	hydrosphereFraction: number | null
 	cloudCoverage: number | null
-	maps: Partial<Record<SurfaceMapChannel, string>>
+	maps: Partial<Record<SurfaceMapChannel, MediaAssetBinding>>
 }
 
 export type SurfaceBodyInput = {
@@ -29,6 +35,7 @@ export type SurfaceBodyInput = {
 export type SurfaceChannelPlan = {
 	source: SurfaceSourceKind
 	filename: string | null
+	binding: MediaAssetBinding | null
 }
 
 export type SurfacePlan = {
@@ -75,10 +82,10 @@ function enumValue<T extends string>(value: unknown, options: readonly T[], fall
 export function parseSurfaceRecipe(value: unknown): SurfaceRecipe {
 	if (!isRecord(value)) return { ...DEFAULT_RECIPE, maps: {} }
 	const rawMaps = isRecord(value.maps) ? value.maps : {}
-	const maps: Partial<Record<SurfaceMapChannel, string>> = {}
+	const maps: Partial<Record<SurfaceMapChannel, MediaAssetBinding>> = {}
 	for (const channel of CHANNELS) {
-		const filename = rawMaps[channel]
-		if (typeof filename === 'string' && filename.trim()) maps[channel] = filename.trim()
+		const binding = parseMediaAssetBinding(rawMaps[channel], `surface-${channel}`)
+		if (binding) maps[channel] = binding
 	}
 	const rawSeed = finiteNumber(value.seed)
 	return {
@@ -109,8 +116,8 @@ export function inferSurfaceClass(body: SurfaceBodyInput): ResolvedSurfaceClass 
 	return 'rocky'
 }
 
-function channel(source: SurfaceSourceKind, filename: string | null = null): SurfaceChannelPlan {
-	return { source, filename }
+function channel(source: SurfaceSourceKind, binding: MediaAssetBinding | null = null): SurfaceChannelPlan {
+	return { source, filename: binding?.filename ?? null, binding }
 }
 
 export function composeSurfacePlan(body: SurfaceBodyInput, rawRecipe: unknown): SurfacePlan {
@@ -122,8 +129,8 @@ export function composeSurfacePlan(body: SurfaceBodyInput, rawRecipe: unknown): 
 	const hydrosphereFraction = recipe.hydrosphereFraction ?? (inferredOcean ? 0.8 : 0)
 	const uploaded = (mapChannel: SurfaceMapChannel) => recipe.maps[mapChannel]
 	const choose = (mapChannel: SurfaceMapChannel, fallback: SurfaceSourceKind): SurfaceChannelPlan => {
-		const filename = uploaded(mapChannel)
-		return filename ? channel('uploaded', filename) : channel(fallback)
+		const binding = uploaded(mapChannel)
+		return binding ? channel('uploaded', binding) : channel(fallback)
 	}
 
 	const writtenTemperature = body.temperature?.match(/([+-]?\d+(?:\.\d+)?)\s*k\b/i)
@@ -152,8 +159,10 @@ export function composeSurfacePlan(body: SurfaceBodyInput, rawRecipe: unknown): 
 	}
 }
 
-export function surfaceMediaUrl(filename: string): string {
-	return `/api/media/${encodeURIComponent(filename)}`
+export function surfaceMediaUrl(asset: MediaAssetBinding | string): string {
+	return typeof asset === 'string'
+		? `/api/media/${encodeURIComponent(asset)}`
+		: mediaAssetContentUrl(asset)
 }
 
 export function describeSurfacePlan(plan: SurfacePlan): string {

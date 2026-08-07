@@ -17,7 +17,7 @@ The next architectural boundary is not a more ambitious generator. It is an evid
 ```text
 Current
 
-body facts + surface recipe + Media filenames
+body facts + surface recipe + revision-pinned Media bindings
     -> per-channel source plan
     -> procedural gaps
     -> Three.js material and cloud shell
@@ -61,7 +61,7 @@ It uses:
 - an optional surface class override;
 - optional hydrosphere fraction and cloud coverage;
 - the body's existing display color as a restrained tint;
-- optional Media filenames for individual texture channels.
+- optional revision-pinned Media assets for individual texture channels.
 
 It does not use radius, mass, surface gravity, pressure, or temperature to synthesize physical geology. This is intentional: those facts do not uniquely determine a planet's map.
 
@@ -104,31 +104,27 @@ At render time, every channel is classified as one of:
 
 The surface plan also records whether class and hydrosphere were explicit or inferred. This is useful render provenance, but it is not yet durable research provenance.
 
-## Current Data Integrity Gaps
+## Current Media Binding Layer
 
-The version 1 recipe stores exact Media filenames inside `celestial_bodies.extra.surface`. Media stores a current file hash, dimensions, MIME type, description, upload history, and archived versions. The binding between them is nevertheless too weak for authoritative surface data.
+Surface recipe version 2 replaces bare filenames with Media ID, filename snapshot, SHA-256 content hash, and interpretation metadata. Legacy version 1 strings remain readable and are upgraded against Media on the next celestial save. `media_asset_bindings` independently records structured usage by owner and channel.
 
-### Filename references are mutable and untracked
+The editor now provides search, compatible/all filtering, inline upload, thumbnails, live preview, replacement, and clearing for all six planetary channels and the Starwright photosphere. New selections require an image with known dimensions, a stored content hash, and a 2:1 aspect within a small export tolerance. Normal-map Y convention and elevation value units are explicit choices. Color/data interpretation is assigned by channel.
 
-- A Media rename rewrites wiki image syntax but does not rewrite celestial surface recipes.
-- Celestial surface bindings are not represented in `content_media_usage`, so a used surface asset can appear unused.
-- Media deletion does not understand celestial bindings.
-- Re-uploading or restoring a filename can change the model without creating a new surface version.
-- A recipe pins neither a Media version nor a content hash.
+Media identity and revision are separate:
 
-### Declared uploads are not validated as surface data
+- rename preserves the numeric identity and cannot break a surface;
+- replacement archives the former bytes while the celestial binding continues to request its pinned hash;
+- deletion is blocked while any structured binding exists;
+- Media search and detail usage include celestial bindings;
+- server-side save validation repeats existence, revision, MIME, dimensions, aspect, and hash checks.
 
-The editor currently accepts an exact filename. It does not validate:
+### Remaining direct-image gaps
 
-- whether that Media record exists;
-- whether it is a decodable image;
-- whether its aspect ratio or projection is appropriate;
-- whether its dimensions are safe for GPU decoding;
-- whether its channel semantics match its encoding;
-- whether an elevation map has units or a datum;
-- whether a normal map uses the expected Y convention.
-
-If a browser texture load fails, the failure is not yet a first-class provenance state. The surface may remain flat or retain another fallback while its descriptive plan still calls the channel uploaded.
+- Browser texture-load failure is not yet stored as a durable broken state.
+- Maximum decoded dimensions and per-device GPU budgets need explicit enforcement.
+- Elevation datum, range, offset, no-data value, and reference ellipsoid remain unmodeled.
+- Source, citation, license, authority, observation time, and derivation lineage remain prose rather than structured evidence.
+- General projections and reprojection are not supported; the direct renderer deliberately accepts only 2:1 equirectangular plates.
 
 ### Media is not a scientific asset store
 
@@ -508,28 +504,16 @@ Workers should run with explicit CPU, memory, time, and disk limits; restricted 
 
 ## Migration from Surface Recipe Version 1
 
-The current recipe remains useful as a draft/fallback description while the new records are introduced.
-
-Migration should:
-
-1. Parse every `extra.surface` recipe.
-2. Resolve each referenced filename to a Media record and current hash.
-3. Create an asset and surface-layer binding for every resolved map.
-4. Preserve channel semantics and the existing fallback parameters.
-5. Mark missing filenames as broken bindings instead of dropping them.
-6. Create an initial draft release for review.
-7. Publish automatically only when all formerly working bindings resolve without ambiguity.
-
-Until migration, Media rename and delete operations should at minimum discover celestial surface references, rewrite safe renames transactionally, and warn or block destructive deletion.
+Migration `0051_media_asset_bindings.sql` backfills structured usage for resolvable legacy filenames. The version 2 parser preserves unresolved legacy strings, while the next server-validated celestial save resolves them to Media ID/current hash or reports the broken reference instead of silently dropping it. Immutable scientific surface releases remain a later layer above these direct-image bindings.
 
 ## Delivery Sequence
 
-### Phase 0: Repair the current filename contract
+### Phase 0: Repair the current filename contract — complete
 
 - Add celestial surface usage lookup.
 - Validate referenced Media records and channel compatibility.
-- Make texture-load failures visible.
-- Make Media rename update surface recipes transactionally.
+- Keep texture-load failures visible in the live editor/runtime.
+- Replace filename identity with stable Media ID and pinned hash.
 - Block or explicitly detach referenced assets on delete.
 
 ### Phase 1: Evidence and immutable releases
@@ -540,10 +524,10 @@ Until migration, Media rename and delete operations should at minimum discover c
 - Migrate version 1 recipes.
 - Add the Sources and data view.
 
-### Phase 2: Direct image workflow
+### Phase 2: Direct image workflow — initial workflow complete
 
 - Replace exact-filename text inputs with search, upload, preview, and validation.
-- Add per-channel interpretation forms.
+- Extend per-channel interpretation beyond normal Y/elevation units into complete coordinate and measurement metadata.
 - Derive overview assets and normal maps where explicitly requested.
 - Add focused-body texture level of detail.
 

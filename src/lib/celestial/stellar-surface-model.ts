@@ -1,4 +1,10 @@
-export const STELLAR_SURFACE_RECIPE_VERSION = 1 as const
+import {
+	mediaAssetContentUrl,
+	parseMediaAssetBinding,
+	type MediaAssetBinding,
+} from '$lib/media/asset-binding.js'
+
+export const STELLAR_SURFACE_RECIPE_VERSION = 2 as const
 
 export type StellarSurfaceFallback = 'procedural' | 'flat'
 export type StellarMorphology = 'auto' | 'main_sequence' | 'giant' | 'white_dwarf'
@@ -12,7 +18,7 @@ export type StellarSurfaceRecipe = {
 	seed: number | null
 	/** Starwright appearance control, not a standardized activity measurement. */
 	activity: number | null
-	maps: { photosphere?: string }
+	maps: { photosphere?: MediaAssetBinding }
 }
 
 export type StellarSurfaceBodyInput = {
@@ -34,7 +40,7 @@ export type StellarSurfacePlan = {
 	rotationSource: 'stored' | 'default'
 	activity: number
 	activitySource: 'explicit' | 'default'
-	photosphere: { source: StellarPhotosphereSource, filename: string | null }
+	photosphere: { source: StellarPhotosphereSource, filename: string | null, binding: MediaAssetBinding | null }
 }
 
 const DEFAULT_RECIPE: StellarSurfaceRecipe = {
@@ -77,9 +83,7 @@ function unitFraction(value: unknown): number | null {
 export function parseStellarSurfaceRecipe(value: unknown): StellarSurfaceRecipe {
 	if (!isRecord(value)) return { ...DEFAULT_RECIPE, maps: {} }
 	const rawMaps = isRecord(value.maps) ? value.maps : {}
-	const photosphere = typeof rawMaps.photosphere === 'string' && rawMaps.photosphere.trim()
-		? rawMaps.photosphere.trim()
-		: undefined
+	const photosphere = parseMediaAssetBinding(rawMaps.photosphere, 'stellar-photosphere') ?? undefined
 	const rawSeed = finiteNumber(value.seed)
 	return {
 		version: STELLAR_SURFACE_RECIPE_VERSION,
@@ -106,7 +110,7 @@ function stableSeed(value: string): number {
 
 export function inferStellarMorphology(spectralType: string | null | undefined): ResolvedStellarMorphology {
 	const normalized = spectralType?.trim().toUpperCase() ?? ''
-	if (/^D[A-Z]?[0-9]*/.test(normalized)) return 'white_dwarf'
+	if (/^D[A-Z]?\d*/.test(normalized)) return 'white_dwarf'
 	// Ia/Iab/Ib, II, and III are luminous giants. IV remains with the ordinary
 	// photosphere for now rather than overstating the prototype's fidelity.
 	if (/(?:IAB|IA|IB|III|II)$/.test(normalized)) return 'giant'
@@ -116,6 +120,12 @@ export function inferStellarMorphology(spectralType: string | null | undefined):
 function displayTemperature(spectralType: string | null | undefined): number | null {
 	const spectralClass = spectralType?.trim()?.[0]?.toUpperCase()
 	return spectralClass ? SPECTRAL_TEMPERATURES[spectralClass] ?? null : null
+}
+
+function temperatureSource(stored: number | null, spectral: number | null): StellarSurfacePlan['temperatureSource'] {
+	if (stored) return 'stored'
+	if (spectral) return 'spectral'
+	return 'default'
 }
 
 export function composeStellarSurfacePlan(
@@ -142,19 +152,21 @@ export function composeStellarSurfacePlan(
 		morphologySource: recipe.morphology === 'auto' ? 'inferred' : 'explicit',
 		seed: recipe.seed ?? stableSeed(`${body.id}:${body.slug}:starwright`),
 		temperatureK: storedTemperature ?? spectralTemperature ?? 5_772,
-		temperatureSource: storedTemperature != null ? 'stored' : (spectralTemperature != null ? 'spectral' : 'default'),
+		temperatureSource: temperatureSource(storedTemperature, spectralTemperature),
 		rotationDays: storedRotationDays ?? 25.4,
-		rotationSource: storedRotationDays != null ? 'stored' : 'default',
+		rotationSource: storedRotationDays ? 'stored' : 'default',
 		activity: recipe.activity ?? defaultActivity,
-		activitySource: recipe.activity != null ? 'explicit' : 'default',
+		activitySource: typeof recipe.activity === 'number' ? 'explicit' : 'default',
 		photosphere: uploaded
-			? { source: 'uploaded', filename: uploaded }
-			: { source: recipe.fallback === 'procedural' ? 'procedural' : 'constant', filename: null },
+			? { source: 'uploaded', filename: uploaded.filename, binding: uploaded }
+			: { source: recipe.fallback === 'procedural' ? 'procedural' : 'constant', filename: null, binding: null },
 	}
 }
 
-export function stellarSurfaceMediaUrl(filename: string): string {
-	return `/api/media/${encodeURIComponent(filename)}`
+export function stellarSurfaceMediaUrl(asset: MediaAssetBinding | string): string {
+	return typeof asset === 'string'
+		? `/api/media/${encodeURIComponent(asset)}`
+		: mediaAssetContentUrl(asset)
 }
 
 export function describeStellarSurfacePlan(plan: StellarSurfacePlan): string {

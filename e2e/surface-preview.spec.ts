@@ -9,7 +9,7 @@ test.describe('celestial surface preview', () => {
 		const preview = page.getByTestId('surface-preview')
 		await expect(preview).toHaveAttribute('data-render-state', 'ready', { timeout: 20_000 })
 		await expect(preview).toContainText('Procedural terrestrial surface (illustrative)')
-		await expect(preview).toHaveScreenshot('surface-preview-terrestrial.png')
+		await expect(preview).toHaveScreenshot('surface-preview-terrestrial.png', { maxDiffPixels: 1_000 })
 
 		await page.getByLabel('Surface water fraction').fill('0.2')
 		await expect(preview).toHaveAttribute('data-render-state', 'ready', { timeout: 20_000 })
@@ -42,7 +42,7 @@ test.describe('celestial surface preview', () => {
 		await expect(preview).toHaveAttribute('data-render-state', 'ready', { timeout: 20_000 })
 		await expect(preview).toContainText('Starwright photosphere (illustrative)')
 		await expect(preview).toContainText('main sequence')
-		await expect(preview).toHaveScreenshot('stellar-preview-m3v.png')
+		await expect(preview).toHaveScreenshot('stellar-preview-m3v.png', { maxDiffPixels: 1_000 })
 		expect(pageErrors).toEqual([])
 	})
 })

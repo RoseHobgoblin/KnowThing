@@ -8,7 +8,7 @@ describe('stellar surface material', () => {
 			body: {
 				id: 1, name: 'Sun', slug: 'sun', bodyType: 'star', spectralType: 'G2V',
 				temperatureK: 5_772, rotationPeriodS: 2_194_560,
-				stellarSurface: { version: 1, fallback: 'procedural', morphology: 'auto', seed: 9, activity: 0.3, maps: {} },
+				stellarSurface: { version: 2, fallback: 'procedural', morphology: 'auto', seed: 9, activity: 0.3, maps: {} },
 			},
 			colorCss: '#FFF4EA',
 		})
@@ -30,7 +30,7 @@ describe('stellar surface material', () => {
 		const visual = createStellarSurfaceVisual({
 			body: {
 				id: 2, name: 'Plain', slug: 'plain', bodyType: 'star',
-				stellarSurface: { version: 1, fallback: 'flat', morphology: 'main_sequence', seed: null, activity: null, maps: {} },
+				stellarSurface: { version: 2, fallback: 'flat', morphology: 'main_sequence', seed: null, activity: null, maps: {} },
 			},
 			colorCss: '#FFE088',
 		})

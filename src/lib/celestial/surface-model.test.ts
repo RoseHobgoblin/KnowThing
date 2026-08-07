@@ -19,8 +19,8 @@ describe('surface composition plan', () => {
 			version: 1,
 			maps: { albedo: 'Pelagos albedo.png', normal: 'Pelagos normal.png' },
 		})
-		expect(plan.channels.albedo).toEqual({ source: 'uploaded', filename: 'Pelagos albedo.png' })
-		expect(plan.channels.normal).toEqual({ source: 'uploaded', filename: 'Pelagos normal.png' })
+		expect(plan.channels.albedo).toMatchObject({ source: 'uploaded', filename: 'Pelagos albedo.png' })
+		expect(plan.channels.normal).toMatchObject({ source: 'uploaded', filename: 'Pelagos normal.png' })
 		expect(plan.channels.roughness.source).toBe('procedural')
 		expect(describeSurfacePlan(plan)).toBe('Uploaded surface data (2 channels) with procedural gaps')
 	})
@@ -42,7 +42,7 @@ describe('surface composition plan', () => {
 		expect(recipe).toMatchObject({
 			fallback: 'procedural', class: 'gas', seed: 4,
 			hydrosphereFraction: 1, cloudCoverage: 0,
-			maps: { albedo: 'map one.png' },
+			maps: { albedo: { filename: 'map one.png' } },
 		})
 		expect(surfaceMediaUrl('map one.png')).toBe('/api/media/map%20one.png')
 	})

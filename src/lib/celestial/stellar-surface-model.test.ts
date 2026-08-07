@@ -16,12 +16,15 @@ describe('stellar surface recipe', () => {
 			activity: 4,
 			maps: { photosphere: ' Giant plate.png ', ignored: 'x.png' },
 		})).toEqual({
-			version: 1,
+			version: 2,
 			fallback: 'procedural',
 			morphology: 'giant',
 			seed: 8,
 			activity: 1,
-			maps: { photosphere: 'Giant plate.png' },
+			maps: { photosphere: {
+				version: 1, mediaId: null, filename: 'Giant plate.png', contentHash: null,
+				interpretation: { projection: 'equirectangular', colorSpace: 'srgb' },
+			} },
 		})
 	})
 
@@ -53,6 +56,6 @@ describe('stellar surface recipe', () => {
 		expect(plan.temperatureSource).toBe('stored')
 		expect(plan.rotationDays).toBeCloseTo(300 / 86_400)
 		expect(plan.activity).toBe(0.8)
-		expect(plan.photosphere).toEqual({ source: 'uploaded', filename: 'Sirius B.png' })
+		expect(plan.photosphere).toMatchObject({ source: 'uploaded', filename: 'Sirius B.png' })
 	})
 })

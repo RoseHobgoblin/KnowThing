@@ -10,12 +10,15 @@ describe('stellar surface editor recipe', () => {
 			stellarActivity: 0.72,
 			stellarPhotosphereMap: ' Therne photosphere.webp ',
 		})).toEqual({
-			version: 1,
+			version: 2,
 			fallback: 'procedural',
 			morphology: 'main_sequence',
 			seed: 81,
 			activity: 0.72,
-			maps: { photosphere: 'Therne photosphere.webp' },
+			maps: { photosphere: {
+				version: 1, mediaId: null, filename: 'Therne photosphere.webp', contentHash: null,
+				interpretation: { projection: 'equirectangular', colorSpace: 'srgb' },
+			} },
 		})
 	})
 

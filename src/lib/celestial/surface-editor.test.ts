@@ -12,13 +12,16 @@ describe('surface editor recipe', () => {
 			surfaceMap_albedo: ' Saxnat albedo.png ',
 			surfaceMap_normal: '',
 		})).toEqual({
-			version: 1,
+			version: 2,
 			fallback: 'procedural',
 			class: 'terrestrial',
 			seed: 436,
 			hydrosphereFraction: 0.55,
 			cloudCoverage: 0.48,
-			maps: { albedo: 'Saxnat albedo.png' },
+			maps: { albedo: {
+				version: 1, mediaId: null, filename: 'Saxnat albedo.png', contentHash: null,
+				interpretation: { projection: 'equirectangular', colorSpace: 'srgb' },
+			} },
 		})
 	})
 

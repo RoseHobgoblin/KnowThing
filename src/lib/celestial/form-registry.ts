@@ -23,6 +23,7 @@ import { parseSurfaceRecipe, type SurfaceMapChannel } from './surface-model.js'
 import { surfaceRecipeFromDraft } from './surface-editor.js'
 import { parseStellarSurfaceRecipe } from './stellar-surface-model.js'
 import { stellarSurfaceRecipeFromDraft } from './stellar-surface-editor.js'
+import type { CelestialMediaPurpose, MediaAssetBinding } from '$lib/media/asset-binding.js'
 
 /**
  * Declarative field registry for the celestial configure forms.
@@ -95,6 +96,12 @@ export interface SelectFieldSpec extends FieldBase {
 	initial?: (record: Record<string, any>) => string
 }
 export interface CheckboxFieldSpec extends FieldBase { control: 'checkbox', key: string }
+export interface MediaFieldSpec extends FieldBase {
+	control: 'media'
+	key: string
+	purpose: CelestialMediaPurpose
+	initial: (record: Record<string, any>) => MediaAssetBinding | null
+}
 export interface LockableFieldSpec extends FieldBase {
 	control: 'lockable'
 	key: string
@@ -112,6 +119,7 @@ export type FieldSpec =
 	| NumberFieldSpec
 	| SelectFieldSpec
 	| CheckboxFieldSpec
+	| MediaFieldSpec
 	| LockableFieldSpec
 
 /** One row of the live "computed properties" side panel. Null values are hidden. */
@@ -221,6 +229,9 @@ export function buildDraft(config: CelestialFormConfig, record: Record<string, a
 				break
 			case 'checkbox':
 				draft[spec.key] = record[spec.key] ?? false
+				break
+			case 'media':
+				draft[spec.key] = spec.initial(record)
 				break
 			case 'lockable': {
 				const value = 'extra' in spec.source
@@ -579,9 +590,9 @@ const starConfig: CelestialFormConfig = {
 				{
 					cols: 1,
 					fields: [{
-						control: 'text', key: 'stellarPhotosphereMap', label: 'Uploaded photosphere plate', omitFromPayload: true,
-						initial: record => parseStellarSurfaceRecipe(record.extra?.stellarSurface).maps.photosphere ?? '',
-						placeholder: 'Exact filename from Media',
+						control: 'media', key: 'stellarPhotosphereMap', label: 'Photosphere plate', omitFromPayload: true,
+						purpose: 'stellar-photosphere',
+						initial: record => parseStellarSurfaceRecipe(record.extra?.stellarSurface).maps.photosphere ?? null,
 						hint: 'Optional sRGB 2:1 equirectangular plate. An upload supersedes Starwright and may appear in Physical mode; document its coordinate convention and provenance on the Media record.',
 					}],
 				},
@@ -980,12 +991,12 @@ const bodyConfig: CelestialFormConfig = {
 						['clouds', 'Cloud opacity map', 'Linear grayscale 2:1 opacity mask rendered on an independent cloud shell.'],
 						['emissive', 'Emissive / night map', 'sRGB 2:1 color image for genuinely luminous surface features.'],
 					] as [SurfaceMapChannel, string, string][]).map(([channel, label, hint]) => ({
-						control: 'text' as const,
+						control: 'media' as const,
 						key: `surfaceMap_${channel}`,
 						label,
 						omitFromPayload: true,
-						initial: (record: Record<string, any>) => parseSurfaceRecipe(record.extra?.surface).maps[channel] ?? '',
-						placeholder: 'Exact filename from Media',
+						purpose: `surface-${channel}` as CelestialMediaPurpose,
+						initial: (record: Record<string, any>) => parseSurfaceRecipe(record.extra?.surface).maps[channel] ?? null,
 						hint,
 					})),
 				},

@@ -209,8 +209,8 @@
 				try {
 					if (currentIsStar) {
 						const photosphere = currentStellarPlan.photosphere
-						if (photosphere.source === 'uploaded' && photosphere.filename) {
-							const image = await loadImage(stellarSurfaceMediaUrl(photosphere.filename))
+						if (photosphere.source === 'uploaded' && photosphere.binding) {
+							const image = await loadImage(stellarSurfaceMediaUrl(photosphere.binding))
 							if (version !== renderVersion) return
 							drawImagePlate(canvas, image)
 						} else if (photosphere.source === 'procedural') {
@@ -229,8 +229,8 @@
 						}
 					} else {
 						const albedo = currentPlanetPlan.channels.albedo
-						if (albedo.source === 'uploaded' && albedo.filename) {
-							const image = await loadImage(surfaceMediaUrl(albedo.filename))
+						if (albedo.source === 'uploaded' && albedo.binding) {
+							const image = await loadImage(surfaceMediaUrl(albedo.binding))
 							if (version !== renderVersion) return
 							drawImagePlate(canvas, image)
 						} else if (albedo.source === 'procedural') {

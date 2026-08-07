@@ -140,10 +140,10 @@ export function createStellarSurfaceVisual(args: {
 		readyTasks.push(task)
 	}
 
-	if (plan.photosphere.source === 'uploaded' && plan.photosphere.filename) {
+	if (plan.photosphere.source === 'uploaded' && plan.photosphere.binding) {
 		const loader = new TextureLoader()
 		const pending = loader.load(
-			stellarSurfaceMediaUrl(plan.photosphere.filename),
+			stellarSurfaceMediaUrl(plan.photosphere.binding),
 			(loaded) => {
 				if (disposed) {
 					loaded.dispose()

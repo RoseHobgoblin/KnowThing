@@ -122,7 +122,7 @@ describe('buildPayload', () => {
 		})
 		expect(draft.stellarSurfaceFallback).toBe('flat')
 		expect(draft.stellarActivity).toBe(0.75)
-		expect(draft.stellarPhotosphereMap).toBe('Therne plate.png')
+		expect(draft.stellarPhotosphereMap).toMatchObject({ filename: 'Therne plate.png', mediaId: null })
 		draft.systemId = '4'
 		draft.stellarSurfaceFallback = 'procedural'
 		const payload = buildPayload(config, { draft, selfId: 2, systems: [], stars: [], siblings: [] })
@@ -130,8 +130,8 @@ describe('buildPayload', () => {
 		expect(payload.extra).toMatchObject({
 			density: '12 g/cm³',
 			stellarSurface: {
-				version: 1, fallback: 'procedural', morphology: 'main_sequence',
-				seed: 436, activity: 0.75, maps: { photosphere: 'Therne plate.png' },
+				version: 2, fallback: 'procedural', morphology: 'main_sequence',
+				seed: 436, activity: 0.75, maps: { photosphere: { filename: 'Therne plate.png' } },
 			},
 		})
 		expect(config.updateSchema.safeParse(payload).success).toBe(true)
@@ -152,7 +152,7 @@ describe('buildPayload', () => {
 		})
 		expect(draft.surfaceFallback).toBe('flat')
 		expect(draft.surfaceHydrosphere).toBe(0.71)
-		expect(draft.surfaceMap_albedo).toBe('Earth albedo.png')
+		expect(draft.surfaceMap_albedo).toMatchObject({ filename: 'Earth albedo.png', mediaId: null })
 		draft.starId = '7'
 		draft.surfaceMap_roughness = 'Earth roughness.png'
 		const payload = buildPayload(config, { draft, selfId: 3, systems: [], stars: [], siblings: [] })
@@ -160,12 +160,12 @@ describe('buildPayload', () => {
 		expect(payload.extra).toMatchObject({
 			density: '5.51 g/cm³',
 			surface: {
-				version: 1, fallback: 'flat', class: 'terrestrial', seed: 42,
+				version: 2, fallback: 'flat', class: 'terrestrial', seed: 42,
 				hydrosphereFraction: 0.71,
 				maps: {
-					albedo: 'Earth albedo.png',
-					normal: 'Earth normal.png',
-					roughness: 'Earth roughness.png',
+					albedo: { filename: 'Earth albedo.png' },
+					normal: { filename: 'Earth normal.png' },
+					roughness: { filename: 'Earth roughness.png' },
 				},
 			},
 		})

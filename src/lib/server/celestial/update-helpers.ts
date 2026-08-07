@@ -1,8 +1,9 @@
 import { error } from '@sveltejs/kit'
 import { db } from '$lib/server/db/index.js'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { deleteContentByDomainSlug } from '$lib/server/services/content-records.js'
 import { urlSlugify } from '$lib/utils/slugify.js'
+import { mediaAssetBindings } from '$lib/server/db/schema.js'
 import type { PgTable, PgColumn } from 'drizzle-orm/pg-core'
 
 /**
@@ -113,6 +114,12 @@ export async function deleteCelestialEntity(
 
 		if (!removed) return null
 
+		if ('id' in removed && typeof removed.id === 'number') {
+			await tx.delete(mediaAssetBindings).where(and(
+				eq(mediaAssetBindings.ownerType, 'celestial'),
+				eq(mediaAssetBindings.ownerId, removed.id),
+			))
+		}
 		if (removed.slug) await deleteContentByDomainSlug(tx, 'celestial', removed.slug)
 		return removed
 	})

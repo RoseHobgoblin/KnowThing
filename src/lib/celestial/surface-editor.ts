@@ -4,6 +4,7 @@ import {
 	type SurfaceMapChannel,
 	type SurfaceRecipe,
 } from './surface-model.js'
+import { parseMediaAssetBinding } from '$lib/media/asset-binding.js'
 
 const SURFACE_CHANNELS: SurfaceMapChannel[] = [
 	'albedo',
@@ -24,10 +25,10 @@ function finiteNumber(value: unknown): number | null {
  * unsaved preview cannot disagree with what Save will persist.
  */
 export function surfaceRecipeFromDraft(draft: Record<string, unknown>): SurfaceRecipe {
-	const maps: Partial<Record<SurfaceMapChannel, string>> = {}
+	const maps: SurfaceRecipe['maps'] = {}
 	for (const channel of SURFACE_CHANNELS) {
-		const filename = draft[`surfaceMap_${channel}`]
-		if (typeof filename === 'string' && filename.trim()) maps[channel] = filename.trim()
+		const binding = parseMediaAssetBinding(draft[`surfaceMap_${channel}`], `surface-${channel}`)
+		if (binding) maps[channel] = binding
 	}
 
 	return parseSurfaceRecipe({

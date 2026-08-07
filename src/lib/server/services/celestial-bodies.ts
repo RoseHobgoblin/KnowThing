@@ -24,6 +24,10 @@ import {
 	BODY_OVERRIDE_MAP,
 } from '$lib/server/celestial/update-helpers.js'
 import { moveContentByDomainSlug } from '$lib/server/services/content-records.js'
+import {
+	normalizeCelestialMediaBindings,
+	replaceMediaBindingsForOwner,
+} from '$lib/server/services/media-bindings.js'
 
 type CreateSystemInput = z.infer<typeof createSystemSchema>
 type CreateStarInput = z.infer<typeof createStarSchema>
@@ -363,8 +367,13 @@ export async function updateCelestial(slug: string, raw: unknown) {
 	}
 
 	const updated = await db.transaction(async (tx) => {
+		const mediaBindingUpdate = await normalizeCelestialMediaBindings(tx, current.id, kind, setClause.extra ?? current.extra)
+		if (mediaBindingUpdate) setClause.extra = mediaBindingUpdate.extra
 		const [saved] = await tx.update(celestialBodies).set(setClause).where(eq(celestialBodies.slug, slug)).returning()
 		if (!saved) return null
+		if (mediaBindingUpdate) {
+			await replaceMediaBindingsForOwner(tx, 'celestial', current.id, mediaBindingUpdate.rows)
+		}
 
 		// Keep any legacy content record keyed to this entity's slug in sync.
 		if (typeof setClause.slug === 'string' && setClause.slug !== current.slug) {

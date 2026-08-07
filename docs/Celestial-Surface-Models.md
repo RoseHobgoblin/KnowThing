@@ -17,32 +17,36 @@ Every texture choice retains provenance as `uploaded`, `procedural`, `constant`,
 
 ## Current Recipe
 
-The versioned recipe lives in `celestial_bodies.extra.surface`, so the first implementation needs no database migration:
+The version 2 recipe lives in `celestial_bodies.extra.surface`. Each map is a stable Media identity pinned to the exact selected SHA-256 revision:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "fallback": "procedural",
   "class": "terrestrial",
   "seed": 436,
   "hydrosphereFraction": 0.55,
   "cloudCoverage": 0.48,
   "maps": {
-    "albedo": "Saxnat albedo.png",
-    "elevation": "Saxnat elevation.png",
-    "normal": "Saxnat normal.png",
-    "roughness": "Saxnat roughness.png",
-    "clouds": "Saxnat clouds.png",
-    "emissive": "Saxnat night.png"
+    "albedo": {
+      "version": 1,
+      "mediaId": 42,
+      "filename": "Saxnat albedo.png",
+      "contentHash": "<sha256>",
+      "interpretation": {
+        "projection": "equirectangular",
+        "colorSpace": "srgb"
+      }
+    }
   }
 }
 ```
 
-All fields are optional in the editor. `fallback: "flat"` is the explicit opt-out. `class: "auto"` uses conservative body-type/composition clues only for missing procedural channels. It does not modify uploads.
+All channels use the same binding shape. Normal bindings additionally record OpenGL/DirectX Y convention; elevation bindings record relative, metre, or kilometre interpretation. All fields are optional in the editor. `fallback: "flat"` is the explicit opt-out. `class: "auto"` uses conservative body-type/composition clues only for missing procedural channels. It does not modify uploads.
 
 ## Texture Channels and Upload Handoff
 
-The current runtime expects ordinary images stored in KnowThing Media. A 2:1 equirectangular plate is the interchange projection for the overview sphere.
+The current runtime expects ordinary images stored in KnowThing Media. A searchable picker supports selection and inline upload, validates image identity and a 2:1 equirectangular aspect, and updates the unsaved preview immediately. The selected content hash is served from the current file or archived Media version, so replacement cannot silently change a body.
 
 | Channel | Meaning | Recommended handoff | Runtime treatment |
 |---|---|---|---|

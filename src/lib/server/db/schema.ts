@@ -662,6 +662,28 @@ export const celestialBodies = pgTable(
 	],
 )
 
+/** Stable, revision-pinned Media usage by structured domain records. */
+export const mediaAssetBindings = pgTable(
+	'media_asset_bindings',
+	{
+		id: serial('id').primaryKey(),
+		mediaId: integer('media_id').references(() => media.id, { onDelete: 'restrict' }).notNull(),
+		ownerType: text('owner_type').notNull(),
+		ownerId: integer('owner_id').notNull(),
+		slot: text('slot').notNull(),
+		contentHash: text('content_hash').notNull(),
+		filenameSnapshot: text('filename_snapshot').notNull(),
+		interpretation: jsonb('interpretation').default({}).notNull(),
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+	},
+	table => [
+		uniqueIndex('uidx_media_asset_binding_owner_slot').on(table.ownerType, table.ownerId, table.slot),
+		index('idx_media_asset_bindings_media').on(table.mediaId),
+		index('idx_media_asset_bindings_owner').on(table.ownerType, table.ownerId),
+	],
+)
+
 // ============================================================================
 // World Maps & Countries
 // ============================================================================

@@ -14,6 +14,7 @@
 	import SaveStatusBadge from '$lib/components/editor/SaveStatusBadge.svelte'
 	import FormNotice from '$lib/components/editor/FormNotice.svelte'
 	import CelestialSurfacePreview from '$lib/components/celestial/CelestialSurfacePreview.svelte'
+	import MediaAssetPicker from '$lib/components/media/MediaAssetPicker.svelte'
 	import { celestialConfigureBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import { goto } from '$app/navigation'
@@ -99,9 +100,18 @@
 	}))
 	const saving = $derived(entityMutation.isPending)
 
-	// Key-sorted so dirty tracking never depends on draft key insertion order.
+	// Recursively key-sort because Media bindings introduce nested draft values.
 	function serializeDraft(value: Record<string, any>): string {
-		return JSON.stringify(value, Object.keys(value).toSorted())
+		const stable = (input: unknown): unknown => {
+			if (Array.isArray(input)) return input.map(stable)
+			if (typeof input !== 'object' || input === null) return input
+			return Object.fromEntries(
+				Object.entries(input as Record<string, unknown>)
+					.toSorted(([left], [right]) => left.localeCompare(right))
+					.map(([key, nested]) => [key, stable(nested)]),
+			)
+		}
+		return JSON.stringify(stable(value))
 	}
 	let initialSnapshot = $state(serializeDraft(untrack(() => draft)))
 	const currentSnapshot = $derived(serializeDraft(draft))
@@ -313,6 +323,14 @@
 		<Select label={labelOf(spec, ctx)} type="single" bind:value={draft[spec.key]} items={spec.options(ctx)} />
 	{:else if spec.control === 'checkbox'}
 		<Checkbox bind:value={draft[spec.key]} label={labelOf(spec, ctx)} />
+	{:else if spec.control === 'media'}
+		<MediaAssetPicker
+			label={labelOf(spec, ctx)}
+			hint={spec.hint}
+			purpose={spec.purpose}
+			canUpload={permissions.canManageMedia}
+			bind:value={draft[spec.key]}
+		/>
 	{:else if spec.control === 'lockable'}
 		<LockableDerivedField
 			label={labelOf(spec, ctx)}

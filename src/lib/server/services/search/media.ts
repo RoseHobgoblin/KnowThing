@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, sql } from 'drizzle-orm'
 import { db } from '$lib/server/db/index.js'
-import { contentMediaUsage, media } from '$lib/server/db/schema.js'
+import { contentMediaUsage, media, mediaAssetBindings } from '$lib/server/db/schema.js'
 import type { UnifiedSearchFilters, UnifiedSearchResult } from './types.js'
 
 export interface MediaSearchParams {
@@ -8,6 +8,8 @@ export interface MediaSearchParams {
 	category?: string
 	sort?: UnifiedSearchFilters['sort']
 	unused?: boolean
+	imageOnly?: boolean
+	celestialPlate?: boolean
 	limit: number
 	offset: number
 }
@@ -37,6 +39,14 @@ export async function listMedia(params: MediaSearchParams): Promise<{ files: Med
 		.from(contentMediaUsage)
 		.groupBy(contentMediaUsage.filename)
 		.as('usage_counts')
+	const assetUsageCounts = db
+		.select({
+			mediaId: mediaAssetBindings.mediaId,
+			count: sql<number>`count(*)::int`.as('count'),
+		})
+		.from(mediaAssetBindings)
+		.groupBy(mediaAssetBindings.mediaId)
+		.as('asset_usage_counts')
 
 	const conditions = buildMediaConditions(params)
 
@@ -54,10 +64,11 @@ export async function listMedia(params: MediaSearchParams): Promise<{ files: Med
 			hasThumb300: media.hasThumb300,
 			hasThumb600: media.hasThumb600,
 			uploadedAt: media.uploadedAt,
-			usageCount: sql<number>`COALESCE(${usageCounts.count}, 0)`.as('usage_count'),
+			usageCount: sql<number>`COALESCE(${usageCounts.count}, 0) + COALESCE(${assetUsageCounts.count}, 0)`.as('usage_count'),
 		})
 		.from(media)
 		.leftJoin(usageCounts, eq(media.filename, usageCounts.filename))
+		.leftJoin(assetUsageCounts, eq(media.id, assetUsageCounts.mediaId))
 		.$dynamic()
 
 	if (conditions.length > 0) {
@@ -129,7 +140,21 @@ function buildMediaConditions(params: MediaSearchParams) {
 	}
 	if (params.unused) {
 		conditions.push(
-			sql`NOT EXISTS (SELECT 1 FROM content_media_usage cmu WHERE cmu.filename = ${media.filename})`,
+			sql`
+				NOT EXISTS (SELECT 1 FROM content_media_usage cmu WHERE cmu.filename = ${media.filename})
+				AND NOT EXISTS (SELECT 1 FROM media_asset_bindings mab WHERE mab.media_id = ${media.id})
+			`,
+		)
+	}
+	if (params.imageOnly) {
+		conditions.push(sql`${media.mimeType} LIKE 'image/%'`)
+	}
+	if (params.celestialPlate) {
+		// A small tolerance permits plates whose metadata was rounded during export.
+		conditions.push(
+			sql`${media.width} IS NOT NULL AND ${media.height} IS NOT NULL AND ${media.height} > 0`,
+			sql`ABS((${media.width}::double precision / ${media.height}) - 2.0) <= 0.04`,
+			sql`${media.hash} IS NOT NULL`,
 		)
 	}
 

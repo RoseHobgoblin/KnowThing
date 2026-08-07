@@ -16,7 +16,7 @@
 		composition: 'iron core and silicate mantle',
 		atmosphere: 'N2 78%, O2 21%',
 		surface: {
-			version: 1,
+			version: 2,
 			fallback: 'procedural',
 			class: 'terrestrial',
 			seed,
@@ -36,7 +36,7 @@
 		rotationPeriodS: 2_160_000,
 		color: '#B33000',
 		stellarSurface: {
-			version: 1,
+			version: 2,
 			fallback: 'procedural',
 			morphology: 'auto',
 			seed: 912,
