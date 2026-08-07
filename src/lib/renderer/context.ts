@@ -46,8 +46,8 @@ export interface FootnoteEntry {
 	content: WikiNode[]
 }
 
-export function createKnowContext(overrides: Partial<KnowRenderContext> = {}): KnowRenderContext {
-	const ctx: KnowRenderContext = {
+function defaultKnowContext(overrides: Partial<KnowRenderContext> = {}): KnowRenderContext {
+	return {
 		mediaBaseUrl: '/api/media',
 		pageBaseUrl: '/know',
 		sourceDomain: 'know',
@@ -64,12 +64,22 @@ export function createKnowContext(overrides: Partial<KnowRenderContext> = {}): K
 		systemMaps: null,
 		...overrides,
 	}
+}
+
+export function createKnowContext(overrides: Partial<KnowRenderContext> = {}): KnowRenderContext {
+	const ctx = defaultKnowContext(overrides)
 	setContext(KNOW_CONTEXT_KEY, ctx)
 	return ctx
 }
 
+/**
+ * Renderer nodes call this at init. A page that renders wikitext without calling
+ * `createKnowContext` (e.g. a listing embedding InlineMarkup) would otherwise get
+ * `undefined` and crash SSR on the first wikilink. Fall back to an empty context
+ * instead: links resolve to their deterministic redlink hrefs, and the page renders.
+ */
 export function getKnowContext(): KnowRenderContext {
-	return getContext<KnowRenderContext>(KNOW_CONTEXT_KEY)
+	return getContext<KnowRenderContext>(KNOW_CONTEXT_KEY) ?? defaultKnowContext()
 }
 
 // Re-export — callers import slugify from here

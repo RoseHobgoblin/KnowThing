@@ -5,11 +5,23 @@
 	import AlphabetNav from '$lib/components/wordbook/AlphabetNav.svelte'
 	import WordEntry from '$lib/components/wordbook/WordEntry.svelte'
 	import InflectionSummary from '$lib/components/wordbook/InflectionSummary.svelte'
+	import { createKnowContext } from '$lib/renderer/context.js'
 	import { m } from '$lib/paraglide/messages.js'
 
 	let { data }: { data: PageData } = $props()
 
 	const layoutData = $derived($page.data)
+
+	// WordEntry renders definitions through InlineMarkup, so this listing needs a
+	// render context even though it has no article body of its own. Links aren't
+	// resolved server-side for list previews — they render as redlinks, same as
+	// the wordbook index.
+	createKnowContext({
+		mediaBaseUrl: '/api/media',
+		pageBaseUrl: '/Wordbook',
+		sourceDomain: 'wordbook',
+	})
+
 	const permissions = $derived(layoutData.permissions)
 	const isAuthenticated = $derived(permissions.isAuthenticated)
 	const canManageWordbook = $derived(permissions.canManageWordbook)
@@ -84,12 +96,12 @@
 			<a href="/Wordbook/contribute?language={data.language.slug}" class="text-sm text-link hover:text-link-hover hover:underline">+ {m.wb_add_word()}</a>
 			<a href="/Wordbook/contribute/language/{data.language.slug}" class="text-sm text-secondary hover:text-link hover:underline">{m.wb_edit_language()}</a>
 		{:else if isAuthenticated}
-			<span class="text-secondary text-sm">{m.common_view_only_editor()}</span>
+			<span class="text-sm text-secondary">{m.common_view_only_editor()}</span>
 		{/if}
 	{/snippet}
 
 	{#snippet badges()}
-		<div class="flex items-center gap-3 text-sm text-dim mt-1">
+		<div class="mt-1 flex items-center gap-3 text-sm text-dim">
 			{#if data.language.nativeName}
 				<span class="italic">{data.language.nativeName}</span>
 				<span class="text-secondary">·</span>
@@ -107,13 +119,13 @@
 	{/snippet}
 
 	{#if data.language.description}
-		<p class="text-secondary leading-relaxed mb-4">{data.language.description}</p>
+		<p class="mb-4 leading-relaxed text-secondary">{data.language.description}</p>
 	{/if}
 
 	{#if data.language.pageSlug}
 		<a
 			href="/know/{data.language.pageSlug}"
-			class="inline-block mb-4 text-sm text-link hover:text-link-hover hover:underline"
+			class="mb-4 inline-block text-sm text-link hover:text-link-hover hover:underline"
 		>{m.wb_read_full_article()} →</a>
 	{/if}
 
@@ -123,15 +135,15 @@
 	-->
 	<!-- Child languages -->
 	{#if data.children.length > 0}
-		<div class="bg-raised p-4 mb-4">
-			<h3 class="text-sm font-semibold text-body mb-2">{m.wb_descendant_languages()}</h3>
+		<div class="mb-4 bg-raised p-4">
+			<h3 class="mb-2 text-sm font-semibold text-body">{m.wb_descendant_languages()}</h3>
 			<div class="flex flex-wrap gap-2">
 				{#each data.children as child (child.slug)}
 					<a href="/Wordbook/{child.slug}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm transition-colors hover:bg-accent-subtle">
 						<span class="size-2" style="background-color: {child.color || 'var(--color-accent)'}"></span>
 						<span class="font-medium text-body">{child.name}</span>
 						{#if child.nativeName}
-							<span class="text-secondary text-xs italic">{child.nativeName}</span>
+							<span class="text-xs text-secondary italic">{child.nativeName}</span>
 						{/if}
 						{#if child.languageType !== 'language'}
 							<span class="text-xs text-secondary">({child.languageType})</span>
@@ -144,14 +156,14 @@
 
 	<!-- Dialects -->
 	{#if data.dialects.length > 0}
-		<div class="bg-raised p-4 mb-4">
-			<h3 class="text-sm font-semibold text-body mb-2">{m.wb_dialects()}</h3>
+		<div class="mb-4 bg-raised p-4">
+			<h3 class="mb-2 text-sm font-semibold text-body">{m.wb_dialects()}</h3>
 			<div class="space-y-1">
 				{#each data.dialects as dialect (dialect.id)}
 					<div class="flex items-center gap-2 text-sm">
 						<span class="font-medium text-secondary">{dialect.name}</span>
 						{#if dialect.region}
-							<span class="text-secondary text-xs">({dialect.region})</span>
+							<span class="text-xs text-secondary">({dialect.region})</span>
 						{/if}
 					</div>
 				{/each}
@@ -172,7 +184,7 @@
 	{/if}
 
 	<!-- Alphabet nav -->
-	<div class="bg-raised px-2 mb-4">
+	<div class="mb-4 bg-raised px-2">
 		<AlphabetNav
 			activeLetters={data.activeLetters}
 			currentLetter={data.currentLetter}
@@ -184,8 +196,8 @@
 	{#if data.entries.length > 0}
 		{#each grouped as [letter, entries] (letter)}
 			<section class="mb-4">
-				<h2 class="text-xl font-bold text-secondary mb-2 pl-1" id="letter-{letter}">{letter}</h2>
-				<div class="bg-raised divide-y divide-border-subtle">
+				<h2 class="mb-2 pl-1 text-xl font-bold text-secondary" id="letter-{letter}">{letter}</h2>
+				<div class="divide-y divide-border-subtle bg-raised">
 					{#each entries as entry (entry.id)}
 						<WordEntry {entry} showLanguage={false} />
 					{/each}
@@ -194,7 +206,7 @@
 		{/each}
 
 		{#if totalPages > 1}
-			<nav class="flex items-center justify-center gap-3 text-sm mb-4" aria-label={m.wb_entry_pages()}>
+			<nav class="mb-4 flex items-center justify-center gap-3 text-sm" aria-label={m.wb_entry_pages()}>
 				{#if data.entriesPage > 1}
 					<a href={pageHref(data.entriesPage - 1)} class="text-link hover:text-link-hover hover:underline">← {m.common_previous()}</a>
 				{/if}
@@ -208,11 +220,11 @@
 			</nav>
 		{/if}
 	{:else}
-		<div class="text-center py-12 text-secondary">
+		<div class="py-12 text-center text-secondary">
 			{#if data.currentLetter}
 				<p>No words starting with "{data.currentLetter.toUpperCase()}"</p>
 			{:else}
-				<p class="text-lg mb-2">{m.wb_no_words_yet()}</p>
+				<p class="mb-2 text-lg">{m.wb_no_words_yet()}</p>
 				{#if canManageWordbook}
 					<p class="text-sm">
 						<a href="/Wordbook/contribute?language={data.language.slug}" class="text-link hover:underline">{m.wb_add_first_word()}</a>
