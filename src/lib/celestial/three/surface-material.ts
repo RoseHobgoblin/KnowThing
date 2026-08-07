@@ -2,6 +2,8 @@ import {
 	ClampToEdgeWrapping,
 	Color,
 	DataTexture,
+	LinearFilter,
+	LinearMipmapLinearFilter,
 	Mesh,
 	MeshStandardMaterial,
 	NoColorSpace,
@@ -14,12 +16,13 @@ import {
 } from 'three'
 import { composeSurfacePlan, surfaceMediaUrl, type SurfaceMapChannel, type SurfacePlan } from '../surface-model.js'
 import type { MapBody } from '../system-layout.js'
-import { generateProceduralSurface } from './procedural-surface.js'
+import { requestProceduralPlanetTexture } from './procedural-texture-client.js'
 
 export type PlanetSurfaceVisual = {
 	material: MeshStandardMaterial
 	cloudMesh: Mesh | null
 	plan: SurfacePlan
+	ready: Promise<void>
 	setGeometryVisible(visible: boolean): void
 	dispose(): void
 }
@@ -33,6 +36,9 @@ function configureTexture(texture: Texture, color: boolean): Texture {
 	texture.colorSpace = color ? SRGBColorSpace : NoColorSpace
 	texture.wrapS = RepeatWrapping
 	texture.wrapT = ClampToEdgeWrapping
+	texture.magFilter = LinearFilter
+	texture.minFilter = LinearMipmapLinearFilter
+	texture.generateMipmaps = true
 	texture.needsUpdate = true
 	return texture
 }
@@ -65,6 +71,7 @@ export function createPlanetSurfaceVisual(args: {
 	let cloudReady = false
 	let cloudMaterial: MeshStandardMaterial | null = null
 	let cloudMesh: Mesh | null = null
+	const readyTasks: Promise<void>[] = []
 
 	const own = <T extends Texture>(texture: T): T => {
 		ownedTextures.add(texture)
@@ -76,41 +83,55 @@ export function createPlanetSurfaceVisual(args: {
 		material.needsUpdate = true
 	}
 
+	const hasCloudLayer = plan.channels.clouds.source === 'procedural' || plan.channels.clouds.source === 'uploaded'
+	if (hasCloudLayer) {
+		cloudMaterial = new MeshStandardMaterial({
+			color: 0xFFFFFF,
+			transparent: true,
+			opacity: 0.72,
+			depthWrite: false,
+			roughness: 1,
+		})
+		cloudMesh = new Mesh(sphereGeometry, cloudMaterial)
+		cloudMesh.name = 'cloud-layer'
+		cloudMesh.scale.setScalar(radius * 1.008)
+		cloudMesh.visible = false
+	}
+
 	const needsProcedural = Object.values(plan.channels).some(channelPlan => channelPlan.source === 'procedural')
 	if (needsProcedural) {
-		const generated = generateProceduralSurface({
+		const task = requestProceduralPlanetTexture({
 			class: plan.class,
 			seed: plan.seed,
 			temperatureK: plan.temperatureK,
 			hydrosphereFraction: plan.hydrosphereFraction,
 			cloudCoverage: plan.recipe.cloudCoverage,
 			tint: colorTuple(colorCss),
-		}, 256, 128)
-		if (plan.channels.albedo.source === 'procedural') {
-			setColorMap(own(dataTexture(generated.albedo, generated.width, generated.height, true)))
-		}
-		if (plan.channels.roughness.source === 'procedural') {
-			material.roughness = 1
-			material.roughnessMap = own(dataTexture(generated.roughness, generated.width, generated.height, false))
-		}
-		if (plan.channels.elevation.source === 'procedural' && generated.elevation) {
-			material.bumpMap = own(dataTexture(generated.elevation, generated.width, generated.height, false))
-			material.bumpScale = 0.055
-		}
-		if (plan.channels.clouds.source === 'procedural' && generated.clouds) {
-			cloudMaterial = new MeshStandardMaterial({
-				color: 0xFFFFFF,
-				alphaMap: own(dataTexture(generated.clouds, generated.width, generated.height, false)),
-				transparent: true,
-				opacity: 0.72,
-				depthWrite: false,
-				roughness: 1,
-			})
-			cloudMesh = new Mesh(sphereGeometry, cloudMaterial)
-			cloudMesh.name = 'cloud-layer'
-			cloudMesh.scale.setScalar(radius * 1.008)
-			cloudReady = true
-		}
+		}).then((generated) => {
+			if (disposed) return
+			if (plan.channels.albedo.source === 'procedural') {
+				setColorMap(own(dataTexture(generated.albedo, generated.width, generated.height, true)))
+			}
+			if (plan.channels.roughness.source === 'procedural') {
+				material.roughness = 1
+				material.roughnessMap = own(dataTexture(generated.roughness, generated.width, generated.height, false))
+			}
+			if (plan.channels.elevation.source === 'procedural' && generated.elevation) {
+				material.bumpMap = own(dataTexture(generated.elevation, generated.width, generated.height, false))
+				material.bumpScale = 0.055
+			}
+			if (plan.channels.clouds.source === 'procedural' && generated.clouds && cloudMaterial && cloudMesh) {
+				cloudMaterial.alphaMap = own(dataTexture(generated.clouds, generated.width, generated.height, false))
+				cloudMaterial.needsUpdate = true
+				cloudReady = true
+				cloudMesh.visible = geometryVisible
+			}
+			onTextureChange?.()
+		}).catch(() => {
+			// Flat material remains a truthful fallback when generation fails.
+			onTextureChange?.()
+		})
+		readyTasks.push(task)
 	}
 
 	const loader = new TextureLoader()
@@ -163,17 +184,6 @@ export function createPlanetSurfaceVisual(args: {
 		material.needsUpdate = true
 	})
 	if (plan.channels.clouds.source === 'uploaded') {
-		cloudMaterial = new MeshStandardMaterial({
-			color: 0xFFFFFF,
-			transparent: true,
-			opacity: 0.72,
-			depthWrite: false,
-			roughness: 1,
-		})
-		cloudMesh = new Mesh(sphereGeometry, cloudMaterial)
-		cloudMesh.name = 'cloud-layer'
-		cloudMesh.scale.setScalar(radius * 1.008)
-		cloudMesh.visible = false
 		loadChannel('clouds', false, (texture) => {
 			if (!cloudMaterial || !cloudMesh) return
 			cloudMaterial.alphaMap = texture
@@ -187,6 +197,7 @@ export function createPlanetSurfaceVisual(args: {
 		material,
 		cloudMesh,
 		plan,
+		ready: Promise.all(readyTasks).then(() => undefined),
 		setGeometryVisible(visible) {
 			geometryVisible = visible
 			if (cloudMesh) cloudMesh.visible = visible && cloudReady

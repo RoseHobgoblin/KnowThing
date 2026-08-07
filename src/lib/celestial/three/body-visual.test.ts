@@ -29,6 +29,7 @@ describe('body visual selection', () => {
 		const marker = visual.anchor.getObjectByName('overview-marker') as Sprite
 		visual.setVisibility('enhanced', 1)
 		expect((marker.material as SpriteMaterial).opacity).toBeGreaterThan(0)
+		expect((marker.material as SpriteMaterial).depthTest).toBe(true)
 		visual.setVisibility('enhanced', visual.extent / 10)
 		expect((marker.material as SpriteMaterial).opacity).toBe(0)
 		visual.setSelected(true, true)

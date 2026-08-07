@@ -3,7 +3,7 @@ import { DataTexture, SphereGeometry } from 'three'
 import { createPlanetSurfaceVisual } from './surface-material.js'
 
 describe('planet surface material composition', () => {
-	it('installs independent procedural PBR channels without changing geometry', () => {
+	it('installs independent procedural PBR channels without changing geometry', async () => {
 		const sphere = new SphereGeometry(1, 8, 6)
 		const visual = createPlanetSurfaceVisual({
 			body: { id: 4, name: 'Pelagos', slug: 'pelagos', bodyType: 'ocean world' },
@@ -11,6 +11,7 @@ describe('planet surface material composition', () => {
 			radius: 0.02,
 			sphereGeometry: sphere,
 		})
+		await visual.ready
 		expect(visual.plan.channels.albedo.source).toBe('procedural')
 		expect(visual.plan.hydrosphereFraction).toBe(0.8)
 		expect(visual.material.map).toBeInstanceOf(DataTexture)
@@ -21,7 +22,7 @@ describe('planet surface material composition', () => {
 		sphere.dispose()
 	})
 
-	it('creates clouds only from an explicit requested fallback layer', () => {
+	it('creates clouds only from an explicit requested fallback layer', async () => {
 		const sphere = new SphereGeometry(1, 8, 6)
 		const visual = createPlanetSurfaceVisual({
 			body: {
@@ -32,6 +33,7 @@ describe('planet surface material composition', () => {
 			radius: 0.02,
 			sphereGeometry: sphere,
 		})
+		await visual.ready
 		expect(visual.cloudMesh).not.toBeNull()
 		visual.setGeometryVisible(false)
 		expect(visual.cloudMesh?.visible).toBe(false)

@@ -6,6 +6,8 @@
 	import type { EntityKey, MapBody, ThemePalette } from './system-layout.js'
 	import { keyForBody, timingUnavailable } from './system-layout.js'
 	import { composeSurfacePlan, describeSurfacePlan } from './surface-model.js'
+	import { composeStellarSurfacePlan, describeStellarSurfacePlan } from './stellar-surface-model.js'
+	import { describeStarlightLuminosity, resolveStarlightLuminosity } from './starlight-model.js'
 	import type { OverlaySnapshot, SystemMapRenderer } from './renderer-types.js'
 
 	const DEFAULT_THEME: ThemePalette = {
@@ -83,9 +85,18 @@
 	}
 
 	function surfaceDescription(body: MapBody): string | null {
-		return body.bodyType ? describeSurfacePlan(composeSurfacePlan(body, body.surface)) : null
+		return body.isStar
+			? describeStellarSurfacePlan(composeStellarSurfacePlan(body, body.stellarSurface))
+			: describeSurfacePlan(composeSurfacePlan(body, body.surface))
 	}
 	const hoveredSurfaceDescription = $derived(hoveredBody ? surfaceDescription(hoveredBody) : null)
+	const hoveredStarlight = $derived.by(() => {
+		if (!hoveredBody?.isStar) return null
+		return {
+			description: describeStarlightLuminosity(hoveredBody),
+			fallback: resolveStarlightLuminosity(hoveredBody).source === 'fallback',
+		}
+	})
 
 	// Three.js remains strictly browser-only. Switching this one import back to
 	// ./pixi/map-renderer.js is the production rollback seam.
@@ -169,7 +180,7 @@
 		if (!hoverPosition) return ''
 		const tipWidth = 210
 		const baseHeight = timingUnavailable(hoveredBody ?? { id: 0, name: '', slug: '', bodyType: '' }) ? 84 : 60
-		const tipHeight = baseHeight + (hoveredSurfaceDescription ? 18 : 0)
+		const tipHeight = baseHeight + (hoveredSurfaceDescription ? 18 : 0) + (hoveredStarlight ? 18 : 0)
 		const placeRight = hoverPosition.x + 16 + tipWidth < displayWidth
 		const left = placeRight ? hoverPosition.x + 16 : hoverPosition.x - tipWidth - 16
 		const top = Math.min(Math.max(hoverPosition.y - tipHeight / 2, 4), displayHeight - tipHeight - 4)
@@ -178,7 +189,7 @@
 </script>
 
 <div
-	class="relative size-full min-h-80 overflow-hidden bg-page"
+	class="relative size-full min-h-80 overflow-hidden bg-black"
 	bind:this={wrapperElement}
 	data-render-state={unavailableReason ? 'unavailable' : overlay.status}
 	data-camera-projection={overlay.projection ?? 'unavailable'}
@@ -234,6 +245,7 @@
 			{/each}
 			<div class="absolute right-2 bottom-2 max-w-[75%] bg-surface/75 px-2 py-1 text-right text-[0.65rem] text-secondary">
 				{overlay.modeLabel} · {overlay.scaleLabel}
+				{#if overlay.lightingLabel}<span class="ml-2">{overlay.lightingLabel}</span>{/if}
 				{#if overlay.legend}
 					<span class="ml-2 inline-flex items-center gap-1.5">
 						{#if overlay.legend.pixels > 0}
@@ -261,6 +273,11 @@
 			</div>
 			{#if hoveredBody.semiMajorAxisAu}<div class="text-xs text-secondary">{hoveredBody.semiMajorAxisAu.toFixed(3)} AU</div>{/if}
 			{#if hoveredSurfaceDescription}<div class="mt-1 text-[0.68rem] text-secondary">{hoveredSurfaceDescription}</div>{/if}
+			{#if hoveredStarlight}
+				<div class={cn('mt-1 text-[0.68rem]', hoveredStarlight.fallback ? 'text-accent' : 'text-secondary')}>
+					{hoveredStarlight.description}
+				</div>
+			{/if}
 			{#if timingUnavailable(hoveredBody)}
 				<div class="mt-1 text-[0.68rem] text-accent">Timing unavailable—position fixed.</div>
 			{/if}

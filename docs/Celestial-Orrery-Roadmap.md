@@ -291,6 +291,10 @@ Before star-derived lighting, finish media validation and texture LOD, then esta
 
 ### Phase 3: Star lighting and exposure
 
+Status: initial implementation complete. The map now renders space as true black and gives every rendered luminous star its own inverse-square point light at the star's resolved 3D position. Stored luminosity wins, radius plus effective temperature can derive luminosity with Stefan–Boltzmann, and an unavailable value is visibly reported as a deterministic 1 L☉ display fallback. Point-light intensity compensates for the current AU-to-world scale, so changing system framing cannot change the irradiance of an otherwise identical orbit.
+
+Stars keep separate unlit photospheres, rings and planetary/cloud materials receive stellar light, and binary components illuminate from their independent live positions. Physical visibility has no non-physical fill; Enhanced and Markers retain a very weak exposure-compensated accessibility floor. ACES tone mapping uses stable overview exposure and bounded automatic exposure only during close inspection of a selected non-stellar body. This changes the virtual camera, not stellar output. Shadow maps and eclipses remain deliberately deferred to the focused-body shadow-budget experiment.
+
 Replace generic scene lighting with lights derived from star position and luminosity, plus a controlled fallback. Add exposure presets and focused-body shadow experiments.
 
 Acceptance criteria:

@@ -115,6 +115,7 @@ export async function getSystemMapEntities(systemId: number) {
 				s.axial_tilt AS "axialTilt",
 				s.temperature_k AS "temperatureK",
 				s.luminosity_w AS "luminosityW",
+				s.extra -> 'stellarSurface' AS "stellarSurface",
 				s.semi_major_axis_au AS "relativeSemiMajorAxisAu",
 				-- SystemMap still consumes the shared display-oriented field name.
 				-- Both aliases represent binary relative separation for stars.

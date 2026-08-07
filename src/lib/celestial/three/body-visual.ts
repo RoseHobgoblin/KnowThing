@@ -4,7 +4,7 @@ import {
 	DoubleSide,
 	Group,
 	Mesh,
-	MeshBasicMaterial,
+	MeshStandardMaterial,
 	RingGeometry,
 	Sprite,
 	SpriteMaterial,
@@ -19,6 +19,7 @@ import type { VisibilityMode } from '../map-settings.js'
 import type { MapBody } from '../system-layout.js'
 import { resolveBodyVisibility, type VisibilityBodyKind } from './visibility-controller.js'
 import { createPlanetSurfaceVisual, type PlanetSurfaceVisual } from './surface-material.js'
+import { createStellarSurfaceVisual, type StellarSurfaceVisual } from './stellar-material.js'
 
 export type BodyVisual = {
 	anchor: Group
@@ -27,6 +28,7 @@ export type BodyVisual = {
 	mesh: Mesh
 	radius: number
 	extent: number
+	ready: Promise<void>
 	getScreenExtentPx(): number
 	getPickRadiusPx(): number
 	setVisibility(mode: VisibilityMode, worldUnitsPerPixel: number): void
@@ -89,8 +91,9 @@ export function createBodyVisual(args: {
 	tiltGroup.quaternion.setFromUnitVectors(new Vector3(0, 0, 1), spinAxis)
 
 	let planetSurface: PlanetSurfaceVisual | null = null
+	let stellarSurface: StellarSurfaceVisual | null = null
 	const material = isStar
-		? new MeshBasicMaterial({ color })
+		? (stellarSurface = createStellarSurfaceVisual({ body, colorCss, onTextureChange })).material
 		: (planetSurface = createPlanetSurfaceVisual({
 			body, colorCss, radius, sphereGeometry, onTextureChange,
 		})).material
@@ -99,18 +102,21 @@ export function createBodyVisual(args: {
 	spinGroup.add(mesh)
 	if (planetSurface?.cloudMesh) spinGroup.add(planetSurface.cloudMesh)
 	anchor.userData.surfacePlan = planetSurface?.plan ?? null
+	anchor.userData.stellarSurfacePlan = stellarSurface?.plan ?? null
 
 	let ringGeometry: RingGeometry | null = null
-	let ringMaterial: MeshBasicMaterial | null = null
+	let ringMaterial: MeshStandardMaterial | null = null
 	let ringMesh: Mesh | null = null
 	if (body.hasRings) {
 		ringGeometry = new RingGeometry(radius * 1.3, extent, 96)
-		ringMaterial = new MeshBasicMaterial({
+		ringMaterial = new MeshStandardMaterial({
 			color: color.clone().lerp(new Color('#E9C349'), 0.35),
 			transparent: true,
 			opacity: 0.38,
 			side: DoubleSide,
 			depthWrite: false,
+			roughness: 0.9,
+			metalness: 0,
 		})
 		ringMesh = new Mesh(ringGeometry, ringMaterial)
 		tiltGroup.add(ringMesh)
@@ -137,7 +143,9 @@ export function createBodyVisual(args: {
 		color,
 		transparent: true,
 		opacity: 0.9,
-		depthTest: false,
+		// Markers may assist a subpixel body, but must still disappear behind
+		// foreground stars and planets already present in the depth buffer.
+		depthTest: true,
 		depthWrite: false,
 	})
 	const overviewMarker = new Sprite(markerMaterial)
@@ -170,6 +178,7 @@ export function createBodyVisual(args: {
 		mesh,
 		radius,
 		extent,
+		ready: stellarSurface?.ready ?? planetSurface?.ready ?? Promise.resolve(),
 		getScreenExtentPx() {
 			return screenExtentPx
 		},
@@ -186,6 +195,7 @@ export function createBodyVisual(args: {
 				previous: { markerActive },
 			})
 			markerActive = visibility.markerActive
+			stellarSurface?.setVisibilityMode(mode)
 			mesh.visible = visibility.meshVisible
 			planetSurface?.setGeometryVisible(visibility.meshVisible)
 			if (ringMesh) ringMesh.visible = visibility.meshVisible
@@ -212,6 +222,7 @@ export function createBodyVisual(args: {
 		},
 		dispose() {
 			if (planetSurface) planetSurface.dispose()
+			else if (stellarSurface) stellarSurface.dispose()
 			else material.dispose()
 			ringGeometry?.dispose()
 			ringMaterial?.dispose()

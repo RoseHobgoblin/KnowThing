@@ -108,6 +108,35 @@ describe('buildPayload', () => {
 		expect(buildPayload(config, ctx).parentId).toBe(4)
 	})
 
+	it('round-trips Starwright settings through the star extra JSON', () => {
+		const config = CELESTIAL_FORM_CONFIGS.star
+		const draft = buildDraft(config, {
+			id: 2, name: 'Therne', slug: 'therne',
+			extra: {
+				density: '12 g/cm³',
+				stellarSurface: {
+					version: 1, fallback: 'flat', morphology: 'main_sequence',
+					seed: 436, activity: 0.75, maps: { photosphere: 'Therne plate.png' },
+				},
+			},
+		})
+		expect(draft.stellarSurfaceFallback).toBe('flat')
+		expect(draft.stellarActivity).toBe(0.75)
+		expect(draft.stellarPhotosphereMap).toBe('Therne plate.png')
+		draft.systemId = '4'
+		draft.stellarSurfaceFallback = 'procedural'
+		const payload = buildPayload(config, { draft, selfId: 2, systems: [], stars: [], siblings: [] })
+		expect(payload).not.toHaveProperty('stellarActivity')
+		expect(payload.extra).toMatchObject({
+			density: '12 g/cm³',
+			stellarSurface: {
+				version: 1, fallback: 'procedural', morphology: 'main_sequence',
+				seed: 436, activity: 0.75, maps: { photosphere: 'Therne plate.png' },
+			},
+		})
+		expect(config.updateSchema.safeParse(payload).success).toBe(true)
+	})
+
 	it('round-trips independent surface channels through the body extra JSON', () => {
 		const config = CELESTIAL_FORM_CONFIGS.body
 		const draft = buildDraft(config, {

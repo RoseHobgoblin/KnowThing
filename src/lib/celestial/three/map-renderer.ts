@@ -1,8 +1,7 @@
 import {
-	AmbientLight,
+	ACESFilmicToneMapping,
 	CanvasTexture,
 	Color,
-	DirectionalLight,
 	Group,
 	MOUSE,
 	OrthographicCamera,
@@ -50,13 +49,26 @@ import {
 	perspectiveDistanceToFrameSphere,
 	perspectiveWorldUnitsPerPixel,
 } from './camera-math.js'
+import {
+	DASH_GAP_PX,
+	DASH_SIZE_PX,
+	ORBIT_SEGMENTS,
+	closedOrbitAngles,
+	screenDashScale,
+} from './orbit-path-policy.js'
+import {
+	DEFAULT_STARLIGHT_EXPOSURE,
+	StarlightController,
+	focusedStarlightExposure,
+	focusedStarlightTarget,
+	type StarlightSummary,
+} from './starlight-controller.js'
 
 const MIN_ZOOM = 0.1
 const MAX_ZOOM = 1_000_000
 const ORRERY_FOV_DEG = 50
 const VIEW_TRANSITION_MS = 450
 const FLY_TO_MS = 600
-const PATH_SEGMENTS = 160
 const KEYBOARD_PAN_SPEED_PX = 210
 const PLAN_CAMERA_DISTANCE = 1_000
 const FOCUS_RADIUS_PX = 60
@@ -197,21 +209,22 @@ export async function createSystemMapRenderer(
 		return unavailableRenderer(canvas, error instanceof Error ? error.message : 'Three.js could not initialize WebGL 2.', callbacks)
 	}
 	renderer.outputColorSpace = SRGBColorSpace
+	renderer.toneMapping = ACESFilmicToneMapping
+	renderer.toneMappingExposure = DEFAULT_STARLIGHT_EXPOSURE
+	renderer.setClearColor(0x000000, 1)
 	renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, 2))
 	renderer.shadowMap.enabled = false
 
 	const scene = new Scene()
-	scene.background = new Color(initialTheme.page)
+	scene.background = new Color(0x000000)
 	const mapGroup = new Group()
 	const orbitGroup = new Group()
 	const trailGroup = new Group()
 	const bodyGroup = new Group()
-	mapGroup.add(orbitGroup, trailGroup, bodyGroup)
+	const starlight = new StarlightController()
+	starlight.setVisibilityMode(DEFAULT_SETTINGS.visibility)
+	mapGroup.add(orbitGroup, trailGroup, bodyGroup, starlight.group)
 	scene.add(mapGroup)
-	scene.add(new AmbientLight(0xFFFFFF, 1.45))
-	const fillLight = new DirectionalLight(0xFFF1CF, 2.2)
-	fillLight.position.set(-300, -220, 520)
-	scene.add(fillLight)
 
 	let width = Math.max(1, Math.round(host.getBoundingClientRect().width))
 	let height = Math.max(1, Math.round(host.getBoundingClientRect().height || width))
@@ -236,7 +249,9 @@ export async function createSystemMapRenderer(
 	controls.touches.ONE = TOUCH.ROTATE
 	controls.touches.TWO = TOUCH.DOLLY_PAN
 
-	const sharedSphere = new SphereGeometry(1, 48, 32)
+	// Shared geometry is cheap compared with per-body materials and remains
+	// smooth when a 1024×512 plate is inspected at close zoom.
+	const sharedSphere = new SphereGeometry(1, 96, 64)
 	sharedSphere.rotateX(Math.PI / 2)
 	const glowTexture = makeGlowTexture()
 	const markerTexture = makeMarkerTexture()
@@ -248,6 +263,9 @@ export async function createSystemMapRenderer(
 	let selectedId: EntityKey | null = null
 	let currentDay: number | null = null
 	let dataReceived = false
+	let visualsReady = false
+	let visualGeneration = 0
+	let starlightSummary: StarlightSummary = starlight.summary()
 	let layout: SystemLayout = buildPhysicalLayout([], [])
 	const nodes = new Map<EntityKey, EntityNode>()
 	let orbitPaths: OrbitPath[] = []
@@ -426,9 +444,14 @@ export async function createSystemMapRenderer(
 			transparent: true,
 			opacity,
 			dashed,
-			dashSize: 5,
-			gapSize: 4,
+			dashSize: DASH_SIZE_PX,
+			gapSize: DASH_GAP_PX,
+			depthTest: true,
 			depthWrite: false,
+			alphaToCoverage: true,
+			polygonOffset: true,
+			polygonOffsetFactor: 1,
+			polygonOffsetUnits: 1,
 		})
 		material.resolution.set(width, height)
 		const line = new Line2(geometry, material)
@@ -442,6 +465,7 @@ export async function createSystemMapRenderer(
 	}
 
 	function clearSceneContent() {
+		starlight.clearStarLights()
 		for (const node of nodes.values()) {
 			node.visual.anchor.removeFromParent()
 			node.visual.dispose()
@@ -454,9 +478,10 @@ export async function createSystemMapRenderer(
 	}
 
 	function addNode(body: MapBody, isStar: boolean, isSatellite: boolean) {
-		const key = keyForBody(body, isStar)
+		const renderBody = body.isStar === isStar ? body : { ...body, isStar }
+		const key = keyForBody(renderBody, isStar)
 		const visual = createBodyVisual({
-			body,
+			body: renderBody,
 			isStar,
 			isSatellite,
 			sphereGeometry: sharedSphere,
@@ -469,15 +494,21 @@ export async function createSystemMapRenderer(
 		})
 		visual.anchor.userData.entityKey = key
 		bodyGroup.add(visual.anchor)
-		nodes.set(key, { key, body, isStar, isSatellite, visual })
+		nodes.set(key, { key, body: renderBody, isStar, isSatellite, visual })
 	}
 
 	function rebuild() {
+		const generation = ++visualGeneration
+		visualsReady = false
 		clearSceneContent()
 		layout = buildPhysicalLayout(stars, bodies)
 		if (layout.primaryStar) addNode(layout.primaryStar, true, false)
 		for (const direct of layout.directOrbits) addNode(direct.body, direct.body.isStar, false)
 		for (const satellite of layout.satellites) addNode(satellite.body, satellite.body.isStar, true)
+		starlightSummary = starlight.rebuild(
+			[...nodes.values()].filter(node => node.isStar).map(node => node.body),
+			layout.worldUnitsPerAu ?? 1,
+		)
 
 		for (const direct of layout.directOrbits) {
 			const path = makeLine(theme.faint, direct.outOfRange ? 1 : 1.25, direct.outOfRange ? 0.35 : 0.62, direct.outOfRange)
@@ -496,19 +527,25 @@ export async function createSystemMapRenderer(
 		applyPositions()
 		applySelection()
 		schedule()
+		void Promise.allSettled([...nodes.values()].map(node => node.visual.ready)).then(() => {
+			if (destroyed || generation !== visualGeneration) return
+			visualsReady = true
+			schedule()
+		})
 	}
 
 	function updateOrbitPaths() {
 		const positions = computePositions3D(layout, currentDay, viewBlend)
 		for (const path of orbitPaths) {
 			const points: number[] = []
+			const bodyPosition = positions.get(path.key)
 			if (path.direct) {
 				const orbit = path.direct
-				for (let index = 0; index <= PATH_SEGMENTS; index++) {
-					const angle = index / PATH_SEGMENTS * Math.PI * 2
+				const factor = orbit.binaryFactor ?? 1
+				for (const angle of closedOrbitAngles(ORBIT_SEGMENTS, bodyPosition ? [bodyPosition.angle] : [])) {
 					const point = orbitPoint3D(
 						orbit.body, orbit.a, orbit.b, angle,
-						orbit.outOfRange ? 0 : viewBlend, orbit.binaryFactor ?? 1,
+						orbit.outOfRange ? 0 : viewBlend, factor,
 					)
 					points.push(point.x, point.y, point.z)
 				}
@@ -518,8 +555,7 @@ export async function createSystemMapRenderer(
 				const parent = positions.get(satellite.parentKey)
 				if (!parent) continue
 				const geometry = blendedSatelliteGeometry(satellite, 0)
-				for (let index = 0; index <= PATH_SEGMENTS; index++) {
-					const angle = index / PATH_SEGMENTS * Math.PI * 2
+				for (const angle of closedOrbitAngles(ORBIT_SEGMENTS, bodyPosition ? [bodyPosition.angle] : [])) {
 					const point = orbitPoint3D(satellite.body, geometry.radius, geometry.semiMinor, angle, viewBlend)
 					points.push(point.x, point.y, point.z)
 				}
@@ -563,7 +599,9 @@ export async function createSystemMapRenderer(
 		for (const [key, node] of nodes) {
 			const position = positions.get(key)
 			if (!position) continue
-			node.visual.anchor.position.copy(worldPosition(position))
+			const world = worldPosition(position)
+			node.visual.anchor.position.copy(world)
+			if (node.isStar) starlight.setPosition(key, world)
 			node.visual.setDay(currentDay)
 		}
 		if (settings.follow && selectedId) {
@@ -610,6 +648,14 @@ export async function createSystemMapRenderer(
 		for (const node of nodes.values()) {
 			node.visual.anchor.getWorldPosition(scratchWorld)
 			node.visual.setVisibility(settings.visibility, worldUnitsPerPixelAt(scratchWorld))
+		}
+		for (const path of orbitPaths) {
+			if (!path.material.dashed) continue
+			const node = nodes.get(path.key)
+			const representative = node
+				? node.visual.anchor.getWorldPosition(scratchWorld)
+				: controls.target
+			path.material.dashScale = screenDashScale(worldUnitsPerPixelAt(representative))
 		}
 	}
 
@@ -684,8 +730,9 @@ export async function createSystemMapRenderer(
 					label: formatPhysicalDistance(scaleBarAu),
 				},
 			modeLabel: `${settings.view === 'plan' ? 'Plan' : 'Orrery'} · ${settings.visibility[0].toUpperCase()}${settings.visibility.slice(1)}`,
+			lightingLabel: starlightSummary.label,
 			projection: camera === orreryCamera ? 'perspective' : 'orthographic',
-			status: dataReceived ? 'ready' : 'initializing',
+			status: dataReceived && visualsReady ? 'ready' : 'initializing',
 		}
 		const signature = JSON.stringify(snapshot, (_key, value) => typeof value === 'number' ? Math.round(value * 2) / 2 : value)
 		if (signature !== overlaySignature) {
@@ -697,6 +744,37 @@ export async function createSystemMapRenderer(
 	function cameraZoomLevel(): number {
 		if (camera === planCamera) return camera.zoom
 		return orreryFrameDistance() / Math.max(camera.position.distanceTo(controls.target), Number.EPSILON)
+	}
+
+	function updateToneMappingExposure() {
+		let exposure = DEFAULT_STARLIGHT_EXPOSURE
+		const zoomLevel = cameraZoomLevel()
+		const focusedKey = zoomLevel < 4
+			? null
+			: focusedStarlightTarget(
+				[...nodes.values()].map((node) => {
+					const projected = projectNode(node)
+					node.visual.anchor.getWorldPosition(scratchWorld)
+					return {
+						key: node.key,
+						isStar: node.isStar,
+						inside: projected.inside,
+						x: projected.x,
+						y: projected.y,
+						physicalRadiusPx: node.visual.radius / worldUnitsPerPixelAt(scratchWorld),
+					}
+				}),
+				width,
+				height,
+				zoomLevel,
+			)
+		const focusedNode = focusedKey == null ? null : nodes.get(focusedKey)
+		if (focusedNode) {
+			focusedNode.visual.anchor.getWorldPosition(scratchWorld)
+			exposure = focusedStarlightExposure(starlight.irradianceAt(scratchWorld))
+		}
+		renderer.toneMappingExposure = exposure
+		starlight.compensateFillForExposure(exposure)
 	}
 
 	function notifyView() {
@@ -752,6 +830,7 @@ export async function createSystemMapRenderer(
 		}
 		updatePerspectiveClipping()
 		updateVisualScales()
+		updateToneMappingExposure()
 		renderer.render(scene, camera)
 		publishOverlay()
 		notifyView()
@@ -916,6 +995,7 @@ export async function createSystemMapRenderer(
 			const rebuildTrail = next.trails !== settings.trails
 			const viewChanged = next.view !== settings.view
 			settings = { ...next }
+			starlight.setVisibilityMode(settings.visibility)
 			configureControls()
 			if (rebuildTrail) rebuildTrails()
 			if (viewChanged) {
@@ -943,7 +1023,6 @@ export async function createSystemMapRenderer(
 		},
 		setTheme(nextTheme) {
 			theme = nextTheme
-			scene.background = new Color(theme.page)
 			rebuild()
 		},
 		resize,
@@ -962,6 +1041,7 @@ export async function createSystemMapRenderer(
 		destroy() {
 			if (destroyed) return
 			destroyed = true
+			visualGeneration++
 			if (frameHandle) cancelAnimationFrame(frameHandle)
 			intersectionObserver.disconnect()
 			document.removeEventListener('visibilitychange', handleVisibility)
@@ -983,6 +1063,7 @@ export async function createSystemMapRenderer(
 			glowTexture.dispose()
 			markerTexture.dispose()
 			selectionTexture.dispose()
+			starlight.dispose()
 			renderer.dispose()
 			renderer.forceContextLoss()
 		},

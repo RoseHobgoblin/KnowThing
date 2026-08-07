@@ -20,6 +20,7 @@ import {
 import { validateBodyPhysics, validateStarPhysics, type PhysicsWarning } from 'tungolcraft'
 import { spectralColor } from './colors.js'
 import { parseSurfaceRecipe, SURFACE_RECIPE_VERSION, type SurfaceMapChannel } from './surface-model.js'
+import { parseStellarSurfaceRecipe, STELLAR_SURFACE_RECIPE_VERSION } from './stellar-surface-model.js'
 
 /**
  * Declarative field registry for the celestial configure forms.
@@ -494,7 +495,7 @@ const starConfig: CelestialFormConfig = {
 	headerNote: 'Structured star properties are managed here.',
 	updateSchema: UPDATE_SCHEMAS.star,
 	useTabs: true,
-	passthroughKeys: ['luminosityW'],
+	passthroughKeys: ['luminosityW', 'extra'],
 	sections: [
 		{
 			id: 'identity', label: 'Identity',
@@ -531,6 +532,58 @@ const starConfig: CelestialFormConfig = {
 					{ control: 'text', key: 'luminosityVisual', label: 'Visual Luminosity', placeholder: '1.0 L☉ (visual)', hint: 'Luminosity in the visible spectrum only. Can differ from bolometric luminosity for very hot or cool stars.' },
 				],
 			}],
+		},
+		{
+			id: 'photosphere', label: 'Photosphere',
+			intro: 'Starwright can fill a missing stellar plate with deterministic illustrative granulation, spots, and faculae. Generated structure appears in Enhanced mode and is never presented as observed stellar surface data.',
+			groups: [
+				{
+					cols: 3,
+					fields: [
+						{
+							control: 'select', key: 'stellarSurfaceFallback', label: 'Missing-plate fallback', omitFromPayload: true,
+							initial: record => parseStellarSurfaceRecipe(record.extra?.stellarSurface).fallback,
+							options: () => [
+								{ value: 'procedural', label: 'Starwright (illustrative)' },
+								{ value: 'flat', label: 'Restrained / no generated structure' },
+							],
+							hint: 'Starwright is a seeded display model, not an observational reconstruction or calibrated radiance model.',
+						},
+						{
+							control: 'select', key: 'stellarMorphology', label: 'Photosphere morphology', omitFromPayload: true,
+							initial: record => parseStellarSurfaceRecipe(record.extra?.stellarSurface).morphology,
+							options: () => [
+								{ value: 'auto', label: 'Auto from spectral type' },
+								{ value: 'main_sequence', label: 'Ordinary / main sequence' },
+								{ value: 'giant', label: 'Giant / supergiant' },
+								{ value: 'white_dwarf', label: 'White dwarf' },
+							],
+							hint: 'Only controls illustrative morphology. It does not rewrite the star\'s spectral or luminosity classification.',
+						},
+						{
+							control: 'number', key: 'stellarSurfaceSeed', label: 'Starwright seed', omitFromPayload: true,
+							initial: record => parseStellarSurfaceRecipe(record.extra?.stellarSurface).seed,
+							placeholder: 'Stable from star ID',
+							hint: 'Leave blank for a stable seed derived from this star. Changing it rerolls generated structure only.',
+						},
+						{
+							control: 'number', key: 'stellarActivity', label: 'Starwright activity', omitFromPayload: true,
+							initial: record => parseStellarSurfaceRecipe(record.extra?.stellarSurface).activity,
+							min: 0, max: 1, rangeError: 'Use a value from 0 to 1', placeholder: '0.3',
+							hint: 'A visual strength control on the Starwright 0–1 scale. It is not a standardized stellar-activity measurement.',
+						},
+					],
+				},
+				{
+					cols: 1,
+					fields: [{
+						control: 'text', key: 'stellarPhotosphereMap', label: 'Uploaded photosphere plate', omitFromPayload: true,
+						initial: record => parseStellarSurfaceRecipe(record.extra?.stellarSurface).maps.photosphere ?? '',
+						placeholder: 'Exact filename from Media',
+						hint: 'Optional sRGB 2:1 equirectangular plate. An upload supersedes Starwright and may appear in Physical mode; document its coordinate convention and provenance on the Media record.',
+					}],
+				},
+			],
 		},
 		rotationSection(
 			'2160000', '7.25',
@@ -574,11 +627,26 @@ const starConfig: CelestialFormConfig = {
 	],
 	// The single hierarchy edge: a companion orbits its parent star, a primary
 	// orbits (belongs to) the system.
-	extraPayload: ctx => ({
-		parentId: text(ctx, 'parentStarId')
-			? Number(text(ctx, 'parentStarId'))
-			: (text(ctx, 'systemId') ? Number(text(ctx, 'systemId')) : null),
-	}),
+	extraPayload: (ctx) => {
+		const currentExtra = typeof ctx.draft.extra === 'object' && ctx.draft.extra !== null
+			? ctx.draft.extra as Record<string, unknown>
+			: {}
+		const photosphere = text(ctx, 'stellarPhotosphereMap').trim()
+		const stellarSurface = {
+			version: STELLAR_SURFACE_RECIPE_VERSION,
+			fallback: text(ctx, 'stellarSurfaceFallback') || 'procedural',
+			morphology: text(ctx, 'stellarMorphology') || 'auto',
+			seed: num(ctx, 'stellarSurfaceSeed'),
+			activity: num(ctx, 'stellarActivity'),
+			maps: photosphere ? { photosphere } : {},
+		}
+		return {
+			parentId: text(ctx, 'parentStarId')
+				? Number(text(ctx, 'parentStarId'))
+				: (text(ctx, 'systemId') ? Number(text(ctx, 'systemId')) : null),
+			extra: { ...currentExtra, stellarSurface },
+		}
+	},
 	physicsWarnings: ctx => validateStarPhysics({
 		massKg: num(ctx, 'massKg'),
 		radiusM: num(ctx, 'radiusM'),

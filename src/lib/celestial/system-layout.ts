@@ -14,12 +14,15 @@ import { meanAnomaly, partitionBinaryRelativeAxis, rotatePerifocalToInertial, so
 import { overviewBodyExtent } from './body-sizing.js'
 import type { ScaleMode } from './map-settings.js'
 import type { SurfaceRecipe } from './surface-model.js'
+import type { StellarSurfaceRecipe } from './stellar-surface-model.js'
 
 export interface MapBody {
 	id: number
 	name: string
 	slug: string
 	bodyType: string
+	/** Renderer-only entity namespace marker; never persisted. */
+	isStar?: boolean
 	massKg?: number | null
 	radiusM?: number | null
 	semiMajorAxisAu?: number | null
@@ -49,6 +52,8 @@ export interface MapBody {
 	hasRings?: boolean | null
 	/** Versioned material recipe stored in the entity's extra JSONB. */
 	surface?: SurfaceRecipe | null
+	/** Versioned Starwright photosphere recipe stored in the star's extra JSONB. */
+	stellarSurface?: StellarSurfaceRecipe | null
 	relativeSemiMajorAxisAu?: number | null
 	effectivePeriodSource?: 'stored' | 'derived' | 'unavailable'
 	placementProvenance?: 'physical' | 'schematic'
