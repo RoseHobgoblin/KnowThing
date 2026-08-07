@@ -5,7 +5,6 @@ import {
 	Group,
 	Mesh,
 	MeshBasicMaterial,
-	MeshStandardMaterial,
 	RingGeometry,
 	Sprite,
 	SpriteMaterial,
@@ -19,6 +18,7 @@ import { resolveColor, spectralColor } from '../colors.js'
 import type { VisibilityMode } from '../map-settings.js'
 import type { MapBody } from '../system-layout.js'
 import { resolveBodyVisibility, type VisibilityBodyKind } from './visibility-controller.js'
+import { createPlanetSurfaceVisual, type PlanetSurfaceVisual } from './surface-material.js'
 
 export type BodyVisual = {
 	anchor: Group
@@ -45,6 +45,7 @@ export function createBodyVisual(args: {
 	selectionTexture: Texture
 	selectionColor: string
 	worldUnitsPerAu: number
+	onTextureChange?: () => void
 }): BodyVisual {
 	const {
 		body,
@@ -56,6 +57,7 @@ export function createBodyVisual(args: {
 		selectionTexture,
 		selectionColor,
 		worldUnitsPerAu,
+		onTextureChange,
 	} = args
 	const colorCss = isStar
 		? spectralColor(body.spectralType, body.color)
@@ -86,12 +88,17 @@ export function createBodyVisual(args: {
 	).normalize()
 	tiltGroup.quaternion.setFromUnitVectors(new Vector3(0, 0, 1), spinAxis)
 
+	let planetSurface: PlanetSurfaceVisual | null = null
 	const material = isStar
 		? new MeshBasicMaterial({ color })
-		: new MeshStandardMaterial({ color, roughness: 0.82, metalness: 0.03 })
+		: (planetSurface = createPlanetSurfaceVisual({
+			body, colorCss, radius, sphereGeometry, onTextureChange,
+		})).material
 	const mesh = new Mesh(sphereGeometry, material)
 	mesh.scale.setScalar(radius)
 	spinGroup.add(mesh)
+	if (planetSurface?.cloudMesh) spinGroup.add(planetSurface.cloudMesh)
+	anchor.userData.surfacePlan = planetSurface?.plan ?? null
 
 	let ringGeometry: RingGeometry | null = null
 	let ringMaterial: MeshBasicMaterial | null = null
@@ -180,6 +187,7 @@ export function createBodyVisual(args: {
 			})
 			markerActive = visibility.markerActive
 			mesh.visible = visibility.meshVisible
+			planetSurface?.setGeometryVisible(visibility.meshVisible)
 			if (ringMesh) ringMesh.visible = visibility.meshVisible
 			markerMaterial.opacity = visibility.markerOpacity
 			overviewMarker.scale.setScalar(visibility.markerDiameterPx * safeWorldUnitsPerPixel)
@@ -203,7 +211,8 @@ export function createBodyVisual(args: {
 			spinGroup.rotation.z = ((day * 86_400) / body.rotationPeriodS) * Math.PI * 2
 		},
 		dispose() {
-			material.dispose()
+			if (planetSurface) planetSurface.dispose()
+			else material.dispose()
 			ringGeometry?.dispose()
 			ringMaterial?.dispose()
 			glowMaterial?.dispose()

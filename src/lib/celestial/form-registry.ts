@@ -19,6 +19,7 @@ import {
 } from 'tungolcraft'
 import { validateBodyPhysics, validateStarPhysics, type PhysicsWarning } from 'tungolcraft'
 import { spectralColor } from './colors.js'
+import { parseSurfaceRecipe, SURFACE_RECIPE_VERSION, type SurfaceMapChannel } from './surface-model.js'
 
 /**
  * Declarative field registry for the celestial configure forms.
@@ -54,6 +55,8 @@ export interface FieldContext {
 interface FieldBase {
 	label: string | ((ctx: FieldContext) => string)
 	hint?: string
+	/** Hydrate/display this field but let extraPayload compose its stored shape. */
+	omitFromPayload?: boolean
 }
 
 export interface NameFieldSpec extends FieldBase { control: 'name', key: 'name', placeholder: string }
@@ -62,6 +65,7 @@ export interface TextFieldSpec extends FieldBase {
 	control: 'text'
 	key: string
 	placeholder?: string
+	initial?: (record: Record<string, any>) => string
 	/** Send '' as null in the payload. Defaults to true; description must stay a string. */
 	emptyAsNull?: boolean
 }
@@ -77,6 +81,7 @@ export interface NumberFieldSpec extends FieldBase {
 	rangeError?: string
 	/** Selectable display units (ascending by factor). Omit for a plain numeric input. */
 	units?: UnitOption[]
+	initial?: (record: Record<string, any>) => number | null
 }
 export interface SelectFieldSpec extends FieldBase {
 	control: 'select'
@@ -84,8 +89,6 @@ export interface SelectFieldSpec extends FieldBase {
 	options: (ctx: FieldContext) => SelectOption[]
 	/** Reset to '' when the current value drops out of the option list. */
 	clearIfInvalid?: boolean
-	/** Selects that only feed extraPayload (the parent-edge pickers) set this. */
-	omitFromPayload?: boolean
 	initial?: (record: Record<string, any>) => string
 }
 export interface CheckboxFieldSpec extends FieldBase { control: 'checkbox', key: string }
@@ -199,10 +202,14 @@ export function buildDraft(config: CelestialFormConfig, record: Record<string, a
 			case 'name':
 			case 'slug':
 			case 'text':
-				draft[spec.key] = record[spec.key] ?? ''
+				draft[spec.key] = spec.control === 'text' && spec.initial
+					? spec.initial(record)
+					: (record[spec.key] ?? '')
 				break
 			case 'number':
-				draft[spec.key] = typeof record[spec.key] === 'number' ? record[spec.key] : null
+				draft[spec.key] = spec.initial
+					? spec.initial(record)
+					: (typeof record[spec.key] === 'number' ? record[spec.key] : null)
 				break
 			case 'select':
 				draft[spec.key] = spec.initial
@@ -232,7 +239,7 @@ export function buildPayload(config: CelestialFormConfig, ctx: FieldContext): Re
 	const draft = ctx.draft
 	const payload: Record<string, any> = {}
 	for (const spec of allFieldSpecs(config)) {
-		if (spec.control === 'select' && spec.omitFromPayload) continue
+		if (spec.omitFromPayload) continue
 		switch (spec.control) {
 			case 'text':
 				payload[spec.key] = (spec.emptyAsNull ?? true) ? (draft[spec.key] || null) : draft[spec.key]
@@ -854,6 +861,75 @@ const bodyConfig: CelestialFormConfig = {
 			}],
 		},
 		{
+			id: 'surface', label: 'Surface',
+			intro: 'Each texture channel is optional and independent. Enter an existing Media filename for data you have; the procedural fallback fills only missing channels and is always illustrative, never asserted geography.',
+			groups: [
+				{
+					cols: 3,
+					fields: [
+						{
+							control: 'select', key: 'surfaceFallback', label: 'Missing-channel fallback', omitFromPayload: true,
+							initial: record => parseSurfaceRecipe(record.extra?.surface).fallback,
+							options: () => [
+								{ value: 'procedural', label: 'Procedural (illustrative)' },
+								{ value: 'flat', label: 'Flat / no generated texture' },
+							],
+							hint: 'Procedural is deterministic and fills missing channels. Flat opts out without requiring uploads.',
+						},
+						{
+							control: 'select', key: 'surfaceClass', label: 'Surface class', omitFromPayload: true,
+							initial: record => parseSurfaceRecipe(record.extra?.surface).class,
+							options: () => [
+								{ value: 'auto', label: 'Auto from body data' },
+								{ value: 'rocky', label: 'Rocky / airless' },
+								{ value: 'terrestrial', label: 'Terrestrial' },
+								{ value: 'gas', label: 'Gas or ice giant' },
+								{ value: 'ice', label: 'Ice shell' },
+							],
+							hint: 'Used only for procedural gaps. Uploaded texture channels are never restyled.',
+						},
+						{
+							control: 'number', key: 'surfaceSeed', label: 'Procedural seed', omitFromPayload: true,
+							initial: record => parseSurfaceRecipe(record.extra?.surface).seed,
+							placeholder: 'Stable from body ID',
+							hint: 'Leave blank for a stable seed derived from this body. Changing it rerolls only generated channels.',
+						},
+						{
+							control: 'number', key: 'surfaceHydrosphere', label: 'Surface water fraction', omitFromPayload: true,
+							initial: record => parseSurfaceRecipe(record.extra?.surface).hydrosphereFraction,
+							min: 0, max: 1, rangeError: 'Use a value from 0 to 1', placeholder: '0.71',
+							hint: 'Optional explicit fraction for procedural land/water separation. This is not inferred from temperature.',
+						},
+						{
+							control: 'number', key: 'surfaceCloudCoverage', label: 'Cloud coverage', omitFromPayload: true,
+							initial: record => parseSurfaceRecipe(record.extra?.surface).cloudCoverage,
+							min: 0, max: 1, rangeError: 'Use a value from 0 to 1', placeholder: '0.55',
+							hint: 'Optional generated cloud-opacity layer. Atmosphere data alone never invents clouds.',
+						},
+					],
+				},
+				{
+					cols: 3,
+					fields: ([
+						['albedo', 'Albedo / base color map', 'sRGB 2:1 equirectangular image. This completely replaces generated surface color.'],
+						['elevation', 'Elevation / height map', 'Linear grayscale 2:1 image. Used as subtle bump in the overview and reserved for close-view displacement.'],
+						['normal', 'Normal map', 'Linear tangent-space 2:1 normal map. Takes precedence over elevation-derived bump.'],
+						['roughness', 'Roughness map', 'Linear grayscale 2:1 image; the green channel is sampled by Three.js.'],
+						['clouds', 'Cloud opacity map', 'Linear grayscale 2:1 opacity mask rendered on an independent cloud shell.'],
+						['emissive', 'Emissive / night map', 'sRGB 2:1 color image for genuinely luminous surface features.'],
+					] as [SurfaceMapChannel, string, string][]).map(([channel, label, hint]) => ({
+						control: 'text' as const,
+						key: `surfaceMap_${channel}`,
+						label,
+						omitFromPayload: true,
+						initial: (record: Record<string, any>) => parseSurfaceRecipe(record.extra?.surface).maps[channel] ?? '',
+						placeholder: 'Exact filename from Media',
+						hint,
+					})),
+				},
+			],
+		},
+		{
 			id: 'orbit', label: 'Orbit',
 			intro: 'The orbital period is derived from the semi-major axis and the primary\'s mass — see the computed panel. Pin a custom period in the Overrides section below.',
 			groups: [{
@@ -888,12 +964,31 @@ const bodyConfig: CelestialFormConfig = {
 	],
 	// The single hierarchy edge: a moon orbits its parent body, a planet orbits
 	// the star, a circumbinary body orbits the system barycenter.
+	passthroughKeys: ['extra'],
 	extraPayload: (ctx) => {
+		const maps: Partial<Record<SurfaceMapChannel, string>> = {}
+		for (const channel of ['albedo', 'elevation', 'normal', 'roughness', 'clouds', 'emissive'] as SurfaceMapChannel[]) {
+			const filename = text(ctx, `surfaceMap_${channel}`).trim()
+			if (filename) maps[channel] = filename
+		}
+		const currentExtra = typeof ctx.draft.extra === 'object' && ctx.draft.extra !== null
+			? ctx.draft.extra as Record<string, unknown>
+			: {}
+		const surface = {
+			version: SURFACE_RECIPE_VERSION,
+			fallback: text(ctx, 'surfaceFallback') || 'procedural',
+			class: text(ctx, 'surfaceClass') || 'auto',
+			seed: num(ctx, 'surfaceSeed'),
+			hydrosphereFraction: num(ctx, 'surfaceHydrosphere'),
+			cloudCoverage: num(ctx, 'surfaceCloudCoverage'),
+			maps,
+		}
+		const common = { extra: { ...currentExtra, surface } }
 		const parentId = text(ctx, 'parentId')
-		if (parentId) return { parentId: Number(parentId) }
+		if (parentId) return { parentId: Number(parentId), ...common }
 		const { starId, systemId } = bodyPrimarySelection(ctx)
 		const primary = starId || systemId
-		return { parentId: primary ? Number(primary) : null }
+		return { parentId: primary ? Number(primary) : null, ...common }
 	},
 	physicsWarnings: ctx => validateBodyPhysics({
 		massKg: num(ctx, 'massKg'),

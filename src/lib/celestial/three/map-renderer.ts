@@ -465,6 +465,7 @@ export async function createSystemMapRenderer(
 			selectionTexture,
 			selectionColor: theme.accent,
 			worldUnitsPerAu: layout.worldUnitsPerAu ?? 1,
+			onTextureChange: schedule,
 		})
 		visual.anchor.userData.entityKey = key
 		bodyGroup.add(visual.anchor)

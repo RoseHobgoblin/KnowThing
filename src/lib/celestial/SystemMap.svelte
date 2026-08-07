@@ -5,6 +5,7 @@
 	import type { LabelMode, ScaleMode, TrailMode, ViewMode, VisibilityMode } from './map-settings.js'
 	import type { EntityKey, MapBody, ThemePalette } from './system-layout.js'
 	import { keyForBody, timingUnavailable } from './system-layout.js'
+	import { composeSurfacePlan, describeSurfacePlan } from './surface-model.js'
 	import type { OverlaySnapshot, SystemMapRenderer } from './renderer-types.js'
 
 	const DEFAULT_THEME: ThemePalette = {
@@ -80,6 +81,11 @@
 		if (zoom >= 1_000) return `${(zoom / 1_000).toFixed(1)}k`
 		return zoom.toFixed(1)
 	}
+
+	function surfaceDescription(body: MapBody): string | null {
+		return body.bodyType ? describeSurfacePlan(composeSurfacePlan(body, body.surface)) : null
+	}
+	const hoveredSurfaceDescription = $derived(hoveredBody ? surfaceDescription(hoveredBody) : null)
 
 	// Three.js remains strictly browser-only. Switching this one import back to
 	// ./pixi/map-renderer.js is the production rollback seam.
@@ -162,7 +168,8 @@
 	const tooltipStyle = $derived.by(() => {
 		if (!hoverPosition) return ''
 		const tipWidth = 210
-		const tipHeight = timingUnavailable(hoveredBody ?? { id: 0, name: '', slug: '', bodyType: '' }) ? 84 : 60
+		const baseHeight = timingUnavailable(hoveredBody ?? { id: 0, name: '', slug: '', bodyType: '' }) ? 84 : 60
+		const tipHeight = baseHeight + (hoveredSurfaceDescription ? 18 : 0)
 		const placeRight = hoverPosition.x + 16 + tipWidth < displayWidth
 		const left = placeRight ? hoverPosition.x + 16 : hoverPosition.x - tipWidth - 16
 		const top = Math.min(Math.max(hoverPosition.y - tipHeight / 2, 4), displayHeight - tipHeight - 4)
@@ -253,6 +260,7 @@
 				{#if hoveredBody.spectralType}<span class="font-normal text-secondary"> ({hoveredBody.spectralType})</span>{/if}
 			</div>
 			{#if hoveredBody.semiMajorAxisAu}<div class="text-xs text-secondary">{hoveredBody.semiMajorAxisAu.toFixed(3)} AU</div>{/if}
+			{#if hoveredSurfaceDescription}<div class="mt-1 text-[0.68rem] text-secondary">{hoveredSurfaceDescription}</div>{/if}
 			{#if timingUnavailable(hoveredBody)}
 				<div class="mt-1 text-[0.68rem] text-accent">Timing unavailable—position fixed.</div>
 			{/if}

@@ -13,6 +13,7 @@
 import { meanAnomaly, partitionBinaryRelativeAxis, rotatePerifocalToInertial, solveKeplerE } from 'tungolcraft'
 import { overviewBodyExtent } from './body-sizing.js'
 import type { ScaleMode } from './map-settings.js'
+import type { SurfaceRecipe } from './surface-model.js'
 
 export interface MapBody {
 	id: number
@@ -40,11 +41,14 @@ export interface MapBody {
 	rotationPeriodS?: number | null
 	axialTilt?: number | null
 	temperatureK?: number | null
+	temperature?: string | null
 	luminosityW?: number | null
 	composition?: string | null
 	atmosphere?: string | null
 	albedo?: string | null
 	hasRings?: boolean | null
+	/** Versioned material recipe stored in the entity's extra JSONB. */
+	surface?: SurfaceRecipe | null
 	relativeSemiMajorAxisAu?: number | null
 	effectivePeriodSource?: 'stored' | 'derived' | 'unavailable'
 	placementProvenance?: 'physical' | 'schematic'

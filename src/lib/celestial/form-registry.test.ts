@@ -108,6 +108,41 @@ describe('buildPayload', () => {
 		expect(buildPayload(config, ctx).parentId).toBe(4)
 	})
 
+	it('round-trips independent surface channels through the body extra JSON', () => {
+		const config = CELESTIAL_FORM_CONFIGS.body
+		const draft = buildDraft(config, {
+			id: 3, name: 'Earth', slug: 'earth',
+			extra: {
+				density: '5.51 g/cm³',
+				surface: {
+					version: 1, fallback: 'flat', class: 'terrestrial', seed: 42,
+					hydrosphereFraction: 0.71, cloudCoverage: null,
+					maps: { albedo: 'Earth albedo.png', normal: 'Earth normal.png' },
+				},
+			},
+		})
+		expect(draft.surfaceFallback).toBe('flat')
+		expect(draft.surfaceHydrosphere).toBe(0.71)
+		expect(draft.surfaceMap_albedo).toBe('Earth albedo.png')
+		draft.starId = '7'
+		draft.surfaceMap_roughness = 'Earth roughness.png'
+		const payload = buildPayload(config, { draft, selfId: 3, systems: [], stars: [], siblings: [] })
+		expect(payload).not.toHaveProperty('surfaceMap_albedo')
+		expect(payload.extra).toMatchObject({
+			density: '5.51 g/cm³',
+			surface: {
+				version: 1, fallback: 'flat', class: 'terrestrial', seed: 42,
+				hydrosphereFraction: 0.71,
+				maps: {
+					albedo: 'Earth albedo.png',
+					normal: 'Earth normal.png',
+					roughness: 'Earth roughness.png',
+				},
+			},
+		})
+		expect(config.updateSchema.safeParse(payload).success).toBe(true)
+	})
+
 	it('sends locked overrides as null and unlocked overrides verbatim', () => {
 		const config = CELESTIAL_FORM_CONFIGS.body
 		const ctx = makeCtx(config)

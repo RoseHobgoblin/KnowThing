@@ -2,7 +2,7 @@
 
 **Status:** Proposed next-stage architecture  
 **Last updated:** 7 August 2026  
-**Related documents:** [Celestial Upgrades](./Celestial-Upgrades.md), [Celestial Body Rendering](./Celestial-Body-Rendering.md), [Celestial Calendar Integration](./Celestial-Calendar-Integration.md)
+**Related documents:** [Celestial Upgrades](./Celestial-Upgrades.md), [Celestial Body Rendering](./Celestial-Body-Rendering.md), [Celestial Surface Models](./Celestial-Surface-Models.md), [Celestial Data Provenance and Ingest](./Celestial-Data-Provenance-and-Ingest.md), [Celestial Calendar Integration](./Celestial-Calendar-Integration.md)
 
 ## Decision
 
@@ -283,6 +283,12 @@ Acceptance criteria:
 - Selection changes annotation only.
 - Picking remains usable for subpixel bodies without adding visible geometry.
 
+### Phase 2.5: Surface composition foundation
+
+Status: initial slice implemented. A versioned recipe now composes uploaded albedo, elevation, normal, roughness, cloud-opacity, and emissive channels with deterministic procedural or flat fallbacks. Uploaded channels always win, channel provenance is visible, and generated geology is explicitly illustrative.
+
+Before star-derived lighting, finish media validation and texture LOD, then establish the scientific/GIS ingest contract described in [Celestial Surface Models](./Celestial-Surface-Models.md).
+
 ### Phase 3: Star lighting and exposure
 
 Replace generic scene lighting with lights derived from star position and luminosity, plus a controlled fallback. Add exposure presets and focused-body shadow experiments.
@@ -371,7 +377,7 @@ The following decisions should be made during the relevant phase, not encoded ac
 
 ## Immediate Next Work
 
-Implement Phase 3 star-derived lighting and exposure. The perspective camera split and visibility controller now provide the depth, angular-size, and literal-versus-assisted presentation boundaries that lighting needs.
+Finish Phase 2.5 surface media validation and texture LOD, then implement Phase 3 star-derived lighting and exposure. The perspective camera split and visibility controller already provide the depth and angular-size boundaries both systems need.
 
 Do not reintroduce layout scales to compensate for an inadequate camera. Do not make bodies larger to compensate for an inadequate marker system. Fix the camera and visibility layers at their proper boundaries.
 
