@@ -39,10 +39,12 @@ test.describe('celestial map', () => {
 		await ready(page)
 		const map = page.locator('[data-render-state="ready"]')
 		await expect(map).toHaveAttribute('data-visibility-mode', 'enhanced')
+		await expect(page.getByText(/Auto exposure .* 0\.0 EV/)).toBeVisible()
 		await expect(page.getByTestId('map-frame')).toHaveScreenshot('visibility-enhanced-desktop.png')
 
 		await page.getByRole('button', { name: 'Physical', exact: true }).click()
 		await expect(map).toHaveAttribute('data-visibility-mode', 'physical')
+		await expect(page.getByText(/Fixed exposure .* 0\.0 EV/)).toBeVisible()
 		await expect(page.getByText(/Orrery · Physical/)).toBeVisible()
 		await expect(page.getByTestId('map-frame')).toHaveScreenshot('visibility-physical-desktop.png')
 
@@ -96,6 +98,7 @@ test.describe('celestial map', () => {
 		await expect(page.getByTestId('fixture-selection')).toHaveText('body:13')
 		await expect(page.getByTestId('map-frame')).toHaveScreenshot('selected-body-desktop.png')
 		await canvas.dblclick({ position: bodyPosition })
+		await expect(page.getByText(/Auto exposure .* Brontes/)).toBeVisible()
 		await expect(page.getByTestId('map-frame')).toHaveScreenshot('focused-body-desktop.png', { maxDiffPixels: 20 })
 		await page.getByRole('button', { name: 'Follow', exact: true }).click()
 		await page.getByRole('button', { name: 'Play', exact: true }).click()

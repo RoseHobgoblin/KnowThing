@@ -5,8 +5,10 @@ import {
 	MAX_STARLIGHT_EXPOSURE,
 	SOLAR_IRRADIANCE_DISPLAY,
 	StarlightController,
+	formatStarlightExposure,
 	focusedStarlightExposure,
 	focusedStarlightTarget,
+	resolveStarlightExposure,
 	starlightFillIntensity,
 	starlightPointIntensity,
 } from './starlight-controller.js'
@@ -40,6 +42,19 @@ describe('starlight controller', () => {
 		expect(focusedStarlightExposure(SOLAR_IRRADIANCE_DISPLAY / 25)).toBeCloseTo(DEFAULT_STARLIGHT_EXPOSURE * 25)
 		expect(focusedStarlightExposure(1e-20)).toBe(MAX_STARLIGHT_EXPOSURE)
 		expect(focusedStarlightExposure(0)).toBe(DEFAULT_STARLIGHT_EXPOSURE)
+	})
+
+	it('keeps Physical fixed while assisted modes publish explicit automatic EV', () => {
+		const irradiance = SOLAR_IRRADIANCE_DISPLAY / 16
+		const physical = resolveStarlightExposure('physical', irradiance)
+		const enhanced = resolveStarlightExposure('enhanced', irradiance)
+		expect(physical.policy).toBe('fixed')
+		expect(physical.exposure).toBe(DEFAULT_STARLIGHT_EXPOSURE)
+		expect(physical.ev).toBe(0)
+		expect(formatStarlightExposure(physical, null)).toBe('Fixed exposure · 0.0 EV')
+		expect(enhanced.policy).toBe('auto')
+		expect(enhanced.ev).toBeCloseTo(4)
+		expect(formatStarlightExposure(enhanced, 'Saxnat')).toBe('Auto exposure · +4.0 EV · Saxnat')
 	})
 
 	it('chooses exposure from the viewed body without requiring selection', () => {

@@ -36,6 +36,7 @@ export type OverlaySnapshot = {
 	legend: { pixels: number, label: string } | null
 	modeLabel: string
 	lightingLabel?: string
+	exposureLabel?: string
 	projection: 'orthographic' | 'perspective' | null
 	status: 'initializing' | 'ready' | 'unavailable'
 }

@@ -246,6 +246,7 @@
 			<div class="absolute right-2 bottom-2 max-w-[75%] bg-surface/75 px-2 py-1 text-right text-[0.65rem] text-secondary">
 				{overlay.modeLabel} · {overlay.scaleLabel}
 				{#if overlay.lightingLabel}<span class="ml-2">{overlay.lightingLabel}</span>{/if}
+				{#if overlay.exposureLabel}<span class="ml-2">{overlay.exposureLabel}</span>{/if}
 				{#if overlay.legend}
 					<span class="ml-2 inline-flex items-center gap-1.5">
 						{#if overlay.legend.pixels > 0}

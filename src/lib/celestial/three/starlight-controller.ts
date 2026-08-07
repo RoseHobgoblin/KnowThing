@@ -35,6 +35,12 @@ export type StarlightExposureCandidate = {
 	physicalRadiusPx: number
 }
 
+export type StarlightExposureState = {
+	policy: 'fixed' | 'auto'
+	exposure: number
+	ev: number
+}
+
 type StarlightRecord = {
 	light: PointLight
 	source: StarlightLuminositySource
@@ -64,6 +70,33 @@ export function focusedStarlightExposure(irradiance: number): number {
 			DEFAULT_STARLIGHT_EXPOSURE * SOLAR_IRRADIANCE_DISPLAY / irradiance,
 		),
 	)
+}
+
+export function resolveStarlightExposure(
+	mode: VisibilityMode,
+	irradiance: number | null,
+): StarlightExposureState {
+	const policy = mode === 'physical' ? 'fixed' : 'auto'
+	const exposure = policy === 'auto' && irradiance != null
+		? focusedStarlightExposure(irradiance)
+		: DEFAULT_STARLIGHT_EXPOSURE
+	return {
+		policy,
+		exposure,
+		ev: Math.log2(exposure / DEFAULT_STARLIGHT_EXPOSURE),
+	}
+}
+
+export function formatStarlightExposure(
+	state: StarlightExposureState,
+	targetName: string | null,
+): string {
+	const roundedExposureValue = Math.abs(state.ev) < 0.05 ? 0 : state.ev
+	const exposureValueLabel = `${roundedExposureValue > 0 ? '+' : ''}${roundedExposureValue.toFixed(1)} EV`
+	if (state.policy === 'fixed') return `Fixed exposure · ${exposureValueLabel}`
+	return targetName
+		? `Auto exposure · ${exposureValueLabel} · ${targetName}`
+		: `Auto exposure · ${exposureValueLabel}`
 }
 
 /**

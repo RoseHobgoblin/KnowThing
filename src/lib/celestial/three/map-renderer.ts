@@ -59,8 +59,9 @@ import {
 import {
 	DEFAULT_STARLIGHT_EXPOSURE,
 	StarlightController,
-	focusedStarlightExposure,
+	formatStarlightExposure,
 	focusedStarlightTarget,
+	resolveStarlightExposure,
 	type StarlightSummary,
 } from './starlight-controller.js'
 
@@ -266,6 +267,10 @@ export async function createSystemMapRenderer(
 	let visualsReady = false
 	let visualGeneration = 0
 	let starlightSummary: StarlightSummary = starlight.summary()
+	let exposureLabel = formatStarlightExposure(
+		resolveStarlightExposure(DEFAULT_SETTINGS.visibility, null),
+		null,
+	)
 	let layout: SystemLayout = buildPhysicalLayout([], [])
 	const nodes = new Map<EntityKey, EntityNode>()
 	let orbitPaths: OrbitPath[] = []
@@ -731,6 +736,7 @@ export async function createSystemMapRenderer(
 				},
 			modeLabel: `${settings.view === 'plan' ? 'Plan' : 'Orrery'} · ${settings.visibility[0].toUpperCase()}${settings.visibility.slice(1)}`,
 			lightingLabel: starlightSummary.label,
+			exposureLabel,
 			projection: camera === orreryCamera ? 'perspective' : 'orthographic',
 			status: dataReceived && visualsReady ? 'ready' : 'initializing',
 		}
@@ -747,9 +753,9 @@ export async function createSystemMapRenderer(
 	}
 
 	function updateToneMappingExposure() {
-		let exposure = DEFAULT_STARLIGHT_EXPOSURE
+		const automatic = settings.visibility !== 'physical'
 		const zoomLevel = cameraZoomLevel()
-		const focusedKey = zoomLevel < 4
+		const focusedKey = !automatic || zoomLevel < 4
 			? null
 			: focusedStarlightTarget(
 				[...nodes.values()].map((node) => {
@@ -769,12 +775,15 @@ export async function createSystemMapRenderer(
 				zoomLevel,
 			)
 		const focusedNode = focusedKey == null ? null : nodes.get(focusedKey)
-		if (focusedNode) {
+		let irradiance: number | null = null
+		if (automatic && focusedNode) {
 			focusedNode.visual.anchor.getWorldPosition(scratchWorld)
-			exposure = focusedStarlightExposure(starlight.irradianceAt(scratchWorld))
+			irradiance = starlight.irradianceAt(scratchWorld)
 		}
-		renderer.toneMappingExposure = exposure
-		starlight.compensateFillForExposure(exposure)
+		const exposure = resolveStarlightExposure(settings.visibility, irradiance)
+		renderer.toneMappingExposure = exposure.exposure
+		starlight.compensateFillForExposure(exposure.exposure)
+		exposureLabel = formatStarlightExposure(exposure, focusedNode?.body.name ?? null)
 	}
 
 	function notifyView() {
