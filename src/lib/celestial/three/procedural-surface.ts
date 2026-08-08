@@ -40,17 +40,24 @@ export type GeneratedSurface = {
 	diagnostics: string[]
 }
 
-type Sample = { score: number, weight: number }
 type SurfacePoint = {
 	x: number
 	y: number
 	z: number
 	latitudeSin: number
+	latitudePow: number
 	weight: number
 	height: number
 	climate: number
 	localTemperatureK: number
 	altitude: number
+}
+/** Latitude-only terms shared by every pixel in an equirectangular row. */
+type RowContext = {
+	latitudeCos: number
+	latitudeSin: number
+	latitudePow: number
+	latitudeTemperatureK: number
 }
 type Thresholds = { water: number, snow: number, vegetation: number, clouds: number }
 
@@ -80,39 +87,62 @@ function setPixel(target: Uint8Array, offset: number, color: Rgb, alpha = 255): 
 	target[offset + 3] = clamp(Math.round(alpha), 0, 255)
 }
 
-function weightedThreshold(samples: Sample[], target: number, highest: boolean): number {
-	if (target <= 0 || samples.length === 0) return highest ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY
+function weightedThreshold(scores: ArrayLike<number>, weights: ArrayLike<number>, target: number, highest: boolean): number {
+	if (target <= 0 || scores.length === 0) return highest ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY
 	if (target >= 1) return highest ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY
-	const ordered = samples.toSorted((left, right) => highest ? right.score - left.score : left.score - right.score)
-	const wanted = ordered.reduce((sum, sample) => sum + sample.weight, 0) * target
+	const order = Array.from({ length: scores.length }, (_, index) => index)
+	order.sort(highest
+		? (left, right) => scores[right] - scores[left]
+		: (left, right) => scores[left] - scores[right])
+	let wanted = 0
+	for (const index of order) wanted += weights[index]
+	wanted *= target
 	let accumulated = 0
-	for (const sample of ordered) {
-		accumulated += sample.weight
-		if (accumulated >= wanted) return sample.score
+	for (const index of order) {
+		accumulated += weights[index]
+		if (accumulated >= wanted) return scores[index]
 	}
-	return ordered.at(-1)?.score ?? 0
+	const lastIndex = order.at(-1)
+	return lastIndex == null ? 0 : scores[lastIndex]
+}
+
+function rowAt(pixelY: number, height: number, meanTemperatureK: number): RowContext {
+	const latitude = (0.5 - (pixelY + 0.5) / height) * Math.PI
+	const latitudeSin = Math.sin(latitude)
+	const latitudePow = Math.abs(latitudeSin) ** PROFILE.climate.latitudeExponent
+	return {
+		latitudeCos: Math.cos(latitude),
+		latitudeSin,
+		latitudePow,
+		latitudeTemperatureK: meanTemperatureK + PROFILE.climate.equatorialOffsetK
+			- PROFILE.climate.latitudeCoolingK * latitudePow,
+	}
 }
 
 function pointAt(
 	pixelX: number,
-	pixelY: number,
 	width: number,
-	height: number,
+	row: RowContext,
 	primaryNoise: Noise3,
 	detailNoise: Noise3,
 	climateNoise: Noise3,
-	meanTemperatureK: number,
+	warpNoise: Noise3,
 ): SurfacePoint {
-	const latitude = (0.5 - (pixelY + 0.5) / height) * Math.PI
-	const latitudeCos = Math.cos(latitude)
-	const latitudeSin = Math.sin(latitude)
 	const longitude = ((pixelX + 0.5) / width) * Math.PI * 2
-	const x = latitudeCos * Math.cos(longitude)
-	const y = latitudeSin
-	const z = latitudeCos * Math.sin(longitude)
+	const x = row.latitudeCos * Math.cos(longitude)
+	const y = row.latitudeSin
+	const z = row.latitudeCos * Math.sin(longitude)
 	const terrain = PROFILE.terrain
-	const base = fractal(primaryNoise, x * terrain.baseFrequency, y * terrain.baseFrequency, z * terrain.baseFrequency, terrain.baseOctaves)
-	const detail = fractal(detailNoise, x * terrain.detailFrequency, y * terrain.detailFrequency, z * terrain.detailFrequency, terrain.detailOctaves) * terrain.detailAmplitude
+	// Domain warp bends only the terrain sampling so continents gain anisotropic
+	// structure; climate, clouds, and the returned sphere point stay unwarped.
+	const warpX = x * terrain.warpFrequency
+	const warpY = y * terrain.warpFrequency
+	const warpZ = z * terrain.warpFrequency
+	const wx = x + fractal(warpNoise, warpX + 31.4, warpY + 8.2, warpZ - 12.7, terrain.warpOctaves) * terrain.warpAmplitude
+	const wy = y + fractal(warpNoise, warpX - 5.9, warpY + 44.1, warpZ + 21.3, terrain.warpOctaves) * terrain.warpAmplitude
+	const wz = z + fractal(warpNoise, warpX + 17.8, warpY - 27.5, warpZ + 3.6, terrain.warpOctaves) * terrain.warpAmplitude
+	const base = fractal(primaryNoise, wx * terrain.baseFrequency, wy * terrain.baseFrequency, wz * terrain.baseFrequency, terrain.baseOctaves)
+	const detail = fractal(detailNoise, wx * terrain.detailFrequency, wy * terrain.detailFrequency, wz * terrain.detailFrequency, terrain.detailOctaves) * terrain.detailAmplitude
 	const heightValue = clamp(0.5 + (base + detail) * terrain.heightAmplitude, 0, 1)
 	const altitude = clamp((heightValue - 0.5) * 2.2, 0, 1)
 	const climate = clamp(0.5 + climateNoise(
@@ -120,10 +150,17 @@ function pointAt(
 		y * PROFILE.placement.climateFrequency - 7,
 		z * PROFILE.placement.climateFrequency + 5,
 	) * 0.52, 0, 1)
-	const localTemperatureK = meanTemperatureK + PROFILE.climate.equatorialOffsetK
-		- PROFILE.climate.latitudeCoolingK * Math.abs(latitudeSin) ** PROFILE.climate.latitudeExponent
-		- PROFILE.climate.altitudeCoolingK * altitude
-	return { x, y, z, latitudeSin, weight: latitudeCos, height: heightValue, climate, localTemperatureK, altitude }
+	const localTemperatureK = row.latitudeTemperatureK - PROFILE.climate.altitudeCoolingK * altitude
+	return {
+		x, y, z,
+		latitudeSin: row.latitudeSin,
+		latitudePow: row.latitudePow,
+		weight: row.latitudeCos,
+		height: heightValue,
+		climate,
+		localTemperatureK,
+		altitude,
+	}
 }
 
 function vegetationScore(point: SurfacePoint): number {
@@ -139,7 +176,7 @@ function vegetationScore(point: SurfacePoint): number {
 function snowScore(point: SurfacePoint): number {
 	const coldness = 1 - smoothstep(250, 281, point.localTemperatureK)
 	return clamp(
-		Math.abs(point.latitudeSin) ** PROFILE.climate.latitudeExponent * PROFILE.placement.snowLatitudeWeight
+		point.latitudePow * PROFILE.placement.snowLatitudeWeight
 		+ point.altitude * PROFILE.placement.snowAltitudeWeight
 		+ coldness * PROFILE.placement.snowColdWeight
 		+ (point.climate - 0.5) * PROFILE.placement.snowClimateWeight,
@@ -164,34 +201,46 @@ function calibrate(
 	detailNoise: Noise3,
 	climateNoise: Noise3,
 	cloudNoise: Noise3,
+	warpNoise: Noise3,
 ): { thresholds: Thresholds, diagnostics: string[] } {
 	const coverage = parameters.coverage
 	const meanTemperatureK = parameters.temperatureK ?? 288
-	const points: SurfacePoint[] = []
+	const count = COVERAGE_CALIBRATION_WIDTH * COVERAGE_CALIBRATION_HEIGHT
+	const heights = new Float64Array(count)
+	const snowScores = new Float64Array(count)
+	const vegetationScores = new Float64Array(count)
+	const cloudScores = new Float64Array(count)
+	const weights = new Float64Array(count)
+	let cursor = 0
 	for (let y = 0; y < COVERAGE_CALIBRATION_HEIGHT; y++) {
-		for (let x = 0; x < COVERAGE_CALIBRATION_WIDTH; x++) {
-			points.push(pointAt(x, y, COVERAGE_CALIBRATION_WIDTH, COVERAGE_CALIBRATION_HEIGHT, primaryNoise, detailNoise, climateNoise, meanTemperatureK))
+		const row = rowAt(y, COVERAGE_CALIBRATION_HEIGHT, meanTemperatureK)
+		for (let x = 0; x < COVERAGE_CALIBRATION_WIDTH; x++, cursor++) {
+			const point = pointAt(x, COVERAGE_CALIBRATION_WIDTH, row, primaryNoise, detailNoise, climateNoise, warpNoise)
+			heights[cursor] = point.height
+			snowScores[cursor] = snowScore(point)
+			vegetationScores[cursor] = vegetationScore(point)
+			cloudScores[cursor] = cloudScore(cloudNoise, point)
+			weights[cursor] = point.weight
 		}
 	}
 	const waterTarget = supportsCoverage(parameters.class, 'water') ? coverage.surfaceWater ?? 0 : 0
 	const snowTarget = supportsCoverage(parameters.class, 'snow') ? coverage.permanentSnowIce ?? 0 : 0
 	const vegetationTarget = supportsCoverage(parameters.class, 'vegetation') ? coverage.vegetation ?? 0 : 0
 	const cloudTarget = parameters.clouds?.meanCover ?? 0
-	const water = weightedThreshold(points.map(point => ({ score: point.height, weight: point.weight })), waterTarget, false)
-	const snow = weightedThreshold(points.map(point => ({ score: snowScore(point), weight: point.weight })), snowTarget, true)
-	const eligible = points.filter(point => !(point.height <= water) && !(snowScore(point) >= snow))
-	const vegetation = weightedThreshold(
-		eligible.map(point => ({ score: vegetationScore(point), weight: point.weight })),
-		vegetationTarget,
-		true,
-	)
-	const clouds = weightedThreshold(
-		points.map(point => ({ score: cloudScore(cloudNoise, point), weight: point.weight })),
-		cloudTarget,
-		true,
-	)
+	const water = weightedThreshold(heights, weights, waterTarget, false)
+	const snow = weightedThreshold(snowScores, weights, snowTarget, true)
+	const eligibleScores: number[] = []
+	const eligibleWeights: number[] = []
+	for (let index = 0; index < count; index++) {
+		if (!(heights[index] <= water) && !(snowScores[index] >= snow)) {
+			eligibleScores.push(vegetationScores[index])
+			eligibleWeights.push(weights[index])
+		}
+	}
+	const vegetation = weightedThreshold(eligibleScores, eligibleWeights, vegetationTarget, true)
+	const clouds = weightedThreshold(cloudScores, weights, cloudTarget, true)
 	const diagnostics: string[] = []
-	if (vegetationTarget > 0 && eligible.length === 0) {
+	if (vegetationTarget > 0 && eligibleScores.length === 0) {
 		diagnostics.push('Vegetation target could not be placed because no exposed non-snow land remains.')
 	}
 	return { thresholds: { water, snow, vegetation, clouds }, diagnostics }
@@ -234,8 +283,15 @@ export function generateProceduralSurface(
 	const detailNoise = makeSimplex(parameters.seed ^ 0x9E3779B9)
 	const cloudNoise = makeSimplex(parameters.clouds?.seed ?? (parameters.seed ^ 0x51AB3F))
 	const climateNoise = makeSimplex(parameters.seed ^ 0xC1A4E7)
-	const { thresholds, diagnostics } = calibrate(parameters, primaryNoise, detailNoise, climateNoise, cloudNoise)
+	const warpNoise = makeSimplex(parameters.seed ^ 0x7F4A7C15)
+	const { thresholds, diagnostics } = calibrate(parameters, primaryNoise, detailNoise, climateNoise, cloudNoise, warpNoise)
 	const meanTemperatureK = parameters.temperatureK ?? 288
+	const supportsWater = supportsCoverage(parameters.class, 'water')
+	const supportsSnow = supportsCoverage(parameters.class, 'snow')
+	const supportsVegetation = supportsCoverage(parameters.class, 'vegetation')
+	const fullCloudCover = (parameters.clouds?.meanCover ?? 0) >= 1
+	const cloudEdgeLow = thresholds.clouds - CLOUD_PROCEDURE_PROFILE.thresholdSoftness
+	const cloudEdgeHigh = thresholds.clouds + CLOUD_PROCEDURE_PROFILE.thresholdSoftness
 	let totalWeight = 0
 	let waterWeight = 0
 	let snowWeight = 0
@@ -244,23 +300,20 @@ export function generateProceduralSurface(
 	let cloudWeight = 0
 
 	for (let pixelY = 0; pixelY < safeHeight; pixelY++) {
+		const row = rowAt(pixelY, safeHeight, meanTemperatureK)
 		for (let pixelX = 0; pixelX < safeWidth; pixelX++) {
-			const point = pointAt(pixelX, pixelY, safeWidth, safeHeight, primaryNoise, detailNoise, climateNoise, meanTemperatureK)
+			const point = pointAt(pixelX, safeWidth, row, primaryNoise, detailNoise, climateNoise, warpNoise)
 			const offset = (pixelY * safeWidth + pixelX) * 4
-			const water = supportsCoverage(parameters.class, 'water') && point.height <= thresholds.water
-			const snow = supportsCoverage(parameters.class, 'snow') && snowScore(point) >= thresholds.snow
-			const eligible = supportsCoverage(parameters.class, 'vegetation') && !water && !snow
+			const water = supportsWater && point.height <= thresholds.water
+			const snow = supportsSnow && snowScore(point) >= thresholds.snow
+			const eligible = supportsVegetation && !water && !snow
 			const vegetation = eligible && vegetationScore(point) >= thresholds.vegetation
 			const cloudValue = clouds == null ? 0 : cloudScore(cloudNoise, point)
 			const cloudOpacity = clouds == null
 				? 0
-				: ((parameters.clouds?.meanCover ?? 0) >= 1
+				: (fullCloudCover
 					? 1
-					: smoothstep(
-						thresholds.clouds - CLOUD_PROCEDURE_PROFILE.thresholdSoftness,
-						thresholds.clouds + CLOUD_PROCEDURE_PROFILE.thresholdSoftness,
-						cloudValue,
-					))
+					: smoothstep(cloudEdgeLow, cloudEdgeHigh, cloudValue))
 			const cloudy = cloudOpacity >= 0.5
 			let color: Rgb
 			let roughnessValue: number

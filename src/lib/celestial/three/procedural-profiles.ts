@@ -1,7 +1,7 @@
 import type { ResolvedStellarMorphology } from '../stellar-surface-model.js'
 import type { ResolvedSurfaceClass } from '../surface-model.js'
 
-export const PROCEDURAL_ALGORITHM_REVISION = 5 as const
+export const PROCEDURAL_ALGORITHM_REVISION = 6 as const
 export const COVERAGE_CALIBRATION_WIDTH = 256
 export const COVERAGE_CALIBRATION_HEIGHT = 128
 
@@ -15,6 +15,9 @@ export type PlanetProcedureProfile = {
 		detailOctaves: number
 		detailAmplitude: number
 		heightAmplitude: number
+		warpFrequency: number
+		warpAmplitude: number
+		warpOctaves: number
 	}
 	climate: {
 		equatorialOffsetK: number
@@ -58,6 +61,9 @@ export const PLANET_PROCEDURE_PROFILE: PlanetProcedureProfile = {
 		detailOctaves: 3,
 		detailAmplitude: 0.24,
 		heightAmplitude: 0.48,
+		warpFrequency: 0.9,
+		warpAmplitude: 0.55,
+		warpOctaves: 3,
 	},
 	climate: {
 		equatorialOffsetK: 14,
