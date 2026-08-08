@@ -98,8 +98,7 @@
 		}
 	})
 
-	// Three.js remains strictly browser-only. Switching this one import back to
-	// ./pixi/map-renderer.js is the production rollback seam.
+	// Three.js remains strictly browser-only.
 	onMount(() => {
 		let cancelled = false
 		let created: SystemMapRenderer | null = null
