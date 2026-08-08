@@ -4,6 +4,75 @@ function positive(value: number, fallback: number): number {
 	return Number.isFinite(value) && value > 0 ? value : fallback
 }
 
+type MutablePoint3D = { x: number, y: number, z: number }
+
+/**
+ * Pushes a camera position to the near side of a spherical body when a dolly
+ * would place it inside. The previous position supplies a stable outward
+ * direction so a large zoom step cannot snap the camera through the centre.
+ */
+export function constrainPointOutsideSphere(
+	point: MutablePoint3D,
+	previousPoint: MutablePoint3D,
+	centre: MutablePoint3D,
+	radius: number,
+): boolean {
+	const safeRadius = positive(radius, 0)
+	if (safeRadius === 0) return false
+	const x = point.x - centre.x
+	const y = point.y - centre.y
+	const z = point.z - centre.z
+	const radiusSquared = safeRadius * safeRadius
+	const previousX = previousPoint.x - centre.x
+	const previousY = previousPoint.y - centre.y
+	const previousZ = previousPoint.z - centre.z
+	const moveX = x - previousX
+	const moveY = y - previousY
+	const moveZ = z - previousZ
+	const moveSquared = moveX * moveX + moveY * moveY + moveZ * moveZ
+	const previousSquared = previousX * previousX + previousY * previousY + previousZ * previousZ
+
+	// Stop at the first surface intersection. This also catches one unusually
+	// large dolly step that would otherwise emerge beyond the far side.
+	if (previousSquared >= radiusSquared && moveSquared > Number.EPSILON) {
+		const inward = previousX * moveX + previousY * moveY + previousZ * moveZ
+		const discriminant = inward * inward - moveSquared * (previousSquared - radiusSquared)
+		if (inward < 0 && discriminant >= 0) {
+			const intersection = (-inward - Math.sqrt(discriminant)) / moveSquared
+			if (intersection >= 0 && intersection <= 1) {
+				point.x = centre.x + previousX + moveX * intersection
+				point.y = centre.y + previousY + moveY * intersection
+				point.z = centre.z + previousZ + moveZ * intersection
+				return true
+			}
+		}
+	}
+
+	// A stationary point on the surface should not keep the render loop alive.
+	if (x * x + y * y + z * z >= radiusSquared * (1 - 1e-12)) return false
+
+	let outwardX = previousX
+	let outwardY = previousY
+	let outwardZ = previousZ
+	let outwardLength = Math.hypot(outwardX, outwardY, outwardZ)
+	if (outwardLength <= Number.EPSILON) {
+		outwardX = x
+		outwardY = y
+		outwardZ = z
+		outwardLength = Math.hypot(outwardX, outwardY, outwardZ)
+	}
+	if (outwardLength <= Number.EPSILON) {
+		outwardX = 0
+		outwardY = 0
+		outwardZ = 1
+		outwardLength = 1
+	}
+	point.x = centre.x + outwardX / outwardLength * safeRadius
+	point.y = centre.y + outwardY / outwardLength * safeRadius
+	point.z = centre.z + outwardZ / outwardLength * safeRadius
+	return true
+}
+
 /** World-space height represented by one CSS pixel at a perspective depth. */
 export function perspectiveWorldUnitsPerPixel(
 	depth: number,

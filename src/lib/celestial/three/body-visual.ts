@@ -147,6 +147,9 @@ export function createBodyVisual(args: {
 		color,
 		transparent: true,
 		opacity: 0.9,
+		// Markers are interface annotations, not luminous scene objects. Keeping
+		// them out of tone mapping prevents auto exposure from bleaching their tint.
+		toneMapped: false,
 		// Markers may assist a subpixel body, but must still disappear behind
 		// foreground stars and planets already present in the depth buffer.
 		depthTest: true,
@@ -162,6 +165,7 @@ export function createBodyVisual(args: {
 		color: new Color(selectionColor),
 		transparent: true,
 		opacity: 0,
+		toneMapped: false,
 		depthTest: false,
 		depthWrite: false,
 	})

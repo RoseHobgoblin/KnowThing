@@ -45,6 +45,7 @@ import type {
 } from '../renderer-types.js'
 import { createBodyVisual, type BodyVisual } from './body-visual.js'
 import {
+	constrainPointOutsideSphere,
 	orthographicZoomForWorldUnitsPerPixel,
 	perspectiveDistanceForWorldUnitsPerPixel,
 	perspectiveDistanceToFrameSphere,
@@ -72,6 +73,8 @@ const ORRERY_FOV_DEG = 50
 const VIEW_TRANSITION_MS = 450
 const FLY_TO_MS = 600
 const KEYBOARD_PAN_SPEED_PX = 210
+const CAMERA_ZOOM_SPEED = 1.8
+const CAMERA_SURFACE_CLEARANCE = 1.03
 const PLAN_CAMERA_DISTANCE = 1_000
 const FOCUS_RADIUS_PX = 60
 const PAN_KEYS = new Set([
@@ -242,6 +245,7 @@ export async function createSystemMapRenderer(
 	controls.dampingFactor = 0.085
 	controls.screenSpacePanning = true
 	controls.zoomToCursor = true
+	controls.zoomSpeed = CAMERA_ZOOM_SPEED
 	controls.minZoom = MIN_ZOOM
 	controls.maxZoom = MAX_ZOOM
 	controls.minDistance = 0.001
@@ -294,6 +298,7 @@ export async function createSystemMapRenderer(
 	const pressedPanKeys = new Set<string>()
 	const scratchWorld = new Vector3()
 	const scratchView = new Vector3()
+	const previousCameraPosition = new Vector3()
 
 	function defaultCameraDirection(view: MapSettingsState['view']): Vector3 {
 		if (view === 'plan') {
@@ -750,6 +755,21 @@ export async function createSystemMapRenderer(
 		}
 	}
 
+	function constrainCameraOutsideBodies(): boolean {
+		if (camera !== orreryCamera) return false
+		let constrained = false
+		for (const node of nodes.values()) {
+			node.visual.anchor.getWorldPosition(scratchWorld)
+			constrained = constrainPointOutsideSphere(
+				camera.position,
+				previousCameraPosition,
+				scratchWorld,
+				node.visual.radius * CAMERA_SURFACE_CLEARANCE,
+			) || constrained
+		}
+		return constrained
+	}
+
 	function publishOverlay() {
 		const labels: ProjectedLabel[] = []
 		const indicators: OffscreenIndicator[] = []
@@ -893,6 +913,7 @@ export async function createSystemMapRenderer(
 		lastFrameAt = now
 		let cameraSettled = false
 		let animate = applyKeyboardPan(deltaSeconds)
+		previousCameraPosition.copy(camera.position)
 		animate = controls.update() || animate
 		if (viewStartedAt != null) {
 			const progress = Math.min(1, (now - viewStartedAt) / VIEW_TRANSITION_MS)
@@ -915,6 +936,7 @@ export async function createSystemMapRenderer(
 				cameraSettled = true
 			} else animate = true
 		}
+		animate = constrainCameraOutsideBodies() || animate
 		updatePerspectiveClipping()
 		updateVisualScales()
 		updateToneMappingExposure()

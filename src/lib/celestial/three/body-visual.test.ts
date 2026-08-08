@@ -30,6 +30,7 @@ describe('body visual selection', () => {
 		visual.setVisibility('enhanced', 1)
 		expect((marker.material as SpriteMaterial).opacity).toBeGreaterThan(0)
 		expect((marker.material as SpriteMaterial).depthTest).toBe(true)
+		expect((marker.material as SpriteMaterial).toneMapped).toBe(false)
 		visual.setVisibility('enhanced', visual.extent / 10)
 		expect((marker.material as SpriteMaterial).opacity).toBe(0)
 		visual.setSelected(true, true)
