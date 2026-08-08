@@ -36,6 +36,8 @@ export function makeSimplex(seed: number): Noise3 {
 	const skew = 1 / 3
 	const unskew = 1 / 6
 
+	// The corner loop is unrolled with scalar locals: this runs once per noise
+	// sample per octave per pixel, so any per-call allocation dominates plate cost.
 	return (xInput, yInput, zInput) => {
 		const skewAmount = (xInput + yInput + zInput) * skew
 		const latticeX = Math.floor(xInput + skewAmount)
@@ -45,34 +47,90 @@ export function makeSimplex(seed: number): Noise3 {
 		const x0 = xInput - (latticeX - unskewAmount)
 		const y0 = yInput - (latticeY - unskewAmount)
 		const z0 = zInput - (latticeZ - unskewAmount)
-		let stepX1: number, stepY1: number, stepZ1: number, stepX2: number, stepY2: number, stepZ2: number
+		let stepX1 = 0
+		let stepY1 = 0
+		let stepZ1 = 0
+		let stepX2 = 0
+		let stepY2 = 0
+		let stepZ2 = 0
 		if (x0 >= y0) {
-			if (y0 >= z0) [stepX1, stepY1, stepZ1, stepX2, stepY2, stepZ2] = [1, 0, 0, 1, 1, 0]
-			else if (x0 >= z0) [stepX1, stepY1, stepZ1, stepX2, stepY2, stepZ2] = [1, 0, 0, 1, 0, 1]
-			else [stepX1, stepY1, stepZ1, stepX2, stepY2, stepZ2] = [0, 0, 1, 1, 0, 1]
-		} else if (y0 < z0) [stepX1, stepY1, stepZ1, stepX2, stepY2, stepZ2] = [0, 0, 1, 0, 1, 1]
-		else if (x0 < z0) [stepX1, stepY1, stepZ1, stepX2, stepY2, stepZ2] = [0, 1, 0, 0, 1, 1]
-		else [stepX1, stepY1, stepZ1, stepX2, stepY2, stepZ2] = [0, 1, 0, 1, 1, 0]
+			if (y0 >= z0) {
+				stepX1 = 1
+				stepX2 = 1
+				stepY2 = 1
+			} else if (x0 >= z0) {
+				stepX1 = 1
+				stepX2 = 1
+				stepZ2 = 1
+			} else {
+				stepZ1 = 1
+				stepX2 = 1
+				stepZ2 = 1
+			}
+		} else if (y0 < z0) {
+			stepZ1 = 1
+			stepY2 = 1
+			stepZ2 = 1
+		} else if (x0 < z0) {
+			stepY1 = 1
+			stepY2 = 1
+			stepZ2 = 1
+		} else {
+			stepY1 = 1
+			stepX2 = 1
+			stepY2 = 1
+		}
 
-		const offsets = [
-			[x0, y0, z0, 0, 0, 0],
-			[x0 - stepX1 + unskew, y0 - stepY1 + unskew, z0 - stepZ1 + unskew, stepX1, stepY1, stepZ1],
-			[x0 - stepX2 + 2 * unskew, y0 - stepY2 + 2 * unskew, z0 - stepZ2 + 2 * unskew, stepX2, stepY2, stepZ2],
-			[x0 - 1 + 3 * unskew, y0 - 1 + 3 * unskew, z0 - 1 + 3 * unskew, 1, 1, 1],
-		]
 		const wrappedX = latticeX & 255
 		const wrappedY = latticeY & 255
 		const wrappedZ = latticeZ & 255
 		let sum = 0
-		for (const [x, y, z, oi, oj, ok] of offsets) {
-			let influence = 0.6 - x * x - y * y - z * z
-			if (influence <= 0) continue
-			const gradient = gradientIndex[wrappedX + oi + permutation[wrappedY + oj + permutation[wrappedZ + ok]]] * 3
+
+		let influence = 0.6 - x0 * x0 - y0 * y0 - z0 * z0
+		if (influence > 0) {
+			const gradient = gradientIndex[wrappedX + permutation[wrappedY + permutation[wrappedZ]]] * 3
 			influence *= influence
 			sum += influence * influence * (
-				gradients[gradient] * x + gradients[gradient + 1] * y + gradients[gradient + 2] * z
+				gradients[gradient] * x0 + gradients[gradient + 1] * y0 + gradients[gradient + 2] * z0
 			)
 		}
+
+		const x1 = x0 - stepX1 + unskew
+		const y1 = y0 - stepY1 + unskew
+		const z1 = z0 - stepZ1 + unskew
+		influence = 0.6 - x1 * x1 - y1 * y1 - z1 * z1
+		if (influence > 0) {
+			const gradient = gradientIndex[wrappedX + stepX1 + permutation[wrappedY + stepY1 + permutation[wrappedZ + stepZ1]]] * 3
+			influence *= influence
+			sum += influence * influence * (
+				gradients[gradient] * x1 + gradients[gradient + 1] * y1 + gradients[gradient + 2] * z1
+			)
+		}
+
+		const x2 = x0 - stepX2 + 2 * unskew
+		const y2 = y0 - stepY2 + 2 * unskew
+		const z2 = z0 - stepZ2 + 2 * unskew
+		influence = 0.6 - x2 * x2 - y2 * y2 - z2 * z2
+		if (influence > 0) {
+			const gradient = gradientIndex[wrappedX + stepX2 + permutation[wrappedY + stepY2 + permutation[wrappedZ + stepZ2]]] * 3
+			influence *= influence
+			sum += influence * influence * (
+				gradients[gradient] * x2 + gradients[gradient + 1] * y2 + gradients[gradient + 2] * z2
+			)
+		}
+
+		const x3 = x0 - 1 + 3 * unskew
+		const y3 = y0 - 1 + 3 * unskew
+		const z3 = z0 - 1 + 3 * unskew
+		influence = 0.6 - x3 * x3 - y3 * y3 - z3 * z3
+		if (influence > 0) {
+			const gradient = gradientIndex[wrappedX + 1 + permutation[wrappedY + 1 + permutation[wrappedZ + 1]]] * 3
+			influence *= influence
+			sum += influence * influence * (
+				gradients[gradient] * x3 + gradients[gradient + 1] * y3 + gradients[gradient + 2] * z3
+			)
+		}
+
 		return 32 * sum
 	}
 }

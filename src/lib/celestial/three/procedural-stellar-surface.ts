@@ -59,6 +59,26 @@ function linearTemperatureColor(temperatureK: number): [number, number, number] 
 }
 
 /**
+ * Allocation-free variant of linearTemperatureColor for the per-pixel loop.
+ * Must stay operation-for-operation identical so plates remain byte-stable.
+ */
+function writeLinearTemperatureColor(temperatureK: number, target: Float64Array): void {
+	const temperature = clamp(temperatureK, 1_000, 40_000) / 100
+	const red = temperature <= 66
+		? 255
+		: 329.698727446 * Math.pow(temperature - 60, -0.1332047592)
+	const green = temperature <= 66
+		? 99.4708025861 * Math.log(temperature) - 161.1195681661
+		: 288.1221695283 * Math.pow(temperature - 60, -0.0755148492)
+	const blue = temperature >= 66
+		? 255
+		: (temperature <= 19 ? 0 : 138.5177312231 * Math.log(temperature - 10) - 305.0447927307)
+	target[0] = srgbChannelToLinear(clamp(red, 0, 255) / 255)
+	target[1] = srgbChannelToLinear(clamp(green, 0, 255) / 255)
+	target[2] = srgbChannelToLinear(clamp(blue, 0, 255) / 255)
+}
+
+/**
  * Starwright's seeded photosphere fallback. It creates a seamless 2:1 plate by
  * sampling three-dimensional noise on a unit sphere. Granulation, spots, and
  * faculae are illustrative morphology, never observational surface data.
@@ -117,6 +137,7 @@ export function generateProceduralStellarSurface(
 	)
 	const faculaStrength = convection * activity * PROFILE.faculaMaximum
 	const meanLinearColor = linearTemperatureColor(temperatureK)
+	const localLinearColor = new Float64Array(3)
 
 	for (let pixelY = 0; pixelY < safeHeight; pixelY++) {
 		const latitude = (0.5 - (pixelY + 0.5) / safeHeight) * Math.PI
@@ -170,12 +191,16 @@ export function generateProceduralStellarSurface(
 			}
 
 			for (const spot of spots) {
+				// Great-circle distance is at least the latitude separation, so a
+				// pixel outside the spot's latitude band can never be inside it.
+				const latitudeDifference = latitude - spot.latitude
+				if (latitudeDifference >= spot.radius || -latitudeDifference >= spot.radius) continue
 				let longitudeDifference = longitude - spot.longitude
 				if (longitudeDifference > Math.PI) longitudeDifference -= Math.PI * 2
 				if (longitudeDifference < -Math.PI) longitudeDifference += Math.PI * 2
 				const distance = Math.hypot(
 					longitudeDifference * latitudeCos,
-					latitude - spot.latitude,
+					latitudeDifference,
 				)
 				if (distance >= spot.radius) continue
 				const radiusFraction = distance / spot.radius
@@ -185,7 +210,7 @@ export function generateProceduralStellarSurface(
 				localTemperatureK -= cooling
 			}
 
-			const localLinearColor = linearTemperatureColor(localTemperatureK)
+			writeLinearTemperatureColor(localTemperatureK, localLinearColor)
 			const intensity = Math.pow(
 				localTemperatureK / temperatureK,
 				PROFILE.bolometricDisplayExponent,
