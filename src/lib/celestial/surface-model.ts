@@ -199,7 +199,7 @@ export function composeSurfacePlan(body: SurfaceBodyInput, rawRecipe: unknown): 
 		channels: {
 			albedo: choose('albedo', procedural ? 'procedural' : 'constant'),
 			elevation: choose('elevation', generatedRelief ? 'procedural' : 'unavailable'),
-			normal: choose('normal', 'unavailable'),
+			normal: choose('normal', generatedRelief ? 'procedural' : 'unavailable'),
 			roughness: choose('roughness', procedural ? 'procedural' : 'constant'),
 			emissive: choose('emissive', 'unavailable'),
 		},

@@ -93,13 +93,15 @@ export function proceduralTextureCacheKey(
 function resultBytes(result: ProceduralTextureResult): number {
 	if ('photosphere' in result) return result.photosphere.byteLength
 	return result.albedo.byteLength + result.roughness.byteLength
-		+ (result.elevation?.byteLength ?? 0) + (result.clouds?.byteLength ?? 0)
+		+ (result.elevation?.byteLength ?? 0) + (result.normal?.byteLength ?? 0)
+		+ (result.clouds?.byteLength ?? 0)
 }
 
 function estimateBytes(request: ProceduralTextureRequest): number {
 	const pixels = request.width * request.height * 4
 	if (request.kind === 'star') return pixels
-	return pixels * (2 + Number(request.parameters.class !== 'gas') + Number((request.parameters.clouds?.meanCover ?? 0) > 0))
+	// Elevation and normal planes are both gated on non-gas classes.
+	return pixels * (2 + 2 * Number(request.parameters.class !== 'gas') + Number((request.parameters.clouds?.meanCover ?? 0) > 0))
 }
 
 function generateSynchronously(request: ProceduralTextureRequest): ProceduralTextureResult {

@@ -91,6 +91,29 @@ export function createPlanetSurfaceVisual(args: {
 		material.needsUpdate = true
 	}
 
+	// Relief maps arrive from two async sources (LOD promise, TextureLoader
+	// callback) in either order, so a single precedence function is the only
+	// writer of normalMap/bumpMap: uploaded normal > generated normal > bump.
+	let uploadedNormal: Texture | null = null
+	let generatedNormal: Texture | null = null
+	let uploadedBump: Texture | null = null
+	let generatedBump: Texture | null = null
+	const applyRelief = () => {
+		const normal = uploadedNormal ?? generatedNormal
+		if (normal) {
+			material.normalMap = normal
+			const down = normal === uploadedNormal
+				&& plan.channels.normal.binding?.interpretation.normalY === 'down'
+			material.normalScale.set(0.72, down ? -0.72 : 0.72)
+			material.bumpMap = null
+		} else {
+			material.normalMap = null
+			material.bumpMap = uploadedBump ?? generatedBump
+			material.bumpScale = 0.055
+		}
+		material.needsUpdate = true
+	}
+
 	const hasCloudLayer = weatherPlan.clouds.source === 'procedural'
 	if (hasCloudLayer) {
 		cloudMaterial = new MeshStandardMaterial({
@@ -141,6 +164,9 @@ export function createPlanetSurfaceVisual(args: {
 			const elevation = plan.channels.elevation.source === 'procedural' && generated.elevation
 				? ownGenerated(dataTexture(generated.elevation, generated.width, generated.height, false))
 				: null
+			const normal = plan.channels.normal.source === 'procedural' && generated.normal
+				? ownGenerated(dataTexture(generated.normal, generated.width, generated.height, false))
+				: null
 			const clouds = hasCloudLayer && generated.clouds
 				? ownGenerated(dataTexture(generated.clouds, generated.width, generated.height, false))
 				: null
@@ -149,10 +175,9 @@ export function createPlanetSurfaceVisual(args: {
 				material.roughness = 1
 				material.roughnessMap = roughness
 			}
-			if (elevation) {
-				material.bumpMap = elevation
-				material.bumpScale = 0.055
-			}
+			generatedBump = elevation
+			generatedNormal = normal
+			applyRelief()
 			if (clouds && cloudMaterial && cloudMesh) {
 				cloudMaterial.alphaMap = clouds
 				cloudMaterial.needsUpdate = true
@@ -206,16 +231,12 @@ export function createPlanetSurfaceVisual(args: {
 		material.needsUpdate = true
 	})
 	loadChannel('elevation', (texture) => {
-		material.bumpMap = texture
-		material.bumpScale = 0.055
-		material.needsUpdate = true
+		uploadedBump = texture
+		applyRelief()
 	})
 	loadChannel('normal', (texture) => {
-		material.normalMap = texture
-		material.bumpMap = null
-		const normalY = plan.channels.normal.binding?.interpretation.normalY === 'down' ? -0.72 : 0.72
-		material.normalScale.set(0.72, normalY)
-		material.needsUpdate = true
+		uploadedNormal = texture
+		applyRelief()
 	})
 	loadChannel('emissive', (texture) => {
 		material.emissive.set(0xFFFFFF)

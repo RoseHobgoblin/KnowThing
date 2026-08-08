@@ -68,6 +68,7 @@ export type PlanetProcedureProfile = {
 		landSnow: [Rgb, Rgb]
 		seaIce: [Rgb, Rgb]
 		tintStrength: number
+		normalHeightScale: number
 	}
 }
 
@@ -134,6 +135,8 @@ export const PLANET_PROCEDURE_PROFILE: PlanetProcedureProfile = {
 		landSnow: [[211, 220, 224], [242, 242, 237]],
 		seaIce: [[198, 216, 228], [231, 237, 239]],
 		tintStrength: 0.18,
+		// Illustrative relief height for normal derivation, in unit-sphere radii.
+		normalHeightScale: 0.05,
 	},
 }
 

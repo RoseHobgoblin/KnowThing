@@ -25,6 +25,7 @@ workerScope.onmessage = (event: MessageEvent<RequestMessage>) => {
 			const result = generateProceduralSurface(request.parameters, request.width, request.height)
 			const transfers: Transferable[] = [result.albedo.buffer, result.roughness.buffer]
 			if (result.elevation) transfers.push(result.elevation.buffer)
+			if (result.normal) transfers.push(result.normal.buffer)
 			if (result.clouds) transfers.push(result.clouds.buffer)
 			workerScope.postMessage({ id, result } satisfies ResponseMessage, transfers)
 			return

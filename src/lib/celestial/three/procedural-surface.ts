@@ -34,6 +34,8 @@ export type GeneratedSurface = {
 	height: number
 	albedo: Uint8Array
 	elevation: Uint8Array | null
+	/** Tangent-space +Y-up normal map derived from the generated elevation. */
+	normal: Uint8Array | null
 	roughness: Uint8Array
 	clouds: Uint8Array | null
 	measuredCoverage: MeasuredSurfaceCoverage
@@ -247,6 +249,39 @@ function calibrate(
 	return { thresholds: { water, snow, vegetation, clouds }, diagnostics }
 }
 
+/**
+ * Derives a tangent-space +Y-up normal plate from the generated height field.
+ * U neighbors wrap across the longitude seam, V clamps at the poles, and the
+ * U texel arc shrinks by cos(latitude) so relief stays even across the plate
+ * and consistent between LOD sizes.
+ */
+function deriveNormals(target: Uint8Array, heightField: Float32Array, width: number, height: number): void {
+	const scale = PROFILE.display.normalHeightScale
+	for (let pixelY = 0; pixelY < height; pixelY++) {
+		const latitude = (0.5 - (pixelY + 0.5) / height) * Math.PI
+		const latitudeCos = Math.max(Math.cos(latitude), 0.1)
+		const texelSpanU = 2 * (2 * Math.PI * latitudeCos / width)
+		const texelSpanV = 2 * (Math.PI / height)
+		const rowOffset = pixelY * width
+		const northOffset = Math.max(pixelY - 1, 0) * width
+		const southOffset = Math.min(pixelY + 1, height - 1) * width
+		for (let pixelX = 0; pixelX < width; pixelX++) {
+			const east = heightField[rowOffset + (pixelX + 1) % width]
+			const west = heightField[rowOffset + (pixelX - 1 + width) % width]
+			const north = heightField[northOffset + pixelX]
+			const south = heightField[southOffset + pixelX]
+			const slopeU = (east - west) * scale / texelSpanU
+			const slopeV = (north - south) * scale / texelSpanV
+			const inverseLength = 1 / Math.sqrt(slopeU * slopeU + slopeV * slopeV + 1)
+			const offset = (rowOffset + pixelX) * 4
+			target[offset] = clamp(Math.round((-slopeU * inverseLength * 0.5 + 0.5) * 255), 0, 255)
+			target[offset + 1] = clamp(Math.round((-slopeV * inverseLength * 0.5 + 0.5) * 255), 0, 255)
+			target[offset + 2] = clamp(Math.round((inverseLength * 0.5 + 0.5) * 255), 0, 255)
+			target[offset + 3] = 255
+		}
+	}
+}
+
 function terrainColor(height: number, water: boolean, seaLevel: number): { color: Rgb, roughness: number } {
 	if (water) {
 		const depth = clamp((seaLevel - height) * 4, 0, 1)
@@ -279,6 +314,8 @@ export function generateProceduralSurface(
 	const albedo = new Uint8Array(safeWidth * safeHeight * 4)
 	const roughness = new Uint8Array(albedo.length)
 	const elevation = parameters.class === 'gas' ? null : new Uint8Array(albedo.length)
+	const normal = parameters.class === 'gas' ? null : new Uint8Array(albedo.length)
+	const heightField = normal == null ? null : new Float32Array(safeWidth * safeHeight)
 	const clouds = (parameters.clouds?.meanCover ?? 0) > 0 ? new Uint8Array(albedo.length) : null
 	const primaryNoise = makeSimplex(parameters.seed)
 	const detailNoise = makeSimplex(parameters.seed ^ 0x9E3779B9)
@@ -304,6 +341,7 @@ export function generateProceduralSurface(
 		const row = rowAt(pixelY, safeHeight, meanTemperatureK)
 		for (let pixelX = 0; pixelX < safeWidth; pixelX++) {
 			const point = pointAt(pixelX, safeWidth, row, primaryNoise, detailNoise, climateNoise, warpNoise)
+			if (heightField) heightField[pixelY * safeWidth + pixelX] = point.height
 			const offset = (pixelY * safeWidth + pixelX) * 4
 			const water = supportsWater && point.height <= thresholds.water
 			const snow = supportsSnow && snowScore(point) >= thresholds.snow
@@ -366,11 +404,16 @@ export function generateProceduralSurface(
 		}
 	}
 
+	if (normal && heightField) {
+		deriveNormals(normal, heightField, safeWidth, safeHeight)
+	}
+
 	return {
 		width: safeWidth,
 		height: safeHeight,
 		albedo,
 		elevation,
+		normal,
 		roughness,
 		clouds,
 		measuredCoverage: {
