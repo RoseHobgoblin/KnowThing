@@ -7,6 +7,7 @@ import {
 	GAS_DISPLAY_PROFILES,
 	PLANET_PROCEDURE_PROFILE as PROFILE,
 	PROCEDURAL_ALGORITHM_REVISION,
+	sampleRamp,
 	supportsCoverage,
 	type Rgb,
 } from './procedural-profiles.js'
@@ -249,11 +250,11 @@ function calibrate(
 function terrainColor(height: number, water: boolean, seaLevel: number): { color: Rgb, roughness: number } {
 	if (water) {
 		const depth = clamp((seaLevel - height) * 4, 0, 1)
-		return { color: mixRgb(PROFILE.display.waterShallow, PROFILE.display.waterDeep, depth), roughness: 0.16 }
+		return { color: sampleRamp(PROFILE.display.waterRamp, depth), roughness: 0.16 }
 	}
 	const altitude = clamp((height - seaLevel) * 2.2, 0, 1)
 	return {
-		color: mixRgb(PROFILE.display.lowland, PROFILE.display.highland, altitude),
+		color: sampleRamp(PROFILE.display.landRamp, altitude),
 		roughness: mix(0.82, 0.96, altitude),
 	}
 }
@@ -326,7 +327,7 @@ export function generateProceduralSurface(
 				const crack = ridged(detailNoise, point.x * 6.5, point.y * 6.5, point.z * 6.5)
 				color = crack > 0.81
 					? mixRgb([216, 230, 239], [73, 119, 157], clamp((crack - 0.81) * 5.2, 0, 0.9))
-					: mixRgb([198, 216, 229], [233, 239, 242], point.height)
+					: sampleRamp(PROFILE.display.iceRamp, point.height)
 				roughnessValue = mix(0.38, 0.62, point.height)
 			} else {
 				const terrain = terrainColor(point.height, water, thresholds.water)

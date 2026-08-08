@@ -7,6 +7,29 @@ export const COVERAGE_CALIBRATION_HEIGHT = 128
 
 export type Rgb = [number, number, number]
 
+/** A gradient stop at an ascending position in an arbitrary domain (0..1, Kelvin, ...). */
+export type ColorStop = [number, Rgb]
+
+/** Linear multi-stop gradient sample, clamped to the first/last stop. */
+export function sampleRamp(stops: readonly ColorStop[], position: number): Rgb {
+	const first = stops[0]
+	if (position <= first[0]) return [...first[1]]
+	const last = stops[stops.length - 1]
+	if (position >= last[0]) return [...last[1]]
+	for (let index = 1; index < stops.length; index++) {
+		const [end, endColor] = stops[index]
+		if (position > end) continue
+		const [start, startColor] = stops[index - 1]
+		const amount = (position - start) / (end - start)
+		return [
+			startColor[0] + (endColor[0] - startColor[0]) * amount,
+			startColor[1] + (endColor[1] - startColor[1]) * amount,
+			startColor[2] + (endColor[2] - startColor[2]) * amount,
+		]
+	}
+	return [...last[1]]
+}
+
 export type PlanetProcedureProfile = {
 	terrain: {
 		baseFrequency: number
@@ -37,10 +60,9 @@ export type PlanetProcedureProfile = {
 		snowClimateWeight: number
 	}
 	display: {
-		waterShallow: Rgb
-		waterDeep: Rgb
-		lowland: Rgb
-		highland: Rgb
+		waterRamp: ColorStop[]
+		landRamp: ColorStop[]
+		iceRamp: ColorStop[]
 		vegetationDry: Rgb
 		vegetationWet: Rgb
 		landSnow: [Rgb, Rgb]
@@ -83,10 +105,30 @@ export const PLANET_PROCEDURE_PROFILE: PlanetProcedureProfile = {
 		snowClimateWeight: 0.08,
 	},
 	display: {
-		waterShallow: [62, 111, 151],
-		waterDeep: [14, 37, 72],
-		lowland: [132, 115, 88],
-		highland: [102, 92, 82],
+		// Depth 0..1 (shore -> abyss); old two-stop colors remain interior stops.
+		waterRamp: [
+			[0, [96, 148, 172]],
+			[0.15, [62, 111, 151]],
+			[0.45, [28, 66, 105]],
+			[0.75, [14, 37, 72]],
+			[1, [7, 20, 44]],
+		],
+		// Altitude 0..1 (plain -> peak scree).
+		landRamp: [
+			[0, [128, 118, 86]],
+			[0.3, [141, 125, 93]],
+			[0.55, [114, 100, 82]],
+			[0.8, [98, 90, 82]],
+			[1, [139, 133, 126]],
+		],
+		// Ice-sheet height 0..1.
+		iceRamp: [
+			[0, [186, 205, 220]],
+			[0.35, [203, 219, 230]],
+			[0.6, [222, 231, 238]],
+			[0.85, [236, 241, 243]],
+			[1, [245, 246, 244]],
+		],
 		vegetationDry: [111, 137, 55],
 		vegetationWet: [28, 83, 40],
 		landSnow: [[211, 220, 224], [242, 242, 237]],
