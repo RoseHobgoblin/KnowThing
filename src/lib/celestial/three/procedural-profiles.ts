@@ -14,7 +14,7 @@ export type ColorStop = [number, Rgb]
 export function sampleRamp(stops: readonly ColorStop[], position: number): Rgb {
 	const first = stops[0]
 	if (position <= first[0]) return [...first[1]]
-	const last = stops[stops.length - 1]
+	const last = stops.at(-1)
 	if (position >= last[0]) return [...last[1]]
 	for (let index = 1; index < stops.length; index++) {
 		const [end, endColor] = stops[index]
@@ -63,8 +63,8 @@ export type PlanetProcedureProfile = {
 		waterRamp: ColorStop[]
 		landRamp: ColorStop[]
 		iceRamp: ColorStop[]
-		vegetationDry: Rgb
-		vegetationWet: Rgb
+		vegetationDryByStarK: ColorStop[]
+		vegetationWetByStarK: ColorStop[]
 		landSnow: [Rgb, Rgb]
 		seaIce: [Rgb, Rgb]
 		tintStrength: number
@@ -130,8 +130,25 @@ export const PLANET_PROCEDURE_PROFILE: PlanetProcedureProfile = {
 			[0.85, [236, 241, 243]],
 			[1, [245, 246, 244]],
 		],
-		vegetationDry: [111, 137, 55],
-		vegetationWet: [28, 83, 40],
+		// Vegetation pigment vs host-star temperature (Kelvin positions): the
+		// standard astrobiology speculation that photosynthesis tunes to the
+		// stellar spectrum. Sun-like stars (5800 K) keep the familiar greens.
+		vegetationDryByStarK: [
+			[2_600, [58, 38, 40]],
+			[3_200, [94, 52, 44]],
+			[4_500, [122, 106, 48]],
+			[5_800, [111, 137, 55]],
+			[7_200, [96, 142, 118]],
+			[9_000, [80, 130, 140]],
+		],
+		vegetationWetByStarK: [
+			[2_600, [24, 14, 20]],
+			[3_200, [52, 26, 30]],
+			[4_500, [66, 74, 34]],
+			[5_800, [28, 83, 40]],
+			[7_200, [30, 92, 82]],
+			[9_000, [22, 78, 96]],
+		],
 		landSnow: [[211, 220, 224], [242, 242, 237]],
 		seaIce: [[198, 216, 228], [231, 237, 239]],
 		tintStrength: 0.18,

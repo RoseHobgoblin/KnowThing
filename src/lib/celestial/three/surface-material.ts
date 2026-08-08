@@ -142,11 +142,14 @@ export function createPlanetSurfaceVisual(args: {
 			class: plan.class,
 			seed: plan.seed,
 			temperatureK: plan.temperatureK,
+			starTemperatureK: body.hostStarTemperatureK ?? null,
 			coverage: plan.coverage,
-			clouds: hasCloudLayer && weatherPlan.clouds.meanCover != null ? {
-				meanCover: weatherPlan.clouds.meanCover,
-				seed: weatherPlan.clouds.seed,
-			} : null,
+			clouds: hasCloudLayer && weatherPlan.clouds.meanCover != null
+				? {
+					meanCover: weatherPlan.clouds.meanCover,
+					seed: weatherPlan.clouds.seed,
+				}
+				: null,
 			tint: colorTuple(colorCss),
 		}, { size, priority }).then((generated) => {
 			if (disposed || version !== requestVersion || size !== desiredLod) return

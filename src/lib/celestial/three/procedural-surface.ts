@@ -16,6 +16,8 @@ export type ProceduralSurfaceParameters = {
 	class: ResolvedSurfaceClass
 	seed: number
 	temperatureK: number | null
+	/** Host-star display temperature; shifts vegetation pigment. Null means Sun-like. */
+	starTemperatureK?: number | null
 	coverage: SurfaceCoverage
 	clouds?: { meanCover: number, seed: number } | null
 	tint?: [number, number, number] | null
@@ -328,6 +330,9 @@ export function generateProceduralSurface(
 	const supportsSnow = supportsCoverage(parameters.class, 'snow')
 	const supportsVegetation = supportsCoverage(parameters.class, 'vegetation')
 	const fullCloudCover = (parameters.clouds?.meanCover ?? 0) >= 1
+	const starTemperatureK = parameters.starTemperatureK ?? 5_772
+	const vegetationDry = sampleRamp(PROFILE.display.vegetationDryByStarK, starTemperatureK)
+	const vegetationWet = sampleRamp(PROFILE.display.vegetationWetByStarK, starTemperatureK)
 	const cloudEdgeLow = thresholds.clouds - CLOUD_PROCEDURE_PROFILE.thresholdSoftness
 	const cloudEdgeHigh = thresholds.clouds + CLOUD_PROCEDURE_PROFILE.thresholdSoftness
 	let totalWeight = 0
@@ -372,7 +377,7 @@ export function generateProceduralSurface(
 				color = terrain.color
 				roughnessValue = terrain.roughness
 				if (vegetation) {
-					color = mixRgb(color, mixRgb(PROFILE.display.vegetationDry, PROFILE.display.vegetationWet, point.climate), 0.94)
+					color = mixRgb(color, mixRgb(vegetationDry, vegetationWet, point.climate), 0.94)
 					roughnessValue = mix(roughnessValue, 0.86, 0.94)
 				}
 				if (snow) {

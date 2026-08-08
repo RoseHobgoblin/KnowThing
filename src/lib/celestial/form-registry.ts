@@ -45,7 +45,7 @@ export type CelestialDraft = Record<string, any>
 export interface SelectOption { value: string, label: string }
 
 export interface SystemReferenceOption { id: number, name: string }
-export interface StarReferenceOption { id: number, name: string, massKg?: number | null, systemId?: number | null, parentStarId?: number | null }
+export interface StarReferenceOption { id: number, name: string, massKg?: number | null, spectralType?: string | null, temperatureK?: number | null, systemId?: number | null, parentStarId?: number | null }
 export interface BodyReferenceOption { id: number, name: string, massKg?: number | null, radiusM?: number | null, starId?: number | null, parentId?: number | null, parentSystemId?: number | null, rootSystemId?: number | null, semiMajorAxisAu?: number | null, eccentricity?: number | null }
 
 /** Everything a field's dynamic parts (options, derivations, labels) can see. */
@@ -763,10 +763,13 @@ const BODY_PRESETS = getBodyPresets()
  * The body form's primary selector (`starId` draft key) holds either a star id
  * ('12') or a system barycenter ('system:3', a circumbinary orbit).
  */
-function bodyPrimarySelection(ctx: FieldContext): { starId: string, systemId: string } {
-	const raw = text(ctx, 'starId')
+export function parsePrimarySelection(raw: string): { starId: string, systemId: string } {
 	if (raw.startsWith('system:')) return { starId: '', systemId: raw.slice('system:'.length) }
 	return { starId: raw, systemId: '' }
+}
+
+function bodyPrimarySelection(ctx: FieldContext): { starId: string, systemId: string } {
+	return parsePrimarySelection(text(ctx, 'starId'))
 }
 
 /** Mass of the selected primary: the star's, or the system's total stellar mass. */

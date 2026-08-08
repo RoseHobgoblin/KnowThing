@@ -56,15 +56,18 @@ function normalizePlanet(parameters: ProceduralSurfaceParameters) {
 		class: parameters.class,
 		seed: Math.trunc(parameters.seed),
 		temperatureK: quantize(parameters.temperatureK, 0.1),
+		starTemperatureK: quantize(parameters.starTemperatureK, 100),
 		coverage: {
 			surfaceWater: quantize(parameters.coverage.surfaceWater, 0.001),
 			vegetation: quantize(parameters.coverage.vegetation, 0.001),
 			permanentSnowIce: quantize(parameters.coverage.permanentSnowIce, 0.001),
 		},
-		clouds: parameters.clouds ? {
-			meanCover: quantize(parameters.clouds.meanCover, 0.001),
-			seed: Math.trunc(parameters.clouds.seed),
-		} : null,
+		clouds: parameters.clouds
+			? {
+				meanCover: quantize(parameters.clouds.meanCover, 0.001),
+				seed: Math.trunc(parameters.clouds.seed),
+			}
+			: null,
 		tint: parameters.tint?.map(channel => Math.round(channel)) ?? null,
 	}
 }

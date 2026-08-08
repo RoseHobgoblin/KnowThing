@@ -227,6 +227,8 @@ export interface StarReference {
 	name: string
 	slug: string
 	massKg: number | null
+	spectralType: string | null
+	temperatureK: number | null
 	/** Root of the parent chain when that root is a system. */
 	systemId: number | null
 	/** Direct parent when the parent is a star (companion relationship). */
@@ -237,6 +239,7 @@ export async function listAllStarReferences(): Promise<StarReference[]> {
 	const rows = await db.execute(sql`
 		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
 		SELECT s.id, s.name, s.slug, s.mass_kg AS "massKg",
+			s.spectral_type AS "spectralType", s.temperature_k AS "temperatureK",
 			CASE WHEN t.root_kind = 'system' THEN t.root_id END AS "systemId",
 			CASE WHEN p.kind = 'star' THEN s.parent_id END AS "parentStarId"
 		FROM celestial_bodies s

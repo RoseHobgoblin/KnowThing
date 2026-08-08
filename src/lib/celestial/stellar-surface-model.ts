@@ -117,9 +117,23 @@ export function inferStellarMorphology(spectralType: string | null | undefined):
 	return 'main_sequence'
 }
 
-function displayTemperature(spectralType: string | null | undefined): number | null {
+/** Representative photosphere temperature for a spectral class letter. */
+export function spectralTemperatureK(spectralType: string | null | undefined): number | null {
 	const spectralClass = spectralType?.trim()?.[0]?.toUpperCase()
 	return spectralClass ? SPECTRAL_TEMPERATURES[spectralClass] ?? null : null
+}
+
+/**
+ * Resolve a star's display temperature for downstream illustrative tinting:
+ * stored value, then spectral-class table, then the solar default.
+ */
+export function hostStarTemperatureK(
+	star: { temperatureK?: number | null, spectralType?: string | null } | null | undefined,
+): number {
+	const stored = typeof star?.temperatureK === 'number' && Number.isFinite(star.temperatureK) && star.temperatureK > 0
+		? star.temperatureK
+		: null
+	return stored ?? spectralTemperatureK(star?.spectralType) ?? 5_772
 }
 
 function temperatureSource(stored: number | null, spectral: number | null): StellarSurfacePlan['temperatureSource'] {
@@ -139,7 +153,7 @@ export function composeStellarSurfacePlan(
 	const storedTemperature = typeof body.temperatureK === 'number' && body.temperatureK > 0
 		? body.temperatureK
 		: null
-	const spectralTemperature = displayTemperature(body.spectralType)
+	const spectralTemperature = spectralTemperatureK(body.spectralType)
 	const storedRotationDays = typeof body.rotationPeriodS === 'number' && body.rotationPeriodS > 0
 		? body.rotationPeriodS / 86_400
 		: null

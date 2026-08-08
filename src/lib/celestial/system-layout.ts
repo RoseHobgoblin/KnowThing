@@ -49,6 +49,8 @@ export interface MapBody {
 	composition?: string | null
 	atmosphere?: string | null
 	hasRings?: boolean | null
+	/** Renderer-only resolved host-star display temperature; never persisted. */
+	hostStarTemperatureK?: number | null
 	/** Versioned material recipe stored in the entity's extra JSONB. */
 	surface?: SurfaceRecipe | null
 	/** Illustrative weather settings are independent from canonical surface files. */
