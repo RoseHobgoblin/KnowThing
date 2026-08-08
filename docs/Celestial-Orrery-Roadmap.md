@@ -1,8 +1,12 @@
 # Celestial Orrery: Viewer Roadmap
 
-**Status:** Proposed next-stage architecture  
-**Last updated:** 7 August 2026  
+**Status:** Implemented viewer foundation with remaining scientific-viewer work
+
+**Last updated:** 8 August 2026
+
 **Related documents:** [Atlas Architecture](./Atlas-Architecture.md), [Celestial Upgrades](./Celestial-Upgrades.md), [Celestial Body Rendering](./Celestial-Body-Rendering.md), [Celestial Surface Models](./Celestial-Surface-Models.md), [Celestial Data Provenance and Ingest](./Celestial-Data-Provenance-and-Ingest.md), [Celestial Calendar Integration](./Celestial-Calendar-Integration.md)
+
+> **Maturity:** The camera, visibility, surface-composition, texture-LOD, and starlight sections describe the current implementation. Time controls are partial; reference frames, scientific overlays, and focused-body detail remain design intent. Review this document when one of those remaining phases enters implementation. **Expires on contact with implementation.**
 
 ## Decision
 
@@ -47,6 +51,7 @@ Those features would change KnowThing's data model and product identity. Stored 
 The Three.js conversion has already removed several inherited schematic behaviours:
 
 - Plan and Orrery use physical AU positions rather than the former Log, Linear, Compact, and Inner layout scales.
+- Plan uses an orthographic camera while Orrery uses a 50-degree perspective camera with matched framing during handoff.
 - Planet and ring meshes use physical relative radii.
 - Overview readability is handled by a separate marker level of detail rather than by changing the physical sphere.
 - Selection uses an indicator instead of making a body fatter.
@@ -54,8 +59,11 @@ The Three.js conversion has already removed several inherited schematic behaviou
 - Double-click focus moves from system overview toward the physical body and its rings.
 - The scale legend reports real AU or kilometre distances.
 - Labels are projected into a DOM overlay and can be decluttered independently of the scene.
+- Physical, Enhanced, and Markers visibility modes share the same physical geometry and differ only in their screen-space aids and picking policy.
+- Each luminous star supplies an inverse-square light from its resolved 3D position; Physical uses fixed exposure while Enhanced and Markers use bounded view-driven exposure.
+- Surface recipe v5 combines supported surface maps with calibrated procedural or flat fallbacks; weather recipe v1 separately controls representative procedural clouds. Procedural textures upgrade from 256 to 512 or 1024 according to projected physical sphere size.
 
-The main remaining problem is the viewing model. Orrery and Plan still share an orthographic camera, so Orrery is spatially rotated but does not have perspective foreshortening, depth-dependent apparent size, or an object-centric sense of arrival. It can therefore feel like a tilted diagram rather than a place.
+The remaining Orrery work is no longer a renderer-conversion problem. The largest gaps are complete time controls, explicit reference frames and frame-correct trails, scientific overlays, and focused-body visual detail. Planetary surface exploration is a separate Atlas/Cesium handoff rather than another responsibility added to the system renderer.
 
 ## Non-Negotiable Rendering Invariants
 
@@ -87,15 +95,15 @@ Galaxy / star map
 
 The views may share camera controls, selection language, markers, and material assets. They should not share a single distance transform or pretend that AU-scale orbit data is enough to place stars realistically.
 
-## Missing Viewer Capabilities
+## Implemented Foundation and Remaining Viewer Capabilities
 
 ### 1. Perspective, object-centric Orrery camera
 
-This is the highest-priority gap.
+**Status: implemented.**
 
-Plan should keep an `OrthographicCamera`. Orrery should receive a separate `PerspectiveCamera` and camera rig with a moderate default field of view. Switching views should match the apparent framing of the current target so the system does not jump unexpectedly.
+Plan keeps an `OrthographicCamera`. Orrery uses a separate `PerspectiveCamera` and camera rig with a 50-degree field of view. Switching views matches the apparent framing of the current target so the system does not jump unexpectedly.
 
-The Orrery camera must support:
+The Orrery camera supports:
 
 - Orbiting around the current focus target
 - WASD and arrow-key translation relative to the view plane
@@ -112,6 +120,8 @@ The camera target is first-class state. It is not always the system origin, and 
 
 ### 2. Physical, Enhanced, and Markers visibility modes
 
+**Status: implemented.**
+
 Astronomical scale creates a real conflict: at a whole-system view, physically sized planets are usually smaller than a pixel. The solution is not to enlarge the spheres.
 
 | Mode | Physical mesh | Screen-space aid | Intended use |
@@ -120,33 +130,32 @@ Astronomical scale creates a real conflict: at a whole-system view, physically s
 | Enhanced | Exact relative size | Subtle marker, glow, and minimum pick target | Default exploration |
 | Markers | Optional at subpixel size | Clear symbols and labels | Dense systems and accessibility |
 
-Enhanced markers should fade out as soon as the physical mesh becomes large enough to read. The threshold should be based on projected angular size, with hysteresis so it does not flicker while zooming. Hover and selection decorate the marker or reticle, not the body mesh.
+Enhanced markers fade out as soon as the physical mesh becomes large enough to read. The threshold is based on projected angular size, with hysteresis so it does not flicker while zooming. Hover and selection decorate the marker or reticle, not the body mesh.
 
 Stars may have a restrained halo for visibility, but the photosphere remains physically sized. Orbit lines and labels follow the same principle: they are reference graphics, not geometry.
 
 ### 3. Star-based lighting and exposure
 
-The current softly lit body presentation is useful for debugging but does not communicate where bodies are in relation to their stars.
+**Status: implemented for unshadowed system rendering.** Shadow maps and eclipse rendering remain deferred.
 
-The target lighting model should:
+The implemented lighting model:
 
-- Place light sources at the actual positions of luminous stars
-- Derive relative output from luminosity when available, with documented fallbacks
-- Preserve visible day and night hemispheres
-- Support multiple stars without treating one arbitrary directional light as the sun
-- Use tone mapping and bounded automatic or manual exposure so stars do not wash out every body
-- Keep emissive star surfaces separate from the light they cast
-- Let Physical mode reduce or disable non-physical fill light
+- Places light sources at the actual positions of luminous stars
+- Derives relative output from luminosity when available, with documented fallbacks
+- Preserves visible day and night hemispheres
+- Supports multiple stars without treating one arbitrary directional light as the sun
+- Uses tone mapping and bounded automatic or manual exposure so stars do not wash out every body
+- Keeps emissive star surfaces separate from the light they cast
+- Disables non-physical fill light in Physical mode
 
 Full shadow simulation is a later quality decision. A limited shadow budget for the focused body and its immediate children would provide useful eclipses without requiring every object to cast shadows across the full system.
 
 ### 4. A real astronomical time controller
 
-The renderer already accepts an absolute day and computes deterministic Keplerian positions. The missing part is a viewer-level time experience.
+**Status: partial.** The renderer accepts a fractional absolute day and computes deterministic Keplerian positions. The page provides play/pause, positive speed presets, one-day stepping, a calendar-year scrubber, and a jump to the current calendar date. Reverse playback, broader logarithmic units, direct date/day entry, epoch reset, and a consolidated frozen-timing explanation remain unfinished.
 
-Required controls:
+Remaining Phase 4 controls:
 
-- Play and pause
 - Reverse
 - Step forward or backward by configurable units
 - Logarithmic speed presets spanning hours to years per second
@@ -285,17 +294,17 @@ Acceptance criteria:
 
 ### Phase 2.5: Surface composition foundation
 
-Status: initial slice implemented. A versioned recipe now composes uploaded albedo, elevation, normal, roughness, cloud-opacity, and emissive channels with deterministic procedural or flat fallbacks. Uploaded channels always win, channel provenance is visible, and generated geology is explicitly illustrative.
+Status: implemented for the overview renderer and editor. Surface recipe v5 composes uploaded albedo, elevation, normal, roughness, and emissive channels with deterministic procedural or flat fallbacks. Weather recipe v1 separately describes representative procedural cloud appearance; dated cloud-alpha uploads are not surface channels. Uploaded surface channels always win, channel provenance is visible, generated geology is explicitly illustrative, and nullable surface coverage targets are calibrated as weighted spherical areas rather than inferred from prose.
 
-Before star-derived lighting, finish media validation and texture LOD, then establish the scientific/GIS ingest contract described in [Celestial Surface Models](./Celestial-Surface-Models.md).
+Procedural textures now use a bounded shared scheduler and projected-physical-size LOD: map bodies start at 256, then settle at 512 or 1024 only when their physical sphere warrants it. The editor requests 1024. Scientific/GIS ingest and a tile-aware focused surface viewer remain separate work described in [Celestial Surface Models](./Celestial-Surface-Models.md) and [Atlas Architecture](./Atlas-Architecture.md).
 
 ### Phase 3: Star lighting and exposure
 
-Status: initial implementation complete. The map now renders space as true black and gives every rendered luminous star its own inverse-square point light at the star's resolved 3D position. Stored luminosity wins, radius plus effective temperature can derive luminosity with Stefan–Boltzmann, and an unavailable value is visibly reported as a deterministic 1 L☉ display fallback. Point-light intensity compensates for the current AU-to-world scale, so changing system framing cannot change the irradiance of an otherwise identical orbit.
+Status: implemented for the declared unshadowed scope. The map now renders space as true black and gives every rendered luminous star its own inverse-square point light at the star's resolved 3D position. Stored luminosity wins, radius plus effective temperature can derive luminosity with Stefan–Boltzmann, and an unavailable value is visibly reported as a deterministic 1 L☉ display fallback. Point-light intensity compensates for the current AU-to-world scale, so changing system framing cannot change the irradiance of an otherwise identical orbit.
 
 Stars keep separate unlit photospheres, rings and planetary/cloud materials receive stellar light, and binary components illuminate from their independent live positions. Physical visibility has no non-physical fill and keeps a fixed reference exposure for brightness comparison. Enhanced and Markers retain a very weak exposure-compensated accessibility floor and use bounded automatic exposure when a readable non-stellar body occupies the optical centre. Exposure is driven by the view rather than selection, and the HUD reports fixed/auto policy, signed EV compensation, and the auto-exposure target. This changes the virtual camera, not stellar output. Shadow maps and eclipses remain deliberately deferred to the focused-body shadow-budget experiment.
 
-Replace generic scene lighting with lights derived from star position and luminosity, plus a controlled fallback. Add exposure presets and focused-body shadow experiments.
+The remaining lighting experiment is a deliberately bounded focused-body shadow budget. It must not turn all-system shadow rendering on by default or compromise on-demand rendering.
 
 Acceptance criteria:
 
@@ -371,17 +380,18 @@ Visual tests should continue to use a deterministic celestial fixture and the sa
 
 The following decisions should be made during the relevant phase, not encoded accidentally in renderer constants:
 
-1. **Default visibility:** Enhanced is recommended; Physical is more literal but nearly empty at system scale.
-2. **Default Orrery field of view:** begin around 45–55 degrees and tune with fixture screenshots and input testing.
-3. **Fill light:** decide how dark Physical mode is allowed to become on night sides.
-4. **Shadows:** choose between none, focused-body only, or a small selected-system budget.
-5. **Orbit visibility:** decide whether orbit paths fade automatically during close body inspection.
-6. **Mode persistence:** decide whether camera and visibility mode survive navigation or reset per visit.
-7. **Star-map boundary:** define the minimum coordinate and magnitude fields before presenting any interstellar view as realistic.
+1. **Shadows:** choose between none, focused-body only, or a small selected-system budget.
+2. **Orbit visibility:** decide whether orbit paths fade automatically during close body inspection.
+3. **Mode persistence:** decide whether camera and visibility mode survive navigation or reset per visit.
+4. **Star-map boundary:** define the minimum coordinate and magnitude fields before presenting any interstellar view as realistic.
+
+Resolved implementation decisions are Enhanced as the default visibility mode, a 50-degree default Orrery field of view, no non-physical fill in Physical mode, and a weak exposure-compensated accessibility fill in Enhanced and Markers.
 
 ## Immediate Next Work
 
-Finish Phase 2.5 surface media validation and texture LOD, then implement Phase 3 star-derived lighting and exposure. The perspective camera split and visibility controller already provide the depth and angular-size boundaries both systems need.
+Within the Orrery roadmap, extend the existing forward playback controls into Phase 4: reverse and broader time scales, direct date/day entry, explicit frozen-timing status, selectable reference frames, and frame-correct trails. Do not describe Phase 2.5 texture LOD or Phase 3 starlight as future work; both are implemented.
+
+The wider product may prioritize the first Mars `Explore surface` vertical slice before Phase 4. That work belongs to Atlas and the focused-viewer handoff, not to this system-renderer roadmap.
 
 Do not reintroduce layout scales to compensate for an inadequate camera. Do not make bodies larger to compensate for an inadequate marker system. Fix the camera and visibility layers at their proper boundaries.
 

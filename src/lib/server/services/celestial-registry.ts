@@ -148,6 +148,7 @@ export async function getSystemMapEntities(systemId: number) {
 				pb.albedo,
 				pb.has_rings AS "hasRings",
 				pb.extra -> 'surface' AS surface,
+				pb.extra -> 'weather' AS weather,
 				pb.semi_major_axis_au AS "semiMajorAxisAu",
 				pb.eccentricity,
 				pb.inclination,

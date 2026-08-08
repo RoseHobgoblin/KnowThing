@@ -3,7 +3,7 @@
 **Status:** Design intent with a partially implemented direct-image and procedural layer
 **Related documents:** [Atlas Architecture](./Atlas-Architecture.md), [Celestial Surface Models](./Celestial-Surface-Models.md), [Planetary Data Acquisition Catalogue](./Planetary-Data-Acquisition-Catalogue.md), [Celestial Orrery Roadmap](./Celestial-Orrery-Roadmap.md), [Celestial Body Rendering](./Celestial-Body-Rendering.md)
 
-> **Maturity:** Recipe v4, revision-pinned direct images, per-channel composition, calibrated procedural fallback, and texture LOD are current implementation. The evidence, immutable asset, derivation, release, GIS, and scientific-product sections remain design intent. Review after the first real ingest schema or published derived asset. **Expires on contact with implementation.**
+> **Maturity:** Surface recipe v5, weather recipe v1, revision-pinned direct surface images, per-channel composition, calibrated procedural fallback, and texture LOD are current implementation. The evidence, immutable asset, derivation, release, GIS, and scientific weather-product sections remain design intent. Review after the first real ingest schema or published derived asset. **Expires on contact with implementation.**
 
 ## Decision Summary
 
@@ -60,7 +60,8 @@ It uses:
 - body identity for a stable fallback seed;
 - an explicit nullable surface class, with a documented rocky fallback when absent;
 - numeric Kelvin temperature only as a spatial-placement input and warning signal;
-- explicit nullable water, vegetation, permanent snow/ice, and cloud targets;
+- explicit nullable water, vegetation, and permanent snow/ice targets;
+- a separate optional illustrative mean-cloud-cover target from the weather recipe;
 - the body's existing display color as a restrained tint;
 - optional revision-pinned Media assets for individual texture channels.
 
@@ -75,9 +76,9 @@ The fallback samples seeded three-dimensional noise on the unit sphere, producin
 | Rocky / terrestrial | Relative relief, compatible explicit water and snow targets, terrestrial-only vegetation, and height-correlated roughness |
 | Ice | Broad ice coloring with ridged fissure-like detail |
 | Gas | Latitude bands warped by spherical noise, with broad warm/cool palettes |
-| Clouds | Separate opacity noise when a cloud target is explicitly provided |
+| Representative clouds | Separate opacity noise when illustrative weather explicitly requests mean cover |
 
-Generated outputs are limited to albedo, relative elevation, roughness, and optional cloud opacity. Normal and emissive channels are unavailable unless supplied.
+Generated outputs are limited to albedo, relative elevation, roughness, and an optional renderer-internal representative cloud layer. Normal and emissive surface channels are unavailable unless supplied.
 
 Generated vegetation is only an illustrative placement mask for an explicit authored target. The generator does not claim to infer life or to produce tectonics, craters, volcanoes, climate, biomes, or exact atmospheric circulation.
 
@@ -89,7 +90,6 @@ Each uploaded channel independently overrides its fallback:
 - uploaded elevation supplies overview bump;
 - uploaded normal supersedes bump derived from elevation;
 - uploaded roughness controls microsurface response;
-- uploaded cloud opacity renders on an independent shell;
 - uploaded emissive color supplies genuinely luminous features.
 
 Albedo and emissive textures are treated as sRGB color data. Height, normal, roughness, and opacity are treated as non-color data. The material ownership boundary is already isolated from orbital layout and camera behavior.
@@ -107,7 +107,7 @@ The surface plan records whether the class and every coverage target were explic
 
 ## Current Media Binding Layer
 
-Surface recipe version 4 stores explicit nullable class and coverage inputs while retaining Media ID, filename snapshot, SHA-256 content hash, and interpretation metadata. The parser reads explicit version 3 values into version 4 and discards former auto/inferred results. `media_asset_bindings` independently records structured usage by owner and channel.
+Surface recipe version 5 stores explicit nullable class and surface-coverage inputs while retaining Media ID, filename snapshot, SHA-256 content hash, and interpretation metadata. The parser reads explicit version 3/4 surface values into version 5, discards former auto/inferred results, and no longer accepts uploaded cloud-alpha maps as surface bindings. Weather recipe version 1 separately stores optional representative procedural cloud appearance. `media_asset_bindings` independently records structured usage by owner and supported surface channel.
 
 The editor now provides search, compatible/all filtering, inline upload, thumbnails, live preview, replacement, and clearing for all six planetary channels and the Starwright photosphere. New selections require an image with known dimensions, a stored content hash, and a 2:1 aspect within a small export tolerance. Normal-map Y convention and elevation value units are explicit choices. Color/data interpretation is assigned by channel.
 
@@ -220,7 +220,6 @@ Initial material roles are:
 - elevation;
 - normal;
 - roughness;
-- clouds;
 - emissive.
 
 The model must also allow non-material layers without baking them into albedo:
@@ -362,7 +361,7 @@ Validation must distinguish blocking errors, warnings, and informational finding
 | Elevation | Units or explicit `relative`; datum/reference ellipsoid; scale; offset; no-data; positive direction |
 | Normal | Tangent-space convention; especially OpenGL versus DirectX Y direction |
 | Roughness | Declared value range and meaning; never inferred from albedo without recording a modeled derivation |
-| Clouds | Opacity meaning, epoch/time interval, and whether the layer is climatology or a particular observation |
+| Cloud/weather field | Mask, probability, fraction, optical-depth, or other meaning; units and wavelength where applicable; epoch/time interval; vertical coordinate; and whether it is climatology, model output, or a particular observation |
 | Emissive | Color space and physical/authored meaning; a night photograph is not automatically intrinsic emission |
 | Vector overlays | CRS/body reference, geometry meaning, attributes, valid time, and reconstruction model when applicable |
 
@@ -505,7 +504,7 @@ Workers should run with explicit CPU, memory, time, and disk limits; restricted 
 
 ## Migration to Surface Recipe Version 4
 
-Migration `0051_media_asset_bindings.sql` backfills structured usage for resolvable legacy filenames. The version 4 parser carries forward explicit version 3 class, seed, coverage, and map bindings; it intentionally discards auto/inferred surface results. The next server-validated celestial save resolves legacy Media references to Media ID/current hash or reports the broken reference instead of silently dropping it. Immutable scientific surface releases remain a later layer above these direct-image bindings.
+Migration `0051_media_asset_bindings.sql` backfills structured usage for resolvable legacy filenames. The version 5 parser carries forward explicit version 3/4 class, seed, surface coverage, and supported surface map bindings; it intentionally discards auto/inferred results and old uploaded cloud-alpha bindings. Explicit legacy procedural cloud coverage is migrated into weather recipe v1 on the next celestial save. The next server-validated save resolves retained Media references to Media ID/current hash or reports the broken reference. Immutable scientific surface and weather releases remain a later layer above these direct-image bindings.
 
 ## Delivery Sequence
 

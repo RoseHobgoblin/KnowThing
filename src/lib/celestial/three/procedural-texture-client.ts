@@ -60,8 +60,11 @@ function normalizePlanet(parameters: ProceduralSurfaceParameters) {
 			surfaceWater: quantize(parameters.coverage.surfaceWater, 0.001),
 			vegetation: quantize(parameters.coverage.vegetation, 0.001),
 			permanentSnowIce: quantize(parameters.coverage.permanentSnowIce, 0.001),
-			clouds: quantize(parameters.coverage.clouds, 0.001),
 		},
+		clouds: parameters.clouds ? {
+			meanCover: quantize(parameters.clouds.meanCover, 0.001),
+			seed: Math.trunc(parameters.clouds.seed),
+		} : null,
 		tint: parameters.tint?.map(channel => Math.round(channel)) ?? null,
 	}
 }
@@ -96,7 +99,7 @@ function resultBytes(result: ProceduralTextureResult): number {
 function estimateBytes(request: ProceduralTextureRequest): number {
 	const pixels = request.width * request.height * 4
 	if (request.kind === 'star') return pixels
-	return pixels * (2 + Number(request.parameters.class !== 'gas') + Number((request.parameters.coverage.clouds ?? 0) > 0))
+	return pixels * (2 + Number(request.parameters.class !== 'gas') + Number((request.parameters.clouds?.meanCover ?? 0) > 0))
 }
 
 function generateSynchronously(request: ProceduralTextureRequest): ProceduralTextureResult {

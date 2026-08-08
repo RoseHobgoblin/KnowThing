@@ -26,7 +26,7 @@ describe('Mars preset data package', () => {
 		})
 		expect(mars?.seedSurface).toMatchObject({
 			fallback: 'flat', class: 'rocky',
-			coverage: { surfaceWater: 0, clouds: 0, vegetation: 0, permanentSnowIce: 0 },
+			coverage: { surfaceWater: 0, vegetation: 0, permanentSnowIce: 0 },
 		})
 		expect(Object.keys(mars?.seedSurface?.maps ?? {}).toSorted()).toEqual(['albedo', 'elevation'])
 	})

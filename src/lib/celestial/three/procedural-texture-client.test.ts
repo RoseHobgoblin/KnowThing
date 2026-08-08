@@ -9,7 +9,8 @@ const planet = {
 	class: 'terrestrial' as const,
 	seed: 12.9,
 	temperatureK: 288.04,
-	coverage: { surfaceWater: 0.500_04, vegetation: null, permanentSnowIce: 0, clouds: 0.2 },
+	coverage: { surfaceWater: 0.500_04, vegetation: null, permanentSnowIce: 0 },
+	clouds: { meanCover: 0.2, seed: 91 },
 	tint: [20.2, 30.6, 40.4] as [number, number, number],
 }
 
@@ -18,6 +19,7 @@ describe('procedural texture scheduling', () => {
 		const key = proceduralTextureCacheKey('planet', planet, 256)
 		expect(proceduralTextureCacheKey('planet', { ...planet, temperatureK: 288.049 }, 256)).toBe(key)
 		expect(proceduralTextureCacheKey('planet', { ...planet, coverage: { ...planet.coverage, surfaceWater: 0.51 } }, 256)).not.toBe(key)
+		expect(proceduralTextureCacheKey('planet', { ...planet, clouds: { ...planet.clouds, seed: 92 } }, 256)).not.toBe(key)
 		expect(proceduralTextureCacheKey('planet', planet, 512)).not.toBe(key)
 	})
 

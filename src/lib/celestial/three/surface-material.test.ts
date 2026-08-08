@@ -22,15 +22,19 @@ describe('planet surface material composition', () => {
 		sphere.dispose()
 	})
 
-	it('creates clouds only from an explicit requested fallback layer', async () => {
+	it('creates clouds only from an explicit representative weather layer', async () => {
 		const sphere = new SphereGeometry(1, 8, 6)
 		const visual = createPlanetSurfaceVisual({
 			body: {
 				id: 5, name: 'Clouded', slug: 'clouded', bodyType: 'terrestrial',
 				surface: {
-					version: 4, fallback: 'procedural', class: 'terrestrial', seed: 9,
-					coverage: { surfaceWater: 0.4, clouds: 0.5, vegetation: 0.45, permanentSnowIce: 0.1 },
+					version: 5, fallback: 'procedural', class: 'terrestrial', seed: 9,
+					coverage: { surfaceWater: 0.4, vegetation: 0.45, permanentSnowIce: 0.1 },
 					maps: {},
+				},
+				weather: {
+					version: 1,
+					clouds: { mode: 'procedural', meanCover: 0.5, seed: 17 },
 				},
 			},
 			colorCss: '#A09882',

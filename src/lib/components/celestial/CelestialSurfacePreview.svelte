@@ -9,6 +9,7 @@
 		type SurfaceMapChannel,
 		type SurfacePlan,
 	} from '$lib/celestial/surface-model.js'
+	import { composeWeatherPlan } from '$lib/celestial/weather-model.js'
 	import {
 		composeStellarSurfacePlan,
 		describeStellarSurfacePlan,
@@ -21,6 +22,7 @@
 	let { body, isStar = false }: { body: MapBody, isStar?: boolean } = $props()
 
 	const planetPlan = $derived(composeSurfacePlan(body, body.surface))
+	const weatherPlan = $derived(composeWeatherPlan(body, body.weather, body.surface))
 	const stellarPlan = $derived(composeStellarSurfacePlan(body, body.stellarSurface))
 
 	const channelLabels: Record<SurfaceMapChannel, string> = {
@@ -28,7 +30,6 @@
 		elevation: 'Elevation',
 		normal: 'Normal',
 		roughness: 'Roughness',
-		clouds: 'Clouds',
 		emissive: 'Emissive',
 	}
 	type PreviewEntry = { key: string, label: string, value: string }
@@ -65,8 +66,15 @@
 			}
 		}
 
-		const entries = (Object.entries(planetPlan.channels) as [SurfaceMapChannel, SurfacePlan['channels'][SurfaceMapChannel]][])
+		const entries: PreviewEntry[] = (Object.entries(planetPlan.channels) as [SurfaceMapChannel, SurfacePlan['channels'][SurfaceMapChannel]][])
 			.map(([channel, channelPlan]) => ({ key: channel, label: channelLabels[channel], value: channelPlan.filename ?? channelPlan.source }))
+		entries.push({
+			key: 'weather-clouds',
+			label: 'Clouds (weather)',
+			value: weatherPlan.clouds.source === 'procedural' && weatherPlan.clouds.meanCover != null
+				? `${Math.round(weatherPlan.clouds.meanCover * 100)}% representative cover`
+				: 'none',
+		})
 		return {
 			testId: 'surface-preview',
 			title: 'Surface preview',
@@ -205,6 +213,7 @@
 			const currentBody = body
 			const currentIsStar = isStar
 			const currentPlanetPlan = planetPlan
+			const currentWeatherPlan = weatherPlan
 			const currentStellarPlan = stellarPlan
 			const version = ++renderVersion
 			plateState = 'loading'
@@ -245,6 +254,10 @@
 								seed: currentPlanetPlan.seed,
 								temperatureK: currentPlanetPlan.temperatureK,
 								coverage: currentPlanetPlan.coverage,
+								clouds: currentWeatherPlan.clouds.source === 'procedural' && currentWeatherPlan.clouds.meanCover != null ? {
+									meanCover: currentWeatherPlan.clouds.meanCover,
+									seed: currentWeatherPlan.clouds.seed,
+								} : null,
 								tint: [202, 225, 255],
 							}, { size: 1024, priority: 'foreground' })
 							if (version !== renderVersion) return

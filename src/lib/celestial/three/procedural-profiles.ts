@@ -1,7 +1,7 @@
 import type { ResolvedStellarMorphology } from '../stellar-surface-model.js'
 import type { ResolvedSurfaceClass } from '../surface-model.js'
 
-export const PROCEDURAL_ALGORITHM_REVISION = 4 as const
+export const PROCEDURAL_ALGORITHM_REVISION = 5 as const
 export const COVERAGE_CALIBRATION_WIDTH = 256
 export const COVERAGE_CALIBRATION_HEIGHT = 128
 
@@ -93,6 +93,14 @@ export const GAS_DISPLAY_PROFILES: Record<'warm' | 'cool', Rgb[]> = {
 	warm: [[213, 194, 164], [166, 130, 91], [235, 222, 198], [137, 98, 78]],
 	cool: [[139, 156, 174], [79, 101, 130], [186, 197, 207], [69, 80, 102]],
 }
+
+/** Purely illustrative placement and edge softness for a representative cloud state. */
+export const CLOUD_PROCEDURE_PROFILE = {
+	frequencyXz: 2.7,
+	frequencyY: 4.1,
+	octaves: 5,
+	thresholdSoftness: 0.08,
+} as const
 
 export type StellarProcedureProfile = {
 	granulationScale: Record<ResolvedStellarMorphology, number>

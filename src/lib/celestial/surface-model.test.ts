@@ -9,14 +9,14 @@ import {
 
 const body = { id: 7, slug: 'pelagos', bodyType: 'earth-like ocean garden world' }
 
-describe('surface composition plan v4', () => {
+describe('surface composition plan v5', () => {
 	it('uses a deterministic rocky fallback without reading prose', () => {
 		const first = composeSurfacePlan(body, null)
 		const second = composeSurfacePlan({ ...body, bodyType: 'gas giant with forests' }, null)
 		expect(first.class).toBe('rocky')
 		expect(first.classSource).toBe('default')
 		expect(first.seed).toBe(second.seed)
-		expect(first.coverage).toEqual({ surfaceWater: null, vegetation: null, permanentSnowIce: null, clouds: null })
+		expect(first.coverage).toEqual({ surfaceWater: null, vegetation: null, permanentSnowIce: null })
 		expect(first.channels.albedo.source).toBe('procedural')
 		expect(summarizeSurfacePlan(first)).toBe('Illustrative')
 		expect(describeSurfacePlan(first)).toBe('Illustrative procedural rocky surface')
@@ -32,9 +32,9 @@ describe('surface composition plan v4', () => {
 			snowCoverage: 0.14,
 		})
 		expect(recipe).toMatchObject({
-			version: 4,
+			version: 5,
 			class: null,
-			coverage: { surfaceWater: 0.71, vegetation: 0, clouds: null, permanentSnowIce: 0.14 },
+			coverage: { surfaceWater: 0.71, vegetation: 0, permanentSnowIce: 0.14 },
 		})
 	})
 
@@ -65,12 +65,12 @@ describe('surface composition plan v4', () => {
 			{
 				class: 'terrestrial', seed: 4.9,
 				coverage: { surfaceWater: 8, vegetation: 0.6, permanentSnowIce: -1, clouds: 2 },
-				maps: { albedo: ' map one.png ', normal: 4 },
+				maps: { albedo: ' map one.png ', normal: 4, clouds: 'dated-clouds.png' },
 			},
 		)
 		expect(plan.recipe).toMatchObject({
 			class: 'terrestrial', seed: 4,
-			coverage: { surfaceWater: 1, vegetation: 0.6, permanentSnowIce: 0, clouds: 1 },
+			coverage: { surfaceWater: 1, vegetation: 0.6, permanentSnowIce: 0 },
 			maps: { albedo: { filename: 'map one.png' } },
 		})
 		expect(plan.coverage.vegetation).toBe(0.6)
@@ -79,7 +79,7 @@ describe('surface composition plan v4', () => {
 	})
 
 	it('keeps prose independent from structured surface controls', () => {
-		const recipe = { class: 'terrestrial', coverage: { surfaceWater: null, vegetation: null, permanentSnowIce: null, clouds: null } }
+		const recipe = { class: 'terrestrial', coverage: { surfaceWater: null, vegetation: null, permanentSnowIce: null } }
 		const plain = composeSurfacePlan({ ...body, bodyType: 'planet' }, recipe)
 		const suggestive = composeSurfacePlan({ ...body, bodyType: 'garden ocean biosphere forest' }, recipe)
 		expect(suggestive.coverage).toEqual(plain.coverage)

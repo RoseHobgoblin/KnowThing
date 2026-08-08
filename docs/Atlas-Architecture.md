@@ -81,7 +81,8 @@ The celestial model already provides several pieces of the Atlas hierarchy:
 - stars and bodies form a parented orbital hierarchy;
 - bodies have stable identities and physical metadata;
 - the Three.js orrery provides system-level selection and navigation;
-- the surface compositor can bind independent albedo, elevation, normal, roughness, cloud, and emissive inputs;
+- the surface compositor can bind independent albedo, elevation, normal, roughness, and emissive inputs;
+- illustrative weather can derive a representative cloud layer independently from canonical surface files;
 - the proposed data-ingest architecture defines sources, immutable assets, derivations, semantic surface layers, and published releases.
 
 These should become Atlas inputs rather than a parallel mapping system.

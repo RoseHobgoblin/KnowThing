@@ -16,6 +16,7 @@ import {
 } from 'three'
 import { composeSurfacePlan, surfaceMediaUrl, type SurfaceMapChannel, type SurfacePlan } from '../surface-model.js'
 import type { MapBody } from '../system-layout.js'
+import { composeWeatherPlan, type WeatherPlan } from '../weather-model.js'
 import {
 	requestProceduralPlanetTexture,
 	type ProceduralTextureSize,
@@ -26,6 +27,7 @@ export type PlanetSurfaceVisual = {
 	material: MeshStandardMaterial
 	cloudMesh: Mesh | null
 	plan: SurfacePlan
+	weatherPlan: WeatherPlan
 	ready: Promise<void>
 	getProceduralLod(): { desired: ProceduralTextureSize, settled: ProceduralTextureSize | null }
 	setProceduralLod(size: ProceduralTextureSize, priority: TexturePriority): Promise<void>
@@ -68,6 +70,7 @@ export function createPlanetSurfaceVisual(args: {
 		initialLod = 256, initialPriority = 'background',
 	} = args
 	const plan = composeSurfacePlan(body, body.surface)
+	const weatherPlan = composeWeatherPlan(body, body.weather, body.surface)
 	const material = new MeshStandardMaterial({ color: new Color(colorCss), roughness: 0.82, metalness: 0.03 })
 	const ownedTextures = new Set<Texture>()
 	let generatedTextures = new Set<Texture>()
@@ -88,7 +91,7 @@ export function createPlanetSurfaceVisual(args: {
 		material.needsUpdate = true
 	}
 
-	const hasCloudLayer = plan.channels.clouds.source === 'procedural' || plan.channels.clouds.source === 'uploaded'
+	const hasCloudLayer = weatherPlan.clouds.source === 'procedural'
 	if (hasCloudLayer) {
 		cloudMaterial = new MeshStandardMaterial({
 			color: 0xFFFFFF,
@@ -104,6 +107,7 @@ export function createPlanetSurfaceVisual(args: {
 	}
 
 	const needsProcedural = Object.values(plan.channels).some(channelPlan => channelPlan.source === 'procedural')
+		|| hasCloudLayer
 	if (!needsProcedural) settledLod = initialLod
 	function setProceduralLod(size: ProceduralTextureSize, priority: TexturePriority): Promise<void> {
 		if (activeLod === size) return activeRequest
@@ -116,6 +120,10 @@ export function createPlanetSurfaceVisual(args: {
 			seed: plan.seed,
 			temperatureK: plan.temperatureK,
 			coverage: plan.coverage,
+			clouds: hasCloudLayer && weatherPlan.clouds.meanCover != null ? {
+				meanCover: weatherPlan.clouds.meanCover,
+				seed: weatherPlan.clouds.seed,
+			} : null,
 			tint: colorTuple(colorCss),
 		}, { size, priority }).then((generated) => {
 			if (disposed || version !== requestVersion || size !== desiredLod) return
@@ -133,7 +141,7 @@ export function createPlanetSurfaceVisual(args: {
 			const elevation = plan.channels.elevation.source === 'procedural' && generated.elevation
 				? ownGenerated(dataTexture(generated.elevation, generated.width, generated.height, false))
 				: null
-			const clouds = plan.channels.clouds.source === 'procedural' && generated.clouds
+			const clouds = hasCloudLayer && generated.clouds
 				? ownGenerated(dataTexture(generated.clouds, generated.width, generated.height, false))
 				: null
 			if (albedo) setColorMap(albedo)
@@ -215,21 +223,12 @@ export function createPlanetSurfaceVisual(args: {
 		material.emissiveIntensity = 0.7
 		material.needsUpdate = true
 	})
-	if (plan.channels.clouds.source === 'uploaded') {
-		loadChannel('clouds', (texture) => {
-			if (!cloudMaterial || !cloudMesh) return
-			cloudMaterial.alphaMap = texture
-			cloudMaterial.needsUpdate = true
-			cloudReady = true
-			cloudMesh.visible = geometryVisible
-		})
-	}
-
 	const ready = setProceduralLod(initialLod, initialPriority)
 	return {
 		material,
 		cloudMesh,
 		plan,
+		weatherPlan,
 		ready,
 		getProceduralLod: () => ({ desired: desiredLod, settled: settledLod }),
 		setProceduralLod,

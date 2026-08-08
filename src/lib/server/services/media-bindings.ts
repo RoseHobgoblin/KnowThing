@@ -15,7 +15,7 @@ import {
 type Dbx = Pick<typeof db, 'delete' | 'insert' | 'select'>
 type BindingRow = typeof mediaAssetBindings.$inferInsert
 
-const SURFACE_CHANNELS: SurfaceMapChannel[] = ['albedo', 'elevation', 'normal', 'roughness', 'clouds', 'emissive']
+const SURFACE_CHANNELS: SurfaceMapChannel[] = ['albedo', 'elevation', 'normal', 'roughness', 'emissive']
 
 function recordValue(value: unknown): Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value)

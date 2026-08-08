@@ -155,6 +155,8 @@ describe('buildPayload', () => {
 		expect(draft.surfaceHydrosphere).toBe(0.71)
 		expect(draft.surfaceVegetation).toBe(0.48)
 		expect(draft.surfaceSnowCoverage).toBe(0.12)
+		expect(draft.weatherCloudMode).toBe('none')
+		expect(draft.weatherCloudMeanCover).toBeNull()
 		expect(draft.surfaceMap_albedo).toMatchObject({ filename: 'Earth albedo.png', mediaId: null })
 		draft.starId = '7'
 		draft.surfaceMap_roughness = 'Earth roughness.png'
@@ -163,15 +165,19 @@ describe('buildPayload', () => {
 		expect(payload.extra).toMatchObject({
 			density: '5.51 g/cm³',
 			surface: {
-				version: 4, fallback: 'flat', class: 'terrestrial', seed: 42,
+				version: 5, fallback: 'flat', class: 'terrestrial', seed: 42,
 				coverage: {
-					surfaceWater: 0.71, clouds: null, vegetation: 0.48, permanentSnowIce: 0.12,
+					surfaceWater: 0.71, vegetation: 0.48, permanentSnowIce: 0.12,
 				},
 				maps: {
 					albedo: { filename: 'Earth albedo.png' },
 					normal: { filename: 'Earth normal.png' },
 					roughness: { filename: 'Earth roughness.png' },
 				},
+			},
+			weather: {
+				version: 1,
+				clouds: { mode: 'none', meanCover: null, seed: null },
 			},
 		})
 		expect(config.updateSchema.safeParse(payload).success).toBe(true)

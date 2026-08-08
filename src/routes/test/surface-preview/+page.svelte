@@ -17,12 +17,16 @@
 		bodyType: 'planet',
 		temperatureK: 288,
 		surface: {
-			version: 4,
+			version: 5,
 			fallback: 'procedural',
 			class: 'terrestrial',
 			seed,
-			coverage: { surfaceWater, clouds: cloudCoverage, vegetation: vegetationCoverage, permanentSnowIce: snowCoverage },
+			coverage: { surfaceWater, vegetation: vegetationCoverage, permanentSnowIce: snowCoverage },
 			maps: {},
+		},
+		weather: {
+			version: 1,
+			clouds: { mode: 'procedural', meanCover: cloudCoverage, seed: null },
 		},
 	})
 	const star = $derived<MapBody>({
@@ -60,7 +64,7 @@
 				<button class="bg-raised px-3 py-2 text-xs text-body" onclick={() => previewKind = 'star'}>Star</button>
 			</div>
 			<CoverageInput label="Surface water" hint="Fixture water target" domain="the entire spherical surface" bind:value={surfaceWater} />
-			<CoverageInput label="Cloud coverage" hint="Fixture cloud target" domain="the atmospheric shell" bind:value={cloudCoverage} />
+			<CoverageInput label="Illustrative mean cloud cover" hint="Representative weather appearance" domain="a representative atmospheric shell" bind:value={cloudCoverage} />
 			<CoverageInput label="Vegetation coverage" hint="Fixture vegetation target" domain="eligible exposed land" bind:value={vegetationCoverage} />
 			<CoverageInput label="Permanent snow / ice" hint="Fixture snow target" domain="the entire spherical surface" bind:value={snowCoverage} />
 			<label class="block space-y-1 text-xs text-secondary">

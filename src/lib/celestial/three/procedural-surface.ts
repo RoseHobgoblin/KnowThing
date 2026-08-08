@@ -3,6 +3,7 @@ import { fractalNoise, makeSimplex, type Noise3 } from './procedural-noise.js'
 import {
 	COVERAGE_CALIBRATION_HEIGHT,
 	COVERAGE_CALIBRATION_WIDTH,
+	CLOUD_PROCEDURE_PROFILE,
 	GAS_DISPLAY_PROFILES,
 	PLANET_PROCEDURE_PROFILE as PROFILE,
 	PROCEDURAL_ALGORITHM_REVISION,
@@ -15,6 +16,7 @@ export type ProceduralSurfaceParameters = {
 	seed: number
 	temperatureK: number | null
 	coverage: SurfaceCoverage
+	clouds?: { meanCover: number, seed: number } | null
 	tint?: [number, number, number] | null
 }
 
@@ -23,7 +25,7 @@ export type MeasuredSurfaceCoverage = {
 	permanentSnowIce: number
 	vegetation: number
 	vegetationOfSurface: number
-	clouds: number
+	meanCloudCover: number
 }
 
 export type GeneratedSurface = {
@@ -147,7 +149,13 @@ function snowScore(point: SurfacePoint): number {
 }
 
 function cloudScore(noise: Noise3, point: SurfacePoint): number {
-	return fractal(noise, point.x * 2.7, point.y * 4.1, point.z * 2.7, 5) * 0.5 + 0.5
+	return fractal(
+		noise,
+		point.x * CLOUD_PROCEDURE_PROFILE.frequencyXz,
+		point.y * CLOUD_PROCEDURE_PROFILE.frequencyY,
+		point.z * CLOUD_PROCEDURE_PROFILE.frequencyXz,
+		CLOUD_PROCEDURE_PROFILE.octaves,
+	) * 0.5 + 0.5
 }
 
 function calibrate(
@@ -168,7 +176,7 @@ function calibrate(
 	const waterTarget = supportsCoverage(parameters.class, 'water') ? coverage.surfaceWater ?? 0 : 0
 	const snowTarget = supportsCoverage(parameters.class, 'snow') ? coverage.permanentSnowIce ?? 0 : 0
 	const vegetationTarget = supportsCoverage(parameters.class, 'vegetation') ? coverage.vegetation ?? 0 : 0
-	const cloudTarget = coverage.clouds ?? 0
+	const cloudTarget = parameters.clouds?.meanCover ?? 0
 	const water = weightedThreshold(points.map(point => ({ score: point.height, weight: point.weight })), waterTarget, false)
 	const snow = weightedThreshold(points.map(point => ({ score: snowScore(point), weight: point.weight })), snowTarget, true)
 	const eligible = points.filter(point => !(point.height <= water) && !(snowScore(point) >= snow))
@@ -221,10 +229,10 @@ export function generateProceduralSurface(
 	const albedo = new Uint8Array(safeWidth * safeHeight * 4)
 	const roughness = new Uint8Array(albedo.length)
 	const elevation = parameters.class === 'gas' ? null : new Uint8Array(albedo.length)
-	const clouds = (parameters.coverage.clouds ?? 0) > 0 ? new Uint8Array(albedo.length) : null
+	const clouds = (parameters.clouds?.meanCover ?? 0) > 0 ? new Uint8Array(albedo.length) : null
 	const primaryNoise = makeSimplex(parameters.seed)
 	const detailNoise = makeSimplex(parameters.seed ^ 0x9E3779B9)
-	const cloudNoise = makeSimplex(parameters.seed ^ 0x51AB3F)
+	const cloudNoise = makeSimplex(parameters.clouds?.seed ?? (parameters.seed ^ 0x51AB3F))
 	const climateNoise = makeSimplex(parameters.seed ^ 0xC1A4E7)
 	const { thresholds, diagnostics } = calibrate(parameters, primaryNoise, detailNoise, climateNoise, cloudNoise)
 	const meanTemperatureK = parameters.temperatureK ?? 288
@@ -246,9 +254,13 @@ export function generateProceduralSurface(
 			const cloudValue = clouds == null ? 0 : cloudScore(cloudNoise, point)
 			const cloudOpacity = clouds == null
 				? 0
-				: ((parameters.coverage.clouds ?? 0) >= 1
+				: ((parameters.clouds?.meanCover ?? 0) >= 1
 					? 1
-					: smoothstep(thresholds.clouds - 0.08, thresholds.clouds + 0.08, cloudValue))
+					: smoothstep(
+						thresholds.clouds - CLOUD_PROCEDURE_PROFILE.thresholdSoftness,
+						thresholds.clouds + CLOUD_PROCEDURE_PROFILE.thresholdSoftness,
+						cloudValue,
+					))
 			const cloudy = cloudOpacity >= 0.5
 			let color: Rgb
 			let roughnessValue: number
@@ -312,7 +324,7 @@ export function generateProceduralSurface(
 			permanentSnowIce: totalWeight ? snowWeight / totalWeight : 0,
 			vegetation: eligibleWeight ? vegetationWeight / eligibleWeight : 0,
 			vegetationOfSurface: totalWeight ? vegetationWeight / totalWeight : 0,
-			clouds: totalWeight ? cloudWeight / totalWeight : 0,
+			meanCloudCover: totalWeight ? cloudWeight / totalWeight : 0,
 		},
 		algorithmRevision: PROCEDURAL_ALGORITHM_REVISION,
 		diagnostics,

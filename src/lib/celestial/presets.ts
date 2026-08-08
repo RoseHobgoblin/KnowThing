@@ -83,11 +83,10 @@ export interface PresetSurface {
 	seed: number | null
 	coverage: {
 		surfaceWater: number | null
-		clouds: number | null
 		vegetation: number | null
 		permanentSnowIce: number | null
 	}
-	maps: Partial<Record<'albedo' | 'elevation' | 'normal' | 'roughness' | 'clouds' | 'emissive', PresetMediaAsset>>
+	maps: Partial<Record<'albedo' | 'elevation' | 'normal' | 'roughness' | 'emissive', PresetMediaAsset>>
 }
 
 /**
@@ -288,7 +287,7 @@ export const celestialPresets: CelestialPreset[] = [
 							fallback: 'flat',
 							class: 'rocky',
 							seed: null,
-							coverage: { surfaceWater: 0, clouds: 0, vegetation: 0, permanentSnowIce: 0 },
+							coverage: { surfaceWater: 0, vegetation: 0, permanentSnowIce: 0 },
 							maps: {
 								albedo: {
 									publicPath: 'seed-data/celestial/mars/runtime/mars-mdim21-color-4096x2048.webp',

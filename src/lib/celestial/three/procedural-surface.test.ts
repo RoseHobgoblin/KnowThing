@@ -5,7 +5,8 @@ const base = {
 	class: 'terrestrial' as const,
 	seed: 436,
 	temperatureK: 288,
-	coverage: { surfaceWater: 0.55, clouds: null, vegetation: 0, permanentSnowIce: 0 },
+	coverage: { surfaceWater: 0.55, vegetation: 0, permanentSnowIce: 0 },
+	clouds: null,
 }
 
 describe('area-calibrated procedural surface', () => {
@@ -23,10 +24,11 @@ describe('area-calibrated procedural surface', () => {
 	it('hits domain-relative authored coverage within two percentage points', () => {
 		const generated = generateProceduralSurface({
 			...base,
-			coverage: { surfaceWater: 0.43, clouds: 0.48, vegetation: 0.62, permanentSnowIce: 0.14 },
+			coverage: { surfaceWater: 0.43, vegetation: 0.62, permanentSnowIce: 0.14 },
+			clouds: { meanCover: 0.48, seed: 91 },
 		}, 256, 128)
 		expect(Math.abs(generated.measuredCoverage.surfaceWater - 0.43)).toBeLessThanOrEqual(0.02)
-		expect(Math.abs(generated.measuredCoverage.clouds - 0.48)).toBeLessThanOrEqual(0.02)
+		expect(Math.abs(generated.measuredCoverage.meanCloudCover - 0.48)).toBeLessThanOrEqual(0.02)
 		expect(Math.abs(generated.measuredCoverage.vegetation - 0.62)).toBeLessThanOrEqual(0.02)
 		expect(Math.abs(generated.measuredCoverage.permanentSnowIce - 0.14)).toBeLessThanOrEqual(0.02)
 		expect(generated.measuredCoverage.vegetationOfSurface)
@@ -36,17 +38,19 @@ describe('area-calibrated procedural surface', () => {
 	it('preserves exact zero and full targets', () => {
 		const empty = generateProceduralSurface({
 			...base,
-			coverage: { surfaceWater: 0, clouds: 0, vegetation: 0, permanentSnowIce: 0 },
+			coverage: { surfaceWater: 0, vegetation: 0, permanentSnowIce: 0 },
+			clouds: null,
 		}, 64, 32)
 		expect(empty.measuredCoverage).toEqual({
-			surfaceWater: 0, clouds: 0, vegetation: 0, vegetationOfSurface: 0, permanentSnowIce: 0,
+			surfaceWater: 0, meanCloudCover: 0, vegetation: 0, vegetationOfSurface: 0, permanentSnowIce: 0,
 		})
 		const ocean = generateProceduralSurface({
 			...base,
-			coverage: { surfaceWater: 1, clouds: 1, vegetation: 1, permanentSnowIce: 0 },
+			coverage: { surfaceWater: 1, vegetation: 1, permanentSnowIce: 0 },
+			clouds: { meanCover: 1, seed: 91 },
 		}, 64, 32)
 		expect(ocean.measuredCoverage.surfaceWater).toBe(1)
-		expect(ocean.measuredCoverage.clouds).toBe(1)
+		expect(ocean.measuredCoverage.meanCloudCover).toBe(1)
 		expect(ocean.measuredCoverage.vegetation).toBe(0)
 		expect(ocean.diagnostics).toContain('Vegetation target could not be placed because no exposed non-snow land remains.')
 	})
@@ -64,7 +68,8 @@ describe('area-calibrated procedural surface', () => {
 		const generated = generateProceduralSurface({
 			...base,
 			class: 'gas',
-			coverage: { surfaceWater: 1, clouds: 0.3, vegetation: 1, permanentSnowIce: 1 },
+			coverage: { surfaceWater: 1, vegetation: 1, permanentSnowIce: 1 },
+			clouds: { meanCover: 0.3, seed: 91 },
 		}, 64, 32)
 		expect(generated.elevation).toBeNull()
 		expect(generated.measuredCoverage.surfaceWater).toBe(0)

@@ -7,7 +7,7 @@ import {
 import { parseMediaAssetBinding } from '$lib/media/asset-binding.js'
 
 const SURFACE_CHANNELS: SurfaceMapChannel[] = [
-	'albedo', 'elevation', 'normal', 'roughness', 'clouds', 'emissive',
+	'albedo', 'elevation', 'normal', 'roughness', 'emissive',
 ]
 
 function finiteNumber(value: unknown): number | null {
@@ -29,7 +29,6 @@ export function surfaceRecipeFromDraft(draft: Record<string, unknown>): SurfaceR
 		seed: finiteNumber(draft.surfaceSeed),
 		coverage: {
 			surfaceWater: finiteNumber(draft.surfaceHydrosphere),
-			clouds: finiteNumber(draft.surfaceCloudCoverage),
 			vegetation: finiteNumber(draft.surfaceVegetation),
 			permanentSnowIce: finiteNumber(draft.surfaceSnowCoverage),
 		},

@@ -4,14 +4,14 @@ import {
 	type MediaAssetBinding,
 } from '$lib/media/asset-binding.js'
 
-export const SURFACE_RECIPE_VERSION = 4 as const
+export const SURFACE_RECIPE_VERSION = 5 as const
 
 export type SurfaceClass = 'rocky' | 'terrestrial' | 'gas' | 'ice'
 export type ResolvedSurfaceClass = SurfaceClass
 export type SurfaceFallback = 'procedural' | 'flat'
-export type SurfaceMapChannel = 'albedo' | 'elevation' | 'normal' | 'roughness' | 'clouds' | 'emissive'
+export type SurfaceMapChannel = 'albedo' | 'elevation' | 'normal' | 'roughness' | 'emissive'
 export type SurfaceSourceKind = 'uploaded' | 'procedural' | 'constant' | 'unavailable'
-export type SurfaceCoverageKey = 'surfaceWater' | 'vegetation' | 'permanentSnowIce' | 'clouds'
+export type SurfaceCoverageKey = 'surfaceWater' | 'vegetation' | 'permanentSnowIce'
 
 export type SurfaceCoverage = Record<SurfaceCoverageKey, number | null>
 
@@ -55,14 +55,13 @@ export type SurfacePlan = {
 }
 
 export const SURFACE_CHANNELS: readonly SurfaceMapChannel[] = [
-	'albedo', 'elevation', 'normal', 'roughness', 'clouds', 'emissive',
+	'albedo', 'elevation', 'normal', 'roughness', 'emissive',
 ]
 
 const DEFAULT_COVERAGE: SurfaceCoverage = {
 	surfaceWater: null,
 	vegetation: null,
 	permanentSnowIce: null,
-	clouds: null,
 }
 
 const DEFAULT_RECIPE: SurfaceRecipe = {
@@ -98,7 +97,6 @@ function parseCoverage(value: Record<string, unknown>): SurfaceCoverage {
 		surfaceWater: unitFraction(nested?.surfaceWater ?? value.hydrosphereFraction),
 		vegetation: unitFraction(nested?.vegetation ?? value.vegetationFraction),
 		permanentSnowIce: unitFraction(nested?.permanentSnowIce ?? value.snowCoverage),
-		clouds: unitFraction(nested?.clouds ?? value.cloudCoverage),
 	}
 }
 
@@ -185,7 +183,6 @@ export function composeSurfacePlan(body: SurfaceBodyInput, rawRecipe: unknown): 
 		surfaceWater: ['rocky', 'terrestrial'].includes(surfaceClass) ? recipe.coverage.surfaceWater : null,
 		vegetation: surfaceClass === 'terrestrial' ? recipe.coverage.vegetation : null,
 		permanentSnowIce: ['rocky', 'terrestrial'].includes(surfaceClass) ? recipe.coverage.permanentSnowIce : null,
-		clouds: recipe.coverage.clouds,
 	}
 	return {
 		recipe,
@@ -204,7 +201,6 @@ export function composeSurfacePlan(body: SurfaceBodyInput, rawRecipe: unknown): 
 			elevation: choose('elevation', generatedRelief ? 'procedural' : 'unavailable'),
 			normal: choose('normal', 'unavailable'),
 			roughness: choose('roughness', procedural ? 'procedural' : 'constant'),
-			clouds: choose('clouds', procedural && compatibleCoverage.clouds != null && compatibleCoverage.clouds > 0 ? 'procedural' : 'unavailable'),
 			emissive: choose('emissive', 'unavailable'),
 		},
 	}

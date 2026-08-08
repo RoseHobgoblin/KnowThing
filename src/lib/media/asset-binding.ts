@@ -5,7 +5,6 @@ export type CelestialMediaPurpose =
 	| 'surface-elevation'
 	| 'surface-normal'
 	| 'surface-roughness'
-	| 'surface-clouds'
 	| 'surface-emissive'
 	| 'stellar-photosphere'
 
@@ -72,7 +71,7 @@ export function interpretationForPurpose(purpose: CelestialMediaPurpose): MediaA
 	const interpretation: MediaAssetInterpretation = { projection: 'equirectangular', colorSpace }
 	if (purpose === 'surface-normal') interpretation.normalY = 'up'
 	if (purpose === 'surface-elevation') interpretation.elevationUnit = 'relative'
-	if (purpose === 'surface-roughness' || purpose === 'surface-clouds') interpretation.sampleChannel = 'green'
+	if (purpose === 'surface-roughness') interpretation.sampleChannel = 'green'
 	return interpretation
 }
 
@@ -118,7 +117,7 @@ export function parseMediaAssetBinding(
 			interpretation.elevationPositiveDirection = rawInterpretation.elevationPositiveDirection
 		}
 	}
-	if (purpose === 'surface-roughness' || purpose === 'surface-clouds') interpretation.sampleChannel = 'green'
+	if (purpose === 'surface-roughness') interpretation.sampleChannel = 'green'
 
 	return {
 		version: MEDIA_ASSET_BINDING_VERSION,
@@ -176,7 +175,6 @@ export function purposeLabel(purpose: CelestialMediaPurpose): string {
 		'surface-elevation': 'elevation map',
 		'surface-normal': 'normal map',
 		'surface-roughness': 'roughness map',
-		'surface-clouds': 'cloud opacity map',
 		'surface-emissive': 'emissive map',
 		'stellar-photosphere': 'photosphere plate',
 	} satisfies Record<CelestialMediaPurpose, string>)[purpose]

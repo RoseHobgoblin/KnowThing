@@ -2,7 +2,7 @@
 
 **Related documents:** [Atlas Architecture](./Atlas-Architecture.md), [Celestial Data Provenance and Ingest](./Celestial-Data-Provenance-and-Ingest.md), [Planetary Data Acquisition Catalogue](./Planetary-Data-Acquisition-Catalogue.md)
 
-> **Maturity:** Design intent plus an implemented overview-surface pipeline. Recipe v4, calibrated procedural coverage, projected-size texture LOD, direct 2:1 uploads, and the editor controls described below exist. Scientific ingest and focused exploration do not. Review this document when the recipe, generator semantics, or focused-viewer boundary changes. **Expires on contact with implementation.**
+> **Maturity:** Design intent plus an implemented overview-surface pipeline. Surface recipe v5, weather recipe v1, calibrated procedural coverage, projected-size texture LOD, direct 2:1 surface uploads, and the editor controls described below exist. Scientific weather ingest and focused exploration do not. Review this document when the recipe, generator semantics, or focused-viewer boundary changes. **Expires on contact with implementation.**
 
 ## Product Boundary
 
@@ -19,19 +19,18 @@ Every texture choice retains provenance as `uploaded`, `procedural`, `constant`,
 
 ## Current Recipe
 
-The version 4 recipe lives in `celestial_bodies.extra.surface`. It stores authored inputs, not a generator version:
+The version 5 recipe lives in `celestial_bodies.extra.surface`. It stores authored inputs, not a generator version:
 
 ```json
 {
-  "version": 4,
+  "version": 5,
   "fallback": "procedural",
   "class": "terrestrial",
   "seed": 436,
   "coverage": {
     "surfaceWater": 0.55,
     "vegetation": 0.62,
-    "permanentSnowIce": 0.14,
-    "clouds": 0.48
+    "permanentSnowIce": 0.14
   },
   "maps": {
     "albedo": {
@@ -50,13 +49,12 @@ The version 4 recipe lives in `celestial_bodies.extra.surface`. It stores author
 
 All channels use the same binding shape. Normal bindings additionally record OpenGL/DirectX Y convention; elevation bindings record relative, metre, or kilometre interpretation. Media bindings remain pinned to the selected content hash. This is separate from procedural generation: a saved recipe deliberately runs through the newest deployed algorithm. Exact reproducibility belongs to a future baked artifact, which can record its producing tool revision and output hash.
 
-All fields are optional in the editor. `fallback: "flat"` is the explicit opt-out. A null class uses the documented rocky illustrative fallback; there is no automatic class inference. A null coverage means “not specified,” while explicit zero requests zero. Version 3 recipes retain only their explicit class, seed, coverage, and map bindings when read as version 4; former inferred/auto results are discarded.
+All fields are optional in the editor. `fallback: "flat"` is the explicit opt-out. A null class uses the documented rocky illustrative fallback; there is no automatic class inference. A null coverage means “not specified,” while explicit zero requests zero. Version 3 and 4 recipes retain only their explicit surface class, seed, surface coverage, and supported surface map bindings when read as version 5; former inferred/auto results and uploaded cloud masks are discarded.
 
 Coverage values are authored visual targets with measured domains:
 
 - surface water and permanent snow/ice are fractions of total spherical area;
-- vegetation is a fraction of eligible exposed terrestrial land after water and snow;
-- clouds are a fraction of the shell with generated opacity at least 0.5.
+- vegetation is a fraction of eligible exposed terrestrial land after water and snow.
 
 The generator uses temperature, latitude, altitude, and climate scores only to place requested coverage. It never derives the amount from prose, body type, composition, atmosphere, or temperature. Numeric `temperatureK` may produce a non-blocking warning for unusual illustrative placement, but it cannot override the authored target.
 
@@ -70,12 +68,30 @@ The current runtime expects ordinary images stored in KnowThing Media. A searcha
 | Elevation | Relative or measured surface height | Grayscale PNG; 2:1; document units and vertical datum | Subtle bump in overview; reserved for close-view displacement |
 | Normal | Authored tangent-space surface normals | PNG; 2:1; document OpenGL/DirectX Y convention | `normalMap`, non-color; supersedes elevation bump |
 | Roughness | Microsurface roughness | Grayscale PNG; 2:1 | `roughnessMap`, non-color (Three samples green) |
-| Clouds | Cloud opacity, separate from the ground | Grayscale PNG; 2:1 | `alphaMap` on an independent cloud shell, non-color |
 | Emissive | Actually luminous features such as lava or city lights | PNG, JPEG, or WebP; 2:1; sRGB | `emissiveMap`, sRGB |
 
 Color and data textures are deliberately separated. Three.js requires color textures such as albedo/emissive to declare sRGB, while normal, roughness, displacement, and opacity maps remain non-color data. See [Three.js color management](https://threejs.org/manual/en/color-management.html) and [MeshStandardMaterial map semantics](https://threejs.org/docs/pages/MeshStandardMaterial.html).
 
 An uploaded normal map is considered more authoritative than generated or uploaded height used as bump. The original uploaded files are never rewritten by procedural generation.
+
+## Weather Appearance Is Not a Surface File
+
+Clouds are stored separately in `celestial_bodies.extra.weather`. The current weather recipe deliberately supports only an illustrative representative state:
+
+```json
+{
+  "version": 1,
+  "clouds": {
+    "mode": "procedural",
+    "meanCover": 0.48,
+    "seed": 91
+  }
+}
+```
+
+`meanCover` is a visual target for the fraction of one representative generated shell whose opacity is at least 0.5. It is not a dated observation, measured climatology, or permanent geography. The renderer still derives a transient alpha texture internally, but the editor no longer presents a cloud-alpha upload as foundational planetary data.
+
+Real products normally provide cloud mask or probability, cloud fraction, optical depth, condensed-water path, cloud-top properties, and time coordinates. These require an atmosphere/weather ingest path that retains their semantics. A single observation may eventually be accepted as an explicitly dated weather layer, but never silently promoted to a timeless surface channel. See [NASA MODIS cloud products](https://atmosphere-imager.gsfc.nasa.gov/faqs/cloud) and the [ESA Mars Express OMEGA water-ice cloud maps](https://esdcdoi.esac.esa.int/doi/html/data/planetary/MARS-EXPRESS/MEX-M-OMEGA-5-DDR-H2OCLOUDS-MAPS.html).
 
 ## What the Worldwright Prototype Contributed
 
@@ -84,7 +100,7 @@ The prototype contributed four sound implementation ideas:
 - deterministic seeded generation;
 - three-dimensional noise sampled on a sphere, avoiding a longitude seam;
 - class-specific visual fallbacks for rocky, terrestrial, gas, and ice bodies;
-- clouds as a separate layer.
+- clouds as a separate generated render layer rather than baked surface color.
 
 The adaptation intentionally removed or constrained claims that the prototype could not justify:
 
@@ -93,7 +109,7 @@ The adaptation intentionally removed or constrained claims that the prototype co
 - atmosphere text does not automatically fabricate clouds;
 - random craters, volcanoes, and tectonics are not treated as canonical data;
 - height shading is not baked into albedo, because lighting belongs to the material and scene;
-- generated relief, roughness, clouds, and color remain independent channels.
+- generated relief, roughness, weather clouds, and color remain independent outputs.
 
 The live procedural fallback uses 256 x 128, 512 x 256, and 1024 x 512 levels. Map bodies begin at 256 and upgrade from the projected physical sphere diameter after camera-settle events; the editor always requests 1024. Three priority-queued workers stop after 30 seconds idle. A 64 MiB byte-budget LRU accounts for in-flight work, and material swaps dispose superseded generated GPU textures without taking ownership of uploads.
 
@@ -144,4 +160,4 @@ The remaining surface work is:
 1. Add a proper GeoTIFF/NetCDF/PDS ingest job that creates derived runtime assets while retaining originals and provenance.
 2. Generate normal maps from elevation as a derived channel with declared units and strength.
 3. Turn the isolated focused-viewer findings into an app-owned navigation and selection adapter.
-4. Add atmosphere and ocean shells only when their inputs and visual semantics are separately defined.
+4. Define time-aware atmosphere and weather ingest before accepting observed cloud products or climatologies.

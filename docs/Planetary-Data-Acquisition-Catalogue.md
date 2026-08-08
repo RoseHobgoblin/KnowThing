@@ -98,7 +98,7 @@ Examples:
 - a political polygon layer can be styled in many ways without changing its canonical geometry;
 - a cloud climatology and a cloud observation at one instant are different layers even if both can produce opacity textures.
 
-The existing albedo, elevation, normal, roughness, cloud, and emissive channels remain a useful Three.js material interface. They are not the complete planetary data taxonomy.
+The existing albedo, elevation, normal, roughness, and emissive channels remain a useful Three.js surface-material interface. Procedural weather may derive a cloud alpha texture internally, but cloud observations and climatologies are time-aware atmospheric data rather than direct surface-material uploads. Neither interface is the complete planetary data taxonomy.
 
 ## Acquisition Lanes
 

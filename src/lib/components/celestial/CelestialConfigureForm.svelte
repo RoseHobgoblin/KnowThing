@@ -43,6 +43,7 @@
 		type BodyReferenceOption,
 	} from '$lib/celestial/form-registry.js'
 	import { surfaceRecipeFromDraft } from '$lib/celestial/surface-editor.js'
+	import { weatherRecipeFromDraft } from '$lib/celestial/weather-editor.js'
 	import { stellarSurfaceRecipeFromDraft } from '$lib/celestial/stellar-surface-editor.js'
 	import { spectralColor } from '$lib/celestial/colors.js'
 	import type { MapBody } from '$lib/celestial/system-layout.js'
@@ -177,6 +178,7 @@
 			temperatureK: typeof draft.temperatureK === 'number' ? draft.temperatureK : null,
 			color: typeof initialRecord.color === 'string' ? initialRecord.color : null,
 			surface: surfaceRecipeFromDraft(draft),
+			weather: weatherRecipeFromDraft(draft),
 		}
 	})
 	const stellarPreviewBody = $derived.by<MapBody | null>(() => {

@@ -21,6 +21,8 @@ import { validateBodyPhysics, validateStarPhysics, type PhysicsWarning } from 't
 import { spectralColor } from './colors.js'
 import { composeSurfacePlan, parseSurfaceRecipe, type SurfaceMapChannel } from './surface-model.js'
 import { surfaceRecipeFromDraft } from './surface-editor.js'
+import { parseWeatherRecipe } from './weather-model.js'
+import { weatherRecipeFromDraft } from './weather-editor.js'
 import { parseStellarSurfaceRecipe } from './stellar-surface-model.js'
 import { stellarSurfaceRecipeFromDraft } from './stellar-surface-editor.js'
 import type { CelestialMediaPurpose, MediaAssetBinding } from '$lib/media/asset-binding.js'
@@ -854,16 +856,18 @@ function proceduralSurfaceActive(ctx: FieldContext): boolean {
 	return !hasSurfaceMap(ctx, 'albedo')
 		|| !hasSurfaceMap(ctx, 'roughness')
 		|| (surfaceClass !== 'gas' && !hasSurfaceMap(ctx, 'elevation'))
-		|| (num(ctx, 'surfaceCloudCoverage') !== 0 && !hasSurfaceMap(ctx, 'clouds'))
 }
 
-function coverageDisabled(ctx: FieldContext, kind: 'water' | 'vegetation' | 'snow' | 'clouds'): boolean {
+function coverageDisabled(ctx: FieldContext, kind: 'water' | 'vegetation' | 'snow'): boolean {
 	if (text(ctx, 'surfaceFallback') !== 'procedural') return true
 	const surfaceClass = selectedSurfaceClass(ctx)
 	if (kind === 'vegetation' && surfaceClass !== 'terrestrial') return true
 	if ((kind === 'water' || kind === 'snow') && surfaceClass !== 'rocky' && surfaceClass !== 'terrestrial') return true
-	if (kind === 'clouds') return hasSurfaceMap(ctx, 'clouds')
 	return hasSurfaceMap(ctx, 'albedo') && hasSurfaceMap(ctx, 'roughness')
+}
+
+function proceduralCloudsDisabled(ctx: FieldContext): boolean {
+	return text(ctx, 'weatherCloudMode') !== 'procedural'
 }
 
 /**
@@ -962,13 +966,54 @@ const bodyConfig: CelestialFormConfig = {
 		{
 			id: 'composition', label: 'Composition',
 			groups: [{
-				cols: 3,
+				cols: 1,
 				fields: [
 					{ control: 'text', key: 'composition', label: 'Composition', placeholder: 'Iron, nickel, silicates', hint: 'Primary materials making up the body.' },
-					{ control: 'text', key: 'atmosphere', label: 'Atmosphere', placeholder: 'N2 78%, O2 21%', hint: 'Atmospheric composition. Leave blank for airless bodies.' },
-					{ control: 'text', key: 'surfacePressure', label: 'Surface Pressure', placeholder: '101.325 kPa', hint: 'Atmospheric pressure at the surface. Earth is 101.325 kPa.' },
 				],
 			}],
+		},
+		{
+			id: 'atmosphere', label: 'Atmosphere & weather',
+			intro: 'Atmospheric composition is canonical body data. Generated clouds are only a representative visual state; they are not a dated observation, climatology, or permanent geography.',
+			groups: [
+				{
+					cols: 2,
+					fields: [
+						{ control: 'text', key: 'atmosphere', label: 'Atmosphere', placeholder: 'N2 78%, O2 21%', hint: 'Atmospheric composition. Leave blank for airless bodies.' },
+						{ control: 'text', key: 'surfacePressure', label: 'Surface pressure', placeholder: '101.325 kPa', hint: 'Atmospheric pressure at the surface. Earth is 101.325 kPa.' },
+					],
+				},
+				{
+					cols: 3,
+					fields: [
+						{
+							control: 'select', key: 'weatherCloudMode', label: 'Cloud appearance', omitFromPayload: true,
+							initial: record => parseWeatherRecipe(record.extra?.weather, record.extra?.surface).clouds.mode,
+							options: () => [
+								{ value: 'none', label: 'None' },
+								{ value: 'procedural', label: 'Procedural representative state' },
+							],
+							hint: 'Creates a weather-like illustrative shell from the target below. It does not claim to reproduce weather at any date.',
+						},
+						{
+							control: 'coverage', key: 'weatherCloudMeanCover', label: 'Illustrative mean cloud cover', omitFromPayload: true,
+							initial: record => parseWeatherRecipe(record.extra?.weather, record.extra?.surface).clouds.meanCover,
+							domain: 'a representative atmospheric shell at opacity 50% or greater',
+							hint: 'Visual target for generated clouds. Use scientific weather ingest later for observations, optical depth, or time series.',
+							disabled: proceduralCloudsDisabled,
+							disabledReason: 'Enable procedural cloud appearance to use this visual target.',
+						},
+						{
+							control: 'number', key: 'weatherCloudSeed', label: 'Cloud pattern seed', omitFromPayload: true,
+							initial: record => parseWeatherRecipe(record.extra?.weather, record.extra?.surface).clouds.seed,
+							placeholder: 'Stable from body ID',
+							hint: 'Leave blank for a stable weather seed independent from terrain. Changing it only rerolls illustrative clouds.',
+							disabled: proceduralCloudsDisabled,
+							disabledReason: 'Enable procedural cloud appearance to set a cloud pattern seed.',
+						},
+					],
+				},
+			],
 		},
 		{
 			id: 'surface', label: 'Surface',
@@ -1017,14 +1062,6 @@ const bodyConfig: CelestialFormConfig = {
 							disabledReason: 'Water cannot affect an inactive class or fully uploaded colour and roughness.',
 						},
 						{
-							control: 'coverage', key: 'surfaceCloudCoverage', label: 'Cloud coverage', omitFromPayload: true,
-							initial: record => parseSurfaceRecipe(record.extra?.surface).coverage.clouds,
-							domain: 'the atmospheric shell at opacity 50% or greater',
-							hint: 'Target fraction of the generated cloud shell with visible opacity.',
-							disabled: ctx => coverageDisabled(ctx, 'clouds'),
-							disabledReason: 'The procedural cloud channel is inactive or replaced by uploaded media.',
-						},
-						{
 							control: 'coverage', key: 'surfaceVegetation', label: 'Vegetation coverage', omitFromPayload: true,
 							initial: record => parseSurfaceRecipe(record.extra?.surface).coverage.vegetation,
 							domain: 'eligible exposed land after water and permanent snow',
@@ -1049,7 +1086,6 @@ const bodyConfig: CelestialFormConfig = {
 						['elevation', 'Elevation / height map', 'Linear grayscale 2:1 image. Used as subtle bump in the overview and reserved for close-view displacement.'],
 						['normal', 'Normal map', 'Linear tangent-space 2:1 normal map. Takes precedence over elevation-derived bump.'],
 						['roughness', 'Roughness map', 'Linear grayscale 2:1 image; the green channel is sampled by Three.js.'],
-						['clouds', 'Cloud opacity map', 'Linear grayscale 2:1 opacity mask rendered on an independent cloud shell.'],
 						['emissive', 'Emissive / night map', 'sRGB 2:1 color image for genuinely luminous surface features.'],
 					] as [SurfaceMapChannel, string, string][]).map(([channel, label, hint]) => ({
 						control: 'media' as const,
@@ -1104,7 +1140,8 @@ const bodyConfig: CelestialFormConfig = {
 			? ctx.draft.extra as Record<string, unknown>
 			: {}
 		const surface = surfaceRecipeFromDraft(ctx.draft)
-		const common = { extra: { ...currentExtra, surface } }
+		const weather = weatherRecipeFromDraft(ctx.draft)
+		const common = { extra: { ...currentExtra, surface, weather } }
 		const parentId = text(ctx, 'parentId')
 		if (parentId) return { parentId: Number(parentId), ...common }
 		const { starId, systemId } = bodyPrimarySelection(ctx)
