@@ -1,7 +1,7 @@
 # Celestial Data Provenance and Ingest
 
 **Status:** Design intent with a partially implemented direct-image and procedural layer
-**Related documents:** [Atlas Architecture](./Atlas-Architecture.md), [Celestial Surface Models](./Celestial-Surface-Models.md), [Planetary Data Acquisition Catalogue](./Planetary-Data-Acquisition-Catalogue.md), [Celestial Orrery Roadmap](./Celestial-Orrery-Roadmap.md), [Celestial Body Rendering](./Celestial-Body-Rendering.md)
+**Related documents:** [Atlas Architecture](./Atlas-Architecture.md), [Celestial Surface Models](./Celestial-Surface-Models.md), [Planetary Data Acquisition Catalogue](./Planetary-Data-Acquisition-Catalogue.md), [Celestial Orrery Roadmap](./Celestial-Orrery-Roadmap.md)
 
 > **Maturity:** Surface recipe v5, weather recipe v1, revision-pinned direct surface images, per-channel composition, calibrated procedural fallback, and texture LOD are current implementation. The evidence, immutable asset, derivation, release, GIS, and scientific weather-product sections remain design intent. Review after the first real ingest schema or published derived asset. **Expires on contact with implementation.**
 
