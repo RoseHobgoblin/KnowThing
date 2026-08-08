@@ -628,7 +628,6 @@ export const celestialBodies = pgTable(
 		composition: text('composition'),
 		atmosphere: text('atmosphere'),
 		surfacePressure: text('surface_pressure'),
-		albedo: text('albedo'),
 		satellites: integer('satellites'),
 		hasRings: boolean('has_rings').default(false),
 

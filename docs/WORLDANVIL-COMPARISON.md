@@ -79,7 +79,7 @@
 | Star systems | No structured support — use generic article | Full domain: single/binary/trinary systems with typed hierarchy |
 | Stars | Text fields in a generic template | Structured data: spectral type, mass, radius, luminosity, temperature, age, color |
 | Orbital mechanics | None | Semi-major axis, eccentricity, periastron/apastron, orbital period — computed from real values |
-| Planets/moons | Text fields | Full schema: body type, density, surface gravity, escape velocity, atmosphere, composition, axial tilt, albedo |
+| Planets/moons | Text fields | Full schema: body type, density, surface gravity, escape velocity, atmosphere, composition, axial tilt, and structured surface appearance |
 | Companion stars | Not supported | Parent-child star relationships with orbital parameters |
 | Moon nesting | Not supported | Recursive parent hierarchy with circular reference prevention |
 | System visualization | None | Interactive SVG system map: elliptical orbits, eccentricity modeling, hover tooltips, clickable navigation |

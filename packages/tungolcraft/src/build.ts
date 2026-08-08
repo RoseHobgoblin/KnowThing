@@ -50,7 +50,6 @@ export interface BodyInput {
 	surfacePressure?: string | null
 	apparentMagnitude?: string | null
 	angularDiameter?: string | null
-	albedo?: string | null
 	satellites?: number | null
 	hasRings?: boolean | null
 	extra?: unknown
@@ -110,7 +109,6 @@ export function body(input: BodyInput, relations: BodyRelations = {}): BodyModel
 		surfacePressure: input.surfacePressure,
 		apparentMagnitude: input.apparentMagnitude,
 		angularDiameter: input.angularDiameter,
-		albedo: input.albedo,
 		satellites: input.satellites,
 		hasRings: input.hasRings,
 		extra: input.extra,

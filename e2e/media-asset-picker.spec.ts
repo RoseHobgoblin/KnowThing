@@ -26,7 +26,7 @@ test.describe('real Media asset selection', () => {
 	test('searches, rejects an incompatible plate, binds a pinned revision, and clears it', async ({ page }) => {
 		await page.goto('/test/media-asset-picker')
 		await expect(page.getByTestId('picker-fixture')).toHaveAttribute('data-render-state', 'ready')
-		await page.getByRole('button', { name: 'Choose albedo map' }).click()
+		await page.getByRole('button', { name: 'Choose base color map' }).click()
 		await page.getByLabel('Compatible only').uncheck()
 		const portrait = page.getByRole('button', { name: /Portrait\.png/ })
 		await expect(portrait).toBeDisabled()
@@ -48,7 +48,7 @@ test.describe('real Media asset selection', () => {
 
 		await page.goto('/test/media-asset-picker')
 		await expect(page.getByTestId('picker-fixture')).toHaveAttribute('data-render-state', 'ready')
-		await page.getByRole('button', { name: 'Choose albedo map' }).click()
+		await page.getByRole('button', { name: 'Choose base color map' }).click()
 		await page.getByLabel(/Upload image/).setInputFiles({
 			name: 'New world.png', mimeType: 'image/png', buffer: Buffer.from('texture'),
 		})

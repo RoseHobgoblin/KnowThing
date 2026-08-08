@@ -171,7 +171,7 @@ export function mediaAssetContentUrl(binding: MediaAssetBinding): string {
 
 export function purposeLabel(purpose: CelestialMediaPurpose): string {
 	return ({
-		'surface-albedo': 'albedo map',
+		'surface-albedo': 'base color map',
 		'surface-elevation': 'elevation map',
 		'surface-normal': 'normal map',
 		'surface-roughness': 'roughness map',

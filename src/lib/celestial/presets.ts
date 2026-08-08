@@ -38,7 +38,6 @@ export interface BodyPreset {
 	atmosphere: string
 	surfacePressure?: string
 	composition: string
-	albedo?: string
 	orbitalPeriod: string
 	orbitalPeriodDays: number
 	semiMajorAxisAu: number
@@ -253,7 +252,6 @@ export const celestialPresets: CelestialPreset[] = [
 						atmosphere: 'CO₂ 95.32%, N₂ 2.7%, Ar 1.6%, traces of O₂, CO, H₂O and noble gases',
 						surfacePressure: '0.636 kPa (mean; seasonally variable)',
 						composition: 'Silicate crust and mantle; iron-nickel-sulfur core; iron-oxide-rich regolith',
-						albedo: '0.150 (geometric)',
 						orbitalPeriod: '686.9796 days',
 						orbitalPeriodDays: 686.9795859,
 						semiMajorAxisAu: 1.52371243,

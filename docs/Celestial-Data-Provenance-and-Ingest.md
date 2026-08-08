@@ -78,7 +78,7 @@ The fallback samples seeded three-dimensional noise on the unit sphere, producin
 | Gas | Latitude bands warped by spherical noise, with broad warm/cool palettes |
 | Representative clouds | Separate opacity noise when illustrative weather explicitly requests mean cover |
 
-Generated outputs are limited to albedo, relative elevation, roughness, and an optional renderer-internal representative cloud layer. Normal and emissive surface channels are unavailable unless supplied.
+Generated outputs are limited to base color/appearance, relative elevation, roughness, and an optional renderer-internal representative cloud layer. Normal and emissive surface channels are unavailable unless supplied.
 
 Generated vegetation is only an illustrative placement mask for an explicit authored target. The generator does not claim to infer life or to produce tectonics, craters, volcanoes, climate, biomes, or exact atmospheric circulation.
 
@@ -86,7 +86,7 @@ Generated vegetation is only an illustrative placement mask for an explicit auth
 
 Each uploaded channel independently overrides its fallback:
 
-- uploaded albedo replaces generated color;
+- an uploaded base color/appearance image replaces generated color;
 - uploaded elevation supplies overview bump;
 - uploaded normal supersedes bump derived from elevation;
 - uploaded roughness controls microsurface response;
@@ -216,13 +216,13 @@ Suggested fields:
 
 Initial material roles are:
 
-- albedo;
+- base color/appearance;
 - elevation;
 - normal;
 - roughness;
 - emissive.
 
-The model must also allow non-material layers without baking them into albedo:
+The model must also allow non-material layers without baking them into the base color image:
 
 - plate boundaries and faults;
 - geological units;
@@ -345,7 +345,7 @@ Ask the user for data when the missing fact is canonical rather than decorative:
 
 Do not turn these prompts into a completeness game. Prefer capability statements:
 
-- `Illustrative surface color - attach albedo to replace it.`
+- `Illustrative surface color — attach a base color / appearance image to replace it.`
 - `Elevation is relative - provide units and datum to use physical displacement.`
 - `Projection detected; longitude direction needs confirmation.`
 - `Clouds unavailable.`
@@ -357,10 +357,10 @@ Validation must distinguish blocking errors, warnings, and informational finding
 
 | Channel | Required interpretation |
 |---|---|
-| Albedo | Color space; whether the source is intrinsic color, reflectance, radiance, a false-color product, or a cartographic illustration |
+| Base color / appearance | Color space; whether the source is intrinsic color, reflectance, radiance, a false-color product, or a cartographic illustration |
 | Elevation | Units or explicit `relative`; datum/reference ellipsoid; scale; offset; no-data; positive direction |
 | Normal | Tangent-space convention; especially OpenGL versus DirectX Y direction |
-| Roughness | Declared value range and meaning; never inferred from albedo without recording a modeled derivation |
+| Roughness | Declared value range and meaning; never inferred from base color without recording a modeled derivation |
 | Cloud/weather field | Mask, probability, fraction, optical-depth, or other meaning; units and wavelength where applicable; epoch/time interval; vertical coordinate; and whether it is climatology, model output, or a particular observation |
 | Emissive | Color space and physical/authored meaning; a night photograph is not automatically intrinsic emission |
 | Vector overlays | CRS/body reference, geometry meaning, attributes, valid time, and reconstruction model when applicable |

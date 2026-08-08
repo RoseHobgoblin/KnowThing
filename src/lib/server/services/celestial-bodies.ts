@@ -218,7 +218,6 @@ async function createCelestialIn(dbx: Dbx, kind: CelestialKind, data: CreateCele
 		axialTilt: body.axialTilt ?? null,
 		apparentMagnitude: body.apparentMagnitude?.trim() || null,
 		angularDiameter: body.angularDiameter?.trim() || null,
-		albedo: body.albedo?.trim() || null,
 		satellites: body.satellites ?? null,
 		hasRings: body.hasRings ?? false,
 		extra: mergeOverrideExtras(body.extra, body as Record<string, unknown>, BODY_OVERRIDE_MAP),
@@ -300,7 +299,6 @@ function presetBodyInput(preset: BodyPreset, parentId: number, extra: Record<str
 		atmosphere: preset.atmosphere || null,
 		surfacePressure: preset.surfacePressure ?? null,
 		composition: preset.composition,
-		albedo: preset.albedo ?? null,
 		orbitalPeriodDays: preset.orbitalPeriodDays,
 		semiMajorAxisAu: preset.semiMajorAxisAu,
 		eccentricity: preset.eccentricity,
@@ -372,7 +370,7 @@ export async function updateCelestial(slug: string, raw: unknown) {
 	} else {
 		applyFieldUpdates(setClause, data,
 			['age', 'composition', 'atmosphere',
-				'surfacePressure', 'apparentMagnitude', 'angularDiameter', 'albedo'],
+				'surfacePressure', 'apparentMagnitude', 'angularDiameter'],
 			['massKg', 'radiusM', 'temperatureK', 'orbitalPeriodDays', 'semiMajorAxisAu',
 				'eccentricity', 'inclination', 'longitudeAscendingNode', 'argumentOfPeriapsis',
 				'epochPhase', 'rotationPeriodS', 'axialTilt', 'parentId', 'satellites'])

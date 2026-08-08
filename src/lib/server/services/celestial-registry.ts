@@ -145,7 +145,6 @@ export async function getSystemMapEntities(systemId: number) {
 				pb.luminosity_w AS "luminosityW",
 				pb.composition,
 				pb.atmosphere,
-				pb.albedo,
 				pb.has_rings AS "hasRings",
 				pb.extra -> 'surface' AS surface,
 				pb.extra -> 'weather' AS weather,

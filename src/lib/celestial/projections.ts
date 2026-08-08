@@ -50,11 +50,13 @@ export function bodyInfoboxFields(model: BodyModel): FieldMap {
 	setText(f, 'surface_pressure', model.surfacePressure)
 	setText(f, 'apparent_magnitude', model.apparentMagnitude)
 	setText(f, 'angular_diameter', model.angularDiameter)
-	setText(f, 'albedo', model.albedo)
 	setText(f, 'description', model.description)
 
 	// Overrides win over anything derived below.
 	applyExtra(f, model.extra)
+	// The former free-text field is intentionally retired. Do not let an old or
+	// hand-authored extra value resurrect it as an untyped infobox row.
+	f.delete('albedo')
 
 	// Derived physical / orbital (only-if-absent so overrides survive).
 	if (model.massKg != null) setDerived(f, 'mass', formatMass(model.massKg))
@@ -237,7 +239,7 @@ const PLANET_SECTIONS: SectionSpec[] = [
 	{ title: 'Orbit', fields: [['satellite_of', 'Orbits'], ['orbital_period', 'Orbital period'], ['semi_major_axis', 'Semi-major axis'], ['orbital_velocity', 'Orbital velocity'], ['eccentricity', 'Eccentricity'], ['inclination', 'Inclination'], ['periapsis', 'Periapsis'], ['apoapsis', 'Apoapsis']] },
 	{ title: 'Rotation', fields: [['rotation_period', 'Rotation period'], ['axial_tilt', 'Axial tilt'], ['equatorial_velocity', 'Equatorial velocity']] },
 	{ title: 'Composition', fields: [['composition', 'Composition'], ['atmosphere', 'Atmosphere'], ['surface_pressure', 'Surface pressure']] },
-	{ title: 'Observation', fields: [['apparent_magnitude', 'Apparent magnitude'], ['angular_diameter', 'Angular diameter'], ['albedo', 'Albedo']] },
+	{ title: 'Observation', fields: [['apparent_magnitude', 'Apparent magnitude'], ['angular_diameter', 'Angular diameter']] },
 	{ title: 'System', fields: [['satellites', 'Satellites'], ['has_rings', 'Rings']] },
 ]
 

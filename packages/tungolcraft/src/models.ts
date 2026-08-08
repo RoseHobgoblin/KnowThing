@@ -58,7 +58,6 @@ export interface BodyRow extends CelestialRowLike {
 	argumentOfPeriapsis?: number | null
 	apparentMagnitude?: string | null
 	angularDiameter?: string | null
-	albedo?: string | null
 	satellites?: number | null
 	hasRings?: boolean | null
 }
@@ -126,7 +125,6 @@ export interface BodyModel {
 	surfacePressure: string | null
 	apparentMagnitude: string | null
 	angularDiameter: string | null
-	albedo: string | null
 
 	// Physical — raw SI.
 	massKg: number | null
@@ -276,7 +274,6 @@ export function deriveBody(row: BodyRow, relations: BodyRelations = {}): BodyMod
 		surfacePressure: row.surfacePressure ?? null,
 		apparentMagnitude: row.apparentMagnitude ?? null,
 		angularDiameter: row.angularDiameter ?? null,
-		albedo: row.albedo ?? null,
 
 		massKg,
 		radiusM,

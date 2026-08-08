@@ -79,9 +79,9 @@
 			testId: 'surface-preview',
 			title: 'Surface preview',
 			loadingLabel: 'Composing surface…',
-			plateLabel: 'Albedo plate',
+			plateLabel: 'Base color plate',
 			plateSource: planetPlan.channels.albedo.source,
-			plateAriaLabel: 'Two-to-one equirectangular preview of the surface albedo',
+			plateAriaLabel: 'Two-to-one equirectangular preview of the base color appearance map',
 			description: describeSurfacePlan(planetPlan),
 			status: summarizeSurfacePlan(planetPlan),
 			entries,
@@ -249,15 +249,18 @@
 							drawImagePlate(canvas, image)
 						} else if (albedo.source === 'procedural') {
 							const { requestProceduralPlanetTexture } = await import('$lib/celestial/three/procedural-texture-client.js')
+							const proceduralClouds = currentWeatherPlan.clouds.source === 'procedural' && currentWeatherPlan.clouds.meanCover != null
+								? {
+									meanCover: currentWeatherPlan.clouds.meanCover,
+									seed: currentWeatherPlan.clouds.seed,
+								}
+								: null
 							const generated = await requestProceduralPlanetTexture({
 								class: currentPlanetPlan.class,
 								seed: currentPlanetPlan.seed,
 								temperatureK: currentPlanetPlan.temperatureK,
 								coverage: currentPlanetPlan.coverage,
-								clouds: currentWeatherPlan.clouds.source === 'procedural' && currentWeatherPlan.clouds.meanCover != null ? {
-									meanCover: currentWeatherPlan.clouds.meanCover,
-									seed: currentWeatherPlan.clouds.seed,
-								} : null,
+								clouds: proceduralClouds,
 								tint: [202, 225, 255],
 							}, { size: 1024, priority: 'foreground' })
 							if (version !== renderVersion) return

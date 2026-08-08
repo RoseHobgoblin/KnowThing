@@ -81,7 +81,7 @@ The celestial model already provides several pieces of the Atlas hierarchy:
 - stars and bodies form a parented orbital hierarchy;
 - bodies have stable identities and physical metadata;
 - the Three.js orrery provides system-level selection and navigation;
-- the surface compositor can bind independent albedo, elevation, normal, roughness, and emissive inputs;
+- the surface compositor can bind independent base color/appearance, elevation, normal, roughness, and emissive inputs;
 - illustrative weather can derive a representative cloud layer independently from canonical surface files;
 - the proposed data-ingest architecture defines sources, immutable assets, derivations, semantic surface layers, and published releases.
 
@@ -492,7 +492,7 @@ MapLibre GL JS remains a strong candidate for a later flat styled vector/raster 
 The prototype used shared Mars and fictional-world fixtures to test:
 
 - a non-Earth radius or ellipsoid;
-- a 2:1 authored albedo;
+- a 2:1 authored base color / appearance image;
 - a tiled height field;
 - vector boundaries crossing the antimeridian and poles;
 - body-fixed positive-east coordinates;
@@ -556,7 +556,7 @@ Users should be able to stop after any useful step.
 | Homework supplied | Atlas result | What remains unavailable |
 |---|---|---|
 | Body facts only | Flat or explicitly illustrative overview sphere | Canonical geography and surface layers |
-| Painted albedo | Authored globe appearance | Clickable regions, terrain, semantics |
+| Painted appearance image | Authored globe appearance | Clickable regions, terrain, semantics |
 | Color-coded region mask | Clickable categorical regions after assignment | Meaning for unassigned values |
 | SVG or GeoJSON boundaries | Queryable vector regions and labels | Terrain unless separately supplied |
 | Elevation raster | Terrain and measurement against declared datum | Land cover or politics unless supplied |
@@ -576,7 +576,7 @@ The existing workflow remains valuable when explicitly demoted from data model t
 
 The user uploads an image and chooses its meaning:
 
-- **Appearance image:** store as an albedo or cartographic raster; do not detect entities.
+- **Appearance image:** store as a base-color or cartographic raster; do not detect entities.
 - **Categorical mask:** treat each exact or configured palette value as a category key.
 - **Region seed:** optionally polygonize selected values into derived vector features.
 
@@ -792,7 +792,7 @@ The migration must never silently overwrite a published Atlas release or delete 
 ### Phase 2: Planetary vertical slice
 
 - Create one body-fixed Atlas space from an existing celestial body.
-- Publish albedo, elevation, one vector boundary layer, and settlement points.
+- Publish base color/appearance, elevation, one vector boundary layer, and settlement points.
 - Generate tiled runtime artifacts.
 - Build the production Cesium adapter from the completed shared-fixture prototype; retain MapLibre as a later flat-view candidate.
 - Implement explicit Orrery → Explore surface → Return to system handoff.
@@ -851,7 +851,7 @@ The first end-to-end fixture should contain:
 
 - one system with a placed planet and moon;
 - a body with known radius and coordinate convention;
-- authored albedo and elevation;
+- authored base color/appearance and elevation;
 - one region crossing the antimeridian;
 - one polar region;
 - settlements at several zoom levels;

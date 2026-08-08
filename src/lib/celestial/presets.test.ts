@@ -18,7 +18,6 @@ describe('Mars preset data package', () => {
 			longitudeAscendingNode: 49.71320984,
 			argumentOfPeriapsis: 286.36934232,
 			surfacePressure: '0.636 kPa (mean; seasonally variable)',
-			albedo: '0.150 (geometric)',
 		})
 		expect(mars?.extra?.referenceBody).toMatchObject({
 			frame: 'IAU_MARS', naifBodyCode: 499,

@@ -24,6 +24,13 @@ describe('bodyInfoboxFields projection', () => {
 	})
 })
 
+describe('retired body fields', () => {
+	it('does not resurrect free-text albedo from extra data', () => {
+		const model = deriveBody({ ...EARTH, extra: { albedo: '0.306-ish' } }, {})
+		expect(bodyInfoboxFields(model).has('albedo')).toBe(false)
+	})
+})
+
 describe('deriveStar + projection', () => {
 	it('companions come from the graph relation and project as linked entities', () => {
 		const m = deriveStar(SUN, { companions: [{ name: 'Therne', slug: 'therne' }] })

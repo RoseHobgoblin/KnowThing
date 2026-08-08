@@ -1082,7 +1082,7 @@ const bodyConfig: CelestialFormConfig = {
 				{
 					cols: 3,
 					fields: ([
-						['albedo', 'Albedo / base color map', 'sRGB 2:1 equirectangular image. This completely replaces generated surface color.'],
+						['albedo', 'Base color / appearance map', 'Optional sRGB 2:1 equirectangular image showing the body\'s unlit appearance. This completely replaces generated surface color; it is not a Bond or geometric albedo measurement.'],
 						['elevation', 'Elevation / height map', 'Linear grayscale 2:1 image. Used as subtle bump in the overview and reserved for close-view displacement.'],
 						['normal', 'Normal map', 'Linear tangent-space 2:1 normal map. Takes precedence over elevation-derived bump.'],
 						['roughness', 'Roughness map', 'Linear grayscale 2:1 image; the green channel is sampled by Three.js.'],
@@ -1126,7 +1126,6 @@ const bodyConfig: CelestialFormConfig = {
 				fields: [
 					{ control: 'text', key: 'apparentMagnitude', label: 'Apparent Magnitude', placeholder: '-3.86', hint: 'Brightness as seen from a reference point. Lower = brighter. Venus is about -4.6, full Moon is -12.7.' },
 					{ control: 'text', key: 'angularDiameter', label: 'Angular Diameter', placeholder: '3.5 arcsec', hint: 'Apparent size in the sky from a reference point. The Moon is ~31 arcminutes.' },
-					{ control: 'text', key: 'albedo', label: 'Albedo', placeholder: '0.306', hint: 'Fraction of incoming light reflected. 0 = perfectly dark, 1 = perfectly reflective. Earth is 0.306.' },
 					{ control: 'checkbox', key: 'hasRings', label: 'Has rings' },
 				],
 			}],

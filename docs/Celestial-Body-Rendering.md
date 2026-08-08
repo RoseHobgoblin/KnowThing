@@ -6,7 +6,7 @@ SystemMap.svelte renders planets as colored dots. The orbital mechanics are corr
 (Kepler solver, eccentricity, multi-scale layout) but the bodies themselves have no
 visual identity. A gas giant and a rocky terrestrial look the same. The data to
 differentiate them already exists in the schema (`composition`, `atmosphere`,
-`temperature`, `albedo`, `hasRings`, `axialTilt`, `color`) but nothing interprets it
+`temperatureK`, `hasRings`, `axialTilt`, `color`, and the structured surface recipe) but nothing interprets it
 visually.
 
 The goal: render each celestial body as a visually distinct, beautiful sphere —
@@ -19,8 +19,8 @@ like Destiny's planet select, not an astronomy textbook.
   fields users already fill in. Two planets with identical config must look identical.
   Two planets with different config must look different.
 - **No new schema changes**: the existing `planetaryBodies` and `stars` tables have
-  everything needed. The `composition`, `atmosphere`, `temperature`, `color`,
-  `hasRings`, `axialTilt`, and `albedo` fields drive the renderer.
+  everything needed. The `composition`, `atmosphere`, `temperatureK`, `color`,
+  `hasRings`, `axialTilt`, and structured surface recipe drive the renderer.
 - **Integrate with SystemMap**: rendered planets replace the current `ctx.arc()` dots
   on the existing Canvas2D map. The renderer produces cached bitmaps that
   `renderMap()` stamps via `drawImage()`.
@@ -65,7 +65,6 @@ interface PlanetRenderConfig {
   cloudDensity: number                     // 0 = clear, 1 = fully obscured
 
   // Lighting
-  albedo: number                           // 0-1, surface reflectivity
   temperature: number                      // K, drives emissive glow for hot bodies
 
   // Geometry

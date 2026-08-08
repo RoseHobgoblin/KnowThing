@@ -48,7 +48,6 @@ export interface MapBody {
 	luminosityW?: number | null
 	composition?: string | null
 	atmosphere?: string | null
-	albedo?: string | null
 	hasRings?: boolean | null
 	/** Versioned material recipe stored in the entity's extra JSONB. */
 	surface?: SurfaceRecipe | null

@@ -107,7 +107,6 @@ const planetaryBodySchema = coreSchema.extend(orbiterSchema.shape).extend({
 	inclination: z.number().nullish(),
 	longitudeAscendingNode: z.number().nullish(),
 	argumentOfPeriapsis: z.number().nullish(),
-	albedo: z.string().nullish(),
 
 	satellites: z.number().int().min(0).nullish(),
 	hasRings: z.boolean().optional(),

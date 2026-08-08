@@ -300,6 +300,12 @@ describe('presets', () => {
 })
 
 describe('registry integrity', () => {
+	it('offers an appearance map but no generic albedo value', () => {
+		const keys = allFieldSpecs(CELESTIAL_FORM_CONFIGS.body).map(spec => spec.key)
+		expect(keys).not.toContain('albedo')
+		expect(keys).toContain('surfaceMap_albedo')
+	})
+
 	it('every keyed field appears in the draft exactly once per kind', () => {
 		for (const config of Object.values(CELESTIAL_FORM_CONFIGS)) {
 			const draft = buildDraft(config, { id: 1, name: 'X', slug: 'x' })

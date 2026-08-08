@@ -42,9 +42,9 @@ export function createSurfacePreviewRenderer(
 			powerPreference: 'low-power',
 		})
 	} catch {
-		throw new Error('WebGL 2 is unavailable; the albedo plate remains available below.')
+		throw new Error('WebGL 2 is unavailable; the base color plate remains available below.')
 	}
-	if (!context) throw new Error('WebGL 2 is unavailable; the albedo plate remains available below.')
+	if (!context) throw new Error('WebGL 2 is unavailable; the base color plate remains available below.')
 
 	const renderer = new WebGLRenderer({ canvas, context, antialias: true, powerPreference: 'low-power' })
 	renderer.outputColorSpace = SRGBColorSpace
@@ -160,7 +160,7 @@ export function createSurfacePreviewRenderer(
 
 	function handleContextLost(event: Event): void {
 		event.preventDefault()
-		onUnavailable('The surface preview graphics context was lost. The albedo plate remains available.')
+		onUnavailable('The surface preview graphics context was lost. The base color plate remains available.')
 	}
 
 	canvas.addEventListener('webglcontextlost', handleContextLost)

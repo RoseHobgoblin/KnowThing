@@ -37,6 +37,12 @@ describe('planetary body schema', () => {
 		expect(createPlanetaryBodySchema.safeParse({ name: 'X', slug: 'x', parentId: 1, eccentricity: 0.99 }).success).toBe(true)
 	})
 
+	it('does not include the retired free-text albedo field', () => {
+		const result = createPlanetaryBodySchema.safeParse({ name: 'X', slug: 'x', parentId: 1, albedo: '0.3' })
+		expect(result.success).toBe(true)
+		if (result.success) expect(result.data).not.toHaveProperty('albedo')
+	})
+
 	it('carries display-string overrides through parsing', () => {
 		const result = createPlanetaryBodySchema.safeParse({ name: 'X', slug: 'x', parentId: 1, density: '10 g/cm³' })
 		expect(result.success).toBe(true)

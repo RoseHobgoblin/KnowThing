@@ -36,7 +36,7 @@ The version 5 recipe lives in `celestial_bodies.extra.surface`. It stores author
     "albedo": {
       "version": 1,
       "mediaId": 42,
-      "filename": "Saxnat albedo.png",
+      "filename": "Saxnat appearance.png",
       "contentHash": "<sha256>",
       "interpretation": {
         "projection": "equirectangular",
@@ -51,6 +51,16 @@ All channels use the same binding shape. Normal bindings additionally record Ope
 
 All fields are optional in the editor. `fallback: "flat"` is the explicit opt-out. A null class uses the documented rocky illustrative fallback; there is no automatic class inference. A null coverage means “not specified,” while explicit zero requests zero. Version 3 and 4 recipes retain only their explicit surface class, seed, surface coverage, and supported surface map bindings when read as version 5; former inferred/auto results and uploaded cloud masks are discarded.
 
+The ordinary body editor has no generic albedo value. “Albedo” could mean Bond, geometric, spherical, monochromatic, or another measured reflectance quantity, and those values are not interchangeable. Users therefore enter no reflectivity number for ordinary surface authoring. A future scientific measurement model may accept a typed value with spectral basis, uncertainty, epoch, and source.
+
+For surface appearance, the user chooses only as much as they actually know:
+
+- nothing, to keep the deterministic illustrative or flat fallback;
+- an optional surface class and explicit coverage targets to guide illustrative generation; or
+- an optional 2:1 base color / appearance image and any independent elevation, normal, roughness, or emissive maps they possess.
+
+The recipe retains the internal `maps.albedo` key for compatibility, but the product calls this channel **base color / appearance**. It is a render input, not a claim that the pixels contain calibrated physical albedo.
+
 Coverage values are authored visual targets with measured domains:
 
 - surface water and permanent snow/ice are fractions of total spherical area;
@@ -64,13 +74,13 @@ The current runtime expects ordinary images stored in KnowThing Media. A searcha
 
 | Channel | Meaning | Recommended handoff | Runtime treatment |
 |---|---|---|---|
-| Albedo | Intrinsic base color, without baked sunlight or labels | PNG, JPEG, or WebP; 2:1; sRGB | `material.map`, sRGB |
+| Base color / appearance | Unlit authored appearance, without baked sunlight or labels | PNG, JPEG, or WebP; 2:1; sRGB | `material.map`, sRGB |
 | Elevation | Relative or measured surface height | Grayscale PNG; 2:1; document units and vertical datum | Subtle bump in overview; reserved for close-view displacement |
 | Normal | Authored tangent-space surface normals | PNG; 2:1; document OpenGL/DirectX Y convention | `normalMap`, non-color; supersedes elevation bump |
 | Roughness | Microsurface roughness | Grayscale PNG; 2:1 | `roughnessMap`, non-color (Three samples green) |
 | Emissive | Actually luminous features such as lava or city lights | PNG, JPEG, or WebP; 2:1; sRGB | `emissiveMap`, sRGB |
 
-Color and data textures are deliberately separated. Three.js requires color textures such as albedo/emissive to declare sRGB, while normal, roughness, displacement, and opacity maps remain non-color data. See [Three.js color management](https://threejs.org/manual/en/color-management.html) and [MeshStandardMaterial map semantics](https://threejs.org/docs/pages/MeshStandardMaterial.html).
+Color and data textures are deliberately separated. Three.js requires color textures such as base color and emissive maps to declare sRGB, while normal, roughness, displacement, and opacity maps remain non-color data. See [Three.js color management](https://threejs.org/manual/en/color-management.html) and [MeshStandardMaterial map semantics](https://threejs.org/docs/pages/MeshStandardMaterial.html).
 
 An uploaded normal map is considered more authoritative than generated or uploaded height used as bump. The original uploaded files are never rewritten by procedural generation.
 
@@ -108,7 +118,7 @@ The adaptation intentionally removed or constrained claims that the prototype co
 - temperature does not fabricate vegetation, life, water, or snow coverage;
 - atmosphere text does not automatically fabricate clouds;
 - random craters, volcanoes, and tectonics are not treated as canonical data;
-- height shading is not baked into albedo, because lighting belongs to the material and scene;
+- height shading is not baked into the base color image, because lighting belongs to the material and scene;
 - generated relief, roughness, weather clouds, and color remain independent outputs.
 
 The live procedural fallback uses 256 x 128, 512 x 256, and 1024 x 512 levels. Map bodies begin at 256 and upgrade from the projected physical sphere diameter after camera-settle events; the editor always requests 1024. Three priority-queued workers stop after 30 seconds idle. A 64 MiB byte-budget LRU accounts for in-flight work, and material swaps dispose superseded generated GPU textures without taking ownership of uploads.

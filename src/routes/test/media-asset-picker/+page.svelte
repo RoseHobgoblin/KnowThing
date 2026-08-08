@@ -15,7 +15,7 @@
 <main class="min-h-screen bg-page p-8 text-body" data-testid="picker-fixture" data-render-state={ready ? 'ready' : 'loading'} {@attach markReady}>
 	<div class="mx-auto max-w-xl bg-surface p-5">
 		<MediaAssetPicker
-			label="Albedo / base color map"
+			label="Base color / appearance map"
 			hint="sRGB 2:1 equirectangular image"
 			purpose="surface-albedo"
 			canUpload

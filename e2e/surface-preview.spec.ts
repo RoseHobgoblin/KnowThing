@@ -18,7 +18,7 @@ test.describe('celestial surface preview', () => {
 		expect(pageErrors).toEqual([])
 	})
 
-	test('keeps the albedo plate available without WebGL 2', async ({ page }) => {
+	test('keeps the base color plate available without WebGL 2', async ({ page }) => {
 		await page.addInitScript(() => {
 			const original = HTMLCanvasElement.prototype.getContext
 			HTMLCanvasElement.prototype.getContext = function (type: string, ...args: unknown[]) {
@@ -30,7 +30,7 @@ test.describe('celestial surface preview', () => {
 		const preview = page.getByTestId('surface-preview')
 		await expect(preview).toHaveAttribute('data-render-state', 'plate-only', { timeout: 20_000 })
 		await expect(preview).toContainText('WebGL 2 is unavailable')
-		await expect(preview.getByLabel('Two-to-one equirectangular preview of the surface albedo')).toBeVisible()
+		await expect(preview.getByLabel('Two-to-one equirectangular preview of the base color appearance map')).toBeVisible()
 	})
 
 	test('renders the unsaved Starwright photosphere instead of a color swatch', async ({ page }) => {
