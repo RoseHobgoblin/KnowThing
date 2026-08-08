@@ -100,7 +100,7 @@ export const updateStarSchema = starSchema.partial().superRefine(validateStarUpd
 const planetaryBodySchema = coreSchema.extend(orbiterSchema.shape).extend({
 	bodyType: z.enum(['planet', 'asteroid', 'ring_system']).default('planet'),
 
-	temperature: z.string().nullish(),
+	temperatureK: z.number().positive().finite().nullish(),
 	composition: z.string().nullish(),
 	atmosphere: z.string().nullish(),
 	surfacePressure: z.string().nullish(),

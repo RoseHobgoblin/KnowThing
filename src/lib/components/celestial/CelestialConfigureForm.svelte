@@ -7,6 +7,7 @@
 	import Select from '$lib/components/ui/Select.svelte'
 	import Checkbox from '$lib/components/ui/Checkbox.svelte'
 	import UnitNumberInput from '$lib/components/ui/UnitNumberInput.svelte'
+	import CoverageInput from '$lib/components/ui/CoverageInput.svelte'
 	import LockableDerivedField from '$lib/components/ui/LockableDerivedField.svelte'
 	import TabNavigation from '$lib/components/ui/TabNavigation.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
@@ -173,10 +174,7 @@
 			name: String(draft.name || 'Unnamed body'),
 			slug: String(draft.slug || 'unnamed-body'),
 			bodyType: String(draft.bodyType || 'planet'),
-			temperatureK: typeof initialRecord.temperatureK === 'number' ? initialRecord.temperatureK : null,
-			temperature: typeof draft.temperature === 'string' ? draft.temperature : null,
-			composition: typeof draft.composition === 'string' ? draft.composition : null,
-			atmosphere: typeof draft.atmosphere === 'string' ? draft.atmosphere : null,
+			temperatureK: typeof draft.temperatureK === 'number' ? draft.temperatureK : null,
 			color: typeof initialRecord.color === 'string' ? initialRecord.color : null,
 			surface: surfaceRecipeFromDraft(draft),
 		}
@@ -305,6 +303,7 @@
 				placeholder={spec.placeholder}
 				hint={spec.hint}
 				error={numberRangeError(spec)}
+				disabled={spec.disabled?.(ctx) ?? false}
 			/>
 		{:else}
 			<Input
@@ -317,10 +316,20 @@
 				placeholder={spec.placeholder}
 				hint={spec.hint}
 				error={numberRangeError(spec)}
+				disabled={spec.disabled?.(ctx) ?? false}
 			/>
 		{/if}
+	{:else if spec.control === 'coverage'}
+		<CoverageInput
+			label={labelOf(spec, ctx)}
+			hint={spec.hint ?? ''}
+			domain={spec.domain}
+			disabled={spec.disabled?.(ctx) ?? false}
+			disabledReason={spec.disabledReason}
+			bind:value={draft[spec.key]}
+		/>
 	{:else if spec.control === 'select'}
-		<Select label={labelOf(spec, ctx)} type="single" bind:value={draft[spec.key]} items={spec.options(ctx)} />
+		<Select label={labelOf(spec, ctx)} type="single" bind:value={draft[spec.key]} items={spec.options(ctx)} disabled={spec.disabled?.(ctx) ?? false} />
 	{:else if spec.control === 'checkbox'}
 		<Checkbox bind:value={draft[spec.key]} label={labelOf(spec, ctx)} />
 	{:else if spec.control === 'media'}
@@ -391,7 +400,7 @@
 		<div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-[1fr_280px]">
 			<div class="min-w-0 space-y-4">
 				{#each visibleSections as section (section.id)}
-					<section class="space-y-4 p-5 bg-surface">
+					<section class="space-y-4 bg-surface p-5">
 						{#if section.intro}
 							<p class="text-xs text-secondary">{section.intro}</p>
 						{/if}
@@ -412,7 +421,7 @@
 				{/each}
 
 				{#if config.overrides && config.overrides.length > 0}
-					<section class="space-y-4 p-5 bg-surface">
+					<section class="space-y-4 bg-surface p-5">
 						<div>
 							<h2 class="text-sm font-semibold text-heading">{m.cel_overrides()}</h2>
 							<p class="mt-1 text-xs text-secondary">

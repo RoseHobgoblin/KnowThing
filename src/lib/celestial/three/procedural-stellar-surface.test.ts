@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { generateProceduralStellarSurface, temperatureDisplayRgb } from './procedural-stellar-surface.js'
+import {
+	generateProceduralStellarSurface,
+	linearChannelToSrgb,
+	srgbChannelToLinear,
+	temperatureDisplayRgb,
+} from './procedural-stellar-surface.js'
 
 const base = {
 	temperatureK: 5_772,
@@ -26,6 +31,12 @@ describe('Starwright procedural photosphere', () => {
 		expect(hot[2]).toBeGreaterThan(hot[0])
 	})
 
+	it('round-trips the explicit sRGB and linear transfer', () => {
+		for (const channel of [0, 0.003, 0.18, 0.5, 1]) {
+			expect(linearChannelToSrgb(srgbChannelToLinear(channel))).toBeCloseTo(channel, 10)
+		}
+	})
+
 	it('does not invent white-dwarf spots', () => {
 		const generated = generateProceduralStellarSurface({
 			...base,
@@ -47,5 +58,12 @@ describe('Starwright procedural photosphere', () => {
 		}
 		expect(generated.spotCoverageEstimate).toBeGreaterThanOrEqual(0)
 		expect(generated.spotCoverageEstimate).toBeLessThanOrEqual(1)
+	})
+
+	it('stays finite over the supported display temperature sweep', () => {
+		for (const temperatureK of [1, 1_000, 5_772, 40_000, 1_000_000]) {
+			const generated = generateProceduralStellarSurface({ ...base, temperatureK }, 8, 4)
+			expect(generated.photosphere.every(Number.isFinite)).toBe(true)
+		}
 	})
 })

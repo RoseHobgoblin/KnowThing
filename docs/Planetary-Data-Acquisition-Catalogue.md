@@ -1,8 +1,10 @@
 # Planetary Data Acquisition Catalogue
 
-**Status:** Proposed product and ingest contract  
+**Status:** Design intent and acquisition research; only the direct-image lane is publicly supported
 **Last updated:** 8 August 2026  
 **Related documents:** [Celestial Surface Models](./Celestial-Surface-Models.md), [Celestial Data Provenance and Ingest](./Celestial-Data-Provenance-and-Ingest.md), [Atlas Architecture](./Atlas-Architecture.md)
+
+> **Maturity:** The catalogue describes desired product semantics and real acquisition paths. The simple 2:1 image workflow and its Media validation are implemented; Mars is a maintainer-operated reference fixture. Most GIS, PDS, CRS, multidimensional, and multi-channel workflows are not public ingest features. Review each lane when a fixture-backed workflow is promoted. **Expires on contact with implementation.**
 
 ## Decision Summary
 
@@ -28,7 +30,7 @@ This catalogue is the product contract for those answers. It should eventually d
 
 ## Product Rule
 
-No data type enters the public support matrix until its catalogue entry includes:
+The following full contract applies only when a data type is promoted to **Supported**. Research notes and maintainer tools may be narrower so that internal work can test architecture without creating a public promise. No type enters the public support matrix until its catalogue entry includes:
 
 - a stable semantic name;
 - the body or spatial domains to which it applies;
@@ -43,6 +45,27 @@ No data type enters the public support matrix until its catalogue entry includes
 - a statement of the capability the data does and does not unlock.
 
 Supporting an extension is not sufficient. A `.tif` file may contain elevation, imagery, a categorical map, temperature, or an arbitrary picture. A `.nc` file may contain hundreds of variables, levels, and time steps. Meaning must come from inspected metadata and declared interpretation, not the filename.
+
+## Workflow Maturity
+
+This catalogue uses a maturity label separately from the format-capability levels below:
+
+| Maturity | Product promise |
+|---|---|
+| Research note | Acquisition and semantic research only; no usable ingest workflow is claimed. |
+| Maintainer-assisted | A KnowThing maintainer can prepare or install the data through documented project tooling; ordinary users are not promised self-service ingest. |
+| Experimental | A self-service or prototype path exists, but its contract, fixtures, or failure behavior may change. |
+| Supported | A public workflow meets the complete Product Rule, is tested, documented, and safe to rely on. |
+
+Current classification:
+
+| Lane | Maturity |
+|---|---|
+| Ordinary 2:1 equirectangular material-channel images | Supported |
+| Built-in Mars acquisition and installation pipeline | Maintainer-assisted |
+| GeoTIFF/COG, GeoPackage/GeoJSON, and other GIS ingest | Maintainer-assisted design target; the PostGIS exercise is an isolated architecture spike, not ingest |
+| PDS, SPICE, NetCDF, HDF5, GPML, and scientific multi-channel products | Maintainer-assisted or research note, depending on the entry |
+| Planet Package | Research note |
 
 ## Levels of Support
 
@@ -81,19 +104,19 @@ The existing albedo, elevation, normal, roughness, cloud, and emissive channels 
 
 Users should be able to enter through the least demanding lane appropriate to their data.
 
-### Quick appearance
+### Quick appearance — Supported
 
 Attach an ordinary 2:1 image through Media. This is appropriate for an authored global plate or a deliberately simplified overview. KnowThing asks for its meaning and authority but does not require research-grade geodesy.
 
-### Guided GIS import
+### Guided GIS import — Maintainer-assisted design target
 
 Upload a GeoTIFF, Cloud-Optimized GeoTIFF, GeoPackage, GeoJSON, complete Shapefile bundle, or CSV. KnowThing inspects the product, asks only about unresolved metadata, previews coverage and seams, and creates a draft layer.
 
-### Scientific product import
+### Scientific product import — Maintainer-assisted design target
 
 Upload or retrieve the original PDS4, NetCDF, HDF5, GPML, SPICE, or comparable product with every associated label and data object. KnowThing retains the product as a logical multi-file asset and derives display products in an isolated worker.
 
-### Planet package
+### Planet package — Research note
 
 Accept a small KnowThing manifest that references standard files, sources, coordinate definitions, times, and intended semantic layers. The manifest is not a new scientific raster or geometry format. It packages ordinary interoperable products for repeatable import.
 
@@ -763,7 +786,7 @@ Do not assume that free download means unrestricted redistribution. Do not copy 
 
 ## Fixtures and Templates
 
-Every implemented catalogue entry should ship with:
+Every **Supported** catalogue entry must ship with:
 
 - the smallest useful valid fixture;
 - a realistic provider-derived fixture where licensing permits repository storage;
@@ -849,7 +872,7 @@ This fixture is not yet the general scientific ingest system. The large upstream
 The acquisition system is successful when:
 
 - every public data capability says what it means, what it unlocks, and what remains unavailable without it;
-- every accepted data type has a realistic download or export path;
+- every Supported data type has a realistic download or export path and the complete fixture/documentation contract;
 - the user can view a valid example before uploading;
 - common misleading files are recognized and redirected to the correct semantic role;
 - original provider products remain byte-for-byte recoverable with their metadata and stable identifiers;
@@ -860,7 +883,7 @@ The acquisition system is successful when:
 - a casual author can stop at one appearance image without being forced into GIS;
 - an advanced author can supply higher-quality or more complete data without it being simplified into the quick lane;
 - guidance states account, license, citation, and redistribution requirements before import;
-- fixtures verify inspection, ambiguity, validation, derivation, and publication for each supported family.
+- fixtures verify inspection, ambiguity, validation, derivation, and publication for each Supported family; narrower maintainer tools remain explicitly labelled.
 
 ## Explicit Non-Goals
 

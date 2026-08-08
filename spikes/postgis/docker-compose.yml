@@ -1,0 +1,20 @@
+name: knowthing-postgis-spike
+
+services:
+  db:
+    image: postgis/postgis:16-3.5-alpine
+    environment:
+      POSTGRES_USER: knowthing
+      POSTGRES_PASSWORD: knowthing
+      POSTGRES_DB: planetary_spike
+    ports:
+      - '55432:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U knowthing -d planetary_spike']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    tmpfs:
+      - /var/lib/postgresql/data
+    volumes:
+      - ./init:/docker-entrypoint-initdb.d:ro

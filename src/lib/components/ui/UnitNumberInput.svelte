@@ -22,6 +22,7 @@
 		placeholder,
 		hint,
 		error,
+		disabled = false,
 	}: {
 		label: string
 		/** The canonical stored value (always in the first unit's terms when factor = 1). */
@@ -31,6 +32,7 @@
 		placeholder?: string
 		hint?: string
 		error?: string
+		disabled?: boolean
 	} = $props()
 
 	const id = useId('unit-input')
@@ -94,7 +96,7 @@
 			<Label for={id}>{label}</Label>
 			{#if hint}
 				<Tooltip content={hint} side="top">
-					<span class="text-secondary transition-colors cursor-help hover:text-body"><QuestionIcon size={12} weight="bold" /></span>
+					<span class="cursor-help text-secondary transition-colors hover:text-body"><QuestionIcon size={12} weight="bold" /></span>
 				</Tooltip>
 			{/if}
 		</div>
@@ -108,8 +110,9 @@
 			bind:value={text}
 			{placeholder}
 			aria-invalid={!!error}
+			{disabled}
 			class="
-				flex w-full min-w-0 px-3 py-2 pr-20 text-sm text-body bg-page outline-none transition-colors
+				flex w-full min-w-0 bg-page px-3 py-2 pr-20 text-sm text-body transition-colors outline-none
 				placeholder:text-dim
 				focus:ring-2 focus:ring-accent
 				aria-invalid:ring-1 aria-invalid:ring-error-border
@@ -118,10 +121,11 @@
 			onblur={() => focused = false}
 			oninput={onInput}
 		/>
-		<div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+		<div class="absolute top-1/2 right-2 flex -translate-y-1/2 items-center gap-1.5">
 			{#if units.length > 1}
 				<Select.Root
 					type="single"
+					{disabled}
 					value={String(unitIndex)}
 					onValueChange={v => selectUnit(Number(v))}
 				>
@@ -129,7 +133,7 @@
 						aria-label="Display unit"
 						title="Change display unit — stored in {storageUnit.label}"
 						class="
-							inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-semibold bg-accent-subtle text-accent border border-accent-border/60 cursor-pointer
+							inline-flex cursor-pointer items-center gap-1 border border-accent-border/60 bg-accent-subtle px-1.5 py-0.5 text-xs font-semibold text-accent
 							transition-colors
 							hover:bg-accent-subtle/60
 							data-[state=open]:ring-2 data-[state=open]:ring-accent
@@ -141,7 +145,7 @@
 					<Select.Portal>
 						<Select.Content
 							class="
-								z-9999 max-h-64 min-w-24 select-none bg-surface shadow-lg outline-none overflow-hidden
+								z-9999 max-h-64 min-w-24 overflow-hidden bg-surface shadow-lg outline-none select-none
 								data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95
 								data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95
 							"
@@ -152,7 +156,7 @@
 										value={String(index)}
 										label={unit.label}
 										class="
-											flex items-center justify-between gap-2 w-full px-2.5 py-1.5 text-xs select-none cursor-pointer text-body outline-none transition-colors
+											flex w-full cursor-pointer items-center justify-between gap-2 px-2.5 py-1.5 text-xs text-body transition-colors outline-none select-none
 											data-highlighted:bg-raised data-highlighted:text-heading
 										"
 									>
@@ -178,7 +182,7 @@
 	</div>
 
 	{#if error !== undefined}
-		<div class="text-error text-xs transition-opacity absolute bottom-0 left-0 pointer-events-none" class:opacity-0={!error}>
+		<div class="pointer-events-none absolute bottom-0 left-0 text-xs text-error transition-opacity" class:opacity-0={!error}>
 			{error}
 		</div>
 	{/if}

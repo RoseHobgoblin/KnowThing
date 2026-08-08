@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KnowThing planetary viewer comparison</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.6.2/dist/maplibre-gl.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cesium@1.132.0/Build/Cesium/Widgets/widgets.css">
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #080a0f; color: #e9e3cf; }
+    * { box-sizing: border-box; }
+    body { margin: 0; display: grid; min-height: 100vh; grid-template-rows: auto 1fr auto; }
+    header, footer { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; padding: .75rem 1rem; background: #11141d; }
+    button, select { color: inherit; background: #202431; border: 1px solid #555b68; padding: .55rem .75rem; }
+    button[aria-pressed="true"] { border-color: #d8bd63; color: #ffe893; }
+    #viewer { min-height: 32rem; position: relative; }
+    #status { margin-left: auto; color: #bbb3a0; font-size: .85rem; }
+    #handoff { font: .75rem ui-monospace, monospace; white-space: pre-wrap; }
+  </style>
+  <script>globalThis.CESIUM_BASE_URL = 'https://cdn.jsdelivr.net/npm/cesium@1.132.0/Build/Cesium/';</script>
+  <script src="https://cdn.jsdelivr.net/npm/cesium@1.132.0/Build/Cesium/Cesium.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.6.2/dist/maplibre-gl.js"></script>
+</head>
+<body>
+  <header aria-label="Prototype controls">
+    <strong>Focused planetary viewer spike</strong>
+    <button id="cesium" type="button" aria-pressed="true">Cesium</button>
+    <button id="maplibre" type="button" aria-pressed="false">MapLibre</button>
+    <label>World
+      <select id="world">
+        <option value="mars">Mars</option>
+        <option value="pelagos">Fictional sphere</option>
+      </select>
+    </label>
+    <button id="return" type="button">Return to Orrery</button>
+    <span id="status" role="status" aria-live="polite">Loading…</span>
+  </header>
+  <main id="viewer" aria-label="Interactive focused planetary map"></main>
+  <footer>
+    <span>Handoff contract:</span>
+    <output id="handoff"></output>
+  </footer>
+  <script type="module" src="./prototype.js"></script>
+</body>
+</html>

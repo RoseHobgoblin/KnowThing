@@ -4,23 +4,23 @@ import {
 	type MediaAssetBinding,
 } from '$lib/media/asset-binding.js'
 
-export const SURFACE_RECIPE_VERSION = 3 as const
+export const SURFACE_RECIPE_VERSION = 4 as const
 
-export type SurfaceClass = 'auto' | 'rocky' | 'terrestrial' | 'gas' | 'ice'
-export type ResolvedSurfaceClass = Exclude<SurfaceClass, 'auto'>
+export type SurfaceClass = 'rocky' | 'terrestrial' | 'gas' | 'ice'
+export type ResolvedSurfaceClass = SurfaceClass
 export type SurfaceFallback = 'procedural' | 'flat'
 export type SurfaceMapChannel = 'albedo' | 'elevation' | 'normal' | 'roughness' | 'clouds' | 'emissive'
 export type SurfaceSourceKind = 'uploaded' | 'procedural' | 'constant' | 'unavailable'
+export type SurfaceCoverageKey = 'surfaceWater' | 'vegetation' | 'permanentSnowIce' | 'clouds'
+
+export type SurfaceCoverage = Record<SurfaceCoverageKey, number | null>
 
 export type SurfaceRecipe = {
 	version: typeof SURFACE_RECIPE_VERSION
 	fallback: SurfaceFallback
-	class: SurfaceClass
+	class: SurfaceClass | null
 	seed: number | null
-	hydrosphereFraction: number | null
-	cloudCoverage: number | null
-	vegetationFraction: number | null
-	snowCoverage: number | null
+	coverage: SurfaceCoverage
 	maps: Partial<Record<SurfaceMapChannel, MediaAssetBinding>>
 }
 
@@ -29,9 +29,6 @@ export type SurfaceBodyInput = {
 	slug: string
 	bodyType: string
 	temperatureK?: number | null
-	temperature?: string | null
-	composition?: string | null
-	atmosphere?: string | null
 }
 
 export type SurfaceChannelPlan = {
@@ -40,32 +37,40 @@ export type SurfaceChannelPlan = {
 	binding: MediaAssetBinding | null
 }
 
+export type SurfaceDiagnostic = {
+	code: 'profile-vegetation-temperature' | 'profile-snow-temperature' | 'empty-vegetation-domain' | 'incompatible-coverage'
+	message: string
+}
+
 export type SurfacePlan = {
 	recipe: SurfaceRecipe
 	class: ResolvedSurfaceClass
-	classSource: 'explicit' | 'inferred'
+	classSource: 'explicit' | 'default'
 	seed: number
 	temperatureK: number | null
-	hydrosphereFraction: number
-	hydrosphereSource: 'explicit' | 'inferred' | 'default'
-	vegetationFraction: number
-	vegetationSource: 'explicit' | 'inferred' | 'default'
-	snowCoverage: number
-	snowSource: 'explicit' | 'inferred' | 'default'
+	coverage: SurfaceCoverage
+	coverageSource: Record<SurfaceCoverageKey, 'explicit' | 'unknown'>
+	diagnostics: SurfaceDiagnostic[]
 	channels: Record<SurfaceMapChannel, SurfaceChannelPlan>
 }
 
-const CHANNELS: SurfaceMapChannel[] = ['albedo', 'elevation', 'normal', 'roughness', 'clouds', 'emissive']
+export const SURFACE_CHANNELS: readonly SurfaceMapChannel[] = [
+	'albedo', 'elevation', 'normal', 'roughness', 'clouds', 'emissive',
+]
+
+const DEFAULT_COVERAGE: SurfaceCoverage = {
+	surfaceWater: null,
+	vegetation: null,
+	permanentSnowIce: null,
+	clouds: null,
+}
 
 const DEFAULT_RECIPE: SurfaceRecipe = {
 	version: SURFACE_RECIPE_VERSION,
 	fallback: 'procedural',
-	class: 'auto',
+	class: null,
 	seed: null,
-	hydrosphereFraction: null,
-	cloudCoverage: null,
-	vegetationFraction: null,
-	snowCoverage: null,
+	coverage: DEFAULT_COVERAGE,
 	maps: {},
 }
 
@@ -82,48 +87,40 @@ function unitFraction(value: unknown): number | null {
 	return number == null ? null : Math.min(1, Math.max(0, number))
 }
 
-function clamp(value: number, minimum: number, maximum: number): number {
-	return Math.min(maximum, Math.max(minimum, value))
-}
-
 function enumValue<T extends string>(value: unknown, options: readonly T[], fallback: T): T {
 	return typeof value === 'string' && options.includes(value as T) ? value as T : fallback
 }
 
-/** Parse untrusted JSONB without allowing malformed surface data into rendering. */
+function parseCoverage(value: Record<string, unknown>): SurfaceCoverage {
+	const nested = isRecord(value.coverage) ? value.coverage : null
+	return {
+		// v3 migration is deliberately value-only: no inferred appearance survives.
+		surfaceWater: unitFraction(nested?.surfaceWater ?? value.hydrosphereFraction),
+		vegetation: unitFraction(nested?.vegetation ?? value.vegetationFraction),
+		permanentSnowIce: unitFraction(nested?.permanentSnowIce ?? value.snowCoverage),
+		clouds: unitFraction(nested?.clouds ?? value.cloudCoverage),
+	}
+}
+
+/** Parse untrusted JSONB and upgrade explicit v3 settings to recipe v4. */
 export function parseSurfaceRecipe(value: unknown): SurfaceRecipe {
-	if (!isRecord(value)) return { ...DEFAULT_RECIPE, maps: {} }
+	if (!isRecord(value)) return { ...DEFAULT_RECIPE, coverage: { ...DEFAULT_COVERAGE }, maps: {} }
 	const rawMaps = isRecord(value.maps) ? value.maps : {}
 	const maps: Partial<Record<SurfaceMapChannel, MediaAssetBinding>> = {}
-	for (const channel of CHANNELS) {
+	for (const channel of SURFACE_CHANNELS) {
 		const binding = parseMediaAssetBinding(rawMaps[channel], `surface-${channel}`)
 		if (binding) maps[channel] = binding
 	}
 	const rawSeed = finiteNumber(value.seed)
+	const parsedClass = enumValue(value.class, ['rocky', 'terrestrial', 'gas', 'ice'], '')
 	return {
 		version: SURFACE_RECIPE_VERSION,
 		fallback: enumValue(value.fallback, ['procedural', 'flat'], DEFAULT_RECIPE.fallback),
-		class: enumValue(value.class, ['auto', 'rocky', 'terrestrial', 'gas', 'ice'], DEFAULT_RECIPE.class),
+		class: parsedClass || null,
 		seed: rawSeed == null ? null : Math.trunc(rawSeed),
-		hydrosphereFraction: unitFraction(value.hydrosphereFraction),
-		cloudCoverage: unitFraction(value.cloudCoverage),
-		vegetationFraction: unitFraction(value.vegetationFraction),
-		snowCoverage: unitFraction(value.snowCoverage),
+		coverage: parseCoverage(value),
 		maps,
 	}
-}
-
-function writtenTemperatureK(value: string | null | undefined): number | null {
-	if (!value) return null
-	const match = value.match(/([+−-]?\d+(?:\.\d+)?)\s*°?\s*([cfk])\b/i)
-	if (!match) return null
-	const amount = Number.parseFloat(match[1].replace('−', '-'))
-	if (!Number.isFinite(amount)) return null
-	const unit = match[2].toLowerCase()
-	let kelvin = amount
-	if (unit === 'c') kelvin = amount + 273.15
-	else if (unit === 'f') kelvin = (amount - 32) * 5 / 9 + 273.15
-	return kelvin > 0 ? kelvin : null
 }
 
 function stableSeed(value: string): number {
@@ -135,66 +132,79 @@ function stableSeed(value: string): number {
 	return hash >>> 0
 }
 
-export function inferSurfaceClass(body: SurfaceBodyInput): ResolvedSurfaceClass {
-	const evidence = `${body.bodyType} ${body.composition ?? ''} ${body.atmosphere ?? ''}`.toLowerCase()
-	if (/gas giant|jovian|neptune|hydrogen|helium/.test(evidence)) return 'gas'
-	if (/ice|icy|frozen|cryovolcan|glacier/.test(evidence)) return 'ice'
-	if (/terrestrial|ocean|water world|earthlike|earth-like/.test(evidence)) return 'terrestrial'
-	return 'rocky'
-}
-
 function channel(source: SurfaceSourceKind, binding: MediaAssetBinding | null = null): SurfaceChannelPlan {
 	return { source, filename: binding?.filename ?? null, binding }
 }
 
+function coverageDiagnostics(
+	surfaceClass: SurfaceClass,
+	temperatureK: number | null,
+	coverage: SurfaceCoverage,
+): SurfaceDiagnostic[] {
+	const diagnostics: SurfaceDiagnostic[] = []
+	if (coverage.vegetation != null && coverage.vegetation > 0 && surfaceClass !== 'terrestrial') {
+		diagnostics.push({ code: 'incompatible-coverage', message: 'Vegetation coverage requires the terrestrial surface class and is currently inactive.' })
+	}
+	if (coverage.surfaceWater != null && coverage.surfaceWater > 0 && !['rocky', 'terrestrial'].includes(surfaceClass)) {
+		diagnostics.push({ code: 'incompatible-coverage', message: 'Surface-water coverage is inactive for this surface class.' })
+	}
+	if (coverage.permanentSnowIce != null && coverage.permanentSnowIce > 0 && !['rocky', 'terrestrial'].includes(surfaceClass)) {
+		diagnostics.push({ code: 'incompatible-coverage', message: 'Permanent snow and ice coverage is inactive for this surface class.' })
+	}
+	if (temperatureK != null && coverage.vegetation != null && coverage.vegetation > 0
+		&& (temperatureK < 240 || temperatureK > 330)) {
+		diagnostics.push({
+			code: 'profile-vegetation-temperature',
+			message: 'Vegetation placement is outside the Earthlike illustrative placement profile; the authored target is still honored.',
+		})
+	}
+	if (temperatureK != null && coverage.permanentSnowIce != null
+		&& coverage.permanentSnowIce > 0 && temperatureK > 310) {
+		diagnostics.push({
+			code: 'profile-snow-temperature',
+			message: 'Snow and ice placement is outside the Earthlike illustrative placement profile; the authored target is still honored.',
+		})
+	}
+	return diagnostics
+}
+
 export function composeSurfacePlan(body: SurfaceBodyInput, rawRecipe: unknown): SurfacePlan {
 	const recipe = parseSurfaceRecipe(rawRecipe)
-	const surfaceClass = recipe.class === 'auto' ? inferSurfaceClass(body) : recipe.class
+	const surfaceClass = recipe.class ?? 'rocky'
 	const procedural = recipe.fallback === 'procedural'
 	const generatedRelief = procedural && surfaceClass !== 'gas'
-	const evidence = `${body.bodyType} ${body.composition ?? ''} ${body.atmosphere ?? ''}`
-	const inferredOcean = /ocean|water world/i.test(evidence)
-	const inferredVegetation = /earth[ -]?like|garden world|biosphere|vegetat|forest|flora/i.test(evidence)
-	const hydrosphereFraction = recipe.hydrosphereFraction ?? (inferredOcean ? 0.8 : 0)
-	const temperatureK = typeof body.temperatureK === 'number' && body.temperatureK > 0
+	const temperatureK = typeof body.temperatureK === 'number' && Number.isFinite(body.temperatureK) && body.temperatureK > 0
 		? body.temperatureK
-		: writtenTemperatureK(body.temperature)
-	const vegetationFraction = recipe.vegetationFraction ?? (inferredVegetation ? 0.55 : 0)
-	const inferredSnow = temperatureK != null && hydrosphereFraction > 0 && surfaceClass !== 'gas'
-		? clamp((296 - temperatureK) / 70, 0, 0.9) * Math.min(1, hydrosphereFraction * 2)
-		: 0
-	const snowCoverage = recipe.snowCoverage ?? inferredSnow
+		: null
 	const uploaded = (mapChannel: SurfaceMapChannel) => recipe.maps[mapChannel]
 	const choose = (mapChannel: SurfaceMapChannel, fallback: SurfaceSourceKind): SurfaceChannelPlan => {
 		const binding = uploaded(mapChannel)
 		return binding ? channel('uploaded', binding) : channel(fallback)
 	}
-
-	let hydrosphereSource: SurfacePlan['hydrosphereSource'] = 'default'
-	if (inferredOcean) hydrosphereSource = 'inferred'
-	if (recipe.hydrosphereFraction != null) hydrosphereSource = 'explicit'
-	let vegetationSource: SurfacePlan['vegetationSource'] = inferredVegetation ? 'inferred' : 'default'
-	if (recipe.vegetationFraction != null) vegetationSource = 'explicit'
-	let snowSource: SurfacePlan['snowSource'] = inferredSnow > 0 ? 'inferred' : 'default'
-	if (recipe.snowCoverage != null) snowSource = 'explicit'
+	const compatibleCoverage: SurfaceCoverage = {
+		surfaceWater: ['rocky', 'terrestrial'].includes(surfaceClass) ? recipe.coverage.surfaceWater : null,
+		vegetation: surfaceClass === 'terrestrial' ? recipe.coverage.vegetation : null,
+		permanentSnowIce: ['rocky', 'terrestrial'].includes(surfaceClass) ? recipe.coverage.permanentSnowIce : null,
+		clouds: recipe.coverage.clouds,
+	}
 	return {
 		recipe,
 		class: surfaceClass,
-		classSource: recipe.class === 'auto' ? 'inferred' : 'explicit',
+		classSource: recipe.class == null ? 'default' : 'explicit',
 		seed: recipe.seed ?? stableSeed(`${body.id}:${body.slug}`),
 		temperatureK,
-		hydrosphereFraction,
-		hydrosphereSource,
-		vegetationFraction,
-		vegetationSource,
-		snowCoverage,
-		snowSource,
+		coverage: compatibleCoverage,
+		coverageSource: Object.fromEntries(
+			(Object.keys(DEFAULT_COVERAGE) as SurfaceCoverageKey[])
+				.map(key => [key, recipe.coverage[key] == null ? 'unknown' : 'explicit']),
+		) as SurfacePlan['coverageSource'],
+		diagnostics: coverageDiagnostics(surfaceClass, temperatureK, recipe.coverage),
 		channels: {
 			albedo: choose('albedo', procedural ? 'procedural' : 'constant'),
 			elevation: choose('elevation', generatedRelief ? 'procedural' : 'unavailable'),
 			normal: choose('normal', 'unavailable'),
 			roughness: choose('roughness', procedural ? 'procedural' : 'constant'),
-			clouds: choose('clouds', procedural && recipe.cloudCoverage != null && recipe.cloudCoverage > 0 ? 'procedural' : 'unavailable'),
+			clouds: choose('clouds', procedural && compatibleCoverage.clouds != null && compatibleCoverage.clouds > 0 ? 'procedural' : 'unavailable'),
 			emissive: choose('emissive', 'unavailable'),
 		},
 	}
@@ -206,12 +216,22 @@ export function surfaceMediaUrl(asset: MediaAssetBinding | string): string {
 		: mediaAssetContentUrl(asset)
 }
 
+export type SurfacePlanSummary = 'Provided' | 'Mixed' | 'Illustrative' | 'Flat'
+
+export function summarizeSurfacePlan(plan: SurfacePlan): SurfacePlanSummary {
+	const sources = new Set(SURFACE_CHANNELS.map(name => plan.channels[name].source))
+	const uploaded = sources.has('uploaded')
+	const procedural = sources.has('procedural')
+	if (uploaded && procedural) return 'Mixed'
+	if (uploaded) return 'Provided'
+	if (procedural) return 'Illustrative'
+	return 'Flat'
+}
+
 export function describeSurfacePlan(plan: SurfacePlan): string {
-	const uploadedCount = CHANNELS.filter(channelName => plan.channels[channelName].source === 'uploaded').length
-	if (uploadedCount > 0) {
-		const fallback = CHANNELS.some(channelName => plan.channels[channelName].source === 'procedural')
-		return fallback ? `Uploaded surface data (${uploadedCount} channels) with procedural gaps` : `Uploaded surface data (${uploadedCount} channels)`
-	}
-	if (plan.channels.albedo.source === 'procedural') return `Procedural ${plan.class} surface (illustrative)`
-	return 'Flat surface; no texture data'
+	const summary = summarizeSurfacePlan(plan)
+	if (summary === 'Provided') return 'Provided surface data'
+	if (summary === 'Mixed') return 'Mixed provided and illustrative surface data'
+	if (summary === 'Illustrative') return `Illustrative procedural ${plan.class} surface`
+	return 'Flat surface'
 }

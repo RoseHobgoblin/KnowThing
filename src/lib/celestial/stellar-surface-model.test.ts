@@ -44,7 +44,7 @@ describe('stellar surface recipe', () => {
 		expect(first.temperatureSource).toBe('spectral')
 		expect(first.rotationSource).toBe('default')
 		expect(first.photosphere.source).toBe('procedural')
-		expect(describeStellarSurfacePlan(first)).toContain('illustrative')
+		expect(describeStellarSurfacePlan(first).toLowerCase()).toContain('illustrative')
 	})
 
 	it('lets an upload supersede generation while retaining its fallback recipe', () => {

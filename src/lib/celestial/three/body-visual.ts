@@ -20,6 +20,8 @@ import type { MapBody } from '../system-layout.js'
 import { resolveBodyVisibility, type VisibilityBodyKind } from './visibility-controller.js'
 import { createPlanetSurfaceVisual, type PlanetSurfaceVisual } from './surface-material.js'
 import { createStellarSurfaceVisual, type StellarSurfaceVisual } from './stellar-material.js'
+import type { ProceduralTextureSize } from './procedural-texture-client.js'
+import { resolveProceduralTextureLod, texturePriorityForLod } from './texture-lod.js'
 
 export type BodyVisual = {
 	anchor: Group
@@ -29,6 +31,8 @@ export type BodyVisual = {
 	radius: number
 	extent: number
 	ready: Promise<void>
+	getProceduralLod(): { desired: ProceduralTextureSize, settled: ProceduralTextureSize | null }
+	settleProceduralLod(worldUnitsPerPixel: number): Promise<void>
 	getScreenExtentPx(): number
 	getPickRadiusPx(): number
 	setVisibility(mode: VisibilityMode, worldUnitsPerPixel: number): void
@@ -170,6 +174,9 @@ export function createBodyVisual(args: {
 	let screenExtentPx = 0
 	let pickRadiusPx = 8
 	let markerActive = false
+	const surfaceLod = () => stellarSurface?.getProceduralLod()
+		?? planetSurface?.getProceduralLod()
+		?? { desired: 256 as const, settled: 256 as const }
 
 	return {
 		anchor,
@@ -179,6 +186,15 @@ export function createBodyVisual(args: {
 		radius,
 		extent,
 		ready: stellarSurface?.ready ?? planetSurface?.ready ?? Promise.resolve(),
+		getProceduralLod: surfaceLod,
+		settleProceduralLod(worldUnitsPerPixel) {
+			const current = surfaceLod().desired
+			const projectedPhysicalDiameterPx = radius * 2 / Math.max(worldUnitsPerPixel, Number.EPSILON)
+			const desired = resolveProceduralTextureLod(projectedPhysicalDiameterPx, current)
+			return stellarSurface?.setProceduralLod(desired, texturePriorityForLod(desired))
+				?? planetSurface?.setProceduralLod(desired, texturePriorityForLod(desired))
+				?? Promise.resolve()
+		},
 		getScreenExtentPx() {
 			return screenExtentPx
 		},

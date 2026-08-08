@@ -44,7 +44,6 @@ export interface MapBody {
 	rotationPeriodS?: number | null
 	axialTilt?: number | null
 	temperatureK?: number | null
-	temperature?: string | null
 	luminosityW?: number | null
 	composition?: string | null
 	atmosphere?: string | null

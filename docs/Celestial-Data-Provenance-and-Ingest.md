@@ -1,7 +1,9 @@
 # Celestial Data Provenance and Ingest
 
-**Status:** Proposed architecture  
+**Status:** Design intent with a partially implemented direct-image and procedural layer
 **Related documents:** [Atlas Architecture](./Atlas-Architecture.md), [Celestial Surface Models](./Celestial-Surface-Models.md), [Planetary Data Acquisition Catalogue](./Planetary-Data-Acquisition-Catalogue.md), [Celestial Orrery Roadmap](./Celestial-Orrery-Roadmap.md), [Celestial Body Rendering](./Celestial-Body-Rendering.md)
+
+> **Maturity:** Recipe v4, revision-pinned direct images, per-channel composition, calibrated procedural fallback, and texture LOD are current implementation. The evidence, immutable asset, derivation, release, GIS, and scientific-product sections remain design intent. Review after the first real ingest schema or published derived asset. **Expires on contact with implementation.**
 
 ## Decision Summary
 
@@ -56,29 +58,28 @@ The current implementation is best described as an **overview surface-material c
 It uses:
 
 - body identity for a stable fallback seed;
-- body type, composition, and atmosphere text for conservative class inference;
-- temperature for broad warm/cold palette selection;
-- an optional surface class override;
-- optional hydrosphere fraction and cloud coverage;
+- an explicit nullable surface class, with a documented rocky fallback when absent;
+- numeric Kelvin temperature only as a spatial-placement input and warning signal;
+- explicit nullable water, vegetation, permanent snow/ice, and cloud targets;
 - the body's existing display color as a restrained tint;
 - optional revision-pinned Media assets for individual texture channels.
 
-It does not use radius, mass, surface gravity, pressure, or temperature to synthesize physical geology. This is intentional: those facts do not uniquely determine a planet's map.
+It does not inspect body type, composition, atmosphere, or free prose to invent class or coverage. It does not use radius, mass, surface gravity, pressure, or temperature to synthesize physical geology. This is intentional: those facts do not uniquely determine a planet's map.
 
 ### Generated channels
 
-The fallback samples seeded three-dimensional simplex noise on the unit sphere, producing a seam-free 2:1 equirectangular plate. The current live implementation generates a 1024 x 512 texture in a worker and shares it through a bounded cache; projected-size LOD remains future work.
+The fallback samples seeded three-dimensional noise on the unit sphere, producing a seamless 2:1 equirectangular plate. A fixed 256 x 128 calibration pass uses spherical area weights and score quantiles to place explicitly requested coverage. The same thresholds feed 256, 512, and 1024 texture widths so LOD changes do not redefine the masks. Three priority-queued workers and a 64 MiB byte-budget cache serve the editor and map; idle workers terminate after 30 seconds.
 
 | Class | Illustrative behavior |
 |---|---|
-| Rocky / terrestrial | Relative relief, optional water separation, and height-correlated roughness |
+| Rocky / terrestrial | Relative relief, compatible explicit water and snow targets, terrestrial-only vegetation, and height-correlated roughness |
 | Ice | Broad ice coloring with ridged fissure-like detail |
 | Gas | Latitude bands warped by spherical noise, with broad warm/cool palettes |
-| Clouds | Separate opacity noise only when coverage is explicitly provided |
+| Clouds | Separate opacity noise when a cloud target is explicitly provided |
 
 Generated outputs are limited to albedo, relative elevation, roughness, and optional cloud opacity. Normal and emissive channels are unavailable unless supplied.
 
-The generator does not claim to produce tectonics, craters, volcanoes, climate, vegetation, life, or exact atmospheric circulation.
+Generated vegetation is only an illustrative placement mask for an explicit authored target. The generator does not claim to infer life or to produce tectonics, craters, volcanoes, climate, biomes, or exact atmospheric circulation.
 
 ### Composition and rendering
 
@@ -102,11 +103,11 @@ At render time, every channel is classified as one of:
 - `constant`;
 - `unavailable`.
 
-The surface plan also records whether class and hydrosphere were explicit or inferred. This is useful render provenance, but it is not yet durable research provenance.
+The surface plan records whether the class and every coverage target were explicit or unspecified, plus incompatibilities and impossible-domain findings. There is no inferred class or coverage provenance. This is useful render provenance, but it is not yet durable research provenance.
 
 ## Current Media Binding Layer
 
-Surface recipe version 2 replaces bare filenames with Media ID, filename snapshot, SHA-256 content hash, and interpretation metadata. Legacy version 1 strings remain readable and are upgraded against Media on the next celestial save. `media_asset_bindings` independently records structured usage by owner and channel.
+Surface recipe version 4 stores explicit nullable class and coverage inputs while retaining Media ID, filename snapshot, SHA-256 content hash, and interpretation metadata. The parser reads explicit version 3 values into version 4 and discards former auto/inferred results. `media_asset_bindings` independently records structured usage by owner and channel.
 
 The editor now provides search, compatible/all filtering, inline upload, thumbnails, live preview, replacement, and clearing for all six planetary channels and the Starwright photosphere. New selections require an image with known dimensions, a stored content hash, and a 2:1 aspect within a small export tolerance. Normal-map Y convention and elevation value units are explicit choices. Color/data interpretation is assigned by channel.
 
@@ -258,7 +259,7 @@ Every derivation should be reproducible without altering its inputs. A new tool 
 
 ### 5. Surface release
 
-A surface release is an immutable, published snapshot consumed by the renderer.
+A future surface release is an immutable, published snapshot consumed by the renderer. Live procedural recipes are intentionally unpinned and always use the newest deployed generator. Publishing a reproducible procedural result therefore requires baking it as a derived asset rather than pinning a live recipe to old generator code.
 
 It pins:
 
@@ -266,7 +267,7 @@ It pins:
 - a release number or stable ID;
 - every included layer and asset version;
 - hashes of runtime artifacts;
-- the fallback generator name, algorithm version, seed, and parameters when procedural channels remain;
+- hashes of baked procedural artifacts plus the producing tool revision and parameters when generated content is published;
 - publication time and publisher;
 - validation status.
 
@@ -502,9 +503,9 @@ Scientific imports expand the attack and resource surface. The ingest service mu
 
 Workers should run with explicit CPU, memory, time, and disk limits; restricted filesystem access; no ambient credentials; and no network access unless a specific import job requires an allowlisted fetch phase. Original objects and derived products should use separate storage prefixes and immutable hashes.
 
-## Migration from Surface Recipe Version 1
+## Migration to Surface Recipe Version 4
 
-Migration `0051_media_asset_bindings.sql` backfills structured usage for resolvable legacy filenames. The version 2 parser preserves unresolved legacy strings, while the next server-validated celestial save resolves them to Media ID/current hash or reports the broken reference instead of silently dropping it. Immutable scientific surface releases remain a later layer above these direct-image bindings.
+Migration `0051_media_asset_bindings.sql` backfills structured usage for resolvable legacy filenames. The version 4 parser carries forward explicit version 3 class, seed, coverage, and map bindings; it intentionally discards auto/inferred surface results. The next server-validated celestial save resolves legacy Media references to Media ID/current hash or reports the broken reference instead of silently dropping it. Immutable scientific surface releases remain a later layer above these direct-image bindings.
 
 ## Delivery Sequence
 
@@ -529,7 +530,7 @@ Migration `0051_media_asset_bindings.sql` backfills structured usage for resolva
 - Replace exact-filename text inputs with search, upload, preview, and validation.
 - Extend per-channel interpretation beyond normal Y/elevation units into complete coordinate and measurement metadata.
 - Derive overview assets and normal maps where explicitly requested.
-- Add focused-body texture level of detail.
+- Use projected physical-sphere texture LOD in the orrery and a fixed high-resolution editor preview. A focused tile viewer remains separate work.
 
 ### Phase 3: General raster ingest
 

@@ -4,6 +4,7 @@
 	import {
 		composeSurfacePlan,
 		describeSurfacePlan,
+		summarizeSurfacePlan,
 		surfaceMediaUrl,
 		type SurfaceMapChannel,
 		type SurfacePlan,
@@ -11,6 +12,7 @@
 	import {
 		composeStellarSurfacePlan,
 		describeStellarSurfacePlan,
+		summarizeStellarSurfacePlan,
 		stellarSurfaceMediaUrl,
 	} from '$lib/celestial/stellar-surface-model.js'
 	import type { MapBody } from '$lib/celestial/system-layout.js'
@@ -38,6 +40,7 @@
 		plateSource: string
 		plateAriaLabel: string
 		description: string
+		status: string
 		entries: PreviewEntry[]
 	}
 
@@ -52,8 +55,9 @@
 				plateSource: stellarPlan.photosphere.source,
 				plateAriaLabel: 'Two-to-one equirectangular preview of the stellar photosphere',
 				description: describeStellarSurfacePlan(stellarPlan),
+				status: summarizeStellarSurfacePlan(stellarPlan),
 				entries: [
-					{ key: 'photosphere', label: 'Plate', value: stellarPlan.photosphere.source },
+					{ key: 'photosphere', label: 'Plate', value: stellarPlan.photosphere.filename ?? stellarPlan.photosphere.source },
 					{ key: 'morphology', label: 'Morphology', value: morphology },
 					{ key: 'temperature', label: 'Temperature', value: `${Math.round(stellarPlan.temperatureK).toLocaleString('en-US')} K` },
 					{ key: 'activity', label: 'Activity', value: `${Math.round(stellarPlan.activity * 100)}%` },
@@ -62,7 +66,7 @@
 		}
 
 		const entries = (Object.entries(planetPlan.channels) as [SurfaceMapChannel, SurfacePlan['channels'][SurfaceMapChannel]][])
-			.map(([channel, channelPlan]) => ({ key: channel, label: channelLabels[channel], value: channelPlan.source }))
+			.map(([channel, channelPlan]) => ({ key: channel, label: channelLabels[channel], value: channelPlan.filename ?? channelPlan.source }))
 		return {
 			testId: 'surface-preview',
 			title: 'Surface preview',
@@ -71,6 +75,7 @@
 			plateSource: planetPlan.channels.albedo.source,
 			plateAriaLabel: 'Two-to-one equirectangular preview of the surface albedo',
 			description: describeSurfacePlan(planetPlan),
+			status: summarizeSurfacePlan(planetPlan),
 			entries,
 		}
 	})
@@ -221,7 +226,7 @@
 								rotationDays: currentStellarPlan.rotationDays,
 								activity: currentStellarPlan.activity,
 								seed: currentStellarPlan.seed,
-							})
+							}, { size: 1024, priority: 'foreground' })
 							if (version !== renderVersion) return
 							drawPixelPlate(canvas, generated.width, generated.height, generated.photosphere)
 						} else {
@@ -239,12 +244,9 @@
 								class: currentPlanetPlan.class,
 								seed: currentPlanetPlan.seed,
 								temperatureK: currentPlanetPlan.temperatureK,
-								hydrosphereFraction: currentPlanetPlan.hydrosphereFraction,
-								cloudCoverage: currentPlanetPlan.recipe.cloudCoverage,
-								vegetationFraction: currentPlanetPlan.vegetationFraction,
-								snowCoverage: currentPlanetPlan.snowCoverage,
+								coverage: currentPlanetPlan.coverage,
 								tint: [202, 225, 255],
-							})
+							}, { size: 1024, priority: 'foreground' })
 							if (version !== renderVersion) return
 							drawPixelPlate(canvas, generated.width, generated.height, generated.albedo)
 						} else {
@@ -323,15 +325,21 @@
 		</div>
 	</div>
 
-	<div class="space-y-3 border-t border-border-subtle p-3">
-		<p class="text-xs font-medium text-body">{previewModel.description}</p>
-		<div class="grid grid-cols-2 gap-1.5">
-			{#each previewModel.entries as entry (entry.key)}
-				<div class="flex items-center justify-between gap-2 bg-page px-2 py-1.5 text-[0.625rem]">
-					<span class="text-secondary">{entry.label}</span>
-					<span class="truncate font-medium text-body">{entry.value}</span>
-				</div>
-			{/each}
+	<div class="space-y-2 border-t border-border-subtle p-3">
+		<div class="flex items-start justify-between gap-3 text-xs">
+			<span class="font-semibold text-body">{previewModel.status}</span>
+			<span class="text-right text-secondary">{previewModel.description}</span>
 		</div>
+		<details class="border-t border-border-subtle pt-2">
+			<summary class="cursor-pointer text-xs text-secondary hover:text-body">Channel details</summary>
+			<div class="mt-2 grid grid-cols-2 gap-1.5">
+				{#each previewModel.entries as entry (entry.key)}
+					<div class="flex items-center justify-between gap-2 bg-page px-2 py-1.5 text-[0.625rem]">
+						<span class="text-secondary">{entry.label}</span>
+						<span class="truncate font-medium text-body">{entry.value}</span>
+					</div>
+				{/each}
+			</div>
+		</details>
 	</div>
 </div>

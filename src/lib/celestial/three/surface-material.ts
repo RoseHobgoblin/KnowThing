@@ -16,13 +16,19 @@ import {
 } from 'three'
 import { composeSurfacePlan, surfaceMediaUrl, type SurfaceMapChannel, type SurfacePlan } from '../surface-model.js'
 import type { MapBody } from '../system-layout.js'
-import { requestProceduralPlanetTexture } from './procedural-texture-client.js'
+import {
+	requestProceduralPlanetTexture,
+	type ProceduralTextureSize,
+	type TexturePriority,
+} from './procedural-texture-client.js'
 
 export type PlanetSurfaceVisual = {
 	material: MeshStandardMaterial
 	cloudMesh: Mesh | null
 	plan: SurfacePlan
 	ready: Promise<void>
+	getProceduralLod(): { desired: ProceduralTextureSize, settled: ProceduralTextureSize | null }
+	setProceduralLod(size: ProceduralTextureSize, priority: TexturePriority): Promise<void>
 	setGeometryVisible(visible: boolean): void
 	dispose(): void
 }
@@ -47,36 +53,35 @@ function dataTexture(data: Uint8Array, width: number, height: number, color: boo
 	return configureTexture(new DataTexture(data, width, height, RGBAFormat), color) as DataTexture
 }
 
-/**
- * Composes each material channel independently. Uploaded media always wins;
- * procedural output fills only channels that the surface plan marks procedural.
- */
+/** Uploaded channels remain owned for the visual lifetime; generated LODs are swapped atomically. */
 export function createPlanetSurfaceVisual(args: {
 	body: MapBody
 	colorCss: string
 	radius: number
 	sphereGeometry: SphereGeometry
+	initialLod?: ProceduralTextureSize
+	initialPriority?: TexturePriority
 	onTextureChange?: () => void
 }): PlanetSurfaceVisual {
-	const { body, colorCss, radius, sphereGeometry, onTextureChange } = args
+	const {
+		body, colorCss, radius, sphereGeometry, onTextureChange,
+		initialLod = 256, initialPriority = 'background',
+	} = args
 	const plan = composeSurfacePlan(body, body.surface)
-	const material = new MeshStandardMaterial({
-		color: new Color(colorCss),
-		roughness: 0.82,
-		metalness: 0.03,
-	})
+	const material = new MeshStandardMaterial({ color: new Color(colorCss), roughness: 0.82, metalness: 0.03 })
 	const ownedTextures = new Set<Texture>()
+	let generatedTextures = new Set<Texture>()
 	let disposed = false
 	let geometryVisible = true
 	let cloudReady = false
 	let cloudMaterial: MeshStandardMaterial | null = null
 	let cloudMesh: Mesh | null = null
-	const readyTasks: Promise<void>[] = []
+	let desiredLod: ProceduralTextureSize = initialLod
+	let settledLod: ProceduralTextureSize | null = null
+	let activeLod: ProceduralTextureSize | null = null
+	let requestVersion = 0
+	let activeRequest: Promise<void> = Promise.resolve()
 
-	const own = <T extends Texture>(texture: T): T => {
-		ownedTextures.add(texture)
-		return texture
-	}
 	const setColorMap = (texture: Texture) => {
 		material.map = texture
 		material.color.set(0xFFFFFF)
@@ -99,41 +104,65 @@ export function createPlanetSurfaceVisual(args: {
 	}
 
 	const needsProcedural = Object.values(plan.channels).some(channelPlan => channelPlan.source === 'procedural')
-	if (needsProcedural) {
-		const task = requestProceduralPlanetTexture({
+	if (!needsProcedural) settledLod = initialLod
+	function setProceduralLod(size: ProceduralTextureSize, priority: TexturePriority): Promise<void> {
+		if (activeLod === size) return activeRequest
+		desiredLod = size
+		if (!needsProcedural || settledLod === size) return Promise.resolve()
+		const version = ++requestVersion
+		activeLod = size
+		activeRequest = requestProceduralPlanetTexture({
 			class: plan.class,
 			seed: plan.seed,
 			temperatureK: plan.temperatureK,
-			hydrosphereFraction: plan.hydrosphereFraction,
-			cloudCoverage: plan.recipe.cloudCoverage,
-			vegetationFraction: plan.vegetationFraction,
-			snowCoverage: plan.snowCoverage,
+			coverage: plan.coverage,
 			tint: colorTuple(colorCss),
-		}).then((generated) => {
-			if (disposed) return
-			if (plan.channels.albedo.source === 'procedural') {
-				setColorMap(own(dataTexture(generated.albedo, generated.width, generated.height, true)))
+		}, { size, priority }).then((generated) => {
+			if (disposed || version !== requestVersion || size !== desiredLod) return
+			const nextTextures = new Set<Texture>()
+			const ownGenerated = <T extends Texture>(texture: T): T => {
+				nextTextures.add(texture)
+				return texture
 			}
-			if (plan.channels.roughness.source === 'procedural') {
+			const albedo = plan.channels.albedo.source === 'procedural'
+				? ownGenerated(dataTexture(generated.albedo, generated.width, generated.height, true))
+				: null
+			const roughness = plan.channels.roughness.source === 'procedural'
+				? ownGenerated(dataTexture(generated.roughness, generated.width, generated.height, false))
+				: null
+			const elevation = plan.channels.elevation.source === 'procedural' && generated.elevation
+				? ownGenerated(dataTexture(generated.elevation, generated.width, generated.height, false))
+				: null
+			const clouds = plan.channels.clouds.source === 'procedural' && generated.clouds
+				? ownGenerated(dataTexture(generated.clouds, generated.width, generated.height, false))
+				: null
+			if (albedo) setColorMap(albedo)
+			if (roughness) {
 				material.roughness = 1
-				material.roughnessMap = own(dataTexture(generated.roughness, generated.width, generated.height, false))
+				material.roughnessMap = roughness
 			}
-			if (plan.channels.elevation.source === 'procedural' && generated.elevation) {
-				material.bumpMap = own(dataTexture(generated.elevation, generated.width, generated.height, false))
+			if (elevation) {
+				material.bumpMap = elevation
 				material.bumpScale = 0.055
 			}
-			if (plan.channels.clouds.source === 'procedural' && generated.clouds && cloudMaterial && cloudMesh) {
-				cloudMaterial.alphaMap = own(dataTexture(generated.clouds, generated.width, generated.height, false))
+			if (clouds && cloudMaterial && cloudMesh) {
+				cloudMaterial.alphaMap = clouds
 				cloudMaterial.needsUpdate = true
 				cloudReady = true
 				cloudMesh.visible = geometryVisible
 			}
+			material.needsUpdate = true
+			const previousTextures = generatedTextures
+			generatedTextures = nextTextures
+			settledLod = size
+			activeLod = null
+			for (const texture of previousTextures) texture.dispose()
 			onTextureChange?.()
 		}).catch(() => {
-			// Flat material remains a truthful fallback when generation fails.
-			onTextureChange?.()
+			if (version === requestVersion) activeLod = null
+			if (version === requestVersion) onTextureChange?.()
 		})
-		readyTasks.push(task)
+		return activeRequest
 	}
 
 	const loader = new TextureLoader()
@@ -175,7 +204,6 @@ export function createPlanetSurfaceVisual(args: {
 	})
 	loadChannel('normal', (texture) => {
 		material.normalMap = texture
-		// A supplied normal map is more authoritative than fallback/height bump.
 		material.bumpMap = null
 		const normalY = plan.channels.normal.binding?.interpretation.normalY === 'down' ? -0.72 : 0.72
 		material.normalScale.set(0.72, normalY)
@@ -197,21 +225,27 @@ export function createPlanetSurfaceVisual(args: {
 		})
 	}
 
+	const ready = setProceduralLod(initialLod, initialPriority)
 	return {
 		material,
 		cloudMesh,
 		plan,
-		ready: Promise.all(readyTasks).then(() => undefined),
+		ready,
+		getProceduralLod: () => ({ desired: desiredLod, settled: settledLod }),
+		setProceduralLod,
 		setGeometryVisible(visible) {
 			geometryVisible = visible
 			if (cloudMesh) cloudMesh.visible = visible && cloudReady
 		},
 		dispose() {
 			disposed = true
+			requestVersion += 1
 			material.dispose()
 			cloudMaterial?.dispose()
 			for (const texture of ownedTextures) texture.dispose()
+			for (const texture of generatedTextures) texture.dispose()
 			ownedTextures.clear()
+			generatedTextures.clear()
 		},
 	}
 }

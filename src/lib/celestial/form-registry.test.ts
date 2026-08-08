@@ -163,10 +163,10 @@ describe('buildPayload', () => {
 		expect(payload.extra).toMatchObject({
 			density: '5.51 g/cm³',
 			surface: {
-				version: 3, fallback: 'flat', class: 'terrestrial', seed: 42,
-				hydrosphereFraction: 0.71,
-				vegetationFraction: 0.48,
-				snowCoverage: 0.12,
+				version: 4, fallback: 'flat', class: 'terrestrial', seed: 42,
+				coverage: {
+					surfaceWater: 0.71, clouds: null, vegetation: 0.48, permanentSnowIce: 0.12,
+				},
 				maps: {
 					albedo: { filename: 'Earth albedo.png' },
 					normal: { filename: 'Earth normal.png' },

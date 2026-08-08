@@ -40,8 +40,10 @@ export interface BodyInput {
 	rotationPeriod?: Seconds | null
 	axialTilt?: number | null
 
+	// Physical representative temperature.
+	temperature?: Kelvin | null
+
 	// Free-form passthrough text.
-	temperature?: string | null
 	age?: string | null
 	composition?: string | null
 	atmosphere?: string | null
@@ -101,7 +103,7 @@ export function body(input: BodyInput, relations: BodyRelations = {}): BodyModel
 		inclination: input.inclination,
 		rotationPeriodS: input.rotationPeriod,
 		axialTilt: input.axialTilt,
-		temperature: input.temperature,
+		temperatureK: input.temperature,
 		age: input.age,
 		composition: input.composition,
 		atmosphere: input.atmosphere,

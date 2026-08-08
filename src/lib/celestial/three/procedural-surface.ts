@@ -1,15 +1,29 @@
-import type { ResolvedSurfaceClass } from '../surface-model.js'
+import type { ResolvedSurfaceClass, SurfaceCoverage } from '../surface-model.js'
 import { fractalNoise, makeSimplex, type Noise3 } from './procedural-noise.js'
+import {
+	COVERAGE_CALIBRATION_HEIGHT,
+	COVERAGE_CALIBRATION_WIDTH,
+	GAS_DISPLAY_PROFILES,
+	PLANET_PROCEDURE_PROFILE as PROFILE,
+	PROCEDURAL_ALGORITHM_REVISION,
+	supportsCoverage,
+	type Rgb,
+} from './procedural-profiles.js'
 
 export type ProceduralSurfaceParameters = {
 	class: ResolvedSurfaceClass
 	seed: number
 	temperatureK: number | null
-	hydrosphereFraction: number | null
-	cloudCoverage: number | null
-	vegetationFraction: number
-	snowCoverage: number
+	coverage: SurfaceCoverage
 	tint?: [number, number, number] | null
+}
+
+export type MeasuredSurfaceCoverage = {
+	surfaceWater: number
+	permanentSnowIce: number
+	vegetation: number
+	vegetationOfSurface: number
+	clouds: number
 }
 
 export type GeneratedSurface = {
@@ -19,20 +33,33 @@ export type GeneratedSurface = {
 	elevation: Uint8Array | null
 	roughness: Uint8Array
 	clouds: Uint8Array | null
+	measuredCoverage: MeasuredSurfaceCoverage
+	algorithmRevision: number
+	diagnostics: string[]
 }
 
-type Rgb = [number, number, number]
+type Sample = { score: number, weight: number }
+type SurfacePoint = {
+	x: number
+	y: number
+	z: number
+	latitudeSin: number
+	weight: number
+	height: number
+	climate: number
+	localTemperatureK: number
+	altitude: number
+}
+type Thresholds = { water: number, snow: number, vegetation: number, clouds: number }
 
 const clamp = (value: number, minimum: number, maximum: number) => Math.min(maximum, Math.max(minimum, value))
 const mix = (a: number, b: number, amount: number) => a + (b - a) * amount
 const mixRgb = (a: Rgb, b: Rgb, amount: number): Rgb => [
-	mix(a[0], b[0], amount),
-	mix(a[1], b[1], amount),
-	mix(a[2], b[2], amount),
+	mix(a[0], b[0], amount), mix(a[1], b[1], amount), mix(a[2], b[2], amount),
 ]
 
 function smoothstep(edge0: number, edge1: number, value: number): number {
-	const amount = clamp((value - edge0) / (edge1 - edge0), 0, 1)
+	const amount = clamp((value - edge0) / Math.max(edge1 - edge0, Number.EPSILON), 0, 1)
 	return amount * amount * (3 - 2 * amount)
 }
 
@@ -51,39 +78,139 @@ function setPixel(target: Uint8Array, offset: number, color: Rgb, alpha = 255): 
 	target[offset + 3] = clamp(Math.round(alpha), 0, 255)
 }
 
-function tint(color: Rgb, target: Rgb | null | undefined, amount: number): Rgb {
-	return target ? mixRgb(color, target, amount) : color
+function weightedThreshold(samples: Sample[], target: number, highest: boolean): number {
+	if (target <= 0 || samples.length === 0) return highest ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY
+	if (target >= 1) return highest ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY
+	const ordered = samples.toSorted((left, right) => highest ? right.score - left.score : left.score - right.score)
+	const wanted = ordered.reduce((sum, sample) => sum + sample.weight, 0) * target
+	let accumulated = 0
+	for (const sample of ordered) {
+		accumulated += sample.weight
+		if (accumulated >= wanted) return sample.score
+	}
+	return ordered.at(-1)?.score ?? 0
 }
 
-function terrainColor(height: number, seaLevel: number, hydrosphere: number): { color: Rgb, roughness: number } {
-	if (hydrosphere > 0 && height <= seaLevel) {
+function pointAt(
+	pixelX: number,
+	pixelY: number,
+	width: number,
+	height: number,
+	primaryNoise: Noise3,
+	detailNoise: Noise3,
+	climateNoise: Noise3,
+	meanTemperatureK: number,
+): SurfacePoint {
+	const latitude = (0.5 - (pixelY + 0.5) / height) * Math.PI
+	const latitudeCos = Math.cos(latitude)
+	const latitudeSin = Math.sin(latitude)
+	const longitude = ((pixelX + 0.5) / width) * Math.PI * 2
+	const x = latitudeCos * Math.cos(longitude)
+	const y = latitudeSin
+	const z = latitudeCos * Math.sin(longitude)
+	const terrain = PROFILE.terrain
+	const base = fractal(primaryNoise, x * terrain.baseFrequency, y * terrain.baseFrequency, z * terrain.baseFrequency, terrain.baseOctaves)
+	const detail = fractal(detailNoise, x * terrain.detailFrequency, y * terrain.detailFrequency, z * terrain.detailFrequency, terrain.detailOctaves) * terrain.detailAmplitude
+	const heightValue = clamp(0.5 + (base + detail) * terrain.heightAmplitude, 0, 1)
+	const altitude = clamp((heightValue - 0.5) * 2.2, 0, 1)
+	const climate = clamp(0.5 + climateNoise(
+		x * PROFILE.placement.climateFrequency + 11,
+		y * PROFILE.placement.climateFrequency - 7,
+		z * PROFILE.placement.climateFrequency + 5,
+	) * 0.52, 0, 1)
+	const localTemperatureK = meanTemperatureK + PROFILE.climate.equatorialOffsetK
+		- PROFILE.climate.latitudeCoolingK * Math.abs(latitudeSin) ** PROFILE.climate.latitudeExponent
+		- PROFILE.climate.altitudeCoolingK * altitude
+	return { x, y, z, latitudeSin, weight: latitudeCos, height: heightValue, climate, localTemperatureK, altitude }
+}
+
+function vegetationScore(point: SurfacePoint): number {
+	const [coolStart, coolEnd] = PROFILE.climate.vegetationCoolEdgeK
+	const [warmStart, warmEnd] = PROFILE.climate.vegetationWarmEdgeK
+	const thermal = smoothstep(coolStart, coolEnd, point.localTemperatureK)
+		* (1 - smoothstep(warmStart, warmEnd, point.localTemperatureK))
+	return thermal
+		* ((1 - PROFILE.placement.vegetationClimateWeight) + point.climate * PROFILE.placement.vegetationClimateWeight)
+		* (1 - point.altitude * PROFILE.placement.vegetationAltitudePenalty)
+}
+
+function snowScore(point: SurfacePoint): number {
+	const coldness = 1 - smoothstep(250, 281, point.localTemperatureK)
+	return clamp(
+		Math.abs(point.latitudeSin) ** PROFILE.climate.latitudeExponent * PROFILE.placement.snowLatitudeWeight
+		+ point.altitude * PROFILE.placement.snowAltitudeWeight
+		+ coldness * PROFILE.placement.snowColdWeight
+		+ (point.climate - 0.5) * PROFILE.placement.snowClimateWeight,
+		0,
+		1,
+	)
+}
+
+function cloudScore(noise: Noise3, point: SurfacePoint): number {
+	return fractal(noise, point.x * 2.7, point.y * 4.1, point.z * 2.7, 5) * 0.5 + 0.5
+}
+
+function calibrate(
+	parameters: ProceduralSurfaceParameters,
+	primaryNoise: Noise3,
+	detailNoise: Noise3,
+	climateNoise: Noise3,
+	cloudNoise: Noise3,
+): { thresholds: Thresholds, diagnostics: string[] } {
+	const coverage = parameters.coverage
+	const meanTemperatureK = parameters.temperatureK ?? 288
+	const points: SurfacePoint[] = []
+	for (let y = 0; y < COVERAGE_CALIBRATION_HEIGHT; y++) {
+		for (let x = 0; x < COVERAGE_CALIBRATION_WIDTH; x++) {
+			points.push(pointAt(x, y, COVERAGE_CALIBRATION_WIDTH, COVERAGE_CALIBRATION_HEIGHT, primaryNoise, detailNoise, climateNoise, meanTemperatureK))
+		}
+	}
+	const waterTarget = supportsCoverage(parameters.class, 'water') ? coverage.surfaceWater ?? 0 : 0
+	const snowTarget = supportsCoverage(parameters.class, 'snow') ? coverage.permanentSnowIce ?? 0 : 0
+	const vegetationTarget = supportsCoverage(parameters.class, 'vegetation') ? coverage.vegetation ?? 0 : 0
+	const cloudTarget = coverage.clouds ?? 0
+	const water = weightedThreshold(points.map(point => ({ score: point.height, weight: point.weight })), waterTarget, false)
+	const snow = weightedThreshold(points.map(point => ({ score: snowScore(point), weight: point.weight })), snowTarget, true)
+	const eligible = points.filter(point => !(point.height <= water) && !(snowScore(point) >= snow))
+	const vegetation = weightedThreshold(
+		eligible.map(point => ({ score: vegetationScore(point), weight: point.weight })),
+		vegetationTarget,
+		true,
+	)
+	const clouds = weightedThreshold(
+		points.map(point => ({ score: cloudScore(cloudNoise, point), weight: point.weight })),
+		cloudTarget,
+		true,
+	)
+	const diagnostics: string[] = []
+	if (vegetationTarget > 0 && eligible.length === 0) {
+		diagnostics.push('Vegetation target could not be placed because no exposed non-snow land remains.')
+	}
+	return { thresholds: { water, snow, vegetation, clouds }, diagnostics }
+}
+
+function terrainColor(height: number, water: boolean, seaLevel: number): { color: Rgb, roughness: number } {
+	if (water) {
 		const depth = clamp((seaLevel - height) * 4, 0, 1)
-		const water = mixRgb([62, 111, 151], [14, 37, 72], depth)
-		return { color: water, roughness: 0.16 }
+		return { color: mixRgb(PROFILE.display.waterShallow, PROFILE.display.waterDeep, depth), roughness: 0.16 }
 	}
 	const altitude = clamp((height - seaLevel) * 2.2, 0, 1)
-	const lowland: Rgb = [132, 115, 88]
-	const highland: Rgb = [102, 92, 82]
-	return { color: mixRgb(lowland, highland, altitude), roughness: mix(0.82, 0.96, altitude) }
+	return {
+		color: mixRgb(PROFILE.display.lowland, PROFILE.display.highland, altitude),
+		roughness: mix(0.82, 0.96, altitude),
+	}
 }
 
 function gasColor(latitudeSin: number, warp: number, temperatureK: number | null): Rgb {
-	const bands = 11
-	const position = latitudeSin * bands + warp * 1.7
+	const position = latitudeSin * 11 + warp * 1.7
 	const fraction = position - Math.floor(position)
-	const warm: Rgb[] = [[213, 194, 164], [166, 130, 91], [235, 222, 198], [137, 98, 78]]
-	const cool: Rgb[] = [[139, 156, 174], [79, 101, 130], [186, 197, 207], [69, 80, 102]]
-	const palette = temperatureK != null && temperatureK < 250 ? cool : warm
+	const palette = temperatureK != null && temperatureK < 250 ? GAS_DISPLAY_PROFILES.cool : GAS_DISPLAY_PROFILES.warm
 	const index = ((Math.floor(position) % palette.length) + palette.length) % palette.length
 	const edge = Math.min(1, Math.min(fraction, 1 - fraction) * 8)
 	return mixRgb(palette[(index + 1) % palette.length], palette[index], edge)
 }
 
-/**
- * Produces small overview textures. These are illustrative fallbacks, not
- * claims about tectonics, climate, or cartography. All noise is sampled in 3D
- * on the unit sphere, so the equirectangular plate has no longitude seam.
- */
+/** Illustrative, seamless overview plates with area-calibrated authored coverage. */
 export function generateProceduralSurface(
 	parameters: ProceduralSurfaceParameters,
 	width = 256,
@@ -94,108 +221,100 @@ export function generateProceduralSurface(
 	const albedo = new Uint8Array(safeWidth * safeHeight * 4)
 	const roughness = new Uint8Array(albedo.length)
 	const elevation = parameters.class === 'gas' ? null : new Uint8Array(albedo.length)
-	const cloudCoverage = parameters.cloudCoverage ?? 0
-	const clouds = cloudCoverage > 0 ? new Uint8Array(albedo.length) : null
+	const clouds = (parameters.coverage.clouds ?? 0) > 0 ? new Uint8Array(albedo.length) : null
 	const primaryNoise = makeSimplex(parameters.seed)
 	const detailNoise = makeSimplex(parameters.seed ^ 0x9E3779B9)
 	const cloudNoise = makeSimplex(parameters.seed ^ 0x51AB3F)
 	const climateNoise = makeSimplex(parameters.seed ^ 0xC1A4E7)
-	const hydrosphere = parameters.hydrosphereFraction ?? 0
-	const seaLevel = mix(0.28, 0.72, hydrosphere)
-	const vegetationFraction = clamp(parameters.vegetationFraction, 0, 1)
-	const snowCoverage = clamp(parameters.snowCoverage, 0, 1)
+	const { thresholds, diagnostics } = calibrate(parameters, primaryNoise, detailNoise, climateNoise, cloudNoise)
 	const meanTemperatureK = parameters.temperatureK ?? 288
+	let totalWeight = 0
+	let waterWeight = 0
+	let snowWeight = 0
+	let eligibleWeight = 0
+	let vegetationWeight = 0
+	let cloudWeight = 0
 
 	for (let pixelY = 0; pixelY < safeHeight; pixelY++) {
-		const latitude = (0.5 - (pixelY + 0.5) / safeHeight) * Math.PI
-		const latitudeCos = Math.cos(latitude)
-		const latitudeSin = Math.sin(latitude)
 		for (let pixelX = 0; pixelX < safeWidth; pixelX++) {
-			const longitude = ((pixelX + 0.5) / safeWidth) * Math.PI * 2
-			const x = latitudeCos * Math.cos(longitude)
-			const y = latitudeSin
-			const z = latitudeCos * Math.sin(longitude)
+			const point = pointAt(pixelX, pixelY, safeWidth, safeHeight, primaryNoise, detailNoise, climateNoise, meanTemperatureK)
 			const offset = (pixelY * safeWidth + pixelX) * 4
-			const base = fractal(primaryNoise, x * 1.45, y * 1.45, z * 1.45, 5)
-			const detail = fractal(detailNoise, x * 5.2, y * 5.2, z * 5.2, 3) * 0.24
-			const heightValue = clamp(0.5 + (base + detail) * 0.48, 0, 1)
+			const water = supportsCoverage(parameters.class, 'water') && point.height <= thresholds.water
+			const snow = supportsCoverage(parameters.class, 'snow') && snowScore(point) >= thresholds.snow
+			const eligible = supportsCoverage(parameters.class, 'vegetation') && !water && !snow
+			const vegetation = eligible && vegetationScore(point) >= thresholds.vegetation
+			const cloudValue = clouds == null ? 0 : cloudScore(cloudNoise, point)
+			const cloudOpacity = clouds == null
+				? 0
+				: ((parameters.coverage.clouds ?? 0) >= 1
+					? 1
+					: smoothstep(thresholds.clouds - 0.08, thresholds.clouds + 0.08, cloudValue))
+			const cloudy = cloudOpacity >= 0.5
 			let color: Rgb
 			let roughnessValue: number
 
 			if (parameters.class === 'gas') {
-				const warp = fractal(primaryNoise, x * 2.4, y * 2.4, z * 2.4, 4)
-				color = gasColor(latitudeSin, warp, parameters.temperatureK)
+				const warp = fractal(primaryNoise, point.x * 2.4, point.y * 2.4, point.z * 2.4, 4)
+				color = gasColor(point.latitudeSin, warp, parameters.temperatureK)
 				roughnessValue = 0.68
 			} else if (parameters.class === 'ice') {
-				const crack = ridged(detailNoise, x * 6.5, y * 6.5, z * 6.5)
+				const crack = ridged(detailNoise, point.x * 6.5, point.y * 6.5, point.z * 6.5)
 				color = crack > 0.81
 					? mixRgb([216, 230, 239], [73, 119, 157], clamp((crack - 0.81) * 5.2, 0, 0.9))
-					: mixRgb([198, 216, 229], [233, 239, 242], heightValue)
-				roughnessValue = mix(0.38, 0.62, heightValue)
+					: mixRgb([198, 216, 229], [233, 239, 242], point.height)
+				roughnessValue = mix(0.38, 0.62, point.height)
 			} else {
-				const terrain = terrainColor(heightValue, seaLevel, hydrosphere)
+				const terrain = terrainColor(point.height, water, thresholds.water)
 				color = terrain.color
 				roughnessValue = terrain.roughness
-				const water = hydrosphere > 0 && heightValue <= seaLevel
-				const altitude = clamp((heightValue - seaLevel) * 2.2, 0, 1)
-				const absoluteLatitude = Math.abs(latitudeSin)
-				const localTemperatureK = meanTemperatureK + 14
-					- 45 * absoluteLatitude ** 1.35
-					- 24 * altitude
-				const needsClimate = (parameters.class === 'terrestrial' && vegetationFraction > 0) || snowCoverage > 0
-				const climate = needsClimate
-					? clamp(0.5 + climateNoise(x * 3.1 + 11, y * 3.1 - 7, z * 3.1 + 5) * 0.52, 0, 1)
-					: 0.5
-
-				if (parameters.class === 'terrestrial' && !water && vegetationFraction > 0) {
-					const thermalSuitability = smoothstep(252, 272, localTemperatureK)
-						* (1 - smoothstep(307, 327, localTemperatureK))
-					const vegetationPotential = thermalSuitability
-						* (0.34 + climate * 0.66)
-						* (1 - altitude * 0.58)
-					const threshold = mix(0.9, 0.2, vegetationFraction)
-					const vegetation = smoothstep(threshold - 0.09, threshold + 0.14, vegetationPotential)
-					const vegetationColor = mixRgb([111, 137, 55], [28, 83, 40], climate)
-					color = mixRgb(color, vegetationColor, vegetation * 0.94)
-					roughnessValue = mix(roughnessValue, 0.86, vegetation)
+				if (vegetation) {
+					color = mixRgb(color, mixRgb(PROFILE.display.vegetationDry, PROFILE.display.vegetationWet, point.climate), 0.94)
+					roughnessValue = mix(roughnessValue, 0.86, 0.94)
 				}
-
-				if (snowCoverage > 0) {
-					const coldness = 1 - smoothstep(250, 281, localTemperatureK)
-					const snowPotential = clamp(
-						absoluteLatitude ** 1.35 * 0.62
-						+ altitude * 0.48
-						+ coldness * 0.38
-						+ (climate - 0.5) * 0.08,
-						0,
-						1,
-					)
-					const threshold = mix(1.02, 0.18, snowCoverage)
-					const snow = smoothstep(threshold - 0.08, threshold + 0.06, snowPotential)
-					const snowColor = water
-						? mixRgb([198, 216, 228], [231, 237, 239], climate)
-						: mixRgb([211, 220, 224], [242, 242, 237], climate)
-					color = mixRgb(color, snowColor, snow * 0.96)
-					roughnessValue = mix(roughnessValue, water ? 0.43 : 0.66, snow)
+				if (snow) {
+					const snowPalette = water ? PROFILE.display.seaIce : PROFILE.display.landSnow
+					color = mixRgb(color, mixRgb(snowPalette[0], snowPalette[1], point.climate), 0.96)
+					roughnessValue = water ? 0.43 : 0.66
 				}
 			}
 
-			color = tint(color, parameters.tint, parameters.class === 'gas' ? 0.3 : 0.18)
+			if (parameters.tint) color = mixRgb(color, parameters.tint, parameters.class === 'gas' ? 0.3 : PROFILE.display.tintStrength)
 			setPixel(albedo, offset, color)
 			const roughnessByte = roughnessValue * 255
 			setPixel(roughness, offset, [roughnessByte, roughnessByte, roughnessByte])
 			if (elevation) {
-				const elevationByte = heightValue * 255
+				const elevationByte = point.height * 255
 				setPixel(elevation, offset, [elevationByte, elevationByte, elevationByte])
 			}
 			if (clouds) {
-				const cloud = fractal(cloudNoise, x * 2.7, y * 4.1, z * 2.7, 5) * 0.5 + 0.5
-				const opacity = clamp((cloud - (1 - cloudCoverage)) / Math.max(cloudCoverage, 0.01), 0, 1) ** 1.5
-				const opacityByte = opacity * 255
-				setPixel(clouds, offset, [opacityByte, opacityByte, opacityByte])
+				const alpha = cloudOpacity * 255
+				setPixel(clouds, offset, [alpha, alpha, alpha])
 			}
+
+			totalWeight += point.weight
+			if (water) waterWeight += point.weight
+			if (snow) snowWeight += point.weight
+			if (eligible) eligibleWeight += point.weight
+			if (vegetation) vegetationWeight += point.weight
+			if (cloudy) cloudWeight += point.weight
 		}
 	}
 
-	return { width: safeWidth, height: safeHeight, albedo, elevation, roughness, clouds }
+	return {
+		width: safeWidth,
+		height: safeHeight,
+		albedo,
+		elevation,
+		roughness,
+		clouds,
+		measuredCoverage: {
+			surfaceWater: totalWeight ? waterWeight / totalWeight : 0,
+			permanentSnowIce: totalWeight ? snowWeight / totalWeight : 0,
+			vegetation: eligibleWeight ? vegetationWeight / eligibleWeight : 0,
+			vegetationOfSurface: totalWeight ? vegetationWeight / totalWeight : 0,
+			clouds: totalWeight ? cloudWeight / totalWeight : 0,
+		},
+		algorithmRevision: PROCEDURAL_ALGORITHM_REVISION,
+		diagnostics,
+	}
 }

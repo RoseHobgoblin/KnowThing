@@ -5,63 +5,70 @@ const base = {
 	class: 'terrestrial' as const,
 	seed: 436,
 	temperatureK: 288,
-	hydrosphereFraction: 0.55,
-	cloudCoverage: null,
-	vegetationFraction: 0,
-	snowCoverage: 0,
+	coverage: { surfaceWater: 0.55, clouds: null, vegetation: 0, permanentSnowIce: 0 },
 }
 
-function greenPixels(data: Uint8Array): number {
-	let count = 0
-	for (let offset = 0; offset < data.length; offset += 4) {
-		if (data[offset + 1] > data[offset] * 1.12 && data[offset + 1] > data[offset + 2] * 1.08) count++
-	}
-	return count
-}
-
-function snowPixels(data: Uint8Array): number {
-	let count = 0
-	for (let offset = 0; offset < data.length; offset += 4) {
-		if (data[offset] > 195 && data[offset + 1] > 205 && data[offset + 2] > 205) count++
-	}
-	return count
-}
-
-describe('procedural surface fallback', () => {
-	it('is deterministic and emits independent material channels', () => {
-		const first = generateProceduralSurface(base, 32, 16)
-		const second = generateProceduralSurface(base, 32, 16)
-		expect(first.albedo).toEqual(second.albedo)
-		expect(first.roughness).toEqual(second.roughness)
-		expect(first.elevation).not.toBeNull()
-		expect(first.albedo).toHaveLength(32 * 16 * 4)
-		expect(first.clouds).toBeNull()
+describe('area-calibrated procedural surface', () => {
+	it('is byte-deterministic at each LOD and emits independent channels', () => {
+		for (const width of [32, 64, 128]) {
+			const first = generateProceduralSurface(base, width, width / 2)
+			const second = generateProceduralSurface(base, width, width / 2)
+			expect(first.albedo).toEqual(second.albedo)
+			expect(first.roughness).toEqual(second.roughness)
+			expect(first.elevation).not.toBeNull()
+			expect(first.algorithmRevision).toBeGreaterThan(0)
+		}
 	})
 
-	it('changes with the seed and creates clouds only when requested', () => {
-		const first = generateProceduralSurface(base, 24, 12)
-		const second = generateProceduralSurface({ ...base, seed: 437, cloudCoverage: 0.6 }, 24, 12)
-		expect(first.albedo).not.toEqual(second.albedo)
-		expect(second.clouds).not.toBeNull()
-		expect(second.clouds?.some((value, index) => index % 4 === 1 && value > 0)).toBe(true)
-		expect(second.clouds?.some((value, index) => index % 4 === 1 && value < 255)).toBe(true)
+	it('hits domain-relative authored coverage within two percentage points', () => {
+		const generated = generateProceduralSurface({
+			...base,
+			coverage: { surfaceWater: 0.43, clouds: 0.48, vegetation: 0.62, permanentSnowIce: 0.14 },
+		}, 256, 128)
+		expect(Math.abs(generated.measuredCoverage.surfaceWater - 0.43)).toBeLessThanOrEqual(0.02)
+		expect(Math.abs(generated.measuredCoverage.clouds - 0.48)).toBeLessThanOrEqual(0.02)
+		expect(Math.abs(generated.measuredCoverage.vegetation - 0.62)).toBeLessThanOrEqual(0.02)
+		expect(Math.abs(generated.measuredCoverage.permanentSnowIce - 0.14)).toBeLessThanOrEqual(0.02)
+		expect(generated.measuredCoverage.vegetationOfSurface)
+			.toBeLessThanOrEqual(1 - generated.measuredCoverage.surfaceWater + 0.001)
 	})
 
-	it('does not invent solid relief for gas giants', () => {
-		const generated = generateProceduralSurface({ ...base, class: 'gas' }, 24, 12)
+	it('preserves exact zero and full targets', () => {
+		const empty = generateProceduralSurface({
+			...base,
+			coverage: { surfaceWater: 0, clouds: 0, vegetation: 0, permanentSnowIce: 0 },
+		}, 64, 32)
+		expect(empty.measuredCoverage).toEqual({
+			surfaceWater: 0, clouds: 0, vegetation: 0, vegetationOfSurface: 0, permanentSnowIce: 0,
+		})
+		const ocean = generateProceduralSurface({
+			...base,
+			coverage: { surfaceWater: 1, clouds: 1, vegetation: 1, permanentSnowIce: 0 },
+		}, 64, 32)
+		expect(ocean.measuredCoverage.surfaceWater).toBe(1)
+		expect(ocean.measuredCoverage.clouds).toBe(1)
+		expect(ocean.measuredCoverage.vegetation).toBe(0)
+		expect(ocean.diagnostics).toContain('Vegetation target could not be placed because no exposed non-snow land remains.')
+	})
+
+	it('is monotonic and remains finite across temperature extremes', () => {
+		const low = generateProceduralSurface({ ...base, temperatureK: null, coverage: { ...base.coverage, surfaceWater: 0.2 } }, 64, 32)
+		const high = generateProceduralSurface({ ...base, temperatureK: 10_000, coverage: { ...base.coverage, surfaceWater: 0.8 } }, 64, 32)
+		expect(high.measuredCoverage.surfaceWater).toBeGreaterThan(low.measuredCoverage.surfaceWater)
+		for (const bytes of [low.albedo, low.roughness, high.albedo, high.roughness]) {
+			expect(bytes.every(Number.isFinite)).toBe(true)
+		}
+	})
+
+	it('does not create solid relief or incompatible coverage for gas giants', () => {
+		const generated = generateProceduralSurface({
+			...base,
+			class: 'gas',
+			coverage: { surfaceWater: 1, clouds: 0.3, vegetation: 1, permanentSnowIce: 1 },
+		}, 64, 32)
 		expect(generated.elevation).toBeNull()
-	})
-
-	it('adds authored green vegetation only to terrestrial land', () => {
-		const barren = generateProceduralSurface(base, 128, 64)
-		const living = generateProceduralSurface({ ...base, vegetationFraction: 0.7 }, 128, 64)
-		expect(greenPixels(barren.albedo)).toBe(0)
-		expect(greenPixels(living.albedo)).toBeGreaterThan(200)
-	})
-
-	it('places authored snow at cold latitudes and high terrain', () => {
-		const bare = generateProceduralSurface(base, 128, 64)
-		const snowy = generateProceduralSurface({ ...base, snowCoverage: 0.35 }, 128, 64)
-		expect(snowPixels(snowy.albedo)).toBeGreaterThan(snowPixels(bare.albedo) + 200)
+		expect(generated.measuredCoverage.surfaceWater).toBe(0)
+		expect(generated.measuredCoverage.vegetation).toBe(0)
+		expect(generated.measuredCoverage.permanentSnowIce).toBe(0)
 	})
 })

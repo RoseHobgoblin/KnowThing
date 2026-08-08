@@ -48,7 +48,7 @@ export interface CelestialRowLike {
 
 export interface BodyRow extends CelestialRowLike {
 	bodyType?: string | null
-	temperature?: string | null
+	temperatureK?: number | null
 	age?: string | null
 	composition?: string | null
 	atmosphere?: string | null
@@ -116,8 +116,10 @@ export interface BodyModel {
 	bodyType: string
 	description: string | null
 
+	// Physical representative temperature in Kelvin.
+	temperatureK: number | null
+
 	// Passthrough text (free-form, stored verbatim).
-	temperature: string | null
 	age: string | null
 	composition: string | null
 	atmosphere: string | null
@@ -231,7 +233,7 @@ function toExtraMap(extra: unknown): ExtraMap {
 const positive = (n: number | null | undefined): number | null => (n != null && n > 0 ? n : null)
 
 /** Apply `f` to a value when present, else null. */
-function mapNum(n: number | null, f: (n: number) => number): number | null {
+function mapNumber(n: number | null, f: (n: number) => number): number | null {
 	return n == null ? null : f(n)
 }
 
@@ -240,6 +242,7 @@ export function deriveBody(row: BodyRow, relations: BodyRelations = {}): BodyMod
 	const radiusM = positive(row.radiusM)
 	const semiMajorAxisAu = positive(row.semiMajorAxisAu)
 	const rotationPeriodS = positive(row.rotationPeriodS)
+	const temperatureK = positive(row.temperatureK)
 	const eccentricity = row.eccentricity ?? null
 
 	// A moon orbits its parent body; a planet orbits the star; a circumbinary
@@ -266,7 +269,7 @@ export function deriveBody(row: BodyRow, relations: BodyRelations = {}): BodyMod
 		bodyType: row.bodyType ?? 'planet',
 		description: row.description ?? null,
 
-		temperature: row.temperature ?? null,
+		temperatureK,
 		age: row.age ?? null,
 		composition: row.composition ?? null,
 		atmosphere: row.atmosphere ?? null,
@@ -280,9 +283,9 @@ export function deriveBody(row: BodyRow, relations: BodyRelations = {}): BodyMod
 		densityKgM3: massKg != null && radiusM != null ? computeDensity(kg(massKg), m(radiusM)) : null,
 		gravityMs2: massKg != null && radiusM != null ? computeSurfaceGravity(kg(massKg), m(radiusM)) : null,
 		escapeVelocityMs: massKg != null && radiusM != null ? computeEscapeVelocity(kg(massKg), m(radiusM)) : null,
-		circumferenceM: mapNum(radiusM, r => 2 * Math.PI * r),
-		surfaceAreaM2: mapNum(radiusM, r => 4 * Math.PI * r * r),
-		volumeM3: mapNum(radiusM, r => (4 / 3) * Math.PI * r ** 3),
+		circumferenceM: mapNumber(radiusM, r => 2 * Math.PI * r),
+		surfaceAreaM2: mapNumber(radiusM, r => 4 * Math.PI * r * r),
+		volumeM3: mapNumber(radiusM, r => (4 / 3) * Math.PI * r ** 3),
 
 		semiMajorAxisAu,
 		orbitalPeriodDays,

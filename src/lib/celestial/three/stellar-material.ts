@@ -19,12 +19,18 @@ import {
 } from '../stellar-surface-model.js'
 import type { MapBody } from '../system-layout.js'
 import { temperatureDisplayRgb } from './procedural-stellar-surface.js'
-import { requestProceduralStellarTexture } from './procedural-texture-client.js'
+import {
+	requestProceduralStellarTexture,
+	type ProceduralTextureSize,
+	type TexturePriority,
+} from './procedural-texture-client.js'
 
 export type StellarSurfaceVisual = {
 	material: ShaderMaterial
 	plan: StellarSurfacePlan
 	ready: Promise<void>
+	getProceduralLod(): { desired: ProceduralTextureSize, settled: ProceduralTextureSize | null }
+	setProceduralLod(size: ProceduralTextureSize, priority: TexturePriority): Promise<void>
 	setVisibilityMode(mode: VisibilityMode): void
 	dispose(): void
 }
@@ -95,9 +101,11 @@ function colorFromDisplayRgb(rgb: [number, number, number]): Color {
 export function createStellarSurfaceVisual(args: {
 	body: MapBody
 	colorCss: string
+	initialLod?: ProceduralTextureSize
+	initialPriority?: TexturePriority
 	onTextureChange?: () => void
 }): StellarSurfaceVisual {
-	const { body, colorCss, onTextureChange } = args
+	const { body, colorCss, onTextureChange, initialLod = 256, initialPriority = 'background' } = args
 	const plan = composeStellarSurfacePlan(body, body.stellarSurface)
 	const ownedTextures = new Set<Texture>()
 	const fallbackPixel = new Uint8Array([255, 255, 255, 255])
@@ -117,27 +125,42 @@ export function createStellarSurfaceVisual(args: {
 		},
 	})
 	let disposed = false
-	const readyTasks: Promise<void>[] = []
+	let currentGeneratedTexture: Texture | null = null
+	let desiredLod: ProceduralTextureSize = initialLod
+	let settledLod: ProceduralTextureSize | null = null
+	if (plan.photosphere.source !== 'procedural') settledLod = initialLod
+	let requestVersion = 0
+	let activeLod: ProceduralTextureSize | null = null
+	let activeRequest: Promise<void> = Promise.resolve()
 
-	if (plan.photosphere.source === 'procedural') {
-		const task = requestProceduralStellarTexture({
+	function setProceduralLod(size: ProceduralTextureSize, priority: TexturePriority): Promise<void> {
+		if (activeLod === size) return activeRequest
+		desiredLod = size
+		if (plan.photosphere.source !== 'procedural' || settledLod === size) return Promise.resolve()
+		const version = ++requestVersion
+		activeLod = size
+		activeRequest = requestProceduralStellarTexture({
 			temperatureK: plan.temperatureK,
 			morphology: plan.morphology,
 			rotationDays: plan.rotationDays,
 			activity: plan.activity,
 			seed: plan.seed,
-		}).then((generated) => {
-			if (disposed) return
+		}, { size, priority }).then((generated) => {
+			if (disposed || version !== requestVersion || size !== desiredLod) return
 			const texture = generatedTexture(generated.photosphere, generated.width, generated.height)
-			ownedTextures.add(texture)
 			material.uniforms.photosphereMap.value = texture
 			material.uniforms.hasPhotosphereMap.value = 1
+			const previous = currentGeneratedTexture
+			currentGeneratedTexture = texture
+			settledLod = size
+			activeLod = null
+			previous?.dispose()
 			onTextureChange?.()
 		}).catch(() => {
-			// The restrained base photosphere remains available on generation failure.
-			onTextureChange?.()
+			if (version === requestVersion) activeLod = null
+			if (version === requestVersion) onTextureChange?.()
 		})
-		readyTasks.push(task)
+		return activeRequest
 	}
 
 	if (plan.photosphere.source === 'uploaded' && plan.photosphere.binding) {
@@ -176,11 +199,15 @@ export function createStellarSurfaceVisual(args: {
 	return {
 		material,
 		plan,
-		ready: Promise.all(readyTasks).then(() => undefined),
+		ready: setProceduralLod(initialLod, initialPriority),
+		getProceduralLod: () => ({ desired: desiredLod, settled: settledLod }),
+		setProceduralLod,
 		setVisibilityMode,
 		dispose() {
 			disposed = true
+			requestVersion += 1
 			material.dispose()
+			currentGeneratedTexture?.dispose()
 			for (const texture of ownedTextures) texture.dispose()
 			ownedTextures.clear()
 		},

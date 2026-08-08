@@ -2,6 +2,8 @@
 
 **Related documents:** [Atlas Architecture](./Atlas-Architecture.md), [Celestial Data Provenance and Ingest](./Celestial-Data-Provenance-and-Ingest.md), [Planetary Data Acquisition Catalogue](./Planetary-Data-Acquisition-Catalogue.md)
 
+> **Maturity:** Design intent plus an implemented overview-surface pipeline. Recipe v4, calibrated procedural coverage, projected-size texture LOD, direct 2:1 uploads, and the editor controls described below exist. Scientific ingest and focused exploration do not. Review this document when the recipe, generator semantics, or focused-viewer boundary changes. **Expires on contact with implementation.**
+
 ## Product Boundary
 
 KnowThing renders the best planet model supported by the user's data. It is not a fantasy map generator and does not claim that seeded noise is tectonics, climate, or geography.
@@ -17,18 +19,20 @@ Every texture choice retains provenance as `uploaded`, `procedural`, `constant`,
 
 ## Current Recipe
 
-The version 3 recipe lives in `celestial_bodies.extra.surface`. Each map is a stable Media identity pinned to the exact selected SHA-256 revision:
+The version 4 recipe lives in `celestial_bodies.extra.surface`. It stores authored inputs, not a generator version:
 
 ```json
 {
-  "version": 3,
+  "version": 4,
   "fallback": "procedural",
   "class": "terrestrial",
   "seed": 436,
-  "hydrosphereFraction": 0.55,
-  "cloudCoverage": 0.48,
-  "vegetationFraction": 0.62,
-  "snowCoverage": 0.14,
+  "coverage": {
+    "surfaceWater": 0.55,
+    "vegetation": 0.62,
+    "permanentSnowIce": 0.14,
+    "clouds": 0.48
+  },
   "maps": {
     "albedo": {
       "version": 1,
@@ -44,9 +48,17 @@ The version 3 recipe lives in `celestial_bodies.extra.surface`. Each map is a st
 }
 ```
 
-All channels use the same binding shape. Normal bindings additionally record OpenGL/DirectX Y convention; elevation bindings record relative, metre, or kilometre interpretation. All fields are optional in the editor. `fallback: "flat"` is the explicit opt-out. `class: "auto"` uses conservative body-type/composition clues only for missing procedural channels. It does not modify uploads.
+All channels use the same binding shape. Normal bindings additionally record OpenGL/DirectX Y convention; elevation bindings record relative, metre, or kilometre interpretation. Media bindings remain pinned to the selected content hash. This is separate from procedural generation: a saved recipe deliberately runs through the newest deployed algorithm. Exact reproducibility belongs to a future baked artifact, which can record its producing tool revision and output hash.
 
-`vegetationFraction` is an authored biosphere assertion, not a conclusion drawn from habitability. When omitted, the procedural fallback keeps land barren unless body data explicitly says earthlike, garden world, biosphere, vegetation, forest, or flora. `snowCoverage` is an illustrative visual target distributed toward cold latitudes and high terrain. When omitted, a conservative target may be derived from stated mean temperature and surface-water fraction; explicit `0` disables it. Neither value claims a canonical biome or climate map, and an uploaded albedo map replaces both effects.
+All fields are optional in the editor. `fallback: "flat"` is the explicit opt-out. A null class uses the documented rocky illustrative fallback; there is no automatic class inference. A null coverage means “not specified,” while explicit zero requests zero. Version 3 recipes retain only their explicit class, seed, coverage, and map bindings when read as version 4; former inferred/auto results are discarded.
+
+Coverage values are authored visual targets with measured domains:
+
+- surface water and permanent snow/ice are fractions of total spherical area;
+- vegetation is a fraction of eligible exposed terrestrial land after water and snow;
+- clouds are a fraction of the shell with generated opacity at least 0.5.
+
+The generator uses temperature, latitude, altitude, and climate scores only to place requested coverage. It never derives the amount from prose, body type, composition, atmosphere, or temperature. Numeric `temperatureK` may produce a non-blocking warning for unusual illustrative placement, but it cannot override the authored target.
 
 ## Texture Channels and Upload Handoff
 
@@ -77,13 +89,15 @@ The prototype contributed four sound implementation ideas:
 The adaptation intentionally removed or constrained claims that the prototype could not justify:
 
 - gravity no longer fabricates mountain amplitude;
-- temperature does not fabricate vegetation or life; broad snow coverage may use stated temperature and water as an explicitly illustrative fallback;
+- temperature does not fabricate vegetation, life, water, or snow coverage;
 - atmosphere text does not automatically fabricate clouds;
 - random craters, volcanoes, and tectonics are not treated as canonical data;
 - height shading is not baked into albedo, because lighting belongs to the material and scene;
 - generated relief, roughness, clouds, and color remain independent channels.
 
-The live procedural fallback is currently generated at 1024 x 512 in a worker and shared through a bounded cache. Uploaded maps currently keep their own resolution. A later focused-body renderer should select validated higher-resolution tiles or generated LODs instead of using one resolution at every apparent size.
+The live procedural fallback uses 256 x 128, 512 x 256, and 1024 x 512 levels. Map bodies begin at 256 and upgrade from the projected physical sphere diameter after camera-settle events; the editor always requests 1024. Three priority-queued workers stop after 30 seconds idle. A 64 MiB byte-budget LRU accounts for in-flight work, and material swaps dispose superseded generated GPU textures without taking ownership of uploads.
+
+The generator calibrates masks on one fixed 256 x 128 spherical grid using `cos(latitude)` area weights, then reuses its thresholds at every LOD so coastlines and coverage do not jump. Its named internal algorithm revision exists only for caches, diagnostics, and tests; it is not part of the recipe contract.
 
 ## Scientific and GIS Data
 
@@ -125,10 +139,9 @@ Do not block a user who lacks those assets. Leave the channel procedural, flat, 
 
 The complete provenance, ingest, publishing, and migration design is maintained in [Celestial Data Provenance and Ingest](./Celestial-Data-Provenance-and-Ingest.md).
 
-Before detailed body navigation, the next useful additions are:
+The remaining surface work is:
 
-1. Validate media existence, MIME type, aspect ratio, and channel-specific metadata in the celestial editor.
-2. Add a proper GeoTIFF/NetCDF/PDS ingest job that creates derived runtime assets while retaining originals and provenance.
-3. Generate normal maps from elevation as a derived channel with declared units and strength.
-4. Add texture LOD and a focused-body renderer so high-resolution uploads are useful without burdening the system overview.
-5. Add atmosphere and ocean shells only when their inputs and visual semantics are separately defined.
+1. Add a proper GeoTIFF/NetCDF/PDS ingest job that creates derived runtime assets while retaining originals and provenance.
+2. Generate normal maps from elevation as a derived channel with declared units and strength.
+3. Turn the isolated focused-viewer findings into an app-owned navigation and selection adapter.
+4. Add atmosphere and ocean shells only when their inputs and visual semantics are separately defined.

@@ -146,10 +146,7 @@ export async function installPresetSurface(
 			fallback: body.seedSurface.fallback,
 			class: body.seedSurface.class,
 			seed: body.seedSurface.seed,
-			hydrosphereFraction: body.seedSurface.hydrosphereFraction,
-			cloudCoverage: body.seedSurface.cloudCoverage,
-			vegetationFraction: body.seedSurface.vegetationFraction,
-			snowCoverage: body.seedSurface.snowCoverage,
+			coverage: body.seedSurface.coverage,
 			maps,
 		},
 	})

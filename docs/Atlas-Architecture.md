@@ -1,8 +1,10 @@
 # KnowThing Atlas Architecture
 
-**Status:** Proposed product and technical architecture  
+**Status:** Design intent with isolated CRS and viewer spikes completed
 **Last updated:** 8 August 2026  
 **Related documents:** [Celestial Data Provenance and Ingest](./Celestial-Data-Provenance-and-Ingest.md), [Celestial Surface Models](./Celestial-Surface-Models.md), [Planetary Data Acquisition Catalogue](./Planetary-Data-Acquisition-Catalogue.md), [Celestial Orrery Roadmap](./Celestial-Orrery-Roadmap.md), [WorldMap Vision](./WORLDMAP-VISION.md), [Celestial Calendar Integration](./Celestial-Calendar-Integration.md)
+
+> **Maturity:** Atlas remains design intent. The repository now contains disposable PostGIS/CRS and Cesium/MapLibre prototypes plus an ADR; neither prototype is an application feature or production dependency. Review this document after the first Atlas schema, release contract, or focused-viewer integration. **Expires on contact with implementation.**
 
 ## Decision Summary
 
@@ -31,6 +33,15 @@ The core architectural decisions are:
 6. Wiki entities and spatial features remain separate. A country, city, fault, storm, road, or jump lane may be represented by one or more features without being defined by its pixels.
 7. Three.js remains appropriate for the galactic and orrery levels. Focused planetary exploration should use a tile-aware geospatial viewer behind a deliberate renderer handoff.
 8. Missing data remains missing. Atlas must never manufacture canonical geography, borders, settlements, or history to fill a layer.
+
+## Architecture Gate Results
+
+The isolated spikes are recorded in [ADR 0001](./adr/0001-planetary-crs-and-focused-viewer.md). They narrow the next implementation without prematurely adopting either database or viewer infrastructure:
+
+- A disposable `postgis/postgis:16-3.5-alpine` override successfully registered private `KNOWTHING` WKT2 definitions for Mars, a fictional sphere, and local planar space. It exercised radii/convention scoping, antimeridian and polar geometry, GiST queries, controlled transforms, vector tiles, dump/restore, and rejection of cross-body geometry. The normal development and production database images remain unchanged.
+- The application-facing CRS identifier must remain independent from the database SRID. Planetary and fictional coordinates must never borrow Earth EPSG identifiers. Assigning an SRID labels coordinates; it does not perform a transformation.
+- Disposable Cesium and MapLibre pages consumed the same Mars and fictional fixtures and handoff state. Cesium demonstrated custom non-Earth ellipsoids and is the selected first focused-globe direction. MapLibre exposed an Earth-radius globe limitation and remains a candidate for a later flat, styled cartographic view.
+- The handoff state proven by the prototype carries body identity, application time, selected feature, incoming direction, and return-camera state. The production navigation/selection adapter is still unimplemented and must remain application-owned.
 
 ## Product Promise
 
@@ -358,9 +369,9 @@ Every artifact must link to the exact layer version and derivation that produced
 
 Canonical vector geometry must not remain encoded as SVG path strings or palette values.
 
-KnowThing already uses PostgreSQL. Atlas should evaluate PostGIS as the canonical geometry and spatial-query layer because it provides geometry types, declared spatial references, spatial indexing, spatial predicates, format conversion, and server-side vector-tile generation. PostGIS documents GiST spatial indexing and native Mapbox Vector Tile output through `ST_AsMVT`. See [PostGIS spatial indexes](https://postgis.net/documentation/faq/spatial-indexes/) and [`ST_AsMVT`](https://postgis.net/docs/ST_AsMVT.html).
+KnowThing already uses PostgreSQL. The isolated spike confirms that PostGIS can support the tested planetary and local geometry operations, including GiST queries and native Mapbox Vector Tile output through `ST_AsMVT`. It does not yet justify changing the primary database image or settling the Atlas schema. See [PostGIS spatial indexes](https://postgis.net/documentation/faq/spatial-indexes/) and [`ST_AsMVT`](https://postgis.net/docs/ST_AsMVT.html).
 
-The schema spike must verify how non-Earth and local coordinate references will be registered and constrained. Atlas must not assign Earth EPSG identifiers to fictional or planetary coordinates simply to satisfy a library.
+The spike registered private `KNOWTHING` WKT2 definitions using internal SRIDs and kept stable application CRS keys separate. The production schema must preserve that split and body/radius/convention constraints. Atlas must not assign Earth EPSG identifiers to fictional or planetary coordinates simply to satisfy a library.
 
 Recommended separation:
 
@@ -473,11 +484,11 @@ A dedicated geospatial viewer should handle:
 - coordinate readout and measurement;
 - stable navigation from global to local scales.
 
-CesiumJS is the leading candidate for a focused 3D planetary spike. Its documented model separates imagery from streamed terrain, and `CesiumTerrainProvider` accepts an ellipsoid option. See [Cesium terrain](https://cesium.com/learn/cesiumjs-learn/cesiumjs-terrain/), [Cesium imagery providers](https://cesium.com/learn/cesiumjs/ref-doc/ImageryProvider.html), and [`CesiumTerrainProvider`](https://cesium.com/learn/cesiumjs/ref-doc/CesiumTerrainProvider.html).
+CesiumJS is the selected first focused 3D planetary direction after the disposable prototype demonstrated custom non-Earth ellipsoids. Its documented model separates imagery from streamed terrain, and `CesiumTerrainProvider` accepts an ellipsoid option. Production adoption remains gated on an app-owned adapter, tiled KnowThing assets, teardown/memory tests in Svelte, and self-hosting review. See [Cesium terrain](https://cesium.com/learn/cesiumjs-learn/cesiumjs-terrain/), [Cesium imagery providers](https://cesium.com/learn/cesiumjs/ref-doc/ImageryProvider.html), and [`CesiumTerrainProvider`](https://cesium.com/learn/cesiumjs/ref-doc/CesiumTerrainProvider.html).
 
-MapLibre GL JS is a strong candidate for styled vector/raster cartography and globe-to-flat presentation. Its current globe projection is documented around Mercator tiles projected onto a unit sphere, so arbitrary body shapes, radii, datums, and terrain require a focused feasibility test. See [MapLibre GL JS](https://maplibre.org/maplibre-gl-js/docs) and [MapLibre globe projection data](https://maplibre.org/maplibre-gl-js/docs/API/type-aliases/ProjectionData/).
+MapLibre GL JS remains a strong candidate for a later flat styled vector/raster view. The prototype confirmed that its globe route carries an Earth-radius assumption and should not be the first arbitrary-body globe. See [MapLibre GL JS](https://maplibre.org/maplibre-gl-js/docs) and [MapLibre globe projection data](https://maplibre.org/maplibre-gl-js/docs/API/type-aliases/ProjectionData/).
 
-The engine decision must come from a prototype using KnowThing data, not a feature checklist. The spike should test:
+The prototype used shared Mars and fictional-world fixtures to test:
 
 - a non-Earth radius or ellipsoid;
 - a 2:1 authored albedo;
@@ -740,7 +751,7 @@ Migration should preserve existing work without allowing the legacy tables to di
 - Add spatial spaces and body/system associations.
 - Add generic layers, features, entity links, versions, releases, and views.
 - Add source/asset/derivation records from the celestial ingest design.
-- Complete a PostGIS and non-Earth CRS feasibility spike before choosing canonical geometry columns.
+- Use the completed disposable PostGIS/non-Earth CRS spike and ADR as evidence before choosing canonical geometry columns; keep the primary database unchanged until that schema decision.
 
 ### Phase C: Build legacy import
 
@@ -773,7 +784,7 @@ The migration must never silently overwrite a published Atlas release or delete 
 ### Phase 1: Evidence and spatial foundation
 
 - Add source, immutable asset, asset-file, and derivation records.
-- Prototype PostGIS geometry, indexes, non-Earth body-fixed spaces, antimeridian behavior, and vector-tile output.
+- Promote the completed disposable PostGIS findings into an application schema only after the production ADR gate is satisfied.
 - Add Atlas spaces, layers, layer versions, releases, and generic entity links.
 - Make celestial surface releases use the shared publication model.
 
@@ -782,7 +793,7 @@ The migration must never silently overwrite a published Atlas release or delete 
 - Create one body-fixed Atlas space from an existing celestial body.
 - Publish albedo, elevation, one vector boundary layer, and settlement points.
 - Generate tiled runtime artifacts.
-- Prototype CesiumJS and MapLibre against the same release contract.
+- Build the production Cesium adapter from the completed shared-fixture prototype; retain MapLibre as a later flat-view candidate.
 - Implement explicit Orrery → Explore surface → Return to system handoff.
 - Add search, selection, permalink, layer legend, and provenance display.
 

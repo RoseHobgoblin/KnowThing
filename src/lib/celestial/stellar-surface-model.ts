@@ -170,7 +170,13 @@ export function stellarSurfaceMediaUrl(asset: MediaAssetBinding | string): strin
 }
 
 export function describeStellarSurfacePlan(plan: StellarSurfacePlan): string {
-	if (plan.photosphere.source === 'uploaded') return 'Uploaded stellar photosphere'
-	if (plan.photosphere.source === 'procedural') return 'Starwright photosphere (illustrative)'
-	return 'Restrained photosphere; no stellar surface data'
+	if (plan.photosphere.source === 'uploaded') return 'Provided stellar photosphere'
+	if (plan.photosphere.source === 'procedural') return 'Illustrative Starwright photosphere'
+	return 'Flat restrained photosphere'
+}
+
+export function summarizeStellarSurfacePlan(plan: StellarSurfacePlan): 'Provided' | 'Illustrative' | 'Flat' {
+	if (plan.photosphere.source === 'uploaded') return 'Provided'
+	if (plan.photosphere.source === 'procedural') return 'Illustrative'
+	return 'Flat'
 }

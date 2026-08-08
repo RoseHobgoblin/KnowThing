@@ -1,5 +1,9 @@
 import type { ResolvedStellarMorphology } from '../stellar-surface-model.js'
 import { fractalNoise, makeRandom, makeSimplex } from './procedural-noise.js'
+import {
+	PROCEDURAL_ALGORITHM_REVISION,
+	STELLAR_PROCEDURE_PROFILE as PROFILE,
+} from './procedural-profiles.js'
 
 type Rgb = [number, number, number]
 
@@ -17,6 +21,7 @@ export type GeneratedStellarSurface = {
 	/** Display-referred sRGB photosphere pixels, not calibrated stellar radiance. */
 	photosphere: Uint8Array
 	spotCoverageEstimate: number
+	algorithmRevision: number
 }
 
 const clamp = (value: number, minimum: number, maximum: number) => Math.min(maximum, Math.max(minimum, value))
@@ -39,6 +44,20 @@ export function temperatureDisplayRgb(temperatureK: number): Rgb {
 	return [clamp(red, 0, 255), clamp(green, 0, 255), clamp(blue, 0, 255)]
 }
 
+export function srgbChannelToLinear(value: number): number {
+	const channel = clamp(value, 0, 1)
+	return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4
+}
+
+export function linearChannelToSrgb(value: number): number {
+	const channel = Math.max(0, value)
+	return channel <= 0.0031308 ? channel * 12.92 : 1.055 * channel ** (1 / 2.4) - 0.055
+}
+
+function linearTemperatureColor(temperatureK: number): [number, number, number] {
+	return temperatureDisplayRgb(temperatureK).map(channel => srgbChannelToLinear(channel / 255)) as [number, number, number]
+}
+
 /**
  * Starwright's seeded photosphere fallback. It creates a seamless 2:1 plate by
  * sampling three-dimensional noise on a unit sphere. Granulation, spots, and
@@ -58,11 +77,17 @@ export function generateProceduralStellarSurface(
 	const primaryNoise = makeSimplex(parameters.seed)
 	const detailNoise = makeSimplex(parameters.seed ^ 0x9E3779B9)
 	const activityNoise = makeSimplex(parameters.seed ^ 0x51AB3F)
-	const convection = clamp((7_200 - temperatureK) / 3_200, 0, 1)
-	const granulationScale = parameters.morphology === 'giant' ? 2.2 : 15
-	const granulationAmplitude = parameters.morphology === 'white_dwarf'
-		? 0.008
-		: (parameters.morphology === 'giant' ? 0.3 : 0.05 + convection * 0.16)
+	const [convectionMinimumK, convectionMaximumK] = PROFILE.convectionTemperatureRangeK
+	const convection = clamp(
+		(convectionMaximumK - temperatureK) / (convectionMaximumK - convectionMinimumK),
+		0,
+		1,
+	)
+	const granulationScale = PROFILE.granulationScale[parameters.morphology]
+	const baseGranulationAmplitude = PROFILE.granulationAmplitude[parameters.morphology]
+	const granulationAmplitude = parameters.morphology === 'main_sequence'
+		? baseGranulationAmplitude + convection * 0.16
+		: baseGranulationAmplitude
 
 	type Spot = { longitude: number, latitude: number, radius: number, coolingK: number }
 	const spots: Spot[] = []
@@ -90,7 +115,8 @@ export function generateProceduralStellarSurface(
 		0,
 		1,
 	)
-	const faculaStrength = convection * activity * 0.1
+	const faculaStrength = convection * activity * PROFILE.faculaMaximum
+	const meanLinearColor = linearTemperatureColor(temperatureK)
 
 	for (let pixelY = 0; pixelY < safeHeight; pixelY++) {
 		const latitude = (0.5 - (pixelY + 0.5) / safeHeight) * Math.PI
@@ -124,7 +150,10 @@ export function generateProceduralStellarSurface(
 					* 0.02 * (8 - rotationDays) / 8
 			}
 
-			let localTemperatureK = temperatureK * Math.pow(clamp(brightness, 0.6, 1.4), 0.25)
+			let localTemperatureK = temperatureK * Math.pow(
+				clamp(brightness, 0.6, 1.4),
+				PROFILE.localTemperatureExponent,
+			)
 			if (faculaStrength > 0.005) {
 				const facula = fractalNoise(
 					activityNoise,
@@ -156,15 +185,30 @@ export function generateProceduralStellarSurface(
 				localTemperatureK -= cooling
 			}
 
-			const color = temperatureDisplayRgb(localTemperatureK)
-			const intensity = Math.pow(localTemperatureK / temperatureK, 2.2) * 0.94
+			const localLinearColor = linearTemperatureColor(localTemperatureK)
+			const intensity = Math.pow(
+				localTemperatureK / temperatureK,
+				PROFILE.bolometricDisplayExponent,
+			) * PROFILE.outputExposure
 			const offset = (pixelY * safeWidth + pixelX) * 4
-			photosphere[offset] = clamp(Math.round(Math.pow(color[0] / 255, 1.35) * intensity * 255), 0, 255)
-			photosphere[offset + 1] = clamp(Math.round(Math.pow(color[1] / 255, 1.35) * intensity * 255), 0, 255)
-			photosphere[offset + 2] = clamp(Math.round(Math.pow(color[2] / 255, 1.35) * intensity * 255), 0, 255)
+			for (let channel = 0; channel < 3; channel++) {
+				const contrasted = meanLinearColor[channel]
+					+ (localLinearColor[channel] - meanLinearColor[channel]) * PROFILE.colorContrast
+				photosphere[offset + channel] = clamp(
+					Math.round(linearChannelToSrgb(contrasted * intensity) * 255),
+					0,
+					255,
+				)
+			}
 			photosphere[offset + 3] = 255
 		}
 	}
 
-	return { width: safeWidth, height: safeHeight, photosphere, spotCoverageEstimate }
+	return {
+		width: safeWidth,
+		height: safeHeight,
+		photosphere,
+		spotCoverageEstimate,
+		algorithmRevision: PROCEDURAL_ALGORITHM_REVISION,
+	}
 }

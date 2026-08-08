@@ -44,7 +44,6 @@ export function bodyInfoboxFields(model: BodyModel): FieldMap {
 	// Passthrough text.
 	setText(f, 'name', model.name)
 	setText(f, 'body_type', model.bodyType)
-	setText(f, 'temperature', model.temperature)
 	setText(f, 'age', model.age)
 	setText(f, 'composition', model.composition)
 	setText(f, 'atmosphere', model.atmosphere)
@@ -66,6 +65,7 @@ export function bodyInfoboxFields(model: BodyModel): FieldMap {
 	if (model.orbitalPeriodDays != null) setDerived(f, 'orbital_period', formatPeriod(model.orbitalPeriodDays * 86_400))
 	if (model.semiMajorAxisAu != null) setDerived(f, 'semi_major_axis', formatAuAsKm(model.semiMajorAxisAu))
 	if (model.rotationPeriodS != null) setDerived(f, 'rotation_period', formatPeriod(model.rotationPeriodS))
+	if (model.temperatureK != null) setDerived(f, 'temperature', formatTemperatureK(model.temperatureK))
 
 	// Raw scalars (unformatted, as the previous resolver emitted them).
 	if (model.eccentricity != null) f.set('eccentricity', String(model.eccentricity))
@@ -197,7 +197,7 @@ export function celestialStatTiles(model: BodyModel | StarModel): StatTile[] {
 		if (model.gravityMs2 != null) tiles.push({ label: 'Gravity', value: formatSurfaceGravity(model.gravityMs2), sub: `${times(model.gravityMs2 / EARTH_GRAVITY)} Earth` })
 		if (model.rotationPeriodS != null) tiles.push({ label: 'Day', value: formatPeriod(model.rotationPeriodS) })
 		if (model.orbitalPeriodDays != null) tiles.push({ label: 'Year', value: formatPeriod(model.orbitalPeriodDays * 86_400) })
-		if (model.temperature) tiles.push({ label: 'Temperature', value: model.temperature })
+		if (model.temperatureK != null) tiles.push({ label: 'Temperature', value: formatTemperatureK(model.temperatureK) })
 		return tiles
 	}
 

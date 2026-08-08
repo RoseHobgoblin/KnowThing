@@ -10,6 +10,23 @@
 		radiusM: 695_700_000, spectralType: 'G2V', color: 'yellow-white',
 		rotationPeriodS: 2_160_000, axialTilt: 7.25, temperatureK: 5772, luminosityW: 3.828e26,
 	}]
+	const additionalBodies: MapBody[] = Array.from({ length: 9 }, (_, index) => ({
+		id: 20 + index,
+		name: `Survey ${index + 1}`,
+		slug: `survey-${index + 1}`,
+		bodyType: 'dwarf planet',
+		starId: 1,
+		semiMajorAxisAu: 6.5 + index * 2.2,
+		eccentricity: 0.03 + index * 0.012,
+		inclination: 8 + index * 4,
+		longitudeAscendingNode: 18 + index * 31,
+		argumentOfPeriapsis: 27 + index * 23,
+		orbitalPeriodDays: 6_000 + index * 1_700,
+		epochPhase: (index * 0.091) % 1,
+		effectivePeriodSource: 'stored',
+		radiusM: 420_000 + index * 45_000,
+		color: 'grey',
+	}))
 	const bodies: MapBody[] = [
 		{
 			id: 10, name: 'Cinder', slug: 'cinder', bodyType: 'terrestrial', starId: 1,
@@ -45,6 +62,7 @@
 			longitudeAscendingNode: 310, argumentOfPeriapsis: 211, epochPhase: 0.42,
 			effectivePeriodSource: 'unavailable', radiusM: 950_000, color: 'white',
 		},
+		...additionalBodies,
 	]
 
 	let scale = $state(DEFAULT_MAP_SETTINGS.scale)

@@ -142,7 +142,6 @@ export async function getSystemMapEntities(systemId: number) {
 				pb.rotation_period_s AS "rotationPeriodS",
 				pb.axial_tilt AS "axialTilt",
 				pb.temperature_k AS "temperatureK",
-				pb.temperature,
 				pb.luminosity_w AS "luminosityW",
 				pb.composition,
 				pb.atmosphere,

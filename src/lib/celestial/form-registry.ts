@@ -19,7 +19,7 @@ import {
 } from 'tungolcraft'
 import { validateBodyPhysics, validateStarPhysics, type PhysicsWarning } from 'tungolcraft'
 import { spectralColor } from './colors.js'
-import { parseSurfaceRecipe, type SurfaceMapChannel } from './surface-model.js'
+import { composeSurfacePlan, parseSurfaceRecipe, type SurfaceMapChannel } from './surface-model.js'
 import { surfaceRecipeFromDraft } from './surface-editor.js'
 import { parseStellarSurfaceRecipe } from './stellar-surface-model.js'
 import { stellarSurfaceRecipeFromDraft } from './stellar-surface-editor.js'
@@ -61,6 +61,8 @@ interface FieldBase {
 	hint?: string
 	/** Hydrate/display this field but let extraPayload compose its stored shape. */
 	omitFromPayload?: boolean
+	disabled?: (ctx: FieldContext) => boolean
+	disabledReason?: string
 }
 
 export interface NameFieldSpec extends FieldBase { control: 'name', key: 'name', placeholder: string }
@@ -86,6 +88,12 @@ export interface NumberFieldSpec extends FieldBase {
 	/** Selectable display units (ascending by factor). Omit for a plain numeric input. */
 	units?: UnitOption[]
 	initial?: (record: Record<string, any>) => number | null
+}
+export interface CoverageFieldSpec extends FieldBase {
+	control: 'coverage'
+	key: string
+	domain: string
+	initial: (record: Record<string, any>) => number | null
 }
 export interface SelectFieldSpec extends FieldBase {
 	control: 'select'
@@ -117,6 +125,7 @@ export type FieldSpec =
 	| SlugFieldSpec
 	| TextFieldSpec
 	| NumberFieldSpec
+	| CoverageFieldSpec
 	| SelectFieldSpec
 	| CheckboxFieldSpec
 	| MediaFieldSpec
@@ -218,6 +227,7 @@ export function buildDraft(config: CelestialFormConfig, record: Record<string, a
 					: (record[spec.key] ?? '')
 				break
 			case 'number':
+			case 'coverage':
 				draft[spec.key] = spec.initial
 					? spec.initial(record)
 					: (typeof record[spec.key] === 'number' ? record[spec.key] : null)
@@ -829,6 +839,33 @@ function bodySharesPrimary(ctx: FieldContext, sibling: BodyReferenceOption): boo
 	return sibling.starId == null && sibling.parentSystemId == null
 }
 
+function hasSurfaceMap(ctx: FieldContext, channel: SurfaceMapChannel): boolean {
+	return ctx.draft[`surfaceMap_${channel}`] != null && ctx.draft[`surfaceMap_${channel}`] !== ''
+}
+
+function selectedSurfaceClass(ctx: FieldContext): 'rocky' | 'terrestrial' | 'gas' | 'ice' {
+	const value = text(ctx, 'surfaceClass')
+	return value === 'terrestrial' || value === 'gas' || value === 'ice' ? value : 'rocky'
+}
+
+function proceduralSurfaceActive(ctx: FieldContext): boolean {
+	if (text(ctx, 'surfaceFallback') !== 'procedural') return false
+	const surfaceClass = selectedSurfaceClass(ctx)
+	return !hasSurfaceMap(ctx, 'albedo')
+		|| !hasSurfaceMap(ctx, 'roughness')
+		|| (surfaceClass !== 'gas' && !hasSurfaceMap(ctx, 'elevation'))
+		|| (num(ctx, 'surfaceCloudCoverage') !== 0 && !hasSurfaceMap(ctx, 'clouds'))
+}
+
+function coverageDisabled(ctx: FieldContext, kind: 'water' | 'vegetation' | 'snow' | 'clouds'): boolean {
+	if (text(ctx, 'surfaceFallback') !== 'procedural') return true
+	const surfaceClass = selectedSurfaceClass(ctx)
+	if (kind === 'vegetation' && surfaceClass !== 'terrestrial') return true
+	if ((kind === 'water' || kind === 'snow') && surfaceClass !== 'rocky' && surfaceClass !== 'terrestrial') return true
+	if (kind === 'clouds') return hasSurfaceMap(ctx, 'clouds')
+	return hasSurfaceMap(ctx, 'albedo') && hasSurfaceMap(ctx, 'roughness')
+}
+
 /**
  * Planets sharing this body's primary (each orbiting it directly), for
  * orbit-crossing detection. Moons are checked for Hill-sphere containment instead.
@@ -917,7 +954,7 @@ const bodyConfig: CelestialFormConfig = {
 				fields: [
 					{ control: 'number', key: 'massKg', label: 'Mass', placeholder: '5.972e24', hint: 'Total mass. Earth is 1 M⊕. Used to derive density, gravity, escape velocity, and Hill sphere.', units: MASS_UNITS },
 					{ control: 'number', key: 'radiusM', label: 'Radius', placeholder: '6371000', hint: 'Mean radius. Earth is 1 R⊕. Used to derive density, gravity, and escape velocity.', units: RADIUS_UNITS },
-					{ control: 'text', key: 'temperature', label: 'Temperature', placeholder: '288 K (mean)', hint: 'Mean surface or cloud-top temperature. Free text — include units.' },
+					{ control: 'number', key: 'temperatureK', label: 'Temperature', placeholder: '288', min: 0, rangeError: 'Temperature must be greater than zero', hint: 'Representative surface or cloud-top temperature in Kelvin.', units: KELVIN_UNITS },
 					{ control: 'text', key: 'age', label: 'Age', placeholder: '~4.5 billion years', hint: 'Estimated age. Free text.' },
 				],
 			}],
@@ -951,45 +988,57 @@ const bodyConfig: CelestialFormConfig = {
 						},
 						{
 							control: 'select', key: 'surfaceClass', label: 'Surface class', omitFromPayload: true,
-							initial: record => parseSurfaceRecipe(record.extra?.surface).class,
+							initial: record => parseSurfaceRecipe(record.extra?.surface).class ?? '',
 							options: () => [
-								{ value: 'auto', label: 'Auto from body data' },
+								{ value: '', label: 'Unspecified (rocky fallback)' },
 								{ value: 'rocky', label: 'Rocky / airless' },
 								{ value: 'terrestrial', label: 'Terrestrial' },
 								{ value: 'gas', label: 'Gas or ice giant' },
 								{ value: 'ice', label: 'Ice shell' },
 							],
 							hint: 'Used only for procedural gaps. Uploaded texture channels are never restyled.',
+							disabled: ctx => !proceduralSurfaceActive(ctx),
+							disabledReason: 'All generated channels are inactive or replaced by uploaded media.',
 						},
 						{
 							control: 'number', key: 'surfaceSeed', label: 'Procedural seed', omitFromPayload: true,
 							initial: record => parseSurfaceRecipe(record.extra?.surface).seed,
 							placeholder: 'Stable from body ID',
 							hint: 'Leave blank for a stable seed derived from this body. Changing it rerolls only generated channels.',
+							disabled: ctx => !proceduralSurfaceActive(ctx),
+							disabledReason: 'All generated channels are inactive or replaced by uploaded media.',
 						},
 						{
-							control: 'number', key: 'surfaceHydrosphere', label: 'Surface water fraction', omitFromPayload: true,
-							initial: record => parseSurfaceRecipe(record.extra?.surface).hydrosphereFraction,
-							min: 0, max: 1, rangeError: 'Use a value from 0 to 1', placeholder: '0.71',
-							hint: 'Optional explicit fraction for procedural land/water separation. This is not inferred from temperature.',
+							control: 'coverage', key: 'surfaceHydrosphere', label: 'Surface water', omitFromPayload: true,
+							initial: record => parseSurfaceRecipe(record.extra?.surface).coverage.surfaceWater,
+							domain: 'the entire spherical surface',
+							hint: 'Target fraction of the total surface covered by generated water.',
+							disabled: ctx => coverageDisabled(ctx, 'water'),
+							disabledReason: 'Water cannot affect an inactive class or fully uploaded colour and roughness.',
 						},
 						{
-							control: 'number', key: 'surfaceCloudCoverage', label: 'Cloud coverage', omitFromPayload: true,
-							initial: record => parseSurfaceRecipe(record.extra?.surface).cloudCoverage,
-							min: 0, max: 1, rangeError: 'Use a value from 0 to 1', placeholder: '0.55',
-							hint: 'Optional generated cloud-opacity layer. Atmosphere data alone never invents clouds.',
+							control: 'coverage', key: 'surfaceCloudCoverage', label: 'Cloud coverage', omitFromPayload: true,
+							initial: record => parseSurfaceRecipe(record.extra?.surface).coverage.clouds,
+							domain: 'the atmospheric shell at opacity 50% or greater',
+							hint: 'Target fraction of the generated cloud shell with visible opacity.',
+							disabled: ctx => coverageDisabled(ctx, 'clouds'),
+							disabledReason: 'The procedural cloud channel is inactive or replaced by uploaded media.',
 						},
 						{
-							control: 'number', key: 'surfaceVegetation', label: 'Vegetation coverage', omitFromPayload: true,
-							initial: record => parseSurfaceRecipe(record.extra?.surface).vegetationFraction,
-							min: 0, max: 1, rangeError: 'Use a value from 0 to 1', placeholder: '0.55',
-							hint: 'Authored fraction for illustrative green vegetation on generated terrestrial land. Blank means none unless the body data explicitly says earthlike, vegetated, forested, or biosphere; temperature alone never invents life.',
+							control: 'coverage', key: 'surfaceVegetation', label: 'Vegetation coverage', omitFromPayload: true,
+							initial: record => parseSurfaceRecipe(record.extra?.surface).coverage.vegetation,
+							domain: 'eligible exposed land after water and permanent snow',
+							hint: 'Authored biosphere target. Nothing in body prose or temperature invents vegetation.',
+							disabled: ctx => coverageDisabled(ctx, 'vegetation'),
+							disabledReason: 'Vegetation requires a terrestrial procedural colour or roughness channel.',
 						},
 						{
-							control: 'number', key: 'surfaceSnowCoverage', label: 'Permanent snow / ice', omitFromPayload: true,
-							initial: record => parseSurfaceRecipe(record.extra?.surface).snowCoverage,
-							min: 0, max: 1, rangeError: 'Use a value from 0 to 1', placeholder: 'Auto from water + temperature',
-							hint: 'Optional coverage target for generated polar and high-altitude snow or sea ice. Blank uses a coarse mean-temperature and water guide; enter 0 to disable it.',
+							control: 'coverage', key: 'surfaceSnowCoverage', label: 'Permanent snow / ice', omitFromPayload: true,
+							initial: record => parseSurfaceRecipe(record.extra?.surface).coverage.permanentSnowIce,
+							domain: 'the entire spherical surface, including sea ice',
+							hint: 'Authored total-surface target; temperature ranks placement but never creates coverage.',
+							disabled: ctx => coverageDisabled(ctx, 'snow'),
+							disabledReason: 'Snow and ice cannot affect an inactive class or fully uploaded colour and roughness.',
 						},
 					],
 				},
@@ -1062,22 +1111,36 @@ const bodyConfig: CelestialFormConfig = {
 		const primary = starId || systemId
 		return { parentId: primary ? Number(primary) : null, ...common }
 	},
-	physicsWarnings: ctx => validateBodyPhysics({
-		massKg: num(ctx, 'massKg'),
-		radiusM: num(ctx, 'radiusM'),
-		orbitalPeriodDays: bodyEffectivePeriodDays(ctx),
-		semiMajorAxisAu: num(ctx, 'semiMajorAxisAu'),
-		eccentricity: num(ctx, 'eccentricity'),
-		rotationPeriodS: num(ctx, 'rotationPeriodS'),
-		axialTilt: num(ctx, 'axialTilt'),
-		bodyType: text(ctx, 'bodyType') || null,
-		isSatellite: !!text(ctx, 'parentId'),
-		siblingOrbits: bodySiblingOrbits(ctx),
-		parentHillAu: bodyParentHillAu(ctx),
-		parentMassKg: bodyParentMassKg(ctx),
-		parentRadiusM: selectedParentBody(ctx)?.radiusM ?? null,
-		parentOrbitEccentricity: selectedParentBody(ctx)?.eccentricity ?? null,
-	}),
+	physicsWarnings: (ctx) => {
+		const physical = validateBodyPhysics({
+			massKg: num(ctx, 'massKg'),
+			radiusM: num(ctx, 'radiusM'),
+			orbitalPeriodDays: bodyEffectivePeriodDays(ctx),
+			semiMajorAxisAu: num(ctx, 'semiMajorAxisAu'),
+			eccentricity: num(ctx, 'eccentricity'),
+			rotationPeriodS: num(ctx, 'rotationPeriodS'),
+			axialTilt: num(ctx, 'axialTilt'),
+			bodyType: text(ctx, 'bodyType') || null,
+			isSatellite: !!text(ctx, 'parentId'),
+			siblingOrbits: bodySiblingOrbits(ctx),
+			parentHillAu: bodyParentHillAu(ctx),
+			parentMassKg: bodyParentMassKg(ctx),
+			parentRadiusM: selectedParentBody(ctx)?.radiusM ?? null,
+			parentOrbitEccentricity: selectedParentBody(ctx)?.eccentricity ?? null,
+		})
+		const surface = composeSurfacePlan({
+			id: ctx.selfId ?? 0,
+			slug: text(ctx, 'slug'),
+			bodyType: text(ctx, 'bodyType'),
+			temperatureK: num(ctx, 'temperatureK'),
+		}, surfaceRecipeFromDraft(ctx.draft))
+		return [
+			...physical,
+			...surface.diagnostics.map(diagnostic => ({
+				field: 'surface', message: diagnostic.message, severity: 'warning' as const,
+			})),
+		]
+	},
 	overrides: [
 		{
 			control: 'lockable', key: 'orbitalPeriodDays', label: 'Orbital Period (days)',
@@ -1125,7 +1188,7 @@ const bodyConfig: CelestialFormConfig = {
 				bodyType: preset.bodyType,
 				massKg: preset.massKg,
 				radiusM: preset.radiusM,
-				temperature: preset.temperature,
+				temperatureK: preset.temperatureK,
 				composition: preset.composition,
 				atmosphere: preset.atmosphere,
 				orbitalPeriodDays: preset.orbitalPeriodDays,

@@ -266,6 +266,7 @@ export async function createSystemMapRenderer(
 	let dataReceived = false
 	let visualsReady = false
 	let visualGeneration = 0
+	let lodGeneration = 0
 	let starlightSummary: StarlightSummary = starlight.summary()
 	let exposureLabel = formatStarlightExposure(
 		resolveStarlightExposure(DEFAULT_SETTINGS.visibility, null),
@@ -439,6 +440,7 @@ export async function createSystemMapRenderer(
 		renderer.setSize(width, height, false)
 		resizeLineMaterials()
 		schedule()
+		queueMicrotask(settleTextureLods)
 	}
 
 	function makeLine(color: string, widthPx: number, opacity: number, dashed = false): OrbitPath {
@@ -510,6 +512,7 @@ export async function createSystemMapRenderer(
 		if (layout.primaryStar) addNode(layout.primaryStar, true, false)
 		for (const direct of layout.directOrbits) addNode(direct.body, direct.body.isStar, false)
 		for (const satellite of layout.satellites) addNode(satellite.body, satellite.body.isStar, true)
+		publishTextureLodDiagnostics()
 		starlightSummary = starlight.rebuild(
 			[...nodes.values()].filter(node => node.isStar).map(node => node.body),
 			layout.worldUnitsPerAu ?? 1,
@@ -535,6 +538,7 @@ export async function createSystemMapRenderer(
 		void Promise.allSettled([...nodes.values()].map(node => node.visual.ready)).then(() => {
 			if (destroyed || generation !== visualGeneration) return
 			visualsReady = true
+			settleTextureLods()
 			schedule()
 		})
 	}
@@ -648,6 +652,14 @@ export async function createSystemMapRenderer(
 		return perspectiveWorldUnitsPerPixel(Math.max(-scratchView.z, Number.EPSILON), height, ORRERY_FOV_DEG)
 	}
 
+	function textureWorldUnitsPerPixelAt(position: Vector3): number {
+		if (camera === planCamera) return worldUnitsPerPixelAt(position)
+		camera.updateMatrixWorld()
+		scratchView.copy(position).applyMatrix4(camera.matrixWorldInverse)
+		if (scratchView.z >= -camera.near) return Number.POSITIVE_INFINITY
+		return perspectiveWorldUnitsPerPixel(-scratchView.z, height, ORRERY_FOV_DEG)
+	}
+
 	function updateVisualScales() {
 		camera.updateMatrixWorld()
 		for (const node of nodes.values()) {
@@ -662,6 +674,57 @@ export async function createSystemMapRenderer(
 				: controls.target
 			path.material.dashScale = screenDashScale(worldUnitsPerPixelAt(representative))
 		}
+	}
+
+	function publishTextureLodDiagnostics() {
+		const desiredCounts = { 256: 0, 512: 0, 1024: 0 }
+		const settledCounts = { 256: 0, 512: 0, 1024: 0 }
+		let pending = 0
+		for (const node of nodes.values()) {
+			const lod = node.visual.getProceduralLod()
+			desiredCounts[lod.desired]++
+			if (lod.settled == null) pending++
+			else settledCounts[lod.settled]++
+		}
+		const desiredSizes = ([256, 512, 1024] as const).filter(size => desiredCounts[size] > 0)
+		canvas.dataset.textureLodInitial = '256'
+		canvas.dataset.textureLodTotal = String(nodes.size)
+		canvas.dataset.textureLodDesired = JSON.stringify(desiredCounts)
+		canvas.dataset.textureLodSettled = JSON.stringify(settledCounts)
+		canvas.dataset.textureLodDesiredMax = String(desiredSizes.at(-1) ?? 256)
+		canvas.dataset.textureLodPending = String(pending)
+	}
+
+	function settleTextureLods() {
+		if (destroyed || nodes.size === 0) return
+		camera.updateMatrixWorld()
+		const tasks: Promise<void>[] = []
+		for (const node of nodes.values()) {
+			node.visual.anchor.getWorldPosition(scratchWorld)
+			const before = node.visual.getProceduralLod()
+			const task = node.visual.settleProceduralLod(textureWorldUnitsPerPixelAt(scratchWorld))
+			const after = node.visual.getProceduralLod()
+			node.visual.anchor.userData.textureLod = after
+			if (before.desired !== after.desired || after.settled !== after.desired) tasks.push(task)
+		}
+		publishTextureLodDiagnostics()
+		if (tasks.length === 0) return
+		const generation = visualGeneration
+		const lodRun = ++lodGeneration
+		visualsReady = false
+		schedule()
+		void Promise.allSettled(tasks).then(() => {
+			if (destroyed || generation !== visualGeneration || lodRun !== lodGeneration) return
+			for (const node of nodes.values()) {
+				node.visual.anchor.userData.textureLod = node.visual.getProceduralLod()
+			}
+			visualsReady = [...nodes.values()].every((node) => {
+				const lod = node.visual.getProceduralLod()
+				return lod.settled === lod.desired
+			})
+			publishTextureLodDiagnostics()
+			schedule()
+		})
 	}
 
 	function updatePerspectiveClipping() {
@@ -818,14 +881,17 @@ export async function createSystemMapRenderer(
 		if (destroyed || !visible || !intersecting) return
 		const deltaSeconds = Math.min(0.05, Math.max(0, (now - lastFrameAt) / 1_000))
 		lastFrameAt = now
+		let cameraSettled = false
 		let animate = applyKeyboardPan(deltaSeconds)
 		animate = controls.update() || animate
 		if (viewStartedAt != null) {
 			const progress = Math.min(1, (now - viewStartedAt) / VIEW_TRANSITION_MS)
 			viewBlend = viewFrom + (viewTo - viewFrom) * ease(progress)
 			applyPositions()
-			if (progress >= 1) viewStartedAt = null
-			else animate = true
+			if (progress >= 1) {
+				viewStartedAt = null
+				cameraSettled = true
+			} else animate = true
 		}
 		if (fly) {
 			const progress = Math.min(1, (now - fly.startedAt) / fly.duration)
@@ -834,8 +900,10 @@ export async function createSystemMapRenderer(
 			camera.position.lerpVectors(fly.fromCamera, fly.toCamera, t)
 			camera.zoom = fly.fromZoom + (fly.toZoom - fly.fromZoom) * t
 			camera.updateProjectionMatrix()
-			if (progress >= 1) fly = null
-			else animate = true
+			if (progress >= 1) {
+				fly = null
+				cameraSettled = true
+			} else animate = true
 		}
 		updatePerspectiveClipping()
 		updateVisualScales()
@@ -843,6 +911,7 @@ export async function createSystemMapRenderer(
 		renderer.render(scene, camera)
 		publishOverlay()
 		notifyView()
+		if (cameraSettled) settleTextureLods()
 		if (animate) schedule()
 	}
 
@@ -923,6 +992,7 @@ export async function createSystemMapRenderer(
 			camera.zoom = targetZoom
 			camera.updateProjectionMatrix()
 			fly = null
+			queueMicrotask(settleTextureLods)
 		} else {
 			fly = {
 				startedAt: performance.now(),
@@ -950,9 +1020,11 @@ export async function createSystemMapRenderer(
 		if (!PAN_KEYS.has(event.code)) return
 		event.preventDefault()
 		pressedPanKeys.delete(event.code)
+		if (pressedPanKeys.size === 0) queueMicrotask(settleTextureLods)
 	}
 	function handleCanvasBlur() {
 		pressedPanKeys.clear()
+		queueMicrotask(settleTextureLods)
 	}
 	function handleVisibility() {
 		visible = !document.hidden
@@ -973,6 +1045,7 @@ export async function createSystemMapRenderer(
 	canvas.addEventListener('keyup', handleKeyUp)
 	canvas.addEventListener('blur', handleCanvasBlur)
 	controls.addEventListener('change', schedule)
+	controls.addEventListener('end', settleTextureLods)
 	document.addEventListener('visibilitychange', handleVisibility)
 	const intersectionObserver = new IntersectionObserver((entries) => {
 		intersecting = entries.at(-1)?.isIntersecting ?? true
@@ -1016,6 +1089,7 @@ export async function createSystemMapRenderer(
 					viewStartedAt = null
 					switchCameraForView(settings.view, true)
 					applyPositions()
+					queueMicrotask(settleTextureLods)
 				} else {
 					viewStartedAt = performance.now()
 					switchCameraForView(settings.view, false)
@@ -1045,6 +1119,7 @@ export async function createSystemMapRenderer(
 			lastFollowPosition = null
 			applyPositions()
 			controls.update()
+			queueMicrotask(settleTextureLods)
 			schedule()
 		},
 		destroy() {
@@ -1066,6 +1141,7 @@ export async function createSystemMapRenderer(
 			canvas.removeEventListener('keyup', handleKeyUp)
 			canvas.removeEventListener('blur', handleCanvasBlur)
 			controls.removeEventListener('change', schedule)
+			controls.removeEventListener('end', settleTextureLods)
 			controls.dispose()
 			clearSceneContent()
 			sharedSphere.dispose()

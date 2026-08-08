@@ -13,7 +13,7 @@ describe('planet surface material composition', () => {
 		})
 		await visual.ready
 		expect(visual.plan.channels.albedo.source).toBe('procedural')
-		expect(visual.plan.hydrosphereFraction).toBe(0.8)
+		expect(visual.plan.coverage.surfaceWater).toBeNull()
 		expect(visual.material.map).toBeInstanceOf(DataTexture)
 		expect(visual.material.roughnessMap).toBeInstanceOf(DataTexture)
 		expect(visual.material.bumpMap).toBeInstanceOf(DataTexture)
@@ -27,7 +27,11 @@ describe('planet surface material composition', () => {
 		const visual = createPlanetSurfaceVisual({
 			body: {
 				id: 5, name: 'Clouded', slug: 'clouded', bodyType: 'terrestrial',
-				surface: { version: 3, fallback: 'procedural', class: 'terrestrial', seed: 9, hydrosphereFraction: 0.4, cloudCoverage: 0.5, vegetationFraction: 0.45, snowCoverage: 0.1, maps: {} },
+				surface: {
+					version: 4, fallback: 'procedural', class: 'terrestrial', seed: 9,
+					coverage: { surfaceWater: 0.4, clouds: 0.5, vegetation: 0.45, permanentSnowIce: 0.1 },
+					maps: {},
+				},
 			},
 			colorCss: '#A09882',
 			radius: 0.02,

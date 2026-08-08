@@ -133,6 +133,8 @@ export function createSurfacePreviewRenderer(
 			stellarSurface = createStellarSurfaceVisual({
 				body,
 				colorCss: body.color ?? '#FFE088',
+				initialLod: 1024,
+				initialPriority: 'foreground',
 				onTextureChange: scheduleRender,
 			})
 			stellarSurface.setVisibilityMode('enhanced')
@@ -142,6 +144,8 @@ export function createSurfacePreviewRenderer(
 				colorCss: body.color ?? '#CAE1FF',
 				radius: 1,
 				sphereGeometry,
+				initialLod: 1024,
+				initialPriority: 'foreground',
 				onTextureChange: scheduleRender,
 			})
 		}

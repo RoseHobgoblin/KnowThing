@@ -614,7 +614,7 @@ export const celestialBodies = pgTable(
 		rotationPeriodS: doublePrecision('rotation_period_s'),
 		axialTilt: doublePrecision('axial_tilt'),
 
-		// Star-only.
+		// Shared effective/representative temperature; luminosity fields remain star-only.
 		spectralType: text('spectral_type'),
 		luminosityW: doublePrecision('luminosity_w'),
 		luminosityVisual: text('luminosity_visual'),
@@ -625,7 +625,6 @@ export const celestialBodies = pgTable(
 
 		// Body-only. bodyType is required for kind='body' (CHECK in 0043).
 		bodyType: text('body_type'),
-		temperature: text('temperature'),
 		composition: text('composition'),
 		atmosphere: text('atmosphere'),
 		surfacePressure: text('surface_pressure'),
