@@ -146,12 +146,15 @@ describe('buildPayload', () => {
 				surface: {
 					version: 1, fallback: 'flat', class: 'terrestrial', seed: 42,
 					hydrosphereFraction: 0.71, cloudCoverage: null,
+					vegetationFraction: 0.48, snowCoverage: 0.12,
 					maps: { albedo: 'Earth albedo.png', normal: 'Earth normal.png' },
 				},
 			},
 		})
 		expect(draft.surfaceFallback).toBe('flat')
 		expect(draft.surfaceHydrosphere).toBe(0.71)
+		expect(draft.surfaceVegetation).toBe(0.48)
+		expect(draft.surfaceSnowCoverage).toBe(0.12)
 		expect(draft.surfaceMap_albedo).toMatchObject({ filename: 'Earth albedo.png', mediaId: null })
 		draft.starId = '7'
 		draft.surfaceMap_roughness = 'Earth roughness.png'
@@ -160,8 +163,10 @@ describe('buildPayload', () => {
 		expect(payload.extra).toMatchObject({
 			density: '5.51 g/cm³',
 			surface: {
-				version: 2, fallback: 'flat', class: 'terrestrial', seed: 42,
+				version: 3, fallback: 'flat', class: 'terrestrial', seed: 42,
 				hydrosphereFraction: 0.71,
+				vegetationFraction: 0.48,
+				snowCoverage: 0.12,
 				maps: {
 					albedo: { filename: 'Earth albedo.png' },
 					normal: { filename: 'Earth normal.png' },

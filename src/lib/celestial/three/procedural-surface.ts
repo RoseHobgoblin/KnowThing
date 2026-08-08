@@ -7,6 +7,8 @@ export type ProceduralSurfaceParameters = {
 	temperatureK: number | null
 	hydrosphereFraction: number | null
 	cloudCoverage: number | null
+	vegetationFraction: number
+	snowCoverage: number
 	tint?: [number, number, number] | null
 }
 
@@ -29,6 +31,11 @@ const mixRgb = (a: Rgb, b: Rgb, amount: number): Rgb => [
 	mix(a[2], b[2], amount),
 ]
 
+function smoothstep(edge0: number, edge1: number, value: number): number {
+	const amount = clamp((value - edge0) / (edge1 - edge0), 0, 1)
+	return amount * amount * (3 - 2 * amount)
+}
+
 function fractal(noise: Noise3, x: number, y: number, z: number, octaves: number, lacunarity = 2, gain = 0.5): number {
 	return fractalNoise(noise, x, y, z, octaves, lacunarity, gain)
 }
@@ -48,15 +55,15 @@ function tint(color: Rgb, target: Rgb | null | undefined, amount: number): Rgb {
 	return target ? mixRgb(color, target, amount) : color
 }
 
-function terrainColor(height: number, seaLevel: number, hydrosphere: number, cold: boolean): { color: Rgb, roughness: number } {
+function terrainColor(height: number, seaLevel: number, hydrosphere: number): { color: Rgb, roughness: number } {
 	if (hydrosphere > 0 && height <= seaLevel) {
 		const depth = clamp((seaLevel - height) * 4, 0, 1)
 		const water = mixRgb([62, 111, 151], [14, 37, 72], depth)
-		return { color: cold ? mixRgb(water, [207, 222, 234], 0.72) : water, roughness: cold ? 0.38 : 0.16 }
+		return { color: water, roughness: 0.16 }
 	}
 	const altitude = clamp((height - seaLevel) * 2.2, 0, 1)
-	const lowland: Rgb = cold ? [153, 159, 158] : [132, 115, 88]
-	const highland: Rgb = cold ? [222, 228, 232] : [102, 92, 82]
+	const lowland: Rgb = [132, 115, 88]
+	const highland: Rgb = [102, 92, 82]
 	return { color: mixRgb(lowland, highland, altitude), roughness: mix(0.82, 0.96, altitude) }
 }
 
@@ -92,9 +99,12 @@ export function generateProceduralSurface(
 	const primaryNoise = makeSimplex(parameters.seed)
 	const detailNoise = makeSimplex(parameters.seed ^ 0x9E3779B9)
 	const cloudNoise = makeSimplex(parameters.seed ^ 0x51AB3F)
+	const climateNoise = makeSimplex(parameters.seed ^ 0xC1A4E7)
 	const hydrosphere = parameters.hydrosphereFraction ?? 0
 	const seaLevel = mix(0.28, 0.72, hydrosphere)
-	const cold = parameters.temperatureK != null && parameters.temperatureK < 260
+	const vegetationFraction = clamp(parameters.vegetationFraction, 0, 1)
+	const snowCoverage = clamp(parameters.snowCoverage, 0, 1)
+	const meanTemperatureK = parameters.temperatureK ?? 288
 
 	for (let pixelY = 0; pixelY < safeHeight; pixelY++) {
 		const latitude = (0.5 - (pixelY + 0.5) / safeHeight) * Math.PI
@@ -123,9 +133,51 @@ export function generateProceduralSurface(
 					: mixRgb([198, 216, 229], [233, 239, 242], heightValue)
 				roughnessValue = mix(0.38, 0.62, heightValue)
 			} else {
-				const terrain = terrainColor(heightValue, seaLevel, hydrosphere, cold)
+				const terrain = terrainColor(heightValue, seaLevel, hydrosphere)
 				color = terrain.color
 				roughnessValue = terrain.roughness
+				const water = hydrosphere > 0 && heightValue <= seaLevel
+				const altitude = clamp((heightValue - seaLevel) * 2.2, 0, 1)
+				const absoluteLatitude = Math.abs(latitudeSin)
+				const localTemperatureK = meanTemperatureK + 14
+					- 45 * absoluteLatitude ** 1.35
+					- 24 * altitude
+				const needsClimate = (parameters.class === 'terrestrial' && vegetationFraction > 0) || snowCoverage > 0
+				const climate = needsClimate
+					? clamp(0.5 + climateNoise(x * 3.1 + 11, y * 3.1 - 7, z * 3.1 + 5) * 0.52, 0, 1)
+					: 0.5
+
+				if (parameters.class === 'terrestrial' && !water && vegetationFraction > 0) {
+					const thermalSuitability = smoothstep(252, 272, localTemperatureK)
+						* (1 - smoothstep(307, 327, localTemperatureK))
+					const vegetationPotential = thermalSuitability
+						* (0.34 + climate * 0.66)
+						* (1 - altitude * 0.58)
+					const threshold = mix(0.9, 0.2, vegetationFraction)
+					const vegetation = smoothstep(threshold - 0.09, threshold + 0.14, vegetationPotential)
+					const vegetationColor = mixRgb([111, 137, 55], [28, 83, 40], climate)
+					color = mixRgb(color, vegetationColor, vegetation * 0.94)
+					roughnessValue = mix(roughnessValue, 0.86, vegetation)
+				}
+
+				if (snowCoverage > 0) {
+					const coldness = 1 - smoothstep(250, 281, localTemperatureK)
+					const snowPotential = clamp(
+						absoluteLatitude ** 1.35 * 0.62
+						+ altitude * 0.48
+						+ coldness * 0.38
+						+ (climate - 0.5) * 0.08,
+						0,
+						1,
+					)
+					const threshold = mix(1.02, 0.18, snowCoverage)
+					const snow = smoothstep(threshold - 0.08, threshold + 0.06, snowPotential)
+					const snowColor = water
+						? mixRgb([198, 216, 228], [231, 237, 239], climate)
+						: mixRgb([211, 220, 224], [242, 242, 237], climate)
+					color = mixRgb(color, snowColor, snow * 0.96)
+					roughnessValue = mix(roughnessValue, water ? 0.43 : 0.66, snow)
+				}
 			}
 
 			color = tint(color, parameters.tint, parameters.class === 'gas' ? 0.3 : 0.18)

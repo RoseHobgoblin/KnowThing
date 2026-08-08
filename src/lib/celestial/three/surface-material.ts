@@ -106,6 +106,8 @@ export function createPlanetSurfaceVisual(args: {
 			temperatureK: plan.temperatureK,
 			hydrosphereFraction: plan.hydrosphereFraction,
 			cloudCoverage: plan.recipe.cloudCoverage,
+			vegetationFraction: plan.vegetationFraction,
+			snowCoverage: plan.snowCoverage,
 			tint: colorTuple(colorCss),
 		}).then((generated) => {
 			if (disposed) return

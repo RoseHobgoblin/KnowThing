@@ -241,6 +241,8 @@
 								temperatureK: currentPlanetPlan.temperatureK,
 								hydrosphereFraction: currentPlanetPlan.hydrosphereFraction,
 								cloudCoverage: currentPlanetPlan.recipe.cloudCoverage,
+								vegetationFraction: currentPlanetPlan.vegetationFraction,
+								snowCoverage: currentPlanetPlan.snowCoverage,
 								tint: [202, 225, 255],
 							})
 							if (version !== renderVersion) return

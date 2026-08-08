@@ -17,16 +17,18 @@ Every texture choice retains provenance as `uploaded`, `procedural`, `constant`,
 
 ## Current Recipe
 
-The version 2 recipe lives in `celestial_bodies.extra.surface`. Each map is a stable Media identity pinned to the exact selected SHA-256 revision:
+The version 3 recipe lives in `celestial_bodies.extra.surface`. Each map is a stable Media identity pinned to the exact selected SHA-256 revision:
 
 ```json
 {
-  "version": 2,
+  "version": 3,
   "fallback": "procedural",
   "class": "terrestrial",
   "seed": 436,
   "hydrosphereFraction": 0.55,
   "cloudCoverage": 0.48,
+  "vegetationFraction": 0.62,
+  "snowCoverage": 0.14,
   "maps": {
     "albedo": {
       "version": 1,
@@ -43,6 +45,8 @@ The version 2 recipe lives in `celestial_bodies.extra.surface`. Each map is a st
 ```
 
 All channels use the same binding shape. Normal bindings additionally record OpenGL/DirectX Y convention; elevation bindings record relative, metre, or kilometre interpretation. All fields are optional in the editor. `fallback: "flat"` is the explicit opt-out. `class: "auto"` uses conservative body-type/composition clues only for missing procedural channels. It does not modify uploads.
+
+`vegetationFraction` is an authored biosphere assertion, not a conclusion drawn from habitability. When omitted, the procedural fallback keeps land barren unless body data explicitly says earthlike, garden world, biosphere, vegetation, forest, or flora. `snowCoverage` is an illustrative visual target distributed toward cold latitudes and high terrain. When omitted, a conservative target may be derived from stated mean temperature and surface-water fraction; explicit `0` disables it. Neither value claims a canonical biome or climate map, and an uploaded albedo map replaces both effects.
 
 ## Texture Channels and Upload Handoff
 
@@ -73,7 +77,7 @@ The prototype contributed four sound implementation ideas:
 The adaptation intentionally removed or constrained claims that the prototype could not justify:
 
 - gravity no longer fabricates mountain amplitude;
-- temperature does not fabricate biomes or life;
+- temperature does not fabricate vegetation or life; broad snow coverage may use stated temperature and water as an explicitly illustrative fallback;
 - atmosphere text does not automatically fabricate clouds;
 - random craters, volcanoes, and tectonics are not treated as canonical data;
 - height shading is not baked into albedo, because lighting belongs to the material and scene;
@@ -111,7 +115,7 @@ Ask for user data when the information is intended to be canonical rather than d
 - named continents, coastlines, basins, and settlements;
 - plate boundaries, faults, crustal age, and tectonic reconstruction;
 - measured or authored elevation/bathymetry;
-- climate zones, seasonal clouds, storms, ice cover, or vegetation;
+- canonical climate zones, seasonal clouds, storms, ice cover, or vegetation;
 - city lights, lava, aurorae, or other emissive phenomena;
 - exact gas bands, storms, impact sites, or geological units.
 

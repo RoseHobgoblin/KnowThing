@@ -5,6 +5,7 @@ import { error } from '@sveltejs/kit'
 import { eq } from 'drizzle-orm'
 import { env } from '$env/dynamic/private'
 import type { BodyPreset, CelestialPreset, PresetMediaAsset } from '$lib/celestial/presets.js'
+import { SURFACE_RECIPE_VERSION } from '$lib/celestial/surface-model.js'
 import { media } from '$lib/server/db/schema.js'
 import { db } from '$lib/server/db/index.js'
 
@@ -120,7 +121,7 @@ async function ensureMediaRow(dbx: Dbx, prepared: PreparedAsset) {
 	return created
 }
 
-/** Install immutable Media rows and compose the preset's v2 surface recipe. */
+/** Install immutable Media rows and compose the current surface recipe. */
 export async function installPresetSurface(
 	dbx: Dbx,
 	body: BodyPreset,
@@ -141,12 +142,14 @@ export async function installPresetSurface(
 	}
 	return Object.assign({}, body.extra, {
 		surface: {
-			version: 2,
+			version: SURFACE_RECIPE_VERSION,
 			fallback: body.seedSurface.fallback,
 			class: body.seedSurface.class,
 			seed: body.seedSurface.seed,
 			hydrosphereFraction: body.seedSurface.hydrosphereFraction,
 			cloudCoverage: body.seedSurface.cloudCoverage,
+			vegetationFraction: body.seedSurface.vegetationFraction,
+			snowCoverage: body.seedSurface.snowCoverage,
 			maps,
 		},
 	})

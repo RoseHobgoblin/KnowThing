@@ -4,6 +4,8 @@
 
 	let hydrosphereFraction = $state(0.55)
 	let cloudCoverage = $state(0.48)
+	let vegetationFraction = $state(0.62)
+	let snowCoverage = $state(0.14)
 	let seed = $state(436)
 	let previewKind = $state<'planet' | 'star'>('planet')
 
@@ -16,12 +18,14 @@
 		composition: 'iron core and silicate mantle',
 		atmosphere: 'N2 78%, O2 21%',
 		surface: {
-			version: 2,
+			version: 3,
 			fallback: 'procedural',
 			class: 'terrestrial',
 			seed,
 			hydrosphereFraction,
 			cloudCoverage,
+			vegetationFraction,
+			snowCoverage,
 			maps: {},
 		},
 	})
@@ -66,6 +70,14 @@
 			<label class="block space-y-1 text-xs text-secondary">
 				<span>Cloud coverage</span>
 				<input class="w-full bg-page px-3 py-2 text-body" type="number" min="0" max="1" step="0.05" bind:value={cloudCoverage} />
+			</label>
+			<label class="block space-y-1 text-xs text-secondary">
+				<span>Vegetation coverage</span>
+				<input class="w-full bg-page px-3 py-2 text-body" type="number" min="0" max="1" step="0.05" bind:value={vegetationFraction} />
+			</label>
+			<label class="block space-y-1 text-xs text-secondary">
+				<span>Permanent snow / ice</span>
+				<input class="w-full bg-page px-3 py-2 text-body" type="number" min="0" max="1" step="0.05" bind:value={snowCoverage} />
 			</label>
 			<label class="block space-y-1 text-xs text-secondary">
 				<span>Seed</span>

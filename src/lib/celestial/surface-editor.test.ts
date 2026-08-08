@@ -9,15 +9,19 @@ describe('surface editor recipe', () => {
 			surfaceSeed: 436.8,
 			surfaceHydrosphere: 0.55,
 			surfaceCloudCoverage: 0.48,
+			surfaceVegetation: 0.62,
+			surfaceSnowCoverage: 0.14,
 			surfaceMap_albedo: ' Saxnat albedo.png ',
 			surfaceMap_normal: '',
 		})).toEqual({
-			version: 2,
+			version: 3,
 			fallback: 'procedural',
 			class: 'terrestrial',
 			seed: 436,
 			hydrosphereFraction: 0.55,
 			cloudCoverage: 0.48,
+			vegetationFraction: 0.62,
+			snowCoverage: 0.14,
 			maps: { albedo: {
 				version: 1, mediaId: null, filename: 'Saxnat albedo.png', contentHash: null,
 				interpretation: { projection: 'equirectangular', colorSpace: 'srgb' },
@@ -35,6 +39,8 @@ describe('surface editor recipe', () => {
 			class: 'auto',
 			hydrosphereFraction: null,
 			cloudCoverage: null,
+			vegetationFraction: null,
+			snowCoverage: null,
 			maps: {},
 		})
 	})

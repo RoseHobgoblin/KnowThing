@@ -7,6 +7,24 @@ const base = {
 	temperatureK: 288,
 	hydrosphereFraction: 0.55,
 	cloudCoverage: null,
+	vegetationFraction: 0,
+	snowCoverage: 0,
+}
+
+function greenPixels(data: Uint8Array): number {
+	let count = 0
+	for (let offset = 0; offset < data.length; offset += 4) {
+		if (data[offset + 1] > data[offset] * 1.12 && data[offset + 1] > data[offset + 2] * 1.08) count++
+	}
+	return count
+}
+
+function snowPixels(data: Uint8Array): number {
+	let count = 0
+	for (let offset = 0; offset < data.length; offset += 4) {
+		if (data[offset] > 195 && data[offset + 1] > 205 && data[offset + 2] > 205) count++
+	}
+	return count
 }
 
 describe('procedural surface fallback', () => {
@@ -32,5 +50,18 @@ describe('procedural surface fallback', () => {
 	it('does not invent solid relief for gas giants', () => {
 		const generated = generateProceduralSurface({ ...base, class: 'gas' }, 24, 12)
 		expect(generated.elevation).toBeNull()
+	})
+
+	it('adds authored green vegetation only to terrestrial land', () => {
+		const barren = generateProceduralSurface(base, 128, 64)
+		const living = generateProceduralSurface({ ...base, vegetationFraction: 0.7 }, 128, 64)
+		expect(greenPixels(barren.albedo)).toBe(0)
+		expect(greenPixels(living.albedo)).toBeGreaterThan(200)
+	})
+
+	it('places authored snow at cold latitudes and high terrain', () => {
+		const bare = generateProceduralSurface(base, 128, 64)
+		const snowy = generateProceduralSurface({ ...base, snowCoverage: 0.35 }, 128, 64)
+		expect(snowPixels(snowy.albedo)).toBeGreaterThan(snowPixels(bare.albedo) + 200)
 	})
 })

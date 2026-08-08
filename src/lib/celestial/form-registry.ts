@@ -979,6 +979,18 @@ const bodyConfig: CelestialFormConfig = {
 							min: 0, max: 1, rangeError: 'Use a value from 0 to 1', placeholder: '0.55',
 							hint: 'Optional generated cloud-opacity layer. Atmosphere data alone never invents clouds.',
 						},
+						{
+							control: 'number', key: 'surfaceVegetation', label: 'Vegetation coverage', omitFromPayload: true,
+							initial: record => parseSurfaceRecipe(record.extra?.surface).vegetationFraction,
+							min: 0, max: 1, rangeError: 'Use a value from 0 to 1', placeholder: '0.55',
+							hint: 'Authored fraction for illustrative green vegetation on generated terrestrial land. Blank means none unless the body data explicitly says earthlike, vegetated, forested, or biosphere; temperature alone never invents life.',
+						},
+						{
+							control: 'number', key: 'surfaceSnowCoverage', label: 'Permanent snow / ice', omitFromPayload: true,
+							initial: record => parseSurfaceRecipe(record.extra?.surface).snowCoverage,
+							min: 0, max: 1, rangeError: 'Use a value from 0 to 1', placeholder: 'Auto from water + temperature',
+							hint: 'Optional coverage target for generated polar and high-altitude snow or sea ice. Blank uses a coarse mean-temperature and water guide; enter 0 to disable it.',
+						},
 					],
 				},
 				{

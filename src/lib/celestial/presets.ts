@@ -83,6 +83,8 @@ export interface PresetSurface {
 	seed: number | null
 	hydrosphereFraction: number | null
 	cloudCoverage: number | null
+	vegetationFraction: number | null
+	snowCoverage: number | null
 	maps: Partial<Record<'albedo' | 'elevation' | 'normal' | 'roughness' | 'clouds' | 'emissive', PresetMediaAsset>>
 }
 
@@ -286,6 +288,8 @@ export const celestialPresets: CelestialPreset[] = [
 							seed: null,
 							hydrosphereFraction: 0,
 							cloudCoverage: 0,
+							vegetationFraction: 0,
+							snowCoverage: 0,
 							maps: {
 								albedo: {
 									publicPath: 'seed-data/celestial/mars/runtime/mars-mdim21-color-4096x2048.webp',

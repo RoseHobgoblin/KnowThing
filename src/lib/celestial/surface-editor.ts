@@ -38,6 +38,8 @@ export function surfaceRecipeFromDraft(draft: Record<string, unknown>): SurfaceR
 		seed: finiteNumber(draft.surfaceSeed),
 		hydrosphereFraction: finiteNumber(draft.surfaceHydrosphere),
 		cloudCoverage: finiteNumber(draft.surfaceCloudCoverage),
+		vegetationFraction: finiteNumber(draft.surfaceVegetation),
+		snowCoverage: finiteNumber(draft.surfaceSnowCoverage),
 		maps,
 	})
 }

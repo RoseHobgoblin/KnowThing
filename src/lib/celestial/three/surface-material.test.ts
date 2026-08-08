@@ -27,7 +27,7 @@ describe('planet surface material composition', () => {
 		const visual = createPlanetSurfaceVisual({
 			body: {
 				id: 5, name: 'Clouded', slug: 'clouded', bodyType: 'terrestrial',
-				surface: { version: 2, fallback: 'procedural', class: 'terrestrial', seed: 9, hydrosphereFraction: 0.4, cloudCoverage: 0.5, maps: {} },
+				surface: { version: 3, fallback: 'procedural', class: 'terrestrial', seed: 9, hydrosphereFraction: 0.4, cloudCoverage: 0.5, vegetationFraction: 0.45, snowCoverage: 0.1, maps: {} },
 			},
 			colorCss: '#A09882',
 			radius: 0.02,

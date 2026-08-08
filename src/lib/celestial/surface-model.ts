@@ -4,7 +4,7 @@ import {
 	type MediaAssetBinding,
 } from '$lib/media/asset-binding.js'
 
-export const SURFACE_RECIPE_VERSION = 2 as const
+export const SURFACE_RECIPE_VERSION = 3 as const
 
 export type SurfaceClass = 'auto' | 'rocky' | 'terrestrial' | 'gas' | 'ice'
 export type ResolvedSurfaceClass = Exclude<SurfaceClass, 'auto'>
@@ -19,6 +19,8 @@ export type SurfaceRecipe = {
 	seed: number | null
 	hydrosphereFraction: number | null
 	cloudCoverage: number | null
+	vegetationFraction: number | null
+	snowCoverage: number | null
 	maps: Partial<Record<SurfaceMapChannel, MediaAssetBinding>>
 }
 
@@ -46,6 +48,10 @@ export type SurfacePlan = {
 	temperatureK: number | null
 	hydrosphereFraction: number
 	hydrosphereSource: 'explicit' | 'inferred' | 'default'
+	vegetationFraction: number
+	vegetationSource: 'explicit' | 'inferred' | 'default'
+	snowCoverage: number
+	snowSource: 'explicit' | 'inferred' | 'default'
 	channels: Record<SurfaceMapChannel, SurfaceChannelPlan>
 }
 
@@ -58,6 +64,8 @@ const DEFAULT_RECIPE: SurfaceRecipe = {
 	seed: null,
 	hydrosphereFraction: null,
 	cloudCoverage: null,
+	vegetationFraction: null,
+	snowCoverage: null,
 	maps: {},
 }
 
@@ -72,6 +80,10 @@ function finiteNumber(value: unknown): number | null {
 function unitFraction(value: unknown): number | null {
 	const number = finiteNumber(value)
 	return number == null ? null : Math.min(1, Math.max(0, number))
+}
+
+function clamp(value: number, minimum: number, maximum: number): number {
+	return Math.min(maximum, Math.max(minimum, value))
 }
 
 function enumValue<T extends string>(value: unknown, options: readonly T[], fallback: T): T {
@@ -95,8 +107,23 @@ export function parseSurfaceRecipe(value: unknown): SurfaceRecipe {
 		seed: rawSeed == null ? null : Math.trunc(rawSeed),
 		hydrosphereFraction: unitFraction(value.hydrosphereFraction),
 		cloudCoverage: unitFraction(value.cloudCoverage),
+		vegetationFraction: unitFraction(value.vegetationFraction),
+		snowCoverage: unitFraction(value.snowCoverage),
 		maps,
 	}
+}
+
+function writtenTemperatureK(value: string | null | undefined): number | null {
+	if (!value) return null
+	const match = value.match(/([+−-]?\d+(?:\.\d+)?)\s*°?\s*([cfk])\b/i)
+	if (!match) return null
+	const amount = Number.parseFloat(match[1].replace('−', '-'))
+	if (!Number.isFinite(amount)) return null
+	const unit = match[2].toLowerCase()
+	let kelvin = amount
+	if (unit === 'c') kelvin = amount + 273.15
+	else if (unit === 'f') kelvin = (amount - 32) * 5 / 9 + 273.15
+	return kelvin > 0 ? kelvin : null
 }
 
 function stableSeed(value: string): number {
@@ -125,29 +152,43 @@ export function composeSurfacePlan(body: SurfaceBodyInput, rawRecipe: unknown): 
 	const surfaceClass = recipe.class === 'auto' ? inferSurfaceClass(body) : recipe.class
 	const procedural = recipe.fallback === 'procedural'
 	const generatedRelief = procedural && surfaceClass !== 'gas'
-	const inferredOcean = /ocean|water world/i.test(body.bodyType)
+	const evidence = `${body.bodyType} ${body.composition ?? ''} ${body.atmosphere ?? ''}`
+	const inferredOcean = /ocean|water world/i.test(evidence)
+	const inferredVegetation = /earth[ -]?like|garden world|biosphere|vegetat|forest|flora/i.test(evidence)
 	const hydrosphereFraction = recipe.hydrosphereFraction ?? (inferredOcean ? 0.8 : 0)
+	const temperatureK = typeof body.temperatureK === 'number' && body.temperatureK > 0
+		? body.temperatureK
+		: writtenTemperatureK(body.temperature)
+	const vegetationFraction = recipe.vegetationFraction ?? (inferredVegetation ? 0.55 : 0)
+	const inferredSnow = temperatureK != null && hydrosphereFraction > 0 && surfaceClass !== 'gas'
+		? clamp((296 - temperatureK) / 70, 0, 0.9) * Math.min(1, hydrosphereFraction * 2)
+		: 0
+	const snowCoverage = recipe.snowCoverage ?? inferredSnow
 	const uploaded = (mapChannel: SurfaceMapChannel) => recipe.maps[mapChannel]
 	const choose = (mapChannel: SurfaceMapChannel, fallback: SurfaceSourceKind): SurfaceChannelPlan => {
 		const binding = uploaded(mapChannel)
 		return binding ? channel('uploaded', binding) : channel(fallback)
 	}
 
-	const writtenTemperature = body.temperature?.match(/([+-]?\d+(?:\.\d+)?)\s*k\b/i)
-	const parsedTemperature = writtenTemperature ? Number.parseFloat(writtenTemperature[1]) : null
 	let hydrosphereSource: SurfacePlan['hydrosphereSource'] = 'default'
 	if (inferredOcean) hydrosphereSource = 'inferred'
 	if (recipe.hydrosphereFraction != null) hydrosphereSource = 'explicit'
+	let vegetationSource: SurfacePlan['vegetationSource'] = inferredVegetation ? 'inferred' : 'default'
+	if (recipe.vegetationFraction != null) vegetationSource = 'explicit'
+	let snowSource: SurfacePlan['snowSource'] = inferredSnow > 0 ? 'inferred' : 'default'
+	if (recipe.snowCoverage != null) snowSource = 'explicit'
 	return {
 		recipe,
 		class: surfaceClass,
 		classSource: recipe.class === 'auto' ? 'inferred' : 'explicit',
 		seed: recipe.seed ?? stableSeed(`${body.id}:${body.slug}`),
-		temperatureK: typeof body.temperatureK === 'number' && body.temperatureK > 0
-			? body.temperatureK
-			: (parsedTemperature != null && parsedTemperature > 0 ? parsedTemperature : null),
+		temperatureK,
 		hydrosphereFraction,
 		hydrosphereSource,
+		vegetationFraction,
+		vegetationSource,
+		snowCoverage,
+		snowSource,
 		channels: {
 			albedo: choose('albedo', procedural ? 'procedural' : 'constant'),
 			elevation: choose('elevation', generatedRelief ? 'procedural' : 'unavailable'),
