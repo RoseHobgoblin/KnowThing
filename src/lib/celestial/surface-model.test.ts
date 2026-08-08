@@ -22,6 +22,14 @@ describe('surface composition plan v5', () => {
 		expect(describeSurfacePlan(first)).toBe('Illustrative procedural rocky surface')
 	})
 
+	it('generates a normal channel with elevation, but never for gas', () => {
+		const rocky = composeSurfacePlan(body, null)
+		const gas = composeSurfacePlan(body, { class: 'gas' })
+		expect(rocky.channels.normal.source).toBe('procedural')
+		expect(gas.channels.normal.source).toBe('unavailable')
+		expect(gas.channels.elevation.source).toBe('unavailable')
+	})
+
 	it('upgrades only explicit v3 values and removes auto class behavior', () => {
 		const recipe = parseSurfaceRecipe({
 			version: 3,

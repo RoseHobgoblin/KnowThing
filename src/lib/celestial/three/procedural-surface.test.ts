@@ -17,8 +17,41 @@ describe('area-calibrated procedural surface', () => {
 			expect(first.albedo).toEqual(second.albedo)
 			expect(first.roughness).toEqual(second.roughness)
 			expect(first.elevation).not.toBeNull()
+			expect(first.normal).not.toBeNull()
+			expect(first.normal).toEqual(second.normal)
 			expect(first.algorithmRevision).toBeGreaterThan(0)
 		}
+	})
+
+	it('derives outward-facing seam-safe normals from elevation', () => {
+		const generated = generateProceduralSurface(base, 64, 32)
+		const normal = generated.normal
+		expect(normal).not.toBeNull()
+		if (!normal) return
+		let blueSum = 0
+		let bluePixels = 0
+		for (let offset = 0; offset < normal.length; offset += 4) {
+			// Blue encodes the outward component, which normalize() keeps positive.
+			expect(normal[offset + 2]).toBeGreaterThanOrEqual(128)
+			expect(normal[offset + 3]).toBe(255)
+			blueSum += normal[offset + 2]
+			bluePixels += 1
+		}
+		expect(blueSum / bluePixels).toBeGreaterThan(128)
+	})
+
+	it('shifts vegetation pigment with host-star temperature', () => {
+		const vegetated = {
+			...base,
+			coverage: { surfaceWater: 0.3, vegetation: 0.6, permanentSnowIce: 0 },
+		}
+		const mDwarf = generateProceduralSurface({ ...vegetated, starTemperatureK: 3_200 }, 64, 32)
+		const sunLike = generateProceduralSurface({ ...vegetated, starTemperatureK: 5_800 }, 64, 32)
+		const defaulted = generateProceduralSurface({ ...vegetated, starTemperatureK: null }, 64, 32)
+		const solar = generateProceduralSurface({ ...vegetated, starTemperatureK: 5_772 }, 64, 32)
+		expect(mDwarf.albedo).not.toEqual(sunLike.albedo)
+		expect(defaulted.albedo).toEqual(solar.albedo)
+		expect(mDwarf.measuredCoverage).toEqual(sunLike.measuredCoverage)
 	})
 
 	it('hits domain-relative authored coverage within two percentage points', () => {
@@ -72,6 +105,7 @@ describe('area-calibrated procedural surface', () => {
 			clouds: { meanCover: 0.3, seed: 91 },
 		}, 64, 32)
 		expect(generated.elevation).toBeNull()
+		expect(generated.normal).toBeNull()
 		expect(generated.measuredCoverage.surfaceWater).toBe(0)
 		expect(generated.measuredCoverage.vegetation).toBe(0)
 		expect(generated.measuredCoverage.permanentSnowIce).toBe(0)

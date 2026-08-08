@@ -23,6 +23,12 @@ describe('procedural texture scheduling', () => {
 		expect(proceduralTextureCacheKey('planet', planet, 512)).not.toBe(key)
 	})
 
+	it('quantizes host-star temperature to 100 K in the cache key', () => {
+		const cool = proceduralTextureCacheKey('planet', { ...planet, starTemperatureK: 3_210 }, 256)
+		expect(proceduralTextureCacheKey('planet', { ...planet, starTemperatureK: 3_240 }, 256)).toBe(cool)
+		expect(proceduralTextureCacheKey('planet', { ...planet, starTemperatureK: 3_300 }, 256)).not.toBe(cool)
+	})
+
 	it('orders foreground first and preserves FIFO within a priority', () => {
 		const jobs = [
 			{ priority: 'background' as const, sequence: 1 },
