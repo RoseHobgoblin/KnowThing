@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { browser } from '$app/environment'
 	import { api } from '$lib/api.js'
 	import Badge from '$lib/components/ui/Badge.svelte'
 	import Button from '$lib/components/ui/Button.svelte'
@@ -18,6 +19,8 @@
 	import MagnifyingGlass from 'phosphor-svelte/lib/MagnifyingGlass'
 	import UploadSimple from 'phosphor-svelte/lib/UploadSimple'
 	import Warning from 'phosphor-svelte/lib/Warning'
+	import { createInfiniteQuery, createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query'
+	import { Debounced } from 'runed'
 	import { SvelteURLSearchParams } from 'svelte/reactivity'
 
 	let {
@@ -37,18 +40,97 @@
 	let open = $state(false)
 	let query = $state('')
 	let compatibleOnly = $state(true)
-	let files = $state.raw<MediaAssetListItem[]>([])
-	let total = $state(0)
-	let offset = $state(0)
-	let loading = $state(false)
-	let loadingMore = $state(false)
-	let uploadError = $state('')
-	let uploading = $state(false)
-	let resolved = $state.raw<MediaAssetListItem | null>(null)
-	let resolveError = $state('')
-	let searchTimer: ReturnType<typeof setTimeout> | undefined
-	let requestId = 0
+	let uploadNotice = $state('')
 	const pageSize = 48
+	const queryClient = useQueryClient()
+	const debouncedQuery = new Debounced(() => query.trim(), 250)
+
+	type MediaPage = { files: MediaAssetListItem[], total: number }
+
+	function selectedAssetQueryKey(binding: MediaAssetBinding) {
+		return binding.mediaId
+			? ['media', 'asset', 'id', binding.mediaId] as const
+			: ['media', 'asset', 'filename', binding.filename] as const
+	}
+
+	const selectedAssetQuery = createQuery(() => {
+		const binding = value
+		return {
+			queryKey: binding ? selectedAssetQueryKey(binding) : ['media', 'asset', 'none'] as const,
+			queryFn: async ({ signal }) => {
+				if (!binding) throw new Error('No Media asset is selected.')
+				const metadataUrl = binding.mediaId
+					? `/api/media-assets/${binding.mediaId}`
+					: `/api/media-assets?filename=${encodeURIComponent(binding.filename)}`
+				const response = await fetch(metadataUrl, { signal })
+				if (!response.ok) {
+					throw new Error(response.status === 404
+						? 'The selected Media asset no longer exists.'
+						: 'Could not validate this Media asset.')
+				}
+				return response.json() as Promise<MediaAssetListItem>
+			},
+			enabled: browser && binding != null,
+			retry: false,
+		}
+	})
+
+	const mediaQuery = createInfiniteQuery(() => {
+		const term = debouncedQuery.current
+		return {
+			queryKey: ['media', 'celestial-picker', term, compatibleOnly, pageSize],
+			queryFn: ({ pageParam, signal }) => {
+				const params = new SvelteURLSearchParams({
+					kind: 'image',
+					sort: 'name',
+					limit: String(pageSize),
+					offset: String(pageParam),
+				})
+				if (term) params.set('q', term)
+				if (compatibleOnly) params.set('celestialPlate', 'true')
+				return api<MediaPage>('GET', `/api/media?${params}`, undefined, { signal })
+			},
+			initialPageParam: 0,
+			getNextPageParam: (lastPage, _pages, lastPageParameter) => {
+				const nextOffset = lastPageParameter + lastPage.files.length
+				return nextOffset < lastPage.total ? nextOffset : undefined
+			},
+			enabled: browser && open,
+		}
+	})
+
+	const uploadMutation = createMutation(() => ({
+		mutationFn: async (file: File): Promise<MediaAssetListItem> => {
+			const formData = new FormData()
+			formData.append('file', file)
+			const response = await fetch('/api/media', { method: 'POST', body: formData })
+			const payload = await response.json().catch(() => null) as MediaAssetListItem | { error?: string } | null
+			if (!response.ok) throw new Error(payload && 'error' in payload ? payload.error : `Upload failed (${response.status})`)
+			return payload as MediaAssetListItem
+		},
+		onSuccess: (item) => {
+			void queryClient.invalidateQueries({ queryKey: ['media'] })
+			const compatibility = assessMediaCompatibility(item)
+			if (!compatibility.compatible) {
+				uploadNotice = `Uploaded to Media, but not selected: ${compatibility.errors.join('; ')}`
+				return
+			}
+			choose(item)
+		},
+	}))
+
+	const resolved = $derived(value ? selectedAssetQuery.data ?? null : null)
+	const resolveError = $derived(value && selectedAssetQuery.isError
+		? selectedAssetQuery.error.message
+		: '')
+	const files = $derived(mediaQuery.data?.pages.flatMap(page => page.files) ?? [])
+	const total = $derived(mediaQuery.data?.pages[0]?.total ?? 0)
+	const loading = $derived(mediaQuery.isPending)
+	const loadingMore = $derived(mediaQuery.isFetchingNextPage)
+	const uploading = $derived(uploadMutation.isPending)
+	const uploadError = $derived(uploadNotice
+		|| (uploadMutation.error instanceof Error ? uploadMutation.error.message : '')
+		|| (mediaQuery.error instanceof Error ? mediaQuery.error.message : ''))
 
 	const selectedCompatibility = $derived(resolved ? assessMediaCompatibility(resolved) : null)
 	const revisionChanged = $derived(Boolean(
@@ -62,82 +144,17 @@
 		return { label: 'Legacy reference', variant: 'default' as const }
 	})
 
-	$effect(() => {
-		const binding = value
-		const id = binding?.mediaId
-		if (!binding) {
-			resolved = null
-			resolveError = ''
-			return
-		}
-		const controller = new AbortController()
-		resolveError = ''
-		const metadataUrl = id
-			? `/api/media-assets/${id}`
-			: `/api/media-assets?filename=${encodeURIComponent(binding.filename)}`
-		fetch(metadataUrl, { signal: controller.signal })
-			.then(async (response) => {
-				if (!response.ok) throw new Error(response.status === 404 ? 'The selected Media asset no longer exists.' : 'Could not validate this Media asset.')
-				return response.json() as Promise<MediaAssetListItem>
-			})
-			.then((item) => { resolved = item })
-			.catch((error) => {
-				if (error instanceof DOMException && error.name === 'AbortError') return
-				resolved = null
-				resolveError = error instanceof Error ? error.message : 'Could not validate this Media asset.'
-			})
-		return () => controller.abort()
-	})
-
-	async function loadFiles(reset: boolean) {
-		const thisRequest = ++requestId
-		if (reset) {
-			offset = 0
-			loading = true
-		} else {
-			loadingMore = true
-		}
-		uploadError = ''
-		const params = new SvelteURLSearchParams({
-			kind: 'image',
-			sort: 'name',
-			limit: String(pageSize),
-			offset: String(reset ? 0 : offset),
-		})
-		if (query.trim()) params.set('q', query.trim())
-		if (compatibleOnly) params.set('celestialPlate', 'true')
-		try {
-			const result = await api<{ files: MediaAssetListItem[], total: number }>('GET', `/api/media?${params}`)
-			if (thisRequest !== requestId) return
-			files = reset ? result.files : [...files, ...result.files]
-			total = result.total
-			offset = (reset ? 0 : offset) + result.files.length
-		} catch (error) {
-			if (thisRequest === requestId) uploadError = error instanceof Error ? error.message : 'Could not load Media.'
-		} finally {
-			if (thisRequest === requestId) {
-				loading = false
-				loadingMore = false
-			}
-		}
-	}
-
 	function showPicker() {
+		uploadNotice = ''
 		open = true
-		void loadFiles(true)
-	}
-
-	function search() {
-		clearTimeout(searchTimer)
-		searchTimer = setTimeout(() => void loadFiles(true), 250)
 	}
 
 	function choose(item: MediaAssetListItem) {
 		const compatibility = assessMediaCompatibility(item)
 		if (!compatibility.compatible) return
-		value = mediaBindingFromItem(item, purpose)
-		resolved = item
-		resolveError = ''
+		const binding = mediaBindingFromItem(item, purpose)
+		queryClient.setQueryData(selectedAssetQueryKey(binding), item)
+		value = binding
 		open = false
 	}
 
@@ -146,26 +163,12 @@
 		const file = input.files?.[0]
 		input.value = ''
 		if (!file) return
-		uploading = true
-		uploadError = ''
+		uploadNotice = ''
+		uploadMutation.reset()
 		try {
-			const formData = new FormData()
-			formData.append('file', file)
-			const response = await fetch('/api/media', { method: 'POST', body: formData })
-			const payload = await response.json().catch(() => null) as MediaAssetListItem | { error?: string } | null
-			if (!response.ok) throw new Error(payload && 'error' in payload ? payload.error : `Upload failed (${response.status})`)
-			const item = payload as MediaAssetListItem
-			const compatibility = assessMediaCompatibility(item)
-			if (!compatibility.compatible) {
-				files = [item, ...files]
-				uploadError = `Uploaded to Media, but not selected: ${compatibility.errors.join('; ')}`
-				return
-			}
-			choose(item)
-		} catch (error) {
-			uploadError = error instanceof Error ? error.message : 'Upload failed.'
-		} finally {
-			uploading = false
+			await uploadMutation.mutateAsync(file)
+		} catch {
+			// TanStack exposes the error through uploadMutation.error.
 		}
 	}
 
@@ -176,8 +179,6 @@
 
 	function clearSelection() {
 		value = null
-		resolved = null
-		resolveError = ''
 	}
 </script>
 
@@ -267,12 +268,12 @@
 	<div class="flex min-h-0 flex-col gap-3">
 		<div class="flex flex-wrap items-end gap-2">
 			<div class="min-w-48 flex-1">
-				<Input bind:value={query} placeholder="Search filename or description" oninput={search}>
+				<Input bind:value={query} placeholder="Search filename or description">
 					{#snippet labelExtra()}<MagnifyingGlass size={12} />{/snippet}
 				</Input>
 			</div>
 			<label class="flex h-9 cursor-pointer items-center gap-2 bg-page px-3 text-xs text-secondary">
-				<input type="checkbox" bind:checked={compatibleOnly} onchange={() => void loadFiles(true)} />
+				<input type="checkbox" bind:checked={compatibleOnly} />
 				Compatible only
 			</label>
 			{#if canUpload}
@@ -317,7 +318,7 @@
 					{/each}
 				</div>
 				{#if files.length < total}
-					<div class="mt-3 text-center"><Button type="button" variant="secondary" size="sm" loading={loadingMore} onclick={() => void loadFiles(false)}>Load more</Button></div>
+					<div class="mt-3 text-center"><Button type="button" variant="secondary" size="sm" loading={loadingMore} onclick={() => void mediaQuery.fetchNextPage()}>Load more</Button></div>
 				{/if}
 			{/if}
 		</div>

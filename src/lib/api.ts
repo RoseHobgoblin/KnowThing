@@ -5,10 +5,14 @@ export async function api<T = unknown>(
 	method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
 	url: string,
 	body?: unknown,
+	options: Omit<RequestInit, 'method' | 'body'> = {},
 ): Promise<T> {
+	const headers = new Headers(options.headers)
+	if (body !== undefined && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
 	const response = await fetch(url, {
+		...options,
 		method,
-		headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+		headers,
 		body: body === undefined ? undefined : JSON.stringify(body),
 	})
 	if (!response.ok) {

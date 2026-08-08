@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
+	import { useResizeObserver } from 'runed'
 	import { resolve } from '$app/paths'
 	import { cn } from '$lib/utils.js'
 	import type { LabelMode, ScaleMode, TrailMode, ViewMode, VisibilityMode } from './map-settings.js'
@@ -78,6 +79,23 @@
 		if (JSON.stringify(next) !== JSON.stringify(theme)) theme = next
 	}
 
+	function resizeRenderer(width?: number, height?: number) {
+		const nextWidth = Math.max(1, Math.round(width ?? canvasHost?.clientWidth ?? displayWidth))
+		const nextHeight = Math.max(1, Math.round(height ?? canvasHost?.clientHeight ?? displayHeight))
+		displayWidth = nextWidth
+		displayHeight = nextHeight
+		readTheme()
+		renderer?.resize(nextWidth, nextHeight)
+	}
+
+	useResizeObserver(
+		() => canvasHost,
+		(entries) => {
+			const entry = entries[0]
+			if (entry) resizeRenderer(entry.contentRect.width, entry.contentRect.height)
+		},
+	)
+
 	function formatZoom(zoom: number): string {
 		if (zoom >= 1_000_000) return `${(zoom / 1_000_000).toFixed(1)}m`
 		if (zoom >= 1_000) return `${(zoom / 1_000).toFixed(1)}k`
@@ -131,6 +149,7 @@
 			// eslint-disable-next-line svelte/no-dom-manipulating
 			canvasHost.replaceChildren(instance.canvas)
 			renderer = instance
+			resizeRenderer()
 		})()
 
 		return () => {
@@ -138,22 +157,6 @@
 			renderer = null
 			created?.destroy()
 		}
-	})
-
-	$effect(() => {
-		const host = canvasHost
-		if (!host) return
-		const updateRect = () => {
-			const rect = host.getBoundingClientRect()
-			displayWidth = Math.max(1, Math.round(rect.width))
-			displayHeight = Math.max(1, Math.round(rect.height))
-			readTheme()
-			renderer?.resize(displayWidth, displayHeight)
-		}
-		updateRect()
-		const observer = new ResizeObserver(updateRect)
-		observer.observe(host)
-		return () => observer.disconnect()
 	})
 
 	$effect(() => {

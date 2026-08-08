@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Attachment } from 'svelte/attachments'
 	import RotateCcw from 'phosphor-svelte/lib/ArrowCounterClockwise'
+	import { Debounced, useResizeObserver } from 'runed'
 	import {
 		composeSurfacePlan,
 		describeSurfacePlan,
@@ -87,16 +88,20 @@
 			entries,
 		}
 	})
+	const debouncedGlobeInput = new Debounced(() => ({ body, isStar }), 180)
+	const debouncedPlateInput = new Debounced(() => ({ body, isStar, planetPlan, weatherPlan, stellarPlan }), 180)
 
 	let previewRenderer: SurfacePreviewRenderer | null = null
 	let globeState = $state<'loading' | 'ready' | 'unavailable'>('loading')
 	let globeMessage = $state('')
 	let plateState = $state<'loading' | 'ready' | 'error'>('loading')
 	let plateMessage = $state('')
+	const globeLoading = $derived(globeState === 'loading' || debouncedGlobeInput.pending)
+	const plateLoading = $derived(plateState === 'loading' || debouncedPlateInput.pending)
 
 	function previewState(): string {
 		if (globeState === 'unavailable') return plateState === 'ready' ? 'plate-only' : 'unavailable'
-		return globeState === 'ready' && plateState === 'ready' ? 'ready' : 'loading'
+		return !globeLoading && !plateLoading && globeState === 'ready' && plateState === 'ready' ? 'ready' : 'loading'
 	}
 
 	function attachGlobe(host: HTMLElement): ReturnType<Attachment> {
@@ -106,10 +111,13 @@
 		let appliedVersion = 0
 		let globeFailed = false
 
-		const resizeObserver = new ResizeObserver(() => {
-			previewRenderer?.resize(host.clientWidth, host.clientHeight)
-		})
-		resizeObserver.observe(host)
+		const { stop: stopResizing } = useResizeObserver(
+			() => host,
+			(entries) => {
+				const entry = entries[0]
+				if (entry) previewRenderer?.resize(entry.contentRect.width, entry.contentRect.height)
+			},
+		)
 
 		async function applyBody(nextBody: MapBody, nextIsStar: boolean, version: number): Promise<void> {
 			if (globeFailed) return
@@ -132,13 +140,11 @@
 		}
 
 		$effect(() => {
-			const nextBody = body
-			const nextIsStar = isStar
+			const { body: nextBody, isStar: nextIsStar } = debouncedGlobeInput.current
 			const version = ++updateVersion
 			pending = { body: nextBody, isStar: nextIsStar }
 			if (!globeFailed) globeState = 'loading'
-			const timer = setTimeout(() => void applyBody(nextBody, nextIsStar, version), 180)
-			return () => clearTimeout(timer)
+			void applyBody(nextBody, nextIsStar, version)
 		})
 
 		void import('$lib/celestial/three/surface-preview-renderer.js')
@@ -162,7 +168,7 @@
 		return () => {
 			destroyed = true
 			updateVersion += 1
-			resizeObserver.disconnect()
+			stopResizing()
 			previewRenderer?.dispose()
 			previewRenderer = null
 		}
@@ -210,16 +216,17 @@
 	function attachPlate(canvas: HTMLCanvasElement): ReturnType<Attachment> {
 		let renderVersion = 0
 		$effect(() => {
-			const currentBody = body
-			const currentIsStar = isStar
-			const currentPlanetPlan = planetPlan
-			const currentWeatherPlan = weatherPlan
-			const currentStellarPlan = stellarPlan
+			const current = debouncedPlateInput.current
+			const currentBody = current.body
+			const currentIsStar = current.isStar
+			const currentPlanetPlan = current.planetPlan
+			const currentWeatherPlan = current.weatherPlan
+			const currentStellarPlan = current.stellarPlan
 			const version = ++renderVersion
 			plateState = 'loading'
 			plateMessage = ''
 
-			const timer = setTimeout(async () => {
+			void (async () => {
 				try {
 					if (currentIsStar) {
 						const photosphere = currentStellarPlan.photosphere
@@ -276,9 +283,7 @@
 					plateMessage = error instanceof Error ? error.message : 'The texture plate could not be rendered.'
 					drawSolidPlate(canvas, '#202631')
 				}
-			}, 180)
-
-			return () => clearTimeout(timer)
+			})()
 		})
 
 		return () => {
@@ -308,7 +313,7 @@
 	</div>
 
 	<div class="relative aspect-square min-h-56 bg-black" {@attach attachGlobe}>
-		{#if globeState === 'loading'}
+		{#if globeLoading}
 			<div class="pointer-events-none absolute inset-0 grid place-items-center bg-black/25 text-xs text-secondary">
 				{previewModel.loadingLabel}
 			</div>
@@ -333,7 +338,7 @@
 				aria-label={previewModel.plateAriaLabel}
 				{@attach attachPlate}
 			></canvas>
-			{#if plateState === 'loading'}
+			{#if plateLoading}
 				<div class="pointer-events-none absolute inset-0 grid place-items-center bg-black/35 text-[0.625rem] text-secondary">Generating plate…</div>
 			{:else if plateState === 'error'}
 				<div class="absolute inset-0 grid place-items-center p-3 text-center text-[0.625rem] text-error">{plateMessage}</div>
