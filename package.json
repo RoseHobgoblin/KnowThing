@@ -19,6 +19,7 @@
 		"test:watch": "vitest",
 		"test:e2e": "playwright test",
 		"test:e2e:update": "playwright test --update-snapshots",
+		"seed:assets:mars": "node scripts/fetch-mars-seed-assets.mjs",
 		"db:migrate": "node --env-file=.env --loader ts-node/esm src/lib/server/db/migrate.ts"
 	},
 	"devDependencies": {

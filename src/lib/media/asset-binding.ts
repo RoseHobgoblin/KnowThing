@@ -14,6 +14,11 @@ export type MediaAssetInterpretation = {
 	colorSpace: 'srgb' | 'linear'
 	normalY?: 'up' | 'down'
 	elevationUnit?: 'relative' | 'm' | 'km'
+	/** Physical value = normalized texture sample * scale + offset. */
+	elevationScale?: number
+	elevationOffset?: number
+	elevationDatum?: string
+	elevationPositiveDirection?: 'up' | 'down'
 	sampleChannel?: 'green'
 }
 
@@ -52,6 +57,10 @@ const HASH_PATTERN = /^[\da-f]{64}$/i
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function finiteNumber(value: unknown): number | undefined {
+	return typeof value === 'number' && Number.isFinite(value) ? value : undefined
 }
 
 export function interpretationForPurpose(purpose: CelestialMediaPurpose): MediaAssetInterpretation {
@@ -98,6 +107,16 @@ export function parseMediaAssetBinding(
 		interpretation.elevationUnit = rawInterpretation.elevationUnit === 'm' || rawInterpretation.elevationUnit === 'km'
 			? rawInterpretation.elevationUnit
 			: 'relative'
+		const scale = finiteNumber(rawInterpretation.elevationScale)
+		const offset = finiteNumber(rawInterpretation.elevationOffset)
+		if (scale != null && scale > 0) interpretation.elevationScale = scale
+		if (offset != null) interpretation.elevationOffset = offset
+		if (typeof rawInterpretation.elevationDatum === 'string' && rawInterpretation.elevationDatum.trim()) {
+			interpretation.elevationDatum = rawInterpretation.elevationDatum.trim()
+		}
+		if (rawInterpretation.elevationPositiveDirection === 'up' || rawInterpretation.elevationPositiveDirection === 'down') {
+			interpretation.elevationPositiveDirection = rawInterpretation.elevationPositiveDirection
+		}
 	}
 	if (purpose === 'surface-roughness' || purpose === 'surface-clouds') interpretation.sampleChannel = 'green'
 

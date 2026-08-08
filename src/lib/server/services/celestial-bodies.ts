@@ -28,6 +28,10 @@ import {
 	normalizeCelestialMediaBindings,
 	replaceMediaBindingsForOwner,
 } from '$lib/server/services/media-bindings.js'
+import {
+	installPresetSurface,
+	prepareCelestialPresetAssets,
+} from '$lib/server/services/celestial-preset-assets.js'
 
 type CreateSystemInput = z.infer<typeof createSystemSchema>
 type CreateStarInput = z.infer<typeof createStarSchema>
@@ -236,6 +240,7 @@ async function insertRow(dbx: Dbx, values: typeof celestialBodies.$inferInsert) 
 export async function createCelestialFromPreset(label: string) {
 	const preset = celestialPresets.find(p => p.label === label)
 	if (!preset) throw error(400, `Unknown preset: ${label}`)
+	const preparedAssets = await prepareCelestialPresetAssets(preset)
 
 	return db.transaction(async (tx) => {
 		const system = await createCelestialIn(tx, 'system', CREATE_SCHEMAS.system.parse({
@@ -259,9 +264,13 @@ export async function createCelestialFromPreset(label: string) {
 			}))
 
 			for (const bodyPreset of starPreset.bodies) {
-				const planet = await createCelestialIn(tx, 'body', presetBodyInput(bodyPreset, star.id))
+				const bodyExtra = await installPresetSurface(tx, bodyPreset, preparedAssets.get(bodyPreset))
+				const planet = await createCelestialIn(tx, 'body', presetBodyInput(bodyPreset, star.id, bodyExtra))
+				await registerCreatedMediaBindings(tx, planet)
 				for (const moonPreset of bodyPreset.moons ?? []) {
-					await createCelestialIn(tx, 'body', presetBodyInput(moonPreset, planet.id))
+					const moonExtra = await installPresetSurface(tx, moonPreset, preparedAssets.get(moonPreset))
+					const moon = await createCelestialIn(tx, 'body', presetBodyInput(moonPreset, planet.id, moonExtra))
+					await registerCreatedMediaBindings(tx, moon)
 				}
 			}
 		}
@@ -270,25 +279,40 @@ export async function createCelestialFromPreset(label: string) {
 	})
 }
 
-function presetBodyInput(preset: BodyPreset, parentId: number) {
+async function registerCreatedMediaBindings(dbx: Dbx, body: CelestialRow) {
+	if (!body.extra || typeof body.extra !== 'object' || !('surface' in body.extra)) return
+	const normalized = await normalizeCelestialMediaBindings(dbx, body.id, 'body', body.extra)
+	if (!normalized) return
+	await dbx.update(celestialBodies).set({ extra: normalized.extra }).where(eq(celestialBodies.id, body.id))
+	await replaceMediaBindingsForOwner(dbx, 'celestial', body.id, normalized.rows)
+}
+
+function presetBodyInput(preset: BodyPreset, parentId: number, extra: Record<string, unknown>) {
 	return CREATE_SCHEMAS.body.parse({
 		name: preset.name,
 		slug: urlSlugify(preset.name),
+		description: preset.description,
 		bodyType: preset.bodyType,
 		parentId,
 		massKg: preset.massKg,
 		radiusM: preset.radiusM,
 		temperature: preset.temperature,
 		atmosphere: preset.atmosphere || null,
+		surfacePressure: preset.surfacePressure ?? null,
 		composition: preset.composition,
+		albedo: preset.albedo ?? null,
 		orbitalPeriodDays: preset.orbitalPeriodDays,
 		semiMajorAxisAu: preset.semiMajorAxisAu,
 		eccentricity: preset.eccentricity,
 		inclination: preset.inclination,
+		longitudeAscendingNode: preset.longitudeAscendingNode ?? null,
+		argumentOfPeriapsis: preset.argumentOfPeriapsis ?? null,
+		epochPhase: preset.epochPhase ?? null,
 		rotationPeriodS: preset.rotationPeriodS,
 		axialTilt: preset.axialTilt,
 		satellites: preset.satellites,
 		hasRings: preset.hasRings,
+		extra,
 	})
 }
 

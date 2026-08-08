@@ -26,6 +26,7 @@ export interface StarPreset {
 
 export interface BodyPreset {
 	name: string
+	description?: string
 	bodyType: 'planet' | 'asteroid'
 	mass: string
 	massKg: number
@@ -35,18 +36,54 @@ export interface BodyPreset {
 	surfaceGravity: string
 	temperature: string
 	atmosphere: string
+	surfacePressure?: string
 	composition: string
+	albedo?: string
 	orbitalPeriod: string
 	orbitalPeriodDays: number
 	semiMajorAxisAu: number
 	eccentricity: number
 	inclination: number
+	longitudeAscendingNode?: number
+	argumentOfPeriapsis?: number
+	epochPhase?: number
 	rotationPeriod: string
 	rotationPeriodS: number
 	axialTilt: number
 	satellites: number
 	hasRings: boolean
+	extra?: Record<string, unknown>
+	seedSurface?: PresetSurface
 	moons?: BodyPreset[]
+}
+
+export interface PresetMediaAsset {
+	publicPath: string
+	filename: string
+	mimeType: string
+	width: number
+	height: number
+	sizeBytes: number
+	contentHash: string
+	description: string
+	interpretation: {
+		projection: 'equirectangular'
+		colorSpace: 'srgb' | 'linear'
+		elevationUnit?: 'relative' | 'm' | 'km'
+		elevationScale?: number
+		elevationOffset?: number
+		elevationDatum?: string
+		elevationPositiveDirection?: 'up' | 'down'
+	}
+}
+
+export interface PresetSurface {
+	fallback: 'procedural' | 'flat'
+	class: 'auto' | 'rocky' | 'terrestrial' | 'gas' | 'ice'
+	seed: number | null
+	hydrosphereFraction: number | null
+	cloudCoverage: number | null
+	maps: Partial<Record<'albedo' | 'elevation' | 'normal' | 'roughness' | 'clouds' | 'emissive', PresetMediaAsset>>
 }
 
 /**
@@ -201,26 +238,78 @@ export const celestialPresets: CelestialPreset[] = [
 					},
 					{
 						name: 'Mars',
+						description: 'The fourth planet from the Sun: a cold, dry, iron-oxide-rich rocky world with a thin carbon-dioxide atmosphere and two small moons.',
 						bodyType: 'planet',
-						mass: '6.417 × 10²³ kg',
-						massKg: 6.417e23,
+						mass: '6.41691 × 10²³ kg',
+						massKg: 6.41691e23,
 						radius: '3,389.5 km',
 						radiusM: 3_389_500,
 						density: '3.934 g/cm³',
-						surfaceGravity: '3.721 m/s²',
+						surfaceGravity: '3.71 m/s² (equatorial)',
 						temperature: '210 K (mean)',
-						atmosphere: 'CO₂ 95.3%, N₂ 2.7%',
-						composition: 'Iron oxide, silicates',
-						orbitalPeriod: '687.0 days',
-						orbitalPeriodDays: 686.98,
-						semiMajorAxisAu: 1.524,
-						eccentricity: 0.0934,
-						inclination: 1.85,
-						rotationPeriod: '24h 37m 22s',
-						rotationPeriodS: 88_642,
+						atmosphere: 'CO₂ 95.32%, N₂ 2.7%, Ar 1.6%, traces of O₂, CO, H₂O and noble gases',
+						surfacePressure: '0.636 kPa (mean; seasonally variable)',
+						composition: 'Silicate crust and mantle; iron-nickel-sulfur core; iron-oxide-rich regolith',
+						albedo: '0.150 (geometric)',
+						orbitalPeriod: '686.9796 days',
+						orbitalPeriodDays: 686.9795859,
+						semiMajorAxisAu: 1.52371243,
+						eccentricity: 0.09336511,
+						inclination: 1.85181869,
+						longitudeAscendingNode: 49.71320984,
+						argumentOfPeriapsis: 286.36934232,
+						rotationPeriod: '24h 37m 22.7s',
+						rotationPeriodS: 88_642.664064,
 						axialTilt: 25.19,
 						satellites: 2,
 						hasRings: false,
+						extra: {
+							seedData: {
+								id: 'solar-system/mars', version: 1,
+								manifest: '/seed-data/celestial/mars/manifest.json',
+							},
+							referenceBody: {
+								frame: 'IAU_MARS', naifBodyCode: 499,
+								radiiM: [3_396_190, 3_396_190, 3_376_200],
+								latitudeType: 'planetocentric', longitudeDirection: 'positive-east',
+								longitudeDomain: '-180..180',
+							},
+							dataSources: {
+								physical: 'https://ssd.jpl.nasa.gov/planets/phys_par.html',
+								orbit: 'https://ssd.jpl.nasa.gov/planets/approx_pos.html',
+								atmosphere: 'https://ntrs.nasa.gov/citations/20220019141',
+							},
+						},
+						seedSurface: {
+							fallback: 'flat',
+							class: 'rocky',
+							seed: null,
+							hydrosphereFraction: 0,
+							cloudCoverage: 0,
+							maps: {
+								albedo: {
+									publicPath: 'seed-data/celestial/mars/runtime/mars-mdim21-color-4096x2048.webp',
+									filename: 'Mars_MDIM21_colour_4096x2048.webp',
+									mimeType: 'image/webp', width: 4096, height: 2048, sizeBytes: 2_696_266,
+									contentHash: '81a2e8e4f2fb07a60c6147b91edc303cf2f2d815e3224fd3755e5db888810fd8',
+									description: 'Mars surface appearance from the USGS Viking MDIM 2.1 colorized global mosaic. Public-domain 4K runtime derivative; see the Mars seed manifest for source and processing provenance.',
+									interpretation: { projection: 'equirectangular', colorSpace: 'srgb' },
+								},
+								elevation: {
+									publicPath: 'seed-data/celestial/mars/runtime/mars-mola-megdr-topography-4096x2048.png',
+									filename: 'Mars_MOLA_topography_4096x2048.png',
+									mimeType: 'image/png', width: 4096, height: 2048, sizeBytes: 2_629_834,
+									contentHash: '7ebe4a0c4c2166f1661f4b7d27a0a87c2bdb9edb3a6b20e7a659c32c329fbf2f',
+									description: 'Linear overview encoding of NASA PDS MGS MOLA 16-pixel/degree median topography. Values are metres above the GMM3 areoid; see the Mars seed manifest for the original PDS product and exact derivation.',
+									interpretation: {
+										projection: 'equirectangular', colorSpace: 'linear', elevationUnit: 'm',
+										elevationScale: 29_348, elevationOffset: -8177,
+										elevationDatum: 'Mars GMM3 (mgm1025) areoid, degree/order 50',
+										elevationPositiveDirection: 'up',
+									},
+								},
+							},
+						},
 						moons: [
 							{
 								name: 'Phobos', bodyType: 'planet', mass: '1.066 × 10¹⁶ kg', massKg: 1.066e16, radius: '11.267 km', radiusM: 11_267,

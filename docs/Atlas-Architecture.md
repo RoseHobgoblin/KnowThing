@@ -2,7 +2,7 @@
 
 **Status:** Proposed product and technical architecture  
 **Last updated:** 8 August 2026  
-**Related documents:** [Celestial Data Provenance and Ingest](./Celestial-Data-Provenance-and-Ingest.md), [Celestial Surface Models](./Celestial-Surface-Models.md), [Celestial Orrery Roadmap](./Celestial-Orrery-Roadmap.md), [WorldMap Vision](./WORLDMAP-VISION.md), [Celestial Calendar Integration](./Celestial-Calendar-Integration.md)
+**Related documents:** [Celestial Data Provenance and Ingest](./Celestial-Data-Provenance-and-Ingest.md), [Celestial Surface Models](./Celestial-Surface-Models.md), [Planetary Data Acquisition Catalogue](./Planetary-Data-Acquisition-Catalogue.md), [Celestial Orrery Roadmap](./Celestial-Orrery-Roadmap.md), [WorldMap Vision](./WORLDMAP-VISION.md), [Celestial Calendar Integration](./Celestial-Calendar-Integration.md)
 
 ## Decision Summary
 

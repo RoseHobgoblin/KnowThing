@@ -37,6 +37,20 @@ describe('celestial media asset bindings', () => {
 		expect(mediaAssetContentUrl(binding!)).toBe('/api/media/old%20normal.png')
 	})
 
+	it('retains measured elevation encoding and datum metadata', () => {
+		const binding = parseMediaAssetBinding({
+			filename: 'mars-mola.png',
+			interpretation: {
+				elevationUnit: 'm', elevationScale: 29_348, elevationOffset: -8177,
+				elevationDatum: 'Mars GMM3 areoid', elevationPositiveDirection: 'up',
+			},
+		}, 'surface-elevation')
+		expect(binding?.interpretation).toMatchObject({
+			elevationUnit: 'm', elevationScale: 29_348, elevationOffset: -8177,
+			elevationDatum: 'Mars GMM3 areoid', elevationPositiveDirection: 'up',
+		})
+	})
+
 	it('rejects non-images and non-2:1 plates while warning about low resolution', () => {
 		expect(assessMediaCompatibility({ ...item, width: 800, height: 400 })).toMatchObject({
 			compatible: true,
