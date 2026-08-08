@@ -1,7 +1,7 @@
 import type { ResolvedStellarMorphology } from '../stellar-surface-model.js'
 import type { ResolvedSurfaceClass } from '../surface-model.js'
 
-export const PROCEDURAL_ALGORITHM_REVISION = 6 as const
+export const PROCEDURAL_ALGORITHM_REVISION = 7 as const
 export const COVERAGE_CALIBRATION_WIDTH = 256
 export const COVERAGE_CALIBRATION_HEIGHT = 128
 
@@ -13,8 +13,9 @@ export type ColorStop = [number, Rgb]
 /** Linear multi-stop gradient sample, clamped to the first/last stop. */
 export function sampleRamp(stops: readonly ColorStop[], position: number): Rgb {
 	const first = stops[0]
+	if (!first) throw new RangeError('A colour ramp requires at least one stop.')
 	if (position <= first[0]) return [...first[1]]
-	const last = stops.at(-1)
+	const last = stops.at(-1)!
 	if (position >= last[0]) return [...last[1]]
 	for (let index = 1; index < stops.length; index++) {
 		const [end, endColor] = stops[index]

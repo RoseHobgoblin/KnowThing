@@ -11,7 +11,7 @@ export type ProceduralTextureRequest =
 	| { kind: 'planet', parameters: ProceduralSurfaceParameters, width: number, height: number }
 	| { kind: 'star', parameters: ProceduralStellarSurfaceParameters, width: number, height: number }
 
-export type ProceduralTextureResult = GeneratedSurface | GeneratedStellarSurface
+export type ProceduralTextureResult = GeneratedSurface<Uint8Array | null> | GeneratedStellarSurface
 
 type RequestMessage = { id: number, request: ProceduralTextureRequest }
 type ResponseMessage = { id: number, result?: ProceduralTextureResult, error?: string }
@@ -23,7 +23,8 @@ workerScope.onmessage = (event: MessageEvent<RequestMessage>) => {
 	try {
 		if (request.kind === 'planet') {
 			const result = generateProceduralSurface(request.parameters, request.width, request.height)
-			const transfers: Transferable[] = [result.albedo.buffer, result.roughness.buffer]
+			const transfers: Transferable[] = [result.roughness.buffer]
+			if (result.albedo) transfers.push(result.albedo.buffer)
 			if (result.elevation) transfers.push(result.elevation.buffer)
 			if (result.normal) transfers.push(result.normal.buffer)
 			if (result.clouds) transfers.push(result.clouds.buffer)

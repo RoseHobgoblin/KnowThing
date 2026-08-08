@@ -46,7 +46,7 @@
 	import { surfaceRecipeFromDraft } from '$lib/celestial/surface-editor.js'
 	import { weatherRecipeFromDraft } from '$lib/celestial/weather-editor.js'
 	import { stellarSurfaceRecipeFromDraft } from '$lib/celestial/stellar-surface-editor.js'
-	import { hostStarTemperatureK } from '$lib/celestial/stellar-surface-model.js'
+	import { resolveHostStarTemperatureK } from '$lib/celestial/stellar-surface-model.js'
 	import { spectralColor } from '$lib/celestial/colors.js'
 	import type { MapBody } from '$lib/celestial/system-layout.js'
 
@@ -173,20 +173,13 @@
 	const surfacePreviewBody = $derived.by<MapBody | null>(() => {
 		if (kind !== 'body') return null
 		const { starId, systemId } = parsePrimarySelection(typeof draft.starId === 'string' ? draft.starId : '')
-		const hostStar = starId
-			? stars.find(star => String(star.id) === starId) ?? null
-			// Circumbinary orbit: use the system's most massive star as the
-			// illustrative primary, matching the map renderer's primary-star fallback.
-			: stars
-				.filter(star => systemId && String(star.systemId ?? '') === systemId)
-				.toSorted((left, right) => (right.massKg ?? 0) - (left.massKg ?? 0))[0] ?? null
 		return {
 			id: Number(initialRecord.id ?? 0),
 			name: String(draft.name || 'Unnamed body'),
 			slug: String(draft.slug || 'unnamed-body'),
 			bodyType: String(draft.bodyType || 'planet'),
 			temperatureK: typeof draft.temperatureK === 'number' ? draft.temperatureK : null,
-			hostStarTemperatureK: hostStarTemperatureK(hostStar),
+			hostStarTemperatureK: resolveHostStarTemperatureK(stars, { starId, systemId }),
 			color: typeof initialRecord.color === 'string' ? initialRecord.color : null,
 			surface: surfaceRecipeFromDraft(draft),
 			weather: weatherRecipeFromDraft(draft),

@@ -30,6 +30,9 @@ describe('area-calibrated procedural surface', () => {
 		if (!normal) return
 		let blueSum = 0
 		let bluePixels = 0
+		let seamDifference = 0
+		let interiorDifference = 0
+		let interiorPairs = 0
 		for (let offset = 0; offset < normal.length; offset += 4) {
 			// Blue encodes the outward component, which normalize() keeps positive.
 			expect(normal[offset + 2]).toBeGreaterThanOrEqual(128)
@@ -38,6 +41,22 @@ describe('area-calibrated procedural surface', () => {
 			bluePixels += 1
 		}
 		expect(blueSum / bluePixels).toBeGreaterThan(128)
+		for (let pixelY = 2; pixelY < generated.height - 2; pixelY++) {
+			const row = pixelY * generated.width * 4
+			const last = row + (generated.width - 1) * 4
+			seamDifference += Math.abs(normal[row] - normal[last])
+				+ Math.abs(normal[row + 1] - normal[last + 1])
+			for (let pixelX = 1; pixelX < generated.width; pixelX++) {
+				const current = row + pixelX * 4
+				const previous = current - 4
+				interiorDifference += Math.abs(normal[current] - normal[previous])
+					+ Math.abs(normal[current + 1] - normal[previous + 1])
+				interiorPairs += 1
+			}
+		}
+		const seamMean = seamDifference / (generated.height - 4)
+		const interiorMean = interiorDifference / interiorPairs
+		expect(seamMean).toBeLessThan(interiorMean * 3)
 	})
 
 	it('shifts vegetation pigment with host-star temperature', () => {
@@ -52,6 +71,22 @@ describe('area-calibrated procedural surface', () => {
 		expect(mDwarf.albedo).not.toEqual(sunLike.albedo)
 		expect(defaulted.albedo).toEqual(solar.albedo)
 		expect(mDwarf.measuredCoverage).toEqual(sunLike.measuredCoverage)
+	})
+
+	it('omits procedural colour when an uploaded plate owns appearance', () => {
+		const vegetated = {
+			...base,
+			starTemperatureK: 3_200,
+			coverage: { surfaceWater: 0.3, vegetation: 0.6, permanentSnowIce: 0 },
+		}
+		const withColour = generateProceduralSurface(vegetated, 64, 32)
+		const withoutColour = generateProceduralSurface({ ...vegetated, generateAlbedo: false }, 64, 32)
+		expect(withColour.albedo).toBeInstanceOf(Uint8Array)
+		expect(withoutColour.albedo).toBeNull()
+		expect(withoutColour.roughness).toEqual(withColour.roughness)
+		expect(withoutColour.elevation).toEqual(withColour.elevation)
+		expect(withoutColour.normal).toEqual(withColour.normal)
+		expect(withoutColour.measuredCoverage).toEqual(withColour.measuredCoverage)
 	})
 
 	it('hits domain-relative authored coverage within two percentage points', () => {
@@ -92,7 +127,7 @@ describe('area-calibrated procedural surface', () => {
 		const low = generateProceduralSurface({ ...base, temperatureK: null, coverage: { ...base.coverage, surfaceWater: 0.2 } }, 64, 32)
 		const high = generateProceduralSurface({ ...base, temperatureK: 10_000, coverage: { ...base.coverage, surfaceWater: 0.8 } }, 64, 32)
 		expect(high.measuredCoverage.surfaceWater).toBeGreaterThan(low.measuredCoverage.surfaceWater)
-		for (const bytes of [low.albedo, low.roughness, high.albedo, high.roughness]) {
+		for (const bytes of [low.albedo!, low.roughness, high.albedo!, high.roughness]) {
 			expect(bytes.every(Number.isFinite)).toBe(true)
 		}
 	})

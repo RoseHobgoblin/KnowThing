@@ -93,13 +93,15 @@ export function createPlanetSurfaceVisual(args: {
 
 	// Relief maps arrive from two async sources (LOD promise, TextureLoader
 	// callback) in either order, so a single precedence function is the only
-	// writer of normalMap/bumpMap: uploaded normal > generated normal > bump.
+	// writer of normalMap/bumpMap: uploaded normal > uploaded elevation >
+	// generated normal > generated elevation. Supplied measurements must never
+	// be hidden by illustrative relief.
 	let uploadedNormal: Texture | null = null
 	let generatedNormal: Texture | null = null
 	let uploadedBump: Texture | null = null
 	let generatedBump: Texture | null = null
 	const applyRelief = () => {
-		const normal = uploadedNormal ?? generatedNormal
+		const normal = uploadedNormal ?? (uploadedBump ? null : generatedNormal)
 		if (normal) {
 			material.normalMap = normal
 			const down = normal === uploadedNormal
@@ -143,6 +145,7 @@ export function createPlanetSurfaceVisual(args: {
 			seed: plan.seed,
 			temperatureK: plan.temperatureK,
 			starTemperatureK: body.hostStarTemperatureK ?? null,
+			generateAlbedo: plan.channels.albedo.source === 'procedural',
 			coverage: plan.coverage,
 			clouds: hasCloudLayer && weatherPlan.clouds.meanCover != null
 				? {
@@ -158,17 +161,19 @@ export function createPlanetSurfaceVisual(args: {
 				nextTextures.add(texture)
 				return texture
 			}
-			const albedo = plan.channels.albedo.source === 'procedural'
+			const albedo = plan.channels.albedo.source === 'procedural' && generated.albedo
 				? ownGenerated(dataTexture(generated.albedo, generated.width, generated.height, true))
 				: null
 			const roughness = plan.channels.roughness.source === 'procedural'
 				? ownGenerated(dataTexture(generated.roughness, generated.width, generated.height, false))
 				: null
-			const elevation = plan.channels.elevation.source === 'procedural' && generated.elevation
-				? ownGenerated(dataTexture(generated.elevation, generated.width, generated.height, false))
-				: null
 			const normal = plan.channels.normal.source === 'procedural' && generated.normal
 				? ownGenerated(dataTexture(generated.normal, generated.width, generated.height, false))
+				: null
+			// A generated normal is the settled procedural relief. Avoid allocating
+			// a second GPU texture for the elevation plane when it cannot be bound.
+			const elevation = !normal && plan.channels.elevation.source === 'procedural' && generated.elevation
+				? ownGenerated(dataTexture(generated.elevation, generated.width, generated.height, false))
 				: null
 			const clouds = hasCloudLayer && generated.clouds
 				? ownGenerated(dataTexture(generated.clouds, generated.width, generated.height, false))

@@ -264,7 +264,7 @@
 								tint: [202, 225, 255],
 							}, { size: 1024, priority: 'foreground' })
 							if (version !== renderVersion) return
-							drawPixelPlate(canvas, generated.width, generated.height, generated.albedo)
+							if (generated.albedo) drawPixelPlate(canvas, generated.width, generated.height, generated.albedo)
 						} else {
 							drawSolidPlate(canvas, currentBody.color ?? '#CAE1FF')
 						}

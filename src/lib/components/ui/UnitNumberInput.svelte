@@ -58,6 +58,9 @@
 	let unitIndex = $state(pickUnit(untrack(() => value)))
 	let text = $state(format(untrack(() => value), untrack(() => unitIndex)))
 	let focused = $state(false)
+	// This is deliberately non-reactive: it distinguishes our writes from a
+	// genuine parent update without creating another effect dependency.
+	let lastCommittedValue = untrack(() => value)
 
 	// Re-sync the display when the stored value changes from outside (preset
 	// apply, discard) — but never while the user is typing in the field.
@@ -65,20 +68,34 @@
 		const storedValue = value
 		const isFocused = focused
 		untrack(() => {
-			if (isFocused) return
+			if (isFocused || Object.is(storedValue, lastCommittedValue)) return
 			const index = storedValue == null ? unitIndex : pickUnit(storedValue)
 			unitIndex = index
 			text = format(storedValue, index)
+			lastCommittedValue = storedValue
 		})
 	})
 
-	function onInput() {
-		if (text.trim() === '') {
-			value = null
+	function commit(nextValue: number | null) {
+		lastCommittedValue = nextValue
+		value = nextValue
+	}
+
+	function onInput(event: Event & { currentTarget: HTMLInputElement }) {
+		const nextText = event.currentTarget.value
+		text = nextText
+		if (nextText.trim() === '') {
+			commit(null)
 			return
 		}
-		const typed = Number(text)
-		if (Number.isFinite(typed)) value = typed * units[unitIndex].factor
+		const typed = Number(nextText)
+		if (Number.isFinite(typed)) commit(typed * units[unitIndex].factor)
+	}
+
+	function onBlur() {
+		focused = false
+		// Clean up precision without automatically changing the chosen unit.
+		text = format(value, unitIndex)
 	}
 
 	// Switch display unit without changing the stored value — reformats the text
@@ -107,7 +124,7 @@
 			{id}
 			type="number"
 			step="any"
-			bind:value={text}
+			value={text}
 			{placeholder}
 			aria-invalid={!!error}
 			{disabled}
@@ -118,7 +135,7 @@
 				aria-invalid:ring-1 aria-invalid:ring-error-border
 			"
 			onfocus={() => focused = true}
-			onblur={() => focused = false}
+			onblur={onBlur}
 			oninput={onInput}
 		/>
 		<div class="absolute top-1/2 right-2 flex -translate-y-1/2 items-center gap-1.5">
@@ -172,9 +189,6 @@
 						</Select.Content>
 					</Select.Portal>
 				</Select.Root>
-				{#if units[unitIndex].factor !== storageUnit.factor}
-					<span class="text-xs text-secondary">{storageUnit.label}</span>
-				{/if}
 			{:else}
 				<span class="text-xs text-secondary">{units[unitIndex].label}</span>
 			{/if}

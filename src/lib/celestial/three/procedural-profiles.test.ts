@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { sampleRamp, type ColorStop } from './procedural-profiles.js'
+import { PROCEDURAL_ALGORITHM_REVISION, sampleRamp, type ColorStop } from './procedural-profiles.js'
 
 const ramp: ColorStop[] = [
 	[0, [0, 0, 0]],
@@ -27,5 +27,10 @@ describe('multi-stop color ramp', () => {
 	it('supports arbitrary ascending domains such as Kelvin', () => {
 		const kelvin: ColorStop[] = [[3_200, [90, 50, 40]], [5_800, [110, 140, 55]]]
 		expect(sampleRamp(kelvin, 4_500)).toEqual([100, 95, 47.5])
+	})
+
+	it('rejects an empty ramp and identifies the current cache-breaking algorithm', () => {
+		expect(() => sampleRamp([], 0.5)).toThrow('requires at least one stop')
+		expect(PROCEDURAL_ALGORITHM_REVISION).toBe(7)
 	})
 })

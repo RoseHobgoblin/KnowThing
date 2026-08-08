@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
 	compareTextureJobs,
+	normalizeProceduralPlanetParameters,
+	normalizeProceduralStellarParameters,
 	proceduralTextureCacheKey,
 	selectProceduralCacheEvictions,
 } from './procedural-texture-client.js'
@@ -27,6 +29,39 @@ describe('procedural texture scheduling', () => {
 		const cool = proceduralTextureCacheKey('planet', { ...planet, starTemperatureK: 3_210 }, 256)
 		expect(proceduralTextureCacheKey('planet', { ...planet, starTemperatureK: 3_240 }, 256)).toBe(cool)
 		expect(proceduralTextureCacheKey('planet', { ...planet, starTemperatureK: 3_300 }, 256)).not.toBe(cool)
+	})
+
+	it('keys uploaded base-colour ownership separately from generated colour', () => {
+		const generated = proceduralTextureCacheKey('planet', planet, 256)
+		const superseded = proceduralTextureCacheKey('planet', { ...planet, generateAlbedo: false }, 256)
+		expect(superseded).not.toBe(generated)
+		expect(normalizeProceduralPlanetParameters({ ...planet, generateAlbedo: false }).generateAlbedo).toBe(false)
+	})
+
+	it('uses the same normalized values for generation that it uses for cache identity', () => {
+		expect(normalizeProceduralPlanetParameters({
+			...planet,
+			starTemperatureK: 3_240,
+		})).toMatchObject({
+			seed: 12,
+			temperatureK: 288,
+			starTemperatureK: 3_200,
+			coverage: { surfaceWater: 0.5 },
+			tint: [20, 31, 40],
+		})
+		expect(normalizeProceduralStellarParameters({
+			temperatureK: 5_772.04,
+			morphology: 'main_sequence',
+			rotationDays: 25.400_4,
+			activity: 0.300_4,
+			seed: 8.9,
+		})).toEqual({
+			temperatureK: 5_772,
+			morphology: 'main_sequence',
+			rotationDays: 25.4,
+			activity: 0.3,
+			seed: 8,
+		})
 	})
 
 	it('orders foreground first and preserves FIFO within a priority', () => {

@@ -34,7 +34,7 @@ import {
 	type SystemLayout,
 	type ThemePalette,
 } from '../system-layout.js'
-import { hostStarTemperatureK } from '../stellar-surface-model.js'
+import { resolveHostStarTemperatureK } from '../stellar-surface-model.js'
 import type {
 	MapRendererCallbacks,
 	MapSettingsState,
@@ -488,8 +488,13 @@ export async function createSystemMapRenderer(
 	function addNode(body: MapBody, isStar: boolean, isSatellite: boolean) {
 		let renderBody = body.isStar === isStar ? body : { ...body, isStar }
 		if (!isStar) {
-			const hostStar = stars.find(star => star.id === renderBody.starId) ?? layout.primaryStar
-			renderBody = { ...renderBody, hostStarTemperatureK: hostStarTemperatureK(hostStar) }
+			renderBody = {
+				...renderBody,
+				hostStarTemperatureK: resolveHostStarTemperatureK(stars, {
+					starId: renderBody.starId,
+					systemId: renderBody.parentSystemId,
+				}),
+			}
 		}
 		const key = keyForBody(renderBody, isStar)
 		const visual = createBodyVisual({

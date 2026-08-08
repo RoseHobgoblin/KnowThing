@@ -18,6 +18,8 @@ export type ProceduralSurfaceParameters = {
 	temperatureK: number | null
 	/** Host-star display temperature; shifts vegetation pigment. Null means Sun-like. */
 	starTemperatureK?: number | null
+	/** Runtime channel request. False when an uploaded base-colour plate owns appearance. */
+	generateAlbedo?: boolean
 	coverage: SurfaceCoverage
 	clouds?: { meanCover: number, seed: number } | null
 	tint?: [number, number, number] | null
@@ -31,10 +33,11 @@ export type MeasuredSurfaceCoverage = {
 	meanCloudCover: number
 }
 
-export type GeneratedSurface = {
+export type GeneratedSurface<TAlbedo extends Uint8Array | null = Uint8Array> = {
 	width: number
 	height: number
-	albedo: Uint8Array
+	/** Procedural base colour, omitted when an uploaded plate supersedes it. */
+	albedo: TAlbedo
 	elevation: Uint8Array | null
 	/** Tangent-space +Y-up normal map derived from the generated elevation. */
 	normal: Uint8Array | null
@@ -306,19 +309,32 @@ function gasColor(latitudeSin: number, warp: number, temperatureK: number | null
 }
 
 /** Illustrative, seamless overview plates with area-calibrated authored coverage. */
+type GeneratedAlbedo<TParameters extends ProceduralSurfaceParameters> =
+	TParameters extends { generateAlbedo: false }
+		? null
+		: TParameters extends { generateAlbedo?: true }
+			? Uint8Array
+			: Uint8Array | null
+
+export function generateProceduralSurface<TParameters extends ProceduralSurfaceParameters>(
+	parameters: TParameters,
+	width?: number,
+	height?: number,
+): GeneratedSurface<GeneratedAlbedo<TParameters>>
 export function generateProceduralSurface(
 	parameters: ProceduralSurfaceParameters,
 	width = 256,
 	height = Math.round(width / 2),
-): GeneratedSurface {
+): GeneratedSurface<Uint8Array | null> {
 	const safeWidth = Math.max(8, Math.trunc(width))
 	const safeHeight = Math.max(4, Math.trunc(height))
-	const albedo = new Uint8Array(safeWidth * safeHeight * 4)
-	const roughness = new Uint8Array(albedo.length)
-	const elevation = parameters.class === 'gas' ? null : new Uint8Array(albedo.length)
-	const normal = parameters.class === 'gas' ? null : new Uint8Array(albedo.length)
+	const byteLength = safeWidth * safeHeight * 4
+	const albedo = parameters.generateAlbedo === false ? null : new Uint8Array(byteLength)
+	const roughness = new Uint8Array(byteLength)
+	const elevation = parameters.class === 'gas' ? null : new Uint8Array(byteLength)
+	const normal = parameters.class === 'gas' ? null : new Uint8Array(byteLength)
 	const heightField = normal == null ? null : new Float32Array(safeWidth * safeHeight)
-	const clouds = (parameters.clouds?.meanCover ?? 0) > 0 ? new Uint8Array(albedo.length) : null
+	const clouds = (parameters.clouds?.meanCover ?? 0) > 0 ? new Uint8Array(byteLength) : null
 	const primaryNoise = makeSimplex(parameters.seed)
 	const detailNoise = makeSimplex(parameters.seed ^ 0x9E3779B9)
 	const cloudNoise = makeSimplex(parameters.clouds?.seed ?? (parameters.seed ^ 0x51AB3F))
@@ -330,9 +346,11 @@ export function generateProceduralSurface(
 	const supportsSnow = supportsCoverage(parameters.class, 'snow')
 	const supportsVegetation = supportsCoverage(parameters.class, 'vegetation')
 	const fullCloudCover = (parameters.clouds?.meanCover ?? 0) >= 1
+	// Pigment is part of generated base colour, not a canonical vegetation datum.
+	// Do not even resolve a speculative palette when an uploaded plate owns colour.
 	const starTemperatureK = parameters.starTemperatureK ?? 5_772
-	const vegetationDry = sampleRamp(PROFILE.display.vegetationDryByStarK, starTemperatureK)
-	const vegetationWet = sampleRamp(PROFILE.display.vegetationWetByStarK, starTemperatureK)
+	const vegetationDry = albedo ? sampleRamp(PROFILE.display.vegetationDryByStarK, starTemperatureK) : null
+	const vegetationWet = albedo ? sampleRamp(PROFILE.display.vegetationWetByStarK, starTemperatureK) : null
 	const cloudEdgeLow = thresholds.clouds - CLOUD_PROCEDURE_PROFILE.thresholdSoftness
 	const cloudEdgeHigh = thresholds.clouds + CLOUD_PROCEDURE_PROFILE.thresholdSoftness
 	let totalWeight = 0
@@ -359,36 +377,44 @@ export function generateProceduralSurface(
 					? 1
 					: smoothstep(cloudEdgeLow, cloudEdgeHigh, cloudValue))
 			const cloudy = cloudOpacity >= 0.5
-			let color: Rgb
+			let color: Rgb | null = null
 			let roughnessValue: number
 
 			if (parameters.class === 'gas') {
 				const warp = fractal(primaryNoise, point.x * 2.4, point.y * 2.4, point.z * 2.4, 4)
-				color = gasColor(point.latitudeSin, warp, parameters.temperatureK)
+				if (albedo) color = gasColor(point.latitudeSin, warp, parameters.temperatureK)
 				roughnessValue = 0.68
 			} else if (parameters.class === 'ice') {
 				const crack = ridged(detailNoise, point.x * 6.5, point.y * 6.5, point.z * 6.5)
-				color = crack > 0.81
-					? mixRgb([216, 230, 239], [73, 119, 157], clamp((crack - 0.81) * 5.2, 0, 0.9))
-					: sampleRamp(PROFILE.display.iceRamp, point.height)
+				if (albedo) {
+					color = crack > 0.81
+						? mixRgb([216, 230, 239], [73, 119, 157], clamp((crack - 0.81) * 5.2, 0, 0.9))
+						: sampleRamp(PROFILE.display.iceRamp, point.height)
+				}
 				roughnessValue = mix(0.38, 0.62, point.height)
 			} else {
-				const terrain = terrainColor(point.height, water, thresholds.water)
-				color = terrain.color
-				roughnessValue = terrain.roughness
+				const altitude = clamp((point.height - thresholds.water) * 2.2, 0, 1)
+				if (albedo) color = terrainColor(point.height, water, thresholds.water).color
+				roughnessValue = water ? 0.16 : mix(0.82, 0.96, altitude)
 				if (vegetation) {
-					color = mixRgb(color, mixRgb(vegetationDry, vegetationWet, point.climate), 0.94)
+					if (color && vegetationDry && vegetationWet) {
+						color = mixRgb(color, mixRgb(vegetationDry, vegetationWet, point.climate), 0.94)
+					}
 					roughnessValue = mix(roughnessValue, 0.86, 0.94)
 				}
 				if (snow) {
-					const snowPalette = water ? PROFILE.display.seaIce : PROFILE.display.landSnow
-					color = mixRgb(color, mixRgb(snowPalette[0], snowPalette[1], point.climate), 0.96)
+					if (color) {
+						const snowPalette = water ? PROFILE.display.seaIce : PROFILE.display.landSnow
+						color = mixRgb(color, mixRgb(snowPalette[0], snowPalette[1], point.climate), 0.96)
+					}
 					roughnessValue = water ? 0.43 : 0.66
 				}
 			}
 
-			if (parameters.tint) color = mixRgb(color, parameters.tint, parameters.class === 'gas' ? 0.3 : PROFILE.display.tintStrength)
-			setPixel(albedo, offset, color)
+			if (color && parameters.tint) {
+				color = mixRgb(color, parameters.tint, parameters.class === 'gas' ? 0.3 : PROFILE.display.tintStrength)
+			}
+			if (albedo && color) setPixel(albedo, offset, color)
 			const roughnessByte = roughnessValue * 255
 			setPixel(roughness, offset, [roughnessByte, roughnessByte, roughnessByte])
 			if (elevation) {

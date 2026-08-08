@@ -136,6 +136,66 @@ export function hostStarTemperatureK(
 	return stored ?? spectralTemperatureK(star?.spectralType) ?? 5_772
 }
 
+export type HostStarReference = {
+	id: number | string
+	systemId?: number | string | null
+	parentSystemId?: number | string | null
+	massKg?: number | null
+	temperatureK?: number | null
+	spectralType?: string | null
+}
+
+type HostStarSelection = {
+	starId?: number | string | null
+	systemId?: number | string | null
+}
+
+function sameEntityId(left: number | string | null | undefined, right: number | string | null | undefined): boolean {
+	return left != null && right != null && String(left) === String(right)
+}
+
+/**
+ * Resolve the one illustrative host used by procedural surface tinting. An
+ * explicit stellar ancestor wins. A system-parented body uses the most massive
+ * system member, with id as a deterministic tie-breaker. This is deliberately
+ * a display convention, not a combined-spectrum model for multiple stars.
+ */
+export function representativeHostStar<T extends HostStarReference>(
+	stars: readonly T[],
+	selection: HostStarSelection,
+): T | null {
+	if (selection.starId != null) {
+		return stars.find(star => sameEntityId(star.id, selection.starId)) ?? null
+	}
+	if (selection.systemId == null) return null
+	const candidates = stars.filter(star => sameEntityId(star.systemId ?? star.parentSystemId, selection.systemId))
+	let representative: T | null = null
+	for (const candidate of candidates) {
+		if (!representative) {
+			representative = candidate
+			continue
+		}
+		const candidateMass = typeof candidate.massKg === 'number' && Number.isFinite(candidate.massKg)
+			? candidate.massKg
+			: Number.NEGATIVE_INFINITY
+		const representativeMass = typeof representative.massKg === 'number' && Number.isFinite(representative.massKg)
+			? representative.massKg
+			: Number.NEGATIVE_INFINITY
+		if (candidateMass > representativeMass
+			|| (candidateMass === representativeMass && String(candidate.id) < String(representative.id))) {
+			representative = candidate
+		}
+	}
+	return representative
+}
+
+export function resolveHostStarTemperatureK(
+	stars: readonly HostStarReference[],
+	selection: HostStarSelection,
+): number {
+	return hostStarTemperatureK(representativeHostStar(stars, selection))
+}
+
 function temperatureSource(stored: number | null, spectral: number | null): StellarSurfacePlan['temperatureSource'] {
 	if (stored) return 'stored'
 	if (spectral) return 'spectral'

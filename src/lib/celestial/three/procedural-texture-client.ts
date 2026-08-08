@@ -48,15 +48,19 @@ export function compareTextureJobs(
 
 const quantize = (value: number | null | undefined, precision: number): number | null => {
 	if (typeof value !== 'number' || !Number.isFinite(value)) return null
-	return Math.round(value / precision) * precision
+	const decimals = Math.max(0, Math.ceil(-Math.log10(precision)))
+	return Number((Math.round(value / precision) * precision).toFixed(decimals))
 }
 
-function normalizePlanet(parameters: ProceduralSurfaceParameters) {
+const quantizeRequired = (value: number, precision: number): number => quantize(value, precision) ?? value
+
+export function normalizeProceduralPlanetParameters(parameters: ProceduralSurfaceParameters): ProceduralSurfaceParameters {
 	return {
 		class: parameters.class,
 		seed: Math.trunc(parameters.seed),
 		temperatureK: quantize(parameters.temperatureK, 0.1),
 		starTemperatureK: quantize(parameters.starTemperatureK, 100),
+		generateAlbedo: parameters.generateAlbedo !== false,
 		coverage: {
 			surfaceWater: quantize(parameters.coverage.surfaceWater, 0.001),
 			vegetation: quantize(parameters.coverage.vegetation, 0.001),
@@ -64,20 +68,24 @@ function normalizePlanet(parameters: ProceduralSurfaceParameters) {
 		},
 		clouds: parameters.clouds
 			? {
-				meanCover: quantize(parameters.clouds.meanCover, 0.001),
+				meanCover: quantizeRequired(parameters.clouds.meanCover, 0.001),
 				seed: Math.trunc(parameters.clouds.seed),
 			}
 			: null,
-		tint: parameters.tint?.map(channel => Math.round(channel)) ?? null,
+		tint: parameters.tint
+			? parameters.tint.map(channel => Math.round(channel)) as [number, number, number]
+			: null,
 	}
 }
 
-function normalizeStar(parameters: ProceduralStellarSurfaceParameters) {
+export function normalizeProceduralStellarParameters(
+	parameters: ProceduralStellarSurfaceParameters,
+): ProceduralStellarSurfaceParameters {
 	return {
-		temperatureK: quantize(parameters.temperatureK, 0.1),
+		temperatureK: quantizeRequired(parameters.temperatureK, 0.1),
 		morphology: parameters.morphology,
-		rotationDays: quantize(parameters.rotationDays, 0.001),
-		activity: quantize(parameters.activity, 0.001),
+		rotationDays: quantizeRequired(parameters.rotationDays, 0.001),
+		activity: quantizeRequired(parameters.activity, 0.001),
 		seed: Math.trunc(parameters.seed),
 	}
 }
@@ -88,14 +96,14 @@ export function proceduralTextureCacheKey(
 	size: ProceduralTextureSize,
 ): string {
 	const normalized = kind === 'planet'
-		? normalizePlanet(parameters as ProceduralSurfaceParameters)
-		: normalizeStar(parameters as ProceduralStellarSurfaceParameters)
+		? normalizeProceduralPlanetParameters(parameters as ProceduralSurfaceParameters)
+		: normalizeProceduralStellarParameters(parameters as ProceduralStellarSurfaceParameters)
 	return `${kind}:r${PROCEDURAL_ALGORITHM_REVISION}:${size}:${JSON.stringify(normalized)}`
 }
 
 function resultBytes(result: ProceduralTextureResult): number {
 	if ('photosphere' in result) return result.photosphere.byteLength
-	return result.albedo.byteLength + result.roughness.byteLength
+	return (result.albedo?.byteLength ?? 0) + result.roughness.byteLength
 		+ (result.elevation?.byteLength ?? 0) + (result.normal?.byteLength ?? 0)
 		+ (result.clouds?.byteLength ?? 0)
 }
@@ -103,8 +111,14 @@ function resultBytes(result: ProceduralTextureResult): number {
 function estimateBytes(request: ProceduralTextureRequest): number {
 	const pixels = request.width * request.height * 4
 	if (request.kind === 'star') return pixels
-	// Elevation and normal planes are both gated on non-gas classes.
-	return pixels * (2 + 2 * Number(request.parameters.class !== 'gas') + Number((request.parameters.clouds?.meanCover ?? 0) > 0))
+	// Base colour is omitted when an upload owns appearance. Elevation and normal
+	// planes are both gated on non-gas classes.
+	return pixels * (
+		Number(request.parameters.generateAlbedo !== false)
+		+ 1
+		+ 2 * Number(request.parameters.class !== 'gas')
+		+ Number((request.parameters.clouds?.meanCover ?? 0) > 0)
+	)
 }
 
 function generateSynchronously(request: ProceduralTextureRequest): ProceduralTextureResult {
@@ -275,17 +289,19 @@ function requestShape(size: ProceduralTextureSize): { width: number, height: num
 export function requestProceduralPlanetTexture(
 	parameters: ProceduralSurfaceParameters,
 	options: ProceduralTextureOptions,
-): Promise<GeneratedSurface> {
-	const request: ProceduralTextureRequest = { kind: 'planet', parameters, ...requestShape(options.size) }
-	return cachedRequest(proceduralTextureCacheKey('planet', parameters, options.size), request, options.priority)
+): Promise<GeneratedSurface<Uint8Array | null>> {
+	const normalized = normalizeProceduralPlanetParameters(parameters)
+	const request: ProceduralTextureRequest = { kind: 'planet', parameters: normalized, ...requestShape(options.size) }
+	return cachedRequest(proceduralTextureCacheKey('planet', normalized, options.size), request, options.priority)
 }
 
 export function requestProceduralStellarTexture(
 	parameters: ProceduralStellarSurfaceParameters,
 	options: ProceduralTextureOptions,
 ): Promise<GeneratedStellarSurface> {
-	const request: ProceduralTextureRequest = { kind: 'star', parameters, ...requestShape(options.size) }
-	return cachedRequest(proceduralTextureCacheKey('star', parameters, options.size), request, options.priority)
+	const normalized = normalizeProceduralStellarParameters(parameters)
+	const request: ProceduralTextureRequest = { kind: 'star', parameters: normalized, ...requestShape(options.size) }
+	return cachedRequest(proceduralTextureCacheKey('star', normalized, options.size), request, options.priority)
 }
 
 export function proceduralTextureRuntimeStats() {

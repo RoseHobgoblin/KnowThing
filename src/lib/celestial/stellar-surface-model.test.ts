@@ -4,6 +4,8 @@ import {
 	describeStellarSurfacePlan,
 	inferStellarMorphology,
 	parseStellarSurfaceRecipe,
+	representativeHostStar,
+	resolveHostStarTemperatureK,
 } from './stellar-surface-model.js'
 
 describe('stellar surface recipe', () => {
@@ -57,5 +59,25 @@ describe('stellar surface recipe', () => {
 		expect(plan.rotationDays).toBeCloseTo(300 / 86_400)
 		expect(plan.activity).toBe(0.8)
 		expect(plan.photosphere).toMatchObject({ source: 'uploaded', filename: 'Sirius B.png' })
+	})
+
+	it('resolves explicit and system-parented hosts with one deterministic convention', () => {
+		const stars = [
+			{ id: 10, systemId: 4, massKg: 8e29, temperatureK: 3_200 },
+			{ id: 11, systemId: 4, massKg: 2e30, temperatureK: 6_200 },
+			{ id: 12, systemId: 5, massKg: 3e30, temperatureK: 8_500 },
+		]
+		expect(representativeHostStar(stars, { starId: '10', systemId: '4' })?.id).toBe(10)
+		expect(representativeHostStar(stars, { systemId: '4' })?.id).toBe(11)
+		expect(resolveHostStarTemperatureK(stars, { systemId: 4 })).toBe(6_200)
+	})
+
+	it('recognizes renderer parent-system references and breaks equal-mass ties by id', () => {
+		const stars = [
+			{ id: 22, parentSystemId: 9, massKg: 1e30, spectralType: 'K2V' },
+			{ id: 21, parentSystemId: 9, massKg: 1e30, spectralType: 'M3V' },
+		]
+		expect(representativeHostStar(stars, { systemId: 9 })?.id).toBe(21)
+		expect(resolveHostStarTemperatureK(stars, { systemId: 9 })).toBe(3_200)
 	})
 })
