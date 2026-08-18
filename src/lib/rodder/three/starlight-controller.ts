@@ -17,6 +17,7 @@ export const SOLAR_IRRADIANCE_DISPLAY = 2.6
 export const DEFAULT_STARLIGHT_EXPOSURE = 1.05
 export const MIN_STARLIGHT_EXPOSURE = 0.08
 export const MAX_STARLIGHT_EXPOSURE = 512
+const UNLIT_AMBIENT_FILL = 0.42
 const MAX_RENDER_LUMINOSITY_SOLAR = 1e6
 
 export type StarlightSummary = {
@@ -149,6 +150,7 @@ export class StarlightController {
 	readonly fillLight = new AmbientLight(0x9AA7C5, 0)
 	#records = new Map<EntityKey, StarlightRecord>()
 	#visibilityMode: VisibilityMode = 'enhanced'
+	#hasStarlight = true
 
 	constructor() {
 		this.group.name = 'starlight'
@@ -172,6 +174,8 @@ export class StarlightController {
 			this.group.add(light)
 			this.#records.set(keyForBody(star, true), { light, source: resolved.source })
 		}
+		this.#hasStarlight = this.#records.size > 0
+		this.fillLight.intensity = this.#baseFillIntensity()
 		return this.summary()
 	}
 
@@ -181,12 +185,12 @@ export class StarlightController {
 
 	setVisibilityMode(mode: VisibilityMode): void {
 		this.#visibilityMode = mode
-		this.fillLight.intensity = starlightFillIntensity(mode)
+		this.fillLight.intensity = this.#baseFillIntensity()
 	}
 
 	compensateFillForExposure(exposure: number): void {
 		const safeExposure = Number.isFinite(exposure) && exposure > 0 ? exposure : 1
-		this.fillLight.intensity = starlightFillIntensity(this.#visibilityMode) / safeExposure
+		this.fillLight.intensity = this.#baseFillIntensity() / safeExposure
 	}
 
 	irradianceAt(position: Vector3): number {
@@ -199,7 +203,13 @@ export class StarlightController {
 	}
 
 	summary(): StarlightSummary {
-		return summaryFor(this.#records.values())
+		const summary = summaryFor(this.#records.values())
+		if (summary.lightCount === 0) summary.label = 'No stellar light Â· ambient presentation'
+		return summary
+	}
+
+	#baseFillIntensity(): number {
+		return this.#hasStarlight ? starlightFillIntensity(this.#visibilityMode) : UNLIT_AMBIENT_FILL
 	}
 
 	clearStarLights(): void {

@@ -103,6 +103,10 @@ export const updateStarSchema = starSchema.partial().superRefine(validateStarUpd
 
 const planetaryBodySchema = coreSchema.extend(orbiterSchema.shape).extend({
 	bodyType: z.enum(['planet', 'asteroid', 'ring_system']).default('planet'),
+	sectorId: z.number().int().positive().nullish(),
+	sectorX: z.number().finite().nullish(),
+	sectorY: z.number().finite().nullish(),
+	sectorZ: z.number().finite().nullish(),
 
 	temperatureK: z.number().positive().finite().nullish(),
 	composition: z.string().nullish(),
@@ -117,16 +121,19 @@ const planetaryBodySchema = coreSchema.extend(orbiterSchema.shape).extend({
 })
 
 function validatePlanetaryBodyCreate(data: Partial<z.infer<typeof planetaryBodySchema>>, ctx: z.RefinementCtx) {
-	if (data.parentId == null) {
-		ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['parentId'], message: 'Rodder bodies must orbit a parent system, star, or body' })
+	if (data.parentId == null && data.bodyType === 'ring_system') {
+		ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['parentId'], message: 'Ring systems must orbit a parent body' })
+	}
+	if (data.parentId == null && starHasOrbitalData(data)) {
+		ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['parentId'], message: 'Unbound sector roots cannot carry parent-relative orbital data' })
 	}
 }
 
 // Presence-aware update validation — the service merges with the current row and
 // re-validates with the create schema, so only flag fields actually being set.
 function validatePlanetaryBodyUpdate(data: Partial<z.infer<typeof planetaryBodySchema>>, ctx: z.RefinementCtx) {
-	if ('parentId' in data && data.parentId == null) {
-		ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['parentId'], message: 'Rodder bodies must orbit a parent system, star, or body' })
+	if ('parentId' in data && data.parentId == null && data.bodyType === 'ring_system') {
+		ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['parentId'], message: 'Ring systems must orbit a parent body' })
 	}
 }
 

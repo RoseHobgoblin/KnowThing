@@ -35,8 +35,13 @@
 	let systemZ = $state<number | null>(null)
 	let starSystemId = $state<string>('')
 	let bodyType = $state('planet')
+	let bodyPlacement = $state<'orbit' | 'sector'>('orbit')
 	let bodyStarId = $state<string>('')
 	let bodyParentId = $state<string>('')
+	let bodySectorId = $state<string>(String(untrack(() => sectors[0]?.id) ?? ''))
+	let bodyX = $state<number | null>(null)
+	let bodyY = $state<number | null>(null)
+	let bodyZ = $state<number | null>(null)
 	let saving = $state(false)
 
 	const bodyParentOptions = $derived(
@@ -49,11 +54,18 @@
 		[systemX, systemY, systemZ].every(value => value != null)
 		|| [systemX, systemY, systemZ].every(value => value == null),
 	)
+	const bodyPositionComplete = $derived(
+		[bodyX, bodyY, bodyZ].every(value => value != null)
+		|| [bodyX, bodyY, bodyZ].every(value => value == null),
+	)
 	const canCreate = $derived.by(() => {
 		if (!name.trim() || saving) return false
 		if (kind === 'system') return !!systemSectorId && positionComplete
 		if (kind === 'star') return !!starSystemId
-		if (kind === 'body') return !!bodyStarId && (bodyType !== 'ring_system' || !!validBodyParentId)
+		if (kind === 'body') {
+			if (bodyPlacement === 'sector') return bodyType !== 'ring_system' && !!bodySectorId && bodyPositionComplete
+			return !!bodyStarId && (bodyType !== 'ring_system' || !!validBodyParentId)
+		}
 		return false
 	})
 	const namePlaceholder = $derived(
@@ -89,11 +101,21 @@
 			} else if (kind === 'star') {
 				payload = { ...common, parentId: Number(starSystemId) }
 			} else {
-				payload = {
-					...common,
-					bodyType,
-					parentId: validBodyParentId ? Number(validBodyParentId) : Number(bodyStarId),
-				}
+				payload = bodyPlacement === 'sector'
+					? {
+						...common,
+						bodyType,
+						parentId: null,
+						sectorId: Number(bodySectorId),
+						sectorX: bodyX,
+						sectorY: bodyY,
+						sectorZ: bodyZ,
+					}
+					: {
+						...common,
+						bodyType,
+						parentId: validBodyParentId ? Number(validBodyParentId) : Number(bodyStarId),
+					}
 			}
 			const created = await api<Created>('POST', '/api/rodder', payload)
 			pushSuccess(`“${created.name}” created`)
@@ -172,8 +194,16 @@
 						{ value: 'asteroid', label: 'Asteroid' },
 						{ value: 'ring_system', label: 'Ring system' },
 					]} />
-					<Select type="single" label="Primary star" bind:value={bodyStarId} items={stars.map(star => ({ value: String(star.id), label: star.name }))} placeholder="Choose a star" />
-					<Select type="single" label="Orbits body (optional)" bind:value={bodyParentId} disabled={!bodyStarId || bodyParentOptions.length === 0} items={bodyParentOptions.map(body => ({ value: String(body.id), label: body.name }))} placeholder={bodyStarId ? 'None — orbits the star' : 'Choose a star first'} />
+					<Select type="single" label="Placement" bind:value={bodyPlacement} items={[
+						{ value: 'orbit', label: 'Orbiting another object' },
+						{ value: 'sector', label: 'Independent sector root' },
+					]} />
+					{#if bodyPlacement === 'orbit'}
+						<Select type="single" label="Primary star" bind:value={bodyStarId} items={stars.map(star => ({ value: String(star.id), label: star.name }))} placeholder="Choose a star" />
+						<Select type="single" label="Orbits body (optional)" bind:value={bodyParentId} disabled={!bodyStarId || bodyParentOptions.length === 0} items={bodyParentOptions.map(body => ({ value: String(body.id), label: body.name }))} placeholder={bodyStarId ? 'None — orbits the star' : 'Choose a star first'} />
+					{:else}
+						<Select type="single" label="Sector" bind:value={bodySectorId} items={sectors.map(sector => ({ value: String(sector.id), label: `${sector.name} (${sector.units})` }))} />
+					{/if}
 				{/if}
 			</div>
 
@@ -189,6 +219,21 @@
 						<Input label="Z" type="number" step="any" bind:value={systemZ} error={positionComplete ? '' : 'Complete all three coordinates'} />
 					</div>
 				</div>
+			{:else if kind === 'body' && bodyPlacement === 'sector'}
+				<div>
+					<div class="mb-2 flex items-baseline justify-between gap-3">
+						<h4 class="text-xs font-semibold tracking-wider text-secondary uppercase">Initial sector position</h4>
+						<span class="text-xs text-dim">Optional, but enter all three coordinates together.</span>
+					</div>
+					<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+						<Input label="X" type="number" step="any" bind:value={bodyX} error={bodyPositionComplete ? '' : 'Complete all three coordinates'} />
+						<Input label="Y" type="number" step="any" bind:value={bodyY} error={bodyPositionComplete ? '' : 'Complete all three coordinates'} />
+						<Input label="Z" type="number" step="any" bind:value={bodyZ} error={bodyPositionComplete ? '' : 'Complete all three coordinates'} />
+					</div>
+					{#if bodyType === 'ring_system'}
+						<p class="mt-2 text-xs text-accent">A ring system must orbit a body and cannot be an independent root.</p>
+					{/if}
+				</div>
 			{/if}
 
 			<div class="flex justify-end border-t border-border-subtle pt-4">
@@ -198,8 +243,8 @@
 	{/if}
 </section>
 
-{#if kind === 'system' && sectors.length === 0}
+{#if (kind === 'system' || (kind === 'body' && bodyPlacement === 'sector')) && sectors.length === 0}
 	<div class="mt-3 border border-warning-border bg-warning-bg p-3 text-sm text-body">
-		Create a <a href={resolve('/rodder/manage/sectors')} class="text-link hover:text-link-hover">sector frame</a> before adding a system.
+		Create a <a href={resolve('/rodder/manage/sectors')} class="text-link hover:text-link-hover">sector frame</a> before adding an independent root.
 	</div>
 {/if}

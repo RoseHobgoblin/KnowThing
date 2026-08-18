@@ -965,6 +965,31 @@ const bodyConfig: RodderFormConfig = {
 			],
 		},
 		{
+			id: 'location', label: 'Location',
+			intro: 'An unbound body is an independently positioned sector root. Sector coordinates are disabled while the body orbits another object.',
+			groups: [
+				{
+					cols: 1,
+					fields: [{
+						control: 'select', key: 'sectorId', label: 'Sector', omitFromPayload: true,
+						options: ctx => ctx.sectors.map(sector => ({
+							value: String(sector.id), label: `${sector.name} (${sector.units})`,
+						})),
+						disabled: ctx => !!text(ctx, 'starId') || !!text(ctx, 'parentId'),
+						hint: 'The coordinate frame that owns this independent root.',
+					}],
+				},
+				{
+					cols: 3,
+					fields: [
+						{ control: 'number', key: 'sectorX', label: 'Sector X', placeholder: '0.0', disabled: ctx => !!text(ctx, 'starId') || !!text(ctx, 'parentId') },
+						{ control: 'number', key: 'sectorY', label: 'Sector Y', placeholder: '0.0', disabled: ctx => !!text(ctx, 'starId') || !!text(ctx, 'parentId') },
+						{ control: 'number', key: 'sectorZ', label: 'Sector Z', placeholder: '0.0', disabled: ctx => !!text(ctx, 'starId') || !!text(ctx, 'parentId') },
+					],
+				},
+			],
+		},
+		{
 			id: 'physical', label: 'Physical',
 			groups: [{
 				cols: 2,
@@ -1153,12 +1178,17 @@ const bodyConfig: RodderFormConfig = {
 			: {}
 		const surface = surfaceRecipeFromDraft(ctx.draft)
 		const weather = weatherRecipeFromDraft(ctx.draft)
-		const common = { extra: { ...currentExtra, surface, weather } }
+		const common: Record<string, unknown> = { extra: { ...currentExtra, surface, weather } }
 		const parentId = text(ctx, 'parentId')
 		if (parentId) return { parentId: Number(parentId), ...common }
 		const { starId, systemId } = bodyPrimarySelection(ctx)
 		const primary = starId || systemId
-		return { parentId: primary ? Number(primary) : null, ...common }
+		if (primary) return { parentId: Number(primary), ...common }
+		return {
+			parentId: null,
+			sectorId: text(ctx, 'sectorId') ? Number(text(ctx, 'sectorId')) : null,
+			...common,
+		}
 	},
 	physicsWarnings: (ctx) => {
 		const physical = validateBodyPhysics({

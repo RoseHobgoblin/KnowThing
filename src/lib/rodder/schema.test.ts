@@ -7,9 +7,12 @@ import {
 } from './schema.js'
 
 describe('planetary body schema', () => {
-	it('create requires a parent', () => {
-		const result = createPlanetaryBodySchema.safeParse({ name: 'X', slug: 'x' })
-		expect(result.success).toBe(false)
+	it('create accepts an independent sector root without orbital data', () => {
+		const result = createPlanetaryBodySchema.safeParse({
+			name: 'Waywain', slug: 'waywain', sectorId: 2,
+			sectorX: 4, sectorY: -1, sectorZ: 0.5,
+		})
+		expect(result.success).toBe(true)
 	})
 
 	it('create accepts a body assigned to a parent', () => {
@@ -24,8 +27,22 @@ describe('planetary body schema', () => {
 		expect(result.success).toBe(true)
 	})
 
-	it('update still rejects an explicitly cleared parentId', () => {
+	it('update accepts explicitly clearing a parent edge', () => {
 		const result = updatePlanetaryBodySchema.safeParse({ parentId: null })
+		expect(result.success).toBe(true)
+	})
+
+	it('rejects parent-relative orbital data on an independent root', () => {
+		const result = createPlanetaryBodySchema.safeParse({
+			name: 'Waywain', slug: 'waywain', parentId: null, semiMajorAxisAu: 3,
+		})
+		expect(result.success).toBe(false)
+	})
+
+	it('rejects an independent ring system', () => {
+		const result = createPlanetaryBodySchema.safeParse({
+			name: 'Loose Rings', slug: 'loose-rings', parentId: null, bodyType: 'ring_system',
+		})
 		expect(result.success).toBe(false)
 	})
 

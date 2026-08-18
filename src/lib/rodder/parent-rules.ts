@@ -44,9 +44,9 @@ export function validateParentKind(
 	bodyType?: string | null,
 ): string | null {
 	if (parentKind == null) {
-		// Bodies always orbit something; systems never do; stars may be field
-		// stars outside any system.
-		if (kind === 'body') return 'Rodder bodies must orbit a parent system, star, or body'
+		// Systems and field stars are roots. Bodies may also be independently
+		// positioned sector roots; ring systems remain intrinsically relational.
+		if (kind === 'body' && bodyType === 'ring_system') return 'Ring systems must orbit a parent body'
 		return null
 	}
 	if (kind === 'system') return 'Star systems cannot orbit a parent'

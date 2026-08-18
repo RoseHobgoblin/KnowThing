@@ -86,4 +86,16 @@ describe('starlight controller', () => {
 		controller.dispose()
 		expect(controller.group.children).toHaveLength(0)
 	})
+
+	it('uses an explicit ambient presentation when a root has no stars', () => {
+		const controller = new StarlightController()
+		const summary = controller.rebuild([], 100)
+
+		expect(summary.lightCount).toBe(0)
+		expect(summary.label).toContain('ambient presentation')
+		expect(controller.fillLight.intensity).toBeGreaterThan(0)
+		controller.setVisibilityMode('physical')
+		expect(controller.fillLight.intensity).toBeGreaterThan(0)
+		controller.dispose()
+	})
 })

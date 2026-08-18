@@ -126,6 +126,22 @@ describe('buildPayload', () => {
 		expect(buildPayload(config, ctx).parentId).toBe(4)
 	})
 
+	it('emits sector membership for an independent body root', () => {
+		const config = RODDER_FORM_CONFIGS.body
+		const ctx = makeCtx(config)
+		ctx.draft.sectorId = '12'
+		ctx.draft.sectorX = 3
+		ctx.draft.sectorY = -4
+		ctx.draft.sectorZ = 0.5
+		const payload = buildPayload(config, ctx)
+
+		expect(payload.parentId).toBeNull()
+		expect(payload.sectorId).toBe(12)
+		expect(payload.sectorX).toBe(3)
+		expect(payload.sectorY).toBe(-4)
+		expect(payload.sectorZ).toBe(0.5)
+	})
+
 	it('round-trips Starwright settings through the star extra JSON', () => {
 		const config = RODDER_FORM_CONFIGS.star
 		const draft = buildDraft(config, {

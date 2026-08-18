@@ -17,7 +17,7 @@ describe('validateParentKind', () => {
 		['star', 'body', false],
 		// body: always orbits something — a star, another body, or a system
 		// barycenter (circumbinary)
-		['body', null, false],
+		['body', null, true],
 		['body', 'system', true],
 		['body', 'star', true],
 		['body', 'body', true],
@@ -32,6 +32,7 @@ describe('validateParentKind', () => {
 	}
 
 	it('ring systems must orbit a body, not a star or system', () => {
+		expect(validateParentKind('body', null, 'ring_system')).toBeTypeOf('string')
 		expect(validateParentKind('body', 'star', 'ring_system')).toBeTypeOf('string')
 		expect(validateParentKind('body', 'system', 'ring_system')).toBeTypeOf('string')
 		expect(validateParentKind('body', 'body', 'ring_system')).toBeNull()

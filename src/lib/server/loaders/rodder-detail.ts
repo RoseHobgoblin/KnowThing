@@ -52,12 +52,17 @@ export type RodderDetailData =
 	})
 	| (RodderBaseData & {
 		kind: 'body'
-		body: RodderRow
+		body: RodderRow & { sectorX: number | null, sectorY: number | null, sectorZ: number | null }
 		allSystems: Awaited<ReturnType<typeof listAllSystemReferences>>
 		allStars: Awaited<ReturnType<typeof listAllStarReferences>>
 		siblings: Awaited<ReturnType<typeof listAllBodyReferences>>
 		model: BodyModel | null
 		parentStarHz: ParentStarHz | null
+		sectorContext: SectorContext | null
+		sectors: Awaited<ReturnType<typeof listSectorReferences>>
+		rootStars: MapBody[]
+		rootBodies: MapBody[]
+		rootCalendars: Awaited<ReturnType<typeof getCalendarsForRoot>>
 	})
 
 interface RodderBaseData {
@@ -133,14 +138,19 @@ export async function loadRodderDetail(ctx: RodderDetailContext): Promise<Rodder
 		}
 	}
 
-	const [allSystems, allStars, siblings, rawModel, backlinks, nearestStar] = await Promise.all([
+	const [allSystems, allStars, siblings, rawModel, backlinks, nearestStar, sectorContext, sectors] = await Promise.all([
 		listAllSystemReferences(),
 		listAllStarReferences(),
 		listAllBodyReferences(),
 		resolveRodderModel('body', entity.slug),
 		getBacklinksForRodder(entity.slug),
 		entity.parentId == null ? Promise.resolve(null) : findNearestStarAncestor(entity.parentId),
+		getSectorContextForRoot(entity.id),
+		isConfigureMode ? listSectorReferences() : Promise.resolve([]),
 	])
+	const [mapEntities, rootCalendars] = sectorContext
+		? await Promise.all([getRootMapEntities(entity.id), getCalendarsForRoot(entity.id)])
+		: [{ stars: [], bodies: [] }, []]
 	const model = rawModel?.kind === 'body' ? rawModel : null
 	// The parent star's habitable zone, so a planet can show whether it sits in
 	// it — fetched as just the luminosity inputs, not the star's whole model
@@ -149,12 +159,22 @@ export async function loadRodderDetail(ctx: RodderDetailContext): Promise<Rodder
 	const parentStarHz = parentStarHzInputs ? resolveParentStarHz(parentStarHzInputs) : null
 	return {
 		kind: 'body',
-		body: entity,
+		body: {
+			...entity,
+			sectorX: sectorContext?.x ?? null,
+			sectorY: sectorContext?.y ?? null,
+			sectorZ: sectorContext?.z ?? null,
+		},
 		allSystems,
 		allStars,
 		siblings,
 		model,
 		parentStarHz,
+		sectorContext,
+		sectors,
+		rootStars: mapEntities.stars as unknown as MapBody[],
+		rootBodies: mapEntities.bodies as unknown as MapBody[],
+		rootCalendars,
 		isEditMode: false,
 		isConfigureMode,
 		backlinks,

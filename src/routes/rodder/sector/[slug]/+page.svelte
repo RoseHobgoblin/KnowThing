@@ -173,7 +173,7 @@
 						<a
 							href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${selectedRoot.slug}` })}
 							class="mt-2 block text-xs text-link transition-colors hover:text-link-hover"
-						>Enter system</a>
+						>Enter root</a>
 					</div>
 				</div>
 			{/if}
@@ -207,7 +207,7 @@
 					</div>
 				{/if}
 				{#if roots.length === 0}
-					<p class="text-xs text-dim">This sector has no roots yet. Systems become roots automatically when created.</p>
+					<p class="text-xs text-dim">This sector has no roots yet. Systems and independent bodies become roots when created.</p>
 				{/if}
 			</div>
 		</div>

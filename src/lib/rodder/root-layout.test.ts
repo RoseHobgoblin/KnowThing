@@ -183,6 +183,36 @@ describe('collision-aware orbit lanes', () => {
 })
 
 describe('physical orrery layout', () => {
+	it('anchors an independent body root at the centre and resolves its moon', () => {
+		const rogue = body({ id: 300, name: 'Waywain', isRoot: true, radiusM: 6_371_000 })
+		const rogueMoon = body({
+			id: 301,
+			name: 'Hearthling',
+			parentId: rogue.id,
+			semiMajorAxisAu: 0.00257,
+			orbitalPeriodDays: 29.5,
+		})
+		const layout = buildPhysicalLayout([], [rogue, rogueMoon])
+		const positions = computePositions3D(layout, 12_345.5)
+
+		expect(layout.primaryStar).toBeNull()
+		expect(layout.rootBody?.id).toBe(rogue.id)
+		expect(layout.directOrbits).toHaveLength(0)
+		expect(layout.satellites).toHaveLength(1)
+		expect(layout.satellites[0].parentKey).toBe('body:300')
+		expect(positions.get('body:300')).toMatchObject({ x: CENTER, y: CENTER, z: 0 })
+		expect(positions.get('body:301')).toBeDefined()
+		expect(layout.worldUnitsPerAu).toBeGreaterThan(0)
+	})
+
+	it('frames a solitary body root at a visible physical size', () => {
+		const rogue = body({ id: 302, isRoot: true, radiusM: 6_371_000 })
+		const layout = buildPhysicalLayout([], [rogue])
+		const rootRadiusWorld = rogue.radiusM! / 149_597_870_700 * layout.worldUnitsPerAu!
+
+		expect(rootRadiusWorld).toBeCloseTo((CENTER - 80) / 4)
+	})
+
 	it('uses one linear AU conversion for every direct orbit', () => {
 		const worlds = [
 			body({ id: 201, starId: 1, semiMajorAxisAu: 0.5 }),

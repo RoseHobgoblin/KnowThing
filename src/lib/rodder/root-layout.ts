@@ -11,7 +11,7 @@
  *   buildScene()       — composes both into the flat scene a renderer consumes.
  */
 import { meanAnomaly, partitionBinaryRelativeAxis, rotatePerifocalToInertial, solveKeplerE } from 'tungolcraft'
-import { overviewBodyExtent } from './body-sizing.js'
+import { ASTRONOMICAL_UNIT_M, EARTH_RADIUS_M, overviewBodyExtent } from './body-sizing.js'
 import type { ScaleMode } from './map-settings.js'
 import type { SurfaceRecipe } from './surface-model.js'
 import type { StellarSurfaceRecipe } from './stellar-surface-model.js'
@@ -24,6 +24,8 @@ export interface MapBody {
 	bodyType: string
 	/** Renderer-only entity namespace marker; never persisted. */
 	isStar?: boolean
+	/** This entity owns the sector-root hierarchy and is anchored at the map origin. */
+	isRoot?: boolean
 	massKg?: number | null
 	radiusM?: number | null
 	semiMajorAxisAu?: number | null
@@ -122,6 +124,7 @@ export type ThemePalette = {
 
 export type Scene = {
 	primaryStar: MapBody | null
+	rootBody: MapBody | null
 	directPositions: PositionedOrbit[]
 	satellitePositions: PositionedSatellite[]
 	cameraOffset: { x: number, y: number }
@@ -188,6 +191,8 @@ export function blendedSatelliteGeometry(
 
 export type RootLayout = {
 	primaryStar: MapBody | null
+	/** Non-stellar sector root anchored at the map origin (for example, a rogue world). */
+	rootBody: MapBody | null
 	directOrbits: DirectOrbitLayout[]
 	/** Topologically ordered: a satellite's parent always precedes it. */
 	satellites: SatelliteLayout[]
@@ -563,6 +568,7 @@ export function resolveSimpleBinary(stars: MapBody[]): ResolvedBinary | null {
 }
 
 export function buildLayout(stars: MapBody[], bodies: MapBody[], scale: ScaleMode): RootLayout {
+	const rootBody = bodies.find(body => body.isRoot) ?? null
 	const resolvedBinary = resolveSimpleBinary(stars)
 	const hasStellarOrbitShape = stars.some(star => star.parentStarId != null || star.parentSystemId != null)
 	const layoutStars = !resolvedBinary && hasStellarOrbitShape
@@ -625,6 +631,10 @@ export function buildLayout(stars: MapBody[], bodies: MapBody[], scale: ScaleMod
 
 	for (const body of bodies) {
 		const key = keyForBody(body, false)
+		if (body === rootBody) {
+			seen.add(key)
+			continue
+		}
 		// parentId always references another planetary body, never a star, so it must
 		// not be compared against a star id (their id spaces overlap → wrong routing).
 		const orbitsPrimaryStarDirectly =
@@ -664,8 +674,8 @@ export function buildLayout(stars: MapBody[], bodies: MapBody[], scale: ScaleMod
 		const t = uniqueOrbitAxes.length === 1 ? 0.5 : slot / (uniqueOrbitAxes.length - 1)
 		return MIN_FIRST_ORBIT + t * (maxVisualRadius - MIN_FIRST_ORBIT)
 	})
-	const centerExtent = resolvedPrimaryStar
-		? overviewBodyExtent(resolvedPrimaryStar, true, false)
+	const centerExtent = resolvedPrimaryStar || rootBody
+		? overviewBodyExtent(resolvedPrimaryStar ?? rootBody!, resolvedPrimaryStar != null, false)
 		: 0
 	const finalRadii = enforceOrbitClearance(visibleOrbiters, rawRadii, maxVisualRadius, centerExtent)
 
@@ -689,6 +699,7 @@ export function buildLayout(stars: MapBody[], bodies: MapBody[], scale: ScaleMod
 	// every direct orbiter, growing as satellites themselves get placed.
 	const anchored = new Set<EntityKey>()
 	if (primaryStar) anchored.add(keyForBody(primaryStar, true))
+	if (rootBody) anchored.add(keyForBody(rootBody, false))
 	for (const orbit of directOrbits) {
 		anchored.add(keyForBody(orbit.body, orbit.body.isStar))
 	}
@@ -803,6 +814,7 @@ export function buildLayout(stars: MapBody[], bodies: MapBody[], scale: ScaleMod
 
 	return {
 		primaryStar: resolvedPrimaryStar,
+		rootBody,
 		directOrbits,
 		satellites,
 		effectiveMaxAu,
@@ -822,15 +834,19 @@ export function buildPhysicalLayout(stars: MapBody[], bodies: MapBody[]): RootLa
 	// Reuse the thoroughly tested parent/binary topology, then discard every
 	// schematic radius it produced.
 	const topology = buildLayout(stars, bodies, 'proportional')
-	const centralRadiusAu = topology.primaryStar?.radiusM != null && topology.primaryStar.radiusM > 0
-		? topology.primaryStar.radiusM / 149_597_870_700
+	const centralEntity = topology.primaryStar ?? topology.rootBody
+	const centralRadiusAu = centralEntity
+		? (centralEntity.radiusM != null && centralEntity.radiusM > 0
+			? centralEntity.radiusM
+			: (topology.primaryStar ? 695_700_000 : EARTH_RADIUS_M)) / ASTRONOMICAL_UNIT_M
 		: 0
+	const minimumSpanAu = topology.rootBody ? centralRadiusAu * 4 : 0.05
 	const maximumApoapsisAu = Math.max(
 		...topology.directOrbits
 			.filter(orbit => !orbit.outOfRange)
 			.map(orbit => orbit.body.orbitAu * (1 + orbit.body.ecc) * Math.abs(orbit.binaryFactor ?? 1)),
 		centralRadiusAu * 4,
-		0.05,
+		minimumSpanAu,
 	)
 	const worldUnitsPerAu = (CENTER - PADDING) / maximumApoapsisAu
 	const directOrbits = topology.directOrbits
@@ -884,6 +900,9 @@ export function computePositions(
 	const positions = new Map<EntityKey, BodyPosition>()
 	if (layout.primaryStar) {
 		positions.set(keyForBody(layout.primaryStar, true), { x: CENTER, y: CENTER, angle: 0 })
+	}
+	if (layout.rootBody) {
+		positions.set(keyForBody(layout.rootBody, false), { x: CENTER, y: CENTER, angle: 0 })
 	}
 
 	for (const orbit of layout.directOrbits) {
@@ -948,6 +967,9 @@ export function computePositions3D(
 	const positions = new Map<EntityKey, BodyPosition3D>()
 	if (layout.primaryStar) {
 		positions.set(keyForBody(layout.primaryStar, true), { x: CENTER, y: CENTER, z: 0, angle: 0 })
+	}
+	if (layout.rootBody) {
+		positions.set(keyForBody(layout.rootBody, false), { x: CENTER, y: CENTER, z: 0, angle: 0 })
 	}
 
 	for (const orbit of layout.directOrbits) {
@@ -1085,6 +1107,16 @@ export function buildScene({ stars, bodies, scale, selectedId, follow, currentAb
 			r: 12,
 		})
 	}
+	if (layout.rootBody) {
+		const projected = project(CENTER, CENTER)
+		hitTargets.push({
+			id: keyForBody(layout.rootBody, false),
+			body: layout.rootBody,
+			x: projected.x,
+			y: projected.y,
+			r: 12,
+		})
+	}
 
 	for (const position of directPositions) {
 		hitTargets.push({
@@ -1108,6 +1140,7 @@ export function buildScene({ stars, bodies, scale, selectedId, follow, currentAb
 
 	return {
 		primaryStar: layout.primaryStar,
+		rootBody: layout.rootBody,
 		directPositions,
 		satellitePositions,
 		cameraOffset,

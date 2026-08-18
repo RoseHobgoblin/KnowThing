@@ -17,6 +17,7 @@
 
 	let {
 		root,
+		rootKind = 'system',
 		stars,
 		bodies,
 		rootSlug,
@@ -27,10 +28,12 @@
 	}: {
 		root: {
 			name: string
+			bodyType?: string | null
 			distanceLy?: number | null
 			formationAge?: string | null
 			designations?: string | null
 		}
+		rootKind?: 'system' | 'body'
 		stars: MapBody[]
 		bodies: MapBody[]
 		rootSlug: string
@@ -60,8 +63,6 @@
 	const resolved = $derived(selectedCalendar && currentDate ? resolveDisplay(selectedCalendar, currentDate) : null)
 
 	const systemType = $derived(deriveSystemType(stars.length))
-	const primaryStar = $derived(stars.find(s => !s.parentStarId) ?? stars[0])
-
 	function planetsForStar(starId: number) {
 		return bodies.filter(b => b.starId === starId && !b.parentId)
 	}
@@ -86,8 +87,12 @@
 		trinary: 'Trinary',
 		multiple: 'Multiple',
 	}
+	const rootType = $derived(rootKind === 'body'
+		? (root.bodyType ? root.bodyType.replaceAll('_', ' ') : 'body')
+		: (typeLabel[systemType] ?? systemType))
 
 	const totalBodies = $derived(bodies.length)
+	const centralBodies = $derived(bodies.filter(body => body.isRoot))
 </script>
 
 <div class="space-y-4 text-sm">
@@ -97,12 +102,14 @@
 		<div class="space-y-1.5 text-secondary">
 			<div class="flex justify-between">
 				<span>Type</span>
-				<span class="font-medium text-body">{typeLabel[systemType] ?? systemType}</span>
+				<span class="font-medium text-body capitalize">{rootType}</span>
 			</div>
-			<div class="flex justify-between">
-				<span>Stars</span>
-				<span class="font-medium text-body">{stars.length}</span>
-			</div>
+			{#if rootKind === 'system' || stars.length > 0}
+				<div class="flex justify-between">
+					<span>Stars</span>
+					<span class="font-medium text-body">{stars.length}</span>
+				</div>
+			{/if}
 			{#if totalBodies > 0}
 				<div class="flex justify-between">
 					<span>Bodies</span>
@@ -189,6 +196,26 @@
 	<div>
 		<div class="mb-2 border-b border-border-subtle pb-1 text-xs font-semibold tracking-wider text-secondary uppercase">Bodies</div>
 		<div class="space-y-0.5">
+			{#each centralBodies as centralBody (centralBody.id)}
+				{@const RootIcon = bodyIcon(centralBody.bodyType, false)}
+				<a
+					href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${centralBody.slug}` })}
+					class="flex items-center gap-2 px-1.5 py-1 transition-colors hover:bg-raised"
+				>
+					<RootIcon size={16} weight="fill" class="shrink-0" color={resolveColor(centralBody.color, 'var(--color-secondary)')} />
+					<span class="font-medium text-body">{centralBody.name}</span>
+					<span class="text-xs text-secondary">(root)</span>
+				</a>
+				{#each moonsForBody(centralBody.id) as moon (moon.id)}
+					<a
+						href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${moon.slug}` })}
+						class="ml-4 flex items-center gap-2 px-1.5 py-0.5 transition-colors hover:bg-raised"
+					>
+						<Moon size={12} weight="fill" class="shrink-0 text-dim" />
+						<span class="text-xs text-secondary">{moon.name}</span>
+					</a>
+				{/each}
+			{/each}
 			{#each stars as star (star.id)}
 				{@const isPrimary = !star.parentStarId}
 				<a

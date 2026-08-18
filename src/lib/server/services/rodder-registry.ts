@@ -112,7 +112,8 @@ export async function getRootMapEntities(rootId: number) {
 	const [stars, bodies] = await Promise.all([
 		db.execute(sql`
 			WITH RECURSIVE ${RODDER_TREE_CTE}
-			SELECT s.id, s.name, s.slug, s.spectral_type AS "spectralType", s.color,
+			SELECT s.id, s.name, s.slug, (s.id = ${rootId}) AS "isRoot",
+				s.spectral_type AS "spectralType", s.color,
 				s.mass_kg AS "massKg",
 				s.radius_m AS "radiusM",
 				s.rotation_period_s AS "rotationPeriodS",
@@ -140,7 +141,8 @@ export async function getRootMapEntities(rootId: number) {
 		`),
 		db.execute(sql`
 			WITH RECURSIVE ${RODDER_TREE_CTE}
-			SELECT pb.id, pb.name, pb.slug, pb.body_type AS "bodyType",
+			SELECT pb.id, pb.name, pb.slug, (pb.id = ${rootId}) AS "isRoot",
+				pb.body_type AS "bodyType",
 				pb.mass_kg AS "massKg",
 				pb.radius_m AS "radiusM",
 				pb.rotation_period_s AS "rotationPeriodS",
@@ -188,7 +190,7 @@ export async function getRootMapEntities(rootId: number) {
 }
 
 export async function getCalendarsForRoot(rootId: number) {
-	return db.execute(sql`
+	const rows = await db.execute(sql`
 		WITH RECURSIVE ${RODDER_TREE_CTE}
 		SELECT c.id, c.name, c.static_data AS "staticData", c.planet_id AS "planetId"
 		FROM calendars c
@@ -198,6 +200,12 @@ export async function getCalendarsForRoot(rootId: number) {
 		OR c.planet_id IS NULL
 		ORDER BY c.name
 	`)
+	return rows as unknown as Array<{
+		id: number
+		name: string
+		staticData: Record<string, unknown> | null
+		planetId: number | null
+	}>
 }
 
 export async function getStarSystemRef(systemId: number) {

@@ -526,6 +526,7 @@ export async function createRootMapRenderer(
 		clearSceneContent()
 		layout = buildPhysicalLayout(stars, bodies)
 		if (layout.primaryStar) addNode(layout.primaryStar, true, false)
+		if (layout.rootBody) addNode(layout.rootBody, false, false)
 		for (const direct of layout.directOrbits) addNode(direct.body, direct.body.isStar, false)
 		for (const satellite of layout.satellites) addNode(satellite.body, satellite.body.isStar, true)
 		publishTextureLodDiagnostics()

@@ -246,7 +246,7 @@
 				{/if}
 			</div>
 			<div class="absolute bottom-2 left-2 hidden bg-surface/60 px-2 py-1 text-[0.65rem] text-secondary sm:block">
-				Drag to orbit · Double-click a system to enter it
+				Drag to orbit · Double-click a root to enter it
 			</div>
 		</div>
 	{/if}

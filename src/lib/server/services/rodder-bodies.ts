@@ -15,6 +15,7 @@ import { mergeSectorPosition, type SectorPositionMerge } from '$lib/rodder/secto
 import {
 	getSectorRootForBody,
 	moveSectorRoot,
+	removeSectorRoot,
 	resolveSectorId,
 	upsertSectorRoot,
 } from '$lib/server/services/rodder-sectors.js'
@@ -220,10 +221,11 @@ async function createRodderIn(dbx: Dbx, kind: RodderKind, data: CreateRodderInpu
 	}
 
 	const body = data as CreateBodyInput
-	// Zod guarantees parentId for bodies; the parent's kind still needs the DB.
-	await loadValidatedParent(dbx, 'body', body.parentId!, body.bodyType)
+	if (body.parentId != null) await loadValidatedParent(dbx, 'body', body.parentId, body.bodyType)
+	const position = mergeSectorPosition(null, body)
+	if (position.kind === 'invalid') throw error(400, position.message)
 
-	return insertRow(dbx, {
+	const created = await insertRow(dbx, {
 		...common,
 		parentId: body.parentId ?? null,
 		bodyType: body.bodyType,
@@ -249,6 +251,11 @@ async function createRodderIn(dbx: Dbx, kind: RodderKind, data: CreateRodderInpu
 		hasRings: body.hasRings ?? false,
 		extra: mergeOverrideExtras(body.extra, body as Record<string, unknown>, BODY_OVERRIDE_MAP),
 	})
+	if (body.parentId == null) {
+		const sectorId = await resolveSectorId(dbx, body.sectorId)
+		await upsertSectorRoot(dbx, created.id, sectorId, position.kind === 'set' ? position : null)
+	}
+	return created
 }
 
 async function insertRow(dbx: Dbx, values: typeof rodderBodies.$inferInsert) {
@@ -386,8 +393,14 @@ export async function updateRodder(slug: string, raw: unknown) {
 	// patch over the stored position so a field-wise update can't strand a
 	// partial triple, and reject before anything is written.
 	let sectorPosition: SectorPositionMerge = { kind: 'unchanged' }
-	const currentRoot = kind === 'system' ? await getSectorRootForBody(db, current.id) : null
-	if (kind === 'system') {
+	const currentRoot = kind === 'system' || kind === 'body'
+		? await getSectorRootForBody(db, current.id)
+		: null
+	const nextParentId = kind === 'body'
+		? (data.parentId === undefined ? current.parentId : data.parentId)
+		: null
+	const remainsSectorRoot = kind === 'system' || (kind === 'body' && nextParentId == null)
+	if (remainsSectorRoot) {
 		sectorPosition = mergeSectorPosition(currentRoot, data as { sectorX?: number | null, sectorY?: number | null, sectorZ?: number | null })
 		if (sectorPosition.kind === 'invalid') throw error(400, sectorPosition.message)
 	}
@@ -436,7 +449,7 @@ export async function updateRodder(slug: string, raw: unknown) {
 
 		// Persist the merged sector position on the root record. Provenance
 		// becomes 'authored' — the author just asserted (or cleared) it.
-		if (kind === 'system' && (sectorPosition.kind !== 'unchanged' || data.sectorId !== undefined)) {
+		if (remainsSectorRoot && (sectorPosition.kind !== 'unchanged' || data.sectorId !== undefined || !currentRoot)) {
 			const sectorId = await resolveSectorId(
 				tx,
 				typeof data.sectorId === 'number' ? data.sectorId : currentRoot?.sectorId,
@@ -446,6 +459,8 @@ export async function updateRodder(slug: string, raw: unknown) {
 			} else {
 				await upsertSectorRoot(tx, current.id, sectorId, sectorPosition.kind === 'set' ? sectorPosition : null)
 			}
+		} else if (kind === 'body' && currentRoot) {
+			await removeSectorRoot(tx, current.id)
 		}
 
 		// Keep any legacy content record keyed to this entity's slug in sync.

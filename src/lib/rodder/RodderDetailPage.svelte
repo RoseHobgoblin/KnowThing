@@ -29,11 +29,15 @@
 
 	let { data }: { data: RodderDetailData } = $props()
 
-	const kind = $derived(data.kind)
 	let stablePermissions = $state(normalizePermissions($page.data.permissions))
 	const permissions = $derived(stablePermissions)
 	const isConfigureMode = $derived(data.isConfigureMode)
 	const raw = $derived(data.body as any)
+	const hasRootView = $derived(data.kind === 'system' || (data.kind === 'body' && data.sectorContext != null))
+	const rootStars = $derived(data.kind === 'system' || data.kind === 'body' ? data.rootStars : [])
+	const rootBodies = $derived(data.kind === 'system' || data.kind === 'body' ? data.rootBodies : [])
+	const rootCalendars = $derived(data.kind === 'system' || data.kind === 'body' ? data.rootCalendars : [])
+	const rootSectorContext = $derived(data.kind === 'system' || data.kind === 'body' ? data.sectorContext : null)
 
 	$effect(() => {
 		if ($page.data.permissions !== undefined) {
@@ -86,7 +90,7 @@
 	// Root map state. Seed the in-world day from the first associated calendar's epoch
 	// and day length so the map opens on a plausible "now" rather than a raw Unix day.
 	function computeInitialDay(): number {
-		const cal = data.kind === 'system' ? (data.rootCalendars as any[] | undefined)?.[0] : null
+		const cal = hasRootView ? (rootCalendars as any[] | undefined)?.[0] : null
 		const sd = cal?.staticData as Record<string, unknown> | undefined
 		// Guard against a non-positive/NaN day length (user-editable calendar data):
 		// `?? 86_400` only covers null/undefined, so a stored 0 would divide to Infinity.
@@ -108,13 +112,13 @@
 	let rootMap = $state<{ getCameraState(): RootCameraState | null } | null>(null)
 
 	const rootEntityKeys = $derived.by(() => {
-		if (data.kind !== 'system') return new Set<`star:${number}` | `body:${number}`>()
+		if (!hasRootView) return new Set<`star:${number}` | `body:${number}`>()
 		return new Set<`star:${number}` | `body:${number}`>([
-			...(data.rootStars ?? []).map(star => `star:${star.id}` as const),
-			...(data.rootBodies ?? []).map(body => `body:${body.id}` as const),
+			...rootStars.map(star => `star:${star.id}` as const),
+			...rootBodies.map(body => `body:${body.id}` as const),
 		])
 	})
-	const linkedViewState = $derived(data.kind === 'system'
+	const linkedViewState = $derived(hasRootView
 		? rootViewStateFor($page.url.searchParams.get(RODDER_VIEW_QUERY_PARAM), raw.slug, rootEntityKeys)
 		: null)
 
@@ -142,7 +146,7 @@
 	})
 
 	function currentViewState(): RootViewState | null {
-		if (data.kind !== 'system') return null
+		if (!hasRootView) return null
 		const camera = rootMap?.getCameraState()
 		if (!camera) return null
 		return {
@@ -167,15 +171,14 @@
 		if (mapSelectedId == null) return null
 		const [k, rawId] = mapSelectedId.split(':')
 		const numericId = Number(rawId)
-		if (k === 'star' && data.kind === 'system') return (data.rootStars ?? []).find(b => b.id === numericId) ?? null
-		if (k === 'body' && data.kind === 'system') return (data.rootBodies ?? []).find(b => b.id === numericId) ?? null
+		if (k === 'star') return rootStars.find(b => b.id === numericId) ?? null
+		if (k === 'body') return rootBodies.find(b => b.id === numericId) ?? null
 		return null
 	})
 
 	const rootCalendarConfigs = $derived.by(() => {
-		if (data.kind !== 'system') return []
-		if (!data.rootCalendars) return []
-		return (data.rootCalendars as any[]).map((c: any) => ({
+		if (!hasRootView) return []
+		return (rootCalendars as any[]).map((c: any) => ({
 			id: c.id,
 			name: c.name,
 			description: '',
@@ -209,6 +212,7 @@
 	const contextBodies = $derived.by(() => {
 		if (data.kind === 'star') return data.systemPlanets ?? []
 		if (data.kind === 'body') {
+			if (data.sectorContext) return []
 			if (isSatellite) {
 				return (data.siblings ?? []).filter(b => b.parentId === bodySelfRef?.parentId && b.id !== raw.id)
 			}
@@ -253,10 +257,11 @@
 {:else if isConfigureMode && data.kind === 'body'}
 	<RodderConfigureForm
 		kind="body"
-		record={{ ...raw, starId: bodySelfRef?.starId ?? null, parentId: bodySelfRef?.parentId ?? null, parentSystemId: bodySelfRef?.parentSystemId ?? null }}
+		record={{ ...raw, starId: bodySelfRef?.starId ?? null, parentId: bodySelfRef?.parentId ?? null, parentSystemId: bodySelfRef?.parentSystemId ?? null, sectorId: data.sectorContext?.sectorId ?? null }}
 		systems={data.allSystems ?? []}
 		stars={data.allStars ?? []}
 		siblings={data.siblings ?? []}
+		sectors={data.sectors}
 	/>
 {:else if isConfigureMode && data.kind === 'system'}
 	<!-- Map rows carry id/name; systemId is trivially this system (they were fetched by it). -->
@@ -272,7 +277,7 @@
 		title={raw.name}
 	>
 		{#snippet actions()}
-			{#if data.kind === 'system' && data.rootStars && data.rootStars.length > 0}
+			{#if hasRootView && (rootStars.length > 0 || rootBodies.length > 0)}
 				<CopyViewLink getState={currentViewState} />
 			{/if}
 			{#if permissions.canConfigureRodder}
@@ -287,10 +292,10 @@
 			{/if}
 		{/snippet}
 
-		{#if kind === 'system' && data.kind === 'system'}
+		{#if hasRootView && (data.kind === 'system' || data.kind === 'body')}
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-[1fr_280px]">
 				<div class="min-w-0 overflow-hidden">
-					{#if data.rootStars && data.rootStars.length > 0}
+					{#if rootStars.length > 0 || rootBodies.length > 0}
 						<MapControls
 							bind:labels={mapLabels}
 							bind:trails={mapTrails}
@@ -302,8 +307,8 @@
 							<RootMap
 								bind:this={rootMap}
 								rootName={raw.name}
-								stars={data.rootStars}
-								bodies={data.rootBodies ?? []}
+								stars={rootStars}
+								bodies={rootBodies}
 								{currentAbsoluteDay}
 								scale={mapScale}
 								labels={mapLabels}
@@ -321,7 +326,7 @@
 						{/if}
 					{:else}
 						<div class="flex h-64 items-center justify-center text-dim">
-							No stars registered in this system.
+							No objects registered in this root.
 						</div>
 					{/if}
 				</div>
@@ -329,10 +334,11 @@
 				<div class="space-y-4 md:border-l md:border-border-subtle md:pl-4">
 					<RootSidebar
 						root={raw}
-						stars={data.rootStars ?? []}
-						bodies={data.rootBodies ?? []}
+						rootKind={data.kind}
+						stars={rootStars}
+						bodies={rootBodies}
 						rootSlug={raw.slug}
-						sector={data.sectorContext}
+						sector={rootSectorContext}
 						calendars={rootCalendarConfigs}
 						bind:currentAbsoluteDay
 						{selectedBody}
@@ -340,6 +346,22 @@
 					<RodderBacklinks links={data.backlinks} />
 				</div>
 			</div>
+			{#if data.kind === 'body' && data.model}
+				<div class="mt-4 space-y-4">
+					<RodderStatGrid model={data.model} />
+					<div class="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_300px] lg:items-start">
+						<div class="min-w-0"><RodderFactSheet model={data.model} /></div>
+						<RodderContextPanel
+							model={data.model}
+							bodies={contextBodies}
+							moons={contextMoons}
+							hz={contextHz}
+							hzSource={contextHzSource}
+							selfAu={contextSelfAu}
+						/>
+					</div>
+				</div>
+			{/if}
 		{:else if (data.kind === 'star' || data.kind === 'body') && data.model}
 			<div class="space-y-4">
 				<RodderStatGrid model={data.model} />

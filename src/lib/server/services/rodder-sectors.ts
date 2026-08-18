@@ -117,6 +117,10 @@ export async function moveSectorRoot(dbx: Dbx, bodyId: number, sectorId: number)
 		.where(eq(rodderSectorRoots.bodyId, bodyId))
 }
 
+export async function removeSectorRoot(dbx: Dbx, bodyId: number) {
+	await dbx.delete(rodderSectorRoots).where(eq(rodderSectorRoots.bodyId, bodyId))
+}
+
 /** All sectors with root/positioned counts, for the atlas index. */
 export async function listSectorsForRegistry() {
 	return await db.execute(sql`
@@ -232,7 +236,7 @@ export async function deleteSector(slug: string) {
 		.from(rodderSectorRoots)
 		.where(eq(rodderSectorRoots.sectorId, sector.id))
 	if ((usage?.count ?? 0) > 0) {
-		throw error(409, 'Move every system out of this sector before deleting it')
+		throw error(409, 'Move every root out of this sector before deleting it')
 	}
 	await db.delete(rodderSectors).where(eq(rodderSectors.id, sector.id))
 	return { deleted: true, id: sector.id, slug: sector.slug }
