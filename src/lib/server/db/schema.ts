@@ -864,7 +864,7 @@ export const inflectedForms = pgTable(
 
 // ============================================================================
 // Namespace migration scaffolding (Phase 1 — additive). Wired up by later
-// phases. See docs/MIGRATION-PHASE-0-AUDIT.md and the migration plan.
+// phases. See docs/audits/MIGRATION-PHASE-0-AUDIT.md and the migration plan.
 // ============================================================================
 
 export const categories = pgTable(

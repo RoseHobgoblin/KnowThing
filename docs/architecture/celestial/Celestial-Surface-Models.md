@@ -1,6 +1,6 @@
 # Celestial Surface Models
 
-**Related documents:** [Atlas Architecture](./Atlas-Architecture.md), [Celestial Data Provenance and Ingest](./Celestial-Data-Provenance-and-Ingest.md), [Planetary Data Acquisition Catalogue](./Planetary-Data-Acquisition-Catalogue.md)
+**Related documents:** [Atlas Architecture](../Atlas-Architecture.md), [Celestial Sector and System Model](./Celestial-Sector-and-System-Model.md), [Celestial Data Provenance and Ingest](./Celestial-Data-Provenance-and-Ingest.md), [Planetary Data Acquisition Catalogue](../../references/Planetary-Data-Acquisition-Catalogue.md)
 
 > **Maturity:** Design intent plus an implemented overview-surface pipeline. Surface recipe v5, weather recipe v1, calibrated procedural coverage, projected-size texture LOD, direct 2:1 surface uploads, and the editor controls described below exist. Scientific weather ingest and focused exploration do not. Review this document when the recipe, generator semantics, or focused-viewer boundary changes. **Expires on contact with implementation.**
 

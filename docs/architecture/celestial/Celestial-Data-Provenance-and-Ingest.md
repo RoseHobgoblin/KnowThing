@@ -1,7 +1,7 @@
 # Celestial Data Provenance and Ingest
 
 **Status:** Design intent with a partially implemented direct-image and procedural layer
-**Related documents:** [Atlas Architecture](./Atlas-Architecture.md), [Celestial Surface Models](./Celestial-Surface-Models.md), [Planetary Data Acquisition Catalogue](./Planetary-Data-Acquisition-Catalogue.md), [Celestial Orrery Roadmap](./Celestial-Orrery-Roadmap.md)
+**Related documents:** [Atlas Architecture](../Atlas-Architecture.md), [Celestial Sector and System Model](./Celestial-Sector-and-System-Model.md), [Celestial Surface Models](./Celestial-Surface-Models.md), [Planetary Data Acquisition Catalogue](../../references/Planetary-Data-Acquisition-Catalogue.md), [Celestial Orrery Roadmap](../../plans/celestial/Celestial-Orrery-Roadmap.md)
 
 > **Maturity:** Surface recipe v5, weather recipe v1, revision-pinned direct surface images, per-channel composition, calibrated procedural fallback, and texture LOD are current implementation. The evidence, immutable asset, derivation, release, GIS, and scientific weather-product sections remain design intent. Review after the first real ingest schema or published derived asset. **Expires on contact with implementation.**
 
@@ -502,7 +502,7 @@ Scientific imports expand the attack and resource surface. The ingest service mu
 
 Workers should run with explicit CPU, memory, time, and disk limits; restricted filesystem access; no ambient credentials; and no network access unless a specific import job requires an allowlisted fetch phase. Original objects and derived products should use separate storage prefixes and immutable hashes.
 
-## Migration to Surface Recipe Version 4
+## Migration to Surface Recipe Version 5
 
 Migration `0051_media_asset_bindings.sql` backfills structured usage for resolvable legacy filenames. The version 5 parser carries forward explicit version 3/4 class, seed, surface coverage, and supported surface map bindings; it intentionally discards auto/inferred results and old uploaded cloud-alpha bindings. Explicit legacy procedural cloud coverage is migrated into weather recipe v1 on the next celestial save. The next server-validated save resolves retained Media references to Media ID/current hash or reports the broken reference. Immutable scientific surface and weather releases remain a later layer above these direct-image bindings.
 

@@ -2,7 +2,7 @@
 
 **Status:** Design intent with isolated CRS and viewer spikes completed
 **Last updated:** 8 August 2026  
-**Related documents:** [Celestial Data Provenance and Ingest](./Celestial-Data-Provenance-and-Ingest.md), [Celestial Surface Models](./Celestial-Surface-Models.md), [Planetary Data Acquisition Catalogue](./Planetary-Data-Acquisition-Catalogue.md), [Celestial Orrery Roadmap](./Celestial-Orrery-Roadmap.md), [WorldMap Vision](./WORLDMAP-VISION.md), [Celestial Calendar Integration](./Celestial-Calendar-Integration.md)
+**Related documents:** [Celestial Sector and System Model](./celestial/Celestial-Sector-and-System-Model.md), [Celestial Data Provenance and Ingest](./celestial/Celestial-Data-Provenance-and-Ingest.md), [Celestial Surface Models](./celestial/Celestial-Surface-Models.md), [Planetary Data Acquisition Catalogue](../references/Planetary-Data-Acquisition-Catalogue.md), [Celestial Orrery Roadmap](../plans/celestial/Celestial-Orrery-Roadmap.md), [WorldMap Vision](./WORLDMAP-VISION.md), [Celestial Calendar Integration](./celestial/Celestial-Calendar-Integration.md)
 
 > **Maturity:** Atlas remains design intent. The repository now contains disposable PostGIS/CRS and Cesium/MapLibre prototypes plus an ADR; neither prototype is an application feature or production dependency. Review this document after the first Atlas schema, release contract, or focused-viewer integration. **Expires on contact with implementation.**
 
@@ -36,7 +36,7 @@ The core architectural decisions are:
 
 ## Architecture Gate Results
 
-The isolated spikes are recorded in [ADR 0001](./adr/0001-planetary-crs-and-focused-viewer.md). They narrow the next implementation without prematurely adopting either database or viewer infrastructure:
+The isolated spikes are recorded in [ADR 0001](../adr/0001-planetary-crs-and-focused-viewer.md). They narrow the next implementation without prematurely adopting either database or viewer infrastructure:
 
 - A disposable `postgis/postgis:16-3.5-alpine` override successfully registered private `KNOWTHING` WKT2 definitions for Mars, a fictional sphere, and local planar space. It exercised radii/convention scoping, antimeridian and polar geometry, GiST queries, controlled transforms, vector tiles, dump/restore, and rejection of cross-body geometry. The normal development and production database images remain unchanged.
 - The application-facing CRS identifier must remain independent from the database SRID. Planetary and fictional coordinates must never borrow Earth EPSG identifiers. Assigning an SRID labels coordinates; it does not perform a transformation.
@@ -133,7 +133,7 @@ This level answers questions such as:
 - Which systems are connected by jump lanes, trade routes, or communications?
 - Where are fleets, anomalies, surveys, or frontiers?
 
-Its primary reference is a declared three-dimensional galactic or setting coordinate frame. The current celestial `galacticX/Y/Z` fields are a starting point, not a complete coordinate contract.
+Its primary reference is a declared three-dimensional sector or setting coordinate frame. Root objects—including stellar systems, rogue worlds, stations, phenomena, fleets, and markers—have sector positions; descendants use parent-relative orbital state. The current celestial `galacticX/Y/Z` fields are a starting point, not a complete coordinate contract. The adopted hierarchy and interstellar-object rules are defined in the [Celestial Sector and System Model](./celestial/Celestial-Sector-and-System-Model.md).
 
 ### Star-system level
 

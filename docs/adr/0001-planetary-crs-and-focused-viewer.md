@@ -21,6 +21,7 @@ The dual viewer harness used the same Mars and fictional fixtures. Cesium accept
 
 - The normal development and production database images remain `postgres:16-alpine` until an Atlas implementation requires spatial storage.
 - No Atlas tables are introduced by this ADR.
+- Cesium is not part of Celestial Part 1. Production adoption remains deferred until Atlas has an authored or imported surface layer, selection, and a useful focused-surface workflow.
 - `geometry` is the default storage type. `geography` is not assumed because its Earth-oriented semantics and spheroid expectations are inappropriate as a universal multi-body abstraction.
 - Transformations are allowed only between registered coordinate systems for the same body/frame. Cross-body transformation is an application error.
 - Cesium must be dynamically imported and self-hosted before production. Bundle weight, worker assets, imagery policy, and accessible fallback remain explicit delivery work.

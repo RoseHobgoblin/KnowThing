@@ -4,7 +4,7 @@
 
 **Last updated:** 8 August 2026
 
-**Related documents:** [Atlas Architecture](./Atlas-Architecture.md), [Celestial Upgrades](./Celestial-Upgrades.md), [Celestial Surface Models](./Celestial-Surface-Models.md), [Celestial Data Provenance and Ingest](./Celestial-Data-Provenance-and-Ingest.md), [Celestial Calendar Integration](./Celestial-Calendar-Integration.md)
+**Related documents:** [Atlas Architecture](../../architecture/Atlas-Architecture.md), [Celestial Sector and System Model](../../architecture/celestial/Celestial-Sector-and-System-Model.md), [Celestial Upgrades](./Celestial-Upgrades.md), [Celestial Surface Models](../../architecture/celestial/Celestial-Surface-Models.md), [Celestial Data Provenance and Ingest](../../architecture/celestial/Celestial-Data-Provenance-and-Ingest.md), [Celestial Calendar Integration](../../architecture/celestial/Celestial-Calendar-Integration.md)
 
 > **Maturity:** The camera, visibility, surface-composition, texture-LOD, and starlight sections describe the current implementation. Time controls are partial; reference frames, scientific overlays, and focused-body detail remain design intent. Review this document when one of those remaining phases enters implementation. **Expires on contact with implementation.**
 
@@ -296,7 +296,7 @@ Acceptance criteria:
 
 Status: implemented for the overview renderer and editor. Surface recipe v5 composes uploaded base color/appearance, elevation, normal, roughness, and emissive channels with deterministic procedural or flat fallbacks. The internal recipe key for base color remains `albedo` for compatibility, but the ambiguous free-text body albedo field has been removed. Weather recipe v1 separately describes representative procedural cloud appearance; dated cloud-alpha uploads are not surface channels. Uploaded surface channels always win, channel provenance is visible, generated geology is explicitly illustrative, and nullable surface coverage targets are calibrated as weighted spherical areas rather than inferred from prose.
 
-Procedural textures now use a bounded shared scheduler and projected-physical-size LOD: map bodies start at 256, then settle at 512 or 1024 only when their physical sphere warrants it. The editor requests 1024. Scientific/GIS ingest and a tile-aware focused surface viewer remain separate work described in [Celestial Surface Models](./Celestial-Surface-Models.md) and [Atlas Architecture](./Atlas-Architecture.md).
+Procedural textures now use a bounded shared scheduler and projected-physical-size LOD: map bodies start at 256, then settle at 512 or 1024 only when their physical sphere warrants it. The editor requests 1024. Scientific/GIS ingest and a tile-aware focused surface viewer remain separate work described in [Celestial Surface Models](../../architecture/celestial/Celestial-Surface-Models.md) and [Atlas Architecture](../../architecture/Atlas-Architecture.md).
 
 ### Phase 3: Star lighting and exposure
 

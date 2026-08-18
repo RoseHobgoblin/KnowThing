@@ -37,7 +37,7 @@ The schema decision that unlocks most of this list is making grapheme→phoneme 
 
 ## Schema
 
-Migration `drizzle/NNNN_graphemes.sql` (pick the next number in sequence — don't jump ahead). Two new tables in [src/lib/server/db/schema.ts](../src/lib/server/db/schema.ts) after `phonemes`.
+Migration `drizzle/NNNN_graphemes.sql` (pick the next number in sequence — don't jump ahead). Two new tables in [src/lib/server/db/schema.ts](../../../src/lib/server/db/schema.ts) after `phonemes`.
 
 ```
 graphemes
@@ -83,7 +83,7 @@ Do not try to auto-restore links by matching IPA strings. It's fragile (homophon
 
 ## Server data-loading
 
-In [src/lib/server/structured-data.ts](../src/lib/server/structured-data.ts):
+In [src/lib/server/structured-data.ts](../../../src/lib/server/structured-data.ts):
 
 ```ts
 async function loadOrthography(slug: string): Promise<StructuredCollection | null> {
@@ -124,13 +124,13 @@ COLLECTION_RESOLVERS['orthography'] = loadOrthography
 
 Two queries beat a leftJoin here because the fanout is 1-to-N on phonemes per grapheme — a join would duplicate grapheme rows and require dedup work client-side.
 
-Extend `extractCollectionRefs` in [src/lib/parser/index.ts](../src/lib/parser/index.ts): add `'orthography'` to `COLLECTION_TEMPLATE_NAMES`.
+Extend `extractCollectionRefs` in [src/lib/parser/index.ts](../../../src/lib/parser/index.ts): add `'orthography'` to `COLLECTION_TEMPLATE_NAMES`.
 
 ---
 
 ## Wiki template: `{{orthography|slug}}`
 
-Register in [src/lib/templates/registry.ts](../src/lib/templates/registry.ts):
+Register in [src/lib/templates/registry.ts](../../../src/lib/templates/registry.ts):
 
 ```ts
 'orthography': { component: OrthographyTable },
@@ -238,7 +238,7 @@ Reuses every Phase 1 polish mechanism: dirty tracking + confirm-on-discard, Ente
 
 In the Phase 1 phoneme edit dialog, add a read-only "Written as" section listing graphemes whose join points to this phoneme:
 
-> **Written as:** `th`, `Th` (word-initial) — [edit](…)
+> **Written as:** `th`, `Th` (word-initial) — edit
 
 This is the discoverability bridge between Phase 1 and Phase 2. Without it, users build a phoneme inventory and never find the orthography editor unless they read docs. Promoting this from "optional 15-min polish" to required scope is the single highest-leverage call in this plan.
 

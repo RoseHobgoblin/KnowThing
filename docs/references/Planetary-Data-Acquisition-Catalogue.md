@@ -2,7 +2,7 @@
 
 **Status:** Design intent and acquisition research; only the direct-image lane is publicly supported
 **Last updated:** 8 August 2026  
-**Related documents:** [Celestial Surface Models](./Celestial-Surface-Models.md), [Celestial Data Provenance and Ingest](./Celestial-Data-Provenance-and-Ingest.md), [Atlas Architecture](./Atlas-Architecture.md)
+**Related documents:** [Celestial Surface Models](../architecture/celestial/Celestial-Surface-Models.md), [Celestial Data Provenance and Ingest](../architecture/celestial/Celestial-Data-Provenance-and-Ingest.md), [Atlas Architecture](../architecture/Atlas-Architecture.md)
 
 > **Maturity:** The catalogue describes desired product semantics and real acquisition paths. The simple 2:1 image workflow and its Media validation are implemented; Mars is a maintainer-operated reference fixture. Most GIS, PDS, CRS, multidimensional, and multi-channel workflows are not public ingest features. Review each lane when a fixture-backed workflow is promoted. **Expires on contact with implementation.**
 
@@ -820,7 +820,7 @@ The fixture deliberately separates three products that all resemble “a map of 
 
 The package also retains the IAU Mars frame and triaxial radii from the NASA NAIF `pck00011.tpc` kernel, JPL physical parameters, JPL J2000 approximate orbital orientation, source URLs, source and derivative hashes, coordinate conventions, measurement ranges, licenses, and derivation notes. The preset does not apply J2000 mean anomaly to KnowThing day zero because the wiki calendar epoch is not J2000.
 
-Only appearance and elevation enter the current material recipe. Roughness stays constant; normal derivation is deferred; clouds and dust remain unavailable rather than becoming a timeless fake opacity map; TES remains analytical data; geology and nomenclature remain future Atlas vector layers. This is the expected pattern for homework-aware ingest: install what the current product can interpret honestly, retain the evidence needed to improve it, and name every unavailable capability.
+Only appearance and elevation enter the authored material bindings. Roughness stays constant; the renderer now derives a normal channel from procedural or supplied overview elevation rather than treating a normal map as authored evidence. Clouds and dust remain unavailable rather than becoming a timeless fake opacity map; TES remains analytical data; geology and nomenclature remain future Atlas vector layers. This is the expected pattern for homework-aware ingest: install what the current product can interpret honestly, retain the evidence needed to improve it, and name every unavailable capability.
 
 This fixture is not yet the general scientific ingest system. The large upstream image products remain provider-hosted and hash-pinned rather than being stored as first-class immutable source assets. That limitation should be removed by the source/asset/derivation/release work described in the delivery sequence below.
 
