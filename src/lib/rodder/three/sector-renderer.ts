@@ -106,9 +106,11 @@ export function createSectorRenderer(
 		return unavailableRenderer(canvas, error instanceof Error ? error.message : 'Three.js could not initialize WebGL 2.', callbacks)
 	}
 	renderer.outputColorSpace = SRGBColorSpace
+	renderer.setClearColor(0x000000, 1)
 	renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, 2))
 
 	const scene = new Scene()
+	scene.background = new Color(0x000000)
 	const rootGroup = new Group()
 	const gridGroup = new Group()
 	scene.add(gridGroup, rootGroup)
@@ -223,7 +225,6 @@ export function createSectorRenderer(
 	}
 
 	function applyTheme() {
-		scene.background = new Color(theme.page)
 		rebuildGrid()
 		applySelection()
 	}
