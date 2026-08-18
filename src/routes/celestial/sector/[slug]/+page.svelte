@@ -15,11 +15,14 @@
 		type SectorRootView,
 	} from '$lib/celestial/sector-view.js'
 	import type { PageData } from './$types.js'
+	import { normalizePermissions } from '$lib/permissions.js'
+	import GearSix from 'phosphor-svelte/lib/GearSix'
 
 	let { data }: { data: PageData } = $props()
 
 	const sector = $derived(data.sector)
 	const roots = $derived(data.roots as SectorRootView[])
+	const permissions = $derived(normalizePermissions($page.data.permissions))
 
 	let selectedSlug = $state<string | null>(null)
 	const focusSlug = $derived($page.url.searchParams.get('focus'))
@@ -54,6 +57,11 @@
 </svelte:head>
 
 <ArticleShell breadcrumbs={celestialSectorBreadcrumbs(sector.name)} title={sector.name}>
+	{#snippet actions()}
+		{#if permissions.canConfigureCelestial}
+			<a href={resolve('/celestial/manage/sectors')} class="flex items-center gap-1 text-sm text-link transition-colors hover:text-link-hover"><GearSix size={14} weight="fill" /> Edit frame</a>
+		{/if}
+	{/snippet}
 	{#if sector.description}
 		<p class="mb-3 max-w-3xl text-sm text-secondary">{sector.description}</p>
 	{/if}

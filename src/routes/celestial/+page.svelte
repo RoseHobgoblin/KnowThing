@@ -5,6 +5,7 @@
 	import Input from '$lib/components/ui/Input.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
 	import { page } from '$app/stores'
+	import { resolve } from '$app/paths'
 	import { cn } from '$lib/utils'
 	import { normalizePermissions } from '$lib/permissions.js'
 	import { spectralColor } from '$lib/celestial/colors.js'
@@ -24,6 +25,7 @@
 	import Moon from 'phosphor-svelte/lib/Moon'
 	import GearSix from 'phosphor-svelte/lib/GearSix'
 	import CaretRight from 'phosphor-svelte/lib/CaretRight'
+	import Compass from 'phosphor-svelte/lib/Compass'
 
 	let { data }: { data: PageData } = $props()
 
@@ -31,8 +33,7 @@
 	const systems = $derived(data.systems as unknown as AtlasSystem[])
 	const stars = $derived(data.stars as unknown as AtlasStar[])
 	const bodies = $derived(data.bodies as unknown as AtlasBody[])
-	// One sector exists until sector authoring ships; link straight to it.
-	const firstSector = $derived((data.sectors ?? []).find(sector => sector.rootCount > 0) ?? data.sectors?.[0] ?? null)
+	const sectors = $derived(data.sectors ?? [])
 
 	let stablePermissions = $state(normalizePermissions($page.data.permissions))
 	const permissions = $derived(stablePermissions)
@@ -91,23 +92,39 @@
 
 <ArticleShell breadcrumbs={[{ label: m.nav_celestial() }]} title={m.nav_celestial()}>
 	{#snippet actions()}
-		{#if firstSector}
-			<a href="/celestial/sector/{firstSector.slug}" class="flex items-center gap-1 text-sm text-link transition-colors hover:text-link-hover">
-				<SunDim size={14} weight="fill" />{firstSector.name}
-			</a>
-		{/if}
 		{#if permissions.canConfigureCelestial}
-			<a href="/celestial/manage" class="flex items-center gap-1 text-sm text-link transition-colors hover:text-link-hover">
+			<a href={resolve('/celestial/manage')} class="flex items-center gap-1 text-sm text-link transition-colors hover:text-link-hover">
 				<GearSix size={14} weight="fill" />{m.cel_manage()}
 			</a>
 		{/if}
 	{/snippet}
 
+	{#if sectors.length > 0}
+		<section class="mb-5">
+			<div class="mb-2 flex items-baseline justify-between gap-3">
+				<h2 class="text-xs font-semibold tracking-wider text-secondary uppercase">Sectors</h2>
+				<span class="text-xs text-dim">Coordinate frames for the stellar atlas</span>
+			</div>
+			<div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+				{#each sectors as sector (sector.id)}
+					<a href={resolve('/celestial/sector/[slug]', { slug: sector.slug })} class="group flex items-center gap-3 border border-border-subtle bg-surface px-4 py-3 transition-colors hover:border-accent-border hover:bg-raised">
+						<Compass size={18} weight="fill" class="shrink-0 text-accent" />
+						<span class="min-w-0 flex-1">
+							<span class="block truncate text-sm font-semibold text-heading group-hover:text-link">{sector.name}</span>
+							<span class="block text-xs text-secondary">{sector.rootCount} {sector.rootCount === 1 ? 'system' : 'systems'} · {sector.positionedCount} positioned · {sector.units}</span>
+						</span>
+						<CaretRight size={13} class="shrink-0 text-secondary" />
+					</a>
+				{/each}
+			</div>
+		</section>
+	{/if}
+
 	{#if systems.length === 0}
 		<div class="bg-surface p-8 text-center">
 			<p class="text-dim">{m.cel_no_systems_catalogued()}</p>
 			{#if permissions.canConfigureCelestial}
-				<a href="/celestial/manage" class="mt-2 inline-block text-link transition-colors hover:text-link-hover">{m.cel_add_one_in_manage()}</a>
+				<a href={resolve('/celestial/manage')} class="mt-2 inline-block text-link transition-colors hover:text-link-hover">{m.cel_add_one_in_manage()}</a>
 			{/if}
 		</div>
 	{:else}
@@ -178,7 +195,7 @@
 				{#each filtered as entry (entry.system.id)}
 					{@const mb = matchedBodyName(entry, query)}
 					<a
-						href="/Celestial:{entry.system.slug}"
+						href={resolve('/[...ns_path=namespaced]', { ns_path: `Celestial:${entry.system.slug}` })}
 						class="flex items-center gap-3 bg-surface px-4 py-3 transition-colors hover:bg-raised"
 						style="content-visibility:auto;contain-intrinsic-size:auto 60px"
 					>

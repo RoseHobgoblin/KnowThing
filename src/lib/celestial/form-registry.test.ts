@@ -17,6 +17,7 @@ function makeCtx(config: CelestialFormConfig, overrides: Partial<FieldContext> =
 	return {
 		draft: buildDraft(config, { id: 1, name: 'Test', slug: 'test' }),
 		selfId: 1,
+		sectors: [],
 		systems: [],
 		stars: [],
 		siblings: [],
@@ -80,6 +81,14 @@ describe('system sector coordinate fields', () => {
 		expect(fields.map(spec => spec.label)).toEqual(['Sector X', 'Sector Y', 'Sector Z'])
 		expect(fields.every(spec => spec.hint?.includes('declared units'))).toBe(true)
 	})
+
+	it('hydrates sector membership and emits a numeric sector id', () => {
+		const config = CELESTIAL_FORM_CONFIGS.system
+		const draft = buildDraft(config, { id: 1, name: 'Sunly', slug: 'sunly', sectorId: 12 })
+		expect(draft.sectorId).toBe('12')
+		const payload = buildPayload(config, { draft, selfId: 1, sectors: [], systems: [], stars: [], siblings: [] })
+		expect(payload.sectorId).toBe(12)
+	})
 })
 
 describe('buildPayload', () => {
@@ -134,7 +143,7 @@ describe('buildPayload', () => {
 		expect(draft.stellarPhotosphereMap).toMatchObject({ filename: 'Therne plate.png', mediaId: null })
 		draft.systemId = '4'
 		draft.stellarSurfaceFallback = 'procedural'
-		const payload = buildPayload(config, { draft, selfId: 2, systems: [], stars: [], siblings: [] })
+		const payload = buildPayload(config, { draft, selfId: 2, sectors: [], systems: [], stars: [], siblings: [] })
 		expect(payload).not.toHaveProperty('stellarActivity')
 		expect(payload.extra).toMatchObject({
 			density: '12 g/cm³',
@@ -169,7 +178,7 @@ describe('buildPayload', () => {
 		expect(draft.surfaceMap_albedo).toMatchObject({ filename: 'Earth albedo.png', mediaId: null })
 		draft.starId = '7'
 		draft.surfaceMap_roughness = 'Earth roughness.png'
-		const payload = buildPayload(config, { draft, selfId: 3, systems: [], stars: [], siblings: [] })
+		const payload = buildPayload(config, { draft, selfId: 3, sectors: [], systems: [], stars: [], siblings: [] })
 		expect(payload).not.toHaveProperty('surfaceMap_albedo')
 		expect(payload.extra).toMatchObject({
 			density: '5.51 g/cm³',

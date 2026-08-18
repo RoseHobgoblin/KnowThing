@@ -181,7 +181,7 @@ The [Worldbuilding Pasta “An Apple Pie From Scratch” sequence](https://world
 
 | Guide step | Current KnowThing position | Part 1 disposition |
 |---|---|---|
-| Part I: Time and Place | The sector/root-system model is implemented (migration 0054): system positions live on sector roots inside a declared legacy frame, and a read-only sector view exists at `/celestial/sector/[slug]`. Calendars exist elsewhere. | Adopted and delivered ahead of schedule. Broad galactic context remains a separate approximate concern; region/route authoring and non-system roots remain post-Part-1. |
+| Part I: Time and Place | The sector/root-system model is implemented (migration 0054): system positions live on sector roots inside declared, authorable frames; sector CRUD and system membership live at `/celestial/manage/sectors`; and the 3D view lives at `/celestial/sector/[slug]`. Calendars exist elsewhere. | Adopted and delivered ahead of schedule. Broad galactic context remains a separate approximate concern; region/route authoring and non-system roots remain post-Part-1. |
 | Part II: Stars | Strong basic star authoring, physical derivations, luminosity, simple habitable zone, stellar procedural appearance, hierarchical multiple stars, and animated stellar orbits. | Core Part 1 scope. Improve the consequence presentation and document unsupported stellar evolution/special classes. |
 | Part III: Orbits | Full bound elliptical elements, deterministic Keplerian playback, hierarchy, Plan/Orrery views, and several stability checks exist. | Core Part 1 scope. Reference frames, trails, Lagrange points, resonances, and N-body behaviour remain later work. |
 | Part IVa: Planet and Moon Formation/Orbits | Planets and moons can be authored and validated. Hill, Roche, satellite stability, tidal, and orbit-crossing models exist at varying levels of UI integration. There is no formation model, co-orbital system, or first-class planetary barycentre. | Support deliberate authoring and consequences; do not synthesize formation histories. Expose useful existing checks. |
@@ -316,7 +316,7 @@ Starting from an instance with no authored celestial records, an author can:
 - Make no new environment or interchange schema.
 - Confirm Cesium is deferred.
 - Adopt the celestial sector/root-system model and define the legacy status of bare `galacticX/Y/Z` values.
-- Keep the sector UI and sector-to-Orrery transition post-Part-1 unless real authoring demonstrates that they block creation of the first canon system.
+- ~~Keep the sector UI and sector-to-Orrery transition post-Part-1 unless real authoring demonstrates that they block creation of the first canon system.~~ Superseded 18 August 2026: real authoring required sector creation and explicit membership, so the focused sector workspace shipped with the first slice.
 - Correct stale status statements in existing documentation.
 
 ### Phase 1: Audit the from-scratch authoring journey
@@ -355,7 +355,7 @@ Starting from an instance with no authored celestial records, an author can:
 
 This order is intentionally evidence-driven:
 
-1. **Implement the first celestial sector**, using the adopted root-system contract and a state-preserving transition into the Orrery. *Done 18 August 2026: sector schema, legacy coordinate migration, read-only sector view, and selection/camera-preserving transition all landed on this branch.*
+1. **Implement the first celestial sector**, using the adopted root-system contract and a state-preserving transition into the Orrery. *Done 18 August 2026: sector schema, legacy coordinate migration, frame CRUD, explicit system membership, 3D sector view, and selection/camera-preserving transition all landed on this branch.*
 2. **Time and reference frames**, if Orrery playback limits impede system reasoning.
 3. **Structured environment observations**, when actual authored environmental data demonstrates the current strings are inadequate.
 4. **Atlas and Cesium**, when there is authored geography or imported surface data worth exploring.

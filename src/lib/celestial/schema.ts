@@ -52,6 +52,7 @@ const systemSchema = coreSchema.extend({
 	// system row; the service enforces complete-triple-or-nothing because the
 	// patch must first merge with the stored position (see sector-position.ts).
 	distanceLy: z.number().nullish(),
+	sectorId: z.number().int().positive().nullish(),
 	sectorX: z.number().finite().nullish(),
 	sectorY: z.number().finite().nullish(),
 	sectorZ: z.number().finite().nullish(),

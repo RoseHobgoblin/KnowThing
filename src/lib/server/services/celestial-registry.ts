@@ -35,9 +35,13 @@ export async function listSystemsForRegistry() {
 		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
 		SELECT
 			ss.id, ss.name, ss.slug,
+			sr.sector_id AS "sectorId", sec.name AS "sectorName", sec.slug AS "sectorSlug",
+			sr.x AS "sectorX", sr.y AS "sectorY", sr.z AS "sectorZ",
 			(SELECT COUNT(*) FROM celestial_tree t WHERE t.root_id = ss.id AND t.kind = 'star')::int AS "starCount",
 			(SELECT COUNT(*) FROM celestial_tree t WHERE t.root_id = ss.id AND t.kind = 'body')::int AS "planetCount"
 		FROM celestial_bodies ss
+		LEFT JOIN celestial_sector_roots sr ON sr.body_id = ss.id
+		LEFT JOIN celestial_sectors sec ON sec.id = sr.sector_id
 		WHERE ss.kind = 'system'
 		ORDER BY ss.name
 	`)

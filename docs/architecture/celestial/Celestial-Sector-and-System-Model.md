@@ -1,11 +1,11 @@
 # Celestial Sector and System Model
 
-**Status:** Adopted; delivery steps 1–4 implemented 18 August 2026 (migration 0054, read-only sector view, sector↔Orrery transition context) — steps 5–7 pending  
+**Status:** Adopted; delivery steps 1–4 and sector-frame authoring implemented 18 August 2026 (migration 0054, sector CRUD/view, explicit system membership, sector↔Orrery transition context) — steps 5–7 pending
 **Decision date:** 18 August 2026  
 **Applies to:** stellar neighbourhoods, system roots, unbound objects, routes, and the transition into the Orrery  
 **Related documents:** [Atlas Architecture](../Atlas-Architecture.md), [Celestial Orrery Roadmap](../../plans/celestial/Celestial-Orrery-Roadmap.md), [Celestial Calendar Integration](./Celestial-Calendar-Integration.md), [Part 1 Launch Plan](../../plans/celestial/Part-1-Launch-Plan.md)
 
-> **Maturity:** This document defines the target model; the first implementation slice now exists. `celestial_sectors` carries the frame contract, `celestial_sector_roots` carries root positions (migration 0054 migrated the legacy `galactic_x/y/z` values verbatim into a declared legacy sector and dropped the columns), `/celestial/sector/[slug]` is the read-only sector view, and entering/returning from a system preserves selection and the sector camera. General non-system roots, regions, routes, influence volumes, time-qualified agents, and distant-sky backdrops remain unimplemented — for those, this document is still the target, not a description.
+> **Maturity:** This document defines the target model; the first implementation slice now exists. `celestial_sectors` carries the authored frame contract, `celestial_sector_roots` carries root positions (migration 0054 migrated the legacy `galactic_x/y/z` values verbatim into a declared legacy sector and dropped the columns), `/celestial/manage/sectors` authors frames and membership, `/celestial/sector/[slug]` presents the 3D sector view, and entering/returning from a system preserves selection and the sector camera. General non-system roots, regions, routes, influence volumes, time-qualified agents, and distant-sky backdrops remain unimplemented — for those, this document is still the target, not a description.
 
 ## Decision Summary
 
@@ -417,7 +417,7 @@ Not required for Part 1:
 
 1. ~~Introduce an explicit reference-frame record for the existing system coordinates.~~ Done (0054: `celestial_sectors`).
 2. ~~Treat the current home neighbourhood as one sector and migrate existing coordinates into it without changing values.~~ Done (0054: `celestial_sector_roots`, "Local Sector", legacy provenance).
-3. ~~Add a read-only sector view of authored roots.~~ Done (`/celestial/sector/[slug]`).
+3. ~~Add a sector view of authored roots and an authoring surface for frame contracts and system membership.~~ Done (`/celestial/sector/[slug]`, `/celestial/manage/sectors`).
 4. ~~Preserve selection, time, and camera return state when entering and leaving the Orrery.~~ Done for selection (`?focus=` deep link) and sector camera (session-scoped return state); application time is not yet shared because the sector view has no time dimension.
 5. Generalize roots to support unbound planets, stations, phenomena, and markers.
 6. Add regions and typed routes when authored canon demonstrates a need.

@@ -39,6 +39,7 @@
 		type FieldSpec,
 		type NumberFieldSpec,
 		type SelectFieldSpec,
+		type SectorReferenceOption,
 		type SystemReferenceOption,
 		type StarReferenceOption,
 		type BodyReferenceOption,
@@ -55,6 +56,7 @@
 	let {
 		kind,
 		record,
+		sectors = [],
 		systems = [],
 		stars = [],
 		siblings = [],
@@ -62,6 +64,7 @@
 	}: {
 		kind: CelestialFormKind
 		record: Record<string, any>
+		sectors?: SectorReferenceOption[]
 		systems?: SystemReferenceOption[]
 		stars?: StarReferenceOption[]
 		siblings?: BodyReferenceOption[]
@@ -79,7 +82,7 @@
 	let draft = $state(buildDraft(config, initialRecord))
 	// Reference lists stay live (they come from the loader), the record is frozen
 	// at mount like the previous per-kind forms did.
-	const ctx = $derived<FieldContext>({ draft, selfId: initialRecord.id ?? null, systems, stars, siblings })
+	const ctx = $derived<FieldContext>({ draft, selfId: initialRecord.id ?? null, sectors, systems, stars, siblings })
 
 	// The slug the server currently knows this entity by — updated after each save
 	// so consecutive renames PUT to the right URL. Canonical URLs are flat

@@ -45,6 +45,7 @@ export type CelestialDraft = Record<string, any>
 export interface SelectOption { value: string, label: string }
 
 export interface SystemReferenceOption { id: number, name: string }
+export interface SectorReferenceOption { id: number, name: string, units: string }
 export interface StarReferenceOption { id: number, name: string, massKg?: number | null, spectralType?: string | null, temperatureK?: number | null, systemId?: number | null, parentStarId?: number | null }
 export interface BodyReferenceOption { id: number, name: string, massKg?: number | null, radiusM?: number | null, starId?: number | null, parentId?: number | null, parentSystemId?: number | null, rootSystemId?: number | null, semiMajorAxisAu?: number | null, eccentricity?: number | null }
 
@@ -53,6 +54,7 @@ export interface FieldContext {
 	draft: CelestialDraft
 	/** id of the entity being edited — excluded from its own parent candidates. */
 	selfId: number | null
+	sectors: SectorReferenceOption[]
 	systems: SystemReferenceOption[]
 	stars: StarReferenceOption[]
 	siblings: BodyReferenceOption[]
@@ -421,6 +423,13 @@ const systemConfig: CelestialFormConfig = {
 				{
 					cols: 3,
 					fields: [
+						{
+							control: 'select', key: 'sectorId', label: 'Sector', omitFromPayload: true,
+							options: ctx => ctx.sectors.map(sector => ({
+								value: String(sector.id), label: `${sector.name} (${sector.units})`,
+							})),
+							hint: 'The coordinate frame that owns this system root and its X/Y/Z position.',
+						},
 						{ control: 'number', key: 'distanceLy', label: 'Distance', placeholder: '4.24', hint: 'Distance from the reference point.', units: LIGHT_YEAR_UNITS },
 						{ control: 'text', key: 'formationAge', label: 'Formation Age', placeholder: '~4.6 billion years', hint: 'When the system formed. Free text.' },
 					],
@@ -436,6 +445,7 @@ const systemConfig: CelestialFormConfig = {
 			],
 		},
 	],
+	extraPayload: ctx => ({ sectorId: text(ctx, 'sectorId') ? Number(text(ctx, 'sectorId')) : null }),
 	preview: ctx => ({
 		title: text(ctx, 'name') || 'New system',
 		subtitle: `${deriveSystemType(systemStarCount(ctx))} system`,

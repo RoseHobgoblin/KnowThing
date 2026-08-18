@@ -212,7 +212,8 @@
 	<!-- Map rows carry id/name; systemId is trivially this system (they were fetched by it). -->
 	<CelestialConfigureForm
 		kind="system"
-		record={raw}
+		record={{ ...raw, sectorId: data.sectorContext?.sectorId ?? null }}
+		sectors={data.sectors}
 		stars={(data.systemStars ?? []).map(s => ({ id: s.id, name: s.name, systemId: raw.id }))}
 	/>
 {:else}

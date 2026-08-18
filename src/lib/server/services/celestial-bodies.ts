@@ -14,7 +14,8 @@ import { validateParentKind, isCelestialKind, type CelestialKind } from '$lib/ce
 import { mergeSectorPosition, type SectorPositionMerge } from '$lib/celestial/sector-position.js'
 import {
 	getSectorRootForBody,
-	resolveDefaultSectorId,
+	moveSectorRoot,
+	resolveSectorId,
 	upsertSectorRoot,
 } from '$lib/server/services/celestial-sectors.js'
 import { celestialPresets, type BodyPreset } from '$lib/celestial/presets.js'
@@ -182,7 +183,7 @@ async function createCelestialIn(dbx: Dbx, kind: CelestialKind, data: CreateCele
 		})
 		// A system has no orbital parent, so it is always a sector root — with an
 		// explicitly unknown position until one is authored.
-		const sectorId = await resolveDefaultSectorId(dbx)
+		const sectorId = await resolveSectorId(dbx, system.sectorId)
 		await upsertSectorRoot(dbx, created.id, sectorId, position.kind === 'set' ? position : null)
 		return created
 	}
@@ -435,9 +436,16 @@ export async function updateCelestial(slug: string, raw: unknown) {
 
 		// Persist the merged sector position on the root record. Provenance
 		// becomes 'authored' — the author just asserted (or cleared) it.
-		if (kind === 'system' && sectorPosition.kind !== 'unchanged') {
-			const sectorId = currentRoot?.sectorId ?? await resolveDefaultSectorId(tx)
-			await upsertSectorRoot(tx, current.id, sectorId, sectorPosition.kind === 'set' ? sectorPosition : null)
+		if (kind === 'system' && (sectorPosition.kind !== 'unchanged' || data.sectorId !== undefined)) {
+			const sectorId = await resolveSectorId(
+				tx,
+				typeof data.sectorId === 'number' ? data.sectorId : currentRoot?.sectorId,
+			)
+			if (sectorPosition.kind === 'unchanged' && currentRoot) {
+				await moveSectorRoot(tx, current.id, sectorId)
+			} else {
+				await upsertSectorRoot(tx, current.id, sectorId, sectorPosition.kind === 'set' ? sectorPosition : null)
+			}
 		}
 
 		// Keep any legacy content record keyed to this entity's slug in sync.
