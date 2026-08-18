@@ -4,16 +4,18 @@
 
 	let {
 		labels = $bindable('major'),
+		skyLabels = $bindable('off'),
 		trails = $bindable('off'),
 		visibility = $bindable('enhanced'),
 		follow = $bindable(false),
-		hasSelection = false,
+		canFollowSelection = false,
 	}: {
 		labels: LabelMode
+		skyLabels: LabelMode
 		trails: TrailMode
 		visibility: VisibilityMode
 		follow: boolean
-		hasSelection?: boolean
+		canFollowSelection?: boolean
 	} = $props()
 
 	type SegmentItem<T extends string> = { value: T, label: string, title?: string }
@@ -58,9 +60,9 @@
 		</div>
 	</div>
 
-	<!-- Labels -->
+	<!-- Local object labels -->
 	<div class="flex items-center gap-1">
-		<span class="tracking-wider text-secondary uppercase">Labels</span>
+		<span class="tracking-wider text-secondary uppercase">Object labels</span>
 		<div class="flex">
 			{#each labelItems as item (item.value)}
 				<button
@@ -70,6 +72,24 @@
 						labels === item.value ? 'bg-accent-subtle font-medium text-accent' : 'hover:bg-raised',
 					)}
 					onclick={() => labels = item.value}
+				>{item.label}</button>
+			{/each}
+		</div>
+	</div>
+
+	<!-- Authored apparent-sky labels -->
+	<div class="flex items-center gap-1">
+		<span class="tracking-wider text-secondary uppercase">Sky labels</span>
+		<div class="flex">
+			{#each labelItems as item (item.value)}
+				<button
+					type="button"
+					class={cn(
+						'px-1.5 py-0.5 transition-colors',
+						skyLabels === item.value ? 'bg-accent-subtle font-medium text-accent' : 'hover:bg-raised',
+					)}
+					aria-pressed={skyLabels === item.value}
+					onclick={() => skyLabels = item.value}
 				>{item.label}</button>
 			{/each}
 		</div>
@@ -95,13 +115,13 @@
 	<!-- Follow -->
 	<button
 		type="button"
-		disabled={!hasSelection}
+		disabled={!canFollowSelection}
 		class={cn(
 			'px-1.5 py-0.5 transition-colors',
-			follow && hasSelection ? 'bg-accent-subtle font-medium text-accent' : 'hover:bg-raised',
-			!hasSelection && 'cursor-not-allowed opacity-40',
+			follow && canFollowSelection ? 'bg-accent-subtle font-medium text-accent' : 'hover:bg-raised',
+			!canFollowSelection && 'cursor-not-allowed opacity-40',
 		)}
-		title={hasSelection ? 'Center on selected body' : 'Select a body first'}
+		title={canFollowSelection ? 'Center on selected body' : 'Select a local body first'}
 		onclick={() => follow = !follow}
 	>Follow</button>
 </div>

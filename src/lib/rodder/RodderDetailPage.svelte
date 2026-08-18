@@ -19,6 +19,7 @@
 		type RootCameraState,
 		type RootViewState,
 	} from '$lib/rodder/view-state.js'
+	import type { RootSelectionKey } from '$lib/rodder/apparent-sky.js'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import { SvelteMap } from 'svelte/reactivity'
 	import { createKnowContext, slugify, type ResolvedLink } from '$lib/renderer/context.js'
@@ -36,6 +37,7 @@
 	const hasRootView = $derived(data.kind === 'system' || (data.kind === 'body' && data.sectorContext != null))
 	const rootStars = $derived(data.kind === 'system' || data.kind === 'body' ? data.rootStars : [])
 	const rootBodies = $derived(data.kind === 'system' || data.kind === 'body' ? data.rootBodies : [])
+	const apparentSky = $derived(data.kind === 'system' || data.kind === 'body' ? data.apparentSky : null)
 	const rootCalendars = $derived(data.kind === 'system' || data.kind === 'body' ? data.rootCalendars : [])
 	const rootSectorContext = $derived(data.kind === 'system' || data.kind === 'body' ? data.sectorContext : null)
 
@@ -102,11 +104,12 @@
 	let currentAbsoluteDay = $state(computeInitialDay())
 	let mapScale = $state(DEFAULT_MAP_SETTINGS.scale)
 	let mapLabels = $state(DEFAULT_MAP_SETTINGS.labels)
+	let mapSkyLabels = $state(DEFAULT_MAP_SETTINGS.skyLabels)
 	let mapTrails = $state(DEFAULT_MAP_SETTINGS.trails)
 	let mapFollow = $state(DEFAULT_MAP_SETTINGS.follow)
 	let mapView = $state(DEFAULT_MAP_SETTINGS.view)
 	let mapVisibility = $state(DEFAULT_MAP_SETTINGS.visibility)
-	let mapSelectedId = $state<`star:${number}` | `body:${number}` | null>(null)
+	let mapSelectedId = $state<RootSelectionKey | null>(null)
 	let mapFocusId = $state<`star:${number}` | `body:${number}` | null>(null)
 	let initialCameraState = $state<RootCameraState | null>(null)
 	let rootMap = $state<{ getCameraState(): RootCameraState | null } | null>(null)
@@ -118,8 +121,15 @@
 			...rootBodies.map(body => `body:${body.id}` as const),
 		])
 	})
+	const rootSelectionKeys = $derived.by(() => new Set<RootSelectionKey>([
+		...rootEntityKeys,
+		...(apparentSky?.sources.map(source => source.key) ?? []),
+	]))
 	const linkedViewState = $derived(hasRootView
-		? rootViewStateFor($page.url.searchParams.get(RODDER_VIEW_QUERY_PARAM), raw.slug, rootEntityKeys)
+		? rootViewStateFor($page.url.searchParams.get(RODDER_VIEW_QUERY_PARAM), raw.slug, {
+			selected: rootSelectionKeys,
+			focus: rootEntityKeys,
+		})
 		: null)
 
 	// This component instance is reused across client-side navigation between
@@ -135,6 +145,7 @@
 			currentAbsoluteDay = day
 			mapScale = state?.scale ?? DEFAULT_MAP_SETTINGS.scale
 			mapLabels = state?.labels ?? DEFAULT_MAP_SETTINGS.labels
+			mapSkyLabels = state?.skyLabels ?? DEFAULT_MAP_SETTINGS.skyLabels
 			mapTrails = state?.trails ?? DEFAULT_MAP_SETTINGS.trails
 			mapFollow = state?.follow ?? DEFAULT_MAP_SETTINGS.follow
 			mapView = state?.mode ?? DEFAULT_MAP_SETTINGS.view
@@ -159,6 +170,7 @@
 			mode: mapView,
 			time: Number.isFinite(currentAbsoluteDay) ? currentAbsoluteDay : null,
 			labels: mapLabels,
+			skyLabels: mapSkyLabels,
 			trails: mapTrails,
 			visibility: mapVisibility,
 			exposure: mapVisibility === 'physical' ? 'fixed' : 'auto',
@@ -175,6 +187,11 @@
 		if (k === 'body') return rootBodies.find(b => b.id === numericId) ?? null
 		return null
 	})
+	const selectedSkySource = $derived(
+		mapSelectedId?.startsWith('sky-root:')
+			? apparentSky?.sources.find(source => source.key === mapSelectedId) ?? null
+			: null,
+	)
 
 	const rootCalendarConfigs = $derived.by(() => {
 		if (!hasRootView) return []
@@ -298,10 +315,11 @@
 					{#if rootStars.length > 0 || rootBodies.length > 0}
 						<MapControls
 							bind:labels={mapLabels}
+							bind:skyLabels={mapSkyLabels}
 							bind:trails={mapTrails}
 							bind:visibility={mapVisibility}
 							bind:follow={mapFollow}
-							hasSelection={mapSelectedId != null}
+							canFollowSelection={mapSelectedId != null && !mapSelectedId.startsWith('sky-root:')}
 						/>
 						<div class="h-[clamp(28rem,72vh,56rem)]">
 							<RootMap
@@ -309,12 +327,14 @@
 								rootName={raw.name}
 								stars={rootStars}
 								bodies={rootBodies}
+								apparentSky={data.apparentSky}
 								{currentAbsoluteDay}
 								scale={mapScale}
 								labels={mapLabels}
+								skyLabels={mapSkyLabels}
 								trails={mapTrails}
 								visibility={mapVisibility}
-								follow={mapFollow}
+								bind:follow={mapFollow}
 								bind:view={mapView}
 								bind:selectedId={mapSelectedId}
 								bind:focusId={mapFocusId}
@@ -342,6 +362,7 @@
 						calendars={rootCalendarConfigs}
 						bind:currentAbsoluteDay
 						{selectedBody}
+						{selectedSkySource}
 					/>
 					<RodderBacklinks links={data.backlinks} />
 				</div>

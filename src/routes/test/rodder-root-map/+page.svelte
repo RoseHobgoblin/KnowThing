@@ -6,6 +6,7 @@
 	import CopyViewLink from '$lib/rodder/CopyViewLink.svelte'
 	import { DEFAULT_MAP_SETTINGS } from '$lib/rodder/map-settings.js'
 	import type { EntityKey, MapBody } from '$lib/rodder/root-layout.js'
+	import { buildApparentSky, type RootSelectionKey } from '$lib/rodder/apparent-sky.js'
 	import {
 		RODDER_VIEW_QUERY_PARAM,
 		rootViewStateFor,
@@ -72,14 +73,33 @@
 		},
 		...additionalBodies,
 	]
+	const apparentSky = buildApparentSky({
+		rootId: 100, sectorId: 1, sectorName: 'Fixture Reach', sectorSlug: 'fixture-reach',
+		units: 'ly', handedness: 'right-handed', referenceEpoch: 'Static fixture epoch', x: 0, y: 0, z: 0,
+	}, [
+		{
+			rootId: 101, rootName: 'Glasswake', rootSlug: 'glasswake', rootKind: 'system',
+			x: 8.4, y: -3.2, z: 1.1, positionProvenance: 'authored', positionUncertainty: 0.03,
+			stars: [{ id: 1011, name: 'Aster Vale', slug: 'aster-vale', spectralType: 'F8V', temperatureK: 6200, luminosityW: 6.508e26, radiusM: 8.07e8, absoluteMagnitude: null }],
+		},
+		{
+			rootId: 102, rootName: 'Vey\'s Anvil', rootSlug: 'veys-anvil', rootKind: 'system',
+			x: -11.6, y: 4.7, z: -2.9, positionProvenance: 'authored', positionUncertainty: 0.05,
+			stars: [
+				{ id: 1021, name: 'Vey', slug: 'vey', spectralType: 'K1III', temperatureK: 4600, luminosityW: 1.225e28, radiusM: 5.9135e9, absoluteMagnitude: null },
+				{ id: 1022, name: 'Clinker', slug: 'clinker', spectralType: 'DA3', temperatureK: 15500, luminosityW: 1.1484e24, radiusM: 8.6267e6, absoluteMagnitude: null },
+			],
+		},
+	])
 
 	let scale = $state(DEFAULT_MAP_SETTINGS.scale)
 	let labels = $state(DEFAULT_MAP_SETTINGS.labels)
+	let skyLabels = $state(DEFAULT_MAP_SETTINGS.skyLabels)
 	let trails = $state(DEFAULT_MAP_SETTINGS.trails)
 	let follow = $state(DEFAULT_MAP_SETTINGS.follow)
 	let view = $state(DEFAULT_MAP_SETTINGS.view)
 	let visibility = $state(DEFAULT_MAP_SETTINGS.visibility)
-	let selectedId = $state<EntityKey | null>(null)
+	let selectedId = $state<RootSelectionKey | null>(null)
 	let focusId = $state<EntityKey | null>(null)
 	let initialCameraState = $state<RootCameraState | null>(null)
 	let rootMap = $state<{ getCameraState(): RootCameraState | null } | null>(null)
@@ -92,7 +112,10 @@
 	const linkedViewState = $derived(rootViewStateFor(
 		$page.url.searchParams.get(RODDER_VIEW_QUERY_PARAM),
 		'aurelia-fixture',
-		entityKeys,
+		{
+			selected: new Set<RootSelectionKey>([...entityKeys, ...apparentSky.sources.map(source => source.key)]),
+			focus: entityKeys,
+		},
 	))
 
 	$effect(() => {
@@ -100,6 +123,7 @@
 		untrack(() => {
 			scale = state?.scale ?? DEFAULT_MAP_SETTINGS.scale
 			labels = state?.labels ?? DEFAULT_MAP_SETTINGS.labels
+			skyLabels = state?.skyLabels ?? DEFAULT_MAP_SETTINGS.skyLabels
 			trails = state?.trails ?? DEFAULT_MAP_SETTINGS.trails
 			follow = state?.follow ?? DEFAULT_MAP_SETTINGS.follow
 			view = state?.mode ?? DEFAULT_MAP_SETTINGS.view
@@ -124,6 +148,7 @@
 			mode: view,
 			time: currentAbsoluteDay,
 			labels,
+			skyLabels,
 			trails,
 			visibility,
 			exposure: visibility === 'physical' ? 'fixed' : 'auto',
@@ -152,19 +177,21 @@
 		<div class="flex justify-end border-b border-border-subtle px-3 py-1.5 text-xs">
 			<CopyViewLink getState={currentViewState} />
 		</div>
-		<MapControls bind:labels bind:trails bind:visibility bind:follow hasSelection={selectedId != null} />
+		<MapControls bind:labels bind:skyLabels bind:trails bind:visibility bind:follow canFollowSelection={selectedId != null && !selectedId.startsWith('sky-root:')} />
 		<div class="h-[min(76vh,54rem)] min-h-112" data-testid="map-frame">
 			<RootMap
 				bind:this={rootMap}
 				rootName="Aurelia fixture"
 				{stars}
 				{bodies}
+				{apparentSky}
 				{currentAbsoluteDay}
 				{scale}
 				{labels}
+				{skyLabels}
 				{trails}
 				{visibility}
-				{follow}
+				bind:follow
 				bind:view
 				bind:selectedId
 				bind:focusId

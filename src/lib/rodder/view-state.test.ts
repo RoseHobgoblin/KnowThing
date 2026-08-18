@@ -26,6 +26,7 @@ const rootState: RootViewState = {
 	mode: 'orrery',
 	time: 12_345.25,
 	labels: 'all',
+	skyLabels: 'hovered',
 	trails: 'full',
 	visibility: 'markers',
 	exposure: 'auto',
@@ -50,7 +51,16 @@ describe('Rodder view links', () => {
 	it('round-trips a complete root composition', () => {
 		const encoded = encodeRodderViewState(rootState)
 		expect(decodeRodderViewState(encoded)).toEqual(rootState)
-		expect(rootViewStateFor(encoded, 'orison-fold', new Set(['body:13']))).toEqual(rootState)
+		expect(rootViewStateFor(encoded, 'orison-fold', {
+			selected: new Set(['body:13']),
+			focus: new Set(['body:13']),
+		})).toEqual(rootState)
+	})
+
+	it('accepts legacy version-1 root links without a separate sky-label option', () => {
+		const { skyLabels: _skyLabels, ...legacyState } = rootState
+		const encoded = JSON.stringify(legacyState)
+		expect(decodeRodderViewState(encoded)).toEqual(legacyState)
 	})
 
 	it('round-trips a complete sector composition', () => {
@@ -73,6 +83,20 @@ describe('Rodder view links', () => {
 	it('rejects state for another space or missing object identity', () => {
 		const encoded = encodeRodderViewState(rootState)
 		expect(rootViewStateFor(encoded, 'another-root')).toBeNull()
-		expect(rootViewStateFor(encoded, 'orison-fold', new Set(['star:1']))).toBeNull()
+		expect(rootViewStateFor(encoded, 'orison-fold', {
+			selected: new Set(['star:1']),
+			focus: new Set(['star:1']),
+		})).toBeNull()
+	})
+
+	it('restores a remote sky selection without allowing it as a focus or follow target', () => {
+		const skyState: RootViewState = { ...rootState, selected: 'sky-root:42', focus: null, follow: false }
+		const encoded = encodeRodderViewState(skyState)
+		expect(rootViewStateFor(encoded, 'orison-fold', {
+			selected: new Set(['sky-root:42']),
+			focus: new Set(['body:13']),
+		})).toEqual(skyState)
+		expect(decodeRodderViewState(JSON.stringify({ ...skyState, focus: 'sky-root:42' }))).toBeNull()
+		expect(decodeRodderViewState(JSON.stringify({ ...skyState, follow: true }))).toBeNull()
 	})
 })

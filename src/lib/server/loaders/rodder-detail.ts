@@ -17,7 +17,8 @@ import {
 	listAllSystemReferences,
 	listAllBodyReferences,
 } from '$lib/server/services/rodder-registry.js'
-import { getSectorContextForRoot, listSectorReferences, type SectorContext } from '$lib/server/services/rodder-sectors.js'
+import { getApparentSkyForRoot, getSectorContextForRoot, listSectorReferences, type SectorContext } from '$lib/server/services/rodder-sectors.js'
+import type { ApparentSkyResult } from '$lib/rodder/apparent-sky.js'
 
 export interface RodderDetailContext {
 	identifier: string
@@ -40,6 +41,7 @@ export type RodderDetailData =
 		sectors: Awaited<ReturnType<typeof listSectorReferences>>
 		rootStars: MapBody[]
 		rootBodies: MapBody[]
+		apparentSky: ApparentSkyResult
 		rootCalendars: Awaited<ReturnType<typeof getCalendarsForRoot>>
 	})
 	| (RodderBaseData & {
@@ -62,6 +64,7 @@ export type RodderDetailData =
 		sectors: Awaited<ReturnType<typeof listSectorReferences>>
 		rootStars: MapBody[]
 		rootBodies: MapBody[]
+		apparentSky: ApparentSkyResult
 		rootCalendars: Awaited<ReturnType<typeof getCalendarsForRoot>>
 	})
 
@@ -94,8 +97,9 @@ export async function loadRodderDetail(ctx: RodderDetailContext): Promise<Rodder
 	}
 
 	if (entity.kind === 'system') {
-		const [mapEntities, rootCalendars, backlinks, sectorContext, sectors] = await Promise.all([
+		const [mapEntities, apparentSky, rootCalendars, backlinks, sectorContext, sectors] = await Promise.all([
 			getRootMapEntities(entity.id),
+			getApparentSkyForRoot(entity.id),
 			getCalendarsForRoot(entity.id),
 			getBacklinksForRodder(entity.slug),
 			getSectorContextForRoot(entity.id),
@@ -115,6 +119,7 @@ export async function loadRodderDetail(ctx: RodderDetailContext): Promise<Rodder
 			isConfigureMode,
 			rootStars: mapEntities.stars as unknown as MapBody[],
 			rootBodies: mapEntities.bodies as unknown as MapBody[],
+			apparentSky,
 			rootCalendars,
 			backlinks,
 		}
@@ -148,9 +153,9 @@ export async function loadRodderDetail(ctx: RodderDetailContext): Promise<Rodder
 		getSectorContextForRoot(entity.id),
 		isConfigureMode ? listSectorReferences() : Promise.resolve([]),
 	])
-	const [mapEntities, rootCalendars] = sectorContext
-		? await Promise.all([getRootMapEntities(entity.id), getCalendarsForRoot(entity.id)])
-		: [{ stars: [], bodies: [] }, []]
+	const [mapEntities, apparentSky, rootCalendars] = sectorContext
+		? await Promise.all([getRootMapEntities(entity.id), getApparentSkyForRoot(entity.id), getCalendarsForRoot(entity.id)])
+		: [{ stars: [], bodies: [] }, await getApparentSkyForRoot(entity.id), []]
 	const model = rawModel?.kind === 'body' ? rawModel : null
 	// The parent star's habitable zone, so a planet can show whether it sits in
 	// it — fetched as just the luminosity inputs, not the star's whole model
@@ -174,6 +179,7 @@ export async function loadRodderDetail(ctx: RodderDetailContext): Promise<Rodder
 		sectors,
 		rootStars: mapEntities.stars as unknown as MapBody[],
 		rootBodies: mapEntities.bodies as unknown as MapBody[],
+		apparentSky,
 		rootCalendars,
 		isEditMode: false,
 		isConfigureMode,

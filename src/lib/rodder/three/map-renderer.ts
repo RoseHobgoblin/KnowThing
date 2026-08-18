@@ -1,5 +1,6 @@
 import {
 	ACESFilmicToneMapping,
+	AdditiveBlending,
 	CanvasTexture,
 	Color,
 	Group,
@@ -8,6 +9,8 @@ import {
 	PerspectiveCamera,
 	Scene,
 	SphereGeometry,
+	Sprite,
+	SpriteMaterial,
 	SRGBColorSpace,
 	TOUCH,
 	Vector2,
@@ -35,6 +38,13 @@ import {
 	type ThemePalette,
 } from '../root-layout.js'
 import { resolveHostStarTemperatureK } from '../stellar-surface-model.js'
+import {
+	apparentSkyDirectionForRenderer,
+	resolveApparentSkyVisual,
+	type ApparentSkyResult,
+	type ApparentSkySource,
+	type RootSelectionKey,
+} from '../apparent-sky.js'
 import type {
 	MapRendererCallbacks,
 	MapSettingsState,
@@ -43,6 +53,7 @@ import type {
 	ProjectedLabel,
 	RootMapRenderer,
 } from '../renderer-types.js'
+import { placeRootLabel } from '../root-label-layout.js'
 import { createBodyVisual, type BodyVisual } from './body-visual.js'
 import {
 	constrainPointOutsideSphere,
@@ -77,12 +88,13 @@ const CAMERA_ZOOM_SPEED = 1.8
 const CAMERA_SURFACE_CLEARANCE = 1.03
 const PLAN_CAMERA_DISTANCE = 1_000
 const FOCUS_RADIUS_PX = 60
+const SKY_RADIUS = 5_000
 const PAN_KEYS = new Set([
 	'KeyW', 'KeyA', 'KeyS', 'KeyD',
 	'ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight',
 ])
 const DEFAULT_SETTINGS: MapSettingsState = {
-	scale: 'log', labels: 'major', trails: 'off', follow: false, view: 'orrery', visibility: 'enhanced',
+	scale: 'log', labels: 'major', skyLabels: 'off', trails: 'off', follow: false, view: 'orrery', visibility: 'enhanced',
 }
 
 type EntityNode = {
@@ -91,6 +103,14 @@ type EntityNode = {
 	isStar: boolean
 	isSatellite: boolean
 	visual: BodyVisual
+}
+
+type SkyNode = {
+	key: RootSelectionKey
+	source: ApparentSkySource
+	sprite: Sprite
+	selection: Sprite
+	visual: ReturnType<typeof resolveApparentSkyVisual>
 }
 
 type OrbitPath = {
@@ -164,6 +184,25 @@ function makeMarkerTexture(): CanvasTexture {
 	return texture
 }
 
+/** A compact point-spread profile: unresolved light, not a map pin. */
+function makeSkyPointTexture(): CanvasTexture {
+	const canvas = document.createElement('canvas')
+	canvas.width = 128
+	canvas.height = 128
+	const context = canvas.getContext('2d')!
+	const gradient = context.createRadialGradient(64, 64, 0, 64, 64, 64)
+	gradient.addColorStop(0, 'rgba(255,255,255,1)')
+	gradient.addColorStop(0.06, 'rgba(255,255,255,1)')
+	gradient.addColorStop(0.18, 'rgba(255,255,255,0.58)')
+	gradient.addColorStop(0.48, 'rgba(255,255,255,0.1)')
+	gradient.addColorStop(1, 'rgba(255,255,255,0)')
+	context.fillStyle = gradient
+	context.fillRect(0, 0, 128, 128)
+	const texture = new CanvasTexture(canvas)
+	texture.colorSpace = SRGBColorSpace
+	return texture
+}
+
 function formatPhysicalDistance(au: number): string {
 	if (au >= 0.1) return `${au.toLocaleString(undefined, { maximumSignificantDigits: 3 })} AU`
 	const kilometres = au * 149_597_870.7
@@ -223,6 +262,8 @@ export async function createRootMapRenderer(
 
 	const scene = new Scene()
 	scene.background = new Color(0x000000)
+	const skyGroup = new Group()
+	skyGroup.name = 'authored-apparent-sky'
 	const mapGroup = new Group()
 	const orbitGroup = new Group()
 	const trailGroup = new Group()
@@ -230,7 +271,7 @@ export async function createRootMapRenderer(
 	const starlight = new StarlightController()
 	starlight.setVisibilityMode(DEFAULT_SETTINGS.visibility)
 	mapGroup.add(orbitGroup, trailGroup, bodyGroup, starlight.group)
-	scene.add(mapGroup)
+	scene.add(skyGroup, mapGroup)
 
 	let width = Math.max(1, Math.round(host.getBoundingClientRect().width))
 	let height = Math.max(1, Math.round(host.getBoundingClientRect().height || width))
@@ -263,11 +304,20 @@ export async function createRootMapRenderer(
 	const glowTexture = makeGlowTexture()
 	const markerTexture = makeMarkerTexture()
 	const selectionTexture = makeSelectionTexture()
+	const skyPointTexture = makeSkyPointTexture()
 	let theme = initialTheme
 	let settings = { ...DEFAULT_SETTINGS }
 	let stars: MapBody[] = []
 	let bodies: MapBody[] = []
-	let selectedId: EntityKey | null = null
+	let apparentSky: ApparentSkyResult = {
+		status: 'unavailable', reason: 'Apparent-sky data has not loaded.', sector: null, sources: [],
+		diagnostics: {
+			observerRoot: 0, incompatibleSectorRoots: 0, unpositionedRoots: 0,
+			starlessRoots: 0, coincidentRoots: 0, incompleteBrightnessSources: 0,
+		},
+	}
+	let selectedId: RootSelectionKey | null = null
+	let hoveredId: RootSelectionKey | null = null
 	let currentDay: number | null = null
 	let dataReceived = false
 	let visualsReady = false
@@ -280,6 +330,7 @@ export async function createRootMapRenderer(
 	)
 	let layout: RootLayout = buildPhysicalLayout([], [])
 	const nodes = new Map<EntityKey, EntityNode>()
+	const skyNodes = new Map<RootSelectionKey, SkyNode>()
 	let orbitPaths: OrbitPath[] = []
 	let trailPaths: OrbitPath[] = []
 	let viewBlend = 1
@@ -418,6 +469,72 @@ export async function createRootMapRenderer(
 		for (const path of [...orbitPaths, ...trailPaths]) path.material.resolution.set(width, height)
 	}
 
+	function clearSky() {
+		for (const node of skyNodes.values()) {
+			node.sprite.removeFromParent()
+			node.selection.removeFromParent()
+			;(node.sprite.material as SpriteMaterial).dispose()
+			;(node.selection.material as SpriteMaterial).dispose()
+		}
+		skyNodes.clear()
+	}
+
+	function updateSkyVisuals() {
+		skyGroup.visible = settings.view === 'orrery'
+		const unitsPerPixel = perspectiveWorldUnitsPerPixel(SKY_RADIUS, height, orreryCamera.fov)
+		for (const node of skyNodes.values()) {
+			node.visual = resolveApparentSkyVisual(node.source, settings.visibility)
+			const diameter = Math.max(1, node.visual.sizePx * 3.2) * unitsPerPixel
+			node.sprite.scale.setScalar(diameter)
+			node.sprite.visible = node.visual.visible
+			;(node.sprite.material as SpriteMaterial).opacity = node.visual.opacity
+			node.selection.scale.setScalar(diameter + 10 * unitsPerPixel)
+			node.selection.visible = node.visual.visible && node.key === selectedId
+		}
+	}
+
+	function rebuildSky() {
+		clearSky()
+		for (const source of apparentSky.sources) {
+			const material = new SpriteMaterial({
+				map: skyPointTexture,
+				color: new Color(source.displayColor),
+				transparent: true,
+				blending: AdditiveBlending,
+				depthTest: true,
+				depthWrite: false,
+				toneMapped: false,
+			})
+			const sprite = new Sprite(material)
+			const rendererDirection = apparentSkyDirectionForRenderer(
+				source.direction,
+				apparentSky.sector?.handedness ?? 'right-handed',
+			)
+			sprite.position.fromArray(rendererDirection).multiplyScalar(SKY_RADIUS)
+			sprite.renderOrder = -100
+
+			const selection = new Sprite(new SpriteMaterial({
+				map: selectionTexture,
+				color: new Color(theme.accent),
+				transparent: true,
+				depthTest: true,
+				depthWrite: false,
+				toneMapped: false,
+			}))
+			selection.position.copy(sprite.position)
+			selection.renderOrder = -99
+			skyGroup.add(sprite, selection)
+			skyNodes.set(source.key, {
+				key: source.key,
+				source,
+				sprite,
+				selection,
+				visual: resolveApparentSkyVisual(source, settings.visibility),
+			})
+		}
+		updateSkyVisuals()
+	}
+
 	function resize(nextWidth: number, nextHeight: number) {
 		const previousOrreryZoom = camera === orreryCamera
 			? orreryFrameDistance() / Math.max(camera.position.distanceTo(controls.target), Number.EPSILON)
@@ -446,6 +563,7 @@ export async function createRootMapRenderer(
 		updateControlDistanceLimits()
 		renderer.setSize(width, height, false)
 		resizeLineMaterials()
+		updateSkyVisuals()
 		schedule()
 		queueMicrotask(settleTextureLods)
 	}
@@ -524,6 +642,7 @@ export async function createRootMapRenderer(
 		const generation = ++visualGeneration
 		visualsReady = false
 		clearSceneContent()
+		rebuildSky()
 		layout = buildPhysicalLayout(stars, bodies)
 		if (layout.primaryStar) addNode(layout.primaryStar, true, false)
 		if (layout.rootBody) addNode(layout.rootBody, false, false)
@@ -630,8 +749,9 @@ export async function createRootMapRenderer(
 			if (node.isStar) starlight.setPosition(key, world)
 			node.visual.setDay(currentDay)
 		}
-		if (settings.follow && selectedId) {
-			const next = positions.get(selectedId)
+		const followedId = selectedId?.startsWith('sky-root:') ? null : selectedId as EntityKey | null
+		if (settings.follow && followedId) {
+			const next = positions.get(followedId)
 			if (next) {
 				const world = worldPosition(next)
 				if (lastFollowPosition) {
@@ -649,8 +769,12 @@ export async function createRootMapRenderer(
 	}
 
 	function applySelection() {
-		const family = buildSelectionFamily(stars, bodies, selectedId, layout.primaryStar)
+		const localSelection = selectedId?.startsWith('sky-root:') ? null : selectedId as EntityKey | null
+		const family = buildSelectionFamily(stars, bodies, localSelection, layout.primaryStar)
 		for (const [key, node] of nodes) node.visual.setSelected(key === selectedId, family.has(key))
+		for (const node of skyNodes.values()) {
+			node.selection.visible = skyGroup.visible && node.visual.visible && node.key === selectedId
+		}
 	}
 
 	function projectNode(node: EntityNode) {
@@ -659,6 +783,18 @@ export async function createRootMapRenderer(
 			x: (projected.x + 1) * width / 2,
 			y: (1 - projected.y) * height / 2,
 			inside: projected.z >= -1 && projected.z <= 1 && projected.x >= -1 && projected.x <= 1 && projected.y >= -1 && projected.y <= 1,
+		}
+	}
+
+	function projectSkyNode(node: SkyNode) {
+		const projected = node.sprite.getWorldPosition(new Vector3()).project(camera)
+		return {
+			x: (projected.x + 1) * width / 2,
+			y: (1 - projected.y) * height / 2,
+			inside: skyGroup.visible && node.visual.visible
+				&& projected.z >= -1 && projected.z <= 1
+				&& projected.x >= -1 && projected.x <= 1
+				&& projected.y >= -1 && projected.y <= 1,
 		}
 	}
 
@@ -749,7 +885,7 @@ export async function createRootMapRenderer(
 		const distance = Math.max(camera.position.distanceTo(controls.target), Number.EPSILON)
 		const frameDistance = orreryFrameDistance()
 		const near = Math.max(1e-9, distance / 1_000)
-		const far = Math.max(frameDistance * 4, distance + SIZE * 2)
+		const far = Math.max(frameDistance * 4, distance + SIZE * 2, SKY_RADIUS * 1.1)
 		if (Math.abs(camera.near - near) / near > 0.001 || Math.abs(camera.far - far) / far > 0.001) {
 			camera.near = near
 			camera.far = far
@@ -780,23 +916,25 @@ export async function createRootMapRenderer(
 			const major = node.isStar || !node.isSatellite || (node.body.moonCount ?? 0) > 0
 			const requested = settings.labels === 'all'
 				|| (settings.labels === 'major' && major)
-				|| (settings.labels === 'hovered' && node.key === selectedId)
-			const crowded = settings.labels === 'major'
-				&& node.key !== selectedId
-				&& labels.some(label => Math.hypot(label.anchorX - point.x, label.anchorY - point.y) < 18)
-			const show = requested && !crowded
-			if (show && point.inside) {
-				let labelY = point.y + node.visual.getScreenExtentPx() + 6
-				while (labels.some(label => Math.abs(label.x - point.x) < 54 && Math.abs(label.y - labelY) < 14)) labelY += 14
+				|| (settings.labels === 'hovered' && (node.key === hoveredId || node.key === selectedId))
+			if (requested && point.inside) {
+				const placement = placeRootLabel(
+					point.x,
+					point.y,
+					node.visual.getScreenExtentPx(),
+					height,
+					labels,
+				)
 				labels.push({
 					key: node.key,
 					name: node.body.name,
-					x: point.x,
-					y: labelY,
+					x: placement.x,
+					y: placement.y,
 					anchorX: point.x,
 					anchorY: point.y,
 					selected: node.key === selectedId,
 					major,
+					pillar: placement.pillar,
 				})
 			}
 			if (node.key === selectedId && !point.inside) {
@@ -815,10 +953,55 @@ export async function createRootMapRenderer(
 				})
 			}
 		}
+		for (const node of skyNodes.values()) {
+			if (!skyGroup.visible || !node.visual.visible) continue
+			const point = projectSkyNode(node)
+			const requested = settings.skyLabels === 'all'
+				|| (settings.skyLabels === 'major' && node.visual.major)
+				|| (settings.skyLabels === 'hovered' && (node.key === hoveredId || node.key === selectedId))
+			const crowded = settings.skyLabels === 'major'
+				&& node.key !== selectedId
+				&& labels.some(label => Math.hypot(label.anchorX - point.x, label.anchorY - point.y) < 18)
+			if (requested && !crowded && point.inside) {
+				let labelY = point.y + node.visual.sizePx * 1.6 + 6
+				while (labels.some(label => Math.abs(label.x - point.x) < 54 && Math.abs(label.y - labelY) < 14)) labelY += 14
+				labels.push({
+					key: node.key,
+					name: node.source.rootName,
+					x: point.x,
+					y: labelY,
+					anchorX: point.x,
+					anchorY: point.y,
+					selected: node.key === selectedId,
+					major: node.visual.major,
+				})
+			}
+			if (node.key === selectedId && !point.inside) {
+				const dx = point.x - width / 2
+				const dy = point.y - height / 2
+				const inset = 22
+				const factor = Math.min(
+					(width / 2 - inset) / Math.max(Math.abs(dx), 0.001),
+					(height / 2 - inset) / Math.max(Math.abs(dy), 0.001),
+				)
+				indicators.push({
+					key: node.key,
+					name: node.source.rootName,
+					x: width / 2 + dx * factor,
+					y: height / 2 + dy * factor,
+					angle: Math.atan2(dy, dx),
+				})
+			}
+		}
 		const scaleBarPixels = 80
 		const scaleBarAu = layout.worldUnitsPerAu == null
 			? null
 			: scaleBarPixels * worldUnitsPerPixelAt(controls.target) / layout.worldUnitsPerAu
+		const omittedSkyRoots = apparentSky.diagnostics.observerRoot
+			+ apparentSky.diagnostics.incompatibleSectorRoots
+			+ apparentSky.diagnostics.unpositionedRoots
+			+ apparentSky.diagnostics.starlessRoots
+			+ apparentSky.diagnostics.coincidentRoots
 		const snapshot: OverlaySnapshot = {
 			labels,
 			indicators,
@@ -832,6 +1015,9 @@ export async function createRootMapRenderer(
 			modeLabel: `${settings.view === 'plan' ? 'Plan' : 'Orrery'} · ${settings.visibility[0].toUpperCase()}${settings.visibility.slice(1)}`,
 			lightingLabel: starlightSummary.label,
 			exposureLabel,
+			skyLabel: apparentSky.status === 'unavailable'
+				? `Authored sky unavailable · ${apparentSky.reason ?? 'missing frame data'}`
+				: `Authored sky · ${apparentSky.sources.length} ${apparentSky.sources.length === 1 ? 'source' : 'sources'}${omittedSkyRoots > 0 ? ` · ${omittedSkyRoots} omitted` : ''}${apparentSky.diagnostics.incompleteBrightnessSources > 0 ? ` · ${apparentSky.diagnostics.incompleteBrightnessSources} incomplete` : ''}`,
 			projection: camera === orreryCamera ? 'perspective' : 'orthographic',
 			status: dataReceived && visualsReady ? 'ready' : 'initializing',
 		}
@@ -997,6 +1183,7 @@ export async function createRootMapRenderer(
 		updatePerspectiveClipping()
 		updateVisualScales()
 		updateToneMappingExposure()
+		skyGroup.position.copy(camera.position)
 		renderer.render(scene, camera)
 		publishOverlay()
 		notifyView()
@@ -1009,28 +1196,50 @@ export async function createRootMapRenderer(
 		frameHandle = requestAnimationFrame(frame)
 	}
 
-	function closestNode(event: PointerEvent): { node: EntityNode, position: { x: number, y: number } } | null {
+	type PointerHit =
+		| { kind: 'local', node: EntityNode, position: { x: number, y: number }, distance: number }
+		| { kind: 'sky', node: SkyNode, position: { x: number, y: number }, distance: number }
+
+	function closestTarget(event: PointerEvent): PointerHit | null {
 		const rect = canvas.getBoundingClientRect()
 		const pointer = { x: event.clientX - rect.left, y: event.clientY - rect.top }
-		let nearest: { node: EntityNode, position: { x: number, y: number }, distance: number } | null = null
+		let nearest: PointerHit | null = null
 		for (const node of nodes.values()) {
 			const point = projectNode(node)
 			if (!point.inside) continue
 			const distance = Math.hypot(pointer.x - point.x, pointer.y - point.y)
 			const pickRadius = node.visual.getPickRadiusPx()
-			if (distance <= pickRadius && (!nearest || distance < nearest.distance)) nearest = { node, position: pointer, distance }
+			if (distance <= pickRadius && (!nearest || distance < nearest.distance)) {
+				nearest = { kind: 'local', node, position: pointer, distance }
+			}
+		}
+		for (const node of skyNodes.values()) {
+			const point = projectSkyNode(node)
+			if (!point.inside) continue
+			const distance = Math.hypot(pointer.x - point.x, pointer.y - point.y)
+			const pickRadius = Math.max(7, node.visual.sizePx * 1.8)
+			if (distance <= pickRadius && (!nearest || distance < nearest.distance)) {
+				nearest = { kind: 'sky', node, position: pointer, distance }
+			}
 		}
 		return nearest
 	}
 
 	function handlePointerMove(event: PointerEvent) {
 		if (dragStart && Math.hypot(event.clientX - dragStart.x, event.clientY - dragStart.y) > 4) suppressClick = true
-		const hit = closestNode(event)
-		callbacks.onHover(hit?.node.body ?? null, hit?.position ?? null)
+		const hit = closestTarget(event)
+		hoveredId = hit?.node.key ?? null
+		let hoverTarget: Parameters<MapRendererCallbacks['onHover']>[0] = null
+		if (hit?.kind === 'local') hoverTarget = { kind: 'local', body: hit.node.body }
+		else if (hit?.kind === 'sky') hoverTarget = { kind: 'sky', source: hit.node.source }
+		callbacks.onHover(hoverTarget, hit?.position ?? null)
 		canvas.style.cursor = hit ? 'pointer' : ''
+		schedule()
 	}
 	function handlePointerLeave() {
+		hoveredId = null
 		callbacks.onHover(null, null)
+		schedule()
 	}
 	function handlePointerDown(event: PointerEvent) {
 		canvas.focus({ preventScroll: true })
@@ -1042,12 +1251,19 @@ export async function createRootMapRenderer(
 	}
 	function handleClick(event: MouseEvent) {
 		if (suppressClick) return
-		const hit = closestNode(event as PointerEvent)
+		const hit = closestTarget(event as PointerEvent)
 		callbacks.onSelect(hit?.node.key ?? null)
 	}
 	function handleDoubleClick(event: MouseEvent) {
-		const hit = closestNode(event as PointerEvent)
+		const hit = closestTarget(event as PointerEvent)
 		if (!hit) return
+		if (hit.kind === 'sky') {
+			callbacks.onActivateSkySource(hit.node.source.rootSlug)
+			callbacks.onHover(null, null)
+			hoveredId = null
+			canvas.style.cursor = ''
+			return
+		}
 		callbacks.onFocusChange(hit.node.key)
 		callbacks.onHover(null, null)
 		canvas.style.cursor = ''
@@ -1152,9 +1368,10 @@ export async function createRootMapRenderer(
 
 	return {
 		canvas,
-		setData(nextStars, nextBodies) {
+		setData(nextStars, nextBodies, nextApparentSky) {
 			stars = nextStars
 			bodies = nextBodies
+			apparentSky = nextApparentSky
 			dataReceived = true
 			rebuild()
 		},
@@ -1167,7 +1384,9 @@ export async function createRootMapRenderer(
 			const rebuildTrail = next.trails !== settings.trails
 			const viewChanged = next.view !== settings.view
 			settings = { ...next }
+			if (settings.follow && selectedId?.startsWith('sky-root:')) settings.follow = false
 			starlight.setVisibilityMode(settings.visibility)
+			updateSkyVisuals()
 			configureControls()
 			if (rebuildTrail) rebuildTrails()
 			if (viewChanged) {
@@ -1190,6 +1409,7 @@ export async function createRootMapRenderer(
 		},
 		setSelected(id) {
 			selectedId = id
+			if (selectedId?.startsWith('sky-root:')) settings.follow = false
 			lastFollowPosition = null
 			applySelection()
 			schedule()
@@ -1237,10 +1457,12 @@ export async function createRootMapRenderer(
 			controls.removeEventListener('end', settleTextureLods)
 			controls.dispose()
 			clearSceneContent()
+			clearSky()
 			sharedSphere.dispose()
 			glowTexture.dispose()
 			markerTexture.dispose()
 			selectionTexture.dispose()
+			skyPointTexture.dispose()
 			starlight.dispose()
 			renderer.dispose()
 			renderer.forceContextLoss()

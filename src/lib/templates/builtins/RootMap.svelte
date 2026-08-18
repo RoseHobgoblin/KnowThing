@@ -13,7 +13,7 @@
 
 {#if data}
 	<div class="my-4 h-[clamp(20rem,60vh,40rem)]">
-		<RootMapView rootName={data.rootName} stars={data.stars} bodies={data.bodies} />
+		<RootMapView rootName={data.rootName} stars={data.stars} bodies={data.bodies} apparentSky={data.apparentSky} />
 	</div>
 {:else}
 	<span class="text-secondary">[root map: {slug || '?'}]</span>

@@ -7,6 +7,7 @@ export type VisibilityMode = 'physical' | 'enhanced' | 'markers'
 export interface MapSettings {
 	scale: ScaleMode
 	labels: LabelMode
+	skyLabels: LabelMode
 	trails: TrailMode
 	follow: boolean
 	view: ViewMode
@@ -16,6 +17,7 @@ export interface MapSettings {
 export const DEFAULT_MAP_SETTINGS: MapSettings = {
 	scale: 'log',
 	labels: 'major',
+	skyLabels: 'off',
 	trails: 'off',
 	follow: false,
 	view: 'orrery',

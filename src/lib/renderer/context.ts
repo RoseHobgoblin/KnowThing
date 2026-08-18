@@ -2,6 +2,7 @@ import { getContext, setContext } from 'svelte'
 import { writable, type Writable } from 'svelte/store'
 import type { TemplateArg, WikiNode } from '$lib/parser/types.js'
 import type { CalendarConfig, ResolvedDate } from 'rimecraft'
+import type { ApparentSkyResult } from '$lib/rodder/apparent-sky.js'
 
 const KNOW_CONTEXT_KEY = 'know-render-context'
 
@@ -38,7 +39,7 @@ export interface KnowRenderContext {
 	/** Pre-fetched array-shaped structured data (phoneme grids, etc) keyed by `${type}:${slug}` */
 	structuredCollections: Record<string, Record<string, unknown>[]> | null
 	/** Pre-fetched root map data for {{Root map|slug}} */
-	rootMaps: Record<string, { rootName: string, stars: any[], bodies: any[] }> | null
+	rootMaps: Record<string, { rootName: string, stars: any[], bodies: any[], apparentSky: ApparentSkyResult }> | null
 }
 
 export interface FootnoteEntry {

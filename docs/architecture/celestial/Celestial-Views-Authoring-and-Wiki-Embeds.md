@@ -5,7 +5,7 @@
 **Applies to:** celestial sector and system displays, field-driven authoring, apparent skies, saved views, and WikiText transclusion  
 **Related documents:** [Structured Data Vision](../STRUCTURED-DATA-VISION.md), [Atlas Architecture](../Atlas-Architecture.md), [Celestial Sector and System Model](./Celestial-Sector-and-System-Model.md), [Calendar and Celestial Boundaries](./Celestial-Calendar-Integration.md), [Celestial Orrery Roadmap](../../plans/celestial/Celestial-Orrery-Roadmap.md)
 
-> **Maturity:** KnowThing currently exposes the firmament subsystem in code and URLs as **Rodder**. It has concrete Rodder records, sector and root viewers, page-level configuration, and a schema-versioned URL view contract for copying and restoring sector/root compositions. The local viewer is named `RootMap`, not `SystemMap`: stellar systems and independent bodies such as rogue worlds can both own sector-root hierarchies. Remnant-specific facts, vessels, stations, phenomena, and other future root kinds still require the generic object/facet model. KnowThing does not yet have saved view objects and revisions, generated apparent skies, WikiText map transclusion, or the broader authoring displays described here. This document defines how those additions should fit the product without requiring the future facet migration first.
+> **Maturity:** KnowThing currently exposes the firmament subsystem in code and URLs as **Rodder**. It has concrete Rodder records, sector and root viewers, page-level configuration, a schema-versioned URL view contract for copying and restoring sector/root compositions, and authored same-sector apparent skies in Orrery mode. Those skies currently use static root barycentre positions and unresolved combined stellar light; they do not add procedural ambient stars, proper motion, light-travel delay, atmospheric effects, or surface parallax. The local viewer is named `RootMap`, not `SystemMap`: stellar systems and independent bodies such as rogue worlds can both own sector-root hierarchies. Remnant-specific facts, vessels, stations, phenomena, and other future root kinds still require the generic object/facet model. KnowThing does not yet have saved view objects and revisions, WikiText map transclusion, or the broader authoring displays described here. This document defines how those additions should fit the product without requiring the future facet migration first.
 
 ## Decision Summary
 
@@ -113,7 +113,7 @@ focus and selected object identities
 camera projection, pose, target, zoom or field of view
 application epoch or time cursor
 visible layers and filters
-label, trail, exposure, and visibility settings
+separate object-label and apparent-sky-label settings, plus trail, exposure, and visibility settings
 viewport hints such as aspect ratio
 data resolution policy
 interaction policy
@@ -263,7 +263,7 @@ The intended composition is:
 - page identity and breadcrumbs remain part of the wiki page shell;
 - a small in-view identity indicator may show the current space and focus;
 - view controls use compact floating or edge toolbars;
-- object labels and hover affordances remain in context;
+- object labels and hover affordances remain in context, with leader pillars separating labels when distant bodies converge on screen;
 - selecting an object opens a temporary inspector card or responsive bottom drawer;
 - optional displays such as calendars, legends, sources, and layer configuration open as trays or overlays;
 - complete structured fields render below or around the hero view using the page's normal display composition;
@@ -329,7 +329,7 @@ The architectural dependency order is:
 
 1. ~~Define and validate the first common view specification, including serializable sector and Orrery cameras.~~ Delivered for ephemeral versioned view links; saved-view policy and interaction profiles remain later work.
 2. ~~Complete sector camera controls using that state contract.~~ Delivered for the current orbit/pan/zoom controls and link restoration.
-3. Generate system apparent skies from authored sector and stellar data.
+3. ~~Generate system apparent skies from authored sector and stellar data.~~ Delivered for static same-sector root positions, unresolved stellar members, and brightness-provenance diagnostics; observer-surface and illustrative ambient layers remain later opt-in work.
 4. Refactor the viewer shell around contextual overlays and remove the permanent information panel.
 5. Add saved view objects, revisions, permissions, and static previews.
 6. Add WikiText discovery and transclusion with locked and Explore modes.

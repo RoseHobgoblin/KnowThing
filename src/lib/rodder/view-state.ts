@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import type { RootSelectionKey } from './apparent-sky.js'
 import type { EntityKey } from './root-layout.js'
 import type { LabelMode, ScaleMode, TrailMode, ViewMode, VisibilityMode } from './map-settings.js'
 
@@ -10,6 +11,9 @@ const positiveFiniteNumber = finiteNumber.positive()
 const vector3 = z.tuple([finiteNumber, finiteNumber, finiteNumber])
 const entityKey = z.custom<EntityKey>(value =>
 	typeof value === 'string' && /^(?:star|body):\d+$/.test(value),
+)
+const rootSelectionKey = z.custom<RootSelectionKey>(value =>
+	typeof value === 'string' && /^(?:(?:star|body):\d+|sky-root:\d+)$/.test(value),
 )
 
 export type RootCameraState = {
@@ -31,12 +35,14 @@ export type RootViewState = {
 	version: typeof RODDER_VIEW_SCHEMA_VERSION
 	renderer: 'root'
 	space: { slug: string }
-	selected: EntityKey | null
+	selected: RootSelectionKey | null
 	focus: EntityKey | null
 	camera: RootCameraState
 	mode: ViewMode
 	time: number | null
 	labels: LabelMode
+	/** Additive v1 option; absent legacy links use the current default. */
+	skyLabels?: LabelMode
 	trails: TrailMode
 	visibility: VisibilityMode
 	exposure: 'auto' | 'fixed'
@@ -84,12 +90,13 @@ const rootViewSchema = z.object({
 	version: z.literal(RODDER_VIEW_SCHEMA_VERSION),
 	renderer: z.literal('root'),
 	space: z.object({ slug: z.string().trim().min(1).max(240) }),
-	selected: entityKey.nullable(),
+	selected: rootSelectionKey.nullable(),
 	focus: entityKey.nullable(),
 	camera: rootCameraSchema,
 	mode: z.enum(['plan', 'orrery']),
 	time: finiteNumber.nullable(),
 	labels: z.enum(['off', 'hovered', 'major', 'all']),
+	skyLabels: z.enum(['off', 'hovered', 'major', 'all']).optional(),
 	trails: z.enum(['off', 'short', 'full']),
 	visibility: z.enum(['physical', 'enhanced', 'markers']),
 	exposure: z.enum(['auto', 'fixed']),
@@ -103,6 +110,9 @@ const rootViewSchema = z.object({
 	const expectedExposure = state.visibility === 'physical' ? 'fixed' : 'auto'
 	if (state.exposure !== expectedExposure) {
 		context.addIssue({ code: 'custom', path: ['exposure'], message: 'Exposure does not match visibility policy' })
+	}
+	if (state.follow && state.selected?.startsWith('sky-root:')) {
+		context.addIssue({ code: 'custom', path: ['follow'], message: 'Remote sky sources cannot be followed' })
 	}
 })
 
@@ -135,13 +145,16 @@ export function decodeRodderViewState(raw: string | null | undefined): RodderVie
 export function rootViewStateFor(
 	raw: string | null | undefined,
 	slug: string,
-	entityKeys?: ReadonlySet<EntityKey>,
+	identities?: {
+		selected: ReadonlySet<RootSelectionKey>
+		focus: ReadonlySet<EntityKey>
+	},
 ): RootViewState | null {
 	const state = decodeRodderViewState(raw)
 	if (!state || state.renderer !== 'root' || state.space.slug !== slug) return null
-	if (entityKeys && (
-		(state.selected != null && !entityKeys.has(state.selected))
-		|| (state.focus != null && !entityKeys.has(state.focus))
+	if (identities && (
+		(state.selected != null && !identities.selected.has(state.selected))
+		|| (state.focus != null && !identities.focus.has(state.focus))
 	)) return null
 	return state
 }

@@ -2,6 +2,7 @@
 	import { resolve } from '$app/paths'
 	import { untrack } from 'svelte'
 	import type { MapBody } from './root-layout.js'
+	import type { ApparentSkySource } from './apparent-sky.js'
 	import type { CalendarConfig } from 'rimecraft'
 	import { resolveColor } from './colors.js'
 	import { deriveSystemType } from 'tungolcraft'
@@ -25,6 +26,7 @@
 		calendars = [],
 		currentAbsoluteDay = $bindable(0),
 		selectedBody = null,
+		selectedSkySource = null,
 	}: {
 		root: {
 			name: string
@@ -48,6 +50,7 @@
 		calendars?: (CalendarConfig & { id: number })[]
 		currentAbsoluteDay?: number
 		selectedBody?: MapBody | null
+		selectedSkySource?: ApparentSkySource | null
 	} = $props()
 
 	const formatCoordinate = (n: number) => n.toLocaleString('en-US', { maximumFractionDigits: 1 })
@@ -86,6 +89,15 @@
 		binary: 'Binary',
 		trinary: 'Trinary',
 		multiple: 'Multiple',
+	}
+
+	function brightnessSourceLabel(source: ApparentSkySource['stars'][number]['brightnessSource']) {
+		switch (source) {
+			case 'absolute-magnitude': return 'absolute magnitude'
+			case 'stored-luminosity': return 'stored luminosity'
+			case 'derived-luminosity': return 'derived luminosity'
+			default: return 'brightness unavailable'
+		}
 	}
 	const rootType = $derived(rootKind === 'body'
 		? (root.bodyType ? root.bodyType.replaceAll('_', ' ') : 'body')
@@ -188,6 +200,53 @@
 					href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${selectedBody.slug}` })}
 					class="mt-2 block text-xs text-link transition-colors hover:text-link-hover"
 				>View details</a>
+			</div>
+		</div>
+	{/if}
+
+	{#if selectedSkySource}
+		<div>
+			<div class="mb-2 border-b border-border-subtle pb-1 text-xs font-semibold tracking-wider text-secondary uppercase">Selected sky source</div>
+			<div class="space-y-1.5">
+				<a
+					href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${selectedSkySource.rootSlug}` })}
+					class="font-medium text-link transition-colors hover:text-link-hover"
+				>{selectedSkySource.rootName}</a>
+				<div class="space-y-1 text-xs text-secondary">
+					<div class="flex justify-between gap-3">
+						<span>Distance</span>
+						<span class="text-body">{selectedSkySource.distance.toLocaleString('en-US', { maximumFractionDigits: 2 })} {selectedSkySource.units}</span>
+					</div>
+					<div class="flex justify-between gap-3">
+						<span>Apparent magnitude</span>
+						<span class="text-body">{selectedSkySource.apparentMagnitude?.toFixed(2) ?? 'Unavailable'}</span>
+					</div>
+					<div class="flex justify-between gap-3">
+						<span>Position</span>
+						<span class="text-body capitalize">{selectedSkySource.positionProvenance}</span>
+					</div>
+				</div>
+				{#if selectedSkySource.brightnessStatus !== 'complete'}
+					<p class="text-xs text-accent">
+						{selectedSkySource.brightnessStatus === 'unavailable'
+							? 'Brightness is unavailable; enhanced appearance is illustrative.'
+							: 'Combined brightness excludes members without physical inputs.'}
+					</p>
+				{/if}
+				<div class="pt-1">
+					<div class="text-[0.68rem] tracking-wider text-secondary uppercase">Unresolved members</div>
+					{#each selectedSkySource.stars as star (star.id)}
+						<a
+							href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${star.slug}` })}
+							class="flex items-start justify-between gap-2 py-0.5 text-xs text-link transition-colors hover:text-link-hover"
+						>
+							<span>{star.name}</span>
+							<span class="text-right text-secondary">
+								{#if star.spectralType}{star.spectralType} · {/if}{brightnessSourceLabel(star.brightnessSource)}
+							</span>
+						</a>
+					{/each}
+				</div>
 			</div>
 		</div>
 	{/if}

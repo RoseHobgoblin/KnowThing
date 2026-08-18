@@ -3,6 +3,7 @@
 	import RootMap from '$lib/rodder/RootMap.svelte'
 	import type { LabelMode, TrailMode, ViewMode, VisibilityMode } from '$lib/rodder/map-settings.js'
 	import type { EntityKey, MapBody } from '$lib/rodder/root-layout.js'
+	import { buildApparentSky, type RootSelectionKey } from '$lib/rodder/apparent-sky.js'
 
 	const bodies: MapBody[] = [
 		{
@@ -34,13 +35,15 @@
 			color: 'grey',
 		},
 	]
+	const apparentSky = buildApparentSky(null, [])
 
 	let labels = $state<LabelMode>('all')
+	let skyLabels = $state<LabelMode>('off')
 	let trails = $state<TrailMode>('off')
 	let visibility = $state<VisibilityMode>('enhanced')
 	let follow = $state(false)
 	let view = $state<ViewMode>('orrery')
-	let selectedId = $state<EntityKey | null>(null)
+	let selectedId = $state<RootSelectionKey | null>(null)
 	let focusId = $state<EntityKey | null>(null)
 </script>
 
@@ -48,18 +51,20 @@
 
 <main class="min-h-screen bg-page p-3 text-heading" data-testid="rodder-body-root-fixture">
 	<div class="mx-auto max-w-5xl overflow-hidden border border-border-subtle bg-surface">
-		<MapControls bind:labels bind:trails bind:visibility bind:follow hasSelection={selectedId != null} />
+		<MapControls bind:labels bind:skyLabels bind:trails bind:visibility bind:follow canFollowSelection={selectedId != null && !selectedId.startsWith('sky-root:')} />
 		<div class="h-[min(76vh,48rem)] min-h-112" data-testid="body-root-map-frame">
 			<RootMap
 				rootName="Waywain"
 				stars={[]}
 				{bodies}
+				{apparentSky}
 				currentAbsoluteDay={12_345.25}
 				scale="proportional"
 				{labels}
+				{skyLabels}
 				{trails}
 				{visibility}
-				{follow}
+				bind:follow
 				bind:view
 				bind:selectedId
 				bind:focusId

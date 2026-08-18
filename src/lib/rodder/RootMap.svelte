@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
+	import { goto } from '$app/navigation'
 	import { useResizeObserver } from 'runed'
 	import { resolve } from '$app/paths'
 	import { cn } from '$lib/utils.js'
@@ -11,6 +12,7 @@
 	import { describeStarlightLuminosity, resolveStarlightLuminosity } from './starlight-model.js'
 	import type { OverlaySnapshot, RootMapRenderer } from './renderer-types.js'
 	import type { RootCameraState } from './view-state.js'
+	import type { ApparentSkyResult, ApparentSkySource, RootSelectionKey } from './apparent-sky.js'
 
 	const DEFAULT_THEME: ThemePalette = {
 		page: '#12131D', surface: '#1A1B26', accent: '#FFE088', accentLight: '#E9C349',
@@ -24,11 +26,13 @@
 		rootName,
 		stars,
 		bodies,
+		apparentSky,
 		currentAbsoluteDay,
 		scale = 'log',
 		labels = 'major',
+		skyLabels = 'off',
 		trails = 'off',
-		follow = false,
+		follow = $bindable(false),
 		view = $bindable('orrery'),
 		visibility = 'enhanced',
 		selectedId = $bindable(null),
@@ -38,14 +42,16 @@
 		rootName: string
 		stars: MapBody[]
 		bodies: MapBody[]
+		apparentSky: ApparentSkyResult
 		currentAbsoluteDay?: number | null
 		scale?: ScaleMode
 		labels?: LabelMode
+		skyLabels?: LabelMode
 		trails?: TrailMode
 		follow?: boolean
 		view?: ViewMode
 		visibility?: VisibilityMode
-		selectedId?: EntityKey | null
+		selectedId?: RootSelectionKey | null
 		focusId?: EntityKey | null
 		initialCameraState?: RootCameraState | null
 	} = $props()
@@ -57,6 +63,7 @@
 	let displayWidth = $state(800)
 	let displayHeight = $state(800)
 	let hoveredBody = $state<MapBody | null>(null)
+	let hoveredSkySource = $state<ApparentSkySource | null>(null)
 	let hoverPosition = $state<{ x: number, y: number } | null>(null)
 	let viewState = $state({ zoomLevel: 1, isMoved: false })
 	let overlay = $state.raw<OverlaySnapshot>(EMPTY_OVERLAY)
@@ -67,8 +74,14 @@
 	}
 
 	const fallbackEntities = $derived([
-		...stars.map(body => ({ body, key: keyForBody(body, true) })),
-		...bodies.map(body => ({ body, key: keyForBody(body, false) })),
+		...stars.map(body => ({ kind: 'local' as const, name: body.name, slug: body.slug, key: keyForBody(body, true) })),
+		...bodies.map(body => ({ kind: 'local' as const, name: body.name, slug: body.slug, key: keyForBody(body, false) })),
+		...apparentSky.sources.map(source => ({
+			kind: 'sky' as const,
+			name: source.rootName,
+			slug: source.rootSlug,
+			key: source.key,
+		})),
 	])
 
 	function readTheme() {
@@ -135,12 +148,22 @@
 			if (cancelled || !canvasHost) return
 			readTheme()
 			const instance = await createRootMapRenderer(canvasHost, theme, {
-				onHover: (body, position) => {
-					hoveredBody = body
+				onHover: (target, position) => {
+					hoveredBody = target?.kind === 'local' ? target.body : null
+					hoveredSkySource = target?.kind === 'sky' ? target.source : null
 					hoverPosition = position
 				},
-				onSelect: (id) => { selectedId = id },
+				onSelect: (id) => {
+					selectedId = id
+					if (id?.startsWith('sky-root:')) {
+						follow = false
+						focusId = null
+					}
+				},
 				onFocusChange: (id) => { focusId = id },
+				onActivateSkySource: (rootSlug) => {
+					goto(resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${rootSlug}` }))
+				},
 				onViewChange: (nextView) => { viewState = nextView },
 				onOverlayChange: (snapshot) => { overlay = snapshot },
 				onUnavailable: (reason) => { unavailableReason = reason },
@@ -170,7 +193,7 @@
 	})
 
 	$effect(() => {
-		renderer?.setSettings({ scale, labels, trails, follow, view, visibility })
+		renderer?.setSettings({ scale, labels, skyLabels, trails, follow, view, visibility })
 	})
 	$effect(() => {
 		renderer?.setDay(currentAbsoluteDay ?? null)
@@ -182,7 +205,7 @@
 		renderer?.setTheme(theme)
 	})
 	$effect(() => {
-		renderer?.setData(stars, bodies)
+		renderer?.setData(stars, bodies, apparentSky)
 	})
 	$effect(() => {
 		const instance = renderer
@@ -198,13 +221,22 @@
 	const tooltipStyle = $derived.by(() => {
 		if (!hoverPosition) return ''
 		const tipWidth = 210
-		const baseHeight = timingUnavailable(hoveredBody ?? { id: 0, name: '', slug: '', bodyType: '' }) ? 84 : 60
+		let baseHeight = 60
+		if (hoveredSkySource) baseHeight = 92 + Math.min(hoveredSkySource.stars.length, 3) * 14
+		else if (hoveredBody && timingUnavailable(hoveredBody)) baseHeight = 84
 		const tipHeight = baseHeight + (hoveredSurfaceDescription ? 18 : 0) + (hoveredStarlight ? 18 : 0)
 		const placeRight = hoverPosition.x + 16 + tipWidth < displayWidth
 		const left = placeRight ? hoverPosition.x + 16 : hoverPosition.x - tipWidth - 16
 		const top = Math.min(Math.max(hoverPosition.y - tipHeight / 2, 4), displayHeight - tipHeight - 4)
 		return `left:${Math.max(4, left)}px;top:${top}px;`
 	})
+
+	const hoveredSkyDistance = $derived(hoveredSkySource
+		? `${hoveredSkySource.distance.toLocaleString('en-US', { maximumFractionDigits: 2 })} ${hoveredSkySource.units}`
+		: null)
+	const hoveredSkyMagnitude = $derived(hoveredSkySource?.apparentMagnitude == null
+		? null
+		: hoveredSkySource.apparentMagnitude.toFixed(2))
 </script>
 
 <div
@@ -214,6 +246,7 @@
 	data-camera-projection={overlay.projection ?? 'unavailable'}
 	data-visibility-mode={visibility}
 	data-focus-id={focusId ?? undefined}
+	data-authored-sky-source-count={apparentSky.sources.length}
 >
 	<div bind:this={canvasHost} class="absolute inset-0" aria-hidden={unavailableReason != null}></div>
 
@@ -241,6 +274,18 @@
 	{#if !unavailableReason}
 		<div class="pointer-events-none absolute inset-0 z-5 overflow-hidden" aria-hidden="true">
 			{#each overlay.labels as label (label.key)}
+				{#if label.pillar}
+					<div
+						class={cn(
+							'absolute w-px -translate-x-1/2',
+							label.selected ? 'bg-accent/80' : 'bg-secondary/55',
+						)}
+						data-label-pillar={label.key}
+						style:left="{label.pillar.x}px"
+						style:top="{Math.min(label.pillar.fromY, label.pillar.toY)}px"
+						style:height="{Math.abs(label.pillar.toY - label.pillar.fromY)}px"
+					></div>
+				{/if}
 				<div
 					class={cn(
 						'absolute -translate-x-1/2 text-[0.68rem] whitespace-nowrap drop-shadow-md',
@@ -267,6 +312,7 @@
 				{overlay.modeLabel} · {overlay.scaleLabel}
 				{#if overlay.lightingLabel}<span class="ml-2">{overlay.lightingLabel}</span>{/if}
 				{#if overlay.exposureLabel}<span class="ml-2">{overlay.exposureLabel}</span>{/if}
+				{#if overlay.skyLabel}<span class="ml-2">{overlay.skyLabel}</span>{/if}
 				{#if overlay.legend}
 					<span class="ml-2 inline-flex items-center gap-1.5">
 						{#if overlay.legend.pixels > 0}
@@ -306,6 +352,33 @@
 		</div>
 	{/if}
 
+	{#if hoveredSkySource && hoverPosition && !unavailableReason}
+		<div
+			class="pointer-events-none absolute z-20 w-56 border px-2.5 py-1.5 shadow-lg"
+			style="{tooltipStyle}background:{theme.surface};border-color:{theme.accentLight};"
+			data-testid="sky-tooltip"
+		>
+			<div class="text-xs font-semibold text-heading">{hoveredSkySource.rootName}</div>
+			{#if hoveredSkyDistance}<div class="text-xs text-secondary">{hoveredSkyDistance}</div>{/if}
+			<div class="text-[0.68rem] text-secondary">
+				Unresolved authored {hoveredSkySource.stars.length === 1 ? 'star' : `${hoveredSkySource.stars.length}-star system`}
+				{#if hoveredSkyMagnitude} · apparent magnitude {hoveredSkyMagnitude}{/if}
+			</div>
+			<div class="mt-1 text-[0.68rem] text-secondary">
+				{hoveredSkySource.stars.slice(0, 3).map(star => star.name).join(' · ')}
+				{#if hoveredSkySource.stars.length > 3} · +{hoveredSkySource.stars.length - 3} more{/if}
+			</div>
+			{#if hoveredSkySource.brightnessStatus !== 'complete'}
+				<div class="mt-1 text-[0.68rem] text-accent">
+					{hoveredSkySource.brightnessStatus === 'unavailable'
+						? 'Brightness unavailable; enhanced appearance is illustrative.'
+						: 'Brightness uses only members with physical inputs.'}
+				</div>
+			{/if}
+			<div class="mt-1 text-[0.65rem] text-dim">Double-click to enter this root.</div>
+		</div>
+	{/if}
+
 	{#if unavailableReason}
 		<div class="absolute inset-0 z-30 overflow-auto bg-page/95 p-5" role="status">
 			<h3 class="font-display text-lg font-semibold text-heading">Interactive map unavailable</h3>
@@ -313,12 +386,21 @@
 			<ul class="mt-4 grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
 				{#each fallbackEntities as entity (entity.key)}
 					<li class="flex items-center justify-between gap-2 border border-faint/40 bg-surface/60 px-2 py-1.5 text-sm">
-						<button class="truncate text-left text-heading hover:text-accent" onclick={() => { selectedId = entity.key }}>
-							{entity.body.name}
+						<button
+							class="truncate text-left text-heading hover:text-accent"
+							onclick={() => {
+								selectedId = entity.key
+								if (entity.kind === 'sky') {
+									follow = false
+									focusId = null
+								}
+							}}
+						>
+							{entity.name}
 						</button>
 						<a
 							class="shrink-0 text-xs text-link hover:text-link-hover"
-							href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${entity.body.slug}` })}
+							href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${entity.slug}` })}
 						>Open</a>
 					</li>
 				{/each}

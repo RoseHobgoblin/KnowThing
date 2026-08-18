@@ -3,6 +3,7 @@ import { rodderBodies, phonemes, languages, languageDialects, lexicon, definitio
 import { eq, and, or, sql, asc, inArray } from 'drizzle-orm'
 import type { FieldMap } from '$lib/infoboxes/types.js'
 import type { MapBody } from '$lib/rodder/root-layout.js'
+import type { ApparentSkyResult } from '$lib/rodder/apparent-sky.js'
 import { deriveSystemType } from 'tungolcraft'
 import {
 	deriveBody, deriveStar,
@@ -11,12 +12,13 @@ import {
 import { bodyInfoboxFields, starInfoboxFields } from '$lib/rodder/projections.js'
 import { RODDER_TREE_CTE, findNearestStarAncestor } from '$lib/server/rodder/hierarchy.js'
 import { getRootMapEntities } from '$lib/server/services/rodder-registry.js'
-import { getSectorContextForRoot } from '$lib/server/services/rodder-sectors.js'
+import { getApparentSkyForRoot, getSectorContextForRoot } from '$lib/server/services/rodder-sectors.js'
 
 export interface RootMapData {
 	rootName: string
 	stars: MapBody[]
 	bodies: MapBody[]
+	apparentSky: ApparentSkyResult
 }
 
 /** Total mass of a system's stars — the effective mass of its barycenter. */
@@ -330,12 +332,16 @@ export async function resolveRootMapData(slug: string): Promise<RootMapData | nu
 		.where(and(eq(rodderBodies.slug, slug), eq(rodderBodies.kind, 'system')))
 	if (!system) return null
 
-	const { stars, bodies } = await getRootMapEntities(system.id)
+	const [{ stars, bodies }, apparentSky] = await Promise.all([
+		getRootMapEntities(system.id),
+		getApparentSkyForRoot(system.id),
+	])
 
 	return {
 		rootName: system.name,
 		stars: stars as unknown as MapBody[],
 		bodies: bodies as unknown as MapBody[],
+		apparentSky,
 	}
 }
 

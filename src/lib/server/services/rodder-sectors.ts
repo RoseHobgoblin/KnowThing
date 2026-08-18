@@ -3,6 +3,12 @@ import { asc, eq, sql } from 'drizzle-orm'
 import { db } from '$lib/server/db/index.js'
 import { rodderBodies, rodderSectorRoots, rodderSectors } from '$lib/server/db/schema.js'
 import { RODDER_TREE_CTE } from '$lib/server/rodder/hierarchy.js'
+import {
+	buildApparentSky,
+	type ApparentSkyMemberInput,
+	type ApparentSkyRootInput,
+	type ApparentSkyResult,
+} from '$lib/rodder/apparent-sky.js'
 import { createSectorSchema, updateSectorSchema, type CreateSectorInput } from '$lib/rodder/sector-schema.js'
 
 /**
@@ -275,6 +281,7 @@ export async function getSectorContextForRoot(bodyId: number) {
 			sectorName: rodderSectors.name,
 			sectorSlug: rodderSectors.slug,
 			units: rodderSectors.units,
+			handedness: rodderSectors.handedness,
 			originKind: rodderSectors.originKind,
 			sectorProvenance: rodderSectors.provenance,
 			x: rodderSectorRoots.x,
@@ -286,6 +293,122 @@ export async function getSectorContextForRoot(bodyId: number) {
 		.innerJoin(rodderSectors, eq(rodderSectors.id, rodderSectorRoots.sectorId))
 		.where(eq(rodderSectorRoots.bodyId, bodyId))
 	return row ?? null
+}
+
+type ApparentSkyRow = {
+	rootId: number
+	rootName: string
+	rootSlug: string
+	rootKind: string
+	x: number | null
+	y: number | null
+	z: number | null
+	positionProvenance: string
+	positionUncertainty: number | null
+	starId: number | null
+	starName: string | null
+	starSlug: string | null
+	spectralType: string | null
+	temperatureK: number | null
+	luminosityW: number | null
+	radiusM: number | null
+	absoluteMagnitude: string | null
+}
+
+/**
+ * Authored, same-sector apparent sky for one root. Sector-root positions are
+ * treated as unresolved barycentres: every stellar member stays attached to
+ * one root direction rather than receiving an invented angular separation.
+ */
+export async function getApparentSkyForRoot(bodyId: number): Promise<ApparentSkyResult> {
+	const [observer] = await db
+		.select({
+			rootId: rodderSectorRoots.bodyId,
+			sectorId: rodderSectors.id,
+			sectorName: rodderSectors.name,
+			sectorSlug: rodderSectors.slug,
+			units: rodderSectors.units,
+			handedness: rodderSectors.handedness,
+			referenceEpoch: rodderSectors.referenceEpoch,
+			x: rodderSectorRoots.x,
+			y: rodderSectorRoots.y,
+			z: rodderSectorRoots.z,
+		})
+		.from(rodderSectorRoots)
+		.innerJoin(rodderSectors, eq(rodderSectors.id, rodderSectorRoots.sectorId))
+		.where(eq(rodderSectorRoots.bodyId, bodyId))
+
+	if (!observer) return buildApparentSky(null, [])
+
+	const [rowsResult, incompatibleResult] = await Promise.all([db.execute(sql`
+		WITH RECURSIVE ${RODDER_TREE_CTE}
+		SELECT
+			r.body_id AS "rootId",
+			root.name AS "rootName",
+			root.slug AS "rootSlug",
+			root.kind AS "rootKind",
+			r.x, r.y, r.z,
+			r.position_provenance AS "positionProvenance",
+			r.position_uncertainty AS "positionUncertainty",
+			star.id AS "starId",
+			star.name AS "starName",
+			star.slug AS "starSlug",
+			star.spectral_type AS "spectralType",
+			star.temperature_k AS "temperatureK",
+			star.luminosity_w AS "luminosityW",
+			star.radius_m AS "radiusM",
+			star.absolute_magnitude AS "absoluteMagnitude"
+		FROM rodder_sector_roots r
+		JOIN rodder_bodies root ON root.id = r.body_id
+		LEFT JOIN rodder_tree tree ON tree.root_id = r.body_id AND tree.kind = 'star'
+		LEFT JOIN rodder_bodies star ON star.id = tree.id
+		WHERE r.sector_id = ${observer.sectorId}
+			AND r.body_id <> ${bodyId}
+		ORDER BY root.name, star.name
+	`), db.execute(sql`
+		SELECT COUNT(*)::int AS count
+		FROM rodder_sector_roots
+		WHERE sector_id <> ${observer.sectorId}
+	`)])
+	const rows = rowsResult as unknown as ApparentSkyRow[]
+	const incompatibleSectorRoots = Number((incompatibleResult as unknown as Array<{ count: number }>)[0]?.count ?? 0)
+
+	const grouped = new Map<number, ApparentSkyRootInput>()
+	for (const row of rows) {
+		let root = grouped.get(row.rootId)
+		if (!root) {
+			root = {
+				rootId: row.rootId,
+				rootName: row.rootName,
+				rootSlug: row.rootSlug,
+				rootKind: row.rootKind,
+				x: row.x,
+				y: row.y,
+				z: row.z,
+				positionProvenance: row.positionProvenance,
+				positionUncertainty: row.positionUncertainty,
+				stars: [],
+			}
+			grouped.set(row.rootId, root)
+		}
+		if (row.starId == null || row.starName == null || row.starSlug == null) continue
+		root.stars.push({
+			id: row.starId,
+			name: row.starName,
+			slug: row.starSlug,
+			spectralType: row.spectralType,
+			temperatureK: row.temperatureK,
+			luminosityW: row.luminosityW,
+			radiusM: row.radiusM,
+			absoluteMagnitude: row.absoluteMagnitude,
+		} satisfies ApparentSkyMemberInput)
+	}
+
+	return buildApparentSky({
+		...observer,
+		units: observer.units === 'pc' ? 'pc' : 'ly',
+		handedness: observer.handedness === 'left-handed' ? 'left-handed' : 'right-handed',
+	}, [...grouped.values()], { incompatibleSectorRoots })
 }
 
 export type SectorContext = NonNullable<Awaited<ReturnType<typeof getSectorContextForRoot>>>
