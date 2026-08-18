@@ -5,7 +5,7 @@
 **Applies to:** celestial sector and system displays, field-driven authoring, apparent skies, saved views, and WikiText transclusion  
 **Related documents:** [Structured Data Vision](../STRUCTURED-DATA-VISION.md), [Atlas Architecture](../Atlas-Architecture.md), [Celestial Sector and System Model](./Celestial-Sector-and-System-Model.md), [Calendar and Celestial Boundaries](./Celestial-Calendar-Integration.md), [Celestial Orrery Roadmap](../../plans/celestial/Celestial-Orrery-Roadmap.md)
 
-> **Maturity:** KnowThing currently exposes the firmament subsystem in code and URLs as **Rodder**. It has concrete Rodder records, sector and root viewers, page-level configuration, and partial camera-state preservation. The local viewer is named `RootMap`, not `SystemMap`, because a sector root may eventually be a stellar system, rogue world, remnant star, vessel, station, or other independently positioned object. KnowThing does not yet have the generic object/facet model, a complete serializable view contract, saved view objects, generated apparent skies, WikiText map transclusion, or the authoring displays described here. This document defines how those additions should fit the product without requiring the future facet migration first.
+> **Maturity:** KnowThing currently exposes the firmament subsystem in code and URLs as **Rodder**. It has concrete Rodder records, sector and root viewers, page-level configuration, and a schema-versioned URL view contract for copying and restoring sector/root compositions. The local viewer is named `RootMap`, not `SystemMap`, because a sector root may eventually be a stellar system, rogue world, remnant star, vessel, station, or other independently positioned object. KnowThing does not yet have the generic object/facet model, saved view objects and revisions, generated apparent skies, WikiText map transclusion, or the authoring displays described here. This document defines how those additions should fit the product without requiring the future facet migration first.
 
 ## Decision Summary
 
@@ -327,8 +327,8 @@ View rendering must fail locally. One invalid optional display should produce an
 
 The architectural dependency order is:
 
-1. Define and validate the common view specification, including serializable sector and Orrery cameras.
-2. Complete sector camera controls using that state contract.
+1. ~~Define and validate the first common view specification, including serializable sector and Orrery cameras.~~ Delivered for ephemeral versioned view links; saved-view policy and interaction profiles remain later work.
+2. ~~Complete sector camera controls using that state contract.~~ Delivered for the current orbit/pan/zoom controls and link restoration.
 3. Generate system apparent skies from authored sector and stellar data.
 4. Refactor the viewer shell around contextual overlays and remove the permanent information panel.
 5. Add saved view objects, revisions, permissions, and static previews.

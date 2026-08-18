@@ -7,6 +7,9 @@
  * units (light-years or parsecs) — never AU, never renderer units.
  */
 
+import type { SectorCameraState } from './view-state.js'
+export type { SectorCameraState } from './view-state.js'
+
 export interface SectorRootView {
 	rootId: number
 	bodyId: number
@@ -27,11 +30,6 @@ export interface PositionedSectorRoot extends SectorRootView {
 	x: number
 	y: number
 	z: number
-}
-
-export interface SectorCameraState {
-	position: [number, number, number]
-	target: [number, number, number]
 }
 
 export function hasSectorPosition(root: SectorRootView): root is PositionedSectorRoot {

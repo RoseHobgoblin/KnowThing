@@ -1,10 +1,10 @@
-name: Rodder root map
+name: Rodder views
 
 on:
   pull_request:
     paths:
       - 'src/lib/rodder/**'
-      - 'src/routes/test/rodder-root-map/**'
+      - 'src/routes/test/rodder-*-map/**'
       - 'packages/tungolcraft/**'
       - 'e2e/**'
       - 'playwright.config.ts'
@@ -27,7 +27,7 @@ jobs:
       - run: npm --workspace packages/tungolcraft run build
       - run: npx playwright install --with-deps chromium
       - run: npm run check
-      - run: npx vitest run src/lib/rodder/root-layout.test.ts packages/tungolcraft/src/orbit.test.ts
+      - run: npx vitest run src/lib/rodder/root-layout.test.ts src/lib/rodder/view-state.test.ts packages/tungolcraft/src/orbit.test.ts
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v4
         if: always()

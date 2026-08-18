@@ -27,6 +27,7 @@
 		roots,
 		selectedSlug = $bindable(null),
 		focusSlug = null,
+		initialCameraState = null,
 	}: {
 		sectorName: string
 		sectorSlug: string
@@ -35,6 +36,7 @@
 		selectedSlug?: string | null
 		/** Root to select on load (deep link / return-from-system context). */
 		focusSlug?: string | null
+		initialCameraState?: SectorCameraState | null
 	} = $props()
 
 	let wrapperElement: HTMLDivElement | null = null
@@ -47,6 +49,10 @@
 	let hoverPosition = $state<{ x: number, y: number } | null>(null)
 	let overlay = $state.raw<SectorOverlaySnapshot>(EMPTY_OVERLAY)
 	let unavailableReason = $state<string | null>(null)
+
+	export function getCameraState(): SectorCameraState | null {
+		return renderer?.getCameraState() ?? null
+	}
 
 	// The sector camera "return state": leaving for a system and coming back
 	// restores the exact view (Sector-and-System-Model transition contract).
@@ -67,7 +73,14 @@
 			const raw = sessionStorage.getItem(cameraStorageKey)
 			if (!raw) return null
 			const parsed = JSON.parse(raw) as SectorCameraState
-			if (!Array.isArray(parsed.position) || !Array.isArray(parsed.target)) return null
+			if (!Array.isArray(parsed.position) || !Array.isArray(parsed.target)
+				|| !Number.isFinite(parsed.fieldOfView) || parsed.fieldOfView <= 0) return null
+			if (![...parsed.position, ...parsed.target].every(Number.isFinite)) return null
+			if (Math.hypot(
+				parsed.position[0] - parsed.target[0],
+				parsed.position[1] - parsed.target[1],
+				parsed.position[2] - parsed.target[2],
+			) <= 1e-9) return null
 			return parsed
 		} catch {
 			return null
@@ -156,7 +169,7 @@
 
 			// Return-context restore: a saved camera wins over re-framing; a deep
 			// link with ?focus centres its root only when no saved view exists.
-			const saved = readSavedCameraState()
+			const saved = initialCameraState ?? readSavedCameraState()
 			if (saved) instance.setCameraState(saved)
 			if (focusSlug && roots.some(root => root.slug === focusSlug)) {
 				selectedSlug = focusSlug

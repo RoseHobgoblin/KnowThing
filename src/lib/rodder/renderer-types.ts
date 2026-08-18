@@ -1,5 +1,6 @@
 import type { LabelMode, ScaleMode, TrailMode, ViewMode, VisibilityMode } from './map-settings.js'
 import type { EntityKey, MapBody, ThemePalette } from './root-layout.js'
+import type { RootCameraState } from './view-state.js'
 
 export type MapSettingsState = {
 	scale: ScaleMode
@@ -45,6 +46,7 @@ export type MapRendererCallbacks = {
 	/** Hover state for the DOM tooltip; position is CSS px within the canvas. */
 	onHover: (body: MapBody | null, position: { x: number, y: number } | null) => void
 	onSelect: (id: EntityKey | null) => void
+	onFocusChange: (id: EntityKey | null) => void
 	onViewChange: (view: { zoomLevel: number, isMoved: boolean }) => void
 	onOverlayChange?: (snapshot: OverlaySnapshot) => void
 	onUnavailable?: (reason: string) => void
@@ -58,6 +60,8 @@ export type RootMapRenderer = {
 	setTheme(theme: ThemePalette): void
 	resize(width: number, height: number): void
 	resetView(): void
+	getCameraState(): RootCameraState | null
+	setCameraState(state: RootCameraState): void
 	destroy(): void
 	readonly canvas: HTMLCanvasElement
 }

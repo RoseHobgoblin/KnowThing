@@ -1,9 +1,11 @@
 <script lang="ts">
+	import { untrack } from 'svelte'
 	import { page } from '$app/stores'
 	import { resolve } from '$app/paths'
 	import { cn } from '$lib/utils.js'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import SectorMap from '$lib/rodder/SectorMap.svelte'
+	import CopyViewLink from '$lib/rodder/CopyViewLink.svelte'
 	import { rodderSectorBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import {
 		formatSectorDistance,
@@ -14,6 +16,12 @@
 		unpositionedRoots,
 		type SectorRootView,
 	} from '$lib/rodder/sector-view.js'
+	import {
+		RODDER_VIEW_QUERY_PARAM,
+		sectorViewStateFor,
+		type SectorCameraState,
+		type SectorViewState,
+	} from '$lib/rodder/view-state.js'
 	import type { PageData } from './$types.js'
 	import { normalizePermissions } from '$lib/permissions.js'
 	import GearSix from 'phosphor-svelte/lib/GearSix'
@@ -24,8 +32,35 @@
 	const roots = $derived(data.roots as SectorRootView[])
 	const permissions = $derived(normalizePermissions($page.data.permissions))
 
+	const linkedViewState = $derived.by(() => sectorViewStateFor(
+		$page.url.searchParams.get(RODDER_VIEW_QUERY_PARAM),
+		sector.slug,
+		new Set(roots.map(root => root.slug)),
+	))
+	const focusSlug = $derived(linkedViewState?.focus ?? $page.url.searchParams.get('focus'))
+	const initialCameraState = $derived(linkedViewState?.camera ?? null)
 	let selectedSlug = $state<string | null>(null)
-	const focusSlug = $derived($page.url.searchParams.get('focus'))
+	let sectorMap = $state<{ getCameraState(): SectorCameraState | null } | null>(null)
+
+	$effect(() => {
+		const selected = linkedViewState?.selected ?? focusSlug
+		untrack(() => {
+			selectedSlug = selected
+		})
+	})
+
+	function currentViewState(): SectorViewState | null {
+		const camera = sectorMap?.getCameraState()
+		if (!camera) return null
+		return {
+			version: 1,
+			renderer: 'sector',
+			space: { slug: sector.slug },
+			selected: selectedSlug,
+			focus: focusSlug,
+			camera,
+		}
+	}
 
 	const selectedRoot = $derived(roots.find(root => root.slug === selectedSlug) ?? null)
 	const selectedPosition = $derived(selectedRoot ? formatSectorPosition(selectedRoot, sector.units) : null)
@@ -58,6 +93,9 @@
 
 <ArticleShell breadcrumbs={rodderSectorBreadcrumbs(sector.name)} title={sector.name}>
 	{#snippet actions()}
+		{#if placed.length > 0}
+			<CopyViewLink getState={currentViewState} />
+		{/if}
 		{#if permissions.canConfigureRodder}
 			<a href={resolve('/rodder/manage/sectors')} class="flex items-center gap-1 text-sm text-link transition-colors hover:text-link-hover"><GearSix size={14} weight="fill" /> Edit frame</a>
 		{/if}
@@ -71,12 +109,14 @@
 			{#if placed.length > 0}
 				<div class="h-[clamp(28rem,72vh,56rem)]">
 					<SectorMap
+						bind:this={sectorMap}
 						sectorName={sector.name}
 						sectorSlug={sector.slug}
 						units={sector.units}
 						{roots}
 						bind:selectedSlug
 						{focusSlug}
+						{initialCameraState}
 					/>
 				</div>
 			{:else}

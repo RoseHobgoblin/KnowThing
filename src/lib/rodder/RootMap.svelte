@@ -10,6 +10,7 @@
 	import { composeStellarSurfacePlan, describeStellarSurfacePlan } from './stellar-surface-model.js'
 	import { describeStarlightLuminosity, resolveStarlightLuminosity } from './starlight-model.js'
 	import type { OverlaySnapshot, RootMapRenderer } from './renderer-types.js'
+	import type { RootCameraState } from './view-state.js'
 
 	const DEFAULT_THEME: ThemePalette = {
 		page: '#12131D', surface: '#1A1B26', accent: '#FFE088', accentLight: '#E9C349',
@@ -31,6 +32,8 @@
 		view = $bindable('orrery'),
 		visibility = 'enhanced',
 		selectedId = $bindable(null),
+		focusId = $bindable(null),
+		initialCameraState = null,
 	}: {
 		rootName: string
 		stars: MapBody[]
@@ -43,6 +46,8 @@
 		view?: ViewMode
 		visibility?: VisibilityMode
 		selectedId?: EntityKey | null
+		focusId?: EntityKey | null
+		initialCameraState?: RootCameraState | null
 	} = $props()
 
 	let wrapperElement: HTMLDivElement | null = null
@@ -56,6 +61,10 @@
 	let viewState = $state({ zoomLevel: 1, isMoved: false })
 	let overlay = $state.raw<OverlaySnapshot>(EMPTY_OVERLAY)
 	let unavailableReason = $state<string | null>(null)
+
+	export function getCameraState(): RootCameraState | null {
+		return renderer?.getCameraState() ?? null
+	}
 
 	const fallbackEntities = $derived([
 		...stars.map(body => ({ body, key: keyForBody(body, true) })),
@@ -131,6 +140,7 @@
 					hoverPosition = position
 				},
 				onSelect: (id) => { selectedId = id },
+				onFocusChange: (id) => { focusId = id },
 				onViewChange: (nextView) => { viewState = nextView },
 				onOverlayChange: (snapshot) => { overlay = snapshot },
 				onUnavailable: (reason) => { unavailableReason = reason },
@@ -175,6 +185,13 @@
 		renderer?.setData(stars, bodies)
 	})
 	$effect(() => {
+		const instance = renderer
+		void rootName
+		if (!instance) return
+		if (initialCameraState) instance.setCameraState(initialCameraState)
+		else instance.resetView()
+	})
+	$effect(() => {
 		renderer?.canvas.setAttribute('aria-label', `Interactive root map of ${rootName}`)
 	})
 
@@ -196,6 +213,7 @@
 	data-render-state={unavailableReason ? 'unavailable' : overlay.status}
 	data-camera-projection={overlay.projection ?? 'unavailable'}
 	data-visibility-mode={visibility}
+	data-focus-id={focusId ?? undefined}
 >
 	<div bind:this={canvasHost} class="absolute inset-0" aria-hidden={unavailableReason != null}></div>
 

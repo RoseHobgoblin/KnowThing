@@ -414,12 +414,21 @@ export function createSectorRenderer(
 			return {
 				position: camera.position.toArray() as [number, number, number],
 				target: controls.target.toArray() as [number, number, number],
+				fieldOfView: camera.fov,
 			}
 		},
 		setCameraState(state) {
+			if (![...state.position, ...state.target, state.fieldOfView].every(Number.isFinite)) return
+			if (Math.hypot(
+				state.position[0] - state.target[0],
+				state.position[1] - state.target[1],
+				state.position[2] - state.target[2],
+			) <= 1e-9) return
 			camera.position.fromArray(state.position)
 			controls.target.fromArray(state.target)
+			camera.fov = Math.min(179, Math.max(1, state.fieldOfView))
 			camera.lookAt(controls.target)
+			camera.updateProjectionMatrix()
 			schedule()
 		},
 		destroy() {

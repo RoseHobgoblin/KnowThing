@@ -1,9 +1,17 @@
 <script lang="ts">
-	import { onMount } from 'svelte'
+	import { onMount, untrack } from 'svelte'
+	import { page } from '$app/stores'
 	import MapControls from '$lib/rodder/MapControls.svelte'
 	import RootMap from '$lib/rodder/RootMap.svelte'
+	import CopyViewLink from '$lib/rodder/CopyViewLink.svelte'
 	import { DEFAULT_MAP_SETTINGS } from '$lib/rodder/map-settings.js'
 	import type { EntityKey, MapBody } from '$lib/rodder/root-layout.js'
+	import {
+		RODDER_VIEW_QUERY_PARAM,
+		rootViewStateFor,
+		type RootCameraState,
+		type RootViewState,
+	} from '$lib/rodder/view-state.js'
 
 	const stars: MapBody[] = [{
 		id: 1, name: 'Aurelia', slug: 'aurelia', bodyType: 'star', massKg: 1.989e30,
@@ -72,8 +80,57 @@
 	let view = $state(DEFAULT_MAP_SETTINGS.view)
 	let visibility = $state(DEFAULT_MAP_SETTINGS.visibility)
 	let selectedId = $state<EntityKey | null>(null)
+	let focusId = $state<EntityKey | null>(null)
+	let initialCameraState = $state<RootCameraState | null>(null)
+	let rootMap = $state<{ getCameraState(): RootCameraState | null } | null>(null)
 	let currentAbsoluteDay = $state(12_345.25)
 	let playing = $state(false)
+	const entityKeys = new Set<EntityKey>([
+		...stars.map(star => `star:${star.id}` as const),
+		...bodies.map(body => `body:${body.id}` as const),
+	])
+	const linkedViewState = $derived(rootViewStateFor(
+		$page.url.searchParams.get(RODDER_VIEW_QUERY_PARAM),
+		'aurelia-fixture',
+		entityKeys,
+	))
+
+	$effect(() => {
+		const state = linkedViewState
+		untrack(() => {
+			scale = state?.scale ?? DEFAULT_MAP_SETTINGS.scale
+			labels = state?.labels ?? DEFAULT_MAP_SETTINGS.labels
+			trails = state?.trails ?? DEFAULT_MAP_SETTINGS.trails
+			follow = state?.follow ?? DEFAULT_MAP_SETTINGS.follow
+			view = state?.mode ?? DEFAULT_MAP_SETTINGS.view
+			visibility = state?.visibility ?? DEFAULT_MAP_SETTINGS.visibility
+			selectedId = state?.selected ?? null
+			focusId = state?.focus ?? null
+			currentAbsoluteDay = state?.time ?? 12_345.25
+			initialCameraState = state?.camera ?? null
+		})
+	})
+
+	function currentViewState(): RootViewState | null {
+		const camera = rootMap?.getCameraState()
+		if (!camera) return null
+		return {
+			version: 1,
+			renderer: 'root',
+			space: { slug: 'aurelia-fixture' },
+			selected: selectedId,
+			focus: focusId,
+			camera,
+			mode: view,
+			time: currentAbsoluteDay,
+			labels,
+			trails,
+			visibility,
+			exposure: visibility === 'physical' ? 'fixed' : 'auto',
+			scale,
+			follow,
+		}
+	}
 
 	onMount(() => {
 		let frame = 0
@@ -92,9 +149,13 @@
 
 <main class="min-h-screen bg-page p-3 text-heading" data-testid="rodder-fixture">
 	<div class="mx-auto max-w-7xl overflow-hidden border border-border-subtle bg-surface">
+		<div class="flex justify-end border-b border-border-subtle px-3 py-1.5 text-xs">
+			<CopyViewLink getState={currentViewState} />
+		</div>
 		<MapControls bind:labels bind:trails bind:visibility bind:follow hasSelection={selectedId != null} />
 		<div class="h-[min(76vh,54rem)] min-h-112" data-testid="map-frame">
 			<RootMap
+				bind:this={rootMap}
 				rootName="Aurelia fixture"
 				{stars}
 				{bodies}
@@ -106,6 +167,8 @@
 				{follow}
 				bind:view
 				bind:selectedId
+				bind:focusId
+				{initialCameraState}
 			/>
 		</div>
 		<div class="flex items-center gap-3 border-t border-border-subtle px-3 py-2 text-xs text-secondary">
@@ -113,6 +176,8 @@
 			<button class="bg-raised px-2 py-1 text-heading" onclick={() => { currentAbsoluteDay += 0.25 }}>Advance ¼ day</button>
 			<span data-testid="fixture-day">Day {currentAbsoluteDay.toFixed(3)}</span>
 			<span data-testid="fixture-selection">{selectedId ?? 'none'}</span>
+			<span data-testid="fixture-focus">{focusId ?? 'none'}</span>
+			<span data-testid="fixture-mode">{view}</span>
 		</div>
 	</div>
 </main>

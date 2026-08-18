@@ -8,10 +8,17 @@
 	import RodderContextPanel from '$lib/rodder/RodderContextPanel.svelte'
 	import RodderBacklinks from '$lib/rodder/RodderBacklinks.svelte'
 	import RootMap from '$lib/rodder/RootMap.svelte'
+	import CopyViewLink from '$lib/rodder/CopyViewLink.svelte'
 	import MapControls from '$lib/rodder/MapControls.svelte'
 	import RootSidebar from '$lib/rodder/RootSidebar.svelte'
 	import DateScrubber from '$lib/rodder/DateScrubber.svelte'
 	import { DEFAULT_MAP_SETTINGS } from '$lib/rodder/map-settings.js'
+	import {
+		RODDER_VIEW_QUERY_PARAM,
+		rootViewStateFor,
+		type RootCameraState,
+		type RootViewState,
+	} from '$lib/rodder/view-state.js'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import { SvelteMap } from 'svelte/reactivity'
 	import { createKnowContext, slugify, type ResolvedLink } from '$lib/renderer/context.js'
@@ -96,6 +103,20 @@
 	let mapView = $state(DEFAULT_MAP_SETTINGS.view)
 	let mapVisibility = $state(DEFAULT_MAP_SETTINGS.visibility)
 	let mapSelectedId = $state<`star:${number}` | `body:${number}` | null>(null)
+	let mapFocusId = $state<`star:${number}` | `body:${number}` | null>(null)
+	let initialCameraState = $state<RootCameraState | null>(null)
+	let rootMap = $state<{ getCameraState(): RootCameraState | null } | null>(null)
+
+	const rootEntityKeys = $derived.by(() => {
+		if (data.kind !== 'system') return new Set<`star:${number}` | `body:${number}`>()
+		return new Set<`star:${number}` | `body:${number}`>([
+			...(data.rootStars ?? []).map(star => `star:${star.id}` as const),
+			...(data.rootBodies ?? []).map(body => `body:${body.id}` as const),
+		])
+	})
+	const linkedViewState = $derived(data.kind === 'system'
+		? rootViewStateFor($page.url.searchParams.get(RODDER_VIEW_QUERY_PARAM), raw.slug, rootEntityKeys)
+		: null)
 
 	// This component instance is reused across client-side navigation between
 	// rodder pages. computeInitialDay() reads `data`, so this effect re-runs
@@ -104,14 +125,43 @@
 	// untracked and target state this effect doesn't read, so a user's scrubbing
 	// or map selection within a page is never clobbered.
 	$effect(() => {
-		const day = computeInitialDay()
+		const state = linkedViewState
+		const day = state?.time ?? computeInitialDay()
 		untrack(() => {
 			currentAbsoluteDay = day
-			mapView = DEFAULT_MAP_SETTINGS.view
-			mapVisibility = DEFAULT_MAP_SETTINGS.visibility
-			mapSelectedId = null
+			mapScale = state?.scale ?? DEFAULT_MAP_SETTINGS.scale
+			mapLabels = state?.labels ?? DEFAULT_MAP_SETTINGS.labels
+			mapTrails = state?.trails ?? DEFAULT_MAP_SETTINGS.trails
+			mapFollow = state?.follow ?? DEFAULT_MAP_SETTINGS.follow
+			mapView = state?.mode ?? DEFAULT_MAP_SETTINGS.view
+			mapVisibility = state?.visibility ?? DEFAULT_MAP_SETTINGS.visibility
+			mapSelectedId = state?.selected ?? null
+			mapFocusId = state?.focus ?? null
+			initialCameraState = state?.camera ?? null
 		})
 	})
+
+	function currentViewState(): RootViewState | null {
+		if (data.kind !== 'system') return null
+		const camera = rootMap?.getCameraState()
+		if (!camera) return null
+		return {
+			version: 1,
+			renderer: 'root',
+			space: { slug: raw.slug },
+			selected: mapSelectedId,
+			focus: mapFocusId,
+			camera,
+			mode: mapView,
+			time: Number.isFinite(currentAbsoluteDay) ? currentAbsoluteDay : null,
+			labels: mapLabels,
+			trails: mapTrails,
+			visibility: mapVisibility,
+			exposure: mapVisibility === 'physical' ? 'fixed' : 'auto',
+			scale: mapScale,
+			follow: mapFollow,
+		}
+	}
 
 	const selectedBody = $derived.by(() => {
 		if (mapSelectedId == null) return null
@@ -222,6 +272,9 @@
 		title={raw.name}
 	>
 		{#snippet actions()}
+			{#if data.kind === 'system' && data.rootStars && data.rootStars.length > 0}
+				<CopyViewLink getState={currentViewState} />
+			{/if}
 			{#if permissions.canConfigureRodder}
 				<a
 					href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${raw.slug}/configure` })}
@@ -247,6 +300,7 @@
 						/>
 						<div class="h-[clamp(28rem,72vh,56rem)]">
 							<RootMap
+								bind:this={rootMap}
 								rootName={raw.name}
 								stars={data.rootStars}
 								bodies={data.rootBodies ?? []}
@@ -258,6 +312,8 @@
 								follow={mapFollow}
 								bind:view={mapView}
 								bind:selectedId={mapSelectedId}
+								bind:focusId={mapFocusId}
+								{initialCameraState}
 							/>
 						</div>
 						{#if rootCalendarConfigs.length > 0}
