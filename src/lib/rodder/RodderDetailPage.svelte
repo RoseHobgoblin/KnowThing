@@ -20,6 +20,7 @@
 		type RootViewState,
 	} from '$lib/rodder/view-state.js'
 	import type { RootSelectionKey } from '$lib/rodder/apparent-sky.js'
+	import type { MapBody } from '$lib/rodder/root-layout.js'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import { SvelteMap } from 'svelte/reactivity'
 	import { createKnowContext, slugify, type ResolvedLink } from '$lib/renderer/context.js'
@@ -40,11 +41,12 @@
 	const permissions = $derived(stablePermissions)
 	const isConfigureMode = $derived(data.isConfigureMode)
 	const raw = $derived(data.body as any)
-	const hasRootView = $derived(data.kind === 'system' || (data.kind === 'body' && data.sectorContext != null))
-	const rootStars = $derived(data.kind === 'system' || data.kind === 'body' ? data.rootStars : [])
-	const rootBodies = $derived(data.kind === 'system' || data.kind === 'body' ? data.rootBodies : [])
-	const apparentSky = $derived(data.kind === 'system' || data.kind === 'body' ? data.apparentSky : null)
-	const rootCalendars = $derived(data.kind === 'system' || data.kind === 'body' ? data.rootCalendars : [])
+	const consumerRootMap = $derived(data.document.displays.rootMap)
+	const hasRootView = $derived(data.document.capabilities.rootMap)
+	const rootStars = $derived((consumerRootMap?.stars ?? []) as unknown as MapBody[])
+	const rootBodies = $derived((consumerRootMap?.bodies ?? []) as unknown as MapBody[])
+	const apparentSky = $derived(consumerRootMap?.apparentSky ?? null)
+	const rootCalendars = $derived(consumerRootMap?.calendars ?? [])
 	const rootSectorContext = $derived(data.kind === 'system' || data.kind === 'body' ? data.sectorContext : null)
 
 	$effect(() => {

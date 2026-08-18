@@ -8,6 +8,7 @@
 	import Badge from '$lib/components/ui/Badge.svelte'
 	import { knowBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import { page } from '$app/stores'
+	import { resolve } from '$app/paths'
 	import PencilSimple from 'phosphor-svelte/lib/PencilSimple'
 	import ArrowsLeftRight from 'phosphor-svelte/lib/ArrowsLeftRight'
 	import ClockCounterClockwise from 'phosphor-svelte/lib/ClockCounterClockwise'
@@ -27,7 +28,9 @@
 		languageMatch,
 		structuredData: rawStructuredData,
 		structuredCollections,
-		rootMaps,
+		rodderEntities,
+		rodderSectors,
+		rodderDisplayOverflow,
 		resolvedLinks: rawResolvedLinks,
 		ondeletepage,
 	}: {
@@ -40,7 +43,9 @@
 		languageMatch: { languageSlug: string, languageName: string } | null
 		structuredData: Record<string, Record<string, string>> | null
 		structuredCollections: Record<string, Record<string, unknown>[]> | null
-		rootMaps: Record<string, unknown> | null
+		rodderEntities: Record<string, KnowRenderContext['rodderEntities'] extends Map<string, infer T> | null ? T : never>
+		rodderSectors: Record<string, KnowRenderContext['rodderSectors'] extends Map<string, infer T> | null ? T : never>
+		rodderDisplayOverflow: number
 		resolvedLinks: Record<string, { href: string, exists: boolean }> | null
 		ondeletepage: () => void
 	} = $props()
@@ -88,7 +93,9 @@
 		calendarConfig: $page.data.calendarConfig ?? null,
 		structuredData: buildStructuredData(rawStructuredData),
 		structuredCollections: (structuredCollections ?? null) as KnowRenderContext['structuredCollections'],
-		rootMaps: rootMaps as KnowRenderContext['rootMaps'],
+		rodderEntities: new SvelteMap(Object.entries(rodderEntities)),
+		rodderSectors: new SvelteMap(Object.entries(rodderSectors)),
+		rodderDisplayOverflow,
 	})))
 </script>
 
@@ -99,9 +106,9 @@
 >
 	{#snippet actions()}
 		{#if permissions.canEditContent}
-			<a href="/know/{slug}/edit" class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover"><PencilSimple size={14} weight="fill" />{m.common_edit()}</a>
-			<a href="/know/{slug}/move" class="text-dim transition-colors flex items-center gap-1 hover:text-secondary"><ArrowsLeftRight size={14} weight="fill" />{m.know_move()}</a>
-			<a href="/know/{slug}/history" class="text-dim transition-colors flex items-center gap-1 hover:text-secondary"><ClockCounterClockwise size={14} weight="fill" />{m.know_history()}</a>
+			<a href={resolve('/know/[slug]/edit', { slug })} class="text-link font-medium transition-colors flex items-center gap-1 hover:text-link-hover"><PencilSimple size={14} weight="fill" />{m.common_edit()}</a>
+			<a href={resolve('/know/[slug]/move', { slug })} class="text-dim transition-colors flex items-center gap-1 hover:text-secondary"><ArrowsLeftRight size={14} weight="fill" />{m.know_move()}</a>
+			<a href={resolve('/know/[slug]/history', { slug })} class="text-dim transition-colors flex items-center gap-1 hover:text-secondary"><ClockCounterClockwise size={14} weight="fill" />{m.know_history()}</a>
 		{:else if permissions.isAuthenticated}
 			<span class="text-secondary text-sm">{m.common_view_only_editor()}</span>
 		{/if}
@@ -115,7 +122,7 @@
 			<div class="flex items-center gap-2 mt-1.5 text-xs">
 				<Badge variant="info">{wbName}</Badge>
 				<a
-					href="/Wordbook/{wordbookMatch.languageSlug}/{encodeURIComponent(wordbookMatch.word)}"
+					href={resolve('/wordbook/[language]/[word]', { language: wordbookMatch.languageSlug, word: wordbookMatch.word })}
 					class="text-link transition-colors hover:text-link-hover"
 				>
 					See <em>{wordbookMatch.word}</em> in {wordbookMatch.languageName}
@@ -126,7 +133,7 @@
 			<div class="flex items-center gap-2 mt-1.5 text-xs">
 				<Badge variant="info">{wbName}</Badge>
 				<a
-					href="/Wordbook/{languageMatch.languageSlug}"
+					href={resolve('/wordbook/[language]', { language: languageMatch.languageSlug })}
 					class="text-link transition-colors hover:text-link-hover"
 				>
 					See <em>{languageMatch.languageName}</em> in the {wbName.toLowerCase()}
@@ -134,6 +141,10 @@
 			</div>
 		{/if}
 	{/snippet}
+
+	{#if rodderDisplayOverflow > 0}
+		<p class="mb-3 border border-error-border bg-error-bg px-3 py-2 text-sm text-error-text">{rodderDisplayOverflow} Rodder display target{rodderDisplayOverflow === 1 ? ' was' : 's were'} skipped because an article supports at most 24 unique maps.</p>
+	{/if}
 
 	<article class="know-article">
 		<WikiNodeComponent node={ast} />

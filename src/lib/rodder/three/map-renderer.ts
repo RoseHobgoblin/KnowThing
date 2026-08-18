@@ -18,6 +18,7 @@ import {
 	WebGLRenderer,
 } from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+import { FULL_VIEW_INTERACTION } from '../consumer-contract.js'
 import { Line2 } from 'three/addons/lines/Line2.js'
 import { LineGeometry } from 'three/addons/lines/LineGeometry.js'
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js'
@@ -132,7 +133,6 @@ type FlyState = {
 }
 
 const ease = (t: number) => 1 - (1 - t) ** 3
-const trapWheel = (event: WheelEvent) => event.preventDefault()
 const worldPosition = (position: { x: number, y: number, z: number }) =>
 	new Vector3(position.x - CENTER, position.y - CENTER, position.z)
 
@@ -215,7 +215,7 @@ function unavailableRenderer(canvas: HTMLCanvasElement, reason: string, callback
 	callbacks.onOverlayChange?.({ labels: [], indicators: [], legend: null, projection: null, status: 'unavailable' })
 	return {
 		canvas,
-		setData() {}, setDay() {}, setSettings() {}, setSelected() {}, setTheme() {}, resize() {}, resetView() {},
+		setData() {}, setDay() {}, setSettings() {}, setSelected() {}, setInteraction() {}, setTheme() {}, resize() {}, resetView() {},
 		getCameraState() { return null }, setCameraState() {}, destroy() {},
 	}
 }
@@ -294,6 +294,10 @@ export async function createRootMapRenderer(
 	controls.maxPolarAngle = Math.PI / 2 - 0.015
 	controls.touches.ONE = TOUCH.ROTATE
 	controls.touches.TWO = TOUCH.DOLLY_PAN
+	let interaction = { ...FULL_VIEW_INTERACTION }
+	const handleWheel = (event: WheelEvent) => {
+		if (interaction.cameraMovement) event.preventDefault()
+	}
 
 	// Shared geometry is cheap compared with per-body materials and remains
 	// smooth when a 1024×512 plate is inspected at close zoom.
@@ -448,6 +452,7 @@ export async function createRootMapRenderer(
 
 	function configureControls() {
 		const plan = settings.view === 'plan'
+		controls.enabled = interaction.cameraMovement
 		controls.enableRotate = !plan
 		controls.mouseButtons.LEFT = plan ? MOUSE.PAN : MOUSE.ROTATE
 		controls.mouseButtons.MIDDLE = MOUSE.DOLLY
@@ -1207,6 +1212,7 @@ export async function createRootMapRenderer(
 
 	function handlePointerMove(event: PointerEvent) {
 		if (dragStart && Math.hypot(event.clientX - dragStart.x, event.clientY - dragStart.y) > 4) suppressClick = true
+		if (!interaction.hoverInspection) return
 		const hit = closestTarget(event)
 		hoveredId = hit?.node.key ?? null
 		let hoverTarget: Parameters<MapRendererCallbacks['onHover']>[0] = null
@@ -1222,7 +1228,7 @@ export async function createRootMapRenderer(
 		schedule()
 	}
 	function handlePointerDown(event: PointerEvent) {
-		canvas.focus({ preventScroll: true })
+		if (interaction.cameraMovement) canvas.focus({ preventScroll: true })
 		dragStart = new Vector2(event.clientX, event.clientY)
 		suppressClick = false
 	}
@@ -1230,11 +1236,12 @@ export async function createRootMapRenderer(
 		dragStart = null
 	}
 	function handleClick(event: MouseEvent) {
-		if (suppressClick) return
+		if (suppressClick || !interaction.selectionInspection) return
 		const hit = closestTarget(event as PointerEvent)
 		callbacks.onSelect(hit?.node.key ?? null)
 	}
 	function handleDoubleClick(event: MouseEvent) {
+		if (!interaction.objectNavigation) return
 		const hit = closestTarget(event as PointerEvent)
 		if (!hit) return
 		if (hit.kind === 'sky') {
@@ -1296,7 +1303,7 @@ export async function createRootMapRenderer(
 		callbacks.onOverlayChange?.({ labels: [], indicators: [], legend: null, projection: null, status: 'unavailable' })
 	}
 	function handleKeyDown(event: KeyboardEvent) {
-		if (!PAN_KEYS.has(event.code) || event.altKey || event.ctrlKey || event.metaKey) return
+		if (!interaction.cameraMovement || !PAN_KEYS.has(event.code) || event.altKey || event.ctrlKey || event.metaKey) return
 		event.preventDefault()
 		pressedPanKeys.add(event.code)
 		lastFrameAt = performance.now()
@@ -1325,7 +1332,7 @@ export async function createRootMapRenderer(
 	canvas.addEventListener('pointerup', handlePointerUp)
 	canvas.addEventListener('click', handleClick)
 	canvas.addEventListener('dblclick', handleDoubleClick)
-	canvas.addEventListener('wheel', trapWheel, { passive: false })
+	canvas.addEventListener('wheel', handleWheel, { passive: false })
 	canvas.addEventListener('webglcontextlost', handleContextLost)
 	canvas.addEventListener('keydown', handleKeyDown)
 	canvas.addEventListener('keyup', handleKeyUp)
@@ -1393,6 +1400,17 @@ export async function createRootMapRenderer(
 			applySelection()
 			schedule()
 		},
+		setInteraction(nextInteraction) {
+			interaction = { ...nextInteraction }
+			configureControls()
+			if (!interaction.hoverInspection) {
+				hoveredId = null
+				callbacks.onHover(null, null)
+				canvas.style.cursor = ''
+			}
+			if (!interaction.cameraMovement) pressedPanKeys.clear()
+			schedule()
+		},
 		setTheme(nextTheme) {
 			theme = nextTheme
 			rebuild()
@@ -1427,7 +1445,7 @@ export async function createRootMapRenderer(
 			canvas.removeEventListener('pointerup', handlePointerUp)
 			canvas.removeEventListener('click', handleClick)
 			canvas.removeEventListener('dblclick', handleDoubleClick)
-			canvas.removeEventListener('wheel', trapWheel)
+			canvas.removeEventListener('wheel', handleWheel)
 			canvas.removeEventListener('webglcontextlost', handleContextLost)
 			canvas.removeEventListener('keydown', handleKeyDown)
 			canvas.removeEventListener('keyup', handleKeyUp)

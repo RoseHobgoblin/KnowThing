@@ -2,6 +2,7 @@ import type { LabelMode, ScaleMode, TrailMode, ViewMode, VisibilityMode } from '
 import type { EntityKey, MapBody, ThemePalette } from './root-layout.js'
 import type { ApparentSkyResult, ApparentSkySource, RootSelectionKey } from './apparent-sky.js'
 import type { RootCameraState } from './view-state.js'
+import type { DisplayInteractionPolicy } from './consumer-contract.js'
 
 export type MapSettingsState = {
 	scale: ScaleMode
@@ -57,6 +58,7 @@ export type RootMapRenderer = {
 	setDay(day: number | null): void
 	setSettings(settings: MapSettingsState): void
 	setSelected(id: RootSelectionKey | null): void
+	setInteraction(policy: DisplayInteractionPolicy): void
 	setTheme(theme: ThemePalette): void
 	resize(width: number, height: number): void
 	resetView(): void

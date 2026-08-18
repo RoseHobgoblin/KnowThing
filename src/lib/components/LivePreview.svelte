@@ -7,6 +7,7 @@
 	import type { WikiNode } from '$lib/parser/types.js'
 	import { createQuery, keepPreviousData } from '@tanstack/svelte-query'
 	import { api } from '$lib/api'
+	import type { RodderEntityDocument, RodderSectorDocument } from '$lib/rodder/consumer-contract.js'
 
 	let { content = '', domain = 'know' }: { content: string, domain?: string } = $props()
 
@@ -19,6 +20,9 @@
 	// link, so the preview would report even existing pages as broken. It is
 	// filled from /api/render, which resolves targets the same way a save does.
 	const resolvedLinks = new SvelteMap<string, ResolvedLink>()
+	const rodderEntities = new SvelteMap<string, RodderEntityDocument | null>()
+	const rodderSectors = new SvelteMap<string, RodderSectorDocument | null>()
+	let rodderDisplayOverflow = $state(0)
 
 	// setContext runs once at init — reading current prop/store values here is
 	// intentional, so untrack to silence the state_referenced_locally warning.
@@ -29,6 +33,8 @@
 			pageBaseUrl: `/${domain}`,
 			sourceDomain: domain,
 			calendarDate: layoutData.calendarDate ?? null,
+			rodderEntities,
+			rodderSectors,
 		}),
 	)
 
@@ -49,7 +55,13 @@
 
 	const preview = createQuery(() => ({
 		queryKey: ['render-preview', domain, debouncedContent],
-		queryFn: () => api<{ ast: WikiNode, resolvedLinks: Record<string, ResolvedLink> }>(
+		queryFn: () => api<{
+			ast: WikiNode
+			resolvedLinks: Record<string, ResolvedLink>
+			rodderEntities: Record<string, RodderEntityDocument | null>
+			rodderSectors: Record<string, RodderSectorDocument | null>
+			rodderDisplayOverflow: number
+		}>(
 			'POST', '/api/render', { content: debouncedContent, domain },
 		),
 		enabled: debouncedContent.trim().length > 0,
@@ -67,6 +79,11 @@
 		if (links) {
 			for (const [key, value] of Object.entries(links)) resolvedLinks.set(key, value)
 		}
+		rodderEntities.clear()
+		for (const [key, value] of Object.entries(preview.data?.rodderEntities ?? {})) rodderEntities.set(key, value)
+		rodderSectors.clear()
+		for (const [key, value] of Object.entries(preview.data?.rodderSectors ?? {})) rodderSectors.set(key, value)
+		rodderDisplayOverflow = preview.data?.rodderDisplayOverflow ?? 0
 	})
 </script>
 
@@ -74,6 +91,9 @@
 	{#if loading && !ast}
 		<p class="text-sm text-secondary italic">Loading preview...</p>
 	{:else if ast}
+		{#if rodderDisplayOverflow > 0}
+			<p class="mb-3 border border-error-border bg-error-bg px-3 py-2 text-sm text-error-text">{rodderDisplayOverflow} Rodder display target{rodderDisplayOverflow === 1 ? ' was' : 's were'} skipped because previews support at most 24 unique maps.</p>
+		{/if}
 		<article class="know-article">
 			<WikiNodeComponent node={ast} />
 		</article>

@@ -14,6 +14,7 @@ import {
 } from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import type { ThemePalette } from '../root-layout.js'
+import { FULL_VIEW_INTERACTION } from '../consumer-contract.js'
 import {
 	positionedRoots,
 	sectorBoundsRadius,
@@ -79,7 +80,7 @@ function unavailableRenderer(canvas: HTMLCanvasElement, reason: string, callback
 	callbacks.onOverlayChange?.({ labels: [], legend: null, status: 'unavailable' })
 	return {
 		canvas,
-		setData() {}, setSelected() {}, setTheme() {}, resize() {}, resetView() {},
+		setData() {}, setSelected() {}, setInteraction() {}, setTheme() {}, resize() {}, resetView() {},
 		focusRoot() {}, getCameraState() { return null }, setCameraState() {}, destroy() {},
 	}
 }
@@ -127,6 +128,7 @@ export function createSectorRenderer(
 	// Full free orbit apart from the exact poles (Z-up look-at singularity).
 	controls.minPolarAngle = 0.015
 	controls.maxPolarAngle = Math.PI - 0.015
+	let interaction = { ...FULL_VIEW_INTERACTION }
 
 	const discTexture = makeDiscTexture()
 	const ringTexture = makeRingTexture()
@@ -327,6 +329,7 @@ export function createSectorRenderer(
 
 	function handlePointerMove(event: PointerEvent) {
 		if (dragStart && new Vector2(event.clientX, event.clientY).distanceTo(dragStart) > 5) suppressClick = true
+		if (!interaction.hoverInspection) return
 		const root = closestRoot(event)
 		if (root?.slug !== hoveredSlug) {
 			hoveredSlug = root?.slug ?? null
@@ -347,11 +350,12 @@ export function createSectorRenderer(
 	}
 
 	function handleClick(event: MouseEvent) {
-		if (suppressClick) return
+		if (suppressClick || !interaction.selectionInspection) return
 		callbacks.onSelect(closestRoot(event)?.slug ?? null)
 	}
 
 	function handleDoubleClick(event: MouseEvent) {
+		if (!interaction.objectNavigation) return
 		const root = closestRoot(event)
 		if (root) callbacks.onActivate(root.slug)
 	}
@@ -384,6 +388,16 @@ export function createSectorRenderer(
 		setSelected(slug) {
 			selectedSlug = slug
 			applySelection()
+			schedule()
+		},
+		setInteraction(nextInteraction) {
+			interaction = { ...nextInteraction }
+			controls.enabled = interaction.cameraMovement
+			if (!interaction.hoverInspection) {
+				hoveredSlug = null
+				callbacks.onHover(null, null)
+				canvas.style.cursor = ''
+			}
 			schedule()
 		},
 		setTheme(nextTheme) {

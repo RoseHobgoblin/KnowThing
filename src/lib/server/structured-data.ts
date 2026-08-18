@@ -11,8 +11,8 @@ import {
 } from 'tungolcraft'
 import { bodyInfoboxFields, starInfoboxFields } from '$lib/rodder/projections.js'
 import { RODDER_TREE_CTE, findNearestStarAncestor } from '$lib/server/rodder/hierarchy.js'
-import { getRootMapEntities } from '$lib/server/services/rodder-registry.js'
-import { getApparentSkyForRoot, getSectorContextForRoot } from '$lib/server/services/rodder-sectors.js'
+import { getSectorContextForRoot } from '$lib/server/services/rodder-sectors.js'
+import { resolveRodderEntityDocument } from '$lib/server/services/rodder-documents.js'
 
 export interface RootMapData {
 	rootName: string
@@ -145,11 +145,13 @@ export async function resolveRodderModel(type: string, slug: string): Promise<Bo
 /** Domain mapper registry: infobox type → table query + field mapper */
 const DOMAIN_RESOLVERS: Record<string, (slug: string) => Promise<FieldMap | null>> = {
 	star: async (slug) => {
-		const model = await resolveRodderModel('star', slug)
+		const document = await resolveRodderEntityDocument(slug)
+		const model = document?.resolved.facts.model?.value as StarModel | null | undefined
 		return model?.kind === 'star' ? starInfoboxFields(model) : null
 	},
 	planet: async (slug) => {
-		const model = await resolveRodderModel('body', slug)
+		const document = await resolveRodderEntityDocument(slug)
+		const model = document?.resolved.facts.model?.value as BodyModel | null | undefined
 		return model?.kind === 'body' ? bodyInfoboxFields(model) : null
 	},
 }
@@ -160,9 +162,17 @@ DOMAIN_RESOLVERS['rodder body'] = DOMAIN_RESOLVERS['planet']
 
 // Star systems — auto-computed from child stars and planets
 DOMAIN_RESOLVERS['system'] = async (slug) => {
-	const [system] = await db.select().from(rodderBodies)
-		.where(and(eq(rodderBodies.slug, slug), eq(rodderBodies.kind, 'system')))
-	if (!system) return null
+	const document = await resolveRodderEntityDocument(slug)
+	if (!document || document.identity.kind !== 'system') return null
+	const system = {
+		id: document.identity.id,
+		name: document.identity.name,
+		distanceLy: document.authored.system?.distanceLy ?? null,
+		formationAge: document.authored.system?.formationAge ?? null,
+		designations: document.authored.system?.designations ?? null,
+		description: document.authored.description,
+		extra: document.authored.extensions,
+	}
 
 	// Fetch stars in this system (all descendants — companions included)
 	const systemStars = await db.execute(sql`
@@ -327,21 +337,14 @@ DOMAIN_RESOLVERS['word'] = async (ref) => {
  * Fetch full root map data for rendering {{Root map|slug}}.
  */
 export async function resolveRootMapData(slug: string): Promise<RootMapData | null> {
-	const [system] = await db.select({ id: rodderBodies.id, name: rodderBodies.name })
-		.from(rodderBodies)
-		.where(and(eq(rodderBodies.slug, slug), eq(rodderBodies.kind, 'system')))
-	if (!system) return null
-
-	const [{ stars, bodies }, apparentSky] = await Promise.all([
-		getRootMapEntities(system.id),
-		getApparentSkyForRoot(system.id),
-	])
-
+	const document = await resolveRodderEntityDocument(slug)
+	const display = document?.displays.rootMap
+	if (!display) return null
 	return {
-		rootName: system.name,
-		stars: stars as unknown as MapBody[],
-		bodies: bodies as unknown as MapBody[],
-		apparentSky,
+		rootName: display.rootName,
+		stars: display.stars as unknown as MapBody[],
+		bodies: display.bodies as unknown as MapBody[],
+		apparentSky: display.apparentSky,
 	}
 }
 

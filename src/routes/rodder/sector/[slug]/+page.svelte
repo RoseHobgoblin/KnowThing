@@ -28,8 +28,8 @@
 
 	let { data }: { data: PageData } = $props()
 
-	const sector = $derived(data.sector)
-	const roots = $derived(data.roots as SectorRootView[])
+	const sector = $derived({ ...data.document.identity, ...data.document.frame })
+	const roots = $derived(data.document.displays.sectorMap.roots as SectorRootView[])
 	const permissions = $derived(normalizePermissions($page.data.permissions))
 
 	const linkedViewState = $derived.by(() => sectorViewStateFor(

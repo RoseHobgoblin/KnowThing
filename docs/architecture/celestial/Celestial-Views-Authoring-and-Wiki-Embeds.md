@@ -5,7 +5,7 @@
 **Applies to:** celestial sector and system displays, field-driven authoring, apparent skies, saved views, and WikiText transclusion  
 **Related documents:** [Structured Data Vision](../STRUCTURED-DATA-VISION.md), [Atlas Architecture](../Atlas-Architecture.md), [Celestial Sector and System Model](./Celestial-Sector-and-System-Model.md), [Calendar and Celestial Boundaries](./Celestial-Calendar-Integration.md), [Celestial Orrery Roadmap](../../plans/celestial/Celestial-Orrery-Roadmap.md)
 
-> **Maturity:** KnowThing currently exposes the firmament subsystem in code and URLs as **Rodder**. It has concrete Rodder records, sector and root viewers, page-level configuration, a schema-versioned URL view contract for copying and restoring sector/root compositions, authored same-sector apparent skies in Orrery mode, and a full-width root viewer shell with contextual inspectors and optional display trays. Those skies currently use static root barycentre positions and unresolved combined stellar light; they do not add procedural ambient stars, proper motion, light-travel delay, atmospheric effects, or surface parallax. The local viewer is named `RootMap`, not `SystemMap`: stellar systems and independent bodies such as rogue worlds can both own sector-root hierarchies. Remnant-specific facts, vessels, stations, phenomena, and other future root kinds still require the generic object/facet model. KnowThing does not yet have saved view objects and revisions, WikiText map transclusion, or the broader authoring displays described here. This document defines how those additions should fit the product without requiring the future facet migration first.
+> **Maturity:** KnowThing currently exposes the firmament subsystem in code and URLs as **Rodder**. It has concrete Rodder records, sector and root viewers, page-level configuration, a schema-versioned URL view contract for copying and restoring sector/root compositions, authored same-sector apparent skies in Orrery mode, a full-width root viewer shell with contextual inspectors and optional display trays, presentation-neutral public consumer documents, and direct WikiText root/sector map transclusion. Those skies currently use static root barycentre positions and unresolved combined stellar light; they do not add procedural ambient stars, proper motion, light-travel delay, atmospheric effects, or surface parallax. The local viewer is named `RootMap`, not `SystemMap`: stellar systems and independent bodies such as rogue worlds can both own sector-root hierarchies. Remnant-specific facts, vessels, stations, phenomena, and other future root kinds still require the generic object/facet model. Saved view objects remain an optional future convenience rather than a publishing dependency.
 
 ## Decision Summary
 
@@ -161,7 +161,7 @@ An embedded view's **Explore** action opens the free viewer while preserving its
 
 ## Saved Views and WikiText
 
-A saved view is a first-class KnowThing object with:
+If durable named compositions become useful, a saved view may be introduced as a first-class KnowThing object with:
 
 - stable identity and human-readable title;
 - a schema-versioned view specification;
@@ -169,7 +169,7 @@ A saved view is a first-class KnowThing object with:
 - optional explanatory prose and preview media;
 - backlinks showing which pages transclude it.
 
-The preferred WikiText form is a stable view reference:
+Such a reference would be optional convenience syntax:
 
 ```wikitext
 {{view:Orison Fold/Nacre overview}}
@@ -181,6 +181,8 @@ Convenience syntax may exist for common displays:
 {{Root map|Orison Fold|focus=Nacre|mode=orrery}}
 {{Sector map|The Palimpsest Reach|focus=Orison Fold}}
 ```
+
+The direct root and sector forms are the implemented baseline. They resolve live public Rodder consumer documents, accept readable display and interaction arguments, and may also consume the same validated `view` payload used by copied viewer links. They do not require a persisted saved-view record.
 
 These forms are authoring conveniences and should compile to the same view specification. They must not create separate celestial-only embedding infrastructure.
 
@@ -331,8 +333,8 @@ The architectural dependency order is:
 2. ~~Complete sector camera controls using that state contract.~~ Delivered for the current orbit/pan/zoom controls and link restoration.
 3. ~~Generate system apparent skies from authored sector and stellar data.~~ Delivered for static same-sector root positions, unresolved stellar members, and brightness-provenance diagnostics; observer-surface and illustrative ambient layers remain later opt-in work.
 4. ~~Refactor the viewer shell around contextual overlays and remove the permanent information panel.~~ Delivered for the root viewer: selection opens a temporary inspector, while overview, object browsing, calendar, and display settings use responsive opt-in trays; backlinks remain in normal page flow.
-5. Add saved view objects, revisions, permissions, and static previews.
-6. Add WikiText discovery and transclusion with locked and Explore modes.
+5. ~~Expose comprehensive live Rodder consumer documents and use them for full viewers, APIs, infobox projections, and WikiText root/sector displays.~~ Delivered with typed public entity/sector documents, local diagnostics, batched transclusion discovery, configurable interaction policies, copied-view restoration, and textual fallbacks.
+6. Optionally add named saved views if real authoring workflows need reusable identities, permissions, or revision-pinned compositions; direct transclusion does not depend on them.
 7. Expose relationship and spatial displays as bidirectional field authoring surfaces.
 8. Generalize current-schema projections into facet capability providers as the generic object model arrives.
 9. Add cross-domain objects and map/timeline layers without making them celestial-owned.

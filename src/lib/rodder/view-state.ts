@@ -86,7 +86,7 @@ const sectorCameraSchema = z.object({
 	'Camera position and target must differ',
 )
 
-const rootViewSchema = z.object({
+export const rootViewSchema = z.object({
 	version: z.literal(RODDER_VIEW_SCHEMA_VERSION),
 	renderer: z.literal('root'),
 	space: z.object({ slug: z.string().trim().min(1).max(240) }),
@@ -116,7 +116,7 @@ const rootViewSchema = z.object({
 	}
 })
 
-const sectorViewSchema = z.object({
+export const sectorViewSchema = z.object({
 	version: z.literal(RODDER_VIEW_SCHEMA_VERSION),
 	renderer: z.literal('sector'),
 	space: z.object({ slug: z.string().trim().min(1).max(240) }),
@@ -125,7 +125,7 @@ const sectorViewSchema = z.object({
 	camera: sectorCameraSchema,
 })
 
-const rodderViewSchema = z.discriminatedUnion('renderer', [rootViewSchema, sectorViewSchema])
+export const rodderViewSchema = z.discriminatedUnion('renderer', [rootViewSchema, sectorViewSchema])
 
 export function encodeRodderViewState(state: RodderViewState): string {
 	return JSON.stringify(state)

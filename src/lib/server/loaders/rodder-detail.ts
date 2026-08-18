@@ -2,23 +2,24 @@ import { error, redirect } from '@sveltejs/kit'
 import type { Cookies } from '@sveltejs/kit'
 import type { MapBody } from '$lib/rodder/root-layout.js'
 import { hasRole } from '$lib/server/auth.js'
-import { resolveRodderModel } from '$lib/server/structured-data.js'
+import { resolveRodderModel } from '$lib/server/services/rodder-models.js'
 import type { BodyModel, StarModel } from 'tungolcraft'
 import { resolveParentStarHz, type ParentStarHz } from '$lib/server/rodder/habitable-zone.js'
 import { findNearestStarAncestor } from '$lib/server/rodder/hierarchy.js'
 import {
 	findRodderBySlugOrName,
 	getBacklinksForRodder,
-	getCalendarsForRoot,
-	getRootMapEntities,
 	getPlanetsForStar,
 	getStarHzInputs,
 	listAllStarReferences,
 	listAllSystemReferences,
 	listAllBodyReferences,
 } from '$lib/server/services/rodder-registry.js'
-import { getApparentSkyForRoot, getSectorContextForRoot, listSectorReferences, type SectorContext } from '$lib/server/services/rodder-sectors.js'
+import { getSectorContextForRoot, listSectorReferences, type SectorContext } from '$lib/server/services/rodder-sectors.js'
 import type { ApparentSkyResult } from '$lib/rodder/apparent-sky.js'
+import { buildApparentSky } from '$lib/rodder/apparent-sky.js'
+import type { RodderEntityDocument } from '$lib/rodder/consumer-contract.js'
+import { resolveRodderEntityDocument } from '$lib/server/services/rodder-documents.js'
 
 export interface RodderDetailContext {
 	identifier: string
@@ -42,7 +43,7 @@ export type RodderDetailData =
 		rootStars: MapBody[]
 		rootBodies: MapBody[]
 		apparentSky: ApparentSkyResult
-		rootCalendars: Awaited<ReturnType<typeof getCalendarsForRoot>>
+		rootCalendars: NonNullable<RodderEntityDocument['displays']['rootMap']>['calendars']
 	})
 	| (RodderBaseData & {
 		kind: 'star'
@@ -65,13 +66,14 @@ export type RodderDetailData =
 		rootStars: MapBody[]
 		rootBodies: MapBody[]
 		apparentSky: ApparentSkyResult
-		rootCalendars: Awaited<ReturnType<typeof getCalendarsForRoot>>
+		rootCalendars: NonNullable<RodderEntityDocument['displays']['rootMap']>['calendars']
 	})
 
 interface RodderBaseData {
 	isEditMode: false
 	isConfigureMode: boolean
 	backlinks: Awaited<ReturnType<typeof getBacklinksForRodder>>
+	document: RodderEntityDocument
 }
 
 export async function loadRodderDetail(ctx: RodderDetailContext): Promise<RodderDetailData> {
@@ -95,16 +97,16 @@ export async function loadRodderDetail(ctx: RodderDetailContext): Promise<Rodder
 	if (entity.slug !== identifier) {
 		throw redirect(301, canonicalize(entity.slug))
 	}
+	const document = await resolveRodderEntityDocument(entity.slug)
+	if (!document) throw error(500, 'Rodder consumer document could not be resolved')
 
 	if (entity.kind === 'system') {
-		const [mapEntities, apparentSky, rootCalendars, backlinks, sectorContext, sectors] = await Promise.all([
-			getRootMapEntities(entity.id),
-			getApparentSkyForRoot(entity.id),
-			getCalendarsForRoot(entity.id),
+		const [backlinks, sectorContext, sectors] = await Promise.all([
 			getBacklinksForRodder(entity.slug),
 			getSectorContextForRoot(entity.id),
 			isConfigureMode ? listSectorReferences() : Promise.resolve([]),
 		])
+		const rootMap = document.displays.rootMap
 		return {
 			kind: 'system',
 			body: {
@@ -115,12 +117,13 @@ export async function loadRodderDetail(ctx: RodderDetailContext): Promise<Rodder
 			},
 			sectorContext,
 			sectors,
+			document,
 			isEditMode: false,
 			isConfigureMode,
-			rootStars: mapEntities.stars as unknown as MapBody[],
-			rootBodies: mapEntities.bodies as unknown as MapBody[],
-			apparentSky,
-			rootCalendars,
+			rootStars: rootMap?.stars as MapBody[] ?? [],
+			rootBodies: rootMap?.bodies as MapBody[] ?? [],
+			apparentSky: rootMap?.apparentSky ?? buildApparentSky(null, []),
+			rootCalendars: rootMap?.calendars ?? [],
 			backlinks,
 		}
 	}
@@ -137,6 +140,7 @@ export async function loadRodderDetail(ctx: RodderDetailContext): Promise<Rodder
 			allStars,
 			model,
 			systemPlanets,
+			document,
 			isEditMode: false,
 			isConfigureMode,
 			backlinks,
@@ -153,9 +157,7 @@ export async function loadRodderDetail(ctx: RodderDetailContext): Promise<Rodder
 		getSectorContextForRoot(entity.id),
 		isConfigureMode ? listSectorReferences() : Promise.resolve([]),
 	])
-	const [mapEntities, apparentSky, rootCalendars] = sectorContext
-		? await Promise.all([getRootMapEntities(entity.id), getApparentSkyForRoot(entity.id), getCalendarsForRoot(entity.id)])
-		: [{ stars: [], bodies: [] }, await getApparentSkyForRoot(entity.id), []]
+	const rootMap = document.displays.rootMap
 	const model = rawModel?.kind === 'body' ? rawModel : null
 	// The parent star's habitable zone, so a planet can show whether it sits in
 	// it — fetched as just the luminosity inputs, not the star's whole model
@@ -177,10 +179,11 @@ export async function loadRodderDetail(ctx: RodderDetailContext): Promise<Rodder
 		parentStarHz,
 		sectorContext,
 		sectors,
-		rootStars: mapEntities.stars as unknown as MapBody[],
-		rootBodies: mapEntities.bodies as unknown as MapBody[],
-		apparentSky,
-		rootCalendars,
+		rootStars: rootMap?.stars as MapBody[] ?? [],
+		rootBodies: rootMap?.bodies as MapBody[] ?? [],
+		apparentSky: rootMap?.apparentSky ?? buildApparentSky(null, []),
+		rootCalendars: rootMap?.calendars ?? [],
+		document,
 		isEditMode: false,
 		isConfigureMode,
 		backlinks,

@@ -5,6 +5,7 @@
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import { goto } from '$app/navigation'
+	import { resolve } from '$app/paths'
 	import KnowArticle from './KnowArticle.svelte'
 	import { createMutation } from '@tanstack/svelte-query'
 	import { api } from '$lib/api'
@@ -33,7 +34,7 @@
 		try {
 			await deleteMutation.mutateAsync()
 			pushSuccess(m.know_page_deleted({ name: data.title }))
-			goto('/')
+			goto(resolve('/'))
 		} catch (error) {
 			pushError(error instanceof Error ? error.message : m.know_delete_failed())
 		}
@@ -81,7 +82,9 @@
 			languageMatch={data.languageMatch}
 			structuredData={data.structuredData ?? null}
 			structuredCollections={data.structuredCollections ?? null}
-			rootMaps={data.rootMaps ?? null}
+			rodderEntities={data.rodderEntities ?? {}}
+			rodderSectors={data.rodderSectors ?? {}}
+			rodderDisplayOverflow={data.rodderDisplayOverflow ?? 0}
 			resolvedLinks={data.resolvedLinks ?? null}
 			ondeletepage={deletePage}
 		/>

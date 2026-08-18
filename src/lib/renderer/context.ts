@@ -2,7 +2,7 @@ import { getContext, setContext } from 'svelte'
 import { writable, type Writable } from 'svelte/store'
 import type { TemplateArg, WikiNode } from '$lib/parser/types.js'
 import type { CalendarConfig, ResolvedDate } from 'rimecraft'
-import type { ApparentSkyResult } from '$lib/rodder/apparent-sky.js'
+import type { RodderEntityDocument, RodderSectorDocument } from '$lib/rodder/consumer-contract.js'
 
 const KNOW_CONTEXT_KEY = 'know-render-context'
 
@@ -38,8 +38,11 @@ export interface KnowRenderContext {
 	structuredData: Map<string, Map<string, string>> | null
 	/** Pre-fetched array-shaped structured data (phoneme grids, etc) keyed by `${type}:${slug}` */
 	structuredCollections: Record<string, Record<string, unknown>[]> | null
-	/** Pre-fetched root map data for {{Root map|slug}} */
-	rootMaps: Record<string, { rootName: string, stars: any[], bodies: any[], apparentSky: ApparentSkyResult }> | null
+	/** Pre-fetched public Rodder documents for map templates. Null values are resolved missing targets. */
+	rodderEntities: Map<string, RodderEntityDocument | null> | null
+	rodderSectors: Map<string, RodderSectorDocument | null> | null
+	/** Number of unique display targets skipped by the per-document safety ceiling. */
+	rodderDisplayOverflow: number
 }
 
 export interface FootnoteEntry {
@@ -62,7 +65,9 @@ function defaultKnowContext(overrides: Partial<KnowRenderContext> = {}): KnowRen
 		calendarConfig: null,
 		structuredData: null,
 		structuredCollections: null,
-		rootMaps: null,
+		rodderEntities: null,
+		rodderSectors: null,
+		rodderDisplayOverflow: 0,
 		...overrides,
 	}
 }

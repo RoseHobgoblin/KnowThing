@@ -5,6 +5,7 @@
 	import { resolve } from '$app/paths'
 	import { cn } from '$lib/utils.js'
 	import type { ThemePalette } from './root-layout.js'
+	import { FULL_VIEW_INTERACTION, type DisplayInteractionPolicy } from './consumer-contract.js'
 	import {
 		formatSectorPosition,
 		type PositionedSectorRoot,
@@ -28,6 +29,7 @@
 		selectedSlug = $bindable(null),
 		focusSlug = null,
 		initialCameraState = null,
+		interaction = FULL_VIEW_INTERACTION,
 	}: {
 		sectorName: string
 		sectorSlug: string
@@ -37,6 +39,7 @@
 		/** Root to select on load (deep link / return-from-system context). */
 		focusSlug?: string | null
 		initialCameraState?: SectorCameraState | null
+		interaction?: DisplayInteractionPolicy
 	} = $props()
 
 	let wrapperElement: HTMLDivElement | null = null
@@ -194,6 +197,9 @@
 		renderer?.setSelected(selectedSlug ?? null)
 	})
 	$effect(() => {
+		renderer?.setInteraction(interaction)
+	})
+	$effect(() => {
 		renderer?.setTheme(theme)
 	})
 
@@ -217,13 +223,15 @@
 >
 	<div bind:this={canvasHost} class="absolute inset-0" aria-hidden={unavailableReason != null}></div>
 
-	{#if !unavailableReason}
+	{#if !unavailableReason && interaction.controlsVisible && interaction.cameraMovement}
 		<button
 			class="absolute top-2 right-2 z-10 bg-surface/85 px-2 py-1 text-xs font-medium text-dim transition-colors hover:text-accent"
 			onclick={() => renderer?.resetView()}
 			aria-label="Reset sector view"
 		>Reset view</button>
+	{/if}
 
+	{#if !unavailableReason}
 		<div class="pointer-events-none absolute inset-0 z-5 overflow-hidden" aria-hidden="true">
 			{#each overlay.labels as label (label.slug)}
 				<div
@@ -245,9 +253,9 @@
 					</span>
 				{/if}
 			</div>
-			<div class="absolute bottom-2 left-2 hidden bg-surface/60 px-2 py-1 text-[0.65rem] text-secondary sm:block">
+			{#if interaction.controlsVisible}<div class="absolute bottom-2 left-2 hidden bg-surface/60 px-2 py-1 text-[0.65rem] text-secondary sm:block">
 				Drag to orbit · Double-click a root to enter it
-			</div>
+			</div>{/if}
 		</div>
 	{/if}
 
@@ -276,13 +284,15 @@
 			<ul class="mt-4 grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
 				{#each roots as root (root.slug)}
 					<li class="flex items-center justify-between gap-2 border border-faint/40 bg-surface/60 px-2 py-1.5 text-sm">
-						<button class="truncate text-left text-heading hover:text-accent" onclick={() => { selectedSlug = root.slug }}>
-							{root.name}
-						</button>
-						<a
+					{#if interaction.selectionInspection}<button class="truncate text-left text-heading hover:text-accent" onclick={() => { selectedSlug = root.slug }}>
+						{root.name}
+					</button>{:else}<span class="truncate text-heading">{root.name}</span>{/if}
+					{#if interaction.objectNavigation}
+					<a
 							class="shrink-0 text-xs text-link hover:text-link-hover"
 							href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${root.slug}` })}
-						>Open</a>
+					>Open</a>
+					{/if}
 					</li>
 				{/each}
 			</ul>

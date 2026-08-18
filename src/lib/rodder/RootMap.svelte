@@ -13,6 +13,7 @@
 	import type { OverlaySnapshot, RootMapRenderer } from './renderer-types.js'
 	import type { RootCameraState } from './view-state.js'
 	import type { ApparentSkyResult, ApparentSkySource, RootSelectionKey } from './apparent-sky.js'
+	import { FULL_VIEW_INTERACTION, type DisplayInteractionPolicy } from './consumer-contract.js'
 
 	const DEFAULT_THEME: ThemePalette = {
 		page: '#12131D', surface: '#1A1B26', accent: '#FFE088', accentLight: '#E9C349',
@@ -38,6 +39,7 @@
 		selectedId = $bindable(null),
 		focusId = $bindable(null),
 		initialCameraState = null,
+		interaction = FULL_VIEW_INTERACTION,
 	}: {
 		rootName: string
 		stars: MapBody[]
@@ -54,6 +56,7 @@
 		selectedId?: RootSelectionKey | null
 		focusId?: EntityKey | null
 		initialCameraState?: RootCameraState | null
+		interaction?: DisplayInteractionPolicy
 	} = $props()
 
 	let wrapperElement: HTMLDivElement | null = null
@@ -177,7 +180,7 @@
 			instance.canvas.style.width = '100%'
 			instance.canvas.style.height = '100%'
 			instance.canvas.setAttribute('aria-label', `Interactive root map of ${rootName}`)
-			instance.canvas.setAttribute('aria-keyshortcuts', 'W A S D ArrowUp ArrowLeft ArrowDown ArrowRight')
+			if (interaction.cameraMovement) instance.canvas.setAttribute('aria-keyshortcuts', 'W A S D ArrowUp ArrowLeft ArrowDown ArrowRight')
 			// The host has no Svelte children; imperative ownership is deliberate.
 			// eslint-disable-next-line svelte/no-dom-manipulating
 			canvasHost.replaceChildren(instance.canvas)
@@ -194,6 +197,9 @@
 
 	$effect(() => {
 		renderer?.setSettings({ scale, labels, skyLabels, trails, follow, view, visibility })
+	})
+	$effect(() => {
+		renderer?.setInteraction(interaction)
 	})
 	$effect(() => {
 		renderer?.setDay(currentAbsoluteDay ?? null)
@@ -250,6 +256,7 @@
 >
 	<div bind:this={canvasHost} class="absolute inset-0" aria-hidden={unavailableReason != null}></div>
 
+	{#if interaction.controlsVisible && interaction.displayChanges}
 	<div class="absolute top-2 left-2 z-10 flex overflow-hidden border border-faint/50 bg-surface/85 text-xs" aria-label="Map view">
 		<button
 			class={cn('px-2 py-1 transition-colors', view === 'plan' ? 'bg-accent text-page' : 'text-secondary hover:text-heading')}
@@ -262,8 +269,9 @@
 			onclick={() => { view = 'orrery' }}
 		>Orrery</button>
 	</div>
+	{/if}
 
-	{#if viewState.isMoved}
+	{#if interaction.controlsVisible && interaction.cameraMovement && viewState.isMoved}
 		<button
 			class="absolute top-2 right-2 z-10 bg-surface/85 px-2 py-1 text-xs font-medium text-dim transition-colors hover:text-accent"
 			onclick={() => renderer?.resetView()}
@@ -377,7 +385,7 @@
 			<ul class="mt-4 grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
 				{#each fallbackEntities as entity (entity.key)}
 					<li class="flex items-center justify-between gap-2 border border-faint/40 bg-surface/60 px-2 py-1.5 text-sm">
-						<button
+						{#if interaction.selectionInspection}<button
 							class="truncate text-left text-heading hover:text-accent"
 							onclick={() => {
 								selectedId = entity.key
@@ -388,11 +396,13 @@
 							}}
 						>
 							{entity.name}
-						</button>
+						</button>{:else}<span class="truncate text-heading">{entity.name}</span>{/if}
+						{#if interaction.objectNavigation}
 						<a
 							class="shrink-0 text-xs text-link hover:text-link-hover"
 							href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${entity.slug}` })}
 						>Open</a>
+						{/if}
 					</li>
 				{/each}
 			</ul>

@@ -8,6 +8,7 @@
  */
 
 import type { SectorCameraState } from './view-state.js'
+import type { DisplayInteractionPolicy } from './consumer-contract.js'
 export type { SectorCameraState } from './view-state.js'
 
 export interface SectorRootView {
@@ -120,6 +121,7 @@ export type SectorRendererCallbacks = {
 export type SectorRenderer = {
 	setData(roots: SectorRootView[], units: string): void
 	setSelected(slug: string | null): void
+	setInteraction(policy: DisplayInteractionPolicy): void
 	setTheme(theme: { page: string, surface: string, accent: string, accentLight: string, secondary: string, dim: string, heading: string, faint: string }): void
 	resize(width: number, height: number): void
 	resetView(): void

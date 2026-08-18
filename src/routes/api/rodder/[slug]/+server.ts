@@ -2,11 +2,16 @@ import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
 import { handleServiceCall } from '$lib/server/utils.js'
-import { deleteRodder, getRodderBySlug, updateRodder } from '$lib/server/services/rodder-bodies.js'
+import { deleteRodder, updateRodder } from '$lib/server/services/rodder-bodies.js'
+import { resolveRodderEntityDocument } from '$lib/server/services/rodder-documents.js'
 
 /** GET /api/rodder/:slug */
 export const GET: RequestHandler = async ({ params }) => {
-	return handleServiceCall(async () => json(await getRodderBySlug(params.slug)))
+	return handleServiceCall(async () => {
+		const document = await resolveRodderEntityDocument(params.slug)
+		if (!document) return json({ error: 'Rodder entity not found' }, { status: 404 })
+		return json(document)
+	})
 }
 
 /**
