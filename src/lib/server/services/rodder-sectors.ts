@@ -1,12 +1,12 @@
 import { error } from '@sveltejs/kit'
 import { asc, eq, sql } from 'drizzle-orm'
 import { db } from '$lib/server/db/index.js'
-import { celestialBodies, celestialSectorRoots, celestialSectors } from '$lib/server/db/schema.js'
-import { CELESTIAL_TREE_CTE } from '$lib/server/celestial/hierarchy.js'
-import { createSectorSchema, updateSectorSchema, type CreateSectorInput } from '$lib/celestial/sector-schema.js'
+import { rodderBodies, rodderSectorRoots, rodderSectors } from '$lib/server/db/schema.js'
+import { RODDER_TREE_CTE } from '$lib/server/rodder/hierarchy.js'
+import { createSectorSchema, updateSectorSchema, type CreateSectorInput } from '$lib/rodder/sector-schema.js'
 
 /**
- * Sectors and sector roots (Celestial-Sector-and-System-Model.md).
+ * Sectors and sector roots (Rodder-Sector-and-System-Model.md).
  *
  * Sector frame authoring plus the root-maintenance helpers used by system
  * writes. Regions and routes remain future layers; sector CRUD and system
@@ -15,8 +15,8 @@ import { createSectorSchema, updateSectorSchema, type CreateSectorInput } from '
 
 type Dbx = Pick<typeof db, 'delete' | 'insert' | 'select' | 'update'>
 
-export type SectorRow = typeof celestialSectors.$inferSelect
-export type SectorRootRow = typeof celestialSectorRoots.$inferSelect
+export type SectorRow = typeof rodderSectors.$inferSelect
+export type SectorRootRow = typeof rodderSectorRoots.$inferSelect
 
 export interface SectorRootEntry {
 	rootId: number
@@ -46,12 +46,12 @@ export interface SectorDetail {
  */
 export async function resolveDefaultSectorId(dbx: Dbx): Promise<number> {
 	const [existing] = await dbx
-		.select({ id: celestialSectors.id })
-		.from(celestialSectors)
-		.orderBy(asc(celestialSectors.id))
+		.select({ id: rodderSectors.id })
+		.from(rodderSectors)
+		.orderBy(asc(rodderSectors.id))
 		.limit(1)
 	if (existing) return existing.id
-	const [created] = await dbx.insert(celestialSectors).values({
+	const [created] = await dbx.insert(rodderSectors).values({
 		name: 'Local Sector',
 		slug: 'local-sector',
 		description: 'Default sector created automatically for the first authored system.',
@@ -59,7 +59,7 @@ export async function resolveDefaultSectorId(dbx: Dbx): Promise<number> {
 		originKind: 'frame-centred',
 		handedness: 'right-handed',
 		provenance: 'authored',
-	}).returning({ id: celestialSectors.id })
+	}).returning({ id: rodderSectors.id })
 	return created.id
 }
 
@@ -67,9 +67,9 @@ export async function resolveDefaultSectorId(dbx: Dbx): Promise<number> {
 export async function resolveSectorId(dbx: Dbx, sectorId?: number | null): Promise<number> {
 	if (sectorId == null) return resolveDefaultSectorId(dbx)
 	const [sector] = await dbx
-		.select({ id: celestialSectors.id })
-		.from(celestialSectors)
-		.where(eq(celestialSectors.id, sectorId))
+		.select({ id: rodderSectors.id })
+		.from(rodderSectors)
+		.where(eq(rodderSectors.id, sectorId))
 	if (!sector) throw error(400, 'Sector not found')
 	return sector.id
 }
@@ -77,8 +77,8 @@ export async function resolveSectorId(dbx: Dbx, sectorId?: number | null): Promi
 export async function getSectorRootForBody(dbx: Dbx, bodyId: number): Promise<SectorRootRow | null> {
 	const [root] = await dbx
 		.select()
-		.from(celestialSectorRoots)
-		.where(eq(celestialSectorRoots.bodyId, bodyId))
+		.from(rodderSectorRoots)
+		.where(eq(rodderSectorRoots.bodyId, bodyId))
 	return root ?? null
 }
 
@@ -102,19 +102,19 @@ export async function upsertSectorRoot(
 		z: position?.z ?? null,
 		positionProvenance,
 	}
-	await dbx.insert(celestialSectorRoots)
+	await dbx.insert(rodderSectorRoots)
 		.values(values)
 		.onConflictDoUpdate({
-			target: celestialSectorRoots.bodyId,
+			target: rodderSectorRoots.bodyId,
 			set: { ...values, updatedAt: new Date() },
 		})
 }
 
 /** Move a root between frames without rewriting or normalizing its position. */
 export async function moveSectorRoot(dbx: Dbx, bodyId: number, sectorId: number) {
-	await dbx.update(celestialSectorRoots)
+	await dbx.update(rodderSectorRoots)
 		.set({ sectorId, updatedAt: new Date() })
-		.where(eq(celestialSectorRoots.bodyId, bodyId))
+		.where(eq(rodderSectorRoots.bodyId, bodyId))
 }
 
 /** All sectors with root/positioned counts, for the atlas index. */
@@ -129,8 +129,8 @@ export async function listSectorsForRegistry() {
 			s.created_at AS "createdAt", s.updated_at AS "updatedAt",
 			COUNT(r.id)::int AS "rootCount",
 			COUNT(r.id) FILTER (WHERE r.x IS NOT NULL AND r.y IS NOT NULL AND r.z IS NOT NULL)::int AS "positionedCount"
-		FROM celestial_sectors s
-		LEFT JOIN celestial_sector_roots r ON r.sector_id = s.id
+		FROM rodder_sectors s
+		LEFT JOIN rodder_sector_roots r ON r.sector_id = s.id
 		GROUP BY s.id
 		ORDER BY s.id
 	`) as unknown as Array<{
@@ -158,25 +158,25 @@ export async function listSectorsForRegistry() {
 }
 
 export async function listSectorReferences() {
-	return db.select({ id: celestialSectors.id, name: celestialSectors.name, units: celestialSectors.units })
-		.from(celestialSectors)
-		.orderBy(celestialSectors.name)
+	return db.select({ id: rodderSectors.id, name: rodderSectors.name, units: rodderSectors.units })
+		.from(rodderSectors)
+		.orderBy(rodderSectors.name)
 }
 
 async function assertSectorSlugAvailable(slug: string, exceptId?: number) {
 	const [existing] = await db
-		.select({ id: celestialSectors.id })
-		.from(celestialSectors)
-		.where(eq(celestialSectors.slug, slug))
+		.select({ id: rodderSectors.id })
+		.from(rodderSectors)
+		.where(eq(rodderSectors.slug, slug))
 	if (existing && existing.id !== exceptId) throw error(409, 'A sector with this slug already exists')
 }
 
 async function assertOriginBody(originBodyId: number | null) {
 	if (originBodyId == null) return
 	const [body] = await db
-		.select({ id: celestialBodies.id, kind: celestialBodies.kind })
-		.from(celestialBodies)
-		.where(eq(celestialBodies.id, originBodyId))
+		.select({ id: rodderBodies.id, kind: rodderBodies.kind })
+		.from(rodderBodies)
+		.where(eq(rodderBodies.id, originBodyId))
 	if (!body || body.kind !== 'system') throw error(400, 'Origin system not found')
 }
 
@@ -205,12 +205,12 @@ export async function createSector(raw: unknown) {
 	if (!parsed.success) throw error(400, parsed.error.issues[0].message)
 	await assertSectorSlugAvailable(parsed.data.slug)
 	await assertOriginBody(parsed.data.originBodyId)
-	const [created] = await db.insert(celestialSectors).values(sectorValues(parsed.data)).returning()
+	const [created] = await db.insert(rodderSectors).values(sectorValues(parsed.data)).returning()
 	return created
 }
 
 export async function updateSector(slug: string, raw: unknown) {
-	const [current] = await db.select().from(celestialSectors).where(eq(celestialSectors.slug, slug))
+	const [current] = await db.select().from(rodderSectors).where(eq(rodderSectors.slug, slug))
 	if (!current) throw error(404, 'Sector not found')
 	const patch = updateSectorSchema.safeParse(raw)
 	if (!patch.success) throw error(400, patch.error.issues[0].message)
@@ -218,33 +218,33 @@ export async function updateSector(slug: string, raw: unknown) {
 	if (!merged.success) throw error(400, merged.error.issues[0].message)
 	await assertSectorSlugAvailable(merged.data.slug, current.id)
 	await assertOriginBody(merged.data.originBodyId)
-	const [updated] = await db.update(celestialSectors)
+	const [updated] = await db.update(rodderSectors)
 		.set({ ...sectorValues(merged.data), updatedAt: new Date() })
-		.where(eq(celestialSectors.id, current.id))
+		.where(eq(rodderSectors.id, current.id))
 		.returning()
 	return updated
 }
 
 export async function deleteSector(slug: string) {
-	const [sector] = await db.select().from(celestialSectors).where(eq(celestialSectors.slug, slug))
+	const [sector] = await db.select().from(rodderSectors).where(eq(rodderSectors.slug, slug))
 	if (!sector) throw error(404, 'Sector not found')
 	const [usage] = await db.select({ count: sql<number>`COUNT(*)::int` })
-		.from(celestialSectorRoots)
-		.where(eq(celestialSectorRoots.sectorId, sector.id))
+		.from(rodderSectorRoots)
+		.where(eq(rodderSectorRoots.sectorId, sector.id))
 	if ((usage?.count ?? 0) > 0) {
 		throw error(409, 'Move every system out of this sector before deleting it')
 	}
-	await db.delete(celestialSectors).where(eq(celestialSectors.id, sector.id))
+	await db.delete(rodderSectors).where(eq(rodderSectors.id, sector.id))
 	return { deleted: true, id: sector.id, slug: sector.slug }
 }
 
 /** A sector's frame contract plus every root, annotated for display. 404s on a bad slug. */
 export async function getSectorBySlug(slug: string): Promise<SectorDetail> {
-	const [sector] = await db.select().from(celestialSectors).where(eq(celestialSectors.slug, slug))
+	const [sector] = await db.select().from(rodderSectors).where(eq(rodderSectors.slug, slug))
 	if (!sector) throw error(404, 'Sector not found')
 
 	const roots = await db.execute(sql`
-		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
+		WITH RECURSIVE ${RODDER_TREE_CTE}
 		SELECT
 			r.id AS "rootId", r.body_id AS "bodyId",
 			cb.name, cb.slug, cb.kind,
@@ -252,10 +252,10 @@ export async function getSectorBySlug(slug: string): Promise<SectorDetail> {
 			r.position_provenance AS "positionProvenance",
 			r.position_uncertainty AS "positionUncertainty",
 			cb.distance_ly AS "distanceLy",
-			(SELECT COUNT(*) FROM celestial_tree t WHERE t.root_id = cb.id AND t.kind = 'star')::int AS "starCount",
-			(SELECT COUNT(*) FROM celestial_tree t WHERE t.root_id = cb.id AND t.kind = 'body')::int AS "planetCount"
-		FROM celestial_sector_roots r
-		JOIN celestial_bodies cb ON cb.id = r.body_id
+			(SELECT COUNT(*) FROM rodder_tree t WHERE t.root_id = cb.id AND t.kind = 'star')::int AS "starCount",
+			(SELECT COUNT(*) FROM rodder_tree t WHERE t.root_id = cb.id AND t.kind = 'body')::int AS "planetCount"
+		FROM rodder_sector_roots r
+		JOIN rodder_bodies cb ON cb.id = r.body_id
 		WHERE r.sector_id = ${sector.id}
 		ORDER BY cb.name
 	`) as unknown as SectorRootEntry[]
@@ -267,20 +267,20 @@ export async function getSectorBySlug(slug: string): Promise<SectorDetail> {
 export async function getSectorContextForRoot(bodyId: number) {
 	const [row] = await db
 		.select({
-			sectorId: celestialSectors.id,
-			sectorName: celestialSectors.name,
-			sectorSlug: celestialSectors.slug,
-			units: celestialSectors.units,
-			originKind: celestialSectors.originKind,
-			sectorProvenance: celestialSectors.provenance,
-			x: celestialSectorRoots.x,
-			y: celestialSectorRoots.y,
-			z: celestialSectorRoots.z,
-			positionProvenance: celestialSectorRoots.positionProvenance,
+			sectorId: rodderSectors.id,
+			sectorName: rodderSectors.name,
+			sectorSlug: rodderSectors.slug,
+			units: rodderSectors.units,
+			originKind: rodderSectors.originKind,
+			sectorProvenance: rodderSectors.provenance,
+			x: rodderSectorRoots.x,
+			y: rodderSectorRoots.y,
+			z: rodderSectorRoots.z,
+			positionProvenance: rodderSectorRoots.positionProvenance,
 		})
-		.from(celestialSectorRoots)
-		.innerJoin(celestialSectors, eq(celestialSectors.id, celestialSectorRoots.sectorId))
-		.where(eq(celestialSectorRoots.bodyId, bodyId))
+		.from(rodderSectorRoots)
+		.innerJoin(rodderSectors, eq(rodderSectors.id, rodderSectorRoots.sectorId))
+		.where(eq(rodderSectorRoots.bodyId, bodyId))
 	return row ?? null
 }
 

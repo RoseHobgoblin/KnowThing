@@ -1,12 +1,12 @@
 <script lang="ts">
 	import type { BodyModel, StarModel } from 'tungolcraft'
-	import { celestialStatTiles } from './projections.js'
+	import { rodderStatTiles } from './projections.js'
 
 	let { model }: { model: BodyModel | StarModel } = $props()
 
 	// A projection of the SAME model the infobox reads — rendered as an at-a-glance
 	// grid instead of an exhaustive vertical list.
-	const tiles = $derived(celestialStatTiles(model))
+	const tiles = $derived(rodderStatTiles(model))
 </script>
 
 {#if tiles.length > 0}

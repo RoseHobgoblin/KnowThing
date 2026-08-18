@@ -133,7 +133,7 @@ This level answers questions such as:
 - Which systems are connected by jump lanes, trade routes, or communications?
 - Where are fleets, anomalies, surveys, or frontiers?
 
-Its primary reference is a declared three-dimensional sector or setting coordinate frame. Root objects—including stellar systems, rogue worlds, stations, phenomena, fleets, and markers—have sector positions; descendants use parent-relative orbital state. Migration 0054 replaced the old bare `galacticX/Y/Z` fields with `celestial_sectors` frame contracts and `celestial_sector_roots` positions. The adopted hierarchy and interstellar-object rules are defined in the [Celestial Sector and System Model](./celestial/Celestial-Sector-and-System-Model.md).
+Its primary reference is a declared three-dimensional sector or setting coordinate frame. Root objects—including stellar systems, rogue worlds, stations, phenomena, fleets, and markers—have sector positions; descendants use parent-relative orbital state. Migration 0054 replaced the old bare `galacticX/Y/Z` fields with `rodder_sectors` frame contracts and `rodder_sector_roots` positions. The adopted hierarchy and interstellar-object rules are defined in the [Celestial Sector and System Model](./celestial/Celestial-Sector-and-System-Model.md).
 
 ### Star-system level
 
@@ -710,8 +710,8 @@ Names are provisional, but the product should expose these concepts directly:
 /atlas/[space]/edit                     layer composition and draft release
 /atlas/[space]/import                   ingest assets or legacy maps
 /atlas/[space]/views/[view]             named shareable view
-/celestial/[system]                     existing system detail and orrery
-/celestial/[body]/surface               redirect or entry into its Atlas space
+/rodder/[root]                          existing root detail and local Orrery
+/rodder/[body]/surface                  redirect or entry into its Atlas space
 ```
 
 The surface viewer should include:

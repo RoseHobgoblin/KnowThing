@@ -7,7 +7,7 @@
 	import Button from '$lib/components/ui/Button.svelte'
 	import Input from '$lib/components/ui/Input.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
-	import { celestialPresets, type CelestialPreset } from '$lib/celestial/presets.js'
+	import { rodderPresets, type RodderPreset } from '$lib/rodder/presets.js'
 	import { urlSlugify } from '$lib/utils/slugify.js'
 	import { cn } from '$lib/utils.js'
 	import { pushError, pushSuccess } from '$lib/notifications.svelte.js'
@@ -95,9 +95,9 @@
 					parentId: validBodyParentId ? Number(validBodyParentId) : Number(bodyStarId),
 				}
 			}
-			const created = await api<Created>('POST', '/api/celestial', payload)
+			const created = await api<Created>('POST', '/api/rodder', payload)
 			pushSuccess(`“${created.name}” created`)
-			await goto(resolve('/[...ns_path=namespaced]', { ns_path: `Celestial:${created.slug}/configure` }))
+			await goto(resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${created.slug}/configure` }))
 		} catch (error) {
 			pushError(error instanceof Error ? error.message : 'Create failed')
 		} finally {
@@ -105,12 +105,12 @@
 		}
 	}
 
-	async function createPreset(preset: CelestialPreset) {
+	async function createPreset(preset: RodderPreset) {
 		saving = true
 		try {
-			const created = await api<Created>('POST', '/api/celestial/preset', { preset: preset.label })
+			const created = await api<Created>('POST', '/api/rodder/preset', { preset: preset.label })
 			pushSuccess(`“${created.name}” created with its stars and bodies`)
-			await goto(resolve('/[...ns_path=namespaced]', { ns_path: `Celestial:${created.slug}` }))
+			await goto(resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${created.slug}` }))
 		} catch (error) {
 			pushError(error instanceof Error ? error.message : 'Preset creation failed')
 		} finally {
@@ -146,7 +146,7 @@
 		<h3 class="text-sm font-semibold text-heading">Complete system presets</h3>
 		<p class="mt-1 text-xs text-secondary">Each preset is created atomically: the entire hierarchy succeeds or nothing is written.</p>
 		<div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-			{#each celestialPresets as preset (preset.label)}
+			{#each rodderPresets as preset (preset.label)}
 				<button type="button" disabled={saving} onclick={() => createPreset(preset)} class="border border-border-subtle bg-page p-4 text-left transition-colors hover:border-accent-border hover:bg-raised disabled:opacity-50">
 					<span class="block font-semibold text-heading">{preset.label}</span>
 					<span class="mt-1 block text-xs text-secondary">{preset.stars.length} {preset.stars.length === 1 ? 'star' : 'stars'} · {preset.system.name}</span>
@@ -200,6 +200,6 @@
 
 {#if kind === 'system' && sectors.length === 0}
 	<div class="mt-3 border border-warning-border bg-warning-bg p-3 text-sm text-body">
-		Create a <a href={resolve('/celestial/manage/sectors')} class="text-link hover:text-link-hover">sector frame</a> before adding a system.
+		Create a <a href={resolve('/rodder/manage/sectors')} class="text-link hover:text-link-hover">sector frame</a> before adding a system.
 	</div>
 {/if}

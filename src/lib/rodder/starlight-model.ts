@@ -1,4 +1,4 @@
-import type { MapBody } from './system-layout.js'
+import type { MapBody } from './root-layout.js'
 
 export const SOLAR_LUMINOSITY_W = 3.828e26
 export const STEFAN_BOLTZMANN_W_M2_K4 = 5.670374419e-8

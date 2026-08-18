@@ -19,7 +19,7 @@ export default defineConfig({
 	},
 	webServer: {
 		command: 'npm run dev -- --host 127.0.0.1 --port 4174',
-		url: 'http://127.0.0.1:4174/test/celestial-map',
+		url: 'http://127.0.0.1:4174/test/rodder-root-map',
 		reuseExistingServer: !process.env.CI,
 		timeout: 120_000,
 	},

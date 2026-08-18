@@ -1,5 +1,5 @@
 import { db } from './db/index.js'
-import { calendars, celestialBodies, contentLinks, contentRecords, languages, lexicon } from './db/schema.js'
+import { calendars, rodderBodies, contentLinks, contentRecords, languages, lexicon } from './db/schema.js'
 import { eq, sql, and, inArray } from 'drizzle-orm'
 
 export interface ResolvedLink {
@@ -8,7 +8,7 @@ export interface ResolvedLink {
 }
 
 /** All content domains — unresolved links in one domain fall through to the others */
-const ALL_DOMAINS = ['know', 'celestial', 'calendar']
+const ALL_DOMAINS = ['know', 'rodder', 'calendar']
 
 export type EntitySource =
 	| { kind: 'know', contentRecordId: number }
@@ -123,7 +123,7 @@ async function resolveLinkRows(rows: LinkRow[]): Promise<Map<string, ResolvedLin
 		const stillUnresolved = unresolvedEntries.filter(({ domain, slug }) =>
 			!result.get(`${domain}:${slug}`)?.exists,
 		)
-		await resolveCelestialFallthrough(stillUnresolved, result)
+		await resolveRodderFallthrough(stillUnresolved, result)
 		await resolveCalendarFallthrough(stillUnresolved, result)
 		await resolveWordbookFallthrough(stillUnresolved, result)
 	}
@@ -180,23 +180,23 @@ export async function resolveLinkTargets(
 	}))
 }
 
-async function resolveCelestialFallthrough(
+async function resolveRodderFallthrough(
 	unresolved: { domain: string, slug: string }[],
 	result: Map<string, ResolvedLink>,
 ): Promise<void> {
-	const slugs = [...new Set(unresolved.filter(e => e.domain === 'celestial').map(e => e.slug))]
+	const slugs = [...new Set(unresolved.filter(e => e.domain === 'rodder').map(e => e.slug))]
 	if (slugs.length === 0) return
 	const matches = await db
-		.select({ slug: celestialBodies.slug })
-		.from(celestialBodies)
-		.where(inArray(sql`LOWER(${celestialBodies.slug})`, slugs))
+		.select({ slug: rodderBodies.slug })
+		.from(rodderBodies)
+		.where(inArray(sql`LOWER(${rodderBodies.slug})`, slugs))
 	const known = new Map<string, string>()
 	for (const row of matches) {
 		known.set(row.slug.toLowerCase(), row.slug)
 	}
-	for (const { slug } of unresolved.filter(e => e.domain === 'celestial')) {
+	for (const { slug } of unresolved.filter(e => e.domain === 'rodder')) {
 		const canonical = known.get(slug)
-		if (canonical) result.set(`celestial:${slug}`, { href: buildHref('celestial', canonical, null), exists: true })
+		if (canonical) result.set(`rodder:${slug}`, { href: buildHref('rodder', canonical, null), exists: true })
 	}
 }
 
@@ -290,7 +290,7 @@ async function resolveWordbookFallthrough(
 
 function buildHref(domain: string, slug: string, parentPath: string | null | undefined): string {
 	if (domain === 'know') return `/know/${slug}`
-	if (domain === 'celestial') return `/Celestial:${encodeURI(slug)}`
+	if (domain === 'rodder') return `/Rodder:${encodeURI(slug)}`
 	if (domain === 'calendar') return `/Calendar:${encodeURI(slug)}`
 	// `wordbook` slugs are stored in `<lang>` or `<lang>/<word>` form already.
 	if (domain === 'wordbook') return `/Wordbook/${slug}`

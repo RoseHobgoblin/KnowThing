@@ -2,65 +2,65 @@ import { error } from '@sveltejs/kit'
 import { eq, sql } from 'drizzle-orm'
 import type { z } from 'zod'
 import { db } from '$lib/server/db/index.js'
-import { celestialBodies } from '$lib/server/db/schema.js'
+import { rodderBodies } from '$lib/server/db/schema.js'
 import {
 	CREATE_SCHEMAS,
 	UPDATE_SCHEMAS,
 	type createSystemSchema,
 	type createStarSchema,
 	type createPlanetaryBodySchema,
-} from '$lib/celestial/schema.js'
-import { validateParentKind, isCelestialKind, type CelestialKind } from '$lib/celestial/parent-rules.js'
-import { mergeSectorPosition, type SectorPositionMerge } from '$lib/celestial/sector-position.js'
+} from '$lib/rodder/schema.js'
+import { validateParentKind, isRodderKind, type RodderKind } from '$lib/rodder/parent-rules.js'
+import { mergeSectorPosition, type SectorPositionMerge } from '$lib/rodder/sector-position.js'
 import {
 	getSectorRootForBody,
 	moveSectorRoot,
 	resolveSectorId,
 	upsertSectorRoot,
-} from '$lib/server/services/celestial-sectors.js'
-import { celestialPresets, type BodyPreset } from '$lib/celestial/presets.js'
+} from '$lib/server/services/rodder-sectors.js'
+import { rodderPresets, type BodyPreset } from '$lib/rodder/presets.js'
 import { urlSlugify } from '$lib/utils/slugify.js'
-import { CELESTIAL_TREE_CTE, celestialCycleWouldForm } from '$lib/server/celestial/hierarchy.js'
+import { RODDER_TREE_CTE, rodderCycleWouldForm } from '$lib/server/rodder/hierarchy.js'
 import {
-	deleteCelestialEntity,
+	deleteRodderEntity,
 	applyFieldUpdates,
 	applyNameUpdate,
 	applySlugUpdate,
 	mergeOverrideExtras,
 	STAR_OVERRIDE_MAP,
 	BODY_OVERRIDE_MAP,
-} from '$lib/server/celestial/update-helpers.js'
+} from '$lib/server/rodder/update-helpers.js'
 import { moveContentByDomainSlug } from '$lib/server/services/content-records.js'
 import {
-	normalizeCelestialMediaBindings,
+	normalizeRodderMediaBindings,
 	replaceMediaBindingsForOwner,
 } from '$lib/server/services/media-bindings.js'
 import {
 	installPresetSurface,
-	prepareCelestialPresetAssets,
-} from '$lib/server/services/celestial-preset-assets.js'
+	prepareRodderPresetAssets,
+} from '$lib/server/services/rodder-preset-assets.js'
 
 type CreateSystemInput = z.infer<typeof createSystemSchema>
 type CreateStarInput = z.infer<typeof createStarSchema>
 type CreateBodyInput = z.infer<typeof createPlanetaryBodySchema>
-export type CreateCelestialInput = CreateSystemInput | CreateStarInput | CreateBodyInput
+export type CreateRodderInput = CreateSystemInput | CreateStarInput | CreateBodyInput
 
-type CelestialRow = typeof celestialBodies.$inferSelect
+type RodderRow = typeof rodderBodies.$inferSelect
 
-const KIND_LABEL: Record<CelestialKind, string> = { system: 'System', star: 'Star', body: 'Body' }
+const KIND_LABEL: Record<RodderKind, string> = { system: 'System', star: 'Star', body: 'Body' }
 
 /**
- * List celestial entities of one kind (or all), annotated with the aggregate
+ * List rodder entities of one kind (or all), annotated with the aggregate
  * counts the old per-table list endpoints exposed:
  *  - system: starCount / planetCount over ALL descendants
  *  - star:   planetCount = descendant bodies whose nearest star is this one
  *            (the single-table equivalent of the old `star_id` join)
  *  - body:   moonCount = direct child bodies, plus nearest star name/slug
  */
-export async function listCelestial(options: { kind?: CelestialKind, starSlug?: string | null } = {}) {
+export async function listRodder(options: { kind?: RodderKind, starSlug?: string | null } = {}) {
 	const { kind, starSlug } = options
 	let query = sql`
-		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
+		WITH RECURSIVE ${RODDER_TREE_CTE}
 		SELECT
 			cb.*,
 			p.name AS "parentName", p.slug AS "parentSlug", p.kind AS "parentKind",
@@ -70,18 +70,18 @@ export async function listCelestial(options: { kind?: CelestialKind, starSlug?: 
 			sr.x AS "sectorX", sr.y AS "sectorY", sr.z AS "sectorZ",
 			sr.position_provenance AS "sectorPositionProvenance",
 			sr.position_uncertainty AS "sectorPositionUncertainty",
-			(SELECT COUNT(*) FROM celestial_tree t WHERE t.root_id = cb.id AND t.kind = 'star')::int AS "starCount",
-			(SELECT COUNT(*) FROM celestial_tree t
+			(SELECT COUNT(*) FROM rodder_tree t WHERE t.root_id = cb.id AND t.kind = 'star')::int AS "starCount",
+			(SELECT COUNT(*) FROM rodder_tree t
 				WHERE t.kind = 'body'
 					AND CASE cb.kind WHEN 'star' THEN t.nearest_star_id = cb.id ELSE t.root_id = cb.id END
 			)::int AS "planetCount",
-			(SELECT COUNT(*) FROM celestial_bodies m WHERE m.parent_id = cb.id AND m.kind = 'body')::int AS "moonCount"
-		FROM celestial_bodies cb
-		JOIN celestial_tree tree ON tree.id = cb.id
-		LEFT JOIN celestial_bodies p ON p.id = cb.parent_id
-		LEFT JOIN celestial_bodies ns ON ns.id = tree.nearest_star_id AND cb.kind = 'body'
-		LEFT JOIN celestial_sector_roots sr ON sr.body_id = cb.id
-		LEFT JOIN celestial_sectors s ON s.id = sr.sector_id
+			(SELECT COUNT(*) FROM rodder_bodies m WHERE m.parent_id = cb.id AND m.kind = 'body')::int AS "moonCount"
+		FROM rodder_bodies cb
+		JOIN rodder_tree tree ON tree.id = cb.id
+		LEFT JOIN rodder_bodies p ON p.id = cb.parent_id
+		LEFT JOIN rodder_bodies ns ON ns.id = tree.nearest_star_id AND cb.kind = 'body'
+		LEFT JOIN rodder_sector_roots sr ON sr.body_id = cb.id
+		LEFT JOIN rodder_sectors s ON s.id = sr.sector_id
 	`
 	const conditions = []
 	if (kind) conditions.push(sql`cb.kind = ${kind}`)
@@ -93,9 +93,9 @@ export async function listCelestial(options: { kind?: CelestialKind, starSlug?: 
 	return db.execute(query)
 }
 
-export async function getCelestialBySlug(slug: string) {
+export async function getRodderBySlug(slug: string) {
 	const result = await db.execute(sql`
-		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
+		WITH RECURSIVE ${RODDER_TREE_CTE}
 		SELECT
 			cb.*,
 			p.name AS "parentName", p.slug AS "parentSlug", p.kind AS "parentKind",
@@ -105,21 +105,21 @@ export async function getCelestialBySlug(slug: string) {
 			sr.x AS "sectorX", sr.y AS "sectorY", sr.z AS "sectorZ",
 			sr.position_provenance AS "sectorPositionProvenance",
 			sr.position_uncertainty AS "sectorPositionUncertainty",
-			(SELECT COUNT(*) FROM celestial_tree t WHERE t.root_id = cb.id AND t.kind = 'star')::int AS "starCount",
-			(SELECT COUNT(*) FROM celestial_tree t
+			(SELECT COUNT(*) FROM rodder_tree t WHERE t.root_id = cb.id AND t.kind = 'star')::int AS "starCount",
+			(SELECT COUNT(*) FROM rodder_tree t
 				WHERE t.kind = 'body'
 					AND CASE cb.kind WHEN 'star' THEN t.nearest_star_id = cb.id ELSE t.root_id = cb.id END
 			)::int AS "planetCount",
-			(SELECT COUNT(*) FROM celestial_bodies m WHERE m.parent_id = cb.id AND m.kind = 'body')::int AS "moonCount"
-		FROM celestial_bodies cb
-		JOIN celestial_tree tree ON tree.id = cb.id
-		LEFT JOIN celestial_bodies p ON p.id = cb.parent_id
-		LEFT JOIN celestial_bodies ns ON ns.id = tree.nearest_star_id AND cb.kind = 'body'
-		LEFT JOIN celestial_sector_roots sr ON sr.body_id = cb.id
-		LEFT JOIN celestial_sectors s ON s.id = sr.sector_id
+			(SELECT COUNT(*) FROM rodder_bodies m WHERE m.parent_id = cb.id AND m.kind = 'body')::int AS "moonCount"
+		FROM rodder_bodies cb
+		JOIN rodder_tree tree ON tree.id = cb.id
+		LEFT JOIN rodder_bodies p ON p.id = cb.parent_id
+		LEFT JOIN rodder_bodies ns ON ns.id = tree.nearest_star_id AND cb.kind = 'body'
+		LEFT JOIN rodder_sector_roots sr ON sr.body_id = cb.id
+		LEFT JOIN rodder_sectors s ON s.id = sr.sector_id
 		WHERE cb.slug = ${slug}
 	`)
-	if (result.length === 0) throw error(404, 'Celestial entity not found')
+	if (result.length === 0) throw error(404, 'Rodder entity not found')
 	return result[0]
 }
 
@@ -127,24 +127,24 @@ export async function getCelestialBySlug(slug: string) {
 type Dbx = Pick<typeof db, 'delete' | 'insert' | 'select' | 'update'>
 
 async function assertSlugAvailable(dbx: Dbx, slug: string) {
-	const [existing] = await dbx.select({ id: celestialBodies.id }).from(celestialBodies).where(eq(celestialBodies.slug, slug))
-	if (existing) throw error(409, 'A celestial entity with this slug already exists')
+	const [existing] = await dbx.select({ id: rodderBodies.id }).from(rodderBodies).where(eq(rodderBodies.slug, slug))
+	if (existing) throw error(409, 'A rodder entity with this slug already exists')
 }
 
 /** Load a prospective parent and enforce the kind matrix. Throws 400. */
-async function loadValidatedParent(dbx: Dbx, kind: CelestialKind, parentId: number, bodyType?: string | null) {
+async function loadValidatedParent(dbx: Dbx, kind: RodderKind, parentId: number, bodyType?: string | null) {
 	const [parent] = await dbx
-		.select({ id: celestialBodies.id, kind: celestialBodies.kind, massKg: celestialBodies.massKg })
-		.from(celestialBodies)
-		.where(eq(celestialBodies.id, parentId))
+		.select({ id: rodderBodies.id, kind: rodderBodies.kind, massKg: rodderBodies.massKg })
+		.from(rodderBodies)
+		.where(eq(rodderBodies.id, parentId))
 	if (!parent) throw error(400, 'Parent entity not found')
-	if (!isCelestialKind(parent.kind)) throw error(500, 'Parent entity has an invalid kind')
+	if (!isRodderKind(parent.kind)) throw error(500, 'Parent entity has an invalid kind')
 	const message = validateParentKind(kind, parent.kind, bodyType)
 	if (message) throw error(400, message)
 	return parent
 }
 
-function assertMergedValid(kind: CelestialKind, current: CelestialRow, patch: Record<string, unknown>) {
+function assertMergedValid(kind: RodderKind, current: RodderRow, patch: Record<string, unknown>) {
 	const merged = CREATE_SCHEMAS[kind].safeParse({
 		...current,
 		...patch,
@@ -152,13 +152,13 @@ function assertMergedValid(kind: CelestialKind, current: CelestialRow, patch: Re
 	if (!merged.success) throw error(400, merged.error.issues[0].message)
 }
 
-export async function createCelestial(kind: CelestialKind, data: CreateCelestialInput) {
-	const created = await db.transaction(async tx => createCelestialIn(tx, kind, data))
-	return getCelestialBySlug(created.slug)
+export async function createRodder(kind: RodderKind, data: CreateRodderInput) {
+	const created = await db.transaction(async tx => createRodderIn(tx, kind, data))
+	return getRodderBySlug(created.slug)
 }
 
 /** Create one entity against an executor — lets preset seeding batch several into one transaction. */
-async function createCelestialIn(dbx: Dbx, kind: CelestialKind, data: CreateCelestialInput) {
+async function createRodderIn(dbx: Dbx, kind: RodderKind, data: CreateRodderInput) {
 	const slug = data.slug.trim().toLowerCase()
 	await assertSlugAvailable(dbx, slug)
 
@@ -251,9 +251,9 @@ async function createCelestialIn(dbx: Dbx, kind: CelestialKind, data: CreateCele
 	})
 }
 
-async function insertRow(dbx: Dbx, values: typeof celestialBodies.$inferInsert) {
-	const [created] = await dbx.insert(celestialBodies).values(values).returning()
-	const [refetched] = await dbx.select().from(celestialBodies).where(eq(celestialBodies.id, created.id))
+async function insertRow(dbx: Dbx, values: typeof rodderBodies.$inferInsert) {
+	const [created] = await dbx.insert(rodderBodies).values(values).returning()
+	const [refetched] = await dbx.select().from(rodderBodies).where(eq(rodderBodies.id, created.id))
 	return refetched ?? created
 }
 
@@ -263,19 +263,19 @@ async function insertRow(dbx: Dbx, values: typeof celestialBodies.$inferInsert) 
  * everything back instead of orphaning a half-built system, which is what the
  * old one-POST-per-entity client flow did.
  */
-export async function createCelestialFromPreset(label: string) {
-	const preset = celestialPresets.find(p => p.label === label)
+export async function createRodderFromPreset(label: string) {
+	const preset = rodderPresets.find(p => p.label === label)
 	if (!preset) throw error(400, `Unknown preset: ${label}`)
-	const preparedAssets = await prepareCelestialPresetAssets(preset)
+	const preparedAssets = await prepareRodderPresetAssets(preset)
 
 	return db.transaction(async (tx) => {
-		const system = await createCelestialIn(tx, 'system', CREATE_SCHEMAS.system.parse({
+		const system = await createRodderIn(tx, 'system', CREATE_SCHEMAS.system.parse({
 			name: preset.system.name,
 			slug: urlSlugify(preset.system.name),
 		}))
 
 		for (const starPreset of preset.stars) {
-			const star = await createCelestialIn(tx, 'star', CREATE_SCHEMAS.star.parse({
+			const star = await createRodderIn(tx, 'star', CREATE_SCHEMAS.star.parse({
 				name: starPreset.name,
 				slug: urlSlugify(starPreset.name),
 				parentId: system.id,
@@ -291,11 +291,11 @@ export async function createCelestialFromPreset(label: string) {
 
 			for (const bodyPreset of starPreset.bodies) {
 				const bodyExtra = await installPresetSurface(tx, bodyPreset, preparedAssets.get(bodyPreset))
-				const planet = await createCelestialIn(tx, 'body', presetBodyInput(bodyPreset, star.id, bodyExtra))
+				const planet = await createRodderIn(tx, 'body', presetBodyInput(bodyPreset, star.id, bodyExtra))
 				await registerCreatedMediaBindings(tx, planet)
 				for (const moonPreset of bodyPreset.moons ?? []) {
 					const moonExtra = await installPresetSurface(tx, moonPreset, preparedAssets.get(moonPreset))
-					const moon = await createCelestialIn(tx, 'body', presetBodyInput(moonPreset, planet.id, moonExtra))
+					const moon = await createRodderIn(tx, 'body', presetBodyInput(moonPreset, planet.id, moonExtra))
 					await registerCreatedMediaBindings(tx, moon)
 				}
 			}
@@ -305,12 +305,12 @@ export async function createCelestialFromPreset(label: string) {
 	})
 }
 
-async function registerCreatedMediaBindings(dbx: Dbx, body: CelestialRow) {
+async function registerCreatedMediaBindings(dbx: Dbx, body: RodderRow) {
 	if (!body.extra || typeof body.extra !== 'object' || !('surface' in body.extra)) return
-	const normalized = await normalizeCelestialMediaBindings(dbx, body.id, 'body', body.extra)
+	const normalized = await normalizeRodderMediaBindings(dbx, body.id, 'body', body.extra)
 	if (!normalized) return
-	await dbx.update(celestialBodies).set({ extra: normalized.extra }).where(eq(celestialBodies.id, body.id))
-	await replaceMediaBindingsForOwner(dbx, 'celestial', body.id, normalized.rows)
+	await dbx.update(rodderBodies).set({ extra: normalized.extra }).where(eq(rodderBodies.id, body.id))
+	await replaceMediaBindingsForOwner(dbx, 'rodder', body.id, normalized.rows)
 }
 
 function presetBodyInput(preset: BodyPreset, parentId: number, extra: Record<string, unknown>) {
@@ -345,10 +345,10 @@ function presetBodyInput(preset: BodyPreset, parentId: number, extra: Record<str
  * Update by slug. The kind is only known once the row is loaded, so — unlike
  * the create path — the Zod parse happens here rather than in the route.
  */
-export async function updateCelestial(slug: string, raw: unknown) {
-	const [current] = await db.select().from(celestialBodies).where(eq(celestialBodies.slug, slug))
-	if (!current) throw error(404, 'Celestial entity not found')
-	if (!isCelestialKind(current.kind)) throw error(500, 'Celestial entity has an invalid kind')
+export async function updateRodder(slug: string, raw: unknown) {
+	const [current] = await db.select().from(rodderBodies).where(eq(rodderBodies.slug, slug))
+	if (!current) throw error(404, 'Rodder entity not found')
+	if (!isRodderKind(current.kind)) throw error(500, 'Rodder entity has an invalid kind')
 	const kind = current.kind
 
 	const parsed = UPDATE_SCHEMAS[kind].safeParse(raw)
@@ -363,7 +363,7 @@ export async function updateCelestial(slug: string, raw: unknown) {
 	if (data.parentId != null) {
 		const bodyType = ('bodyType' in data ? data.bodyType : current.bodyType) as string | null
 		await loadValidatedParent(db, kind, data.parentId, bodyType)
-		if (await celestialCycleWouldForm(current.id, data.parentId)) {
+		if (await rodderCycleWouldForm(current.id, data.parentId)) {
 			throw error(400, 'Cannot set parent to self or a descendant (circular reference)')
 		}
 	}
@@ -373,13 +373,13 @@ export async function updateCelestial(slug: string, raw: unknown) {
 	if (typeof data.name === 'string') {
 		if (data.slug === undefined) {
 			// No explicit slug in the patch — keep the legacy auto-follow behavior.
-			await applyNameUpdate(setClause, data.name, current.slug, celestialBodies, celestialBodies.id, celestialBodies.slug)
+			await applyNameUpdate(setClause, data.name, current.slug, rodderBodies, rodderBodies.id, rodderBodies.slug)
 		} else {
 			setClause.name = data.name.trim()
 		}
 	}
 	if (typeof data.slug === 'string') {
-		await applySlugUpdate(setClause, data.slug, current.slug, celestialBodies, celestialBodies.id, celestialBodies.slug)
+		await applySlugUpdate(setClause, data.slug, current.slug, rodderBodies, rodderBodies.id, rodderBodies.slug)
 	}
 
 	// Sector position lives on the root record, not the system row. Merge the
@@ -426,12 +426,12 @@ export async function updateCelestial(slug: string, raw: unknown) {
 	}
 
 	const updated = await db.transaction(async (tx) => {
-		const mediaBindingUpdate = await normalizeCelestialMediaBindings(tx, current.id, kind, setClause.extra ?? current.extra)
+		const mediaBindingUpdate = await normalizeRodderMediaBindings(tx, current.id, kind, setClause.extra ?? current.extra)
 		if (mediaBindingUpdate) setClause.extra = mediaBindingUpdate.extra
-		const [saved] = await tx.update(celestialBodies).set(setClause).where(eq(celestialBodies.slug, slug)).returning()
+		const [saved] = await tx.update(rodderBodies).set(setClause).where(eq(rodderBodies.slug, slug)).returning()
 		if (!saved) return null
 		if (mediaBindingUpdate) {
-			await replaceMediaBindingsForOwner(tx, 'celestial', current.id, mediaBindingUpdate.rows)
+			await replaceMediaBindingsForOwner(tx, 'rodder', current.id, mediaBindingUpdate.rows)
 		}
 
 		// Persist the merged sector position on the root record. Provenance
@@ -450,22 +450,22 @@ export async function updateCelestial(slug: string, raw: unknown) {
 
 		// Keep any legacy content record keyed to this entity's slug in sync.
 		if (typeof setClause.slug === 'string' && setClause.slug !== current.slug) {
-			await moveContentByDomainSlug(tx, 'celestial', current.slug, setClause.slug)
+			await moveContentByDomainSlug(tx, 'rodder', current.slug, setClause.slug)
 		}
 
-		const [refetched] = await tx.select().from(celestialBodies).where(eq(celestialBodies.id, saved.id))
+		const [refetched] = await tx.select().from(rodderBodies).where(eq(rodderBodies.id, saved.id))
 		return refetched ?? saved
 	})
 
-	if (!updated) throw error(404, 'Celestial entity not found')
-	return getCelestialBySlug(updated.slug)
+	if (!updated) throw error(404, 'Rodder entity not found')
+	return getRodderBySlug(updated.slug)
 }
 
-export async function deleteCelestial(slug: string) {
+export async function deleteRodder(slug: string) {
 	const [current] = await db
-		.select({ kind: celestialBodies.kind })
-		.from(celestialBodies)
-		.where(eq(celestialBodies.slug, slug))
-	const label = current && isCelestialKind(current.kind) ? KIND_LABEL[current.kind] : 'Celestial entity'
-	return deleteCelestialEntity(celestialBodies, celestialBodies.slug, slug, label)
+		.select({ kind: rodderBodies.kind })
+		.from(rodderBodies)
+		.where(eq(rodderBodies.slug, slug))
+	const label = current && isRodderKind(current.kind) ? KIND_LABEL[current.kind] : 'Rodder entity'
+	return deleteRodderEntity(rodderBodies, rodderBodies.slug, slug, label)
 }

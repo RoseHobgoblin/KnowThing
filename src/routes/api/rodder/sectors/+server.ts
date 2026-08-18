@@ -2,9 +2,9 @@ import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { handleServiceCall } from '$lib/server/utils.js'
 import { requireRole } from '$lib/server/auth.js'
-import { createSector, listSectorsForRegistry } from '$lib/server/services/celestial-sectors.js'
+import { createSector, listSectorsForRegistry } from '$lib/server/services/rodder-sectors.js'
 
-/** GET /api/celestial/sectors — list sectors with root counts and frame contracts. */
+/** GET /api/rodder/sectors — list sectors with root counts and frame contracts. */
 export const GET: RequestHandler = async () => {
 	return handleServiceCall(async () => json(await listSectorsForRegistry()))
 }

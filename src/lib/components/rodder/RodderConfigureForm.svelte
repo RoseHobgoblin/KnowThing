@@ -14,9 +14,9 @@
 	import UnsavedChangesGuard from '$lib/components/editor/UnsavedChangesGuard.svelte'
 	import SaveStatusBadge from '$lib/components/editor/SaveStatusBadge.svelte'
 	import FormNotice from '$lib/components/editor/FormNotice.svelte'
-	import CelestialSurfacePreview from '$lib/components/celestial/CelestialSurfacePreview.svelte'
+	import RodderSurfacePreview from '$lib/components/rodder/RodderSurfacePreview.svelte'
 	import MediaAssetPicker from '$lib/components/media/MediaAssetPicker.svelte'
-	import { celestialConfigureBreadcrumbs } from '$lib/utils/breadcrumbs.js'
+	import { rodderConfigureBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import { goto } from '$app/navigation'
 	import { resolve } from '$app/paths'
@@ -27,14 +27,14 @@
 	import { cn, summarizeZodIssues } from '$lib/utils.js'
 	import { urlSlugify } from '$lib/utils/slugify.js'
 	import {
-		CELESTIAL_FORM_CONFIGS,
+		RODDER_FORM_CONFIGS,
 		allFieldSpecs,
 		buildDraft,
 		buildPayload,
 		labelOf,
 		lockFlagKey,
 		parsePrimarySelection,
-		type CelestialFormKind,
+		type RodderFormKind,
 		type FieldContext,
 		type FieldSpec,
 		type NumberFieldSpec,
@@ -43,15 +43,15 @@
 		type SystemReferenceOption,
 		type StarReferenceOption,
 		type BodyReferenceOption,
-	} from '$lib/celestial/form-registry.js'
-	import { surfaceRecipeFromDraft } from '$lib/celestial/surface-editor.js'
-	import { weatherRecipeFromDraft } from '$lib/celestial/weather-editor.js'
-	import { stellarSurfaceRecipeFromDraft } from '$lib/celestial/stellar-surface-editor.js'
-	import { resolveHostStarTemperatureK } from '$lib/celestial/stellar-surface-model.js'
-	import { spectralColor } from '$lib/celestial/colors.js'
-	import type { MapBody } from '$lib/celestial/system-layout.js'
+	} from '$lib/rodder/form-registry.js'
+	import { surfaceRecipeFromDraft } from '$lib/rodder/surface-editor.js'
+	import { weatherRecipeFromDraft } from '$lib/rodder/weather-editor.js'
+	import { stellarSurfaceRecipeFromDraft } from '$lib/rodder/stellar-surface-editor.js'
+	import { resolveHostStarTemperatureK } from '$lib/rodder/stellar-surface-model.js'
+	import { spectralColor } from '$lib/rodder/colors.js'
+	import type { MapBody } from '$lib/rodder/root-layout.js'
 
-	type CelestialCrumb = { label: string, href: string }
+	type RodderCrumb = { label: string, href: string }
 
 	let {
 		kind,
@@ -62,17 +62,17 @@
 		siblings = [],
 		parentCrumbs = [],
 	}: {
-		kind: CelestialFormKind
+		kind: RodderFormKind
 		record: Record<string, any>
 		sectors?: SectorReferenceOption[]
 		systems?: SystemReferenceOption[]
 		stars?: StarReferenceOption[]
 		siblings?: BodyReferenceOption[]
-		parentCrumbs?: CelestialCrumb[]
+		parentCrumbs?: RodderCrumb[]
 	} = $props()
 	let confirmDialog: ReturnType<typeof ConfirmDialog>
 
-	const config = CELESTIAL_FORM_CONFIGS[untrack(() => kind)]
+	const config = RODDER_FORM_CONFIGS[untrack(() => kind)]
 	const initialRecord = $state.snapshot(untrack(() => record)) as Record<string, any>
 	const initialParentCrumbs = $state.snapshot(untrack(() => parentCrumbs))
 
@@ -86,9 +86,9 @@
 
 	// The slug the server currently knows this entity by — updated after each save
 	// so consecutive renames PUT to the right URL. Canonical URLs are flat
-	// /Celestial:Slug — parent path is for breadcrumbs only.
+	// /Rodder:Slug — parent path is for breadcrumbs only.
 	let savedSlug = $state(initialRecord.slug as string)
-	const viewPath = $derived(`/Celestial:${savedSlug}`)
+	const viewPath = $derived(`/Rodder:${savedSlug}`)
 
 	// Once the slug is edited by hand it stops following the name.
 	let slugEdited = $state(false)
@@ -103,7 +103,7 @@
 	let savedAt = $state<Date | null>(null)
 	const entityMutation = createMutation(() => ({
 		mutationFn: ({ method, slug, body }: { method: 'PUT' | 'DELETE', slug: string, body?: unknown }) =>
-			api<{ slug?: string }>(method, `/api/celestial/${slug}`, body),
+			api<{ slug?: string }>(method, `/api/rodder/${slug}`, body),
 	}))
 	const saving = $derived(entityMutation.isPending)
 
@@ -276,10 +276,10 @@
 		deleted = true
 		pushSuccess(m.cel_noun_deleted({ name: config.noun }))
 		const parentHref = initialParentCrumbs.at(-1)?.href
-		if (parentHref?.startsWith('/Celestial:')) {
+		if (parentHref?.startsWith('/Rodder:')) {
 			await goto(resolve('/[...ns_path=namespaced]', { ns_path: parentHref.slice(1) }))
 		} else {
-			await goto(resolve('/celestial'))
+			await goto(resolve('/rodder'))
 		}
 	}
 </script>
@@ -364,7 +364,7 @@
 {/snippet}
 
 <ArticleShell
-	breadcrumbs={celestialConfigureBreadcrumbs(initialParentCrumbs, { name: initialRecord.name, slug: initialRecord.slug })}
+	breadcrumbs={rodderConfigureBreadcrumbs(initialParentCrumbs, { name: initialRecord.name, slug: initialRecord.slug })}
 	title={m.cel_configure_named({ name: initialRecord.name })}
 >
 	{#snippet actions()}
@@ -460,9 +460,9 @@
 
 			<aside class="space-y-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
 				{#if surfacePreviewBody}
-					<CelestialSurfacePreview body={surfacePreviewBody} />
+					<RodderSurfacePreview body={surfacePreviewBody} />
 				{:else if stellarPreviewBody}
-					<CelestialSurfacePreview body={stellarPreviewBody} isStar />
+					<RodderSurfacePreview body={stellarPreviewBody} isStar />
 				{:else if preview}
 					<div class="flex items-center gap-3 bg-surface p-4">
 						<span

@@ -6,7 +6,7 @@ import { deflateSync } from 'node:zlib'
 import sharp from 'sharp'
 
 const ROOT = path.resolve(import.meta.dirname, '..')
-const OUTPUT = path.join(ROOT, 'static', 'seed-data', 'celestial', 'mars')
+const OUTPUT = path.join(ROOT, 'static', 'seed-data', 'rodder', 'mars')
 const RUNTIME = path.join(OUTPUT, 'runtime')
 const SOURCE = path.join(OUTPUT, 'source')
 const CACHE = path.join(tmpdir(), 'knowthing-mars-seed-sources')

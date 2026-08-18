@@ -63,7 +63,7 @@
 
 	async function deleteEntity(slug: string, name: string) {
 		const confirmed = await confirmDialog.confirm(
-			'Delete celestial record',
+			'Delete rodder record',
 			`Delete “${name}”? Descendants are detached rather than deleted.`,
 			'Delete',
 			'Cancel',
@@ -71,7 +71,7 @@
 		if (!confirmed) return
 		deletingSlug = slug
 		try {
-			await api('DELETE', `/api/celestial/${slug}`)
+			await api('DELETE', `/api/rodder/${slug}`)
 			pushSuccess(`“${name}” deleted`)
 			await invalidateAll()
 		} catch (error) {
@@ -87,7 +87,7 @@
 		<h2 class="text-lg font-semibold text-heading">Registry</h2>
 		<p class="mt-1 max-w-2xl text-sm text-secondary">Browse the authored hierarchy. Open a record to edit its identity, physical properties, orbit, or sector placement.</p>
 	</div>
-	<Button href={resolve('/celestial/manage/create')} size="sm">Add an object</Button>
+	<Button href={resolve('/rodder/manage/create')} size="sm">Add an object</Button>
 </div>
 
 {#if systems.length === 0 && orphanStars.length === 0 && orphanBodies.length === 0}
@@ -103,16 +103,16 @@
 					<div class="flex min-w-0 items-center gap-3">
 						<SunDim size={22} weight="fill" class="shrink-0 text-accent" />
 						<div class="min-w-0">
-							<a href={resolve('/[...ns_path=namespaced]', { ns_path: `Celestial:${system.slug}` })} class="font-semibold text-heading hover:text-link">{system.name}</a>
+							<a href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${system.slug}` })} class="font-semibold text-heading hover:text-link">{system.name}</a>
 							<div class="text-xs text-secondary">
 								{deriveSystemType(system.starCount)} · {system.starCount} {system.starCount === 1 ? 'star' : 'stars'} · {system.planetCount} {system.planetCount === 1 ? 'body' : 'bodies'}
-								{#if system.sectorName && system.sectorSlug} · <a href={resolve('/celestial/sector/[slug]', { slug: system.sectorSlug })} class="text-link hover:text-link-hover">{system.sectorName}</a>{/if}
+								{#if system.sectorName && system.sectorSlug} · <a href={resolve('/rodder/sector/[slug]', { slug: system.sectorSlug })} class="text-link hover:text-link-hover">{system.sectorName}</a>{/if}
 							</div>
 						</div>
 					</div>
 					<div class="flex items-center gap-2">
-						<Button href={resolve('/[...ns_path=namespaced]', { ns_path: `Celestial:${system.slug}/configure` })} variant="secondary" size="sm"><GearSix size={13} /> Configure</Button>
-						{#if data.canDeleteCelestial}
+						<Button href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${system.slug}/configure` })} variant="secondary" size="sm"><GearSix size={13} /> Configure</Button>
+						{#if data.canDeleteRodder}
 							<Button variant="secondary" size="sm" loading={deletingSlug === system.slug} onclick={() => deleteEntity(system.slug, system.name)} aria-label={`Delete ${system.name}`}><Trash size={13} /></Button>
 						{/if}
 					</div>
@@ -124,25 +124,25 @@
 							<div class="flex items-center justify-between gap-3">
 								<div class="flex min-w-0 items-center gap-2 pl-2">
 									<StarIcon size={14} weight="fill" class="shrink-0 text-secondary" />
-									<a href={resolve('/[...ns_path=namespaced]', { ns_path: `Celestial:${star.slug}` })} class="truncate text-sm font-semibold text-body hover:text-link">{star.name}</a>
+									<a href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${star.slug}` })} class="truncate text-sm font-semibold text-body hover:text-link">{star.name}</a>
 									{#if star.spectralType}<span class="text-xs text-secondary">{star.spectralType}</span>{/if}
 								</div>
-								<a href={resolve('/[...ns_path=namespaced]', { ns_path: `Celestial:${star.slug}/configure` })} class="text-xs text-link hover:text-link-hover">Configure</a>
+								<a href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${star.slug}/configure` })} class="text-xs text-link hover:text-link-hover">Configure</a>
 							</div>
 
 							{#each planetsForStar(star.id) as body (body.id)}
 								<div class="mt-2 flex items-center justify-between gap-3 pl-8">
 									<div class="flex min-w-0 items-center gap-2">
 										<Planet size={12} class="shrink-0 text-dim" />
-										<a href={resolve('/[...ns_path=namespaced]', { ns_path: `Celestial:${body.slug}` })} class="truncate text-sm text-body hover:text-link">{body.name}</a>
+										<a href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${body.slug}` })} class="truncate text-sm text-body hover:text-link">{body.name}</a>
 										<span class="text-xs text-secondary">{body.bodyType.replace('_', ' ')}</span>
 									</div>
-									<a href={resolve('/[...ns_path=namespaced]', { ns_path: `Celestial:${body.slug}/configure` })} class="text-xs text-link hover:text-link-hover">Configure</a>
+									<a href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${body.slug}/configure` })} class="text-xs text-link hover:text-link-hover">Configure</a>
 								</div>
 								{#each moonsForBody(body.id) as moon (moon.id)}
 									<div class="mt-1 flex items-center justify-between gap-3 pl-14">
-										<div class="flex min-w-0 items-center gap-2 text-xs text-secondary"><Moon size={10} /> <a href={resolve('/[...ns_path=namespaced]', { ns_path: `Celestial:${moon.slug}` })} class="truncate hover:text-link">{moon.name}</a></div>
-										<a href={resolve('/[...ns_path=namespaced]', { ns_path: `Celestial:${moon.slug}/configure` })} class="text-xs text-link hover:text-link-hover">Configure</a>
+										<div class="flex min-w-0 items-center gap-2 text-xs text-secondary"><Moon size={10} /> <a href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${moon.slug}` })} class="truncate hover:text-link">{moon.name}</a></div>
+										<a href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${moon.slug}/configure` })} class="text-xs text-link hover:text-link-hover">Configure</a>
 									</div>
 								{/each}
 							{/each}
@@ -160,10 +160,10 @@
 				<p class="mt-1 text-xs text-secondary">These records are outside a complete system hierarchy. Configure them to select a parent.</p>
 				<div class="mt-3 flex flex-wrap gap-2">
 					{#each orphanStars as star (star.id)}
-						<a href={resolve('/[...ns_path=namespaced]', { ns_path: `Celestial:${star.slug}/configure` })} class="border border-border-subtle bg-surface px-3 py-1.5 text-xs text-link hover:bg-raised"><StarIcon size={11} class="mr-1 inline" />{star.name}</a>
+						<a href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${star.slug}/configure` })} class="border border-border-subtle bg-surface px-3 py-1.5 text-xs text-link hover:bg-raised"><StarIcon size={11} class="mr-1 inline" />{star.name}</a>
 					{/each}
 					{#each orphanBodies as body (body.id)}
-						<a href={resolve('/[...ns_path=namespaced]', { ns_path: `Celestial:${body.slug}/configure` })} class="border border-border-subtle bg-surface px-3 py-1.5 text-xs text-link hover:bg-raised"><Planet size={11} class="mr-1 inline" />{body.name}</a>
+						<a href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${body.slug}/configure` })} class="border border-border-subtle bg-surface px-3 py-1.5 text-xs text-link hover:bg-raised"><Planet size={11} class="mr-1 inline" />{body.name}</a>
 					{/each}
 				</div>
 			</section>

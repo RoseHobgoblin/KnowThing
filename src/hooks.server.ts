@@ -12,8 +12,8 @@ import { applyRateLimitHeaders, enforceRateLimit, rateLimitedResponse } from '$l
  *
  *   /wordbook/...  → 308 → /Wordbook/...   (TitleCase canonical)
  *
- * Celestial and calendar legacy URLs are handled by the route loaders in
- * `routes/celestial/[...path]` and `routes/calendar/[...path]` because they
+ * Rodder and calendar legacy URLs are handled by the route loaders in
+ * `routes/rodder/[...path]` and `routes/calendar/[...path]` because they
  * need to resolve the input slug to its canonical form first.
  */
 const canonicalizeUrl: Handle = async ({ event, resolve }) => {

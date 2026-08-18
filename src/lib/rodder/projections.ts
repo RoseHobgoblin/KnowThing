@@ -1,12 +1,12 @@
 /**
- * Projections: adapters that turn a typed celestial model (see `models.ts`) into
+ * Projections: adapters that turn a typed rodder model (see `models.ts`) into
  * whatever a particular consumer needs. The model is the single source; adding a
  * consumer means adding a projection here, never re-deriving or parsing strings.
  *
  *  - `bodyInfoboxFields` / `starInfoboxFields` → the snake_case FieldMap the
  *    infobox components read (values formatted via the compute.js formatters).
- *  - `celestialStatTiles` → compact "at a glance" tiles for a non-infobox panel.
- *  - `celestialJson` → raw typed numbers for an API / external tools.
+ *  - `rodderStatTiles` → compact "at a glance" tiles for a non-infobox panel.
+ *  - `rodderJson` → raw typed numbers for an API / external tools.
  */
 
 import type { FieldMap } from '$lib/infoboxes/types.js'
@@ -190,7 +190,7 @@ function times(ratio: number): string {
  * an exhaustive vertical infobox. Reference-scaled comparisons (×Earth / ×Sun)
  * come straight from the raw SI numbers the FieldMap threw away.
  */
-export function celestialStatTiles(model: BodyModel | StarModel): StatTile[] {
+export function rodderStatTiles(model: BodyModel | StarModel): StatTile[] {
 	const tiles: StatTile[] = []
 
 	if (model.kind === 'body') {
@@ -213,7 +213,7 @@ export function celestialStatTiles(model: BodyModel | StarModel): StatTile[] {
 }
 
 /** Raw typed projection for APIs / external tools. Numbers stay numbers. */
-export function celestialJson(model: BodyModel | StarModel): BodyModel | StarModel {
+export function rodderJson(model: BodyModel | StarModel): BodyModel | StarModel {
 	return { ...model }
 }
 
@@ -308,7 +308,7 @@ function buildSections(fields: FieldMap, specs: SectionSpec[]): FactSection[] {
  * floating infobox. Values are formatted (and carry wikilink markup for relations),
  * reusing the infobox projection so the two never diverge.
  */
-export function celestialFactSections(model: BodyModel | StarModel): FactSection[] {
+export function rodderFactSections(model: BodyModel | StarModel): FactSection[] {
 	return model.kind === 'body'
 		? buildSections(bodyInfoboxFields(model), PLANET_SECTIONS)
 		: buildSections(starInfoboxFields(model), STAR_SECTIONS)

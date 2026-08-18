@@ -75,7 +75,7 @@
 		if (sc?.calendarEnabled !== false) list.push({ label: sc?.navCalendarLabel ?? m.nav_calendar(), href: '/calendar', icon: CalendarBlank, keywords: 'date' })
 		list.push(
 			{ label: m.nav_world_maps(), href: '/worldmap', icon: MapTrifold, keywords: 'map region country' },
-			{ label: m.nav_celestial(), href: '/celestial', icon: Planet, keywords: 'star system planet space' },
+			{ label: m.nav_rodder(), href: '/rodder', icon: Planet, keywords: 'star system planet space' },
 			{ label: m.nav_categories(), href: '/special/categories', icon: Tag, keywords: 'tags' },
 			{ label: m.header_random_page(), href: '/special/random', icon: Shuffle, keywords: 'surprise' },
 		)
@@ -124,7 +124,7 @@
 		<a href="/calendar" onclick={onNav} class="{linkClass} {isActive('/calendar') ? activeClass : inactiveClass}"><CalendarBlank size={16} weight="fill" />{sc?.navCalendarLabel ?? m.nav_calendar()}</a>
 	{/if}
 	<a href="/worldmap" onclick={onNav} class="{linkClass} {isActive('/worldmap') ? activeClass : inactiveClass}"><MapTrifold size={16} weight="fill" />{m.nav_world_maps()}</a>
-	<a href="/celestial" onclick={onNav} class="{linkClass} {isActive('/celestial') ? activeClass : inactiveClass}"><Planet size={16} weight="fill" />{m.nav_celestial()}</a>
+	<a href="/rodder" onclick={onNav} class="{linkClass} {isActive('/rodder') ? activeClass : inactiveClass}"><Planet size={16} weight="fill" />{m.nav_rodder()}</a>
 
 	<p class={sectionClass}>{m.section_discover()}</p>
 	<a href="/special/categories" onclick={onNav} class="{linkClass} {isActive('/special/categories') ? activeClass : inactiveClass}"><Tag size={16} weight="fill" />{m.nav_categories()}</a>

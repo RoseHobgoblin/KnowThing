@@ -1,13 +1,13 @@
 <script lang="ts">
 	import type { BodyModel, StarModel } from 'tungolcraft'
-	import { celestialFactSections } from './projections.js'
+	import { rodderFactSections } from './projections.js'
 	import InlineMarkup from '$lib/renderer/InlineMarkup.svelte'
 
 	let { model }: { model: BodyModel | StarModel } = $props()
 
 	// A projection of the same model the infobox reads — laid out as full-width
 	// grouped sections instead of a cramped floating table.
-	const sections = $derived(celestialFactSections(model))
+	const sections = $derived(rodderFactSections(model))
 </script>
 
 {#if sections.length > 0}

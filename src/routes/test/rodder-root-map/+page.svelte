@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
-	import MapControls from '$lib/celestial/MapControls.svelte'
-	import SystemMap from '$lib/celestial/SystemMap.svelte'
-	import { DEFAULT_MAP_SETTINGS } from '$lib/celestial/map-settings.js'
-	import type { EntityKey, MapBody } from '$lib/celestial/system-layout.js'
+	import MapControls from '$lib/rodder/MapControls.svelte'
+	import RootMap from '$lib/rodder/RootMap.svelte'
+	import { DEFAULT_MAP_SETTINGS } from '$lib/rodder/map-settings.js'
+	import type { EntityKey, MapBody } from '$lib/rodder/root-layout.js'
 
 	const stars: MapBody[] = [{
 		id: 1, name: 'Aurelia', slug: 'aurelia', bodyType: 'star', massKg: 1.989e30,
@@ -88,14 +88,14 @@
 	})
 </script>
 
-<svelte:head><title>Celestial map fixture</title></svelte:head>
+<svelte:head><title>Rodder root map fixture</title></svelte:head>
 
-<main class="min-h-screen bg-page p-3 text-heading" data-testid="celestial-fixture">
+<main class="min-h-screen bg-page p-3 text-heading" data-testid="rodder-fixture">
 	<div class="mx-auto max-w-7xl overflow-hidden border border-border-subtle bg-surface">
 		<MapControls bind:labels bind:trails bind:visibility bind:follow hasSelection={selectedId != null} />
 		<div class="h-[min(76vh,54rem)] min-h-112" data-testid="map-frame">
-			<SystemMap
-				systemName="Aurelia fixture"
+			<RootMap
+				rootName="Aurelia fixture"
 				{stars}
 				{bodies}
 				{currentAbsoluteDay}

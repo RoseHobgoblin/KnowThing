@@ -8,7 +8,7 @@
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import Input from '$lib/components/ui/Input.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
-	import { createSectorSchema } from '$lib/celestial/sector-schema.js'
+	import { createSectorSchema } from '$lib/rodder/sector-schema.js'
 	import { urlSlugify } from '$lib/utils/slugify.js'
 	import { cn } from '$lib/utils.js'
 	import { pushError, pushSuccess } from '$lib/notifications.svelte.js'
@@ -148,8 +148,8 @@
 		saving = true
 		try {
 			const saved = creating
-				? await api<Sector>('POST', '/api/celestial/sectors', validation.data)
-				: await api<Sector>('PUT', `/api/celestial/sectors/${savedSlug}`, validation.data)
+				? await api<Sector>('POST', '/api/rodder/sectors', validation.data)
+				: await api<Sector>('PUT', `/api/rodder/sectors/${savedSlug}`, validation.data)
 			pushSuccess(creating ? `Sector “${saved.name}” created` : `Sector “${saved.name}” saved`)
 			creating = false
 			selectedId = saved.id
@@ -164,7 +164,7 @@
 	}
 
 	async function deleteCurrentSector() {
-		if (!selectedSector || selectedSector.rootCount > 0 || !data.canDeleteCelestial) return
+		if (!selectedSector || selectedSector.rootCount > 0 || !data.canDeleteRodder) return
 		const deletedSector = selectedSector
 		const confirmed = await confirmDialog.confirm(
 			'Delete sector',
@@ -175,7 +175,7 @@
 		if (!confirmed) return
 		deleting = true
 		try {
-			await api('DELETE', `/api/celestial/sectors/${deletedSector.slug}`)
+			await api('DELETE', `/api/rodder/sectors/${deletedSector.slug}`)
 			pushSuccess(`Sector “${deletedSector.name}” deleted`)
 			await invalidateAll()
 			const next = sectors.find(sector => sector.id !== deletedSector.id) ?? null
@@ -234,7 +234,7 @@
 					<h3 class="font-semibold text-heading">{creating ? 'New coordinate frame' : draft.name || 'Unnamed sector'}</h3>
 				</div>
 				{#if !creating && selectedSector}
-					<a href={resolve('/celestial/sector/[slug]', { slug: selectedSector.slug })} class="flex items-center gap-1 text-xs text-link hover:text-link-hover">Open map <ArrowSquareOut size={12} /></a>
+					<a href={resolve('/rodder/sector/[slug]', { slug: selectedSector.slug })} class="flex items-center gap-1 text-xs text-link hover:text-link-hover">Open map <ArrowSquareOut size={12} /></a>
 				{/if}
 			</header>
 
@@ -290,7 +290,7 @@
 				<div class="flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle pt-4">
 					<span class={cn('text-xs', validationMessage ? 'text-error' : 'text-secondary')}>{validationMessage || 'Frame contract is valid.'}</span>
 					<div class="flex items-center gap-2">
-						{#if !creating && selectedSector && data.canDeleteCelestial}
+						{#if !creating && selectedSector && data.canDeleteRodder}
 							<Button variant="secondary" size="sm" disabled={selectedSector.rootCount > 0} loading={deleting} onclick={deleteCurrentSector} title={selectedSector.rootCount > 0 ? 'Move every system before deleting this sector' : undefined}><Trash size={13} /> Delete</Button>
 						{/if}
 						<Button onclick={saveSector} disabled={!validation.success} loading={saving}>{creating ? 'Create sector' : 'Save frame'}</Button>
@@ -309,10 +309,10 @@
 					{#each roots as root (root.id)}
 						<div class="flex items-center justify-between gap-3 px-4 py-2.5">
 							<div class="min-w-0">
-								<a href={resolve('/[...ns_path=namespaced]', { ns_path: `Celestial:${root.slug}` })} class="truncate text-sm font-medium text-body hover:text-link">{root.name}</a>
+								<a href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${root.slug}` })} class="truncate text-sm font-medium text-body hover:text-link">{root.name}</a>
 								<div class="text-xs text-secondary">{root.sectorX == null || root.sectorY == null || root.sectorZ == null ? 'Position unavailable' : `${root.sectorX}, ${root.sectorY}, ${root.sectorZ} ${selectedSector.units}`}</div>
 							</div>
-							<a href={resolve('/[...ns_path=namespaced]', { ns_path: `Celestial:${root.slug}/configure` })} class="shrink-0 text-xs text-link hover:text-link-hover">Configure location</a>
+							<a href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${root.slug}/configure` })} class="shrink-0 text-xs text-link hover:text-link-hover">Configure location</a>
 						</div>
 					{:else}
 						<p class="px-4 py-5 text-sm text-secondary">This sector is empty. Create a system here or move an existing system into it.</p>

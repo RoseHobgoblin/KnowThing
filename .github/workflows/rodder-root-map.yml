@@ -1,15 +1,15 @@
-name: Celestial map
+name: Rodder root map
 
 on:
   pull_request:
     paths:
-      - 'src/lib/celestial/**'
-      - 'src/routes/test/celestial-map/**'
+      - 'src/lib/rodder/**'
+      - 'src/routes/test/rodder-root-map/**'
       - 'packages/tungolcraft/**'
       - 'e2e/**'
       - 'playwright.config.ts'
       - 'package*.json'
-      - '.github/workflows/celestial-map.yml'
+      - '.github/workflows/rodder-root-map.yml'
   push:
     branches: [main]
 
@@ -27,7 +27,7 @@ jobs:
       - run: npm --workspace packages/tungolcraft run build
       - run: npx playwright install --with-deps chromium
       - run: npm run check
-      - run: npx vitest run src/lib/celestial/system-layout.test.ts packages/tungolcraft/src/orbit.test.ts
+      - run: npx vitest run src/lib/rodder/root-layout.test.ts packages/tungolcraft/src/orbit.test.ts
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v4
         if: always()

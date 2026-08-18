@@ -3,8 +3,8 @@
 	import { resolve } from '$app/paths'
 	import { cn } from '$lib/utils.js'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
-	import SectorMap from '$lib/celestial/SectorMap.svelte'
-	import { celestialSectorBreadcrumbs } from '$lib/utils/breadcrumbs.js'
+	import SectorMap from '$lib/rodder/SectorMap.svelte'
+	import { rodderSectorBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import {
 		formatSectorDistance,
 		formatSectorPosition,
@@ -13,7 +13,7 @@
 		unitsLabel,
 		unpositionedRoots,
 		type SectorRootView,
-	} from '$lib/celestial/sector-view.js'
+	} from '$lib/rodder/sector-view.js'
 	import type { PageData } from './$types.js'
 	import { normalizePermissions } from '$lib/permissions.js'
 	import GearSix from 'phosphor-svelte/lib/GearSix'
@@ -53,13 +53,13 @@
 </script>
 
 <svelte:head>
-	<title>{sector.name} — Celestial — KnowThing</title>
+	<title>{sector.name} — Rodder — KnowThing</title>
 </svelte:head>
 
-<ArticleShell breadcrumbs={celestialSectorBreadcrumbs(sector.name)} title={sector.name}>
+<ArticleShell breadcrumbs={rodderSectorBreadcrumbs(sector.name)} title={sector.name}>
 	{#snippet actions()}
-		{#if permissions.canConfigureCelestial}
-			<a href={resolve('/celestial/manage/sectors')} class="flex items-center gap-1 text-sm text-link transition-colors hover:text-link-hover"><GearSix size={14} weight="fill" /> Edit frame</a>
+		{#if permissions.canConfigureRodder}
+			<a href={resolve('/rodder/manage/sectors')} class="flex items-center gap-1 text-sm text-link transition-colors hover:text-link-hover"><GearSix size={14} weight="fill" /> Edit frame</a>
 		{/if}
 	{/snippet}
 	{#if sector.description}
@@ -131,7 +131,7 @@
 							{/if}
 						</div>
 						<a
-							href={resolve('/[...ns_path=namespaced]', { ns_path: `Celestial:${selectedRoot.slug}` })}
+							href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${selectedRoot.slug}` })}
 							class="mt-2 block text-xs text-link transition-colors hover:text-link-hover"
 						>Enter system</a>
 					</div>
@@ -159,7 +159,7 @@
 							<div class="flex items-baseline justify-between gap-2 px-1.5 py-1">
 								<span class="truncate text-body">{root.name}</span>
 								<a
-									href={resolve('/[...ns_path=namespaced]', { ns_path: `Celestial:${root.slug}` })}
+									href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${root.slug}` })}
 									class="shrink-0 text-xs text-link hover:text-link-hover"
 								>Open</a>
 							</div>

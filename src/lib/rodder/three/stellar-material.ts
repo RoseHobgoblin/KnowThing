@@ -17,7 +17,7 @@ import {
 	stellarSurfaceMediaUrl,
 	type StellarSurfacePlan,
 } from '../stellar-surface-model.js'
-import type { MapBody } from '../system-layout.js'
+import type { MapBody } from '../root-layout.js'
 import { temperatureDisplayRgb } from './procedural-stellar-surface.js'
 import {
 	requestProceduralStellarTexture,

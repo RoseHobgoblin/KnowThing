@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types.js'
-import { listSystemsForRegistry } from '$lib/server/services/celestial-registry.js'
-import { listSectorsForRegistry } from '$lib/server/services/celestial-sectors.js'
+import { listSystemsForRegistry } from '$lib/server/services/rodder-registry.js'
+import { listSectorsForRegistry } from '$lib/server/services/rodder-sectors.js'
 
 export const load: PageServerLoad = async () => {
 	const [sectors, systems] = await Promise.all([

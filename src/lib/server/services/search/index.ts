@@ -171,8 +171,8 @@ function domainLabel(domain: string) {
 			return 'Wordbook'
 		case 'calendar':
 			return 'Calendar'
-		case 'celestial':
-			return 'Celestial'
+		case 'rodder':
+			return 'Rodder'
 		default:
 			return domain
 	}

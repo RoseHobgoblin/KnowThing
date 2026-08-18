@@ -29,7 +29,7 @@ import {
 	type MapBody,
 	type OrbitBody,
 	type EntityKey,
-} from './system-layout.js'
+} from './root-layout.js'
 import { overviewBodyExtent } from './body-sizing.js'
 
 function star(overrides: Partial<MapBody> & { id: number }): MapBody {

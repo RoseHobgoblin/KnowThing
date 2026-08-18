@@ -12,28 +12,28 @@
 	let { children }: { children: Snippet } = $props()
 
 	const nav = [
-		{ href: '/celestial/manage/sectors', label: 'Sectors', description: 'Frames and placement', icon: Compass },
-		{ href: '/celestial/manage/registry', label: 'Registry', description: 'Hierarchy and records', icon: TreeStructure },
-		{ href: '/celestial/manage/create', label: 'Create', description: 'Add celestial objects', icon: Plus },
+		{ href: '/rodder/manage/sectors', label: 'Sectors', description: 'Frames and placement', icon: Compass },
+		{ href: '/rodder/manage/registry', label: 'Registry', description: 'Hierarchy and records', icon: TreeStructure },
+		{ href: '/rodder/manage/create', label: 'Create', description: 'Add rodder objects', icon: Plus },
 	] as const
 </script>
 
 <svelte:head>
-	<title>Celestial authoring — KnowThing</title>
+	<title>Rodder authoring — KnowThing</title>
 </svelte:head>
 
 <ArticleShell
-	breadcrumbs={[{ label: 'Celestial', href: '/celestial' }, { label: 'Authoring' }]}
-	title="Celestial authoring"
+	breadcrumbs={[{ label: 'Rodder', href: '/rodder' }, { label: 'Authoring' }]}
+	title="Rodder authoring"
 	subtitle="Shape the atlas from coordinate frame to orbiting body."
 >
 	{#snippet actions()}
-		<a href={resolve('/celestial')} class="flex items-center gap-1 text-sm text-link transition-colors hover:text-link-hover">
+		<a href={resolve('/rodder')} class="flex items-center gap-1 text-sm text-link transition-colors hover:text-link-hover">
 			<ArrowLeft size={14} weight="bold" /> Back to atlas
 		</a>
 	{/snippet}
 
-	<nav aria-label="Celestial authoring" class="mb-5 grid grid-cols-1 gap-2 sm:grid-cols-3">
+	<nav aria-label="Rodder authoring" class="mb-5 grid grid-cols-1 gap-2 sm:grid-cols-3">
 		{#each nav as item (item.href)}
 			<a
 				href={resolve(item.href)}

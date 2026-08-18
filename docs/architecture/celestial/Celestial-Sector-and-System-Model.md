@@ -5,7 +5,7 @@
 **Applies to:** stellar neighbourhoods, system roots, unbound objects, routes, and the transition into the Orrery  
 **Related documents:** [Structured Data Vision](../STRUCTURED-DATA-VISION.md), [Atlas Architecture](../Atlas-Architecture.md), [Celestial Views, Authoring, and Wiki Embeds](./Celestial-Views-Authoring-and-Wiki-Embeds.md), [Celestial Orrery Roadmap](../../plans/celestial/Celestial-Orrery-Roadmap.md), [Calendar and Celestial Boundaries](./Celestial-Calendar-Integration.md)
 
-> **Maturity:** This document defines the target model; the first implementation slice now exists. `celestial_sectors` carries the authored frame contract, `celestial_sector_roots` carries root positions (migration 0054 migrated the legacy `galactic_x/y/z` values verbatim into a declared legacy sector and dropped the columns), `/celestial/manage/sectors` authors frames and membership, `/celestial/sector/[slug]` presents the 3D sector view, and entering/returning from a system preserves selection and the sector camera. General non-system roots, regions, routes, influence volumes, time-qualified agents, and distant-sky backdrops remain unimplemented — for those, this document is still the target, not a description.
+> **Maturity:** This document defines the target model; the first implementation slice now exists. Migration 0055 renamed the live code, namespace, routes, and persistence surface from Celestial to **Rodder**. `rodder_sectors` carries the authored frame contract, `rodder_sector_roots` carries root positions (migration 0054 migrated the legacy `galactic_x/y/z` values verbatim into a declared legacy sector and dropped the columns), `/rodder/manage/sectors` authors frames and membership, `/rodder/sector/[slug]` presents the 3D sector view, and entering/returning from a root preserves selection and the sector camera. The local viewer is `RootMap` because roots are not restricted to systems. General non-system roots, regions, routes, influence volumes, time-qualified agents, and distant-sky backdrops remain unimplemented — for those, this document is still the target, not a description.
 
 ## Decision Summary
 
@@ -378,7 +378,7 @@ The future schema should separate these concerns:
 celestial_spaces
 spatial_reference_frames
 sector_roots
-celestial_bodies / typed object records
+rodder_bodies / typed object records
 orbital_relationships
 sector_regions
 sector_routes and route_segments
@@ -387,7 +387,7 @@ distant_sky_objects
 position_assertions / ephemerides
 ```
 
-This remains a direction for the parts not represented by the current `celestial_bodies`, `celestial_sectors`, and `celestial_sector_roots` schema. No parallel import schema should be added solely to anticipate the later generic object/facet model.
+This remains a direction for the parts not represented by the current `rodder_bodies`, `rodder_sectors`, and `rodder_sector_roots` schema. No parallel import schema should be added solely to anticipate the later generic object/facet model.
 
 Stable identity is mandatory across reparenting. A body does not receive a new identity merely because it is promoted from a planet to an unbound root or attached to another system.
 
@@ -404,9 +404,9 @@ The initial sector slice delivered explicit frames, root positions, sector autho
 
 ## Initial Delivery Order
 
-1. ~~Introduce an explicit reference-frame record for the existing system coordinates.~~ Done (0054: `celestial_sectors`).
-2. ~~Treat the current home neighbourhood as one sector and migrate existing coordinates into it without changing values.~~ Done (0054: `celestial_sector_roots`, "Local Sector", legacy provenance).
-3. ~~Add a sector view of authored roots and an authoring surface for frame contracts and system membership.~~ Done (`/celestial/sector/[slug]`, `/celestial/manage/sectors`).
+1. ~~Introduce an explicit reference-frame record for the existing system coordinates.~~ Done (0054: `rodder_sectors`).
+2. ~~Treat the current home neighbourhood as one sector and migrate existing coordinates into it without changing values.~~ Done (0054: `rodder_sector_roots`, "Local Sector", legacy provenance).
+3. ~~Add a sector view of authored roots and an authoring surface for frame contracts and system membership.~~ Done (`/rodder/sector/[slug]`, `/rodder/manage/sectors`).
 4. ~~Preserve selection, time, and camera return state when entering and leaving the Orrery.~~ Done for selection (`?focus=` deep link) and sector camera (session-scoped return state); application time is not yet shared because the sector view has no time dimension.
 5. Generalize roots to support unbound planets, stations, phenomena, and markers.
 6. Add regions and typed routes when authored canon demonstrates a need.

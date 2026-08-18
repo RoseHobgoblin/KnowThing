@@ -11,7 +11,7 @@ import {
 	WebGLRenderer,
 } from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import type { MapBody } from '../system-layout.js'
+import type { MapBody } from '../root-layout.js'
 import { createPlanetSurfaceVisual, type PlanetSurfaceVisual } from './surface-material.js'
 import { createStellarSurfaceVisual, type StellarSurfaceVisual } from './stellar-material.js'
 
@@ -28,7 +28,7 @@ export function createSurfacePreviewRenderer(
 ): SurfacePreviewRenderer {
 	const canvas = document.createElement('canvas')
 	canvas.tabIndex = 0
-	canvas.setAttribute('aria-label', 'Rotatable preview of the composed celestial surface')
+	canvas.setAttribute('aria-label', 'Rotatable preview of the composed rodder surface')
 	// setSize(..., false) controls only the drawing buffer. Pin the CSS box to
 	// the host so a DPR-scaled intrinsic canvas is not clipped from its top-left.
 	canvas.style.display = 'block'

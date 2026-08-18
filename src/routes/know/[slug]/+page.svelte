@@ -81,7 +81,7 @@
 			languageMatch={data.languageMatch}
 			structuredData={data.structuredData ?? null}
 			structuredCollections={data.structuredCollections ?? null}
-			systemMaps={data.systemMaps ?? null}
+			rootMaps={data.rootMaps ?? null}
 			resolvedLinks={data.resolvedLinks ?? null}
 			ondeletepage={deletePage}
 		/>

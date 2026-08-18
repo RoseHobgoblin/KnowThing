@@ -15,7 +15,7 @@ export interface KnowRenderContext {
 	mediaBaseUrl: string
 	/** Base URL for article pages, e.g. '/know' */
 	pageBaseUrl: string
-	/** Content domain for this page (know, celestial, calendar) — used for link resolution */
+	/** Content domain for this page (know, rodder, calendar) — used for link resolution */
 	sourceDomain: string
 	/** Footnotes collected by WikiReference, consumed by WikiReferenceList */
 	footnotes: Writable<FootnoteEntry[]>
@@ -37,8 +37,8 @@ export interface KnowRenderContext {
 	structuredData: Map<string, Map<string, string>> | null
 	/** Pre-fetched array-shaped structured data (phoneme grids, etc) keyed by `${type}:${slug}` */
 	structuredCollections: Record<string, Record<string, unknown>[]> | null
-	/** Pre-fetched system map data for {{System map|slug}} */
-	systemMaps: Record<string, { systemName: string, stars: any[], bodies: any[] }> | null
+	/** Pre-fetched root map data for {{Root map|slug}} */
+	rootMaps: Record<string, { rootName: string, stars: any[], bodies: any[] }> | null
 }
 
 export interface FootnoteEntry {
@@ -61,7 +61,7 @@ function defaultKnowContext(overrides: Partial<KnowRenderContext> = {}): KnowRen
 		calendarConfig: null,
 		structuredData: null,
 		structuredCollections: null,
-		systemMaps: null,
+		rootMaps: null,
 		...overrides,
 	}
 }

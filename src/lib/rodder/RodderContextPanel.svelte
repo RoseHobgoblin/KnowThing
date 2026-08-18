@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths'
 	import type { BodyModel, StarModel } from 'tungolcraft'
 
 	type ContextBody = { id?: number, name: string, slug: string, semiMajorAxisAu?: number | null, bodyType?: string | null }
@@ -85,6 +86,7 @@
 	function fmtAu(au: number): string {
 		return `${au.toLocaleString('en-US', { maximumFractionDigits: au >= 1 ? 2 : 4 })} AU`
 	}
+
 </script>
 
 <div class="bg-surface">
@@ -95,7 +97,7 @@
 		{#if !isStar && model.kind === 'body' && model.satelliteOf}
 			<div class="flex justify-between gap-4">
 				<span class="text-secondary">Orbits</span>
-				<a href="/Celestial:{model.satelliteOf.slug}" class="text-link hover:text-link-hover">{model.satelliteOf.name}</a>
+				<a href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${model.satelliteOf.slug}` })} class="text-link hover:text-link-hover">{model.satelliteOf.name}</a>
 			</div>
 		{/if}
 
@@ -138,7 +140,7 @@
 			<div class="space-y-0.5">
 				<div class="text-xs text-secondary uppercase tracking-wider">{isStar ? 'Planets' : 'Siblings'}</div>
 				{#each bodies as body (body.slug)}
-					<a href="/Celestial:{body.slug}" class="flex items-center justify-between gap-3 px-1.5 py-1 transition-colors hover:bg-raised">
+					<a href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${body.slug}` })} class="flex items-center justify-between gap-3 px-1.5 py-1 transition-colors hover:bg-raised">
 						<span class="text-body truncate">{body.name}</span>
 						<span class="flex items-center gap-2 shrink-0 text-xs">
 							{#if inHz(body.semiMajorAxisAu)}
@@ -158,7 +160,7 @@
 			<div class="space-y-0.5">
 				<div class="text-xs text-secondary uppercase tracking-wider">Moons</div>
 				{#each moons as moon (moon.slug)}
-					<a href="/Celestial:{moon.slug}" class="block px-1.5 py-1 text-secondary text-xs transition-colors hover:bg-raised hover:text-body">{moon.name}</a>
+					<a href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${moon.slug}` })} class="block px-1.5 py-1 text-secondary text-xs transition-colors hover:bg-raised hover:text-body">{moon.name}</a>
 				{/each}
 			</div>
 		{/if}
@@ -170,7 +172,7 @@
 				<span class="text-right min-w-0">
 					{#each companionRefs as ref, refIndex (ref.slug)}
 						{#if refIndex > 0}<span class="text-secondary">, </span>{/if}
-						<a href="/Celestial:{ref.slug}" class="text-link hover:text-link-hover">{ref.name}</a>
+						<a href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${ref.slug}` })} class="text-link hover:text-link-hover">{ref.name}</a>
 					{/each}
 				</span>
 			</div>

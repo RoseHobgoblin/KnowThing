@@ -10,7 +10,7 @@
 		mediaAssetContentUrl,
 		mediaBindingFromItem,
 		purposeLabel,
-		type CelestialMediaPurpose,
+		type RodderMediaPurpose,
 		type MediaAssetBinding,
 		type MediaAssetListItem,
 	} from '$lib/media/asset-binding.js'
@@ -33,7 +33,7 @@
 		value?: MediaAssetBinding | null
 		label: string
 		hint?: string
-		purpose: CelestialMediaPurpose
+		purpose: RodderMediaPurpose
 		canUpload?: boolean
 	} = $props()
 
@@ -78,7 +78,7 @@
 	const mediaQuery = createInfiniteQuery(() => {
 		const term = debouncedQuery.current
 		return {
-			queryKey: ['media', 'celestial-picker', term, compatibleOnly, pageSize],
+			queryKey: ['media', 'rodder-picker', term, compatibleOnly, pageSize],
 			queryFn: ({ pageParam, signal }) => {
 				const params = new SvelteURLSearchParams({
 					kind: 'image',
@@ -87,7 +87,7 @@
 					offset: String(pageParam),
 				})
 				if (term) params.set('q', term)
-				if (compatibleOnly) params.set('celestialPlate', 'true')
+				if (compatibleOnly) params.set('rodderPlate', 'true')
 				return api<MediaPage>('GET', `/api/media?${params}`, undefined, { signal })
 			},
 			initialPageParam: 0,

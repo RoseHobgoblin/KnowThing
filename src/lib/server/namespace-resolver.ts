@@ -8,7 +8,7 @@
 
 import { db } from './db/index.js'
 import {
-	celestialBodies,
+	rodderBodies,
 	languages, lexicon,
 	calendars, countries, worldMaps,
 	categories,
@@ -20,9 +20,9 @@ import type { WordbookPath } from '../sections/wordbook-path.js'
 import { buildWordbookHref } from '../sections/wordbook-path.js'
 
 export type EntityKind =
-	| 'celestial-system'
-	| 'celestial-star'
-	| 'celestial-body'
+	| 'rodder-system'
+	| 'rodder-star'
+	| 'rodder-body'
 	| 'wordbook-language'
 	| 'wordbook-word'
 	| 'calendar'
@@ -77,7 +77,7 @@ export async function resolveNamespaceTarget(
 
 async function dispatchResolve(ns: NamespaceKey, identifier: string): Promise<ResolvedTarget> {
 	switch (ns) {
-		case 'Celestial': return resolveCelestial(identifier)
+		case 'Rodder': return resolveRodder(identifier)
 		case 'Calendar': return resolveSimple('calendar', calendars, identifier)
 		case 'Category': return resolveSimple('category', categories, identifier)
 		case 'Country': return resolveSimple('country', countries, identifier)
@@ -99,23 +99,23 @@ function missing(ns: NamespaceKey, identifier: string): ResolvedTarget {
 	}
 }
 
-async function resolveCelestial(identifier: string): Promise<ResolvedTarget> {
+async function resolveRodder(identifier: string): Promise<ResolvedTarget> {
 	const lower = identifier.toLowerCase()
 	const [entity] = await db
-		.select({ id: celestialBodies.id, slug: celestialBodies.slug, name: celestialBodies.name, kind: celestialBodies.kind })
-		.from(celestialBodies)
-		.where(sql`LOWER(${celestialBodies.slug}) = ${lower}`)
+		.select({ id: rodderBodies.id, slug: rodderBodies.slug, name: rodderBodies.name, kind: rodderBodies.kind })
+		.from(rodderBodies)
+		.where(sql`LOWER(${rodderBodies.slug}) = ${lower}`)
 		.limit(1)
-	if (!entity) return missing('Celestial', identifier)
+	if (!entity) return missing('Rodder', identifier)
 	const kind: EntityKind =
 		entity.kind === 'system'
-			? 'celestial-system'
+			? 'rodder-system'
 			: (entity.kind === 'star'
-				? 'celestial-star'
-				: 'celestial-body')
+				? 'rodder-star'
+				: 'rodder-body')
 	return {
 		kind,
-		href: buildNamespaceHref('Celestial', entity.slug),
+		href: buildNamespaceHref('Rodder', entity.slug),
 		title: entity.name,
 		exists: true,
 		entityId: entity.id,

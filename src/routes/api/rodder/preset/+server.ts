@@ -3,12 +3,12 @@ import { z } from 'zod'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
 import { parseBody, handleServiceCall } from '$lib/server/utils.js'
-import { createCelestialFromPreset } from '$lib/server/services/celestial-bodies.js'
+import { createRodderFromPreset } from '$lib/server/services/rodder-bodies.js'
 
 const seedPresetSchema = z.object({ preset: z.string().min(1) })
 
 /**
- * POST /api/celestial/preset — seed a whole preset system (system, stars,
+ * POST /api/rodder/preset — seed a whole preset system (system, stars,
  * bodies, moons) in one transaction. Body: { preset: <preset label> }.
  */
 export const POST: RequestHandler = async (event) => {
@@ -18,7 +18,7 @@ export const POST: RequestHandler = async (event) => {
 	if (data instanceof Response) return data
 
 	return handleServiceCall(async () => {
-		const created = await createCelestialFromPreset(data.preset)
+		const created = await createRodderFromPreset(data.preset)
 		return json(created, { status: 201 })
 	})
 }

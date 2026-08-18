@@ -10,7 +10,7 @@ export interface ArticleSaveActionOptions {
 
 /**
  * Factory for the standard "save wiki article" form action used by every
- * article-bearing route (celestial, calendar, know, worldmap, …).
+ * article-bearing route (rodder, calendar, know, worldmap, …).
  *
  * The form must POST `contentRecordId`, `content`, and `summary`.
  */

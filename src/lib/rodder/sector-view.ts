@@ -92,7 +92,7 @@ export function sectorGridSpacing(boundsRadius: number): number {
 }
 
 // ---------------------------------------------------------------------------
-// Renderer contract (mirrors renderer-types.ts for the system map).
+// Renderer contract (mirrors renderer-types.ts for the root map).
 // ---------------------------------------------------------------------------
 
 export interface SectorOverlayLabel {

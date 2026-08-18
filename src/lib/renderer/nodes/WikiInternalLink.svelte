@@ -16,7 +16,7 @@
 		const found = ctx.resolvedLinks.get(`${ctx.sourceDomain}:${slug.toLowerCase()}`)
 		if (found) return found
 		// Redlinks land in Know (the default namespace) so the user can create
-		// the article. Colon-namespace base URLs like `/Celestial:Therne/Foo`
+		// the article. Colon-namespace base URLs like `/Rodder:Therne/Foo`
 		// would be gibberish — don't concatenate.
 		return { href: `/know/${slug}`, exists: false }
 	})

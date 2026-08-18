@@ -15,7 +15,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		sort: params.filters.sort ?? 'newest',
 		unused: params.filters.unused,
 		imageOnly: url.searchParams.get('kind') === 'image',
-		celestialPlate: url.searchParams.get('celestialPlate') === 'true',
+		rodderPlate: url.searchParams.get('rodderPlate') === 'true',
 		limit: Math.min(params.limit, 200),
 		offset: params.offset,
 	})

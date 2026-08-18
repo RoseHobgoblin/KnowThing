@@ -1,7 +1,7 @@
 import { error, redirect } from '@sveltejs/kit'
 import type { Actions, PageServerLoad } from './$types.js'
 import { splitNamespaceTarget, type NamespaceKey } from '$lib/namespaces/registry.js'
-import { loadCelestialDetail } from '$lib/server/loaders/celestial-detail.js'
+import { loadRodderDetail } from '$lib/server/loaders/rodder-detail.js'
 import { loadCalendarDetail } from '$lib/server/loaders/calendar-detail.js'
 import { entitySaveAction } from '$lib/server/services/entity-actions.js'
 
@@ -30,16 +30,16 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	const suffix = mode === 'view' ? '' : `/${mode}`
 
 	switch (ns) {
-		case 'Celestial': {
-			if (mode === 'edit') throw error(404, 'Celestial pages no longer have articles. Edit at /know/<slug> instead.')
-			const data = await loadCelestialDetail({
+		case 'Rodder': {
+			if (mode === 'edit') throw error(404, 'Rodder pages no longer have articles. Edit at /know/<slug> instead.')
+			const data = await loadRodderDetail({
 				identifier,
 				mode: mode === 'configure' ? 'configure' : 'view',
 				user: locals.user,
-				loginRedirectPath: `/Celestial:${identifier}${suffix}`,
-				canonicalize: slug => `/Celestial:${slug}`,
+				loginRedirectPath: `/Rodder:${identifier}${suffix}`,
+				canonicalize: slug => `/Rodder:${slug}`,
 			})
-			return { namespace: 'Celestial' as const, ...data }
+			return { namespace: 'Rodder' as const, ...data }
 		}
 		case 'Calendar': {
 			const data = await loadCalendarDetail({

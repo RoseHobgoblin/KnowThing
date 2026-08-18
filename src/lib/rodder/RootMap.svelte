@@ -4,12 +4,12 @@
 	import { resolve } from '$app/paths'
 	import { cn } from '$lib/utils.js'
 	import type { LabelMode, ScaleMode, TrailMode, ViewMode, VisibilityMode } from './map-settings.js'
-	import type { EntityKey, MapBody, ThemePalette } from './system-layout.js'
-	import { keyForBody, timingUnavailable } from './system-layout.js'
+	import type { EntityKey, MapBody, ThemePalette } from './root-layout.js'
+	import { keyForBody, timingUnavailable } from './root-layout.js'
 	import { composeSurfacePlan, describeSurfacePlan } from './surface-model.js'
 	import { composeStellarSurfacePlan, describeStellarSurfacePlan } from './stellar-surface-model.js'
 	import { describeStarlightLuminosity, resolveStarlightLuminosity } from './starlight-model.js'
-	import type { OverlaySnapshot, SystemMapRenderer } from './renderer-types.js'
+	import type { OverlaySnapshot, RootMapRenderer } from './renderer-types.js'
 
 	const DEFAULT_THEME: ThemePalette = {
 		page: '#12131D', surface: '#1A1B26', accent: '#FFE088', accentLight: '#E9C349',
@@ -20,7 +20,7 @@
 	}
 
 	let {
-		systemName,
+		rootName,
 		stars,
 		bodies,
 		currentAbsoluteDay,
@@ -32,7 +32,7 @@
 		visibility = 'enhanced',
 		selectedId = $bindable(null),
 	}: {
-		systemName: string
+		rootName: string
 		stars: MapBody[]
 		bodies: MapBody[]
 		currentAbsoluteDay?: number | null
@@ -47,7 +47,7 @@
 
 	let wrapperElement: HTMLDivElement | null = null
 	let canvasHost: HTMLDivElement | null = null
-	let renderer = $state<SystemMapRenderer | null>(null)
+	let renderer = $state<RootMapRenderer | null>(null)
 	let theme = $state<ThemePalette>(DEFAULT_THEME)
 	let displayWidth = $state(800)
 	let displayHeight = $state(800)
@@ -119,13 +119,13 @@
 	// Three.js remains strictly browser-only.
 	onMount(() => {
 		let cancelled = false
-		let created: SystemMapRenderer | null = null
+		let created: RootMapRenderer | null = null
 
 		;(async () => {
-			const { createSystemMapRenderer } = await import('./three/map-renderer.js')
+			const { createRootMapRenderer } = await import('./three/map-renderer.js')
 			if (cancelled || !canvasHost) return
 			readTheme()
-			const instance = await createSystemMapRenderer(canvasHost, theme, {
+			const instance = await createRootMapRenderer(canvasHost, theme, {
 				onHover: (body, position) => {
 					hoveredBody = body
 					hoverPosition = position
@@ -143,7 +143,7 @@
 			instance.canvas.style.display = unavailableReason ? 'none' : 'block'
 			instance.canvas.style.width = '100%'
 			instance.canvas.style.height = '100%'
-			instance.canvas.setAttribute('aria-label', `Interactive system map of ${systemName}`)
+			instance.canvas.setAttribute('aria-label', `Interactive root map of ${rootName}`)
 			instance.canvas.setAttribute('aria-keyshortcuts', 'W A S D ArrowUp ArrowLeft ArrowDown ArrowRight')
 			// The host has no Svelte children; imperative ownership is deliberate.
 			// eslint-disable-next-line svelte/no-dom-manipulating
@@ -175,7 +175,7 @@
 		renderer?.setData(stars, bodies)
 	})
 	$effect(() => {
-		renderer?.canvas.setAttribute('aria-label', `Interactive system map of ${systemName}`)
+		renderer?.canvas.setAttribute('aria-label', `Interactive root map of ${rootName}`)
 	})
 
 	const tooltipStyle = $derived.by(() => {
@@ -300,7 +300,7 @@
 						</button>
 						<a
 							class="shrink-0 text-xs text-link hover:text-link-hover"
-							href={resolve('/[...ns_path=namespaced]', { ns_path: `Celestial:${entity.body.slug}` })}
+							href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${entity.body.slug}` })}
 						>Open</a>
 					</li>
 				{/each}

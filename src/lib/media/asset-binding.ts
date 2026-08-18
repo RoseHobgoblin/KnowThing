@@ -1,6 +1,6 @@
 export const MEDIA_ASSET_BINDING_VERSION = 1 as const
 
-export type CelestialMediaPurpose =
+export type RodderMediaPurpose =
 	| 'surface-albedo'
 	| 'surface-elevation'
 	| 'surface-normal'
@@ -62,7 +62,7 @@ function finiteNumber(value: unknown): number | undefined {
 	return typeof value === 'number' && Number.isFinite(value) ? value : undefined
 }
 
-export function interpretationForPurpose(purpose: CelestialMediaPurpose): MediaAssetInterpretation {
+export function interpretationForPurpose(purpose: RodderMediaPurpose): MediaAssetInterpretation {
 	const colorSpace = purpose === 'surface-albedo'
 		|| purpose === 'surface-emissive'
 		|| purpose === 'stellar-photosphere'
@@ -78,7 +78,7 @@ export function interpretationForPurpose(purpose: CelestialMediaPurpose): MediaA
 /** Accept v2 bindings and legacy v1 filename strings without losing old maps. */
 export function parseMediaAssetBinding(
 	value: unknown,
-	purpose: CelestialMediaPurpose,
+	purpose: RodderMediaPurpose,
 ): MediaAssetBinding | null {
 	if (typeof value === 'string' && value.trim()) {
 		return {
@@ -134,7 +134,7 @@ export function parseMediaAssetBinding(
 
 export function mediaBindingFromItem(
 	item: MediaAssetListItem,
-	purpose: CelestialMediaPurpose,
+	purpose: RodderMediaPurpose,
 ): MediaAssetBinding {
 	return {
 		version: MEDIA_ASSET_BINDING_VERSION,
@@ -169,7 +169,7 @@ export function mediaAssetContentUrl(binding: MediaAssetBinding): string {
 	return `/api/media/${encodeURIComponent(binding.filename)}`
 }
 
-export function purposeLabel(purpose: CelestialMediaPurpose): string {
+export function purposeLabel(purpose: RodderMediaPurpose): string {
 	return ({
 		'surface-albedo': 'base color map',
 		'surface-elevation': 'elevation map',
@@ -177,5 +177,5 @@ export function purposeLabel(purpose: CelestialMediaPurpose): string {
 		'surface-roughness': 'roughness map',
 		'surface-emissive': 'emissive map',
 		'stellar-photosphere': 'photosphere plate',
-	} satisfies Record<CelestialMediaPurpose, string>)[purpose]
+	} satisfies Record<RodderMediaPurpose, string>)[purpose]
 }

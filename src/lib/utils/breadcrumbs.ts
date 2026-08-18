@@ -10,7 +10,7 @@ export interface Breadcrumb {
 	label: string
 	href?: string
 	/**
-	 * For namespaced labels like "Celestial:Therne": link only the prefix
+	 * For namespaced labels like "Rodder:Therne": link only the prefix
 	 * before the first ":" to this href; render the colon and the rest inert.
 	 */
 	namespaceHref?: string
@@ -88,32 +88,32 @@ export function wordbookEditLanguageBreadcrumbs(
 	]
 }
 
-// ── Celestial ──────────────────────────────────────────────────────────
+// ── Rodder ──────────────────────────────────────────────────────────
 
-/** Hub breadcrumb (e.g. /celestial) */
-export function celestialRegistryBreadcrumbs(): Breadcrumb[] {
-	return [{ label: 'Celestial' }]
+/** Hub breadcrumb (e.g. /rodder) */
+export function rodderRegistryBreadcrumbs(): Breadcrumb[] {
+	return [{ label: 'Rodder' }]
 }
 
-/** Single-crumb namespaced form: e.g. "Celestial:Sun". */
-export function celestialBreadcrumbs(name: string): Breadcrumb[] {
-	return [{ label: `Celestial:${name.replaceAll(/\s+/g, '_')}`, namespaceHref: '/celestial' }]
+/** Single-crumb namespaced form: e.g. "Rodder:Sun". */
+export function rodderBreadcrumbs(name: string): Breadcrumb[] {
+	return [{ label: `Rodder:${name.replaceAll(/\s+/g, '_')}`, namespaceHref: '/rodder' }]
 }
 
-/** Sector page (e.g. /celestial/sector/local-sector). */
-export function celestialSectorBreadcrumbs(name: string): Breadcrumb[] {
+/** Sector page (e.g. /rodder/sector/local-sector). */
+export function rodderSectorBreadcrumbs(name: string): Breadcrumb[] {
 	return [
-		{ label: 'Celestial', href: '/celestial' },
+		{ label: 'Rodder', href: '/rodder' },
 		{ label: name },
 	]
 }
 
-export function celestialConfigureBreadcrumbs(
+export function rodderConfigureBreadcrumbs(
 	_parentCrumbs: { label: string, href: string }[],
 	body: { name: string, slug: string },
 ): Breadcrumb[] {
 	return [
-		{ label: `Celestial:${body.name.replaceAll(/\s+/g, '_')}`, href: `/Celestial:${body.slug}`, namespaceHref: '/celestial' },
+		{ label: `Rodder:${body.name.replaceAll(/\s+/g, '_')}`, href: `/Rodder:${body.slug}`, namespaceHref: '/rodder' },
 		{ label: 'Configure' },
 	]
 }

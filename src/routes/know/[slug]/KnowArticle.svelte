@@ -27,7 +27,7 @@
 		languageMatch,
 		structuredData: rawStructuredData,
 		structuredCollections,
-		systemMaps,
+		rootMaps,
 		resolvedLinks: rawResolvedLinks,
 		ondeletepage,
 	}: {
@@ -40,7 +40,7 @@
 		languageMatch: { languageSlug: string, languageName: string } | null
 		structuredData: Record<string, Record<string, string>> | null
 		structuredCollections: Record<string, Record<string, unknown>[]> | null
-		systemMaps: Record<string, unknown> | null
+		rootMaps: Record<string, unknown> | null
 		resolvedLinks: Record<string, { href: string, exists: boolean }> | null
 		ondeletepage: () => void
 	} = $props()
@@ -88,7 +88,7 @@
 		calendarConfig: $page.data.calendarConfig ?? null,
 		structuredData: buildStructuredData(rawStructuredData),
 		structuredCollections: (structuredCollections ?? null) as KnowRenderContext['structuredCollections'],
-		systemMaps: systemMaps as KnowRenderContext['systemMaps'],
+		rootMaps: rootMaps as KnowRenderContext['rootMaps'],
 	})))
 </script>
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-	CELESTIAL_FORM_CONFIGS,
+	RODDER_FORM_CONFIGS,
 	allFieldSpecs,
 	buildDraft,
 	buildPayload,
@@ -8,12 +8,12 @@ import {
 	lockFlagKey,
 	labelOf,
 	type BodyReferenceOption,
-	type CelestialFormConfig,
+	type RodderFormConfig,
 	type FieldContext,
 	type SelectFieldSpec,
 } from './form-registry.js'
 
-function makeCtx(config: CelestialFormConfig, overrides: Partial<FieldContext> = {}): FieldContext {
+function makeCtx(config: RodderFormConfig, overrides: Partial<FieldContext> = {}): FieldContext {
 	return {
 		draft: buildDraft(config, { id: 1, name: 'Test', slug: 'test' }),
 		selfId: 1,
@@ -25,7 +25,7 @@ function makeCtx(config: CelestialFormConfig, overrides: Partial<FieldContext> =
 	}
 }
 
-function selectSpec(config: CelestialFormConfig, key: string): SelectFieldSpec {
+function selectSpec(config: RodderFormConfig, key: string): SelectFieldSpec {
 	const spec = allFieldSpecs(config).find(s => s.control === 'select' && s.key === key)
 	if (!spec || spec.control !== 'select') throw new Error(`no select spec ${key}`)
 	return spec
@@ -33,7 +33,7 @@ function selectSpec(config: CelestialFormConfig, key: string): SelectFieldSpec {
 
 describe('buildDraft', () => {
 	it('hydrates text as \'\' and numbers as null when the record is sparse', () => {
-		const draft = buildDraft(CELESTIAL_FORM_CONFIGS.system, { id: 1, name: 'Sunly', slug: 'sunly' })
+		const draft = buildDraft(RODDER_FORM_CONFIGS.system, { id: 1, name: 'Sunly', slug: 'sunly' })
 		expect(draft.name).toBe('Sunly')
 		expect(draft.designations).toBe('')
 		expect(draft.distanceLy).toBeNull()
@@ -41,7 +41,7 @@ describe('buildDraft', () => {
 	})
 
 	it('hydrates lockable overrides from the extra JSONB and flags them unlocked', () => {
-		const draft = buildDraft(CELESTIAL_FORM_CONFIGS.star, {
+		const draft = buildDraft(RODDER_FORM_CONFIGS.star, {
 			id: 2, name: 'Sun', slug: 'the-sun',
 			extra: { density: '1.41 g/cm³', surface_gravity: 274 },
 		})
@@ -53,37 +53,37 @@ describe('buildDraft', () => {
 	})
 
 	it('hydrates the body orbital-period lock from the record column', () => {
-		const withPeriod = buildDraft(CELESTIAL_FORM_CONFIGS.body, { id: 3, name: 'Earth', slug: 'earth', orbitalPeriodDays: 365.25 })
+		const withPeriod = buildDraft(RODDER_FORM_CONFIGS.body, { id: 3, name: 'Earth', slug: 'earth', orbitalPeriodDays: 365.25 })
 		expect(withPeriod.orbitalPeriodDays).toBe(365.25)
 		expect(withPeriod[lockFlagKey('orbitalPeriodDays')]).toBe(true)
 
-		const withoutPeriod = buildDraft(CELESTIAL_FORM_CONFIGS.body, { id: 3, name: 'Earth', slug: 'earth' })
+		const withoutPeriod = buildDraft(RODDER_FORM_CONFIGS.body, { id: 3, name: 'Earth', slug: 'earth' })
 		expect(withoutPeriod[lockFlagKey('orbitalPeriodDays')]).toBe(false)
 	})
 
 	it('stringifies parent-edge selects and defaults bodyType to planet', () => {
-		const draft = buildDraft(CELESTIAL_FORM_CONFIGS.body, { id: 3, name: 'Luna', slug: 'luna', starId: 7, parentId: 4 })
+		const draft = buildDraft(RODDER_FORM_CONFIGS.body, { id: 3, name: 'Luna', slug: 'luna', starId: 7, parentId: 4 })
 		expect(draft.starId).toBe('7')
 		expect(draft.parentId).toBe('4')
 		expect(draft.bodyType).toBe('planet')
 	})
 
 	it('hydrates a circumbinary body\'s primary as its system barycenter', () => {
-		const draft = buildDraft(CELESTIAL_FORM_CONFIGS.body, { id: 3, name: 'Tatooine', slug: 'tatooine', starId: null, parentSystemId: 3 })
+		const draft = buildDraft(RODDER_FORM_CONFIGS.body, { id: 3, name: 'Tatooine', slug: 'tatooine', starId: null, parentSystemId: 3 })
 		expect(draft.starId).toBe('system:3')
 	})
 })
 
 describe('system sector coordinate fields', () => {
 	it('does not claim every sector uses light-years', () => {
-		const fields = allFieldSpecs(CELESTIAL_FORM_CONFIGS.system)
+		const fields = allFieldSpecs(RODDER_FORM_CONFIGS.system)
 			.filter(spec => ['sectorX', 'sectorY', 'sectorZ'].includes(spec.key))
 		expect(fields.map(spec => spec.label)).toEqual(['Sector X', 'Sector Y', 'Sector Z'])
 		expect(fields.every(spec => spec.hint?.includes('declared units'))).toBe(true)
 	})
 
 	it('hydrates sector membership and emits a numeric sector id', () => {
-		const config = CELESTIAL_FORM_CONFIGS.system
+		const config = RODDER_FORM_CONFIGS.system
 		const draft = buildDraft(config, { id: 1, name: 'Sunly', slug: 'sunly', sectorId: 12 })
 		expect(draft.sectorId).toBe('12')
 		const payload = buildPayload(config, { draft, selfId: 1, sectors: [], systems: [], stars: [], siblings: [] })
@@ -93,7 +93,7 @@ describe('system sector coordinate fields', () => {
 
 describe('buildPayload', () => {
 	it('coalesces the star parent edge: companion wins over system', () => {
-		const config = CELESTIAL_FORM_CONFIGS.star
+		const config = RODDER_FORM_CONFIGS.star
 		const ctx = makeCtx(config)
 		ctx.draft.systemId = '5'
 		expect(buildPayload(config, ctx).parentId).toBe(5)
@@ -108,7 +108,7 @@ describe('buildPayload', () => {
 	})
 
 	it('coalesces the body parent edge: parent body wins over star', () => {
-		const config = CELESTIAL_FORM_CONFIGS.body
+		const config = RODDER_FORM_CONFIGS.body
 		const ctx = makeCtx(config)
 		ctx.draft.starId = '7'
 		expect(buildPayload(config, ctx).parentId).toBe(7)
@@ -118,7 +118,7 @@ describe('buildPayload', () => {
 	})
 
 	it('a system barycenter selection becomes the parent edge (circumbinary)', () => {
-		const config = CELESTIAL_FORM_CONFIGS.body
+		const config = RODDER_FORM_CONFIGS.body
 		const ctx = makeCtx(config)
 		ctx.draft.starId = 'system:3'
 		expect(buildPayload(config, ctx).parentId).toBe(3)
@@ -127,7 +127,7 @@ describe('buildPayload', () => {
 	})
 
 	it('round-trips Starwright settings through the star extra JSON', () => {
-		const config = CELESTIAL_FORM_CONFIGS.star
+		const config = RODDER_FORM_CONFIGS.star
 		const draft = buildDraft(config, {
 			id: 2, name: 'Therne', slug: 'therne',
 			extra: {
@@ -156,7 +156,7 @@ describe('buildPayload', () => {
 	})
 
 	it('round-trips independent surface channels through the body extra JSON', () => {
-		const config = CELESTIAL_FORM_CONFIGS.body
+		const config = RODDER_FORM_CONFIGS.body
 		const draft = buildDraft(config, {
 			id: 3, name: 'Earth', slug: 'earth',
 			extra: {
@@ -202,7 +202,7 @@ describe('buildPayload', () => {
 	})
 
 	it('sends locked overrides as null and unlocked overrides verbatim', () => {
-		const config = CELESTIAL_FORM_CONFIGS.body
+		const config = RODDER_FORM_CONFIGS.body
 		const ctx = makeCtx(config)
 		ctx.draft.density = '99 g/cm³'
 		ctx.draft[lockFlagKey('density')] = false
@@ -212,7 +212,7 @@ describe('buildPayload', () => {
 	})
 
 	it('nulls empty optional text but keeps description as a string', () => {
-		const config = CELESTIAL_FORM_CONFIGS.system
+		const config = RODDER_FORM_CONFIGS.system
 		const ctx = makeCtx(config)
 		const payload = buildPayload(config, ctx)
 		expect(payload.designations).toBeNull()
@@ -221,7 +221,7 @@ describe('buildPayload', () => {
 	})
 
 	it('validates against the kind update schema', () => {
-		const config = CELESTIAL_FORM_CONFIGS.star
+		const config = RODDER_FORM_CONFIGS.star
 		const ctx = makeCtx(config, {
 			draft: buildDraft(config, { id: 2, name: 'Sun', slug: 'the-sun', massKg: 1.989e30 }),
 		})
@@ -231,7 +231,7 @@ describe('buildPayload', () => {
 	})
 
 	it('passes luminosityW through for stars', () => {
-		const config = CELESTIAL_FORM_CONFIGS.star
+		const config = RODDER_FORM_CONFIGS.star
 		const ctx = makeCtx(config, { draft: buildDraft(config, { id: 2, name: 'Sun', slug: 'the-sun', luminosityW: 3.828e26 }) })
 		expect(buildPayload(config, ctx).luminosityW).toBe(3.828e26)
 	})
@@ -253,7 +253,7 @@ describe('parent option filtering', () => {
 	})
 
 	it('body parent options exclude self and descendants, and filter by star', () => {
-		const config = CELESTIAL_FORM_CONFIGS.body
+		const config = RODDER_FORM_CONFIGS.body
 		const ctx = makeCtx(config, { selfId: 1, siblings })
 		ctx.draft.starId = '7'
 		const options = selectSpec(config, 'parentId').options(ctx)
@@ -261,7 +261,7 @@ describe('parent option filtering', () => {
 	})
 
 	it('body parent options under a barycenter span the whole system', () => {
-		const config = CELESTIAL_FORM_CONFIGS.body
+		const config = RODDER_FORM_CONFIGS.body
 		const systemSiblings: BodyReferenceOption[] = [
 			{ id: 1, name: 'Earth', starId: 7, parentId: null, rootSystemId: 3 },
 			{ id: 2, name: 'Tatooine', starId: null, parentId: null, parentSystemId: 3, rootSystemId: 3 },
@@ -274,7 +274,7 @@ describe('parent option filtering', () => {
 	})
 
 	it('body parent options fall back to star-less siblings when no star is chosen', () => {
-		const config = CELESTIAL_FORM_CONFIGS.body
+		const config = RODDER_FORM_CONFIGS.body
 		const ctx = makeCtx(config, { selfId: 1, siblings })
 		ctx.draft.starId = ''
 		const options = selectSpec(config, 'parentId').options(ctx)
@@ -282,7 +282,7 @@ describe('parent option filtering', () => {
 	})
 
 	it('star companion options require a shared system and exclude self', () => {
-		const config = CELESTIAL_FORM_CONFIGS.star
+		const config = RODDER_FORM_CONFIGS.star
 		const stars = [
 			{ id: 1, name: 'A', systemId: 10 },
 			{ id: 2, name: 'B', systemId: 10 },
@@ -298,7 +298,7 @@ describe('parent option filtering', () => {
 
 describe('presets', () => {
 	it('star preset patch re-locks every override', () => {
-		const patch = CELESTIAL_FORM_CONFIGS.star.presets!.patch('The Sun')
+		const patch = RODDER_FORM_CONFIGS.star.presets!.patch('The Sun')
 		expect(patch).not.toBeNull()
 		expect(patch!.massKg).toBeGreaterThan(1e30)
 		expect(patch![lockFlagKey('density')]).toBe(false)
@@ -306,26 +306,26 @@ describe('presets', () => {
 	})
 
 	it('body preset patch unlocks the orbital period it sets', () => {
-		const patch = CELESTIAL_FORM_CONFIGS.body.presets!.patch('Earth')
+		const patch = RODDER_FORM_CONFIGS.body.presets!.patch('Earth')
 		expect(patch).not.toBeNull()
 		expect(patch!.orbitalPeriodDays).toBeCloseTo(365.25, 0)
 		expect(patch![lockFlagKey('orbitalPeriodDays')]).toBe(true)
 	})
 
 	it('unknown preset names patch nothing', () => {
-		expect(CELESTIAL_FORM_CONFIGS.star.presets!.patch('Nonexistent')).toBeNull()
+		expect(RODDER_FORM_CONFIGS.star.presets!.patch('Nonexistent')).toBeNull()
 	})
 })
 
 describe('registry integrity', () => {
 	it('offers an appearance map but no generic albedo value', () => {
-		const keys = allFieldSpecs(CELESTIAL_FORM_CONFIGS.body).map(spec => spec.key)
+		const keys = allFieldSpecs(RODDER_FORM_CONFIGS.body).map(spec => spec.key)
 		expect(keys).not.toContain('albedo')
 		expect(keys).toContain('surfaceMap_albedo')
 	})
 
 	it('every keyed field appears in the draft exactly once per kind', () => {
-		for (const config of Object.values(CELESTIAL_FORM_CONFIGS)) {
+		for (const config of Object.values(RODDER_FORM_CONFIGS)) {
 			const draft = buildDraft(config, { id: 1, name: 'X', slug: 'x' })
 			for (const spec of allFieldSpecs(config)) {
 				expect(draft, `${config.kind}:${spec.key}`).toHaveProperty(spec.key)
@@ -334,7 +334,7 @@ describe('registry integrity', () => {
 	})
 
 	it('an untouched draft round-trips through the update schema', () => {
-		for (const config of Object.values(CELESTIAL_FORM_CONFIGS)) {
+		for (const config of Object.values(RODDER_FORM_CONFIGS)) {
 			const ctx = makeCtx(config)
 			// A body with no parent edge is *supposed* to fail validation — give it one.
 			if (config.kind === 'body') ctx.draft.starId = '7'
@@ -344,7 +344,7 @@ describe('registry integrity', () => {
 	})
 
 	it('dynamic labels resolve for every field', () => {
-		for (const config of Object.values(CELESTIAL_FORM_CONFIGS)) {
+		for (const config of Object.values(RODDER_FORM_CONFIGS)) {
 			const ctx = makeCtx(config)
 			for (const spec of allFieldSpecs(config)) {
 				expect(labelOf(spec, ctx).length).toBeGreaterThan(0)

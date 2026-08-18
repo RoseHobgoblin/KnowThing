@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-test.describe('celestial surface preview', () => {
+test.describe('rodder surface preview', () => {
 	test('renders the unsaved terrestrial recipe and updates it live', async ({ page }) => {
 		const pageErrors: string[] = []
 		page.on('pageerror', error => pageErrors.push(error.message))

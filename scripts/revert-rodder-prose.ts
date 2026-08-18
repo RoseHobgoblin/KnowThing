@@ -1,7 +1,7 @@
 /**
  * Reverse-migration: move prose out of `stars.body` / `planetary_bodies.body` /
  * `star_systems.body` BACK into `content_records` (domain='know') so the
- * celestial UI becomes a pure structured-data view. Mirror of
+ * rodder UI becomes a pure structured-data view. Mirror of
  * revert-wordbook-prose.ts.
  *
  * Per-row strategy (only rows with `body` length > 0):
@@ -15,7 +15,7 @@
  *   4. Copy `entity_revisions` rows for this entity back to
  *      `content_revisions` for the new content_records row.
  *   5. Repoint inbound `content_links` from
- *      (target_domain='celestial', target_slug=<entity_slug>) to
+ *      (target_domain='rodder', target_slug=<entity_slug>) to
  *      (target_domain='know', target_slug=<targetSlug>).
  *   6. Repoint outbound `content_links` from
  *      (source_kind='star'|'planet'|'system', source_entity_id=<id>) to
@@ -130,11 +130,11 @@ async function migrateOne(tx: Tx, row: EntityRow, targetSlug: string): Promise<v
 		`
 	}
 
-	// Repoint INBOUND content_links: (celestial, entity.slug) → (know, targetSlug)
+	// Repoint INBOUND content_links: (rodder, entity.slug) → (know, targetSlug)
 	await tx`
 		UPDATE content_links
 		SET target_domain = 'know', target_slug = ${targetSlug}, target_id = NULL
-		WHERE target_domain = 'celestial' AND LOWER(target_slug) = LOWER(${row.slug})
+		WHERE target_domain = 'rodder' AND LOWER(target_slug) = LOWER(${row.slug})
 	`
 
 	// Repoint OUTBOUND content_links: entity-source → know-source on the new cr
@@ -144,7 +144,7 @@ async function migrateOne(tx: Tx, row: EntityRow, targetSlug: string): Promise<v
 		WHERE source_kind = ${row.kind} AND source_entity_id = ${row.id}
 	`
 
-	// Clear body fields, persist page_slug so the celestial data view can link back to Know.
+	// Clear body fields, persist page_slug so the rodder data view can link back to Know.
 	await tx.unsafe(
 		`UPDATE ${row.table}
 		 SET page_slug      = $1,

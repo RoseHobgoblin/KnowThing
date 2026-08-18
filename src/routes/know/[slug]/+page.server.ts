@@ -1,7 +1,7 @@
 import { redirect } from '@sveltejs/kit'
 import type { PageServerLoad } from './$types.js'
-import { parseWikitext, extractCategoriesFromAst, extractInfoboxFromRefs, extractSystemMapRefs, extractCollectionRefs, extractSummaryFromAst } from '$lib/parser/index.js'
-import { resolveAllStructuredData, resolveAllStructuredCollections, resolveAllSystemMaps } from '$lib/server/structured-data.js'
+import { parseWikitext, extractCategoriesFromAst, extractInfoboxFromRefs, extractRootMapRefs, extractCollectionRefs, extractSummaryFromAst } from '$lib/parser/index.js'
+import { resolveAllStructuredData, resolveAllStructuredCollections, resolveAllRootMaps } from '$lib/server/structured-data.js'
 import { getResolvedLinks, serializeResolvedLinks } from '$lib/server/resolved-links.js'
 import { lookupMediaInfo, resolveCardImageSync } from '$lib/server/services/page-card.js'
 import { findPageCaseInsensitive, findPageInAnyDomain } from '$lib/server/services/pages.js'
@@ -17,7 +17,7 @@ export const load: PageServerLoad = async ({ params }) => {
 	}
 
 	if (!record) {
-		// Check if this slug exists in another domain (e.g. moved to celestial)
+		// Check if this slug exists in another domain (e.g. moved to rodder)
 		const otherDomain = await findPageInAnyDomain(params.slug)
 
 		if (otherDomain) {
@@ -61,9 +61,9 @@ export const load: PageServerLoad = async ({ params }) => {
 		}
 	}
 
-	const systemMapSlugs = extractSystemMapRefs(ast)
-	const systemMaps = systemMapSlugs.length > 0
-		? await resolveAllSystemMaps(systemMapSlugs)
+	const rootMapSlugs = extractRootMapRefs(ast)
+	const rootMaps = rootMapSlugs.length > 0
+		? await resolveAllRootMaps(rootMapSlugs)
 		: null
 
 	const collectionRefs = extractCollectionRefs(ast)
@@ -95,7 +95,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		languageMatch,
 		structuredData,
 		structuredCollections,
-		systemMaps,
+		rootMaps,
 		resolvedLinks: serializeResolvedLinks(resolvedLinks),
 		description,
 		card: {

@@ -7,7 +7,7 @@ import {
 	perspectiveWorldUnitsPerPixel,
 } from './camera-math.js'
 
-describe('celestial camera projection math', () => {
+describe('rodder camera projection math', () => {
 	it('round-trips perspective depth and pixel scale', () => {
 		const scale = perspectiveWorldUnitsPerPixel(920, 720, 50)
 		expect(perspectiveDistanceForWorldUnitsPerPixel(scale, 720, 50)).toBeCloseTo(920)

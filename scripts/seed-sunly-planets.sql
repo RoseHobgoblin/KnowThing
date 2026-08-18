@@ -4,7 +4,7 @@
 -- Orbits are Kepler-consistent (P_days ≈ a_AU^1.5 * 365.25 for the ~1 M☉ Sun).
 -- Moons are ordinary planetary_bodies rows with body_type 'planet' and a
 -- parent_id — satellites are distinguished by parentage, not a separate type
--- (see src/lib/celestial/schema.ts). Idempotent: ON CONFLICT (slug) DO NOTHING.
+-- (see src/lib/rodder/schema.ts). Idempotent: ON CONFLICT (slug) DO NOTHING.
 
 -- --- Planets -----------------------------------------------------------------
 INSERT INTO planetary_bodies (

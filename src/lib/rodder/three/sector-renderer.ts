@@ -13,7 +13,7 @@ import {
 	WebGLRenderer,
 } from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
-import type { ThemePalette } from '../system-layout.js'
+import type { ThemePalette } from '../root-layout.js'
 import {
 	positionedRoots,
 	sectorBoundsRadius,

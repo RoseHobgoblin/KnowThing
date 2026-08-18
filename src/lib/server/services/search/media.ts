@@ -9,7 +9,7 @@ export interface MediaSearchParams {
 	sort?: UnifiedSearchFilters['sort']
 	unused?: boolean
 	imageOnly?: boolean
-	celestialPlate?: boolean
+	rodderPlate?: boolean
 	limit: number
 	offset: number
 }
@@ -149,7 +149,7 @@ function buildMediaConditions(params: MediaSearchParams) {
 	if (params.imageOnly) {
 		conditions.push(sql`${media.mimeType} LIKE 'image/%'`)
 	}
-	if (params.celestialPlate) {
+	if (params.rodderPlate) {
 		// A small tolerance permits plates whose metadata was rounded during export.
 		conditions.push(
 			sql`${media.width} IS NOT NULL AND ${media.height} IS NOT NULL AND ${media.height} > 0`,

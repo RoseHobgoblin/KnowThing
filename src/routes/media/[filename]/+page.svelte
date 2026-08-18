@@ -447,8 +447,8 @@
 					<ul class="space-y-1 text-sm">
 						{#each data.assetUsage as binding (`${binding.ownerType}:${binding.ownerId}:${binding.slot}`)}
 							<li>
-								{#if binding.ownerType === 'celestial' && binding.slug}
-									<a href={resolve('/celestial/[...path]', { path: binding.slug })} class="text-link hover:text-link-hover hover:underline">{binding.name ?? binding.slug}</a>
+								{#if binding.ownerType === 'rodder' && binding.slug}
+									<a href={resolve('/rodder/[...path]', { path: binding.slug })} class="text-link hover:text-link-hover hover:underline">{binding.name ?? binding.slug}</a>
 								{:else}
 									<span class="text-body">{binding.ownerType} #{binding.ownerId}</span>
 								{/if}

@@ -15,7 +15,7 @@ import {
 	mediaHistory,
 	mediaVersions,
 	users,
-	celestialBodies,
+	rodderBodies,
 } from '$lib/server/db/schema.js'
 import { getSiteConfig } from '$lib/server/settings.js'
 import { sanitizeSvg, stripExifMetadata, verifyMimeType } from './media-sanitize.js'
@@ -111,13 +111,13 @@ export async function getMediaDetail(filename: string) {
 			ownerType: mediaAssetBindings.ownerType,
 			ownerId: mediaAssetBindings.ownerId,
 			slot: mediaAssetBindings.slot,
-			name: celestialBodies.name,
-			slug: celestialBodies.slug,
+			name: rodderBodies.name,
+			slug: rodderBodies.slug,
 		})
 		.from(mediaAssetBindings)
-		.leftJoin(celestialBodies, and(
-			eq(mediaAssetBindings.ownerType, 'celestial'),
-			eq(mediaAssetBindings.ownerId, celestialBodies.id),
+		.leftJoin(rodderBodies, and(
+			eq(mediaAssetBindings.ownerType, 'rodder'),
+			eq(mediaAssetBindings.ownerId, rodderBodies.id),
 		))
 		.where(eq(mediaAssetBindings.mediaId, file.id))
 

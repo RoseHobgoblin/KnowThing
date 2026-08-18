@@ -1,6 +1,7 @@
 <script lang="ts">
+	import { resolve } from '$app/paths'
 	import { untrack } from 'svelte'
-	import type { MapBody } from './system-layout.js'
+	import type { MapBody } from './root-layout.js'
 	import type { CalendarConfig } from 'rimecraft'
 	import { resolveColor } from './colors.js'
 	import { deriveSystemType } from 'tungolcraft'
@@ -15,16 +16,16 @@
 	import CircleDashed from 'phosphor-svelte/lib/CircleDashed'
 
 	let {
-		system,
+		root,
 		stars,
 		bodies,
-		systemSlug,
+		rootSlug,
 		sector = null,
 		calendars = [],
 		currentAbsoluteDay = $bindable(0),
 		selectedBody = null,
 	}: {
-		system: {
+		root: {
 			name: string
 			distanceLy?: number | null
 			formationAge?: string | null
@@ -32,7 +33,7 @@
 		}
 		stars: MapBody[]
 		bodies: MapBody[]
-		systemSlug: string
+		rootSlug: string
 		sector?: {
 			sectorName: string
 			sectorSlug: string
@@ -90,9 +91,9 @@
 </script>
 
 <div class="space-y-4 text-sm">
-	<!-- System metadata -->
+	<!-- Root metadata -->
 	<div>
-		<div class="mb-2 border-b border-border-subtle pb-1 text-xs font-semibold tracking-wider text-secondary uppercase">System</div>
+		<div class="mb-2 border-b border-border-subtle pb-1 text-xs font-semibold tracking-wider text-secondary uppercase">Root</div>
 		<div class="space-y-1.5 text-secondary">
 			<div class="flex justify-between">
 				<span>Type</span>
@@ -108,29 +109,29 @@
 					<span class="font-medium text-body">{totalBodies}</span>
 				</div>
 			{/if}
-			{#if system.distanceLy != null}
+			{#if root.distanceLy != null}
 				<div class="flex justify-between">
 					<span>Distance</span>
-					<span class="font-medium text-body">{system.distanceLy.toLocaleString('en-US', { maximumFractionDigits: 2 })} ly</span>
+					<span class="font-medium text-body">{root.distanceLy.toLocaleString('en-US', { maximumFractionDigits: 2 })} ly</span>
 				</div>
 			{/if}
-			{#if system.formationAge}
+			{#if root.formationAge}
 				<div class="flex justify-between gap-4">
 					<span>Age</span>
-					<span class="text-right font-medium text-body">{system.formationAge}</span>
+					<span class="text-right font-medium text-body">{root.formationAge}</span>
 				</div>
 			{/if}
-			{#if system.designations}
+			{#if root.designations}
 				<div class="flex justify-between gap-4">
 					<span>Designations</span>
-					<span class="text-right font-medium text-body">{system.designations}</span>
+					<span class="text-right font-medium text-body">{root.designations}</span>
 				</div>
 			{/if}
 			{#if sector}
 				<div class="flex justify-between gap-4">
 					<span>Sector</span>
 					<a
-						href="/celestial/sector/{sector.sectorSlug}?focus={systemSlug}"
+						href={resolve(`/rodder/sector/${sector.sectorSlug}?focus=${encodeURIComponent(rootSlug)}`)}
 						class="font-medium text-link transition-colors hover:text-link-hover"
 					>{sector.sectorName}</a>
 				</div>
@@ -177,7 +178,7 @@
 					{/if}
 				</div>
 				<a
-					href="/Celestial:{selectedBody.slug}"
+					href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${selectedBody.slug}` })}
 					class="mt-2 block text-xs text-link transition-colors hover:text-link-hover"
 				>View details</a>
 			</div>
@@ -191,7 +192,7 @@
 			{#each stars as star (star.id)}
 				{@const isPrimary = !star.parentStarId}
 				<a
-					href="/Celestial:{star.slug}"
+					href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${star.slug}` })}
 					class="flex items-center gap-2 px-1.5 py-1 transition-colors hover:bg-raised"
 				>
 					<Star
@@ -210,7 +211,7 @@
 				{#each planetsForStar(star.id) as planet (planet.id)}
 					{@const PlanetIcon = bodyIcon(planet.bodyType, !!planet.parentId)}
 					<a
-						href="/Celestial:{planet.slug}"
+						href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${planet.slug}` })}
 						class="ml-4 flex items-center gap-2 px-1.5 py-1 transition-colors hover:bg-raised"
 					>
 						<PlanetIcon
@@ -226,7 +227,7 @@
 					<!-- Moons -->
 					{#each moonsForBody(planet.id) as moon (moon.id)}
 						<a
-							href="/Celestial:{moon.slug}"
+							href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${moon.slug}` })}
 							class="ml-8 flex items-center gap-2 px-1.5 py-0.5 transition-colors hover:bg-raised"
 						>
 							<Moon size={12} weight="fill" class="shrink-0 text-dim" />

@@ -53,7 +53,7 @@ BEGIN
 	IF tile IS NULL OR octet_length(tile) = 0 THEN RAISE EXCEPTION 'Mars vector tile was empty'; END IF;
 END $$;
 
--- A feature cannot be silently attached to a different celestial space.
+-- A feature cannot be silently attached to a different rodder space.
 DO $$
 BEGIN
 	BEGIN

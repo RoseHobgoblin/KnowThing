@@ -46,7 +46,7 @@ describe('Mars preset data package', () => {
 
 	it('keeps analytical albedo separate from the sRGB appearance channel', async () => {
 		const manifest = JSON.parse(await readFile(
-			path.resolve('static/seed-data/celestial/mars/manifest.json'), 'utf8',
+			path.resolve('static/seed-data/rodder/mars/manifest.json'), 'utf8',
 		)) as {
 			referenceFrame: { localKernel: string, sourceSha256: string }
 			products: Array<{
@@ -62,7 +62,7 @@ describe('Mars preset data package', () => {
 		expect(tes).toMatchObject({ status: 'catalogued-not-material-bound' })
 		expect(tes?.bindingNote).toContain('falsely grey')
 
-		const root = path.resolve('static/seed-data/celestial/mars')
+		const root = path.resolve('static/seed-data/rodder/mars')
 		const pinnedFiles = [
 			{ path: manifest.referenceFrame.localKernel, hash: manifest.referenceFrame.sourceSha256 },
 			...manifest.products.flatMap((product) => {

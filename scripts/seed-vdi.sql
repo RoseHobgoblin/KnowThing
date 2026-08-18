@@ -54,7 +54,7 @@ Written in the '''Imperial tone-hand'''; the Wordbook stores its romanisation. G
 VDI is '''ergative–absolutive'''. The bare '''absolutive''' is the subject of an intransitive verb ''and'' the object of a transitive one; the special '''ergative''' marks the doer of a transitive verb. Dragons are grammatically exalted: the ergative of the '''Sovereign''' noun class is the high-tone ''-qá'', while the '''Common''' class takes a flat ''-ki''. To mark a dragon as the agent is to raise the pitch of the whole word.
 
 === Noun classes, number, case ===
-Nouns are '''Sovereign''' (dragons, elements, celestial bodies, the sacred, the Empire) or '''Common''' (everything else). Both inflect for '''number''' — singular / plural / '''myriad''' (an uncountable multitude: scales, embers, coins, stars) — and four '''cases''': absolutive, ergative, genitive, oblique. Full tables: {{Inflections|verdant-draconic-imperial}}.
+Nouns are '''Sovereign''' (dragons, elements, rodder bodies, the sacred, the Empire) or '''Common''' (everything else). Both inflect for '''number''' — singular / plural / '''myriad''' (an uncountable multitude: scales, embers, coins, stars) — and four '''cases''': absolutive, ergative, genitive, oblique. Full tables: {{Inflections|verdant-draconic-imperial}}.
 
 === Verbs: tense, and the fourth person ===
 Verbs mark '''tense''' (past / present / future) by prefix and '''person''' by suffix. VDI person is unusual: alongside 1st, 2nd, and 3rd it has a '''fourth person''' — the '''draconic''', used for and by dragons, the Empire, and the divine. The fourth person always carries '''high tone''' (''-á'' / ''-é''), so reverence is audible. '''Strong''' verbs (draconic acts: to fly, to burn, to hoard) take glottal, ejective endings; '''Weak''' verbs (mortal acts) take plain ones.
@@ -165,7 +165,7 @@ ON CONFLICT (language_id, part_of_speech, name) DO NOTHING;
 -- --- 6. Paradigm classes -----------------------------------------------------
 INSERT INTO paradigm_classes (language_id, part_of_speech, name, description) VALUES
 ((SELECT id FROM languages WHERE slug='verdant-draconic-imperial'), 'noun', 'Sovereign',
- 'Exalted class: dragons, elements, celestial bodies, the Empire, the sacred. High-tone ergative -qá.'),
+ 'Exalted class: dragons, elements, rodder bodies, the Empire, the sacred. High-tone ergative -qá.'),
 ((SELECT id FROM languages WHERE slug='verdant-draconic-imperial'), 'noun', 'Common',
  'Everyday class: mortals, tools, places, animals. Flat ergative -ki.'),
 ((SELECT id FROM languages WHERE slug='verdant-draconic-imperial'), 'verb', 'Strong',
@@ -280,7 +280,7 @@ INSERT INTO lexicon (word, language_id, pronunciation, notes) VALUES
 ('tʼokh',    (SELECT id FROM languages WHERE slug='verdant-draconic-imperial'), 'tʼoχ',       NULL),
 ('reʔ',      (SELECT id FROM languages WHERE slug='verdant-draconic-imperial'), 'reʔ',        NULL),
 ('khul',     (SELECT id FROM languages WHERE slug='verdant-draconic-imperial'), 'χul',        NULL),
--- Elements & celestial (Sovereign)
+-- Elements & rodder (Sovereign)
 ('qʼaḥ',     (SELECT id FROM languages WHERE slug='verdant-draconic-imperial'), 'qʼaħ',       'Fire; from Old Draconic *χʁōm̥.'),
 ('ʔashûn',   (SELECT id FROM languages WHERE slug='verdant-draconic-imperial'), 'ʔaˈʃuːn',    NULL),
 ('ʔembor',   (SELECT id FROM languages WHERE slug='verdant-draconic-imperial'), 'ˈʔem.bor',   NULL),

@@ -117,7 +117,7 @@ export interface DomainLinkNode {
 	display: WikiNode[] | null
 }
 /**
- * Namespaced link such as `[[Celestial:Therne]]` or `[[:Category:Foo]]`.
+ * Namespaced link such as `[[Rodder:Therne]]` or `[[:Category:Foo]]`.
  * The `namespace` is canonical TitleCase (matched against the registry at
  * parse time); `identifier` is the rest of the target verbatim — for
  * `Category:Foo/Bar` the identifier is `Foo/Bar`.

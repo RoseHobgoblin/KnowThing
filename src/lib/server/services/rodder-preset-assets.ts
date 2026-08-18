@@ -4,8 +4,8 @@ import path from 'node:path'
 import { error } from '@sveltejs/kit'
 import { eq } from 'drizzle-orm'
 import { env } from '$env/dynamic/private'
-import type { BodyPreset, CelestialPreset, PresetMediaAsset } from '$lib/celestial/presets.js'
-import { SURFACE_RECIPE_VERSION } from '$lib/celestial/surface-model.js'
+import type { BodyPreset, RodderPreset, PresetMediaAsset } from '$lib/rodder/presets.js'
+import { SURFACE_RECIPE_VERSION } from '$lib/rodder/surface-model.js'
 import { media } from '$lib/server/db/schema.js'
 import { db } from '$lib/server/db/index.js'
 
@@ -78,10 +78,10 @@ async function prepareAsset(asset: PresetMediaAsset): Promise<PreparedAsset> {
 
 /**
  * Verify and copy bundled preset files before opening a database transaction.
- * A failed celestial transaction may leave an identical, unreferenced file in
- * uploads; it never leaves a half-created celestial hierarchy or media row.
+ * A failed rodder transaction may leave an identical, unreferenced file in
+ * uploads; it never leaves a half-created rodder hierarchy or media row.
  */
-export async function prepareCelestialPresetAssets(preset: CelestialPreset): Promise<Map<BodyPreset, PreparedPresetSurface>> {
+export async function prepareRodderPresetAssets(preset: RodderPreset): Promise<Map<BodyPreset, PreparedPresetSurface>> {
 	const prepared = new Map<BodyPreset, PreparedPresetSurface>()
 	const bodies = preset.stars.flatMap(star => star.bodies.flatMap(body => [body, ...(body.moons ?? [])]))
 	await Promise.all(bodies.map(async (body) => {

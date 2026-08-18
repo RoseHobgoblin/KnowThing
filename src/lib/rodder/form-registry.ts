@@ -25,22 +25,22 @@ import { parseWeatherRecipe } from './weather-model.js'
 import { weatherRecipeFromDraft } from './weather-editor.js'
 import { parseStellarSurfaceRecipe } from './stellar-surface-model.js'
 import { stellarSurfaceRecipeFromDraft } from './stellar-surface-editor.js'
-import type { CelestialMediaPurpose, MediaAssetBinding } from '$lib/media/asset-binding.js'
+import type { RodderMediaPurpose, MediaAssetBinding } from '$lib/media/asset-binding.js'
 
 /**
- * Declarative field registry for the celestial configure forms.
+ * Declarative field registry for the rodder configure forms.
  *
  * Each kind (system / star / body) is described once as data: sections of
  * field specs plus a handful of kind-specific hooks (payload merging, physics
- * warnings, presets). CelestialConfigureForm.svelte renders any config, and
+ * warnings, presets). RodderConfigureForm.svelte renders any config, and
  * the draft/payload builders below replace the per-form snapshot, reset and
  * save plumbing that used to be maintained three times over.
  */
 
-export type CelestialFormKind = 'system' | 'star' | 'body'
+export type RodderFormKind = 'system' | 'star' | 'body'
 
 /** Flat working copy of the record being edited, keyed by field spec key. */
-export type CelestialDraft = Record<string, any>
+export type RodderDraft = Record<string, any>
 
 export interface SelectOption { value: string, label: string }
 
@@ -51,7 +51,7 @@ export interface BodyReferenceOption { id: number, name: string, massKg?: number
 
 /** Everything a field's dynamic parts (options, derivations, labels) can see. */
 export interface FieldContext {
-	draft: CelestialDraft
+	draft: RodderDraft
 	/** id of the entity being edited — excluded from its own parent candidates. */
 	selfId: number | null
 	sectors: SectorReferenceOption[]
@@ -111,7 +111,7 @@ export interface CheckboxFieldSpec extends FieldBase { control: 'checkbox', key:
 export interface MediaFieldSpec extends FieldBase {
 	control: 'media'
 	key: string
-	purpose: CelestialMediaPurpose
+	purpose: RodderMediaPurpose
 	initial: (record: Record<string, any>) => MediaAssetBinding | null
 }
 export interface LockableFieldSpec extends FieldBase {
@@ -158,11 +158,11 @@ export interface PresetsConfig {
 	placeholder: string
 	names: string[]
 	/** Draft patch for the named preset, or null when unknown. */
-	patch: (name: string) => Partial<CelestialDraft> | null
+	patch: (name: string) => Partial<RodderDraft> | null
 }
 
-export interface CelestialFormConfig {
-	kind: CelestialFormKind
+export interface RodderFormConfig {
+	kind: RodderFormKind
 	noun: string
 	headerNote: string
 	updateSchema: ZodType
@@ -192,7 +192,7 @@ export function labelOf(spec: FieldSpec, ctx: FieldContext): string {
 	return typeof spec.label === 'function' ? spec.label(ctx) : spec.label
 }
 
-export function allFieldSpecs(config: CelestialFormConfig): FieldSpec[] {
+export function allFieldSpecs(config: RodderFormConfig): FieldSpec[] {
 	return [
 		...config.sections.flatMap(section => section.groups.flatMap(group => group.fields)),
 		...(config.overrides ?? []),
@@ -216,10 +216,10 @@ function text(ctx: FieldContext, key: string): string {
 	return typeof value === 'string' ? value : ''
 }
 
-export function buildDraft(config: CelestialFormConfig, record: Record<string, any>): CelestialDraft {
+export function buildDraft(config: RodderFormConfig, record: Record<string, any>): RodderDraft {
 	const extra = (record.extra ?? {}) as Record<string, unknown>
 	const extraString = (key: string) => (typeof extra[key] === 'string' ? (extra[key] as string) : null)
-	const draft: CelestialDraft = {}
+	const draft: RodderDraft = {}
 	for (const spec of allFieldSpecs(config)) {
 		if (spec.key in draft) continue // a field may render in two sections (star color)
 		switch (spec.control) {
@@ -263,7 +263,7 @@ export function buildDraft(config: CelestialFormConfig, record: Record<string, a
 	return draft
 }
 
-export function buildPayload(config: CelestialFormConfig, ctx: FieldContext): Record<string, any> {
+export function buildPayload(config: RodderFormConfig, ctx: FieldContext): Record<string, any> {
 	const draft = ctx.draft
 	const payload: Record<string, any> = {}
 	for (const spec of allFieldSpecs(config)) {
@@ -314,7 +314,7 @@ export function descendantIds(siblings: BodyReferenceOption[], selfId: number | 
 // Shared field fragments
 // ---------------------------------------------------------------------------
 
-const SLUG_HINT = 'URL identifier (/Celestial:slug). Follows the name until edited by hand. Existing [[links]] to the old slug are not redirected.'
+const SLUG_HINT = 'URL identifier (/Rodder:slug). Follows the name until edited by hand. Existing [[links]] to the old slug are not redirected.'
 
 function nameField(placeholder: string): NameFieldSpec {
 	return { control: 'name', key: 'name', label: 'Name', placeholder }
@@ -395,7 +395,7 @@ function systemStarCount(ctx: FieldContext): number {
 	return ctx.stars.filter(star => star.systemId === ctx.selfId).length
 }
 
-const systemConfig: CelestialFormConfig = {
+const systemConfig: RodderFormConfig = {
 	kind: 'system',
 	noun: 'System',
 	headerNote: 'The system type is derived from the number of stars — assign stars to change it.',
@@ -524,7 +524,7 @@ const starColorField: TextFieldSpec = {
 	hint: 'Descriptive color name used for map rendering. Examples: yellow-white, orange-red, blue-white.',
 }
 
-const starConfig: CelestialFormConfig = {
+const starConfig: RodderFormConfig = {
 	kind: 'star',
 	noun: 'Star',
 	headerNote: 'Structured star properties are managed here.',
@@ -897,7 +897,7 @@ function bodySiblingOrbits(ctx: FieldContext) {
 		.map(sibling => ({ name: sibling.name, semiMajorAxisAu: sibling.semiMajorAxisAu as number, eccentricity: sibling.eccentricity ?? null }))
 }
 
-const bodyConfig: CelestialFormConfig = {
+const bodyConfig: RodderFormConfig = {
 	kind: 'body',
 	noun: 'Body',
 	headerNote: 'Structured body properties are managed here.',
@@ -1105,7 +1105,7 @@ const bodyConfig: CelestialFormConfig = {
 						key: `surfaceMap_${channel}`,
 						label,
 						omitFromPayload: true,
-						purpose: `surface-${channel}` as CelestialMediaPurpose,
+						purpose: `surface-${channel}` as RodderMediaPurpose,
 						initial: (record: Record<string, any>) => parseSurfaceRecipe(record.extra?.surface).maps[channel] ?? null,
 						hint,
 					})),
@@ -1252,14 +1252,14 @@ const bodyConfig: CelestialFormConfig = {
 		},
 	},
 	deleteConfirm: {
-		title: 'Delete celestial body',
+		title: 'Delete rodder body',
 		message: name => `Delete "${name}"? This cannot be undone.`,
 		action: 'Delete Body',
 	},
-	deleteNote: 'Delete this celestial body record. This cannot be undone.',
+	deleteNote: 'Delete this rodder body record. This cannot be undone.',
 }
 
-export const CELESTIAL_FORM_CONFIGS: Record<CelestialFormKind, CelestialFormConfig> = {
+export const RODDER_FORM_CONFIGS: Record<RodderFormKind, RodderFormConfig> = {
 	system: systemConfig,
 	star: starConfig,
 	body: bodyConfig,

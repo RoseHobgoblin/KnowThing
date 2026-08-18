@@ -41,7 +41,7 @@ export function extractLinksFromAst(ast: WikiNode): string[] {
  *    backlinks need tracking through content_links the same way)
  *
  * Domain naming convention for content_links:
- *   - namespace_link → lowercased namespace key ('celestial', 'category', …)
+ *   - namespace_link → lowercased namespace key ('rodder', 'category', …)
  *   - wordbook_link  → 'wordbook'; targetSlug is `${language}/${word}` (or
  *                       just `${language}` for language-only links)
  *   - {{wt|word|lang}} templates → 'wordbook' with `${lang}/${word}`, so
@@ -230,13 +230,13 @@ export function extractCollectionRefs(ast: WikiNode): { type: string, slug: stri
 }
 
 /**
- * Walk a pre-parsed AST and find {{System map|slug}} templates.
+ * Walk a pre-parsed AST and find {{Root map|slug}} templates.
  * Returns the system slugs to pre-fetch.
  */
-export function extractSystemMapRefs(ast: WikiNode): string[] {
+export function extractRootMapRefs(ast: WikiNode): string[] {
 	const slugs: string[] = []
 	walkNodes([ast], (node) => {
-		if (node.type === 'template' && node.name.toLowerCase().trim() === 'system map') {
+		if (node.type === 'template' && node.name.toLowerCase().trim() === 'root map') {
 			const slug = node.args[0]?.value?.trim()
 			if (slug) slugs.push(slug)
 		}

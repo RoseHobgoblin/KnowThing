@@ -1,5 +1,5 @@
 /**
- * Pure helpers for the celestial atlas (the `/celestial` landing index).
+ * Pure helpers for the rodder atlas (the `/rodder` landing index).
  *
  * Kept out of the Svelte component so the grouping/search/sort logic is unit
  * testable and free of the reactivity lint rules — it operates on plain data

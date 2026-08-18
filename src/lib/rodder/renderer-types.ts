@@ -1,5 +1,5 @@
 import type { LabelMode, ScaleMode, TrailMode, ViewMode, VisibilityMode } from './map-settings.js'
-import type { EntityKey, MapBody, ThemePalette } from './system-layout.js'
+import type { EntityKey, MapBody, ThemePalette } from './root-layout.js'
 
 export type MapSettingsState = {
 	scale: ScaleMode
@@ -50,7 +50,7 @@ export type MapRendererCallbacks = {
 	onUnavailable?: (reason: string) => void
 }
 
-export type SystemMapRenderer = {
+export type RootMapRenderer = {
 	setData(stars: MapBody[], bodies: MapBody[]): void
 	setDay(day: number | null): void
 	setSettings(settings: MapSettingsState): void

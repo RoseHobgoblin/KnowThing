@@ -1,5 +1,5 @@
--- Seed celestial bodies from production wiki articles
--- Run with: docker compose -f docker-compose.prod.yml exec -T db psql -U knowthing -d knowthing < scripts/seed-celestial.sql
+-- Seed rodder bodies from production wiki articles
+-- Run with: docker compose -f docker-compose.prod.yml exec -T db psql -U knowthing -d knowthing < scripts/seed-rodder.sql
 
 -- The Sun (primary star)
 INSERT INTO stars (name, slug, page_slug, spectral_type, mass, radius, luminosity, temperature, age, color, apparent_magnitude, angular_diameter, companion, extra, description)

@@ -1,7 +1,7 @@
 <script lang="ts">
-	import CelestialSurfacePreview from '$lib/components/celestial/CelestialSurfacePreview.svelte'
+	import RodderSurfacePreview from '$lib/components/rodder/RodderSurfacePreview.svelte'
 	import CoverageInput from '$lib/components/ui/CoverageInput.svelte'
-	import type { MapBody } from '$lib/celestial/system-layout.js'
+	import type { MapBody } from '$lib/rodder/root-layout.js'
 
 	let surfaceWater = $state<number | null>(0.55)
 	let cloudCoverage = $state<number | null>(0.48)
@@ -50,14 +50,14 @@
 	})
 </script>
 
-<svelte:head><title>Celestial surface preview fixture</title></svelte:head>
+<svelte:head><title>Rodder surface preview fixture</title></svelte:head>
 
 <main class="min-h-screen bg-page p-6 text-heading" data-testid="surface-preview-fixture">
 	<div class="mx-auto grid max-w-4xl items-start gap-6 md:grid-cols-[1fr_320px]">
 		<section class="space-y-4 bg-surface p-5">
 			<div>
 				<h1 class="text-lg font-semibold">Surface editor fixture</h1>
-				<p class="mt-1 text-xs text-secondary">Changes below drive the same unsaved preview used by the celestial body editor.</p>
+				<p class="mt-1 text-xs text-secondary">Changes below drive the same unsaved preview used by the rodder body editor.</p>
 			</div>
 			<div class="flex gap-2">
 				<button class="bg-raised px-3 py-2 text-xs text-body" onclick={() => previewKind = 'planet'}>Planet</button>
@@ -73,9 +73,9 @@
 			</label>
 		</section>
 		{#if previewKind === 'planet'}
-			<CelestialSurfacePreview {body} />
+			<RodderSurfacePreview {body} />
 		{:else}
-			<CelestialSurfacePreview body={star} isStar />
+			<RodderSurfacePreview body={star} isStar />
 		{/if}
 	</div>
 </main>

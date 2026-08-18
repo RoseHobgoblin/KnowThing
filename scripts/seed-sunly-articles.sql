@@ -1,6 +1,6 @@
 -- Seed Know-domain wiki articles for the Sunly system's planets and moons.
 -- Each article embeds {{Infobox planet|from=<slug>}}, which pulls the body's
--- structured celestial data (see src/lib/server/structured-data.ts) at render time.
+-- structured rodder data (see src/lib/server/structured-data.ts) at render time.
 -- Run AFTER scripts/seed-sunly-planets.sql (the bodies must exist for from= to resolve).
 --
 -- Run with: docker compose exec -T db psql -U knowthing -d knowthing < scripts/seed-sunly-articles.sql

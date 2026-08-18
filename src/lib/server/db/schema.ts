@@ -243,7 +243,7 @@ export const calendars = pgTable('calendars', {
 	description: text('description').default(''),
 	isPrimary: boolean('is_primary').default(false).notNull(),
 	staticData: jsonb('static_data').notNull(),
-	planetId: integer('planet_id').references((): AnyPgColumn => celestialBodies.id, { onDelete: 'set null' }),
+	planetId: integer('planet_id').references((): AnyPgColumn => rodderBodies.id, { onDelete: 'set null' }),
 	body: text('body').notNull().default(''),
 	bodyParsedAst: jsonb('body_parsed_ast'),
 	bodyPlainText: text('body_plain_text').notNull().default(''),
@@ -569,11 +569,11 @@ export const lexiconRelations = pgTable(
 )
 
 // ============================================================================
-// Celestial Bodies
+// Rodder Bodies
 // ============================================================================
 
 /**
- * Unified celestial entity table (migration 0043). One row per system, star,
+ * Unified rodder entity table (migration 0043). One row per system, star,
  * or body; `kind` discriminates, `parentId` is the single hierarchy edge
  * (star→system|star, body→star|body, system→none). Dynamical role (planet vs
  * moon vs companion) is NOT stored — it derives from the parent's kind.
@@ -581,8 +581,8 @@ export const lexiconRelations = pgTable(
  * structural CHECKs (see 0043). `legacyKind`/`legacyId` are migration audit
  * columns, dropped in the follow-up cleanup migration.
  */
-export const celestialBodies = pgTable(
-	'celestial_bodies',
+export const rodderBodies = pgTable(
+	'rodder_bodies',
 	{
 		id: serial('id').primaryKey(),
 		kind: text('kind').notNull(),
@@ -592,7 +592,7 @@ export const celestialBodies = pgTable(
 		// resolve via the underscored display name instead. Column dropped in the
 		// 0044 legacy-cleanup migration.
 		pageSlug: text('page_slug'),
-		parentId: integer('parent_id').references((): AnyPgColumn => celestialBodies.id, { onDelete: 'set null' }),
+		parentId: integer('parent_id').references((): AnyPgColumn => rodderBodies.id, { onDelete: 'set null' }),
 
 		// Shared physical / observational.
 		massKg: doublePrecision('mass_kg'),
@@ -631,7 +631,7 @@ export const celestialBodies = pgTable(
 		satellites: integer('satellites'),
 		hasRings: boolean('has_rings').default(false),
 
-		// System-only. Sector-frame XYZ lives in celestial_sector_roots (0054);
+		// System-only. Sector-frame XYZ lives in rodder_sector_roots (0054);
 		// distance stays here as an independent approximate authored fact.
 		distanceLy: doublePrecision('distance_ly'),
 		formationAge: text('formation_age'),
@@ -652,21 +652,21 @@ export const celestialBodies = pgTable(
 		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 	},
 	table => [
-		index('idx_celestial_bodies_slug').on(table.slug),
-		index('idx_celestial_bodies_parent').on(table.parentId),
-		index('idx_celestial_bodies_kind_parent').on(table.kind, table.parentId),
+		index('idx_rodder_bodies_slug').on(table.slug),
+		index('idx_rodder_bodies_parent').on(table.parentId),
+		index('idx_rodder_bodies_kind_parent').on(table.kind, table.parentId),
 	],
 )
 
 /**
- * A celestial sector (migration 0054): a bounded 3D authoring space with an
+ * A rodder sector (migration 0054): a bounded 3D authoring space with an
  * explicit reference-frame contract — units, shape/extent, origin semantics,
  * axes, handedness, provenance. Sector-map positions are meaningless without
  * this record; bare XYZ values must never be stored outside a declared frame.
  * Enum-ish columns carry DB CHECKs (see 0054); extent columns are nullable so
  * an undeclared extent stays visibly unavailable.
  */
-export const celestialSectors = pgTable('celestial_sectors', {
+export const rodderSectors = pgTable('rodder_sectors', {
 	id: serial('id').primaryKey(),
 	name: text('name').notNull(),
 	slug: text('slug').unique().notNull(),
@@ -680,7 +680,7 @@ export const celestialSectors = pgTable('celestial_sectors', {
 	extentY: doublePrecision('extent_y'),
 	extentZ: doublePrecision('extent_z'),
 	originKind: text('origin_kind').notNull().default('frame-centred'), // 'object-centred' | 'frame-centred' | 'imported'
-	originBodyId: integer('origin_body_id').references(() => celestialBodies.id, { onDelete: 'set null' }),
+	originBodyId: integer('origin_body_id').references(() => rodderBodies.id, { onDelete: 'set null' }),
 	axesNote: text('axes_note'),
 	handedness: text('handedness').notNull().default('right-handed'), // 'right-handed' | 'left-handed'
 	referenceEpoch: text('reference_epoch'),
@@ -698,12 +698,12 @@ export const celestialSectors = pgTable('celestial_sectors', {
  * layer requires complete triples on write, while legacy-migrated rows keep
  * whatever the old galactic_x/y/z columns held, verbatim.
  */
-export const celestialSectorRoots = pgTable(
-	'celestial_sector_roots',
+export const rodderSectorRoots = pgTable(
+	'rodder_sector_roots',
 	{
 		id: serial('id').primaryKey(),
-		sectorId: integer('sector_id').references(() => celestialSectors.id, { onDelete: 'cascade' }).notNull(),
-		bodyId: integer('body_id').references(() => celestialBodies.id, { onDelete: 'cascade' }).unique().notNull(),
+		sectorId: integer('sector_id').references(() => rodderSectors.id, { onDelete: 'cascade' }).notNull(),
+		bodyId: integer('body_id').references(() => rodderBodies.id, { onDelete: 'cascade' }).unique().notNull(),
 
 		x: doublePrecision('x'),
 		y: doublePrecision('y'),

@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { validateParentKind, isCelestialKind, CELESTIAL_KINDS, type CelestialKind } from './parent-rules.js'
+import { validateParentKind, isRodderKind, RODDER_KINDS, type RodderKind } from './parent-rules.js'
 
 describe('validateParentKind', () => {
 	// The full kind × parentKind matrix. `null` in the expectation means the
 	// combination is legal; a string means it must be rejected (any message).
-	const matrix: Array<[CelestialKind, CelestialKind | null, boolean]> = [
+	const matrix: Array<[RodderKind, RodderKind | null, boolean]> = [
 		// system: never has a parent
 		['system', null, true],
 		['system', 'system', false],
@@ -43,12 +43,12 @@ describe('validateParentKind', () => {
 	})
 })
 
-describe('isCelestialKind', () => {
+describe('isRodderKind', () => {
 	it('accepts exactly the three kinds', () => {
-		for (const kind of CELESTIAL_KINDS) expect(isCelestialKind(kind)).toBe(true)
-		expect(isCelestialKind('planet')).toBe(false)
-		expect(isCelestialKind('moon')).toBe(false)
-		expect(isCelestialKind(null)).toBe(false)
-		expect(isCelestialKind(42)).toBe(false)
+		for (const kind of RODDER_KINDS) expect(isRodderKind(kind)).toBe(true)
+		expect(isRodderKind('planet')).toBe(false)
+		expect(isRodderKind('moon')).toBe(false)
+		expect(isRodderKind(null)).toBe(false)
+		expect(isRodderKind(42)).toBe(false)
 	})
 })

@@ -11,13 +11,13 @@ function parseToOne(input: string): WikiNode {
 
 describe('namespace link parsing', () => {
 	it('parses a TitleCase namespace link', () => {
-		const node = parseToOne('[[Celestial:Therne]]')
-		expect(node).toMatchObject({ type: 'namespace_link', namespace: 'Celestial', identifier: 'Therne' })
+		const node = parseToOne('[[Rodder:Therne]]')
+		expect(node).toMatchObject({ type: 'namespace_link', namespace: 'Rodder', identifier: 'Therne' })
 	})
 
 	it('canonicalises lowercase namespace prefixes', () => {
-		const node = parseToOne('[[celestial:therne]]')
-		expect(node).toMatchObject({ type: 'namespace_link', namespace: 'Celestial', identifier: 'therne' })
+		const node = parseToOne('[[rodder:therne]]')
+		expect(node).toMatchObject({ type: 'namespace_link', namespace: 'Rodder', identifier: 'therne' })
 	})
 
 	it('preserves identifier case verbatim', () => {
@@ -26,10 +26,10 @@ describe('namespace link parsing', () => {
 	})
 
 	it('keeps display labels separate', () => {
-		const node = parseToOne('[[Celestial:Therne|the Therne sun]]')
+		const node = parseToOne('[[Rodder:Therne|the Therne sun]]')
 		expect(node.type).toBe('namespace_link')
 		if (node.type !== 'namespace_link') return
-		expect(node.namespace).toBe('Celestial')
+		expect(node.namespace).toBe('Rodder')
 		expect(node.identifier).toBe('Therne')
 		expect(node.display).not.toBeNull()
 	})
@@ -72,12 +72,12 @@ describe('extractDomainLinksFromAst', () => {
 		const ast: WikiNode = {
 			type: 'document',
 			children: [
-				{ type: 'paragraph', children: parseInline('See [[Celestial:Therne]] and [[Wordbook/Oncheran/Makala]]') },
+				{ type: 'paragraph', children: parseInline('See [[Rodder:Therne]] and [[Wordbook/Oncheran/Makala]]') },
 			],
 		}
 		const links = extractDomainLinksFromAst(ast)
 		expect(links).toEqual(expect.arrayContaining([
-			{ domain: 'celestial', target: 'Therne' },
+			{ domain: 'rodder', target: 'Therne' },
 			{ domain: 'wordbook', target: 'oncheran/Makala' },
 		]))
 	})

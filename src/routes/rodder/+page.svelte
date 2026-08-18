@@ -8,7 +8,7 @@
 	import { resolve } from '$app/paths'
 	import { cn } from '$lib/utils'
 	import { normalizePermissions } from '$lib/permissions.js'
-	import { spectralColor } from '$lib/celestial/colors.js'
+	import { spectralColor } from '$lib/rodder/colors.js'
 	import {
 		enrichSystems,
 		filterSystems,
@@ -18,7 +18,7 @@
 		type AtlasSystem,
 		type AtlasStar,
 		type AtlasBody,
-	} from '$lib/celestial/atlas.js'
+	} from '$lib/rodder/atlas.js'
 	import SunDim from 'phosphor-svelte/lib/SunDim'
 	import StarIcon from 'phosphor-svelte/lib/Star'
 	import Planet from 'phosphor-svelte/lib/Planet'
@@ -87,13 +87,13 @@
 </script>
 
 <svelte:head>
-	<title>{m.nav_celestial()} — KnowThing</title>
+	<title>{m.nav_rodder()} — KnowThing</title>
 </svelte:head>
 
-<ArticleShell breadcrumbs={[{ label: m.nav_celestial() }]} title={m.nav_celestial()}>
+<ArticleShell breadcrumbs={[{ label: m.nav_rodder() }]} title={m.nav_rodder()}>
 	{#snippet actions()}
-		{#if permissions.canConfigureCelestial}
-			<a href={resolve('/celestial/manage')} class="flex items-center gap-1 text-sm text-link transition-colors hover:text-link-hover">
+		{#if permissions.canConfigureRodder}
+			<a href={resolve('/rodder/manage')} class="flex items-center gap-1 text-sm text-link transition-colors hover:text-link-hover">
 				<GearSix size={14} weight="fill" />{m.cel_manage()}
 			</a>
 		{/if}
@@ -107,7 +107,7 @@
 			</div>
 			<div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
 				{#each sectors as sector (sector.id)}
-					<a href={resolve('/celestial/sector/[slug]', { slug: sector.slug })} class="group flex items-center gap-3 border border-border-subtle bg-surface px-4 py-3 transition-colors hover:border-accent-border hover:bg-raised">
+					<a href={resolve('/rodder/sector/[slug]', { slug: sector.slug })} class="group flex items-center gap-3 border border-border-subtle bg-surface px-4 py-3 transition-colors hover:border-accent-border hover:bg-raised">
 						<Compass size={18} weight="fill" class="shrink-0 text-accent" />
 						<span class="min-w-0 flex-1">
 							<span class="block truncate text-sm font-semibold text-heading group-hover:text-link">{sector.name}</span>
@@ -123,8 +123,8 @@
 	{#if systems.length === 0}
 		<div class="bg-surface p-8 text-center">
 			<p class="text-dim">{m.cel_no_systems_catalogued()}</p>
-			{#if permissions.canConfigureCelestial}
-				<a href={resolve('/celestial/manage')} class="mt-2 inline-block text-link transition-colors hover:text-link-hover">{m.cel_add_one_in_manage()}</a>
+			{#if permissions.canConfigureRodder}
+				<a href={resolve('/rodder/manage')} class="mt-2 inline-block text-link transition-colors hover:text-link-hover">{m.cel_add_one_in_manage()}</a>
 			{/if}
 		</div>
 	{:else}
@@ -195,7 +195,7 @@
 				{#each filtered as entry (entry.system.id)}
 					{@const mb = matchedBodyName(entry, query)}
 					<a
-						href={resolve('/[...ns_path=namespaced]', { ns_path: `Celestial:${entry.system.slug}` })}
+						href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${entry.system.slug}` })}
 						class="flex items-center gap-3 bg-surface px-4 py-3 transition-colors hover:bg-raised"
 						style="content-visibility:auto;contain-intrinsic-size:auto 60px"
 					>

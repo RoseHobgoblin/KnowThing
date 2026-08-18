@@ -1,5 +1,5 @@
 /**
- * Typed celestial models — the engine's whole-body representation.
+ * Typed rodder models — the engine's whole-body representation.
  *
  * A model is the canonical, presentation-independent view of a star or planet:
  * raw SI numbers and structured relationships, never formatted strings and
@@ -25,14 +25,14 @@ import {
 } from './physics.js'
 import { kg, m, au, days, kelvin, watts, addMu, muFromMass } from './units.js'
 
-/** A reference to another celestial entity. */
+/** A reference to another rodder entity. */
 export interface Ref {
 	name: string
 	slug: string
 }
 
 /** Raw physical/orbital inputs shared by stars and planetary bodies. */
-export interface CelestialRowLike {
+export interface RodderRowLike {
 	name: string
 	slug: string
 	description?: string | null
@@ -46,7 +46,7 @@ export interface CelestialRowLike {
 	extra?: unknown
 }
 
-export interface BodyRow extends CelestialRowLike {
+export interface BodyRow extends RodderRowLike {
 	bodyType?: string | null
 	temperatureK?: number | null
 	age?: string | null
@@ -62,7 +62,7 @@ export interface BodyRow extends CelestialRowLike {
 	hasRings?: boolean | null
 }
 
-export interface StarRow extends CelestialRowLike {
+export interface StarRow extends RodderRowLike {
 	/**
 	 * Relative semi-major axis of the stellar pair (the separation orbit), in AU.
 	 * Kepler's two-body period uses this value with μ_total. Database adapters

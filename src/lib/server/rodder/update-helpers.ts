@@ -98,9 +98,9 @@ export const BODY_OVERRIDE_MAP = {
 } as const
 
 /**
- * Delete a celestial entity and clean up its content record. Throws 404 if not found.
+ * Delete a rodder entity and clean up its content record. Throws 404 if not found.
  */
-export async function deleteCelestialEntity(
+export async function deleteRodderEntity(
 	table: PgTable,
 	slugColumn: PgColumn,
 	slug: string,
@@ -116,11 +116,11 @@ export async function deleteCelestialEntity(
 
 		if ('id' in removed && typeof removed.id === 'number') {
 			await tx.delete(mediaAssetBindings).where(and(
-				eq(mediaAssetBindings.ownerType, 'celestial'),
+				eq(mediaAssetBindings.ownerType, 'rodder'),
 				eq(mediaAssetBindings.ownerId, removed.id),
 			))
 		}
-		if (removed.slug) await deleteContentByDomainSlug(tx, 'celestial', removed.slug)
+		if (removed.slug) await deleteContentByDomainSlug(tx, 'rodder', removed.slug)
 		return removed
 	})
 

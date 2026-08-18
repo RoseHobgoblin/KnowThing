@@ -112,7 +112,7 @@
 				<div class="flex flex-wrap gap-1.5">
 					<a href="/special/categories" class="px-2 py-1 text-xs text-secondary hover:text-link">{m.nav_categories()}</a>
 					<a href="/worldmap" class="px-2 py-1 text-xs text-secondary hover:text-link">{m.home_explore_maps()}</a>
-					<a href="/celestial" class="px-2 py-1 text-xs text-secondary hover:text-link">{m.nav_celestial()}</a>
+					<a href="/rodder" class="px-2 py-1 text-xs text-secondary hover:text-link">{m.nav_rodder()}</a>
 					<a href="/Wordbook" class="px-2 py-1 text-xs text-secondary hover:text-link">{m.home_stat_languages()}</a>
 				</div>
 			</nav>

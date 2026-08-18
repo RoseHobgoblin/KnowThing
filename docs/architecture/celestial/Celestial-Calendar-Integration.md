@@ -5,7 +5,7 @@
 **Applies to:** calendar rules, optional celestial references, historical drift, and calendar/celestial displays
 **Related documents:** [Structured Data Vision](../STRUCTURED-DATA-VISION.md), [Celestial Sector and System Model](./Celestial-Sector-and-System-Model.md), [Celestial Views, Authoring, and Wiki Embeds](./Celestial-Views-Authoring-and-Wiki-Embeds.md)
 
-> **Maturity:** Calendars currently store validated rule data in `calendars.static_data` and may carry an optional `planet_id` reference to the unified `celestial_bodies` table. Calendar rendering, months, weekdays, eras, seasons, and configured moon displays exist. The richer relationship, reform, historical-state, and observer-sky capabilities described here remain design intent.
+> **Maturity:** Calendars currently store validated rule data in `calendars.static_data` and may carry an optional `planet_id` reference to the unified `rodder_bodies` table. Calendar rendering, months, weekdays, eras, seasons, and configured moon displays exist. The richer relationship, reform, historical-state, and observer-sky capabilities described here remain design intent.
 
 ## Decision Summary
 

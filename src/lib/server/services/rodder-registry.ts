@@ -1,11 +1,11 @@
 import { eq, and, sql } from 'drizzle-orm'
 import { db } from '$lib/server/db/index.js'
 import {
-	celestialBodies,
+	rodderBodies,
 	contentLinks,
 	contentRecords,
 } from '$lib/server/db/schema.js'
-import { CELESTIAL_TREE_CTE } from '$lib/server/celestial/hierarchy.js'
+import { RODDER_TREE_CTE } from '$lib/server/rodder/hierarchy.js'
 import {
 	annotateEffectivePeriods,
 	type EffectiveOrbitStar,
@@ -18,11 +18,11 @@ function periodSource(stored: boolean, period: number | null | undefined) {
 }
 
 /**
- * Read-side registry over the unified `celestial_bodies` table.
+ * Read-side registry over the unified `rodder_bodies` table.
  *
  * The old three-table columns (`system_id`, `parent_star_id`, `star_id`,
  * `parent_id`) are derived from the single `parent_id` edge via the
- * `celestial_tree` CTE so every consumer (SystemMap, configure-form dropdowns,
+ * `rodder_tree` CTE so every consumer (RootMap, configure-form dropdowns,
  * manage-page grouping) keeps its field shapes:
  *  - systemId      = root of the parent chain when that root is a system
  *  - parentStarId  = direct parent when the parent is a star
@@ -32,16 +32,16 @@ function periodSource(stored: boolean, period: number | null | undefined) {
 
 export async function listSystemsForRegistry() {
 	return db.execute(sql`
-		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
+		WITH RECURSIVE ${RODDER_TREE_CTE}
 		SELECT
 			ss.id, ss.name, ss.slug,
 			sr.sector_id AS "sectorId", sec.name AS "sectorName", sec.slug AS "sectorSlug",
 			sr.x AS "sectorX", sr.y AS "sectorY", sr.z AS "sectorZ",
-			(SELECT COUNT(*) FROM celestial_tree t WHERE t.root_id = ss.id AND t.kind = 'star')::int AS "starCount",
-			(SELECT COUNT(*) FROM celestial_tree t WHERE t.root_id = ss.id AND t.kind = 'body')::int AS "planetCount"
-		FROM celestial_bodies ss
-		LEFT JOIN celestial_sector_roots sr ON sr.body_id = ss.id
-		LEFT JOIN celestial_sectors sec ON sec.id = sr.sector_id
+			(SELECT COUNT(*) FROM rodder_tree t WHERE t.root_id = ss.id AND t.kind = 'star')::int AS "starCount",
+			(SELECT COUNT(*) FROM rodder_tree t WHERE t.root_id = ss.id AND t.kind = 'body')::int AS "planetCount"
+		FROM rodder_bodies ss
+		LEFT JOIN rodder_sector_roots sr ON sr.body_id = ss.id
+		LEFT JOIN rodder_sectors sec ON sec.id = sr.sector_id
 		WHERE ss.kind = 'system'
 		ORDER BY ss.name
 	`)
@@ -49,16 +49,16 @@ export async function listSystemsForRegistry() {
 
 export async function listStarsForRegistry() {
 	return db.execute(sql`
-		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
+		WITH RECURSIVE ${RODDER_TREE_CTE}
 		SELECT
 			s.id, s.name, s.slug, s.spectral_type AS "spectralType", s.color,
 			CASE WHEN t.root_kind = 'system' THEN t.root_id END AS "systemId",
 			s.semi_major_axis_au AS "semiMajorAxisAu", s.eccentricity,
 			CASE WHEN p.kind = 'star' THEN s.parent_id END AS "parentStarId",
-			(SELECT COUNT(*) FROM celestial_tree b WHERE b.kind = 'body' AND b.nearest_star_id = s.id)::int AS "planetCount"
-		FROM celestial_bodies s
-		JOIN celestial_tree t ON t.id = s.id
-		LEFT JOIN celestial_bodies p ON p.id = s.parent_id
+			(SELECT COUNT(*) FROM rodder_tree b WHERE b.kind = 'body' AND b.nearest_star_id = s.id)::int AS "planetCount"
+		FROM rodder_bodies s
+		JOIN rodder_tree t ON t.id = s.id
+		LEFT JOIN rodder_bodies p ON p.id = s.parent_id
 		WHERE s.kind = 'star'
 		ORDER BY "parentStarId" NULLS FIRST, s.name
 	`)
@@ -66,52 +66,52 @@ export async function listStarsForRegistry() {
 
 export async function listBodiesForRegistry() {
 	return db.execute(sql`
-		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
+		WITH RECURSIVE ${RODDER_TREE_CTE}
 		SELECT
 			pb.id, pb.name, pb.slug, pb.body_type AS "bodyType",
 			t.nearest_star_id AS "starId",
 			CASE WHEN p.kind = 'body' THEN pb.parent_id END AS "parentId",
 			pb.semi_major_axis_au AS "semiMajorAxisAu", pb.eccentricity,
-			(SELECT COUNT(*) FROM celestial_bodies m WHERE m.parent_id = pb.id AND m.kind = 'body')::int AS "moonCount"
-		FROM celestial_bodies pb
-		JOIN celestial_tree t ON t.id = pb.id
-		LEFT JOIN celestial_bodies p ON p.id = pb.parent_id
+			(SELECT COUNT(*) FROM rodder_bodies m WHERE m.parent_id = pb.id AND m.kind = 'body')::int AS "moonCount"
+		FROM rodder_bodies pb
+		JOIN rodder_tree t ON t.id = pb.id
+		LEFT JOIN rodder_bodies p ON p.id = pb.parent_id
 		WHERE pb.kind = 'body'
 		ORDER BY pb.semi_major_axis_au NULLS LAST, pb.name
 	`)
 }
 
 /**
- * Find any celestial entity by canonical slug or by wiki-slugified display
+ * Find any rodder entity by canonical slug or by wiki-slugified display
  * name (spaces → underscores, case-insensitive), so `[[Sunly system]]`-style
  * title links and old title-based URLs resolve without the retired
  * `page_slug` column.
  */
-export async function findCelestialBySlugOrName(slug: string) {
-	const [row] = await db.select().from(celestialBodies)
-		.where(sql`LOWER(${celestialBodies.slug}) = LOWER(${slug}) OR LOWER(REPLACE(${celestialBodies.name}, ' ', '_')) = LOWER(${slug})`)
+export async function findRodderBySlugOrName(slug: string) {
+	const [row] = await db.select().from(rodderBodies)
+		.where(sql`LOWER(${rodderBodies.slug}) = LOWER(${slug}) OR LOWER(REPLACE(${rodderBodies.name}, ' ', '_')) = LOWER(${slug})`)
 	return row ?? null
 }
 
 /**
- * Resolve any celestial input slug (real slug or underscored title) to its
- * canonical row slug. Used by the legacy `/celestial/[...path]` 308 redirect
+ * Resolve any rodder input slug (real slug or underscored title) to its
+ * canonical row slug. Used by the legacy `/rodder/[...path]` 308 redirect
  * stub.
  */
-export async function resolveCelestialCanonicalSlug(slug: string): Promise<string | null> {
-	const row = await findCelestialBySlugOrName(slug)
+export async function resolveRodderCanonicalSlug(slug: string): Promise<string | null> {
+	const row = await findRodderBySlugOrName(slug)
 	return row?.slug ?? null
 }
 
 /**
- * Map rows for one system's stars and bodies, with `orbitalPeriodDays` filled
+ * Map rows for one sector root's stars and bodies, with `orbitalPeriodDays` filled
  * in at read time (Kepler from mass + semi-major axis) when not stored — the
  * DB keeps only user-asserted periods.
  */
-export async function getSystemMapEntities(systemId: number) {
+export async function getRootMapEntities(rootId: number) {
 	const [stars, bodies] = await Promise.all([
 		db.execute(sql`
-			WITH RECURSIVE ${CELESTIAL_TREE_CTE}
+			WITH RECURSIVE ${RODDER_TREE_CTE}
 			SELECT s.id, s.name, s.slug, s.spectral_type AS "spectralType", s.color,
 				s.mass_kg AS "massKg",
 				s.radius_m AS "radiusM",
@@ -121,7 +121,7 @@ export async function getSystemMapEntities(systemId: number) {
 				s.luminosity_w AS "luminosityW",
 				s.extra -> 'stellarSurface' AS "stellarSurface",
 				s.semi_major_axis_au AS "relativeSemiMajorAxisAu",
-				-- SystemMap still consumes the shared display-oriented field name.
+				-- RootMap still consumes the shared display-oriented field name.
 				-- Both aliases represent binary relative separation for stars.
 				s.semi_major_axis_au AS "semiMajorAxisAu",
 				s.eccentricity,
@@ -132,14 +132,14 @@ export async function getSystemMapEntities(systemId: number) {
 				CASE WHEN p.kind = 'system' THEN s.parent_id END AS "parentSystemId",
 				s.orbital_period_days AS "orbitalPeriodDays",
 				s.epoch_phase AS "epochPhase"
-			FROM celestial_bodies s
-			JOIN celestial_tree t ON t.id = s.id
-			LEFT JOIN celestial_bodies p ON p.id = s.parent_id
-			WHERE s.kind = 'star' AND t.root_id = ${systemId}
+			FROM rodder_bodies s
+			JOIN rodder_tree t ON t.id = s.id
+			LEFT JOIN rodder_bodies p ON p.id = s.parent_id
+			WHERE s.kind = 'star' AND t.root_id = ${rootId}
 			ORDER BY "parentStarId" NULLS FIRST, s.name
 		`),
 		db.execute(sql`
-			WITH RECURSIVE ${CELESTIAL_TREE_CTE}
+			WITH RECURSIVE ${RODDER_TREE_CTE}
 			SELECT pb.id, pb.name, pb.slug, pb.body_type AS "bodyType",
 				pb.mass_kg AS "massKg",
 				pb.radius_m AS "radiusM",
@@ -162,11 +162,11 @@ export async function getSystemMapEntities(systemId: number) {
 				CASE WHEN p.kind = 'system' THEN pb.parent_id END AS "parentSystemId",
 				pb.orbital_period_days AS "orbitalPeriodDays",
 				pb.epoch_phase AS "epochPhase",
-				(SELECT COUNT(*) FROM celestial_bodies m WHERE m.parent_id = pb.id AND m.kind = 'body')::int AS "moonCount"
-			FROM celestial_bodies pb
-			JOIN celestial_tree t ON t.id = pb.id
-			LEFT JOIN celestial_bodies p ON p.id = pb.parent_id
-			WHERE pb.kind = 'body' AND t.root_id = ${systemId}
+				(SELECT COUNT(*) FROM rodder_bodies m WHERE m.parent_id = pb.id AND m.kind = 'body')::int AS "moonCount"
+			FROM rodder_bodies pb
+			JOIN rodder_tree t ON t.id = pb.id
+			LEFT JOIN rodder_bodies p ON p.id = pb.parent_id
+			WHERE pb.kind = 'body' AND t.root_id = ${rootId}
 			ORDER BY pb.semi_major_axis_au NULLS LAST, pb.name
 		`),
 	])
@@ -187,13 +187,13 @@ export async function getSystemMapEntities(systemId: number) {
 	}
 }
 
-export async function getCalendarsForSystem(systemId: number) {
+export async function getCalendarsForRoot(rootId: number) {
 	return db.execute(sql`
-		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
+		WITH RECURSIVE ${RODDER_TREE_CTE}
 		SELECT c.id, c.name, c.static_data AS "staticData", c.planet_id AS "planetId"
 		FROM calendars c
 		WHERE c.planet_id IN (
-			SELECT t.id FROM celestial_tree t WHERE t.kind = 'body' AND t.root_id = ${systemId}
+			SELECT t.id FROM rodder_tree t WHERE t.kind = 'body' AND t.root_id = ${rootId}
 		)
 		OR c.planet_id IS NULL
 		ORDER BY c.name
@@ -202,28 +202,28 @@ export async function getCalendarsForSystem(systemId: number) {
 
 export async function getStarSystemRef(systemId: number) {
 	const [sys] = await db
-		.select({ slug: celestialBodies.slug, name: celestialBodies.name })
-		.from(celestialBodies)
-		.where(and(eq(celestialBodies.id, systemId), eq(celestialBodies.kind, 'system')))
+		.select({ slug: rodderBodies.slug, name: rodderBodies.name })
+		.from(rodderBodies)
+		.where(and(eq(rodderBodies.id, systemId), eq(rodderBodies.kind, 'system')))
 	return sys ?? null
 }
 
 /** The system a star belongs to: the root of its parent chain, if a system. */
 export async function getStarSystemId(starId: number) {
 	const [row] = await db.execute(sql`
-		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
+		WITH RECURSIVE ${RODDER_TREE_CTE}
 		SELECT CASE WHEN t.root_kind = 'system' THEN t.root_id END AS "systemId"
-		FROM celestial_tree t WHERE t.id = ${starId}
+		FROM rodder_tree t WHERE t.id = ${starId}
 	`)
 	return (row as unknown as { systemId?: number | null })?.systemId ?? null
 }
 
 export async function listAllSystemReferences() {
 	return db
-		.select({ id: celestialBodies.id, name: celestialBodies.name })
-		.from(celestialBodies)
-		.where(eq(celestialBodies.kind, 'system'))
-		.orderBy(celestialBodies.name)
+		.select({ id: rodderBodies.id, name: rodderBodies.name })
+		.from(rodderBodies)
+		.where(eq(rodderBodies.kind, 'system'))
+		.orderBy(rodderBodies.name)
 }
 
 export interface StarReference {
@@ -241,14 +241,14 @@ export interface StarReference {
 
 export async function listAllStarReferences(): Promise<StarReference[]> {
 	const rows = await db.execute(sql`
-		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
+		WITH RECURSIVE ${RODDER_TREE_CTE}
 		SELECT s.id, s.name, s.slug, s.mass_kg AS "massKg",
 			s.spectral_type AS "spectralType", s.temperature_k AS "temperatureK",
 			CASE WHEN t.root_kind = 'system' THEN t.root_id END AS "systemId",
 			CASE WHEN p.kind = 'star' THEN s.parent_id END AS "parentStarId"
-		FROM celestial_bodies s
-		JOIN celestial_tree t ON t.id = s.id
-		LEFT JOIN celestial_bodies p ON p.id = s.parent_id
+		FROM rodder_bodies s
+		JOIN rodder_tree t ON t.id = s.id
+		LEFT JOIN rodder_bodies p ON p.id = s.parent_id
 		WHERE s.kind = 'star'
 		ORDER BY s.name
 	`)
@@ -276,7 +276,7 @@ export interface BodyReference {
 
 export async function listAllBodyReferences(): Promise<BodyReference[]> {
 	const rows = await db.execute(sql`
-		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
+		WITH RECURSIVE ${RODDER_TREE_CTE}
 		SELECT pb.id, pb.name, pb.slug, pb.mass_kg AS "massKg", pb.radius_m AS "radiusM",
 			t.nearest_star_id AS "starId",
 			CASE WHEN p.kind = 'body' THEN pb.parent_id END AS "parentId",
@@ -284,9 +284,9 @@ export async function listAllBodyReferences(): Promise<BodyReference[]> {
 			CASE WHEN t.root_kind = 'system' THEN t.root_id END AS "rootSystemId",
 			pb.semi_major_axis_au AS "semiMajorAxisAu", pb.eccentricity,
 			pb.body_type AS "bodyType"
-		FROM celestial_bodies pb
-		JOIN celestial_tree t ON t.id = pb.id
-		LEFT JOIN celestial_bodies p ON p.id = pb.parent_id
+		FROM rodder_bodies pb
+		JOIN rodder_tree t ON t.id = pb.id
+		LEFT JOIN rodder_bodies p ON p.id = pb.parent_id
 		WHERE pb.kind = 'body'
 		ORDER BY pb.name
 	`)
@@ -294,19 +294,19 @@ export async function listAllBodyReferences(): Promise<BodyReference[]> {
 }
 
 /**
- * Wiki pages that link to a celestial body (its "referenced by" / backlinks).
- * Reads the persisted `content_links` graph — matched on slug since celestial
+ * Wiki pages that link to a rodder body (its "referenced by" / backlinks).
+ * Reads the persisted `content_links` graph — matched on slug since rodder
  * entities have no shadow row in `content_records` to resolve against.
  *
- * Match only the `celestial` namespace (explicit `[[Celestial:X]]`). Bare
+ * Match only the `rodder` namespace (explicit `[[Rodder:X]]`). Bare
  * `[[X]]` links live in the default `know` namespace and are NOT counted: with
  * no shadow record there is no subject identity, only slug equality, so a Know
  * article that merely shares a slug (body "Mercury" vs. the deity/element) would
  * surface as a false backlink. The prose migration already repoints genuinely
- * celestial-intended links into the `celestial` namespace, so this stays complete.
+ * rodder-intended links into the `rodder` namespace, so this stays complete.
  * The join to `content_records` limits sources to article-backed pages.
  */
-export async function getBacklinksForCelestial(slug: string) {
+export async function getBacklinksForRodder(slug: string) {
 	return db
 		.selectDistinct({
 			slug: contentRecords.slug,
@@ -316,7 +316,7 @@ export async function getBacklinksForCelestial(slug: string) {
 		.from(contentLinks)
 		.innerJoin(contentRecords, eq(contentLinks.sourceId, contentRecords.id))
 		.where(and(
-			eq(contentLinks.targetDomain, 'celestial'),
+			eq(contentLinks.targetDomain, 'rodder'),
 			sql`LOWER(${contentLinks.targetSlug}) = LOWER(${slug})`,
 		))
 		.orderBy(contentRecords.title)
@@ -330,12 +330,12 @@ export async function getBacklinksForCelestial(slug: string) {
 export async function getStarHzInputs(starId: number) {
 	const [row] = await db
 		.select({
-			luminosityW: celestialBodies.luminosityW,
-			radiusM: celestialBodies.radiusM,
-			temperatureK: celestialBodies.temperatureK,
+			luminosityW: rodderBodies.luminosityW,
+			radiusM: rodderBodies.radiusM,
+			temperatureK: rodderBodies.temperatureK,
 		})
-		.from(celestialBodies)
-		.where(and(eq(celestialBodies.id, starId), eq(celestialBodies.kind, 'star')))
+		.from(rodderBodies)
+		.where(and(eq(rodderBodies.id, starId), eq(rodderBodies.kind, 'star')))
 	return row ?? null
 }
 
@@ -343,13 +343,13 @@ export async function getStarHzInputs(starId: number) {
 export async function getPlanetsForStar(starId: number) {
 	return db
 		.select({
-			id: celestialBodies.id,
-			name: celestialBodies.name,
-			slug: celestialBodies.slug,
-			semiMajorAxisAu: celestialBodies.semiMajorAxisAu,
-			bodyType: celestialBodies.bodyType,
+			id: rodderBodies.id,
+			name: rodderBodies.name,
+			slug: rodderBodies.slug,
+			semiMajorAxisAu: rodderBodies.semiMajorAxisAu,
+			bodyType: rodderBodies.bodyType,
 		})
-		.from(celestialBodies)
-		.where(and(eq(celestialBodies.parentId, starId), eq(celestialBodies.kind, 'body')))
-		.orderBy(celestialBodies.semiMajorAxisAu)
+		.from(rodderBodies)
+		.where(and(eq(rodderBodies.parentId, starId), eq(rodderBodies.kind, 'body')))
+		.orderBy(rodderBodies.semiMajorAxisAu)
 }

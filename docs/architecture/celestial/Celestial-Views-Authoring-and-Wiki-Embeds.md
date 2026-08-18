@@ -5,7 +5,7 @@
 **Applies to:** celestial sector and system displays, field-driven authoring, apparent skies, saved views, and WikiText transclusion  
 **Related documents:** [Structured Data Vision](../STRUCTURED-DATA-VISION.md), [Atlas Architecture](../Atlas-Architecture.md), [Celestial Sector and System Model](./Celestial-Sector-and-System-Model.md), [Calendar and Celestial Boundaries](./Celestial-Calendar-Integration.md), [Celestial Orrery Roadmap](../../plans/celestial/Celestial-Orrery-Roadmap.md)
 
-> **Maturity:** KnowThing currently has concrete celestial records, sector and system viewers, page-level configuration, and partial camera-state preservation. It does not yet have the generic object/facet model, a complete serializable view contract, saved view objects, generated apparent skies, WikiText map transclusion, or the authoring displays described here. This document defines how those additions should fit the product without requiring the future facet migration first.
+> **Maturity:** KnowThing currently exposes the firmament subsystem in code and URLs as **Rodder**. It has concrete Rodder records, sector and root viewers, page-level configuration, and partial camera-state preservation. The local viewer is named `RootMap`, not `SystemMap`, because a sector root may eventually be a stellar system, rogue world, remnant star, vessel, station, or other independently positioned object. KnowThing does not yet have the generic object/facet model, a complete serializable view contract, saved view objects, generated apparent skies, WikiText map transclusion, or the authoring displays described here. This document defines how those additions should fit the product without requiring the future facet migration first.
 
 ## Decision Summary
 
@@ -178,7 +178,7 @@ The preferred WikiText form is a stable view reference:
 Convenience syntax may exist for common displays:
 
 ```wikitext
-{{System map|Orison Fold|focus=Nacre|mode=orrery}}
+{{Root map|Orison Fold|focus=Nacre|mode=orrery}}
 {{Sector map|The Palimpsest Reach|focus=Orison Fold}}
 ```
 

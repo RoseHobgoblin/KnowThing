@@ -97,7 +97,7 @@ function computeLunisolarLayout(data: StaticCalendarData, year: number): MonthLa
 		return regularMonths.map((month, index) => ({ month, sourceIndex: index, isLeapMonth: false, displayName: month.name }))
 	}
 
-	const lunarCycle = data.planet?.moons.find(m => m.id === moon.celestial_id)?.orbital_period_days ?? moon.cycle
+	const lunarCycle = data.planet?.moons.find(m => m.id === moon.rodder_id)?.orbital_period_days ?? moon.cycle
 	const solarYear = data.planet?.orbital_period_days ?? regularMonths.reduce((sum, m) => sum + m.length, 0)
 
 	if (lunarCycle <= 0 || solarYear <= 0 || solar_divisions <= 0) {

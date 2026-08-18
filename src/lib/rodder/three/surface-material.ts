@@ -15,7 +15,7 @@ import {
 	type Texture,
 } from 'three'
 import { composeSurfacePlan, surfaceMediaUrl, type SurfaceMapChannel, type SurfacePlan } from '../surface-model.js'
-import type { MapBody } from '../system-layout.js'
+import type { MapBody } from '../root-layout.js'
 import { composeWeatherPlan, type WeatherPlan } from '../weather-model.js'
 import {
 	requestProceduralPlanetTexture,

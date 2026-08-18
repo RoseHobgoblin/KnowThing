@@ -11,7 +11,7 @@ const invalid = { ...valid, id: 13, filename: 'Portrait.png', width: 800, height
 test.describe('real Media asset selection', () => {
 	test.beforeEach(async ({ page }) => {
 		await page.route('**/api/media?*', (route) => {
-			const compatibleOnly = new URL(route.request().url()).searchParams.get('celestialPlate') === 'true'
+			const compatibleOnly = new URL(route.request().url()).searchParams.get('rodderPlate') === 'true'
 			const files = compatibleOnly ? [valid] : [valid, invalid]
 			return route.fulfill({ json: { files, total: files.length } })
 		})

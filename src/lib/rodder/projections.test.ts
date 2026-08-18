@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { deriveBody, deriveStar } from 'tungolcraft'
-import { bodyInfoboxFields, starInfoboxFields, celestialStatTiles } from './projections.js'
+import { bodyInfoboxFields, starInfoboxFields, rodderStatTiles } from './projections.js'
 
 const EARTH = { name: 'Earth', slug: 'earth', massKg: 5.972e24, radiusM: 6.371e6, semiMajorAxisAu: 1, eccentricity: 0.0167, rotationPeriodS: 86_164 }
 const SUN = { name: 'Sun', slug: 'the-sun', massKg: 1.989e30, radiusM: 6.9634e8, temperatureK: 5778 }
@@ -56,13 +56,13 @@ describe('deriveStar + projection', () => {
 	})
 })
 
-describe('celestialStatTiles projection', () => {
+describe('rodderStatTiles projection', () => {
 	it('emits reference-scaled tiles from raw SI numbers', () => {
-		const planet = celestialStatTiles(deriveBody(EARTH, {}))
+		const planet = rodderStatTiles(deriveBody(EARTH, {}))
 		const radius = planet.find(t => t.label === 'Radius')
 		expect(radius?.sub).toMatch(/Earth/)
 
-		const star = celestialStatTiles(deriveStar(SUN, {}))
+		const star = rodderStatTiles(deriveStar(SUN, {}))
 		expect(star.find(t => t.label === 'Luminosity')?.sub).toMatch(/Sun/)
 	})
 })

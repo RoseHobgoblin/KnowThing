@@ -22,7 +22,7 @@ const item = {
 	usageCount: 0,
 }
 
-describe('celestial media asset bindings', () => {
+describe('rodder media asset bindings', () => {
 	it('creates an immutable ID/hash binding with channel interpretation', () => {
 		const binding = mediaBindingFromItem(item, 'surface-albedo')
 		expect(binding).toMatchObject({ mediaId: 12, filename: item.filename, contentHash: item.hash })

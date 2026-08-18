@@ -31,9 +31,9 @@ import {
 	type EntityKey,
 	type MapBody,
 	type SatelliteLayout,
-	type SystemLayout,
+	type RootLayout,
 	type ThemePalette,
-} from '../system-layout.js'
+} from '../root-layout.js'
 import { resolveHostStarTemperatureK } from '../stellar-surface-model.js'
 import type {
 	MapRendererCallbacks,
@@ -41,7 +41,7 @@ import type {
 	OffscreenIndicator,
 	OverlaySnapshot,
 	ProjectedLabel,
-	SystemMapRenderer,
+	RootMapRenderer,
 } from '../renderer-types.js'
 import { createBodyVisual, type BodyVisual } from './body-visual.js'
 import {
@@ -173,7 +173,7 @@ function formatPhysicalDistance(au: number): string {
 	return `${kilometres.toLocaleString(undefined, { maximumSignificantDigits: 3 })} km`
 }
 
-function unavailableRenderer(canvas: HTMLCanvasElement, reason: string, callbacks: MapRendererCallbacks): SystemMapRenderer {
+function unavailableRenderer(canvas: HTMLCanvasElement, reason: string, callbacks: MapRendererCallbacks): RootMapRenderer {
 	callbacks.onUnavailable?.(reason)
 	callbacks.onOverlayChange?.({ labels: [], indicators: [], scaleLabel: '', legend: null, modeLabel: '', projection: null, status: 'unavailable' })
 	return {
@@ -182,11 +182,11 @@ function unavailableRenderer(canvas: HTMLCanvasElement, reason: string, callback
 	}
 }
 
-export async function createSystemMapRenderer(
+export async function createRootMapRenderer(
 	host: HTMLElement,
 	initialTheme: ThemePalette,
 	callbacks: MapRendererCallbacks,
-): Promise<SystemMapRenderer> {
+): Promise<RootMapRenderer> {
 	const canvas = document.createElement('canvas')
 	canvas.tabIndex = 0
 	let context: WebGL2RenderingContext | null
@@ -277,7 +277,7 @@ export async function createSystemMapRenderer(
 		resolveStarlightExposure(DEFAULT_SETTINGS.visibility, null),
 		null,
 	)
-	let layout: SystemLayout = buildPhysicalLayout([], [])
+	let layout: RootLayout = buildPhysicalLayout([], [])
 	const nodes = new Map<EntityKey, EntityNode>()
 	let orbitPaths: OrbitPath[] = []
 	let trailPaths: OrbitPath[] = []
@@ -1187,4 +1187,4 @@ export async function createSystemMapRenderer(
 	}
 }
 
-export type { MapRendererCallbacks, MapSettingsState, SystemMapRenderer } from '../renderer-types.js'
+export type { MapRendererCallbacks, MapSettingsState, RootMapRenderer } from '../renderer-types.js'

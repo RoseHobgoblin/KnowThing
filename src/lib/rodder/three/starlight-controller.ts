@@ -11,7 +11,7 @@ import {
 	resolveStarlightLuminosity,
 	type StarlightLuminositySource,
 } from '../starlight-model.js'
-import { keyForBody, type EntityKey, type MapBody } from '../system-layout.js'
+import { keyForBody, type EntityKey, type MapBody } from '../root-layout.js'
 
 export const SOLAR_IRRADIANCE_DISPLAY = 2.6
 export const DEFAULT_STARLIGHT_EXPOSURE = 1.05

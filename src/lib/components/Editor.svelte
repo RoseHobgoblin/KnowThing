@@ -169,7 +169,7 @@
 				'Infobox country', 'Infobox person', 'Infobox settlement', 'Infobox language',
 				'Infobox star', 'Infobox planet', 'Infobox system', 'Infobox religion',
 				'Infobox royalty', 'Infobox officeholder',
-				'Quote', 'Main', 'See also', 'System map',
+				'Quote', 'Main', 'See also', 'Root map',
 				'CURRENTYEAR', 'CURRENTMONTHNAME', 'CURRENTDAY', 'CURRENTDAYNAME',
 				'CURRENTERA', 'CURRENTSEASON', 'CURRENTDATE',
 			]

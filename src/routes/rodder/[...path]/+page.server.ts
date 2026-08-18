@@ -1,13 +1,13 @@
 import { error, redirect } from '@sveltejs/kit'
 import type { PageServerLoad } from './$types.js'
-import { resolveCelestialCanonicalSlug } from '$lib/server/services/celestial-registry.js'
+import { resolveRodderCanonicalSlug } from '$lib/server/services/rodder-registry.js'
 
 const TRAILING = new Set(['edit', 'configure', 'history', 'move'])
 
 /**
- * Legacy `/celestial/[...path]` route: 308-redirects to the canonical
- * `/Celestial:<slug>` URL. Handles both flat (`/celestial/therne`) and
- * parent-path (`/celestial/sunly/therne`) input forms — the trailing path
+ * Legacy `/rodder/[...path]` route: 308-redirects to the canonical
+ * `/Rodder:<slug>` URL. Handles both flat (`/rodder/therne`) and
+ * parent-path (`/rodder/sunly/therne`) input forms — the trailing path
  * segment is the entity slug, anything before it is parent-path noise.
  */
 export const load: PageServerLoad = async ({ params }) => {
@@ -19,10 +19,10 @@ export const load: PageServerLoad = async ({ params }) => {
 		segs.pop()
 	}
 	const slug = segs.at(-1)
-	if (!slug) throw error(404, 'No celestial slug in path')
+	if (!slug) throw error(404, 'No rodder slug in path')
 
-	const canonical = await resolveCelestialCanonicalSlug(slug)
-	if (!canonical) throw error(404, 'Celestial body not found')
+	const canonical = await resolveRodderCanonicalSlug(slug)
+	if (!canonical) throw error(404, 'Rodder body not found')
 
-	throw redirect(308, `/Celestial:${canonical}${trailing}`)
+	throw redirect(308, `/Rodder:${canonical}${trailing}`)
 }

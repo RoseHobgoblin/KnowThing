@@ -1,19 +1,19 @@
 /**
- * Phase 4 migration script: extract prose from `content_records` (domain='celestial')
+ * Phase 4 migration script: extract prose from `content_records` (domain='rodder')
  * into the structured row's body field. Idempotent — safe to re-run.
  *
  * Usage:
- *   DATABASE_URL=... node --env-file=.env --loader ts-node/esm scripts/migrate-celestial-prose.ts        # dry-run
- *   DATABASE_URL=... node --env-file=.env --loader ts-node/esm scripts/migrate-celestial-prose.ts --apply  # actually mutate
+ *   DATABASE_URL=... node --env-file=.env --loader ts-node/esm scripts/migrate-rodder-prose.ts        # dry-run
+ *   DATABASE_URL=... node --env-file=.env --loader ts-node/esm scripts/migrate-rodder-prose.ts --apply  # actually mutate
  *
- * For each celestial content_records row:
+ * For each rodder content_records row:
  *   1. Find matching entity (system → star → planet) by slug or pageSlug.
  *   2. Copy content/parsedAst/plainText/sizeBytes/updatedAt → entity.body_*.
  *   3. Copy content_revisions → entity_revisions (entity_type, entity_id, snapshot).
  *   4. Repoint outbound content_links: source_kind='star'|'planet'|'system',
  *      source_entity_id=<entity.id>, source_id=NULL.
  *   5. Repoint inbound content_links targeting this slug under domain='know':
- *      they stay as `targetDomain='celestial', targetSlug=<entity.slug>` so the
+ *      they stay as `targetDomain='rodder', targetSlug=<entity.slug>` so the
  *      resolver finds them at the new home.
  *   6. Delete the source content_records row (and cascade content_revisions).
  *
@@ -31,7 +31,7 @@ if (!DATABASE_URL) {
 
 const sql = postgres(DATABASE_URL)
 
-interface CelestialRecord {
+interface RodderRecord {
 	id: number
 	slug: string
 	title: string
@@ -54,18 +54,18 @@ async function main() {
 	console.log(APPLY ? '🚀 APPLY mode' : '🧪 DRY RUN mode (use --apply to mutate)')
 	console.log('-'.repeat(60))
 
-	const records = await sql<CelestialRecord[]>`
+	const records = await sql<RodderRecord[]>`
 		SELECT id, slug, title, content,
 			parsed_ast    AS "parsedAst",
 			plain_text    AS "plainText",
 			size_bytes    AS "sizeBytes",
 			updated_at    AS "updatedAt"
 		FROM content_records
-		WHERE domain = 'celestial'
+		WHERE domain = 'rodder'
 		ORDER BY id
 	`
 
-	console.log(`Found ${records.length} celestial content_records to migrate.\n`)
+	console.log(`Found ${records.length} rodder content_records to migrate.\n`)
 
 	let migrated = 0
 	let skipped = 0
@@ -74,7 +74,7 @@ async function main() {
 	for (const record of records) {
 		const match = await findEntityMatch(record.slug)
 		if (!match) {
-			console.warn(`  ⚠ No matching celestial entity for content_records.id=${record.id} slug=${record.slug}; skipping`)
+			console.warn(`  ⚠ No matching rodder entity for content_records.id=${record.id} slug=${record.slug}; skipping`)
 			skipped++
 			continue
 		}
@@ -150,12 +150,12 @@ async function main() {
 				`
 
 				// 4. INBOUND links: any content_links pointing at (targetDomain='know',
-				//    targetSlug=<entity.slug>) should retarget to (celestial, slug). The
+				//    targetSlug=<entity.slug>) should retarget to (rodder, slug). The
 				//    Phase 0 audit shows old Know-domain links pointing at things like
 				//    "Sun" / "Therne" — keep them resolving by retargeting them.
 				await tx`
 					UPDATE content_links
-					SET target_domain = 'celestial',
+					SET target_domain = 'rodder',
 						target_slug = ${match.slug},
 						target_id = NULL
 					WHERE target_domain = 'know'

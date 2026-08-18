@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { CELESTIAL_KINDS } from './parent-rules.js'
+import { RODDER_KINDS } from './parent-rules.js'
 
 const nullableUnitIntervalSchema = z.number().min(0).max(1).nullish()
 // Bound orbits have 0 ≤ e < 1. e ≥ 1 is a parabolic/hyperbolic escape trajectory,
@@ -10,7 +10,7 @@ const nullableEccentricitySchema = z.number().min(0).lt(1).nullish()
 // into the `extra` JSONB so the "lock to override" UI actually sticks.
 const overrideString = z.string().nullish()
 
-/** Fields shared by every celestial kind. */
+/** Fields shared by every rodder kind. */
 const coreSchema = z.object({
 	name: z.string().min(1),
 	slug: z.string().min(1),
@@ -48,7 +48,7 @@ const systemSchema = coreSchema.extend({
 	// from the star count at read time (deriveSystemType).
 
 	// Placement & metadata. Sector X/Y/Z is the root position in the system's
-	// declared sector frame (celestial_sector_roots), not a column on the
+	// declared sector frame (rodder_sector_roots), not a column on the
 	// system row; the service enforces complete-triple-or-nothing because the
 	// patch must first merge with the stored position (see sector-position.ts).
 	distanceLy: z.number().nullish(),
@@ -118,7 +118,7 @@ const planetaryBodySchema = coreSchema.extend(orbiterSchema.shape).extend({
 
 function validatePlanetaryBodyCreate(data: Partial<z.infer<typeof planetaryBodySchema>>, ctx: z.RefinementCtx) {
 	if (data.parentId == null) {
-		ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['parentId'], message: 'Celestial bodies must orbit a parent system, star, or body' })
+		ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['parentId'], message: 'Rodder bodies must orbit a parent system, star, or body' })
 	}
 }
 
@@ -126,14 +126,14 @@ function validatePlanetaryBodyCreate(data: Partial<z.infer<typeof planetaryBodyS
 // re-validates with the create schema, so only flag fields actually being set.
 function validatePlanetaryBodyUpdate(data: Partial<z.infer<typeof planetaryBodySchema>>, ctx: z.RefinementCtx) {
 	if ('parentId' in data && data.parentId == null) {
-		ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['parentId'], message: 'Celestial bodies must orbit a parent system, star, or body' })
+		ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['parentId'], message: 'Rodder bodies must orbit a parent system, star, or body' })
 	}
 }
 
 export const createPlanetaryBodySchema = planetaryBodySchema.superRefine(validatePlanetaryBodyCreate)
 export const updatePlanetaryBodySchema = planetaryBodySchema.partial().superRefine(validatePlanetaryBodyUpdate)
 
-/** Per-kind schema lookups for the unified /api/celestial routes. */
+/** Per-kind schema lookups for the unified /api/rodder routes. */
 export const CREATE_SCHEMAS = {
 	system: createSystemSchema,
 	star: createStarSchema,
@@ -146,4 +146,4 @@ export const UPDATE_SCHEMAS = {
 	body: updatePlanetaryBodySchema,
 } as const
 
-export const celestialKindSchema = z.object({ kind: z.enum(CELESTIAL_KINDS) })
+export const rodderKindSchema = z.object({ kind: z.enum(RODDER_KINDS) })

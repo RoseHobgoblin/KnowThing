@@ -1,4 +1,4 @@
-/** Map descriptive color names to hex values for celestial bodies */
+/** Map descriptive color names to hex values for rodder bodies */
 const COLOR_MAP: Record<string, string> = {
 	'yellow-white': '#FFF8DC',
 	'yellow': '#FFD700',

@@ -1,5 +1,5 @@
 /**
- * Pure layout core for the system map. Renderer-agnostic: turns celestial rows
+ * Pure layout core for the root map. Renderer-agnostic: turns rodder rows
  * into positioned orbit geometry in a fixed 800×800 world space.
  *
  * The API is split along the animation seam:
@@ -186,7 +186,7 @@ export function blendedSatelliteGeometry(
 	}
 }
 
-export type SystemLayout = {
+export type RootLayout = {
 	primaryStar: MapBody | null
 	directOrbits: DirectOrbitLayout[]
 	/** Topologically ordered: a satellite's parent always precedes it. */
@@ -562,7 +562,7 @@ export function resolveSimpleBinary(stars: MapBody[]): ResolvedBinary | null {
 	}
 }
 
-export function buildLayout(stars: MapBody[], bodies: MapBody[], scale: ScaleMode): SystemLayout {
+export function buildLayout(stars: MapBody[], bodies: MapBody[], scale: ScaleMode): RootLayout {
 	const resolvedBinary = resolveSimpleBinary(stars)
 	const hasStellarOrbitShape = stars.some(star => star.parentStarId != null || star.parentSystemId != null)
 	const layoutStars = !resolvedBinary && hasStellarOrbitShape
@@ -818,7 +818,7 @@ export function buildLayout(stars: MapBody[], bodies: MapBody[], scale: ScaleMod
  * world-unit conversion; no body or orbit is moved to create visual clearance.
  * Overview visibility belongs to the renderer's screen-space marker LOD.
  */
-export function buildPhysicalLayout(stars: MapBody[], bodies: MapBody[]): SystemLayout {
+export function buildPhysicalLayout(stars: MapBody[], bodies: MapBody[]): RootLayout {
 	// Reuse the thoroughly tested parent/binary topology, then discard every
 	// schematic radius it produced.
 	const topology = buildLayout(stars, bodies, 'proportional')
@@ -877,7 +877,7 @@ export function buildPhysicalLayout(stars: MapBody[], bodies: MapBody[]): System
  * Omitted, satellites stay schematic (canvas-era parity).
  */
 export function computePositions(
-	layout: SystemLayout,
+	layout: RootLayout,
 	currentAbsoluteDay?: number | null,
 	satelliteBlend?: (satellite: SatelliteLayout) => number,
 ): Map<EntityKey, BodyPosition> {
@@ -940,7 +940,7 @@ function rotateOrbitVector(
 
 /** 3D body positions in the same 800-unit world, with Plan at z=0. */
 export function computePositions3D(
-	layout: SystemLayout,
+	layout: RootLayout,
 	currentAbsoluteDay?: number | null,
 	viewBlend = 1,
 	satelliteBlend?: (satellite: SatelliteLayout) => number,
@@ -1003,7 +1003,7 @@ export function orbitPoint3D(
 }
 
 export function computeCameraOffset(
-	_layout: SystemLayout,
+	_layout: RootLayout,
 	positions: Map<EntityKey, BodyPosition>,
 	selectedId: EntityKey | null,
 	follow: boolean,

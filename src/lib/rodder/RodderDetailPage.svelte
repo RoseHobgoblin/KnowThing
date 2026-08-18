@@ -3,24 +3,24 @@
 	import { page } from '$app/stores'
 	import { resolve } from '$app/paths'
 	import { normalizePermissions } from '$lib/permissions.js'
-	import CelestialStatGrid from '$lib/celestial/CelestialStatGrid.svelte'
-	import CelestialFactSheet from '$lib/celestial/CelestialFactSheet.svelte'
-	import CelestialContextPanel from '$lib/celestial/CelestialContextPanel.svelte'
-	import CelestialBacklinks from '$lib/celestial/CelestialBacklinks.svelte'
-	import SystemMap from '$lib/celestial/SystemMap.svelte'
-	import MapControls from '$lib/celestial/MapControls.svelte'
-	import SystemSidebar from '$lib/celestial/SystemSidebar.svelte'
-	import DateScrubber from '$lib/celestial/DateScrubber.svelte'
-	import { DEFAULT_MAP_SETTINGS } from '$lib/celestial/map-settings.js'
+	import RodderStatGrid from '$lib/rodder/RodderStatGrid.svelte'
+	import RodderFactSheet from '$lib/rodder/RodderFactSheet.svelte'
+	import RodderContextPanel from '$lib/rodder/RodderContextPanel.svelte'
+	import RodderBacklinks from '$lib/rodder/RodderBacklinks.svelte'
+	import RootMap from '$lib/rodder/RootMap.svelte'
+	import MapControls from '$lib/rodder/MapControls.svelte'
+	import RootSidebar from '$lib/rodder/RootSidebar.svelte'
+	import DateScrubber from '$lib/rodder/DateScrubber.svelte'
+	import { DEFAULT_MAP_SETTINGS } from '$lib/rodder/map-settings.js'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import { SvelteMap } from 'svelte/reactivity'
 	import { createKnowContext, slugify, type ResolvedLink } from '$lib/renderer/context.js'
-	import CelestialConfigureForm from '$lib/components/celestial/CelestialConfigureForm.svelte'
-	import { celestialBreadcrumbs } from '$lib/utils/breadcrumbs.js'
+	import RodderConfigureForm from '$lib/components/rodder/RodderConfigureForm.svelte'
+	import { rodderBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import GearSixIcon from 'phosphor-svelte/lib/GearSixIcon'
-	import type { CelestialDetailData } from '$lib/server/loaders/celestial-detail.js'
+	import type { RodderDetailData } from '$lib/server/loaders/rodder-detail.js'
 
-	let { data }: { data: CelestialDetailData } = $props()
+	let { data }: { data: RodderDetailData } = $props()
 
 	const kind = $derived(data.kind)
 	let stablePermissions = $state(normalizePermissions($page.data.permissions))
@@ -35,16 +35,16 @@
 	})
 
 	// Fact-sheet values linkify a body's relationships as `[[slug|name]]`. Those
-	// targets are real, resolved celestial entities — but the renderer paints any
+	// targets are real, resolved rodder entities — but the renderer paints any
 	// wikilink it can't find in `resolvedLinks` as a red (missing) link pointing at
 	// `/know/<slug>`. Seed the map from the model so they render live and route to
-	// the correct `/Celestial:<slug>` page. A reactive map keeps this correct as the
-	// component is reused across client-side navigation between celestial pages.
-	function celestialLinkEntries(d: CelestialDetailData): [string, ResolvedLink][] {
+	// the correct `/Rodder:<slug>` page. A reactive map keeps this correct as the
+	// component is reused across client-side navigation between rodder pages.
+	function rodderLinkEntries(d: RodderDetailData): [string, ResolvedLink][] {
 		const entries: [string, ResolvedLink][] = []
 		const add = (ref: { slug: string } | null | undefined) => {
 			// Key matches WikiInternalLink's lookup: `${sourceDomain}:${slugify(target).toLowerCase()}`.
-			if (ref?.slug) entries.push([`celestial:${slugify(ref.slug).toLowerCase()}`, { href: `/Celestial:${ref.slug}`, exists: true }])
+			if (ref?.slug) entries.push([`rodder:${slugify(ref.slug).toLowerCase()}`, { href: `/Rodder:${ref.slug}`, exists: true }])
 		}
 		if (d.kind === 'body' && d.model) {
 			add(d.model.satelliteOf)
@@ -60,11 +60,11 @@
 
 	// Seed synchronously so SSR and the first paint render live links (no red flash),
 	// then keep it current across client-side navigation.
-	const resolvedLinks = new SvelteMap<string, ResolvedLink>(untrack(() => celestialLinkEntries(data)))
+	const resolvedLinks = new SvelteMap<string, ResolvedLink>(untrack(() => rodderLinkEntries(data)))
 
 	$effect(() => {
 		resolvedLinks.clear()
-		for (const [key, value] of celestialLinkEntries(data)) resolvedLinks.set(key, value)
+		for (const [key, value] of rodderLinkEntries(data)) resolvedLinks.set(key, value)
 	})
 
 	// Fact-sheet values can include wikilinks; the renderer expects a Know context.
@@ -72,14 +72,14 @@
 		resolvedLinks,
 		mediaBaseUrl: '/api/media',
 		pageBaseUrl: '/know',
-		sourceDomain: 'celestial',
+		sourceDomain: 'rodder',
 		calendarDate: $page.data.calendarDate ?? null,
 	})
 
-	// System map state. Seed the in-world day from the first system calendar's epoch
+	// Root map state. Seed the in-world day from the first associated calendar's epoch
 	// and day length so the map opens on a plausible "now" rather than a raw Unix day.
 	function computeInitialDay(): number {
-		const cal = data.kind === 'system' ? (data.systemCalendars as any[] | undefined)?.[0] : null
+		const cal = data.kind === 'system' ? (data.rootCalendars as any[] | undefined)?.[0] : null
 		const sd = cal?.staticData as Record<string, unknown> | undefined
 		// Guard against a non-positive/NaN day length (user-editable calendar data):
 		// `?? 86_400` only covers null/undefined, so a stored 0 would divide to Infinity.
@@ -98,7 +98,7 @@
 	let mapSelectedId = $state<`star:${number}` | `body:${number}` | null>(null)
 
 	// This component instance is reused across client-side navigation between
-	// celestial pages. computeInitialDay() reads `data`, so this effect re-runs
+	// rodder pages. computeInitialDay() reads `data`, so this effect re-runs
 	// when the loaded entity changes — reseeding the map's in-world "now" and
 	// clearing a selection carried over from the previous system. The writes are
 	// untracked and target state this effect doesn't read, so a user's scrubbing
@@ -117,15 +117,15 @@
 		if (mapSelectedId == null) return null
 		const [k, rawId] = mapSelectedId.split(':')
 		const numericId = Number(rawId)
-		if (k === 'star' && data.kind === 'system') return (data.systemStars ?? []).find(b => b.id === numericId) ?? null
-		if (k === 'body' && data.kind === 'system') return (data.systemBodies ?? []).find(b => b.id === numericId) ?? null
+		if (k === 'star' && data.kind === 'system') return (data.rootStars ?? []).find(b => b.id === numericId) ?? null
+		if (k === 'body' && data.kind === 'system') return (data.rootBodies ?? []).find(b => b.id === numericId) ?? null
 		return null
 	})
 
-	const systemCalendarConfigs = $derived.by(() => {
+	const rootCalendarConfigs = $derived.by(() => {
 		if (data.kind !== 'system') return []
-		if (!data.systemCalendars) return []
-		return (data.systemCalendars as any[]).map((c: any) => ({
+		if (!data.rootCalendars) return []
+		return (data.rootCalendars as any[]).map((c: any) => ({
 			id: c.id,
 			name: c.name,
 			description: '',
@@ -190,18 +190,18 @@
 </script>
 
 <svelte:head>
-	<title>{raw.name} — Celestial — KnowThing</title>
+	<title>{raw.name} — Rodder — KnowThing</title>
 </svelte:head>
 
 {#if isConfigureMode && data.kind === 'star'}
-	<CelestialConfigureForm
+	<RodderConfigureForm
 		kind="star"
 		record={{ ...raw, systemId: starSelfRef?.systemId ?? null, parentStarId: starSelfRef?.parentStarId ?? null }}
 		systems={data.allSystems ?? []}
 		stars={data.allStars ?? []}
 	/>
 {:else if isConfigureMode && data.kind === 'body'}
-	<CelestialConfigureForm
+	<RodderConfigureForm
 		kind="body"
 		record={{ ...raw, starId: bodySelfRef?.starId ?? null, parentId: bodySelfRef?.parentId ?? null, parentSystemId: bodySelfRef?.parentSystemId ?? null }}
 		systems={data.allSystems ?? []}
@@ -210,34 +210,34 @@
 	/>
 {:else if isConfigureMode && data.kind === 'system'}
 	<!-- Map rows carry id/name; systemId is trivially this system (they were fetched by it). -->
-	<CelestialConfigureForm
+	<RodderConfigureForm
 		kind="system"
 		record={{ ...raw, sectorId: data.sectorContext?.sectorId ?? null }}
 		sectors={data.sectors}
-		stars={(data.systemStars ?? []).map(s => ({ id: s.id, name: s.name, systemId: raw.id }))}
+		stars={(data.rootStars ?? []).map(s => ({ id: s.id, name: s.name, systemId: raw.id }))}
 	/>
 {:else}
 	<ArticleShell
-		breadcrumbs={celestialBreadcrumbs(raw.name)}
+		breadcrumbs={rodderBreadcrumbs(raw.name)}
 		title={raw.name}
 	>
 		{#snippet actions()}
-			{#if permissions.canConfigureCelestial}
+			{#if permissions.canConfigureRodder}
 				<a
-					href={resolve('/[...ns_path=namespaced]', { ns_path: `Celestial:${raw.slug}/configure` })}
+					href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${raw.slug}/configure` })}
 					class="flex items-center gap-1 font-medium text-link transition-colors hover:text-link-hover"
 				>
 					<GearSixIcon size={14} weight="fill" />Configure
 				</a>
-			{:else if permissions.isAuthenticated && !permissions.canConfigureCelestial}
-				<span class="text-sm text-secondary">View only. Editor role required for celestial changes.</span>
+			{:else if permissions.isAuthenticated && !permissions.canConfigureRodder}
+				<span class="text-sm text-secondary">View only. Editor role required for rodder changes.</span>
 			{/if}
 		{/snippet}
 
 		{#if kind === 'system' && data.kind === 'system'}
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-[1fr_280px]">
 				<div class="min-w-0 overflow-hidden">
-					{#if data.systemStars && data.systemStars.length > 0}
+					{#if data.rootStars && data.rootStars.length > 0}
 						<MapControls
 							bind:labels={mapLabels}
 							bind:trails={mapTrails}
@@ -246,10 +246,10 @@
 							hasSelection={mapSelectedId != null}
 						/>
 						<div class="h-[clamp(28rem,72vh,56rem)]">
-							<SystemMap
-								systemName={raw.name}
-								stars={data.systemStars}
-								bodies={data.systemBodies ?? []}
+							<RootMap
+								rootName={raw.name}
+								stars={data.rootStars}
+								bodies={data.rootBodies ?? []}
 								{currentAbsoluteDay}
 								scale={mapScale}
 								labels={mapLabels}
@@ -260,8 +260,8 @@
 								bind:selectedId={mapSelectedId}
 							/>
 						</div>
-						{#if systemCalendarConfigs.length > 0}
-							<DateScrubber calendars={systemCalendarConfigs} bind:currentAbsoluteDay />
+						{#if rootCalendarConfigs.length > 0}
+							<DateScrubber calendars={rootCalendarConfigs} bind:currentAbsoluteDay />
 						{/if}
 					{:else}
 						<div class="flex h-64 items-center justify-center text-dim">
@@ -271,28 +271,28 @@
 				</div>
 
 				<div class="space-y-4 md:border-l md:border-border-subtle md:pl-4">
-					<SystemSidebar
-						system={raw}
-						stars={data.systemStars ?? []}
-						bodies={data.systemBodies ?? []}
-						systemSlug={raw.slug}
+					<RootSidebar
+						root={raw}
+						stars={data.rootStars ?? []}
+						bodies={data.rootBodies ?? []}
+						rootSlug={raw.slug}
 						sector={data.sectorContext}
-						calendars={systemCalendarConfigs}
+						calendars={rootCalendarConfigs}
 						bind:currentAbsoluteDay
 						{selectedBody}
 					/>
-					<CelestialBacklinks links={data.backlinks} />
+					<RodderBacklinks links={data.backlinks} />
 				</div>
 			</div>
 		{:else if (data.kind === 'star' || data.kind === 'body') && data.model}
 			<div class="space-y-4">
-				<CelestialStatGrid model={data.model} />
+				<RodderStatGrid model={data.model} />
 				<div class="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_300px] lg:items-start">
 					<div class="min-w-0">
-						<CelestialFactSheet model={data.model} />
+						<RodderFactSheet model={data.model} />
 					</div>
 					<div class="space-y-4">
-						<CelestialContextPanel
+						<RodderContextPanel
 							model={data.model}
 							bodies={contextBodies}
 							moons={contextMoons}
@@ -300,7 +300,7 @@
 							hzSource={contextHzSource}
 							selfAu={contextSelfAu}
 						/>
-						<CelestialBacklinks links={data.backlinks} />
+						<RodderBacklinks links={data.backlinks} />
 					</div>
 				</div>
 			</div>

@@ -1,5 +1,5 @@
 import type { PageServerLoad } from './$types.js'
-import { getSectorBySlug } from '$lib/server/services/celestial-sectors.js'
+import { getSectorBySlug } from '$lib/server/services/rodder-sectors.js'
 
 /** Read-only sector view: one sector's frame contract and its roots. */
 export const load: PageServerLoad = async ({ params }) => {

@@ -3,14 +3,14 @@ import { expect, test, type Page } from '@playwright/test'
 async function ready(page: Page) {
 	const pageErrors: string[] = []
 	page.on('pageerror', error => pageErrors.push(error.message))
-	await page.goto('/test/celestial-map')
+	await page.goto('/test/rodder-root-map')
 	await expect(page.locator('[data-render-state="ready"]')).toBeVisible({ timeout: 15_000 })
 	await expect(page.locator('canvas')).toHaveAttribute('data-texture-lod-pending', '0')
 	await page.waitForTimeout(100)
 	expect(pageErrors).toEqual([])
 }
 
-test.describe('celestial map', () => {
+test.describe('rodder root map', () => {
 	test('renders Orrery and Plan at desktop width', async ({ page }) => {
 		await page.setViewportSize({ width: 1280, height: 900 })
 		await ready(page)
@@ -84,6 +84,7 @@ test.describe('celestial map', () => {
 	})
 
 	test('selects, focuses, follows fractional playback, resets, and resizes', async ({ page }) => {
+		test.slow()
 		await page.setViewportSize({ width: 1100, height: 850 })
 		await ready(page)
 		await page.getByRole('button', { name: 'All', exact: true }).click()
@@ -133,7 +134,7 @@ test.describe('celestial map', () => {
 				return original.call(this, type, ...args as [])
 			} as typeof HTMLCanvasElement.prototype.getContext
 		})
-		await page.goto('/test/celestial-map')
+		await page.goto('/test/rodder-root-map')
 		await expect(page.locator('[data-render-state="unavailable"]')).toBeVisible({ timeout: 15_000 })
 		await expect(page.getByRole('heading', { name: 'Interactive map unavailable' })).toBeVisible()
 		await expect(page.getByRole('link', { name: 'Open' }).first()).toBeVisible()

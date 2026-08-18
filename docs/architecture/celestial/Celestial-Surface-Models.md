@@ -21,7 +21,7 @@ Every texture choice retains provenance as `uploaded`, `procedural`, `constant`,
 
 ## Current Recipe
 
-The version 5 recipe lives in `celestial_bodies.extra.surface`. It stores authored inputs, not a generator version:
+The version 5 recipe lives in `rodder_bodies.extra.surface`. It stores authored inputs, not a generator version:
 
 ```json
 {
@@ -88,7 +88,7 @@ An uploaded normal map is considered more authoritative than generated or upload
 
 ## Weather Appearance Is Not a Surface File
 
-Clouds are stored separately in `celestial_bodies.extra.weather`. The current weather recipe deliberately supports only an illustrative representative state:
+Clouds are stored separately in `rodder_bodies.extra.weather`. The current weather recipe deliberately supports only an illustrative representative state:
 
 ```json
 {

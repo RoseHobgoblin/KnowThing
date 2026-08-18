@@ -4,7 +4,7 @@
 	import { goto } from '$app/navigation'
 	import { resolve } from '$app/paths'
 	import { cn } from '$lib/utils.js'
-	import type { ThemePalette } from './system-layout.js'
+	import type { ThemePalette } from './root-layout.js'
 	import {
 		formatSectorPosition,
 		type PositionedSectorRoot,
@@ -110,7 +110,7 @@
 
 	function enterSystem(slug: string) {
 		if (renderer) saveCameraState(renderer)
-		goto(resolve('/[...ns_path=namespaced]', { ns_path: `Celestial:${slug}` }))
+		goto(resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${slug}` }))
 	}
 
 	// Three.js remains strictly browser-only.
@@ -268,7 +268,7 @@
 						</button>
 						<a
 							class="shrink-0 text-xs text-link hover:text-link-hover"
-							href={resolve('/[...ns_path=namespaced]', { ns_path: `Celestial:${root.slug}` })}
+							href={resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${root.slug}` })}
 						>Open</a>
 					</li>
 				{/each}

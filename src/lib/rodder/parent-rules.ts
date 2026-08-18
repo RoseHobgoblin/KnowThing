@@ -1,7 +1,7 @@
 /**
- * Parent-kind rules for the unified celestial hierarchy.
+ * Parent-kind rules for the unified rodder hierarchy.
  *
- * A celestial entity's dynamical role (planet vs moon vs companion star vs
+ * A rodder entity's dynamical role (planet vs moon vs companion star vs
  * circumbinary planet) is never stored — it falls out of what the entity
  * orbits. A `system` parent is the system barycenter: stars orbiting it are
  * binary components, bodies orbiting it are circumbinary. These rules say which
@@ -11,14 +11,14 @@
  * Pure and DB-free so the full matrix is unit-testable.
  */
 
-export const CELESTIAL_KINDS = ['system', 'star', 'body'] as const
-export type CelestialKind = (typeof CELESTIAL_KINDS)[number]
+export const RODDER_KINDS = ['system', 'star', 'body'] as const
+export type RodderKind = (typeof RODDER_KINDS)[number]
 
-export function isCelestialKind(value: unknown): value is CelestialKind {
-	return typeof value === 'string' && (CELESTIAL_KINDS as readonly string[]).includes(value)
+export function isRodderKind(value: unknown): value is RodderKind {
+	return typeof value === 'string' && (RODDER_KINDS as readonly string[]).includes(value)
 }
 
-const ALLOWED_PARENTS: Record<CelestialKind, readonly CelestialKind[]> = {
+const ALLOWED_PARENTS: Record<RodderKind, readonly RodderKind[]> = {
 	system: [],
 	star: ['system', 'star'],
 	// A system parent means the body orbits the system barycenter — a
@@ -26,7 +26,7 @@ const ALLOWED_PARENTS: Record<CelestialKind, readonly CelestialKind[]> = {
 	body: ['system', 'star', 'body'],
 }
 
-const KIND_LABEL: Record<CelestialKind, string> = {
+const KIND_LABEL: Record<RodderKind, string> = {
 	system: 'star system',
 	star: 'star',
 	body: 'body',
@@ -39,14 +39,14 @@ const KIND_LABEL: Record<CelestialKind, string> = {
  * `bodyType` tightens the rule for ring systems, which must orbit a body.
  */
 export function validateParentKind(
-	kind: CelestialKind,
-	parentKind: CelestialKind | null,
+	kind: RodderKind,
+	parentKind: RodderKind | null,
 	bodyType?: string | null,
 ): string | null {
 	if (parentKind == null) {
 		// Bodies always orbit something; systems never do; stars may be field
 		// stars outside any system.
-		if (kind === 'body') return 'Celestial bodies must orbit a parent system, star, or body'
+		if (kind === 'body') return 'Rodder bodies must orbit a parent system, star, or body'
 		return null
 	}
 	if (kind === 'system') return 'Star systems cannot orbit a parent'

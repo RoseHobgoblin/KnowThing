@@ -1,4 +1,4 @@
-export interface CelestialPreset {
+export interface RodderPreset {
 	label: string
 	description: string
 	system: {
@@ -90,11 +90,11 @@ export interface PresetSurface {
 
 /**
  * Flat lookup of individual star presets by name (e.g. "The Sun").
- * Built from the nested celestialPresets structure for use on configure pages.
+ * Built from the nested rodderPresets structure for use on configure pages.
  */
 export function getStarPresets(): Map<string, StarPreset> {
 	const map = new Map<string, StarPreset>()
-	for (const preset of celestialPresets) {
+	for (const preset of rodderPresets) {
 		for (const star of preset.stars) {
 			map.set(star.name, star)
 		}
@@ -108,7 +108,7 @@ export function getStarPresets(): Map<string, StarPreset> {
  */
 export function getBodyPresets(): Map<string, BodyPreset> {
 	const map = new Map<string, BodyPreset>()
-	for (const preset of celestialPresets) {
+	for (const preset of rodderPresets) {
 		for (const star of preset.stars) {
 			for (const body of star.bodies) {
 				map.set(body.name, body)
@@ -123,7 +123,7 @@ export function getBodyPresets(): Map<string, BodyPreset> {
 	return map
 }
 
-export const celestialPresets: CelestialPreset[] = [
+export const rodderPresets: RodderPreset[] = [
 	{
 		label: 'Solar System',
 		description: 'Our solar system with the Sun, 8 planets, and major moons.',
@@ -267,7 +267,7 @@ export const celestialPresets: CelestialPreset[] = [
 						extra: {
 							seedData: {
 								id: 'solar-system/mars', version: 1,
-								manifest: '/seed-data/celestial/mars/manifest.json',
+								manifest: '/seed-data/rodder/mars/manifest.json',
 							},
 							referenceBody: {
 								frame: 'IAU_MARS', naifBodyCode: 499,
@@ -288,7 +288,7 @@ export const celestialPresets: CelestialPreset[] = [
 							coverage: { surfaceWater: 0, vegetation: 0, permanentSnowIce: 0 },
 							maps: {
 								albedo: {
-									publicPath: 'seed-data/celestial/mars/runtime/mars-mdim21-color-4096x2048.webp',
+									publicPath: 'seed-data/rodder/mars/runtime/mars-mdim21-color-4096x2048.webp',
 									filename: 'Mars_MDIM21_colour_4096x2048.webp',
 									mimeType: 'image/webp', width: 4096, height: 2048, sizeBytes: 2_696_266,
 									contentHash: '81a2e8e4f2fb07a60c6147b91edc303cf2f2d815e3224fd3755e5db888810fd8',
@@ -296,7 +296,7 @@ export const celestialPresets: CelestialPreset[] = [
 									interpretation: { projection: 'equirectangular', colorSpace: 'srgb' },
 								},
 								elevation: {
-									publicPath: 'seed-data/celestial/mars/runtime/mars-mola-megdr-topography-4096x2048.png',
+									publicPath: 'seed-data/rodder/mars/runtime/mars-mola-megdr-topography-4096x2048.png',
 									filename: 'Mars_MOLA_topography_4096x2048.png',
 									mimeType: 'image/png', width: 4096, height: 2048, sizeBytes: 2_629_834,
 									contentHash: '7ebe4a0c4c2166f1661f4b7d27a0a87c2bdb9edb3a6b20e7a659c32c329fbf2f',

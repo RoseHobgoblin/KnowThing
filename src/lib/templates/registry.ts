@@ -25,7 +25,7 @@ import WikiList from './builtins/WikiList.svelte'
 import NativeName from './builtins/NativeName.svelte'
 import Marriage from './builtins/Marriage.svelte'
 import CollapsibleList from './builtins/CollapsibleList.svelte'
-import SystemMap from './builtins/SystemMap.svelte'
+import RootMap from './builtins/RootMap.svelte'
 import PhonemeGrid from '$lib/renderer/structured/PhonemeGrid.svelte'
 import PhonologySection from '$lib/renderer/structured/PhonologySection.svelte'
 import DiphthongList from '$lib/renderer/structured/DiphthongList.svelte'
@@ -92,7 +92,7 @@ export const BUILTIN_TEMPLATES: Record<string, BuiltinEntry> = {
 	'cite web': { component: Citation },
 	'cite journal': { component: Citation },
 	'wt': { component: Wt },
-	'system map': { component: SystemMap },
+	'root map': { component: RootMap },
 	'consonants': { component: PhonemeGrid, staticProps: { type: 'consonant' } },
 	'vowels': { component: PhonemeGrid, staticProps: { type: 'vowel' } },
 	'diphthongs': { component: DiphthongList },

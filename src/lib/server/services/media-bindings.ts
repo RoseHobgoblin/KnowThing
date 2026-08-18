@@ -2,13 +2,13 @@ import { error } from '@sveltejs/kit'
 import { and, eq } from 'drizzle-orm'
 import { db } from '$lib/server/db/index.js'
 import { media, mediaAssetBindings, mediaVersions } from '$lib/server/db/schema.js'
-import { parseSurfaceRecipe, type SurfaceMapChannel } from '$lib/celestial/surface-model.js'
-import { parseStellarSurfaceRecipe } from '$lib/celestial/stellar-surface-model.js'
+import { parseSurfaceRecipe, type SurfaceMapChannel } from '$lib/rodder/surface-model.js'
+import { parseStellarSurfaceRecipe } from '$lib/rodder/stellar-surface-model.js'
 import {
 	assessMediaCompatibility,
 	parseMediaAssetBinding,
 	purposeLabel,
-	type CelestialMediaPurpose,
+	type RodderMediaPurpose,
 	type MediaAssetBinding,
 } from '$lib/media/asset-binding.js'
 
@@ -26,7 +26,7 @@ function recordValue(value: unknown): Record<string, unknown> {
 async function resolveBinding(
 	dbx: Dbx,
 	raw: unknown,
-	purpose: CelestialMediaPurpose,
+	purpose: RodderMediaPurpose,
 ): Promise<MediaAssetBinding | null> {
 	const binding = parseMediaAssetBinding(raw, purpose)
 	if (!binding) return null
@@ -60,7 +60,7 @@ async function resolveBinding(
 	}
 }
 
-export async function normalizeCelestialMediaBindings(
+export async function normalizeRodderMediaBindings(
 	dbx: Dbx,
 	ownerId: number,
 	kind: 'system' | 'star' | 'body',
@@ -74,12 +74,12 @@ export async function normalizeCelestialMediaBindings(
 		const recipe = parseSurfaceRecipe(extra.surface)
 		const maps: typeof recipe.maps = {}
 		for (const channel of SURFACE_CHANNELS) {
-			const purpose = `surface-${channel}` as CelestialMediaPurpose
+			const purpose = `surface-${channel}` as RodderMediaPurpose
 			const binding = await resolveBinding(dbx, recipe.maps[channel], purpose)
 			if (!binding) continue
 			maps[channel] = binding
 			rows.push({
-				mediaId: binding.mediaId!, ownerType: 'celestial', ownerId,
+				mediaId: binding.mediaId!, ownerType: 'rodder', ownerId,
 				slot: `surface.${channel}`, contentHash: binding.contentHash!,
 				filenameSnapshot: binding.filename, interpretation: binding.interpretation,
 			})
@@ -91,7 +91,7 @@ export async function normalizeCelestialMediaBindings(
 		extra.stellarSurface = { ...recipe, maps: binding ? { photosphere: binding } : {} }
 		if (binding) {
 			rows.push({
-				mediaId: binding.mediaId!, ownerType: 'celestial', ownerId,
+				mediaId: binding.mediaId!, ownerType: 'rodder', ownerId,
 				slot: 'stellarSurface.photosphere', contentHash: binding.contentHash!,
 				filenameSnapshot: binding.filename, interpretation: binding.interpretation,
 			})

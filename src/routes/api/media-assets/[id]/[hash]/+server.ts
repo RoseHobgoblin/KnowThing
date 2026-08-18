@@ -5,7 +5,7 @@ import { findMediaRevision } from '$lib/server/services/media.js'
 
 const HASH_PATTERN = /^[\da-f]{64}$/i
 
-/** Serve the exact bytes selected by a celestial surface binding. */
+/** Serve the exact bytes selected by a rodder surface binding. */
 export const GET: RequestHandler = async ({ params }) => {
 	const id = Number.parseInt(params.id)
 	if (!Number.isInteger(id) || id <= 0 || !HASH_PATTERN.test(params.hash)) {
