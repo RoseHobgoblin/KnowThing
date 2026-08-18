@@ -9,6 +9,7 @@
 		visibility = $bindable('enhanced'),
 		follow = $bindable(false),
 		canFollowSelection = false,
+		variant = 'bar',
 	}: {
 		labels: LabelMode
 		skyLabels: LabelMode
@@ -16,6 +17,7 @@
 		visibility: VisibilityMode
 		follow: boolean
 		canFollowSelection?: boolean
+		variant?: 'bar' | 'panel'
 	} = $props()
 
 	type SegmentItem<T extends string> = { value: T, label: string, title?: string }
@@ -40,7 +42,15 @@
 	]
 </script>
 
-<div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-border-subtle bg-page px-3 py-1.5 text-xs text-secondary select-none">
+<div
+	class={cn(
+		'text-xs text-secondary select-none',
+		variant === 'panel'
+			? 'grid gap-3'
+			: 'flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-border-subtle bg-page px-3 py-1.5',
+	)}
+	data-map-controls={variant}
+>
 	<!-- Visibility -->
 	<div class="flex items-center gap-1">
 		<span class="tracking-wider text-secondary uppercase">Visibility</span>

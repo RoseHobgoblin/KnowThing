@@ -10,7 +10,7 @@
 	import RootMap from '$lib/rodder/RootMap.svelte'
 	import CopyViewLink from '$lib/rodder/CopyViewLink.svelte'
 	import MapControls from '$lib/rodder/MapControls.svelte'
-	import RootSidebar from '$lib/rodder/RootSidebar.svelte'
+	import RootOverlayPanel from '$lib/rodder/RootOverlayPanel.svelte'
 	import DateScrubber from '$lib/rodder/DateScrubber.svelte'
 	import { DEFAULT_MAP_SETTINGS } from '$lib/rodder/map-settings.js'
 	import {
@@ -26,7 +26,13 @@
 	import RodderConfigureForm from '$lib/components/rodder/RodderConfigureForm.svelte'
 	import { rodderBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import GearSixIcon from 'phosphor-svelte/lib/GearSixIcon'
+	import CalendarBlank from 'phosphor-svelte/lib/CalendarBlank'
+	import Info from 'phosphor-svelte/lib/Info'
+	import SlidersHorizontal from 'phosphor-svelte/lib/SlidersHorizontal'
+	import TreeStructure from 'phosphor-svelte/lib/TreeStructure'
+	import XIcon from 'phosphor-svelte/lib/XIcon'
 	import type { RodderDetailData } from '$lib/server/loaders/rodder-detail.js'
+	import { cn } from '$lib/utils.js'
 
 	let { data }: { data: RodderDetailData } = $props()
 
@@ -113,6 +119,8 @@
 	let mapFocusId = $state<`star:${number}` | `body:${number}` | null>(null)
 	let initialCameraState = $state<RootCameraState | null>(null)
 	let rootMap = $state<{ getCameraState(): RootCameraState | null } | null>(null)
+	type RootOverlay = 'overview' | 'objects' | 'calendar' | 'settings'
+	let activeRootOverlay = $state<RootOverlay | null>(null)
 
 	const rootEntityKeys = $derived.by(() => {
 		if (!hasRootView) return new Set<`star:${number}` | `body:${number}`>()
@@ -153,6 +161,7 @@
 			mapSelectedId = state?.selected ?? null
 			mapFocusId = state?.focus ?? null
 			initialCameraState = state?.camera ?? null
+			activeRootOverlay = null
 		})
 	})
 
@@ -192,6 +201,15 @@
 			? apparentSky?.sources.find(source => source.key === mapSelectedId) ?? null
 			: null,
 	)
+	const selectedOverlayTitle = $derived(selectedSkySource ? 'Sky source' : 'Selected object')
+
+	function toggleRootOverlay(panel: RootOverlay) {
+		activeRootOverlay = activeRootOverlay === panel ? null : panel
+	}
+
+	function selectRootEntity(key: `star:${number}` | `body:${number}`) {
+		mapSelectedId = key
+	}
 
 	const rootCalendarConfigs = $derived.by(() => {
 		if (!hasRootView) return []
@@ -310,17 +328,9 @@
 		{/snippet}
 
 		{#if hasRootView && (data.kind === 'system' || data.kind === 'body')}
-			<div class="grid grid-cols-1 gap-4 md:grid-cols-[1fr_280px]">
-				<div class="min-w-0 overflow-hidden">
-					{#if rootStars.length > 0 || rootBodies.length > 0}
-						<MapControls
-							bind:labels={mapLabels}
-							bind:skyLabels={mapSkyLabels}
-							bind:trails={mapTrails}
-							bind:visibility={mapVisibility}
-							bind:follow={mapFollow}
-							canFollowSelection={mapSelectedId != null && !mapSelectedId.startsWith('sky-root:')}
-						/>
+			<div class="min-w-0 overflow-hidden">
+				{#if rootStars.length > 0 || rootBodies.length > 0}
+					<div class="relative isolate overflow-hidden border border-border-subtle bg-black">
 						<div class="h-[clamp(28rem,72vh,56rem)]">
 							<RootMap
 								bind:this={rootMap}
@@ -336,37 +346,137 @@
 								visibility={mapVisibility}
 								bind:follow={mapFollow}
 								bind:view={mapView}
-								bind:selectedId={mapSelectedId}
+								bind:selectedId={() => mapSelectedId, (selected) => {
+									mapSelectedId = selected
+									if (!selected) mapFollow = false
+									activeRootOverlay = null
+								}}
 								bind:focusId={mapFocusId}
 								{initialCameraState}
 							/>
 						</div>
-						{#if rootCalendarConfigs.length > 0}
-							<DateScrubber calendars={rootCalendarConfigs} bind:currentAbsoluteDay />
-						{/if}
-					{:else}
-						<div class="flex h-64 items-center justify-center text-dim">
-							No objects registered in this root.
-						</div>
-					{/if}
-				</div>
 
-				<div class="space-y-4 md:border-l md:border-border-subtle md:pl-4">
-					<RootSidebar
-						root={raw}
-						rootKind={data.kind}
-						stars={rootStars}
-						bodies={rootBodies}
-						rootSlug={raw.slug}
-						sector={rootSectorContext}
-						calendars={rootCalendarConfigs}
-						bind:currentAbsoluteDay
-						{selectedBody}
-						{selectedSkySource}
-					/>
-					<RodderBacklinks links={data.backlinks} />
-				</div>
+						<div class="
+							absolute top-11 left-2 z-30 flex max-w-[calc(100%-1rem)] items-center overflow-x-auto border border-faint/50 bg-surface/90 text-xs shadow-lg
+							backdrop-blur-sm
+						" aria-label="Map displays">
+							<span class="max-w-36 truncate border-r border-faint/50 px-2 py-1.5 font-medium text-heading" title={raw.name}>{raw.name}</span>
+							<button
+								type="button"
+								class={cn('flex items-center gap-1 px-2 py-1.5 text-secondary transition-colors hover:text-heading', activeRootOverlay === 'overview' && 'bg-accent-subtle text-accent')}
+								aria-expanded={activeRootOverlay === 'overview'}
+								aria-controls="root-context-overlay"
+								onclick={() => toggleRootOverlay('overview')}
+							><Info size={14} />Overview</button>
+							<button
+								type="button"
+								class={cn('flex items-center gap-1 px-2 py-1.5 text-secondary transition-colors hover:text-heading', activeRootOverlay === 'objects' && 'bg-accent-subtle text-accent')}
+								aria-expanded={activeRootOverlay === 'objects'}
+								aria-controls="root-context-overlay"
+								onclick={() => toggleRootOverlay('objects')}
+							><TreeStructure size={14} />Objects</button>
+							{#if rootCalendarConfigs.length > 0}
+								<button
+									type="button"
+									class={cn('flex items-center gap-1 px-2 py-1.5 text-secondary transition-colors hover:text-heading', activeRootOverlay === 'calendar' && 'bg-accent-subtle text-accent')}
+									aria-expanded={activeRootOverlay === 'calendar'}
+									aria-controls="root-context-overlay"
+									onclick={() => toggleRootOverlay('calendar')}
+								><CalendarBlank size={14} />Calendar</button>
+							{/if}
+							<button
+								type="button"
+								class={cn('flex items-center gap-1 px-2 py-1.5 text-secondary transition-colors hover:text-heading', activeRootOverlay === 'settings' && 'bg-accent-subtle text-accent')}
+								aria-expanded={activeRootOverlay === 'settings'}
+								aria-controls="root-context-overlay"
+								onclick={() => toggleRootOverlay('settings')}
+							><SlidersHorizontal size={14} />Display</button>
+						</div>
+
+						{#if activeRootOverlay}
+							<aside
+								id="root-context-overlay"
+								class="
+									absolute inset-x-2 bottom-2 z-40 max-h-[48%] overflow-auto border border-faint/60 bg-surface/95 shadow-xl backdrop-blur-sm
+									sm:top-20 sm:right-auto sm:bottom-auto sm:left-2 sm:max-h-[calc(100%-5.5rem)] sm:w-80
+								"
+								aria-label={activeRootOverlay === 'settings' ? 'Display settings' : `${activeRootOverlay} display`}
+							>
+								<div class="sticky top-0 flex items-center justify-between border-b border-border-subtle bg-raised/95 px-3 py-2">
+									<h2 class="text-xs font-semibold tracking-wider text-secondary uppercase">{activeRootOverlay === 'objects' ? 'Root objects' : (activeRootOverlay === 'settings' ? 'Display settings' : activeRootOverlay)}</h2>
+									<button type="button" class="text-secondary transition-colors hover:text-heading" aria-label="Close overlay" onclick={() => { activeRootOverlay = null }}><XIcon size={15} /></button>
+								</div>
+								<div class="p-3">
+									{#if activeRootOverlay === 'settings'}
+										<MapControls
+											bind:labels={mapLabels}
+											bind:skyLabels={mapSkyLabels}
+											bind:trails={mapTrails}
+											bind:visibility={mapVisibility}
+											bind:follow={mapFollow}
+											canFollowSelection={mapSelectedId != null && !mapSelectedId.startsWith('sky-root:')}
+											variant="panel"
+										/>
+									{:else}
+										<RootOverlayPanel
+											panel={activeRootOverlay}
+											root={raw}
+											rootKind={data.kind}
+											stars={rootStars}
+											bodies={rootBodies}
+											rootSlug={raw.slug}
+											sector={rootSectorContext}
+											calendars={rootCalendarConfigs}
+											bind:currentAbsoluteDay
+											onselect={selectRootEntity}
+										/>
+									{/if}
+								</div>
+							</aside>
+						{:else if mapSelectedId && (selectedBody || selectedSkySource)}
+							<aside
+								id="root-selection-inspector"
+								class="
+									absolute inset-x-2 bottom-2 z-40 max-h-[48%] overflow-auto border border-accent/60 bg-surface/95 shadow-xl backdrop-blur-sm
+									sm:top-12 sm:right-2 sm:bottom-auto sm:left-auto sm:max-h-[calc(100%-3.5rem)] sm:w-80
+								"
+								aria-label={selectedOverlayTitle}
+							>
+								<div class="sticky top-0 flex items-center justify-between border-b border-border-subtle bg-raised/95 px-3 py-2">
+									<h2 class="text-xs font-semibold tracking-wider text-secondary uppercase">{selectedOverlayTitle}</h2>
+									<button
+										type="button"
+										class="text-secondary transition-colors hover:text-heading"
+										aria-label="Close inspector"
+										onclick={() => {
+											mapSelectedId = null
+											mapFollow = false
+										}}
+									><XIcon size={15} /></button>
+								</div>
+								<div class="p-3">
+									<RootOverlayPanel
+										panel="selection"
+										root={raw}
+										rootKind={data.kind}
+										stars={rootStars}
+										bodies={rootBodies}
+										rootSlug={raw.slug}
+										{selectedBody}
+										{selectedSkySource}
+									/>
+								</div>
+							</aside>
+						{/if}
+					</div>
+					{#if rootCalendarConfigs.length > 0}
+						<DateScrubber calendars={rootCalendarConfigs} bind:currentAbsoluteDay />
+					{/if}
+				{:else}
+					<div class="flex h-64 items-center justify-center text-dim">No objects registered in this root.</div>
+				{/if}
 			</div>
+			<div class="mt-4"><RodderBacklinks links={data.backlinks} /></div>
 			{#if data.kind === 'body' && data.model}
 				<div class="mt-4 space-y-4">
 					<RodderStatGrid model={data.model} />

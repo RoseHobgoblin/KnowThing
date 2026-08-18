@@ -72,10 +72,8 @@ import {
 import {
 	DEFAULT_STARLIGHT_EXPOSURE,
 	StarlightController,
-	formatStarlightExposure,
 	focusedStarlightTarget,
 	resolveStarlightExposure,
-	type StarlightSummary,
 } from './starlight-controller.js'
 
 const MIN_ZOOM = 0.1
@@ -214,7 +212,7 @@ function formatPhysicalDistance(au: number): string {
 
 function unavailableRenderer(canvas: HTMLCanvasElement, reason: string, callbacks: MapRendererCallbacks): RootMapRenderer {
 	callbacks.onUnavailable?.(reason)
-	callbacks.onOverlayChange?.({ labels: [], indicators: [], scaleLabel: '', legend: null, modeLabel: '', projection: null, status: 'unavailable' })
+	callbacks.onOverlayChange?.({ labels: [], indicators: [], legend: null, projection: null, status: 'unavailable' })
 	return {
 		canvas,
 		setData() {}, setDay() {}, setSettings() {}, setSelected() {}, setTheme() {}, resize() {}, resetView() {},
@@ -323,11 +321,6 @@ export async function createRootMapRenderer(
 	let visualsReady = false
 	let visualGeneration = 0
 	let lodGeneration = 0
-	let starlightSummary: StarlightSummary = starlight.summary()
-	let exposureLabel = formatStarlightExposure(
-		resolveStarlightExposure(DEFAULT_SETTINGS.visibility, null),
-		null,
-	)
 	let layout: RootLayout = buildPhysicalLayout([], [])
 	const nodes = new Map<EntityKey, EntityNode>()
 	const skyNodes = new Map<RootSelectionKey, SkyNode>()
@@ -649,7 +642,7 @@ export async function createRootMapRenderer(
 		for (const direct of layout.directOrbits) addNode(direct.body, direct.body.isStar, false)
 		for (const satellite of layout.satellites) addNode(satellite.body, satellite.body.isStar, true)
 		publishTextureLodDiagnostics()
-		starlightSummary = starlight.rebuild(
+		starlight.rebuild(
 			[...nodes.values()].filter(node => node.isStar).map(node => node.body),
 			layout.worldUnitsPerAu ?? 1,
 		)
@@ -997,27 +990,15 @@ export async function createRootMapRenderer(
 		const scaleBarAu = layout.worldUnitsPerAu == null
 			? null
 			: scaleBarPixels * worldUnitsPerPixelAt(controls.target) / layout.worldUnitsPerAu
-		const omittedSkyRoots = apparentSky.diagnostics.observerRoot
-			+ apparentSky.diagnostics.incompatibleSectorRoots
-			+ apparentSky.diagnostics.unpositionedRoots
-			+ apparentSky.diagnostics.starlessRoots
-			+ apparentSky.diagnostics.coincidentRoots
 		const snapshot: OverlaySnapshot = {
 			labels,
 			indicators,
-			scaleLabel: camera === orreryCamera ? 'Physical distance at focus' : 'Physical distance',
 			legend: scaleBarAu == null
 				? null
 				: {
 					pixels: scaleBarPixels,
 					label: formatPhysicalDistance(scaleBarAu),
 				},
-			modeLabel: `${settings.view === 'plan' ? 'Plan' : 'Orrery'} · ${settings.visibility[0].toUpperCase()}${settings.visibility.slice(1)}`,
-			lightingLabel: starlightSummary.label,
-			exposureLabel,
-			skyLabel: apparentSky.status === 'unavailable'
-				? `Authored sky unavailable · ${apparentSky.reason ?? 'missing frame data'}`
-				: `Authored sky · ${apparentSky.sources.length} ${apparentSky.sources.length === 1 ? 'source' : 'sources'}${omittedSkyRoots > 0 ? ` · ${omittedSkyRoots} omitted` : ''}${apparentSky.diagnostics.incompleteBrightnessSources > 0 ? ` · ${apparentSky.diagnostics.incompleteBrightnessSources} incomplete` : ''}`,
 			projection: camera === orreryCamera ? 'perspective' : 'orthographic',
 			status: dataReceived && visualsReady ? 'ready' : 'initializing',
 		}
@@ -1064,7 +1045,6 @@ export async function createRootMapRenderer(
 		const exposure = resolveStarlightExposure(settings.visibility, irradiance)
 		renderer.toneMappingExposure = exposure.exposure
 		starlight.compensateFillForExposure(exposure.exposure)
-		exposureLabel = formatStarlightExposure(exposure, focusedNode?.body.name ?? null)
 	}
 
 	function notifyView() {
@@ -1313,7 +1293,7 @@ export async function createRootMapRenderer(
 	function handleContextLost(event: Event) {
 		event.preventDefault()
 		callbacks.onUnavailable?.('The graphics context was lost. Reload the page to restore the interactive map.')
-		callbacks.onOverlayChange?.({ labels: [], indicators: [], scaleLabel: '', legend: null, modeLabel: '', projection: null, status: 'unavailable' })
+		callbacks.onOverlayChange?.({ labels: [], indicators: [], legend: null, projection: null, status: 'unavailable' })
 	}
 	function handleKeyDown(event: KeyboardEvent) {
 		if (!PAN_KEYS.has(event.code) || event.altKey || event.ctrlKey || event.metaKey) return
@@ -1361,8 +1341,7 @@ export async function createRootMapRenderer(
 
 	resize(width, height)
 	callbacks.onOverlayChange?.({
-		labels: [], indicators: [], scaleLabel: '', legend: null,
-		modeLabel: 'Orrery · Enhanced', projection: 'perspective', status: 'initializing',
+		labels: [], indicators: [], legend: null, projection: 'perspective', status: 'initializing',
 	})
 	rebuild()
 

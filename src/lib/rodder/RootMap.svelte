@@ -19,7 +19,7 @@
 		secondary: '#A09882', dim: '#7A7264', heading: '#F0E6D0', faint: '#55504A',
 	}
 	const EMPTY_OVERLAY: OverlaySnapshot = {
-		labels: [], indicators: [], scaleLabel: '', legend: null, modeLabel: 'Orrery · Enhanced', projection: 'perspective', status: 'initializing',
+		labels: [], indicators: [], legend: null, projection: 'perspective', status: 'initializing',
 	}
 
 	let {
@@ -308,23 +308,14 @@
 					<span>{indicator.name}</span>
 				</div>
 			{/each}
-			<div class="absolute right-2 bottom-2 max-w-[75%] bg-surface/75 px-2 py-1 text-right text-[0.65rem] text-secondary">
-				{overlay.modeLabel} · {overlay.scaleLabel}
-				{#if overlay.lightingLabel}<span class="ml-2">{overlay.lightingLabel}</span>{/if}
-				{#if overlay.exposureLabel}<span class="ml-2">{overlay.exposureLabel}</span>{/if}
-				{#if overlay.skyLabel}<span class="ml-2">{overlay.skyLabel}</span>{/if}
-				{#if overlay.legend}
-					<span class="ml-2 inline-flex items-center gap-1.5">
-						{#if overlay.legend.pixels > 0}
-							<span class="inline-block border-t border-secondary" style:width="{overlay.legend.pixels}px"></span>
-						{/if}
-						{overlay.legend.label}
-					</span>
-				{/if}
-			</div>
-			<div class="absolute bottom-2 left-2 hidden bg-surface/60 px-2 py-1 text-[0.65rem] text-secondary sm:block">
-				{view === 'orrery' ? 'Drag to orbit · WASD / arrows pan' : 'WASD / arrows pan'}
-			</div>
+			{#if overlay.legend}
+				<div class="absolute right-2 bottom-2 inline-flex items-center gap-1.5 bg-surface/75 px-2 py-1 text-[0.65rem] text-secondary">
+					{#if overlay.legend.pixels > 0}
+						<span class="inline-block border-t border-secondary" style:width="{overlay.legend.pixels}px"></span>
+					{/if}
+					{overlay.legend.label}
+				</div>
+			{/if}
 		</div>
 	{/if}
 

@@ -36,12 +36,7 @@ export type OffscreenIndicator = {
 export type OverlaySnapshot = {
 	labels: ProjectedLabel[]
 	indicators: OffscreenIndicator[]
-	scaleLabel: string
 	legend: { pixels: number, label: string } | null
-	modeLabel: string
-	lightingLabel?: string
-	exposureLabel?: string
-	skyLabel?: string
 	projection: 'orthographic' | 'perspective' | null
 	status: 'initializing' | 'ready' | 'unavailable'
 }
