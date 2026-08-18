@@ -1,5 +1,7 @@
 # Phase 0 Audit — Monster Migration Baseline
 
+**Status:** Historical database snapshot; not current implementation guidance
+
 Captured 2026-05-08 against prod (`knowthing-db-1`).
 
 ## 1. content_records by domain

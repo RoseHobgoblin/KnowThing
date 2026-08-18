@@ -4,7 +4,7 @@
 
 **Last updated:** 8 August 2026
 
-**Related documents:** [Atlas Architecture](../../architecture/Atlas-Architecture.md), [Celestial Sector and System Model](../../architecture/celestial/Celestial-Sector-and-System-Model.md), [Celestial Upgrades](./Celestial-Upgrades.md), [Celestial Surface Models](../../architecture/celestial/Celestial-Surface-Models.md), [Celestial Data Provenance and Ingest](../../architecture/celestial/Celestial-Data-Provenance-and-Ingest.md), [Celestial Calendar Integration](../../architecture/celestial/Celestial-Calendar-Integration.md)
+**Related documents:** [Atlas Architecture](../../architecture/Atlas-Architecture.md), [Celestial Sector and System Model](../../architecture/celestial/Celestial-Sector-and-System-Model.md), [Celestial Views, Authoring, and Wiki Embeds](../../architecture/celestial/Celestial-Views-Authoring-and-Wiki-Embeds.md), [Celestial Surface Models](../../architecture/celestial/Celestial-Surface-Models.md), [Celestial Data Provenance and Ingest](../../architecture/celestial/Celestial-Data-Provenance-and-Ingest.md), [Calendar and Celestial Boundaries](../../architecture/celestial/Celestial-Calendar-Integration.md)
 
 > **Maturity:** The camera, visibility, surface-composition, texture-LOD, and starlight sections describe the current implementation. Time controls are partial; reference frames, scientific overlays, and focused-body detail remain design intent. Review this document when one of those remaining phases enters implementation. **Expires on contact with implementation.**
 

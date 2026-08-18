@@ -3,7 +3,7 @@
 **Status:** Adopted; delivery steps 1–4 and sector-frame authoring implemented 18 August 2026 (migration 0054, sector CRUD/view, explicit system membership, sector↔Orrery transition context) — steps 5–7 pending
 **Decision date:** 18 August 2026  
 **Applies to:** stellar neighbourhoods, system roots, unbound objects, routes, and the transition into the Orrery  
-**Related documents:** [Atlas Architecture](../Atlas-Architecture.md), [Celestial Orrery Roadmap](../../plans/celestial/Celestial-Orrery-Roadmap.md), [Celestial Calendar Integration](./Celestial-Calendar-Integration.md), [Part 1 Launch Plan](../../plans/celestial/Part-1-Launch-Plan.md)
+**Related documents:** [Structured Data Vision](../STRUCTURED-DATA-VISION.md), [Atlas Architecture](../Atlas-Architecture.md), [Celestial Views, Authoring, and Wiki Embeds](./Celestial-Views-Authoring-and-Wiki-Embeds.md), [Celestial Orrery Roadmap](../../plans/celestial/Celestial-Orrery-Roadmap.md), [Calendar and Celestial Boundaries](./Celestial-Calendar-Integration.md)
 
 > **Maturity:** This document defines the target model; the first implementation slice now exists. `celestial_sectors` carries the authored frame contract, `celestial_sector_roots` carries root positions (migration 0054 migrated the legacy `galactic_x/y/z` values verbatim into a declared legacy sector and dropped the columns), `/celestial/manage/sectors` authors frames and membership, `/celestial/sector/[slug]` presents the 3D sector view, and entering/returning from a system preserves selection and the sector camera. General non-system roots, regions, routes, influence volumes, time-qualified agents, and distant-sky backdrops remain unimplemented — for those, this document is still the target, not a description.
 
@@ -116,7 +116,7 @@ The origin may be:
 - **frame-centred:** `(0,0,0)` is an arbitrary declared centre with no object required there;
 - **imported:** the origin and axes reproduce an external catalogue or setting reference.
 
-KnowThing must not label bare legacy `galacticX/Y/Z` values as self-explanatory galactic coordinates. Until migrated, they are legacy local coordinates with an unknown or implicit frame.
+Migration 0054 retired the bare legacy `galacticX/Y/Z` fields. Imported legacy coordinates must remain attached to an explicit sector frame and retain their legacy provenance; KnowThing must never reintroduce unexplained tuples as universal galactic coordinates.
 
 ### Orbital coordinates
 
@@ -387,25 +387,14 @@ distant_sky_objects
 position_assertions / ephemerides
 ```
 
-This is a direction, not a migration prescription. The current database remains temporary infrastructure for Part 1. No parallel import schema should be added solely to anticipate this model.
+This remains a direction for the parts not represented by the current `celestial_bodies`, `celestial_sectors`, and `celestial_sector_roots` schema. No parallel import schema should be added solely to anticipate the later generic object/facet model.
 
 Stable identity is mandatory across reparenting. A body does not receive a new identity merely because it is promoted from a planet to an unbound root or attached to another system.
 
-## Part 1 Boundary
+## Implemented Boundary and Remaining Scope
 
-Part 1 should preserve the path to this architecture without implementing the whole neighbourhood feature.
+The initial sector slice delivered explicit frames, root positions, sector authoring, the 3D sector view, and state-preserving entry into systems. The following remain later work rather than hidden assumptions of the current implementation:
 
-Required before collecting substantial canon XYZ data:
-
-- document the frame of the existing coordinates;
-- stop calling unexplained `galacticX/Y/Z` values universal galactic positions;
-- preserve stable system and body identity;
-- keep parent relationships general enough for hierarchical multiples and moons;
-- keep sector and Orrery units separate.
-
-Not required for Part 1:
-
-- a sector editor;
 - region, influence, or route authoring;
 - catalogue import;
 - continuous interstellar camera travel;

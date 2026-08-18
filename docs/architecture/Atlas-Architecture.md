@@ -2,7 +2,7 @@
 
 **Status:** Design intent with isolated CRS and viewer spikes completed
 **Last updated:** 8 August 2026  
-**Related documents:** [Celestial Sector and System Model](./celestial/Celestial-Sector-and-System-Model.md), [Celestial Data Provenance and Ingest](./celestial/Celestial-Data-Provenance-and-Ingest.md), [Celestial Surface Models](./celestial/Celestial-Surface-Models.md), [Planetary Data Acquisition Catalogue](../references/Planetary-Data-Acquisition-Catalogue.md), [Celestial Orrery Roadmap](../plans/celestial/Celestial-Orrery-Roadmap.md), [WorldMap Vision](./WORLDMAP-VISION.md), [Celestial Calendar Integration](./celestial/Celestial-Calendar-Integration.md)
+**Related documents:** [Structured Data Vision](./STRUCTURED-DATA-VISION.md), [Celestial Sector and System Model](./celestial/Celestial-Sector-and-System-Model.md), [Celestial Data Provenance and Ingest](./celestial/Celestial-Data-Provenance-and-Ingest.md), [Celestial Surface Models](./celestial/Celestial-Surface-Models.md), [Planetary Data Acquisition Catalogue](../references/Planetary-Data-Acquisition-Catalogue.md), [Celestial Orrery Roadmap](../plans/celestial/Celestial-Orrery-Roadmap.md), [Calendar and Celestial Boundaries](./celestial/Celestial-Calendar-Integration.md)
 
 > **Maturity:** Atlas remains design intent. The repository now contains disposable PostGIS/CRS and Cesium/MapLibre prototypes plus an ADR; neither prototype is an application feature or production dependency. Review this document after the first Atlas schema, release contract, or focused-viewer integration. **Expires on contact with implementation.**
 
@@ -133,7 +133,7 @@ This level answers questions such as:
 - Which systems are connected by jump lanes, trade routes, or communications?
 - Where are fleets, anomalies, surveys, or frontiers?
 
-Its primary reference is a declared three-dimensional sector or setting coordinate frame. Root objects—including stellar systems, rogue worlds, stations, phenomena, fleets, and markers—have sector positions; descendants use parent-relative orbital state. The current celestial `galacticX/Y/Z` fields are a starting point, not a complete coordinate contract. The adopted hierarchy and interstellar-object rules are defined in the [Celestial Sector and System Model](./celestial/Celestial-Sector-and-System-Model.md).
+Its primary reference is a declared three-dimensional sector or setting coordinate frame. Root objects—including stellar systems, rogue worlds, stations, phenomena, fleets, and markers—have sector positions; descendants use parent-relative orbital state. Migration 0054 replaced the old bare `galacticX/Y/Z` fields with `celestial_sectors` frame contracts and `celestial_sector_roots` positions. The adopted hierarchy and interstellar-object rules are defined in the [Celestial Sector and System Model](./celestial/Celestial-Sector-and-System-Model.md).
 
 ### Star-system level
 
@@ -742,7 +742,7 @@ Migration should preserve existing work without allowing the legacy tables to di
 
 ### Phase A: Freeze the conceptual boundary
 
-- Mark `WORLDMAP-VISION.md` as a legacy prototype, not the target architecture.
+- Keep the former image-centric WorldMap proposal out of current architecture; its surviving import-adapter decisions are consolidated here, while Git history retains the original proposal.
 - Stop expanding `world_maps` with new thematic or scientific fields.
 - Keep current pages working while Atlas foundations are built.
 - Treat current ingest as compatibility behavior.

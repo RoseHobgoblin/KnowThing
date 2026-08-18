@@ -1,514 +1,256 @@
-# KnowThing: Structured Worldbuilding Data
+# Structured Objects, Facets, and Displays
 
-> **The thesis:** MediaWiki treats everything as flat documents. KnowThing treats everything as structured, queryable, interconnected data that *renders* as documents. You don't describe your world in markup — you define it in structured data and the documentation writes itself.
+**Status:** Product architecture direction
+**Decision date:** 18 August 2026
+**Applies to:** all KnowThing domains, structured authoring, relationships, queries, and WikiText displays
+**Related documents:** [Atlas Architecture](./Atlas-Architecture.md), [Celestial Views, Authoring, and Wiki Embeds](./celestial/Celestial-Views-Authoring-and-Wiki-Embeds.md), [Celestial Sector and System Model](./celestial/Celestial-Sector-and-System-Model.md)
 
-This document lays out the full vision for KnowThing's structured data systems and how they interconnect. It covers phonology, orthography, custom scripts (CarveCraft), and the template bridge that surfaces structured data on wiki pages.
+> **Maturity:** KnowThing currently implements several typed structured-data systems with their own tables and services. Wiki templates already render some of that data as page content. The generic object/facet model described here is future architecture. Current systems should evolve toward its contracts through adapters rather than being prematurely replaced by an unvalidated property bag.
 
----
+## Thesis
 
-## Architecture Overview
+KnowThing is intended to feel like MediaWiki from another century and another dimension: narrative pages remain central, but structured knowledge is not trapped in prose or template arguments.
 
-KnowThing has four top-level sections. Each is useful alone. Together they form a worldbuilding platform where data flows between systems.
+Authors define facts, relationships, rules, and evidence once. KnowThing turns them into the display appropriate to the context:
 
-```
-KnowThing
-├── Know        Wiki articles — narrative documentation
-├── Wordbook    Languages, words, inflections, phonology, graphemes
-├── CarveCraft  Scripts, glyphs, fonts, input methods
-└── Calendar    Time systems, months, eras, events
-```
+- an infobox;
+- a table or comparison;
+- an article section;
+- a relationship graph;
+- a map or celestial view;
+- a calendar or timeline;
+- a search result or generated list;
+- a specialized editor that writes the same underlying fields.
 
-**Data flows downward into Know.** Wiki articles pull live structured data from Wordbook, CarveCraft, and Calendar via templates. Edit a phoneme in Wordbook, and every wiki article referencing that language's consonant table updates automatically.
+The long-term unit is one stable **object** with declared **facets**. Facets contribute typed fields, relationships, validation, and display capabilities. A page is one display of an object, not the object's entire meaning.
 
-### How the Sections Relate
+## Core Model
 
-```
-CarveCraft                    Wordbook                     Calendar
-(scripts & glyphs)            (languages & words)          (time systems)
-       │                             │                          │
-       │  script_id                  │                          │
-       └──────────► Language ◄───────┘                          │
-                        │                                       │
-                   Graphemes                                    │
-                   (bridge: glyph ↔ phoneme)                    │
-                        │                                       │
-                        ▼                                       ▼
-                ┌─────────────────────────────────────────────────┐
-                │                    Know                         │
-                │  {{consonants|Oncheran}}  → phoneme grid        │
-                │  {{orthography|Oncheran}} → glyph/IPA table     │
-                │  {{lang|oncheran|...}}    → custom font render  │
-                │  {{date|...}}            → calendar formatting  │
-                └─────────────────────────────────────────────────┘
+```text
+object
+  -> stable identity and revisions
+  -> zero or more typed facets
+       -> fields
+       -> relationships
+       -> validation
+       -> display capabilities
+  -> prose and media
+  -> displays and saved views
 ```
 
-A **script** is not owned by a single language. Latin serves dozens of languages; a conworld's proto-script gets inherited and forked by descendant cultures. Scripts live in CarveCraft. Languages in Wordbook *reference* a script — that's a relationship, not a hierarchy.
+### Object
 
-**Graphemes are the bridge.** They sit between CarveCraft (what symbols exist) and Wordbook (what sounds exist), defining how *this specific language* maps *this script's symbols* to *its sounds*. Two languages sharing a script will have different grapheme mappings.
+An object is anything KnowThing can identify, revise, link, query, or display: a person, language, word, star, planet, calendar, event, polity, route, map layer, saved view, or something a setting invents later.
 
-```
-CarveCraft Glyph  ◄──  Grapheme  ──►  Wordbook Phoneme
-U+E003 (tha)           "th" → /θ/      /θ/ (dental fricative)
-```
+Object identity must remain stable when titles, slugs, relationships, or classifications change. Links and structured references resolve through identity, not copied names.
 
----
+### Facet
 
-## Data Model
+A facet is a typed declaration that an object supports a coherent set of facts and behaviours. Examples might include:
 
-### Phonemes (Wordbook)
+- article content;
+- celestial body;
+- spatial position or geometry;
+- orbit;
+- language;
+- organization;
+- event or temporal interval;
+- calendar rules;
+- ordered network;
+- population observation;
+- saved view.
 
-The sounds a language has. Each phoneme carries articulatory features that determine its position in the standard linguistics grids (manner × place for consonants, height × backness for vowels).
+Facets are composable. A settlement can carry article, location, population, organization, and temporal facets. A station may carry artificial-structure, orbit, population, polity, and article facets. The system should not need a bespoke top-level application type for every useful combination.
 
-```
-phonemes
-  id            serial PK
-  language_id   FK → languages
-  ipa           text        -- "/p/", "/θ/", "/ks/"
-  type          text        -- 'consonant' | 'vowel' | 'diphthong' | 'special'
+A facet is not arbitrary JSON. It has a schema version, field semantics, validation, query/index needs, and migration rules.
 
-  -- Consonant features (null for vowels)
-  place         text        -- "bilabial", "alveolar", "alveolo-palatal", "uvular", etc.
-  manner        text        -- "nasal", "plosive", "fricative", "approximant", etc.
-  subtype       text        -- null | "plain" | "tense" | "aspirated" (for Korean-style sub-rows)
-  voicing       text        -- 'voiced' | 'voiceless' | null
+### Field
 
-  -- Vowel features (null for consonants)
-  height        text        -- "close", "mid", "open"
-  backness      text        -- "front", "central", "back"
-  rounded       boolean
+A field records an authored, imported, derived, overridden, or illustrative value with declared semantics. Its unit, uncertainty, provenance, validity interval, and derivation state matter where applicable.
 
-  notes         text        -- Footnote: "only at end of syllable", allophonic rules
-  sort_order    integer
-```
+Unknown is a valid state. Missing, not applicable, not yet authored, invalid, and deliberately withheld must not collapse into the same accidental `null` when the distinction matters.
 
-**Key design decisions:**
+### Relationship
 
-- **Place/manner/height/backness are freeform text, not enums.** Languages invent categories. Japanese has "Special moras." Korean has "Alveolo-palatal." A fixed enum would break on the first creative conlang. The renderer derives grid axes from the distinct values present in the data.
-- **Subtype handles sub-rows.** Korean's Plosive/Affricate splits into plain/tense/aspirated. Rather than duplicating manner values, `subtype` creates nested rows within a manner group.
-- **Notes are per-phoneme footnotes.** These are essential in real phonology tables — allophonic rules, positional variants, merger notes. Rendered as superscript references below the grid.
-- **IPA can be multi-character.** `/ks/` for clusters, `/t͡ʃ/` for affricates.
+Relationships are first-class typed records between stable objects. They may carry direction, roles, ordering, dates, confidence, provenance, and domain-specific qualifiers.
 
-### Graphemes (Wordbook, bridging to CarveCraft)
+Examples include:
 
-The mapping between writing and sound. Each grapheme connects a written form (one or more characters) to a phoneme.
+- orbits;
+- contained by;
+- member of;
+- capital of;
+- spoken in;
+- descended from;
+- participated in;
+- claims;
+- located at;
+- connects to.
 
-```
-graphemes
-  id            serial PK
-  language_id   FK → languages
-  grapheme      text        -- "th", "x", "ㅂ", or PUA: "\uE003"
-  phoneme_id    FK → phonemes (nullable — silent letters, punctuation)
-  romanization  text        -- "th", "p" (required for non-Latin scripts, optional otherwise)
-  environment   text        -- "before front vowels", "word-initial" (nullable)
-  notes         text        -- Footnote text
-  sort_order    integer
-```
+A relationship may render as a tree in one context and as a graph, breadcrumb, map layer, backlink, or table row in another. The presentation is not the canonical relationship.
 
-**Key design decisions:**
+### Display
 
-- **Grapheme is a string, not a single character.** Digraphs ("th", "ch"), trigraphs ("sch"), and multi-codepoint sequences are first-class.
-- **Environment handles context-dependent mappings.** The letter "c" → /k/ before a,o,u but /s/ before e,i. Two grapheme rows, same grapheme string, different phoneme IDs, different environment values.
-- **Romanization is the Latin-script fallback.** Optional for Latin-script languages. Essential for custom scripts (CarveCraft), Hangul, Cyrillic, etc. Also drives the input method — type the romanization, get the glyph.
-- **Nullable phoneme_id** for silent letters, punctuation, numerals — graphemes that exist in the script but don't map to a sound.
+A display consumes declared facet capabilities and produces a readable or interactive representation. Displays do not own duplicate domain truth.
 
-### Scripts (CarveCraft)
+Some displays are passive. Others are bidirectional authoring surfaces: dragging an object on a map can edit a position field; reordering a relationship list can edit an order field; manipulating a timeline can edit an interval. These interactions must use the same validation and mutation contracts as ordinary forms.
 
-A writing system as a standalone entity, independent of any specific language.
+### View
 
-```
-scripts
-  id            serial PK
-  name          text unique -- "Oncheran Script", "Imperial Runes"
-  slug          text unique
-  script_type   text        -- 'alphabet' | 'abugida' | 'syllabary' | 'logographic' | 'abjad'
-  direction     text        -- 'ltr' | 'rtl' | 'ttb'
-  description   text
-  page_slug     text        -- FK-like link to a Know wiki page
-  created_at    timestamptz
-  updated_at    timestamptz
+A view records how one or more displays are composed: focus, camera, time, fields, filters, layers, selection, and interaction policy. Views may be saved, revised, linked, and transcluded into WikiText.
+
+The detailed view contract for celestial and spatial displays is defined in [Celestial Views, Authoring, and Wiki Embeds](./celestial/Celestial-Views-Authoring-and-Wiki-Embeds.md) and should generalize beyond that domain.
+
+## Fields Become Displays
+
+The normal flow is:
+
+```text
+author or import
+  -> validate typed fields and relationships
+  -> store canonical assertions and provenance
+  -> project capabilities
+  -> render the chosen display
 ```
 
-### Glyphs (CarveCraft)
+Editing a fact updates every display that derives from it. A phoneme change can update an inventory, orthography table, infobox, comparison, and query result. A system-position change can update a sector map, an apparent sky, a distance table, and a cited saved view.
 
-Individual symbols in a script. For custom (PUA-based) scripts, each glyph is assigned a Unicode Private Use Area code point.
+Displays may derive presentation values, but a renderer must not silently write them back as authored truth. Screen-space marker size, procedural terrain, inferred colour, layout coordinates, and automatic labels are presentation unless explicitly promoted through an author action with provenance.
 
-```
-glyphs
-  id            serial PK
-  script_id     FK → scripts
-  name          text        -- "letter tha", "vowel sign a"
-  codepoint     text        -- "U+E003" (PUA assignment)
-  character     text        -- "\uE003" (the actual character for storage/rendering)
-  category      text        -- 'consonant' | 'vowel' | 'modifier' | 'punctuation' | 'numeral'
-  sort_order    integer
+## WikiText Is the Composition Language
 
-  -- For scripts with positional variants (Arabic-style)
-  initial_form  text        -- nullable, alternate glyph in word-initial position
-  medial_form   text        -- nullable, alternate glyph in word-medial position
-  final_form    text        -- nullable, alternate glyph in word-final position
+Narrative pages remain a primary interface. WikiText should be able to cite structured objects and transclude displays without copying their values into markup.
+
+The intended pattern includes:
+
+```wikitext
+{{infobox|from=Nacre}}
+{{orthography|Oncheran}}
+{{compare|Nacre,Serein|mass,radius,gravity}}
+{{view:Orison Fold/Nacre overview}}
+{{#query: facet=settlement | located-in=Onchera | sort=population desc}}
 ```
 
-**PUA ranges:** Unicode reserves U+E000 through U+F8FF (6,400 code points) on the BMP, plus U+F0000–U+FFFFD and U+100000–U+10FFFD for supplementary PUA. 6,400 BMP slots is enough for any single script. Multiple scripts can share or partition the range.
+Exact syntax is an implementation decision. The architectural requirements are:
 
-### Script Fonts (CarveCraft)
+- references use stable identity after resolution;
+- structured data is loaded in batches during server rendering where practical;
+- transclusions respect permissions and publication state;
+- dependencies and backlinks are recorded;
+- invalid optional displays fail locally instead of taking down the page;
+- live and revision-pinned resolution are both possible;
+- print and reduced-capability fallbacks remain readable.
 
-Font files that make PUA code points render as custom glyphs.
+Infoboxes are ordinary displays selected by available facets and page composition. They should not become a separate schema or a hand-maintained copy of object fields.
 
-```
-script_fonts
-  id            serial PK
-  script_id     FK → scripts
-  font_name     text        -- CSS font-family name: "Oncheran Script"
-  font_file     text        -- filename in uploads: "oncheran-script.woff2"
-  unicode_range text        -- "U+E000-E040" (for CSS unicode-range)
-  weight        text        -- 'normal' | 'bold' (nullable)
-  style         text        -- 'normal' | 'italic' (nullable)
-  uploaded_at   timestamptz
-```
+## Query and Computed Content
 
-**CSS generation:** The layout dynamically generates `@font-face` declarations for scripts with uploaded fonts. The `unicode-range` property ensures browsers only download the font when PUA characters are actually present on the page — zero cost otherwise.
+Objects and facets must be queryable across domains. Query results can power generated lists, comparison tables, dashboards, map layers, timelines, and computed article sections.
 
-```css
-@font-face {
-  font-family: 'Oncheran Script';
-  src: url('/api/media/fonts/oncheran-script.woff2') format('woff2');
-  unicode-range: U+E000-E040;
-}
-```
+Queries need a permission-aware, bounded execution model. Arbitrary WikiText must not become unrestricted SQL. A query contract should declare:
 
-### Language ↔ Script Link
+- required facets or object kinds;
+- field and relationship predicates;
+- temporal and spatial scope;
+- ordering and limits;
+- selected display profile;
+- live or revision-pinned resolution.
 
-The existing `languages` table in Wordbook gains a foreign key to CarveCraft:
+Computed content records its dependency set so affected pages and previews can be invalidated when source objects change.
 
-```
-languages (existing, modified)
-  ...existing columns...
-  script_id     FK → scripts (nullable — null means standard Unicode script)
-```
+## Cross-Domain Composition
 
-The existing `script` text column ("Latin", "Cyrillic") remains for languages using standard scripts. `script_id` links to CarveCraft for custom scripts. Both can coexist.
+Domains are useful authoring and validation packages, not permanent data silos.
 
----
+| Object | Possible facets | Example displays |
+|---|---|---|
+| Language | language, phonology, orthography, lineage, article | inventory, family tree, lexicon, infobox |
+| Celestial body | physical properties, orbit, spatial representation, surface, article | Orrery, sector map, fact sheet, apparent sky |
+| Calendar | calendar rules, cultural ownership, reforms, article | calendar grid, date formatter, timeline axis |
+| Event | interval, participants, locations, sources, article | timeline, map overlay, related-events section |
+| Polity | organization, territory claims, population observations, article | infobox, historical map, graph, comparison |
+| Route | ordered network, spatial references, traversal rules, validity | sector map, Atlas layer, itinerary, table |
+| Saved view | view specification, permissions, preview, article | WikiText embed, infobox map, full viewer |
 
-## Rendering on Wiki Pages
+An event that involves a faction at a settlement on a planet should not be copied into separate calendar, faction, settlement, and celestial records. Those displays resolve the same event and its relationships.
 
-### Template Dispatch
+## Current Systems and Migration Direction
 
-The existing WikiTemplate.svelte has a 6-tier dispatch chain. Structured data templates slot into tier 4 (built-in templates), each dispatching to a dedicated Svelte component:
+KnowThing currently has purpose-built schemas for content, Wordbook, calendars, celestial bodies, sectors, media, and WorldMap data. These tables are real implementation, not a mistake to hide behind a generic abstraction.
 
-```
-{{consonants|Oncheran}}         → PhonemeGrid.svelte (type=consonant)
-{{vowels|Oncheran}}             → PhonemeGrid.svelte (type=vowel)
-{{orthography|Oncheran}}        → OrthographyTable.svelte
-{{phonology|Oncheran}}          → Full phonology section (consonants + vowels + notes)
-{{lang|oncheran|...}}           → Inline text with custom font class
-{{script-sample|Oncheran}}      → CarveCraft glyph inventory display
-```
+The transition strategy is:
 
-### Server-Side Data Loading
+1. Define stable identity and capability contracts at application boundaries.
+2. Expose current typed tables through projections or adapters.
+3. Make new displays consume capabilities rather than table-specific payloads where practical.
+4. Introduce generic object/facet persistence only after its validation, indexing, revision, and permission model is concrete.
+5. Migrate one domain at a time with explicit compatibility and rollback paths.
+6. Remove old tables and adapters only after identity, query, revision, and display parity is verified.
 
-Templates that pull structured data need that data available at render time. Since rendering is SSR, this means loading phonology/grapheme/script data in the page server load function.
+Do not build a second generic write model that merely mirrors every current table into JSON. The future model earns its place by enabling safe composition, not by erasing useful types.
 
-**Approach:** When loading a wiki page, scan the AST for structured-data templates (`consonants`, `vowels`, `orthography`, etc.), extract the language slugs referenced, batch-query the required data, and pass it via the render context.
+## Authoring and Publication
 
-```typescript
-// In +page.server.ts load function (pseudocode)
-const ast = parseWikitext(page.content)
-const languageSlugs = extractStructuredDataRefs(ast)  // find {{consonants|X}}, etc.
-const phonologyData = await loadPhonologyForLanguages(languageSlugs)
-// Pass via context for WikiTemplate to consume
-```
+The authoring experience should assemble an object from compatible facets and then offer the displays those facets enable.
 
-This avoids client-side fetch waterfalls and ensures SSR works.
+Authors may work through:
 
-### Consonant/Vowel Grid Rendering
+- exact field forms;
+- relationship, hierarchy, map, timeline, and other visual lenses;
+- imports with explicit mappings and provenance;
+- reusable facet bundles or templates;
+- bulk operations with preview and rollback;
+- draft previews before publication.
 
-The consonant grid groups phonemes by manner (rows) × place (columns). Axes are derived from the data — no hardcoded list of places or manners.
+Draft objects may be incomplete. Publication requires the schemas and cross-object invariants needed by their selected displays. Permissions apply independently to objects, facets, source evidence, drafts, published revisions, and saved views where necessary.
 
-```
-SELECT ipa, place, manner, subtype, voicing, notes
-FROM phonemes
-WHERE language_id = ? AND type = 'consonant'
-ORDER BY sort_order
-```
+## Integrity
 
-Renderer:
-1. Collect distinct `place` values → column headers, ordered by sort_order
-2. Collect distinct `manner` + `subtype` pairs → row headers
-3. Place each phoneme in its cell. Empty cells are valid (sparse grid).
-4. Voiced/voiceless pairs share a cell (like Wikipedia's convention).
-5. Footnotes rendered below the grid with superscript references.
+Generic composition increases the importance of integrity. Enforce invariants at the lowest practical layer:
 
-Same logic for vowels with height (rows) × backness (columns).
+- foreign keys for object and relationship identity;
+- schema-versioned facet validation;
+- uniqueness and required-field constraints;
+- relationship cardinality, role, and cycle rules;
+- transactional multi-object mutations;
+- optimistic concurrency or explicit revision checks;
+- provenance and validity metadata where claims can conflict or change;
+- publish-time validation for cross-facet rules that cannot be expressed locally;
+- localized display failure for obsolete or malformed payloads.
 
-### Orthography Table Rendering
+The application must not infer canonical facts merely because a display requires a value. It may offer an explicit illustrative fallback, leave the value unavailable, or ask the author.
 
-```
-SELECT g.grapheme, g.romanization, p.ipa, g.environment, g.notes
-FROM graphemes g
-LEFT JOIN phonemes p ON g.phoneme_id = p.id
-WHERE g.language_id = ?
-ORDER BY g.sort_order
-```
+## Non-Goals
 
-Columns: **Script** | **Romanization** | **IPA** | **Environment**
+- replacing narrative prose with forms;
+- forcing every object to have an article;
+- defining one universal hierarchy for all relationships;
+- flattening every domain into schema-free JSON;
+- making one renderer serve every spatial or temporal scale;
+- storing display layout as canonical domain data;
+- inventing missing canon to make generated pages look complete;
+- migrating all current systems before capability contracts prove useful.
 
-If the language has a CarveCraft custom script, the Script column renders in the custom font via CSS class. Romanization column always renders in the default font.
-
-### Custom Font Rendering
-
-When a language has a `script_id` pointing to CarveCraft:
-
-1. `@font-face` is injected for that script's font (with `unicode-range`)
-2. A CSS class `.script-{slug}` applies the font-family
-3. `{{lang|oncheran|...}}` wraps content in that class
-4. Wordbook entry displays use the class automatically
-5. Orthography table grapheme column uses the class
-
----
-
-## Input Method for Custom Scripts
-
-When editing content in a language with a custom script, users need to be able to type characters that don't exist on any keyboard.
-
-### Virtual Keyboard
-
-A click-to-insert glyph palette, shown in the editor when the target language has a CarveCraft script. The palette IS the glyph table — pulled directly from CarveCraft data. Click a glyph, it inserts the PUA character at the cursor.
-
-### Romanization IME
-
-More ambitious, but far more usable. The grapheme table already contains romanization → glyph mappings. This doubles as an input method definition:
-
-1. User types `th` in the editor
-2. IME consults grapheme table: `romanization: "th"` → `grapheme: "\uE003"`
-3. Auto-converts to PUA character, rendered in custom font
-
-This is exactly how Korean (Hangul) and Japanese (Romaji) IMEs work — the user types Latin characters and the system converts based on mapping rules. The difference is that KnowThing generates the IME from your grapheme data automatically.
-
-### Fallback
-
-PUA characters are stored in the database. If the custom font fails to load, the user sees empty boxes — so romanization tooltips on hover are essential for resilience.
-
----
-
-## CarveCraft Dashboard
-
-```
-/carvecraft                           Script gallery
-/carvecraft/create                    Create new script
-/carvecraft/[script]                  Script overview, glyph inventory, font preview
-/carvecraft/[script]/glyphs           Glyph editor — define symbols, assign PUA codes
-/carvecraft/[script]/font             Font file upload and management
-/carvecraft/[script]/preview          Full character chart with all glyphs rendered
-```
-
-### Glyph Editor
-
-Grid interface for defining a script's symbols. Each row:
-- **Name** — "letter tha", "vowel sign i"
-- **PUA code point** — auto-assigned sequentially or manually chosen
-- **Category** — consonant / vowel / modifier / punctuation / numeral
-- **Positional variants** — initial, medial, final forms (for scripts like Arabic)
-
-### Font Upload
-
-Upload .woff2 files. The system validates that the font covers the PUA code points defined in the glyph table. Preview renders all glyphs in the uploaded font.
-
----
-
-## Wordbook Phonology Dashboard
-
-```
-/wordbook/[language]/phonology        Phoneme inventory editor
-/wordbook/[language]/orthography      Grapheme mapping editor
-```
-
-### Phoneme Editor
-
-**Input model: IPA picker, not feature dropdowns.** Don't make the user construct a phoneme from dropdowns (place + manner + voicing) — show the actual IPA chart as a clickable grid. User clicks a symbol, features auto-populate.
-
-The IPA chart is a finite, well-defined grid (~200 symbols). A static JSON lookup maps every symbol to its features. The picker renders it as a styled interactive chart with sections for:
-
-- Pulmonic consonants (the standard manner × place grid)
-- Affricates (t͡s, d͡z, t͡ʃ, d͡ʒ, etc.)
-- Non-pulmonic consonants (clicks, implosives, ejectives)
-- Co-articulated consonants (k͡p, ɡ͡b, ɫ, etc.)
-- Vowels (height × backness)
-- Diphthongs
-
-**Flow:** Click symbol → IPA + features auto-fill → features are editable for grid placement override → add.
-
-**Fantasy sound checkbox** disables the picker and switches to manual entry — type any IPA string, manually set features for grid placement. For conlang-specific sounds that don't exist in natural language.
-
-**Why not dropdowns:** The IPA doesn't decompose cleanly into independent features. Affricates have two manners (stop + fricative). Co-articulated consonants have two places. Denti-alveolars fall between place categories. A dropdown form can't represent these without becoming a monster. The chart IS the standard UI — every linguistics textbook uses it.
-
-**Feature fields are freeform text, not enums.** If a conlang needs "denti-alveolar" or "labial-velar" as a place, they edit the auto-filled value. The grid renderer derives its columns from whatever values are present in the data, so custom values just work.
-
-### Grapheme/Orthography Editor
-
-Mapping editor connecting script symbols to phonemes:
-
-- Select a grapheme (type it, or pick from CarveCraft glyph palette)
-- Link to a phoneme from this language's inventory
-- Add romanization, environment, notes
-- Preview renders the orthography table in real time
-
----
-
-## Dialects and Phonology
-
-**Open design question.** The Wordbook already has `languageDialects` (name, slug, region, description) used for lexicon variants. But dialects also affect phonology — how do we model that?
-
-### How Dialects Affect Sound Inventories
-
-Dialects rarely have completely different phoneme inventories. The changes are usually:
-
-- **Mergers** — Two sounds collapse into one. /ɑ/ and /ɔ/ merge (cot-caught merger). The phoneme exists in the base language but this dialect doesn't distinguish it.
-- **Splits** — One sound becomes two in certain contexts.
-- **Shifts** — A phoneme moves to a different articulation. The "slot" is the same but the realization changes (e.g., /a/ → [æ]).
-- **Additions** — The dialect has a sound the standard language lost or never had.
-- **Losses** — The dialect drops a sound entirely.
-
-### Recommended Approach: Dialect Overlays
-
-Phonemes belong to the language (the base/standard inventory). Dialects store *differences from the base* — a thin overlay table.
-
-```
-dialect_phoneme_overrides
-  id
-  dialect_id     FK → languageDialects
-  phoneme_id     FK → phonemes (the base language phoneme)
-  status         'merged' | 'shifted' | 'added' | 'lost'
-  realization    text    -- actual IPA in this dialect (e.g., /æ/ instead of /a/)
-  merged_into_id FK → phonemes (nullable — which phoneme it merged with)
-  notes          text    -- "before front vowels", "word-final only"
-```
-
-**Example:** Base Oncheran has /θ/ and /ð/. The Eastern dialect override: `/θ/ merged into /s/`.
-
-**Why overlays, not per-dialect inventories:** No data duplication. The base inventory is the source of truth. Differences are explicit and queryable ("which dialects lost /θ/?"). Updates to the base propagate automatically.
-
-**Rendering:**
-
-- Default view: base language phonemes
-- Dialect view: base phonemes with overrides applied — merged sounds grayed out, shifted sounds showing dialect realization, added sounds highlighted
-- Comparison view: side-by-side diff
-
-**Wiki templates:**
-```
-{{consonants|Oncheran}}                   ← base inventory
-{{consonants|Oncheran|dialect=Eastern}}   ← with dialect overrides applied
-```
-
-**Implementation note:** This is an additive schema change — the overlay table doesn't modify the existing phonemes table. Build it when dialect-level phonology is actually needed, not before. Nothing in the current phoneme design prevents it.
-
----
-
-## Phase Plan
-
-### Phase 1: Phonemes — Sound Inventory
-
-**Goal:** Define what sounds a language has. Render consonant and vowel grids on wiki pages.
-
-**Schema changes:**
-- Create `phonemes` table
-
-**Backend:**
-- API endpoints: CRUD for phonemes (`/api/languages/[slug]/phonemes`)
-
-**Frontend:**
-- Phoneme editor UI on `/wordbook/[language]/phonology`
-- `PhonemeGrid.svelte` renderer component (manner × place / height × backness)
-
-**Wiki integration:**
-- `{{consonants|Language}}` and `{{vowels|Language}}` templates
-- Server-side data loading in page load function
-- New dispatch case in WikiTemplate.svelte
-
-**This phase is useful immediately.** Even without custom scripts or orthography tables, the phoneme inventory grid is the most common phonology display on any language wiki page.
-
-### Phase 2: Graphemes — Orthography Mapping
-
-**Goal:** Define how sounds map to written characters. Render orthography tables on wiki pages.
-
-**Schema changes:**
-- Create `graphemes` table
-
-**Backend:**
-- API endpoints: CRUD for graphemes (`/api/languages/[slug]/graphemes`)
-
-**Frontend:**
-- Grapheme editor UI on `/wordbook/[language]/orthography`
-- `OrthographyTable.svelte` renderer component
-
-**Wiki integration:**
-- `{{orthography|Language}}` template
-- Extend server-side data loading to include graphemes
-
-**This phase handles Latin-script conlangs fully.** Digraphs, clusters, context-dependent mappings, footnotes — all covered without needing CarveCraft. The grapheme field stores plain Latin characters.
-
-### Phase 3: CarveCraft — Custom Scripts
-
-**Goal:** Define custom writing systems with PUA glyphs and custom fonts.
-
-**Schema changes:**
-- Create `scripts`, `glyphs`, `script_fonts` tables
-- Add `script_id` FK to `languages`
-
-**Backend:**
-- API endpoints: CRUD for scripts, glyphs, font upload
-- Dynamic `@font-face` CSS generation
-
-**Frontend:**
-- CarveCraft dashboard: script list, glyph editor, font upload, preview
-- Top-level navigation entry alongside Know, Wordbook, Calendar
-- CSS class injection for custom font rendering
-
-**Wiki integration:**
-- `{{lang|language|...}}` applies custom font class when script exists
-- Orthography table grapheme column renders in custom font
-- `{{script-sample|Script}}` template for displaying full glyph inventory
-
-### Phase 4: Input Methods
-
-**Goal:** Enable typing in custom scripts within the wiki editor and wordbook forms.
-
-**Frontend:**
-- Virtual keyboard component (glyph palette from CarveCraft data)
-- Integration with CodeMirror editor
-- Language selector in editor that activates the appropriate keyboard
-
-**Advanced (optional):**
-- Romanization-based IME using grapheme table as transliteration rules
-- Auto-conversion as user types
-
-### Phase 5: Cross-System Queries
-
-**Goal:** Templates that query across the structured data layer.
-
-**Wiki templates:**
-- `{{languages-with-phoneme|/θ/}}` — list languages containing a phoneme
-- `{{cognates|word|Language}}` — pull lexicon relations across languages
-- `{{inflection-summary|Language}}` — paradigm class overview from Wordbook
-- `{{lexicon-stats|Language}}` — word count by POS, coverage metrics
-- `{{language-tree|Language}}` — ancestry visualization from structured data
-- `{{script-comparison|Script1|Script2}}` — side-by-side glyph comparison
-
-**Backend:**
-- Generic structured query executor for template expansion
-- Potential `{{#query:...}}` syntax for ad-hoc queries in wikitext
-
-This phase is where the "data writes the documentation" vision fully materializes.
-
----
-
-## What Makes This Novel
-
-No existing platform does all of this:
-
-- **MediaWiki/Wikipedia** — Flat documents. Phonology tables are hand-maintained wikitext. No structured data without the Wikibase extension (which is a separate massive system). No custom font support.
-- **ConWorkShop** — Has phoneme inventories and script tools, but no wiki integration. Features are isolated. No "edit the phoneme, wiki updates automatically."
-- **Wiktionary** — Linguistic data trapped in templates and Lua modules. Not queryable. No relational model.
-- **World Anvil / Campfire** — Worldbuilding tools with wiki-like features but no deep linguistic or script modeling.
-
-KnowThing's advantage: **the structured data systems (Wordbook, CarveCraft, Calendar) feed directly into the documentation layer (Know).** Define your world's languages, scripts, and time systems as structured data. Write articles that reference them. The articles stay current because they render from live data, not static markup.
+## Acceptance Criteria
+
+This direction is working when:
+
+1. one authored fact updates every dependent display without copied markup;
+2. objects can combine independently useful facets without bespoke top-level types;
+3. relationships can render through multiple lenses without duplicate records;
+4. current typed systems and future facet-backed objects can satisfy the same display contract;
+5. WikiText can transclude permission-aware live or pinned structured views;
+6. direct manipulation remains a validated field mutation;
+7. unknown and invalid data remain distinguishable;
+8. cross-domain queries and displays do not require domain-owned copies of objects;
+9. obsolete facet or view payloads fail locally and can be migrated deliberately.
+
+## Review Triggers
+
+Review this document when:
+
+- a generic object/facet schema is proposed;
+- the first non-celestial saved view or bidirectional display is implemented;
+- permissions or revisions move from content records to generic objects;
+- structured WikiText queries enter implementation;
+- a domain migration reveals that the capability boundary cannot preserve its semantics.
