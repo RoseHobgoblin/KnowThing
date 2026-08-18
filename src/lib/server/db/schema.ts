@@ -631,11 +631,9 @@ export const celestialBodies = pgTable(
 		satellites: integer('satellites'),
 		hasRings: boolean('has_rings').default(false),
 
-		// System-only.
+		// System-only. Sector-frame XYZ lives in celestial_sector_roots (0054);
+		// distance stays here as an independent approximate authored fact.
 		distanceLy: doublePrecision('distance_ly'),
-		galacticX: doublePrecision('galactic_x'),
-		galacticY: doublePrecision('galactic_y'),
-		galacticZ: doublePrecision('galactic_z'),
 		formationAge: text('formation_age'),
 		designations: text('designations'),
 
@@ -657,6 +655,68 @@ export const celestialBodies = pgTable(
 		index('idx_celestial_bodies_slug').on(table.slug),
 		index('idx_celestial_bodies_parent').on(table.parentId),
 		index('idx_celestial_bodies_kind_parent').on(table.kind, table.parentId),
+	],
+)
+
+/**
+ * A celestial sector (migration 0054): a bounded 3D authoring space with an
+ * explicit reference-frame contract — units, shape/extent, origin semantics,
+ * axes, handedness, provenance. Sector-map positions are meaningless without
+ * this record; bare XYZ values must never be stored outside a declared frame.
+ * Enum-ish columns carry DB CHECKs (see 0054); extent columns are nullable so
+ * an undeclared extent stays visibly unavailable.
+ */
+export const celestialSectors = pgTable('celestial_sectors', {
+	id: serial('id').primaryKey(),
+	name: text('name').notNull(),
+	slug: text('slug').unique().notNull(),
+	description: text('description').notNull().default(''),
+
+	// Frame contract.
+	units: text('units').notNull().default('ly'), // 'ly' | 'pc'
+	shape: text('shape'), // 'sphere' | 'cuboid' | null (undeclared)
+	radius: doublePrecision('radius'),
+	extentX: doublePrecision('extent_x'),
+	extentY: doublePrecision('extent_y'),
+	extentZ: doublePrecision('extent_z'),
+	originKind: text('origin_kind').notNull().default('frame-centred'), // 'object-centred' | 'frame-centred' | 'imported'
+	originBodyId: integer('origin_body_id').references(() => celestialBodies.id, { onDelete: 'set null' }),
+	axesNote: text('axes_note'),
+	handedness: text('handedness').notNull().default('right-handed'), // 'right-handed' | 'left-handed'
+	referenceEpoch: text('reference_epoch'),
+	provenance: text('provenance').notNull().default('authored'), // 'authored' | 'imported' | 'transformed' | 'approximate' | 'legacy'
+
+	createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
+/**
+ * An independently positioned root object on a sector map. One row per root;
+ * `bodyId` is unique — an object is a root of at most one sector and loses the
+ * root record when attached beneath an orbital parent. XYZ is in the sector's
+ * units and nullable (a root may exist before its position is known); the app
+ * layer requires complete triples on write, while legacy-migrated rows keep
+ * whatever the old galactic_x/y/z columns held, verbatim.
+ */
+export const celestialSectorRoots = pgTable(
+	'celestial_sector_roots',
+	{
+		id: serial('id').primaryKey(),
+		sectorId: integer('sector_id').references(() => celestialSectors.id, { onDelete: 'cascade' }).notNull(),
+		bodyId: integer('body_id').references(() => celestialBodies.id, { onDelete: 'cascade' }).unique().notNull(),
+
+		x: doublePrecision('x'),
+		y: doublePrecision('y'),
+		z: doublePrecision('z'),
+		positionProvenance: text('position_provenance').notNull().default('authored'), // 'authored' | 'imported' | 'derived' | 'approximate' | 'legacy'
+		positionUncertainty: doublePrecision('position_uncertainty'),
+		notes: text('notes'),
+
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+	},
+	table => [
+		index('idx_sector_roots_sector').on(table.sectorId),
 	],
 )
 

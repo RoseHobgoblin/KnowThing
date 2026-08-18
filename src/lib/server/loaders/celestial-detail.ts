@@ -17,6 +17,7 @@ import {
 	listAllSystemReferences,
 	listAllBodyReferences,
 } from '$lib/server/services/celestial-registry.js'
+import { getSectorContextForRoot, type SectorContext } from '$lib/server/services/celestial-sectors.js'
 
 export interface CelestialDetailContext {
 	identifier: string
@@ -31,7 +32,11 @@ type CelestialRow = NonNullable<Awaited<ReturnType<typeof findCelestialBySlugOrN
 export type CelestialDetailData =
 	| (CelestialBaseData & {
 		kind: 'system'
-		body: CelestialRow
+		// Sector root position rides on the record so the configure form can
+		// hydrate/patch it like any other field (the service routes it to the
+		// celestial_sector_roots table, not the system row).
+		body: CelestialRow & { sectorX: number | null, sectorY: number | null, sectorZ: number | null }
+		sectorContext: SectorContext | null
 		systemStars: MapBody[]
 		systemBodies: MapBody[]
 		systemCalendars: Awaited<ReturnType<typeof getCalendarsForSystem>>
@@ -83,14 +88,21 @@ export async function loadCelestialDetail(ctx: CelestialDetailContext): Promise<
 	}
 
 	if (entity.kind === 'system') {
-		const [mapEntities, systemCalendars, backlinks] = await Promise.all([
+		const [mapEntities, systemCalendars, backlinks, sectorContext] = await Promise.all([
 			getSystemMapEntities(entity.id),
 			getCalendarsForSystem(entity.id),
 			getBacklinksForCelestial(entity.slug),
+			getSectorContextForRoot(entity.id),
 		])
 		return {
 			kind: 'system',
-			body: entity,
+			body: {
+				...entity,
+				sectorX: sectorContext?.x ?? null,
+				sectorY: sectorContext?.y ?? null,
+				sectorZ: sectorContext?.z ?? null,
+			},
+			sectorContext,
 			isEditMode: false,
 			isConfigureMode,
 			systemStars: mapEntities.stars as unknown as MapBody[],

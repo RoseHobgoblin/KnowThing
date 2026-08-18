@@ -416,7 +416,7 @@ const systemConfig: CelestialFormConfig = {
 		},
 		{
 			id: 'location', label: 'Location',
-			intro: 'Placement in the setting. Distance and formation age are shown on the system page; coordinates are stored for a future galaxy map.',
+			intro: 'Placement in the setting. Distance and formation age are shown on the system page; sector X/Y/Z is this system\'s root position in its declared sector frame, shown on the sector map.',
 			groups: [
 				{
 					cols: 3,
@@ -428,9 +428,9 @@ const systemConfig: CelestialFormConfig = {
 				{
 					cols: 3,
 					fields: [
-						{ control: 'number', key: 'galacticX', label: 'Galactic X (ly)', placeholder: '0.0', hint: 'Coordinate on the setting\'s galactic map. Optional.' },
-						{ control: 'number', key: 'galacticY', label: 'Galactic Y (ly)', placeholder: '0.0', hint: 'Coordinate on the setting\'s galactic map. Optional.' },
-						{ control: 'number', key: 'galacticZ', label: 'Galactic Z (ly)', placeholder: '0.0', hint: 'Coordinate on the setting\'s galactic map. Optional.' },
+						{ control: 'number', key: 'sectorX', label: 'Sector X', placeholder: '0.0', hint: 'Root position in the sector\'s declared units. Set all three or none.' },
+						{ control: 'number', key: 'sectorY', label: 'Sector Y', placeholder: '0.0', hint: 'Root position in the sector\'s declared units. Set all three or none.' },
+						{ control: 'number', key: 'sectorZ', label: 'Sector Z', placeholder: '0.0', hint: 'Root position in the sector\'s declared units. Set all three or none.' },
 					],
 				},
 			],

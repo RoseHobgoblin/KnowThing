@@ -181,7 +181,7 @@ The [Worldbuilding Pasta “An Apple Pie From Scratch” sequence](https://world
 
 | Guide step | Current KnowThing position | Part 1 disposition |
 |---|---|---|
-| Part I: Time and Place | System distance and bare X/Y/Z fields exist. Calendars exist elsewhere. There is no declared sector frame or stellar-neighbourhood view. | Adopt the sector/root-system model, define the current coordinate frame before collecting canon coordinates, and keep broad galactic context separate. A neighbourhood UI remains post-Part-1 unless it directly improves the first canon workflow. |
+| Part I: Time and Place | The sector/root-system model is implemented (migration 0054): system positions live on sector roots inside a declared legacy frame, and a read-only sector view exists at `/celestial/sector/[slug]`. Calendars exist elsewhere. | Adopted and delivered ahead of schedule. Broad galactic context remains a separate approximate concern; region/route authoring and non-system roots remain post-Part-1. |
 | Part II: Stars | Strong basic star authoring, physical derivations, luminosity, simple habitable zone, stellar procedural appearance, hierarchical multiple stars, and animated stellar orbits. | Core Part 1 scope. Improve the consequence presentation and document unsupported stellar evolution/special classes. |
 | Part III: Orbits | Full bound elliptical elements, deterministic Keplerian playback, hierarchy, Plan/Orrery views, and several stability checks exist. | Core Part 1 scope. Reference frames, trails, Lagrange points, resonances, and N-body behaviour remain later work. |
 | Part IVa: Planet and Moon Formation/Orbits | Planets and moons can be authored and validated. Hill, Roche, satellite stability, tidal, and orbit-crossing models exist at varying levels of UI integration. There is no formation model, co-orbital system, or first-class planetary barycentre. | Support deliberate authoring and consequences; do not synthesize formation histories. Expose useful existing checks. |
@@ -204,7 +204,7 @@ KnowThing must therefore distinguish:
 - **Root object:** an independently positioned sector object. It may be a stellar system, unbound world, compact object, station, phenomenon, fleet, or marker.
 - **Orbital hierarchy:** children positioned relative to a root or another child through orbital state rather than sector XYZ.
 
-The current `galacticX/Y/Z` fields are not a sufficient contract because they do not declare their origin, axes, frame, handedness, or epoch. They should be treated as legacy local coordinates until their reference frame is explicit. If the author chooses a home-centred sector, KnowThing should place the origin system at `(0,0,0)` automatically.
+The old `galacticX/Y/Z` fields were not a sufficient contract because they did not declare their origin, axes, frame, handedness, or epoch. Migration 0054 resolved this: their values moved verbatim into `celestial_sector_roots` under a declared "Local Sector" frame with explicit legacy provenance, and the columns were dropped. Root positions are now edited as Sector X/Y/Z on the system configure form, complete-triple-or-nothing.
 
 The minimum Part 1 data-semantics decision is:
 
@@ -355,7 +355,7 @@ Starting from an instance with no authored celestial records, an author can:
 
 This order is intentionally evidence-driven:
 
-1. **Implement the first celestial sector**, using the adopted root-system contract and a state-preserving transition into the Orrery.
+1. **Implement the first celestial sector**, using the adopted root-system contract and a state-preserving transition into the Orrery. *Done 18 August 2026: sector schema, legacy coordinate migration, read-only sector view, and selection/camera-preserving transition all landed on this branch.*
 2. **Time and reference frames**, if Orrery playback limits impede system reasoning.
 3. **Structured environment observations**, when actual authored environmental data demonstrates the current strings are inadequate.
 4. **Atlas and Cesium**, when there is authored geography or imported surface data worth exploring.

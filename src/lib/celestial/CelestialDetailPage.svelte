@@ -275,6 +275,7 @@
 						stars={data.systemStars ?? []}
 						bodies={data.systemBodies ?? []}
 						systemSlug={raw.slug}
+						sector={data.sectorContext}
 						calendars={systemCalendarConfigs}
 						bind:currentAbsoluteDay
 						{selectedBody}

@@ -47,11 +47,14 @@ const systemSchema = coreSchema.extend({
 	// The system type (single/binary/trinary/…) is not stored — it is derived
 	// from the star count at read time (deriveSystemType).
 
-	// Placement & metadata.
+	// Placement & metadata. Sector X/Y/Z is the root position in the system's
+	// declared sector frame (celestial_sector_roots), not a column on the
+	// system row; the service enforces complete-triple-or-nothing because the
+	// patch must first merge with the stored position (see sector-position.ts).
 	distanceLy: z.number().nullish(),
-	galacticX: z.number().nullish(),
-	galacticY: z.number().nullish(),
-	galacticZ: z.number().nullish(),
+	sectorX: z.number().finite().nullish(),
+	sectorY: z.number().finite().nullish(),
+	sectorZ: z.number().finite().nullish(),
 	formationAge: z.string().nullish(),
 	designations: z.string().nullish(),
 })

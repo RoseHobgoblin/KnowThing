@@ -19,6 +19,7 @@
 		stars,
 		bodies,
 		systemSlug,
+		sector = null,
 		calendars = [],
 		currentAbsoluteDay = $bindable(0),
 		selectedBody = null,
@@ -32,10 +33,24 @@
 		stars: MapBody[]
 		bodies: MapBody[]
 		systemSlug: string
+		sector?: {
+			sectorName: string
+			sectorSlug: string
+			units: string
+			x: number | null
+			y: number | null
+			z: number | null
+		} | null
 		calendars?: (CalendarConfig & { id: number })[]
 		currentAbsoluteDay?: number
 		selectedBody?: MapBody | null
 	} = $props()
+
+	const formatCoordinate = (n: number) => n.toLocaleString('en-US', { maximumFractionDigits: 1 })
+	const sectorPosition = $derived.by(() => {
+		if (!sector || sector.x == null || sector.y == null || sector.z == null) return null
+		return `(${formatCoordinate(sector.x)}, ${formatCoordinate(sector.y)}, ${formatCoordinate(sector.z)}) ${sector.units}`
+	})
 
 	let selectedCalendarId = $state(untrack(() => calendars[0]?.id ?? 0))
 	const selectedCalendar = $derived(calendars.find(c => c.id === selectedCalendarId) ?? calendars[0])
@@ -77,39 +92,54 @@
 <div class="space-y-4 text-sm">
 	<!-- System metadata -->
 	<div>
-		<div class="text-xs font-semibold text-secondary uppercase tracking-wider border-b border-border-subtle pb-1 mb-2">System</div>
+		<div class="mb-2 border-b border-border-subtle pb-1 text-xs font-semibold tracking-wider text-secondary uppercase">System</div>
 		<div class="space-y-1.5 text-secondary">
 			<div class="flex justify-between">
 				<span>Type</span>
-				<span class="text-body font-medium">{typeLabel[systemType] ?? systemType}</span>
+				<span class="font-medium text-body">{typeLabel[systemType] ?? systemType}</span>
 			</div>
 			<div class="flex justify-between">
 				<span>Stars</span>
-				<span class="text-body font-medium">{stars.length}</span>
+				<span class="font-medium text-body">{stars.length}</span>
 			</div>
 			{#if totalBodies > 0}
 				<div class="flex justify-between">
 					<span>Bodies</span>
-					<span class="text-body font-medium">{totalBodies}</span>
+					<span class="font-medium text-body">{totalBodies}</span>
 				</div>
 			{/if}
 			{#if system.distanceLy != null}
 				<div class="flex justify-between">
 					<span>Distance</span>
-					<span class="text-body font-medium">{system.distanceLy.toLocaleString('en-US', { maximumFractionDigits: 2 })} ly</span>
+					<span class="font-medium text-body">{system.distanceLy.toLocaleString('en-US', { maximumFractionDigits: 2 })} ly</span>
 				</div>
 			{/if}
 			{#if system.formationAge}
 				<div class="flex justify-between gap-4">
 					<span>Age</span>
-					<span class="text-body font-medium text-right">{system.formationAge}</span>
+					<span class="text-right font-medium text-body">{system.formationAge}</span>
 				</div>
 			{/if}
 			{#if system.designations}
 				<div class="flex justify-between gap-4">
 					<span>Designations</span>
-					<span class="text-body font-medium text-right">{system.designations}</span>
+					<span class="text-right font-medium text-body">{system.designations}</span>
 				</div>
+			{/if}
+			{#if sector}
+				<div class="flex justify-between gap-4">
+					<span>Sector</span>
+					<a
+						href="/celestial/sector/{sector.sectorSlug}?focus={systemSlug}"
+						class="font-medium text-link transition-colors hover:text-link-hover"
+					>{sector.sectorName}</a>
+				</div>
+				{#if sectorPosition}
+					<div class="flex justify-between gap-4">
+						<span>Position</span>
+						<span class="text-right font-medium text-body">{sectorPosition}</span>
+					</div>
+				{/if}
 			{/if}
 		</div>
 	</div>
@@ -117,10 +147,10 @@
 	<!-- Selected body detail -->
 	{#if selectedBody}
 		<div>
-			<div class="text-xs font-semibold text-secondary uppercase tracking-wider border-b border-border-subtle pb-1 mb-2">Selected</div>
+			<div class="mb-2 border-b border-border-subtle pb-1 text-xs font-semibold tracking-wider text-secondary uppercase">Selected</div>
 			<div class="space-y-1.5">
 				<div class="font-medium text-heading">{selectedBody.name}</div>
-				<div class="space-y-1 text-secondary text-xs">
+				<div class="space-y-1 text-xs text-secondary">
 					{#if selectedBody.bodyType}
 						<div class="flex justify-between">
 							<span>Type</span>
@@ -148,7 +178,7 @@
 				</div>
 				<a
 					href="/Celestial:{selectedBody.slug}"
-					class="block text-link text-xs mt-2 transition-colors hover:text-link-hover"
+					class="mt-2 block text-xs text-link transition-colors hover:text-link-hover"
 				>View details</a>
 			</div>
 		</div>
@@ -156,7 +186,7 @@
 
 	<!-- Body list -->
 	<div>
-		<div class="text-xs font-semibold text-secondary uppercase tracking-wider border-b border-border-subtle pb-1 mb-2">Bodies</div>
+		<div class="mb-2 border-b border-border-subtle pb-1 text-xs font-semibold tracking-wider text-secondary uppercase">Bodies</div>
 		<div class="space-y-0.5">
 			{#each stars as star (star.id)}
 				{@const isPrimary = !star.parentStarId}
@@ -170,9 +200,9 @@
 						class="shrink-0"
 						color={resolveColor(star.color, '#FFE088')}
 					/>
-					<span class="text-body font-medium">{star.name}</span>
+					<span class="font-medium text-body">{star.name}</span>
 					{#if star.spectralType}
-						<span class="text-secondary text-xs">({star.spectralType})</span>
+						<span class="text-xs text-secondary">({star.spectralType})</span>
 					{/if}
 				</a>
 
@@ -181,7 +211,7 @@
 					{@const PlanetIcon = bodyIcon(planet.bodyType, !!planet.parentId)}
 					<a
 						href="/Celestial:{planet.slug}"
-						class="flex items-center gap-2 px-1.5 py-1 ml-4 transition-colors hover:bg-raised"
+						class="ml-4 flex items-center gap-2 px-1.5 py-1 transition-colors hover:bg-raised"
 					>
 						<PlanetIcon
 							size={14}
@@ -190,17 +220,17 @@
 							color={resolveColor(planet.color, 'var(--color-secondary)')}
 						/>
 						<span class="text-body">{planet.name}</span>
-						<span class="text-secondary text-xs">({planet.parentId ? 'satellite' : planet.bodyType})</span>
+						<span class="text-xs text-secondary">({planet.parentId ? 'satellite' : planet.bodyType})</span>
 					</a>
 
 					<!-- Moons -->
 					{#each moonsForBody(planet.id) as moon (moon.id)}
 						<a
 							href="/Celestial:{moon.slug}"
-							class="flex items-center gap-2 px-1.5 py-0.5 ml-8 transition-colors hover:bg-raised"
+							class="ml-8 flex items-center gap-2 px-1.5 py-0.5 transition-colors hover:bg-raised"
 						>
 							<Moon size={12} weight="fill" class="shrink-0 text-dim" />
-							<span class="text-secondary text-xs">{moon.name}</span>
+							<span class="text-xs text-secondary">{moon.name}</span>
 						</a>
 					{/each}
 				{/each}
@@ -211,7 +241,7 @@
 	<!-- Calendar / Time -->
 	{#if calendars.length > 0 && selectedCalendar}
 		<div>
-			<div class="text-xs font-semibold text-secondary uppercase tracking-wider border-b border-border-subtle pb-1 mb-2">
+			<div class="mb-2 border-b border-border-subtle pb-1 text-xs font-semibold tracking-wider text-secondary uppercase">
 				Viewing
 				{#if calendars.length > 1}
 					<Select
@@ -223,12 +253,12 @@
 						containerClass="ml-1 inline-block"
 					/>
 				{:else}
-					<span class="text-secondary ml-1">{selectedCalendar.name}</span>
+					<span class="ml-1 text-secondary">{selectedCalendar.name}</span>
 				{/if}
 			</div>
 
 			{#if resolved}
-				<div class="text-body font-medium text-center mb-2">
+				<div class="mb-2 text-center font-medium text-body">
 					{resolved.day} {resolved.month_name}, {resolved.year_display}
 				</div>
 			{/if}

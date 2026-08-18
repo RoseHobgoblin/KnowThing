@@ -36,7 +36,7 @@ describe('buildDraft', () => {
 		expect(draft.name).toBe('Sunly')
 		expect(draft.designations).toBe('')
 		expect(draft.distanceLy).toBeNull()
-		expect(draft.galacticX).toBeNull()
+		expect(draft.sectorX).toBeNull()
 	})
 
 	it('hydrates lockable overrides from the extra JSONB and flags them unlocked', () => {
@@ -70,6 +70,15 @@ describe('buildDraft', () => {
 	it('hydrates a circumbinary body\'s primary as its system barycenter', () => {
 		const draft = buildDraft(CELESTIAL_FORM_CONFIGS.body, { id: 3, name: 'Tatooine', slug: 'tatooine', starId: null, parentSystemId: 3 })
 		expect(draft.starId).toBe('system:3')
+	})
+})
+
+describe('system sector coordinate fields', () => {
+	it('does not claim every sector uses light-years', () => {
+		const fields = allFieldSpecs(CELESTIAL_FORM_CONFIGS.system)
+			.filter(spec => ['sectorX', 'sectorY', 'sectorZ'].includes(spec.key))
+		expect(fields.map(spec => spec.label)).toEqual(['Sector X', 'Sector Y', 'Sector Z'])
+		expect(fields.every(spec => spec.hint?.includes('declared units'))).toBe(true)
 	})
 })
 

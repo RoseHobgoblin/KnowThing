@@ -11,6 +11,12 @@ import {
 	type createPlanetaryBodySchema,
 } from '$lib/celestial/schema.js'
 import { validateParentKind, isCelestialKind, type CelestialKind } from '$lib/celestial/parent-rules.js'
+import { mergeSectorPosition, type SectorPositionMerge } from '$lib/celestial/sector-position.js'
+import {
+	getSectorRootForBody,
+	resolveDefaultSectorId,
+	upsertSectorRoot,
+} from '$lib/server/services/celestial-sectors.js'
 import { celestialPresets, type BodyPreset } from '$lib/celestial/presets.js'
 import { urlSlugify } from '$lib/utils/slugify.js'
 import { CELESTIAL_TREE_CTE, celestialCycleWouldForm } from '$lib/server/celestial/hierarchy.js'
@@ -58,6 +64,11 @@ export async function listCelestial(options: { kind?: CelestialKind, starSlug?: 
 			cb.*,
 			p.name AS "parentName", p.slug AS "parentSlug", p.kind AS "parentKind",
 			ns.name AS "starName", ns.slug AS "starSlug",
+			sr.sector_id AS "sectorId",
+			s.name AS "sectorName", s.slug AS "sectorSlug", s.units AS "sectorUnits",
+			sr.x AS "sectorX", sr.y AS "sectorY", sr.z AS "sectorZ",
+			sr.position_provenance AS "sectorPositionProvenance",
+			sr.position_uncertainty AS "sectorPositionUncertainty",
 			(SELECT COUNT(*) FROM celestial_tree t WHERE t.root_id = cb.id AND t.kind = 'star')::int AS "starCount",
 			(SELECT COUNT(*) FROM celestial_tree t
 				WHERE t.kind = 'body'
@@ -68,6 +79,8 @@ export async function listCelestial(options: { kind?: CelestialKind, starSlug?: 
 		JOIN celestial_tree tree ON tree.id = cb.id
 		LEFT JOIN celestial_bodies p ON p.id = cb.parent_id
 		LEFT JOIN celestial_bodies ns ON ns.id = tree.nearest_star_id AND cb.kind = 'body'
+		LEFT JOIN celestial_sector_roots sr ON sr.body_id = cb.id
+		LEFT JOIN celestial_sectors s ON s.id = sr.sector_id
 	`
 	const conditions = []
 	if (kind) conditions.push(sql`cb.kind = ${kind}`)
@@ -86,6 +99,11 @@ export async function getCelestialBySlug(slug: string) {
 			cb.*,
 			p.name AS "parentName", p.slug AS "parentSlug", p.kind AS "parentKind",
 			ns.name AS "starName", ns.slug AS "starSlug",
+			sr.sector_id AS "sectorId",
+			s.name AS "sectorName", s.slug AS "sectorSlug", s.units AS "sectorUnits",
+			sr.x AS "sectorX", sr.y AS "sectorY", sr.z AS "sectorZ",
+			sr.position_provenance AS "sectorPositionProvenance",
+			sr.position_uncertainty AS "sectorPositionUncertainty",
 			(SELECT COUNT(*) FROM celestial_tree t WHERE t.root_id = cb.id AND t.kind = 'star')::int AS "starCount",
 			(SELECT COUNT(*) FROM celestial_tree t
 				WHERE t.kind = 'body'
@@ -96,6 +114,8 @@ export async function getCelestialBySlug(slug: string) {
 		JOIN celestial_tree tree ON tree.id = cb.id
 		LEFT JOIN celestial_bodies p ON p.id = cb.parent_id
 		LEFT JOIN celestial_bodies ns ON ns.id = tree.nearest_star_id AND cb.kind = 'body'
+		LEFT JOIN celestial_sector_roots sr ON sr.body_id = cb.id
+		LEFT JOIN celestial_sectors s ON s.id = sr.sector_id
 		WHERE cb.slug = ${slug}
 	`)
 	if (result.length === 0) throw error(404, 'Celestial entity not found')
@@ -132,7 +152,8 @@ function assertMergedValid(kind: CelestialKind, current: CelestialRow, patch: Re
 }
 
 export async function createCelestial(kind: CelestialKind, data: CreateCelestialInput) {
-	return db.transaction(async tx => createCelestialIn(tx, kind, data))
+	const created = await db.transaction(async tx => createCelestialIn(tx, kind, data))
+	return getCelestialBySlug(created.slug)
 }
 
 /** Create one entity against an executor — lets preset seeding batch several into one transaction. */
@@ -149,16 +170,21 @@ async function createCelestialIn(dbx: Dbx, kind: CelestialKind, data: CreateCele
 
 	if (kind === 'system') {
 		const system = data as CreateSystemInput
-		return insertRow(dbx, {
+		// Complete-triple-or-nothing before anything is written.
+		const position = mergeSectorPosition(null, system)
+		if (position.kind === 'invalid') throw error(400, position.message)
+		const created = await insertRow(dbx, {
 			...common,
 			distanceLy: system.distanceLy ?? null,
-			galacticX: system.galacticX ?? null,
-			galacticY: system.galacticY ?? null,
-			galacticZ: system.galacticZ ?? null,
 			formationAge: system.formationAge?.trim() || null,
 			designations: system.designations?.trim() || null,
 			extra: system.extra ?? {},
 		})
+		// A system has no orbital parent, so it is always a sector root — with an
+		// explicitly unknown position until one is authored.
+		const sectorId = await resolveDefaultSectorId(dbx)
+		await upsertSectorRoot(dbx, created.id, sectorId, position.kind === 'set' ? position : null)
+		return created
 	}
 
 	if (kind === 'star') {
@@ -355,10 +381,20 @@ export async function updateCelestial(slug: string, raw: unknown) {
 		await applySlugUpdate(setClause, data.slug, current.slug, celestialBodies, celestialBodies.id, celestialBodies.slug)
 	}
 
+	// Sector position lives on the root record, not the system row. Merge the
+	// patch over the stored position so a field-wise update can't strand a
+	// partial triple, and reject before anything is written.
+	let sectorPosition: SectorPositionMerge = { kind: 'unchanged' }
+	const currentRoot = kind === 'system' ? await getSectorRootForBody(db, current.id) : null
+	if (kind === 'system') {
+		sectorPosition = mergeSectorPosition(currentRoot, data as { sectorX?: number | null, sectorY?: number | null, sectorZ?: number | null })
+		if (sectorPosition.kind === 'invalid') throw error(400, sectorPosition.message)
+	}
+
 	if (kind === 'system') {
 		applyFieldUpdates(setClause, data,
 			['formationAge', 'designations'],
-			['distanceLy', 'galacticX', 'galacticY', 'galacticZ'])
+			['distanceLy'])
 	} else if (kind === 'star') {
 		applyFieldUpdates(setClause, data,
 			['spectralType', 'luminosityVisual', 'age', 'color',
@@ -397,6 +433,13 @@ export async function updateCelestial(slug: string, raw: unknown) {
 			await replaceMediaBindingsForOwner(tx, 'celestial', current.id, mediaBindingUpdate.rows)
 		}
 
+		// Persist the merged sector position on the root record. Provenance
+		// becomes 'authored' — the author just asserted (or cleared) it.
+		if (kind === 'system' && sectorPosition.kind !== 'unchanged') {
+			const sectorId = currentRoot?.sectorId ?? await resolveDefaultSectorId(tx)
+			await upsertSectorRoot(tx, current.id, sectorId, sectorPosition.kind === 'set' ? sectorPosition : null)
+		}
+
 		// Keep any legacy content record keyed to this entity's slug in sync.
 		if (typeof setClause.slug === 'string' && setClause.slug !== current.slug) {
 			await moveContentByDomainSlug(tx, 'celestial', current.slug, setClause.slug)
@@ -407,7 +450,7 @@ export async function updateCelestial(slug: string, raw: unknown) {
 	})
 
 	if (!updated) throw error(404, 'Celestial entity not found')
-	return updated
+	return getCelestialBySlug(updated.slug)
 }
 
 export async function deleteCelestial(slug: string) {

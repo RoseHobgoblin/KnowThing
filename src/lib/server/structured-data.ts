@@ -11,6 +11,7 @@ import {
 import { bodyInfoboxFields, starInfoboxFields } from '$lib/celestial/projections.js'
 import { CELESTIAL_TREE_CTE, findNearestStarAncestor } from '$lib/server/celestial/hierarchy.js'
 import { getSystemMapEntities } from '$lib/server/services/celestial-registry.js'
+import { getSectorContextForRoot } from '$lib/server/services/celestial-sectors.js'
 
 export interface SystemMapData {
 	systemName: string
@@ -201,9 +202,12 @@ DOMAIN_RESOLVERS['system'] = async (slug) => {
 
 	// System-level placement / metadata (non-derivable, edited via the system configure form)
 	if (system.distanceLy != null) fields.set('distance', `${system.distanceLy.toLocaleString('en-US', { maximumFractionDigits: 2 })} ly`)
-	if (system.galacticX != null && system.galacticY != null && system.galacticZ != null) {
+	// Root position in the system's declared sector frame — only a complete
+	// triple is a coordinate; partial legacy values stay unavailable here.
+	const sectorContext = await getSectorContextForRoot(system.id)
+	if (sectorContext && sectorContext.x != null && sectorContext.y != null && sectorContext.z != null) {
 		const fmt = (n: number) => n.toLocaleString('en-US', { maximumFractionDigits: 1 })
-		fields.set('coordinates', `(${fmt(system.galacticX)}, ${fmt(system.galacticY)}, ${fmt(system.galacticZ)}) ly`)
+		fields.set('coordinates', `(${fmt(sectorContext.x)}, ${fmt(sectorContext.y)}, ${fmt(sectorContext.z)}) ${sectorContext.units}, ${sectorContext.sectorName} frame`)
 	}
 	if (system.formationAge) fields.set('formation_age', system.formationAge)
 	if (system.designations) fields.set('designations', system.designations)

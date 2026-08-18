@@ -100,6 +100,14 @@ export function celestialBreadcrumbs(name: string): Breadcrumb[] {
 	return [{ label: `Celestial:${name.replaceAll(/\s+/g, '_')}`, namespaceHref: '/celestial' }]
 }
 
+/** Sector page (e.g. /celestial/sector/local-sector). */
+export function celestialSectorBreadcrumbs(name: string): Breadcrumb[] {
+	return [
+		{ label: 'Celestial', href: '/celestial' },
+		{ label: name },
+	]
+}
+
 export function celestialConfigureBreadcrumbs(
 	_parentCrumbs: { label: string, href: string }[],
 	body: { name: string, slug: string },
@@ -174,11 +182,11 @@ export function breadcrumbJsonLd(
 		{ '@type': 'ListItem', 'position': 1, 'name': rootLabel, 'item': `${origin}/` },
 	]
 
-	for (let i = 0; i < crumbs.length; i++) {
-		const crumb = crumbs[i]
+	for (let index = 0; index < crumbs.length; index++) {
+		const crumb = crumbs[index]
 		const entry: Record<string, unknown> = {
 			'@type': 'ListItem',
-			'position': i + 2,
+			'position': index + 2,
 			'name': crumb.label,
 		}
 		if (crumb.href) entry.item = `${origin}${crumb.href}`
