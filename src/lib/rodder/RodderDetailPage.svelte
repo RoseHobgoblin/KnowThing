@@ -314,6 +314,11 @@
 		title={raw.name}
 	>
 		{#snippet actions()}
+			<a
+				href={resolve('/api/rodder/[slug]?download=1', { slug: raw.slug })}
+				class="text-link transition-colors hover:text-link-hover"
+				download
+			>Download JSON</a>
 			{#if hasRootView && (rootStars.length > 0 || rootBodies.length > 0)}
 				<CopyViewLink getState={currentViewState} />
 			{/if}

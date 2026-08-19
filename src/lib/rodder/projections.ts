@@ -10,6 +10,7 @@
  */
 
 import type { FieldMap } from '$lib/infoboxes/types.js'
+import type { RodderEntityDocument } from './consumer-contract.js'
 import type { BodyModel, StarModel } from 'tungolcraft'
 import {
 	formatMass, formatRadius, formatDensity, formatSurfaceGravity, formatEscapeVelocity,
@@ -160,6 +161,64 @@ export function starInfoboxFields(model: StarModel): FieldMap {
 	if (model.satelliteCount > 0) f.set('known_satellites', String(model.satelliteCount))
 
 	return f
+}
+
+function applyDocumentExtensions(map: FieldMap, extensions: Record<string, unknown>): void {
+	for (const [key, value] of Object.entries(extensions)) {
+		if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+			setText(map, key, String(value))
+		}
+	}
+}
+
+function systemDocumentInfoboxFields(document: RodderEntityDocument): FieldMap {
+	const fields: FieldMap = new Map([['name', document.identity.name]])
+	const display = document.displays.rootMap
+	const system = document.authored.system
+	const systemType = document.resolved.facts.systemType?.value
+	if (typeof systemType === 'string') fields.set('system_type', systemType)
+
+	if (display) {
+		const stars = display.stars.map((star) => {
+			const link = `[[${star.slug}|${star.name}]]`
+			return star.spectralType ? `${link} (${star.spectralType})` : link
+		})
+		fields.set('stars', stars.join(', '))
+		fields.set('star_count', String(display.stars.length))
+		const planets = display.bodies.filter(body => body.parentId == null).length
+		const satellites = display.bodies.length - planets
+		if (planets > 0) fields.set('planets', String(planets))
+		if (satellites > 0) fields.set('satellites', String(satellites))
+	}
+
+	if (system?.distanceLy != null) fields.set('distance', `${system.distanceLy.toLocaleString('en-US', { maximumFractionDigits: 2 })} ly`)
+	const position = document.placement?.position
+	if (document.placement && position?.x != null && position.y != null && position.z != null) {
+		const formatCoordinate = (value: number) => value.toLocaleString('en-US', { maximumFractionDigits: 1 })
+		fields.set('coordinates', `(${formatCoordinate(position.x)}, ${formatCoordinate(position.y)}, ${formatCoordinate(position.z)}) ${document.placement.sector.units}, ${document.placement.sector.name} frame`)
+	}
+	setText(fields, 'formation_age', system?.formationAge)
+	setText(fields, 'designations', system?.designations)
+	setText(fields, 'description', document.authored.description)
+	applyDocumentExtensions(fields, document.authored.extensions)
+	return fields
+}
+
+/**
+ * Presentation helper for Wiki infobox authors. It projects the public live
+ * document into the established snake_case FieldMap without exposing storage
+ * rows or collapsing the document's authored/derived distinction upstream.
+ */
+export function rodderDocumentInfoboxFields(document: RodderEntityDocument): FieldMap | null {
+	if (document.identity.kind === 'system') return systemDocumentInfoboxFields(document)
+	const model = document.resolved.facts.model?.value as BodyModel | StarModel | null | undefined
+	let fields: FieldMap
+	if (document.identity.kind === 'star' && model?.kind === 'star') fields = starInfoboxFields(model)
+	else if (document.identity.kind === 'body' && model?.kind === 'body') fields = bodyInfoboxFields(model)
+	else fields = new Map([['name', document.identity.name]])
+	setText(fields, 'description', document.authored.description)
+	applyDocumentExtensions(fields, document.authored.extensions)
+	return fields
 }
 
 // ---- Stat tiles: a compact non-infobox projection ----

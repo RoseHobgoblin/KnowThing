@@ -14,13 +14,17 @@ export const jsonValueSchema: z.ZodType<unknown> = z.lazy(() => z.union([
 
 export const rodderKindSchema = z.enum(['system', 'star', 'body'])
 
-export const rodderResourceRefSchema = z.object({
+export const rodderResourceReferenceSchema = z.object({
 	id: z.number().int().positive(),
 	kind: rodderKindSchema,
 	name: z.string(),
 	slug: z.string(),
 	href: z.string(),
 })
+
+/** @deprecated Use the unabbreviated schema name. */
+// eslint-disable-next-line unicorn/prevent-abbreviations -- Retained as an exported compatibility alias.
+export const rodderResourceRefSchema = rodderResourceReferenceSchema
 
 export const rodderDiagnosticSchema = z.object({
 	code: z.string(),
@@ -239,13 +243,13 @@ const placementSchema = z.object({
 
 export const rodderEntityDocumentSchema = z.object({
 	resource: z.literal('rodder-entity'),
-	identity: rodderResourceRefSchema,
+	identity: rodderResourceReferenceSchema,
 	authored: authoredEntitySchema,
 	relationships: z.object({
-		parent: rodderResourceRefSchema.nullable(),
-		root: rodderResourceRefSchema,
-		ancestors: z.array(rodderResourceRefSchema),
-		children: z.array(rodderResourceRefSchema),
+		parent: rodderResourceReferenceSchema.nullable(),
+		root: rodderResourceReferenceSchema,
+		ancestors: z.array(rodderResourceReferenceSchema),
+		children: z.array(rodderResourceReferenceSchema),
 	}),
 	placement: placementSchema.nullable(),
 	resolved: z.object({
@@ -281,7 +285,7 @@ const sectorFrameSchema = z.object({
 	extentY: nullableFiniteNumber,
 	extentZ: nullableFiniteNumber,
 	originKind: z.string(),
-	origin: rodderResourceRefSchema.nullable(),
+	origin: rodderResourceReferenceSchema.nullable(),
 	axesNote: z.string().nullable(),
 	handedness: z.enum(['right-handed', 'left-handed']),
 	referenceEpoch: z.string().nullable(),
@@ -332,10 +336,13 @@ export const displayInteractionPresetSchema = z.enum(['locked', 'inspect', 'expl
 export const rodderDisplayConfigSchema = z.object({
 	aspectRatio: finiteNumber.min(0.5).max(3),
 	interaction: displayInteractionPolicySchema,
+	playback: z.object({
+		daysPerSecond: finiteNumber.min(0.01).max(10_000),
+	}).optional(),
 })
 
 export type RodderKind = z.infer<typeof rodderKindSchema>
-export type RodderResourceRef = z.infer<typeof rodderResourceRefSchema>
+export type RodderResourceRef = z.infer<typeof rodderResourceReferenceSchema>
 export type RodderDiagnostic = z.infer<typeof rodderDiagnosticSchema>
 export type RodderEntityDocument = z.infer<typeof rodderEntityDocumentSchema>
 export type RodderSectorDocument = z.infer<typeof rodderSectorDocumentSchema>

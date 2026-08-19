@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
 	decodeRodderViewState,
+	defaultRootCameraState,
 	encodeRodderViewState,
 	rodderViewUrl,
 	rootViewStateFor,
@@ -48,6 +49,13 @@ const sectorState: SectorViewState = {
 }
 
 describe('Rodder view links', () => {
+	it('provides schema-valid fallback cameras before a renderer is ready', () => {
+		for (const mode of ['plan', 'orrery'] as const) {
+			const fallback = { ...rootState, mode, camera: defaultRootCameraState(mode) }
+			expect(decodeRodderViewState(JSON.stringify(fallback))).toEqual(fallback)
+		}
+	})
+
 	it('round-trips a complete root composition', () => {
 		const encoded = encodeRodderViewState(rootState)
 		expect(decodeRodderViewState(encoded)).toEqual(rootState)

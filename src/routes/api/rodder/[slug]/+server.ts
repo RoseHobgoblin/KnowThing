@@ -6,11 +6,13 @@ import { deleteRodder, updateRodder } from '$lib/server/services/rodder-bodies.j
 import { resolveRodderEntityDocument } from '$lib/server/services/rodder-documents.js'
 
 /** GET /api/rodder/:slug */
-export const GET: RequestHandler = async ({ params }) => {
+export const GET: RequestHandler = async ({ params, url }) => {
 	return handleServiceCall(async () => {
 		const document = await resolveRodderEntityDocument(params.slug)
 		if (!document) return json({ error: 'Rodder entity not found' }, { status: 404 })
-		return json(document)
+		return json(document, url.searchParams.get('download') === '1'
+			? { headers: { 'content-disposition': `attachment; filename*=UTF-8''${encodeURIComponent(`${document.identity.slug}.rodder.json`)}` } }
+			: undefined)
 	})
 }
 

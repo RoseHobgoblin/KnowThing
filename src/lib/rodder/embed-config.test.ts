@@ -37,6 +37,18 @@ describe('Rodder embed configuration', () => {
 		expect(config.errors).toEqual([])
 	})
 
+	it('parses animation speed independently from time and chrome policy', () => {
+		const config = resolveRootMapEmbedConfiguration(args([
+			['interaction', 'locked'],
+			['time', 'on'],
+			['controls', 'hide'],
+			['speed', '250'],
+		]), 'root', stars, bodies, sky)
+		expect(config.interaction).toMatchObject({ timeMovement: true, controlsVisible: false })
+		expect(config.playbackRate).toBe(250)
+		expect(config.errors).toEqual([])
+	})
+
 	it('seeds from copied view state and lets readable arguments override it', () => {
 		const state: RootViewState = {
 			version: 1,
@@ -69,10 +81,11 @@ describe('Rodder embed configuration', () => {
 			['aspect', '99:1'],
 			['mode', 'galaxy'],
 			['focus', 'missing'],
+			['speed', 'instant'],
 		]), 'root', stars, bodies, sky)
 		expect(config.aspectRatio).toBe(16 / 9)
 		expect(config.mode).toBe('orrery')
-		expect(config.errors.map(error => error.argument)).toEqual(['mode', 'focus', 'aspect'])
+		expect(config.errors.map(error => error.argument)).toEqual(['mode', 'speed', 'focus', 'aspect'])
 	})
 
 	it('resolves sector focus and selection case-insensitively', () => {

@@ -15,11 +15,13 @@ function jsonSchema(schema: z.ZodType) {
 }
 
 /** Machine-readable public Rodder read and display contracts. */
-export const GET: RequestHandler = () => json({
+export const GET: RequestHandler = ({ url }) => json({
 	entity: jsonSchema(rodderEntityDocumentSchema),
 	sector: jsonSchema(rodderSectorDocumentSchema),
 	viewState: jsonSchema(rodderViewSchema),
 	displayConfiguration: jsonSchema(rodderDisplayConfigSchema),
 	diagnostic: jsonSchema(rodderDiagnosticSchema),
 	interactionPolicy: jsonSchema(displayInteractionPolicySchema),
-})
+}, url.searchParams.get('download') === '1'
+	? { headers: { 'content-disposition': 'attachment; filename*=UTF-8\'\'rodder-schemas.json' } }
+	: undefined)

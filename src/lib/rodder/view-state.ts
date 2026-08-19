@@ -61,6 +61,31 @@ export type SectorViewState = {
 
 export type RodderViewState = RootViewState | SectorViewState
 
+/**
+ * A valid, deterministic camera used while a lazily mounted map has not yet
+ * produced its own camera snapshot. The renderer replaces this with its exact
+ * framing as soon as it is available.
+ */
+export function defaultRootCameraState(mode: ViewMode): RootCameraState {
+	return mode === 'plan'
+		? {
+			projection: 'orthographic',
+			target: [0, 0, 0],
+			direction: [0, -0.015, 0.9998875],
+			distance: 1_000,
+			zoom: 1,
+			fieldOfView: 50,
+		}
+		: {
+			projection: 'perspective',
+			target: [0, 0, 0],
+			direction: [0.3838, -0.548, 0.7431],
+			distance: 20,
+			zoom: 1,
+			fieldOfView: 50,
+		}
+}
+
 const rootCameraSchema = z.object({
 	projection: z.enum(['orthographic', 'perspective']),
 	target: vector3,

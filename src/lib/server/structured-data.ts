@@ -4,14 +4,12 @@ import { eq, and, or, sql, asc, inArray } from 'drizzle-orm'
 import type { FieldMap } from '$lib/infoboxes/types.js'
 import type { MapBody } from '$lib/rodder/root-layout.js'
 import type { ApparentSkyResult } from '$lib/rodder/apparent-sky.js'
-import { deriveSystemType } from 'tungolcraft'
 import {
 	deriveBody, deriveStar,
 	type BodyModel, type StarModel, type BodyRow, type StarRow,
 } from 'tungolcraft'
-import { bodyInfoboxFields, starInfoboxFields } from '$lib/rodder/projections.js'
+import { rodderDocumentInfoboxFields } from '$lib/rodder/projections.js'
 import { RODDER_TREE_CTE, findNearestStarAncestor } from '$lib/server/rodder/hierarchy.js'
-import { getSectorContextForRoot } from '$lib/server/services/rodder-sectors.js'
 import { resolveRodderEntityDocument } from '$lib/server/services/rodder-documents.js'
 
 export interface RootMapData {
@@ -146,13 +144,11 @@ export async function resolveRodderModel(type: string, slug: string): Promise<Bo
 const DOMAIN_RESOLVERS: Record<string, (slug: string) => Promise<FieldMap | null>> = {
 	star: async (slug) => {
 		const document = await resolveRodderEntityDocument(slug)
-		const model = document?.resolved.facts.model?.value as StarModel | null | undefined
-		return model?.kind === 'star' ? starInfoboxFields(model) : null
+		return document ? rodderDocumentInfoboxFields(document) : null
 	},
 	planet: async (slug) => {
 		const document = await resolveRodderEntityDocument(slug)
-		const model = document?.resolved.facts.model?.value as BodyModel | null | undefined
-		return model?.kind === 'body' ? bodyInfoboxFields(model) : null
+		return document ? rodderDocumentInfoboxFields(document) : null
 	},
 }
 
@@ -163,78 +159,7 @@ DOMAIN_RESOLVERS['rodder body'] = DOMAIN_RESOLVERS['planet']
 // Star systems — auto-computed from child stars and planets
 DOMAIN_RESOLVERS['system'] = async (slug) => {
 	const document = await resolveRodderEntityDocument(slug)
-	if (!document || document.identity.kind !== 'system') return null
-	const system = {
-		id: document.identity.id,
-		name: document.identity.name,
-		distanceLy: document.authored.system?.distanceLy ?? null,
-		formationAge: document.authored.system?.formationAge ?? null,
-		designations: document.authored.system?.designations ?? null,
-		description: document.authored.description,
-		extra: document.authored.extensions,
-	}
-
-	// Fetch stars in this system (all descendants — companions included)
-	const systemStars = await db.execute(sql`
-		WITH RECURSIVE ${RODDER_TREE_CTE}
-		SELECT s.name, s.spectral_type, s.slug
-		FROM rodder_bodies s
-		JOIN rodder_tree t ON t.id = s.id
-		WHERE s.kind = 'star' AND t.root_id = ${system.id}
-		ORDER BY t.depth, s.name
-	`)
-
-	// Count planets (bodies orbiting a star or the system barycenter) vs
-	// satellites (bodies orbiting a body)
-	const [counts] = await db.execute(sql`
-		WITH RECURSIVE ${RODDER_TREE_CTE}
-		SELECT
-			(SELECT COUNT(*) FROM rodder_tree t JOIN rodder_bodies pp ON pp.id = t.parent_id
-				WHERE t.root_id = ${system.id} AND t.kind = 'body' AND pp.kind IN ('star', 'system'))::int AS planets,
-			(SELECT COUNT(*) FROM rodder_tree t JOIN rodder_bodies pp ON pp.id = t.parent_id
-				WHERE t.root_id = ${system.id} AND t.kind = 'body' AND pp.kind = 'body')::int AS satellites
-	`)
-
-	const fields = new Map<string, string>([
-		['name', system.name],
-		['system_type', deriveSystemType(systemStars.length)],
-	])
-
-	// Stars list
-	const starNames = (systemStars as any[]).map((s: any) => {
-		const link = `[[${s.slug}|${s.name}]]`
-		return s.spectral_type ? `${link} (${s.spectral_type})` : link
-	})
-	fields.set('stars', starNames.join(', '))
-	fields.set('star_count', String(systemStars.length))
-
-	const c = counts as any
-	if (c?.planets) fields.set('planets', String(c.planets))
-	if (c?.satellites) fields.set('satellites', String(c.satellites))
-
-	// System-level placement / metadata (non-derivable, edited via the system configure form)
-	if (system.distanceLy != null) fields.set('distance', `${system.distanceLy.toLocaleString('en-US', { maximumFractionDigits: 2 })} ly`)
-	// Root position in the system's declared sector frame — only a complete
-	// triple is a coordinate; partial legacy values stay unavailable here.
-	const sectorContext = await getSectorContextForRoot(system.id)
-	if (sectorContext && sectorContext.x != null && sectorContext.y != null && sectorContext.z != null) {
-		const fmt = (n: number) => n.toLocaleString('en-US', { maximumFractionDigits: 1 })
-		fields.set('coordinates', `(${fmt(sectorContext.x)}, ${fmt(sectorContext.y)}, ${fmt(sectorContext.z)}) ${sectorContext.units}, ${sectorContext.sectorName} frame`)
-	}
-	if (system.formationAge) fields.set('formation_age', system.formationAge)
-	if (system.designations) fields.set('designations', system.designations)
-
-	if (system.description) fields.set('description', system.description)
-
-	// Merge extra
-	const extra = system.extra as Record<string, unknown> | undefined
-	if (extra) {
-		for (const [k, v] of Object.entries(extra)) {
-			if (v != null && v !== '') fields.set(k, String(v))
-		}
-	}
-
-	return fields
+	return document ? rodderDocumentInfoboxFields(document) : null
 }
 DOMAIN_RESOLVERS['star system'] = DOMAIN_RESOLVERS['system']
 DOMAIN_RESOLVERS['planetary system'] = DOMAIN_RESOLVERS['system']

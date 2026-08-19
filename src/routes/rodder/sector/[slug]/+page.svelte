@@ -93,6 +93,11 @@
 
 <ArticleShell breadcrumbs={rodderSectorBreadcrumbs(sector.name)} title={sector.name}>
 	{#snippet actions()}
+		<a
+			href={resolve('/api/rodder/sectors/[slug]?download=1', { slug: sector.slug })}
+			class="text-link transition-colors hover:text-link-hover"
+			download
+		>Download JSON</a>
 		{#if placed.length > 0}
 			<CopyViewLink getState={currentViewState} />
 		{/if}

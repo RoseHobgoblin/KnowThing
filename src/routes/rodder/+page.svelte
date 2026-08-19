@@ -92,6 +92,7 @@
 
 <ArticleShell breadcrumbs={[{ label: m.nav_rodder() }]} title={m.nav_rodder()}>
 	{#snippet actions()}
+		<a href={resolve('/rodder/api')} class="text-sm text-link transition-colors hover:text-link-hover">Consumer API</a>
 		{#if permissions.canConfigureRodder}
 			<a href={resolve('/rodder/manage')} class="flex items-center gap-1 text-sm text-link transition-colors hover:text-link-hover">
 				<GearSix size={14} weight="fill" />{m.cel_manage()}

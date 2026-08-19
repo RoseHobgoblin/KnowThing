@@ -9,6 +9,10 @@ import {
 import { DEFAULT_MAP_SETTINGS, type LabelMode, type ScaleMode, type TrailMode, type ViewMode, type VisibilityMode } from './map-settings.js'
 import { keyForBody, type EntityKey, type MapBody } from './root-layout.js'
 import {
+	DEFAULT_EMBED_PLAYBACK_DAYS_PER_SECOND,
+	parseEmbedPlaybackRate,
+} from './embed-clock.js'
+import {
 	rootViewStateFor,
 	sectorViewStateFor,
 	type RootCameraState,
@@ -27,6 +31,7 @@ export type RootMapEmbedConfiguration = {
 	visibility: VisibilityMode
 	scale: ScaleMode
 	day: number | null
+	playbackRate: number
 	follow: boolean
 	selected: RootSelectionKey | null
 	focus: EntityKey | null
@@ -146,6 +151,12 @@ export function resolveRootMapEmbedConfiguration(
 		if (Number.isFinite(parsed)) day = parsed
 		else errors.push({ argument: 'date', message: 'Expected a finite absolute day.' })
 	}
+	const parsedPlaybackRate = parseEmbedPlaybackRate(values.get('speed'))
+	const playbackRate = parsedPlaybackRate ?? DEFAULT_EMBED_PLAYBACK_DAYS_PER_SECOND
+	if (parsedPlaybackRate == null) errors.push({
+		argument: 'speed',
+		message: 'Expected a playback rate from 0.01 to 10,000 simulated days per second.',
+	})
 
 	let focus = seeded?.focus ?? null
 	const rawFocus = values.get('focus')
@@ -178,6 +189,7 @@ export function resolveRootMapEmbedConfiguration(
 		visibility,
 		scale,
 		day,
+		playbackRate,
 		follow: Boolean(seeded?.follow && selected && !selected.startsWith('sky-root:')),
 		selected,
 		focus,

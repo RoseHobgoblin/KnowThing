@@ -184,6 +184,10 @@ Convenience syntax may exist for common displays:
 
 The direct root and sector forms are the implemented baseline. They resolve live public Rodder consumer documents, accept readable display and interaction arguments, and may also consume the same validated `view` payload used by copied viewer links. They do not require a persisted saved-view record.
 
+Root embeds also own a local simulated clock. `time=on` permits playback, `speed=<days-per-second>` selects a bounded rate, and `controls=show|hide` independently governs chrome. Playback stops while the figure is outside the viewport or the document is backgrounded. Reduced-motion visitors begin paused but may explicitly start playback. Opening the full viewer captures the current simulated day rather than the embed's original seed date.
+
+The human-readable `/rodder/api` guide describes entity and sector documents, provenance statuses, Wiki composition, interaction policies, and the document-to-infobox projection helper. Entity, sector, and schema endpoints support attachment downloads without introducing persisted snapshots.
+
 These forms are authoring conveniences and should compile to the same view specification. They must not create separate celestial-only embedding infrastructure.
 
 Wiki transclusions should support:
@@ -333,7 +337,7 @@ The architectural dependency order is:
 2. ~~Complete sector camera controls using that state contract.~~ Delivered for the current orbit/pan/zoom controls and link restoration.
 3. ~~Generate system apparent skies from authored sector and stellar data.~~ Delivered for static same-sector root positions, unresolved stellar members, and brightness-provenance diagnostics; observer-surface and illustrative ambient layers remain later opt-in work.
 4. ~~Refactor the viewer shell around contextual overlays and remove the permanent information panel.~~ Delivered for the root viewer: selection opens a temporary inspector, while overview, object browsing, calendar, and display settings use responsive opt-in trays; backlinks remain in normal page flow.
-5. ~~Expose comprehensive live Rodder consumer documents and use them for full viewers, APIs, infobox projections, and WikiText root/sector displays.~~ Delivered with typed public entity/sector documents, local diagnostics, batched transclusion discovery, configurable interaction policies, copied-view restoration, and textual fallbacks.
+5. ~~Expose comprehensive live Rodder consumer documents and use them for full viewers, APIs, infobox projections, and WikiText root/sector displays.~~ Delivered with typed public entity/sector documents, local diagnostics, batched transclusion discovery, configurable interaction policies, offscreen-aware embed playback, copied-view restoration, downloadable JSON/schema contracts, a human-readable API guide, document-backed infobox projections, and textual fallbacks.
 6. Optionally add named saved views if real authoring workflows need reusable identities, permissions, or revision-pinned compositions; direct transclusion does not depend on them.
 7. Expose relationship and spatial displays as bidirectional field authoring surfaces.
 8. Generalize current-schema projections into facet capability providers as the generic object model arrives.

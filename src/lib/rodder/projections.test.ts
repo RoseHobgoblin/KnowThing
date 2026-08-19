@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { deriveBody, deriveStar } from 'tungolcraft'
-import { bodyInfoboxFields, starInfoboxFields, rodderStatTiles } from './projections.js'
+import type { RodderEntityDocument } from './consumer-contract.js'
+import { bodyInfoboxFields, rodderDocumentInfoboxFields, starInfoboxFields, rodderStatTiles } from './projections.js'
 
 const EARTH = { name: 'Earth', slug: 'earth', massKg: 5.972e24, radiusM: 6.371e6, semiMajorAxisAu: 1, eccentricity: 0.0167, rotationPeriodS: 86_164 }
 const SUN = { name: 'Sun', slug: 'the-sun', massKg: 1.989e30, radiusM: 6.9634e8, temperatureK: 5778 }
@@ -64,5 +65,61 @@ describe('rodderStatTiles projection', () => {
 
 		const star = rodderStatTiles(deriveStar(SUN, {}))
 		expect(star.find(t => t.label === 'Luminosity')?.sub).toMatch(/Sun/)
+	})
+})
+
+describe('rodderDocumentInfoboxFields projection', () => {
+	it('projects a system infobox entirely from the public document', () => {
+		const document = {
+			identity: { kind: 'system', name: 'Example Root' },
+			authored: {
+				description: 'A documented system.',
+				system: { distanceLy: 12.5, formationAge: '4 Ga', designations: 'EX-1' },
+				extensions: { catalogue: 'Survey A', nested: { internal: false } },
+			},
+			placement: {
+				sector: { units: 'ly', name: 'Example Sector' },
+				position: { x: 1, y: 2, z: 3 },
+			},
+			resolved: { facts: { systemType: { value: 'binary' } } },
+			displays: {
+				rootMap: {
+					stars: [
+						{ name: 'Primary', slug: 'primary', spectralType: 'G2V' },
+						{ name: 'Companion', slug: 'companion', spectralType: 'M3V' },
+					],
+					bodies: [
+						{ parentId: null },
+						{ parentId: 10 },
+					],
+				},
+			},
+		} as unknown as RodderEntityDocument
+
+		const fields = rodderDocumentInfoboxFields(document)
+		expect(fields?.get('system_type')).toBe('binary')
+		expect(fields?.get('stars')).toContain('[[primary|Primary]] (G2V)')
+		expect(fields?.get('planets')).toBe('1')
+		expect(fields?.get('satellites')).toBe('1')
+		expect(fields?.get('coordinates')).toBe('(1, 2, 3) ly, Example Sector frame')
+		expect(fields?.get('catalogue')).toBe('Survey A')
+		expect(fields?.has('nested')).toBe(false)
+	})
+
+	it('keeps authored metadata useful when a body model is unavailable', () => {
+		const document = {
+			identity: { kind: 'body', name: 'Sparse Body' },
+			authored: {
+				description: 'Known from a partial catalogue.',
+				extensions: { catalogue: 'Survey B', nested: { hidden: true } },
+			},
+			resolved: { facts: { model: { value: null, status: 'unavailable' } } },
+		} as unknown as RodderEntityDocument
+
+		const fields = rodderDocumentInfoboxFields(document)
+		expect(fields?.get('name')).toBe('Sparse Body')
+		expect(fields?.get('description')).toBe('Known from a partial catalogue.')
+		expect(fields?.get('catalogue')).toBe('Survey B')
+		expect(fields?.has('nested')).toBe(false)
 	})
 })

@@ -6,11 +6,13 @@ import { deleteSector, updateSector } from '$lib/server/services/rodder-sectors.
 import { resolveRodderSectorDocument } from '$lib/server/services/rodder-documents.js'
 
 /** GET /api/rodder/sectors/[slug] — one sector's frame contract and roots. */
-export const GET: RequestHandler = async ({ params }) => {
+export const GET: RequestHandler = async ({ params, url }) => {
 	return handleServiceCall(async () => {
 		const document = await resolveRodderSectorDocument(params.slug)
 		if (!document) return json({ error: 'Sector not found' }, { status: 404 })
-		return json(document)
+		return json(document, url.searchParams.get('download') === '1'
+			? { headers: { 'content-disposition': `attachment; filename*=UTF-8''${encodeURIComponent(`${document.identity.slug}.sector.json`)}` } }
+			: undefined)
 	})
 }
 
