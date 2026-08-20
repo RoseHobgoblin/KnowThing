@@ -16,9 +16,9 @@ export type ProceduralTextureResult = GeneratedSurface<Uint8Array | null> | Gene
 type RequestMessage = { id: number, request: ProceduralTextureRequest }
 type ResponseMessage = { id: number, result?: ProceduralTextureResult, error?: string }
 
-const workerScope = self as unknown as DedicatedWorkerGlobalScope
+const workerScope = globalThis as unknown as DedicatedWorkerGlobalScope
 
-workerScope.onmessage = (event: MessageEvent<RequestMessage>) => {
+workerScope.addEventListener('message', (event: MessageEvent<RequestMessage>) => {
 	const { id, request } = event.data
 	try {
 		if (request.kind === 'planet') {
@@ -42,6 +42,4 @@ workerScope.onmessage = (event: MessageEvent<RequestMessage>) => {
 			error: error instanceof Error ? error.message : 'Procedural texture generation failed',
 		} satisfies ResponseMessage)
 	}
-}
-
-export {}
+})
