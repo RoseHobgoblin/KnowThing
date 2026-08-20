@@ -3,8 +3,8 @@
  * shadow articles into the matching `calendars.body`.
  *
  * Usage:
- *   DATABASE_URL=... node --experimental-strip-types scripts/migrate-calendar-prose.ts          # dry run
- *   DATABASE_URL=... node --experimental-strip-types scripts/migrate-calendar-prose.ts --apply  # mutate
+ *   bun --env-file=.env scripts/migrate-calendar-prose.ts          # dry run
+ *   bun --env-file=.env scripts/migrate-calendar-prose.ts --apply  # mutate
  */
 
 import postgres from 'postgres'

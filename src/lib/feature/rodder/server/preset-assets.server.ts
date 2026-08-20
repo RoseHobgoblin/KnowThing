@@ -49,7 +49,7 @@ async function readPublicAsset(asset: PresetMediaAsset): Promise<Buffer> {
 			// Try the adapter-node client output after the source static tree.
 		}
 	}
-	throw error(500, `Preset asset is missing: ${asset.publicPath}. Run npm run seed:assets:mars.`)
+	throw error(500, `Preset asset is missing: ${asset.publicPath}. Run bun run seed:assets:mars.`)
 }
 
 async function prepareAsset(asset: PresetMediaAsset): Promise<PreparedAsset> {

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -9,52 +9,60 @@ const packageDirectory = path.dirname(path.dirname(fileURLToPath(import.meta.url
 const temporaryDirectory = mkdtempSync(path.join(tmpdir(), 'tungolcraft-package-smoke-'))
 const packDirectory = path.join(temporaryDirectory, 'pack')
 const consumerDirectory = path.join(temporaryDirectory, 'consumer')
-const npmCli = process.env.npm_execpath
-
 mkdirSync(packDirectory)
 mkdirSync(consumerDirectory)
 
-if (!npmCli) {
-	throw new Error('npm_execpath is unavailable; run this check through npm run pack:smoke')
-}
-
-function npm(args, cwd) {
-	return execFileSync(process.execPath, [npmCli, ...args], {
+function bun(args, cwd) {
+	return execFileSync(process.execPath, args, {
 		cwd,
 		encoding: 'utf8',
-		env: { ...process.env, npm_config_dry_run: 'false' },
 		stdio: ['ignore', 'pipe', 'inherit'],
 	})
 }
 
+function listFiles(directory, prefix = '') {
+	return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+		const relativePath = path.posix.join(prefix, entry.name)
+		return entry.isDirectory()
+			? listFiles(path.join(directory, entry.name), relativePath)
+			: [relativePath]
+	})
+}
+
 try {
-	const packOutput = npm(
-		['pack', packageDirectory, '--json', '--pack-destination', packDirectory],
+	const packedFilename = bun(
+		['pm', 'pack', '--destination', packDirectory, '--quiet'],
 		packageDirectory,
+	).trim()
+	const filename = path.basename(packedFilename)
+	const tarball = path.join(packDirectory, filename)
+	writeFileSync(
+		path.join(consumerDirectory, 'package.json'),
+		JSON.stringify({ name: 'tungolcraft-smoke-consumer', private: true, type: 'module' }),
 	)
-	const packResult = JSON.parse(packOutput)[0]
+	bun(['add', '--ignore-scripts', tarball], consumerDirectory)
 
-	assert.equal(packResult.name, 'tungolcraft')
-	assert.ok(packResult.files.some(({ path }) => path === 'LICENSE'))
-	assert.ok(packResult.files.some(({ path }) => path === 'dist/index.js'))
-	assert.ok(packResult.files.some(({ path }) => path === 'dist/index.d.ts'))
-	assert.ok(packResult.files.some(({ path }) => path === 'benchmarks/fixtures.json'))
-	assert.ok(packResult.files.some(({ path }) => path === 'docs/VALIDATION.md'))
-	assert.ok(packResult.files.some(({ path }) => path === 'docs/MODEL-REFERENCE.md'))
-	assert.ok(packResult.files.some(({ path }) => path === 'docs/UNCERTAINTY.md'))
-	assert.ok(packResult.files.some(({ path }) => path === 'docs/MODEL-PACKS.md'))
-	assert.ok(packResult.files.some(({ path }) => path === 'docs/EXTERNAL-ADAPTERS.md'))
-	assert.ok(packResult.files.some(({ path }) => path === 'schemas/scenario.schema.json'))
-	assert.ok(packResult.files.some(({ path }) => path === 'schemas/scenario-report.schema.json'))
-	assert.ok(packResult.files.some(({ path }) => path === 'schemas/external-run-request.schema.json'))
-	assert.ok(packResult.files.some(({ path }) => path === 'schemas/external-run-result.schema.json'))
-	assert.ok(!packResult.files.some(({ path }) => path.startsWith('src/')))
-	assert.ok(!packResult.files.some(({ path }) => path.endsWith('.test.ts')))
-
-	const tarball = path.join(packDirectory, packResult.filename)
-
-	npm(['init', '--yes'], consumerDirectory)
-	npm(['install', '--ignore-scripts', '--no-audit', '--no-fund', tarball], consumerDirectory)
+	const installedPackage = path.join(consumerDirectory, 'node_modules', 'tungolcraft')
+	const files = listFiles(installedPackage)
+	for (const expected of [
+		'LICENSE',
+		'dist/index.js',
+		'dist/index.d.ts',
+		'benchmarks/fixtures.json',
+		'docs/VALIDATION.md',
+		'docs/MODEL-REFERENCE.md',
+		'docs/UNCERTAINTY.md',
+		'docs/MODEL-PACKS.md',
+		'docs/EXTERNAL-ADAPTERS.md',
+		'schemas/scenario.schema.json',
+		'schemas/scenario-report.schema.json',
+		'schemas/external-run-request.schema.json',
+		'schemas/external-run-result.schema.json',
+	]) {
+		assert.ok(files.includes(expected), `Packed package is missing ${expected}`)
+	}
+	assert.ok(!files.some(file => file.startsWith('src/')))
+	assert.ok(!files.some(file => file.endsWith('.test.ts')))
 
 	writeFileSync(
 		path.join(consumerDirectory, 'runtime.mjs'),
@@ -123,7 +131,7 @@ try {
 	})
 
 	console.log(
-		`Packed ${packResult.filename}; clean runtime import and TypeScript consumer passed.`,
+		`Packed ${filename}; clean Bun runtime import and TypeScript consumer passed.`,
 	)
 } finally {
 	rmSync(temporaryDirectory, { recursive: true, force: true })

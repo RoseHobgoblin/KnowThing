@@ -44,14 +44,14 @@
 		"schemas"
 	],
 	"scripts": {
-		"clean": "node scripts/clean-distribution.mjs",
-		"build": "npm run clean && tsc -p tsconfig.json",
-		"benchmarks": "npm run build && node scripts/run-benchmarks.mjs",
-		"benchmarks:json": "node scripts/run-benchmarks.mjs --json",
-		"documentation:check": "node scripts/generate-scientific-documentation.mjs --check",
-		"prepack": "npm run build",
-		"pack:smoke": "node scripts/package-smoke.mjs",
-		"prepublishOnly": "npm run test && npm run typecheck && npm run benchmarks && npm run documentation:check && npm run pack:smoke",
+		"clean": "bun scripts/clean-distribution.mjs",
+		"build": "bun run clean && tsc -p tsconfig.json",
+		"benchmarks": "bun run build && bun scripts/run-benchmarks.mjs",
+		"benchmarks:json": "bun scripts/run-benchmarks.mjs --json",
+		"documentation:check": "bun scripts/generate-scientific-documentation.mjs --check",
+		"prepack": "bun run build",
+		"pack:smoke": "bun scripts/package-smoke.mjs",
+		"prepublishOnly": "bun run test && bun run typecheck && bun run benchmarks && bun run documentation:check && bun run pack:smoke",
 		"typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
 		"test": "vitest run --config vitest.config.ts"
 	}

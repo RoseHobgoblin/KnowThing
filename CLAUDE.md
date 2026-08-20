@@ -1,12 +1,14 @@
 # Project: KnowThing
-SvelteKit 2 with Svelte 5 (runes), TypeScript strict, Drizzle ORM on PostgreSQL, Tailwind v4.
+SvelteKit 2 with Svelte 5 (runes), Bun 1.4, Elysia, TypeScript strict, Drizzle ORM on PostgreSQL, and Tailwind v4.
 
 ## Commands
-- `npm run dev` — dev server
-- `npm run test` — Vitest unit tests
-- `npm run lint` — ESLint check (includes `eslint-plugin-local/` custom rules)
-- `npm run check` — svelte-check type checking
-- `npm run db:migrate` — Drizzle migrations
+- `bun install --frozen-lockfile` — install exactly from `bun.lock`
+- `bun run dev` — development server
+- `bun run test` — Vitest unit tests
+- `bun run lint` — ESLint check (includes `eslint-plugin-local/` custom rules)
+- `bun run check` — Svelte and TypeScript checks
+- `bun run db:migrate` — Drizzle migrations
+- `bun run build && bun run start` — production build and Elysia server
 
 
 

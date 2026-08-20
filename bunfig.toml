@@ -1,0 +1,8 @@
+[run]
+bun = true
+shell = "bun"
+
+[install]
+# npm previously installed this workspace with a flat dependency tree. A few
+# build tools (notably Paraglide) still assume that layout on Windows.
+linker = "hoisted"

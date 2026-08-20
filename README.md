@@ -1,42 +1,37 @@
-# sv
+# KnowThing
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+KnowThing is a SvelteKit 2 / Svelte 5 application backed by PostgreSQL. Bun is
+the package manager and production runtime; Elysia owns the HTTP listener and
+delegates application routes to SvelteKit.
 
-## Creating a project
+## Requirements
 
-If you're seeing this, you've probably already done this step. Congrats!
+- Bun 1.4.0
+- PostgreSQL 16 (or Docker Compose)
 
-```sh
-# create a new project
-npx sv create my-app
-```
-
-To recreate this project with the same configuration:
+## Development
 
 ```sh
-# recreate this project
-npx sv@0.12.8 create --template minimal --types ts --no-install .
+bun install --frozen-lockfile
+bun run dev
 ```
 
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+Copy the required values into `.env` before running database-backed routes.
+Useful validation commands are:
 
 ```sh
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
+bun run check
+bun run test
+bun run lint
 ```
 
-## Building
+## Production
 
-To create a production version of your app:
+The application image is built and run with Bun:
 
 ```sh
-npm run build
+docker compose -f docker-compose.prod.yml up --build -d
 ```
 
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+The container runs migrations before Elysia starts listening. Its health probe
+is `GET /healthz`; all other requests pass through the Bun SvelteKit adapter.

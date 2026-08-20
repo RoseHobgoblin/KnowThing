@@ -8,6 +8,25 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+
+      - name: Install exact dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Validate application
+        env:
+          BETTER_AUTH_SECRET: build-stage-placeholder-only-7f53a91d9c4e2b68
+        run: |
+          bun run check
+          bun run test
+          bun run build
+
       - name: Deploy to server
         uses: appleboy/ssh-action@v1
         env:
@@ -17,7 +36,7 @@ jobs:
           port: ${{ secrets.SERVER_PORT }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          # `npm run build` alone takes 25+ minutes on this server, so a
+          # The application build can take 25+ minutes on this server, so a
           # from-scratch image build cannot fit the action's 10m default
           # (the 2026-07-16 and first 2026-07-17 deploys both died mid-build
           # with "Run Command Timeout", leaving prod on a stale image).
@@ -59,5 +78,5 @@ jobs:
             # change, and rebuilding node_modules from scratch every deploy
             # is what blew the timeout.
             docker compose -f docker-compose.prod.yml build app
-            docker compose -f docker-compose.prod.yml up -d
+            docker compose -f docker-compose.prod.yml up -d --wait --wait-timeout 120
             docker image prune -f
