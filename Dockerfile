@@ -7,7 +7,7 @@ WORKDIR /app
 COPY package.json bun.lock bunfig.toml .npmrc ./
 COPY packages/rimecraft/package.json ./packages/rimecraft/package.json
 COPY packages/tungolcraft/package.json ./packages/tungolcraft/package.json
-RUN bun install --frozen-lockfile
+RUN bun install --frozen-lockfile --ignore-scripts
 
 COPY . .
 RUN BETTER_AUTH_SECRET=build-stage-placeholder-only-7f53a91d9c4e2b68 bun run build
