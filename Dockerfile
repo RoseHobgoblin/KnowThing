@@ -10,7 +10,6 @@ COPY packages/tungolcraft/package.json ./packages/tungolcraft/package.json
 RUN bun install --frozen-lockfile
 
 COPY . .
-RUN bun run --workspaces --if-present build
 RUN BETTER_AUTH_SECRET=build-stage-placeholder-only-7f53a91d9c4e2b68 bun run build
 RUN bun prune --production
 
