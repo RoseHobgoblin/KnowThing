@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { SvelteURLSearchParams } from 'svelte/reactivity'
 	import type { PageData } from './$types.js'
-	import SearchForm from '$lib/components/search/SearchForm.svelte'
-	import SearchScopeTabs from '$lib/components/search/SearchScopeTabs.svelte'
-	import SearchFilters from '$lib/components/search/SearchFilters.svelte'
-	import SearchFilterChips from '$lib/components/search/SearchFilterChips.svelte'
-	import SearchResults from '$lib/components/search/SearchResults.svelte'
-	import SearchEmptyState from '$lib/components/search/SearchEmptyState.svelte'
-	import SearchPagination from '$lib/components/search/SearchPagination.svelte'
+	import SearchForm from '$lib/feature/search/components/SearchForm.svelte'
+	import SearchScopeTabs from '$lib/feature/search/components/SearchScopeTabs.svelte'
+	import SearchFilters from '$lib/feature/search/components/SearchFilters.svelte'
+	import SearchFilterChips from '$lib/feature/search/components/SearchFilterChips.svelte'
+	import SearchResults from '$lib/feature/search/components/SearchResults.svelte'
+	import SearchEmptyState from '$lib/feature/search/components/SearchEmptyState.svelte'
+	import SearchPagination from '$lib/feature/search/components/SearchPagination.svelte'
 
 	let { data }: { data: PageData } = $props()
 

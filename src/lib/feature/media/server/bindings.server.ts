@@ -10,7 +10,7 @@ import {
 	purposeLabel,
 	type RodderMediaPurpose,
 	type MediaAssetBinding,
-} from '$lib/media/asset-binding.js'
+} from '$lib/feature/media/asset-binding.js'
 
 type Dbx = Pick<typeof db, 'delete' | 'insert' | 'select'>
 type BindingRow = typeof mediaAssetBindings.$inferInsert

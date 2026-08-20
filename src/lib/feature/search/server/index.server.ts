@@ -1,8 +1,8 @@
-import { countPageSearchResults, searchPagesRaw } from './pages.js'
-import { countWordbookSearchResults, searchWordbookEntries } from './wordbook.js'
-import { searchMediaUnified } from './media.js'
-import { buildHref } from '../../resolved-links.js'
-import type { UnifiedSearchParams, UnifiedSearchResponse, UnifiedSearchResult } from './types.js'
+import { countPageSearchResults, searchPagesRaw } from './pages.server.js'
+import { countWordbookSearchResults, searchWordbookEntries } from './wordbook.server.js'
+import { searchMediaUnified } from './media.server.js'
+import { buildHref } from '$lib/server/resolved-links.js'
+import type { UnifiedSearchParams, UnifiedSearchResponse, UnifiedSearchResult } from '../contracts.js'
 
 export async function searchUnified(params: UnifiedSearchParams): Promise<UnifiedSearchResponse> {
 	if (!params.q) {

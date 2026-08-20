@@ -2,7 +2,7 @@ import {
 	mediaAssetContentUrl,
 	parseMediaAssetBinding,
 	type MediaAssetBinding,
-} from '$lib/media/asset-binding.js'
+} from '$lib/feature/media/asset-binding.js'
 
 export const STELLAR_SURFACE_RECIPE_VERSION = 2 as const
 

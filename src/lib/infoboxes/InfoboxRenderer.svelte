@@ -6,7 +6,7 @@
 	import InfoboxShell from './InfoboxShell.svelte'
 	import InfoboxRow from './InfoboxRow.svelte'
 	import InfoboxSection_ from './InfoboxSection.svelte'
-	import MediaImage from '$lib/components/MediaImage.svelte'
+	import MediaImage from '$lib/feature/media/components/MediaImage.svelte'
 	import InlineMarkup from '$lib/renderer/InlineMarkup.svelte'
 
 	let { schema, fields }: { schema: InfoboxSchema, fields: FieldMap } = $props()

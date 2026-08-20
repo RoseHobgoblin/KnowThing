@@ -16,7 +16,7 @@
 	import FormNotice from '$lib/components/editor/FormNotice.svelte'
 	import RodderSurfacePreview from '$lib/feature/rodder/components/RodderSurfacePreview.svelte'
 	import RingSystemEditor from '$lib/feature/rodder/components/RingSystemEditor.svelte'
-	import MediaAssetPicker from '$lib/components/media/MediaAssetPicker.svelte'
+	import MediaAssetPicker from '$lib/feature/media/components/MediaAssetPicker.svelte'
 	import { rodderConfigureBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import { goto } from '$app/navigation'

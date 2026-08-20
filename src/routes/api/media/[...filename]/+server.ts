@@ -11,7 +11,7 @@ import {
 	replaceMediaFile,
 	restoreMediaVersion,
 	updateMediaMetadata,
-} from '$lib/server/services/media.js'
+} from '$lib/feature/media/server/service.server.js'
 import { handleServiceCall } from '$lib/server/utils.js'
 
 const UPLOAD_DIR = env.UPLOAD_DIR || './uploads'

@@ -2,7 +2,7 @@
 	import Badge from '$lib/components/ui/Badge.svelte'
 	import { sanitizeSnippet } from '$lib/utils.js'
 	import InlineMarkup from '$lib/renderer/InlineMarkup.svelte'
-	import type { UnifiedSearchResult } from '$lib/server/services/search/types.js'
+	import type { UnifiedSearchResult } from '$lib/feature/search/contracts.js'
 
 	let {
 		results,

@@ -3,7 +3,7 @@ import {
 	STELLAR_SURFACE_RECIPE_VERSION,
 	type StellarSurfaceRecipe,
 } from './stellar-surface-model.js'
-import { parseMediaAssetBinding } from '$lib/media/asset-binding.js'
+import { parseMediaAssetBinding } from '$lib/feature/media/asset-binding.js'
 
 function finiteNumber(value: unknown): number | null {
 	return typeof value === 'number' && Number.isFinite(value) ? value : null

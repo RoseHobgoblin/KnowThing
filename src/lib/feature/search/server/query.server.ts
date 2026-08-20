@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { UnifiedSearchFilters, UnifiedSearchParams, UnifiedSearchScope, UnifiedSearchSort } from './types.js'
+import type { UnifiedSearchFilters, UnifiedSearchParams, UnifiedSearchScope, UnifiedSearchSort } from '../contracts.js'
 
 const searchScopeSchema = z.enum(['all', 'pages', 'wordbook', 'media'])
 const searchSortSchema = z.enum(['relevance', 'newest', 'oldest', 'name', 'size', 'usage'])

@@ -13,7 +13,7 @@
 		type RodderMediaPurpose,
 		type MediaAssetBinding,
 		type MediaAssetListItem,
-	} from '$lib/media/asset-binding.js'
+	} from '$lib/feature/media/asset-binding.js'
 	import CheckCircle from 'phosphor-svelte/lib/CheckCircle'
 	import ImageSquare from 'phosphor-svelte/lib/ImageSquare'
 	import MagnifyingGlass from 'phosphor-svelte/lib/MagnifyingGlass'

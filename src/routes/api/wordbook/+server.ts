@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
 import { createWordbookEntry } from '$lib/server/services/wordbook.js'
-import { searchWordbookEntries } from '$lib/server/services/search/wordbook.js'
+import { searchWordbookEntries } from '$lib/feature/search/server/wordbook.server.js'
 import { parseBody, handleServiceCall } from '$lib/server/utils.js'
 import { createWordSchema } from '$lib/server/http/wordbook/schemas.js'
 

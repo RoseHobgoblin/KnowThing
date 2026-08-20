@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, sql } from 'drizzle-orm'
 import { db } from '$lib/server/db/index.js'
 import { contentMediaUsage, media, mediaAssetBindings } from '$lib/server/db/schema.js'
-import type { UnifiedSearchFilters, UnifiedSearchResult } from './types.js'
+import type { UnifiedSearchFilters, UnifiedSearchResult } from '../contracts.js'
 
 export interface MediaSearchParams {
 	q?: string

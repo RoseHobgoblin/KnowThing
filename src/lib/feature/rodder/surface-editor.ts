@@ -4,7 +4,7 @@ import {
 	type SurfaceMapChannel,
 	type SurfaceRecipe,
 } from './surface-model.js'
-import { parseMediaAssetBinding } from '$lib/media/asset-binding.js'
+import { parseMediaAssetBinding } from '$lib/feature/media/asset-binding.js'
 
 const SURFACE_CHANNELS: SurfaceMapChannel[] = [
 	'albedo', 'elevation', 'normal', 'roughness', 'emissive',

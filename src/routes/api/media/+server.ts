@@ -1,9 +1,9 @@
 import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
-import { uploadMediaFile } from '$lib/server/services/media.js'
-import { listMedia } from '$lib/server/services/search/media.js'
-import { parseUnifiedSearchParams } from '$lib/server/services/search/query.js'
+import { uploadMediaFile } from '$lib/feature/media/server/service.server.js'
+import { listMedia } from '$lib/feature/search/server/media.server.js'
+import { parseUnifiedSearchParams } from '$lib/feature/search/server/query.server.js'
 import { handleServiceCall } from '$lib/server/utils.js'
 
 /** GET /api/media — list media with search, filter, pagination */

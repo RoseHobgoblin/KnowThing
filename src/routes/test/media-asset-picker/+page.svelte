@@ -1,6 +1,6 @@
 <script lang="ts">
-	import MediaAssetPicker from '$lib/components/media/MediaAssetPicker.svelte'
-	import type { MediaAssetBinding } from '$lib/media/asset-binding.js'
+	import MediaAssetPicker from '$lib/feature/media/components/MediaAssetPicker.svelte'
+	import type { MediaAssetBinding } from '$lib/feature/media/asset-binding.js'
 
 	let value = $state<MediaAssetBinding | null>(null)
 	let ready = $state(false)

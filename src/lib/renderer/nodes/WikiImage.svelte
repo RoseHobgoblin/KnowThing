@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { ImageOption } from '$lib/parser/types.js'
-	import MediaImage from '$lib/components/MediaImage.svelte'
+	import MediaImage from '$lib/feature/media/components/MediaImage.svelte'
 
 	let { filename, options }: { filename: string, options: ImageOption[] } = $props()
 

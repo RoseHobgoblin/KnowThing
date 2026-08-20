@@ -35,7 +35,7 @@ import { deleteContentByDomainSlug, moveContentByDomainSlug } from '$lib/server/
 import {
 	normalizeRodderMediaBindings,
 	replaceMediaBindingsForOwner,
-} from '$lib/server/services/media-bindings.js'
+} from '$lib/feature/media/server/bindings.server.js'
 import {
 	installPresetSurface,
 	prepareRodderPresetAssets,

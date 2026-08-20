@@ -25,7 +25,7 @@ import { parseWeatherRecipe } from './weather-model.js'
 import { weatherRecipeFromDraft } from './weather-editor.js'
 import { parseStellarSurfaceRecipe } from './stellar-surface-model.js'
 import { stellarSurfaceRecipeFromDraft } from './stellar-surface-editor.js'
-import type { RodderMediaPurpose, MediaAssetBinding } from '$lib/media/asset-binding.js'
+import type { RodderMediaPurpose, MediaAssetBinding } from '$lib/feature/media/asset-binding.js'
 import { emptyRingSystem, parseRingSystem, type RingSystem } from './ring-system.js'
 
 /**

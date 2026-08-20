@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte'
-	import MediaImage from '$lib/components/MediaImage.svelte'
+	import MediaImage from '$lib/feature/media/components/MediaImage.svelte'
 	import InlineMarkup from '$lib/renderer/InlineMarkup.svelte'
 
 	let {

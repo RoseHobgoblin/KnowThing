@@ -18,7 +18,7 @@ import {
 	rodderBodies,
 } from '$lib/server/db/schema.js'
 import { getSiteConfig } from '$lib/server/settings.js'
-import { sanitizeSvg, stripExifMetadata, verifyMimeType } from './media-sanitize.js'
+import { sanitizeSvg, stripExifMetadata, verifyMimeType } from './sanitize.server.js'
 import { updateContentEffects } from '$lib/server/content-effects.js'
 
 const UPLOAD_DIR = env.UPLOAD_DIR || './uploads'
