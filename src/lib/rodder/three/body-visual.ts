@@ -12,7 +12,7 @@ import {
 	type Texture,
 } from 'three'
 import { rotatePerifocalToInertial } from 'tungolcraft'
-import { physicalBodyExtent, physicalBodyRadius } from '../body-sizing.js'
+import { ASTRONOMICAL_UNIT_M, physicalBodyExtent, physicalBodyRadius } from '../body-sizing.js'
 import { resolveColor, spectralColor } from '../colors.js'
 import type { VisibilityMode } from '../map-settings.js'
 import type { MapBody } from '../root-layout.js'
@@ -28,6 +28,7 @@ export type BodyVisual = {
 	tiltGroup: Group
 	spinGroup: Group
 	mesh: Mesh
+	ringMeshes: Mesh<RingGeometry, MeshStandardMaterial>[]
 	radius: number
 	extent: number
 	ready: Promise<void>
@@ -106,23 +107,42 @@ export function createBodyVisual(args: {
 	anchor.userData.surfacePlan = planetSurface?.plan ?? null
 	anchor.userData.stellarSurfacePlan = stellarSurface?.plan ?? null
 
-	let ringGeometry: RingGeometry | null = null
-	let ringMaterial: MeshStandardMaterial | null = null
-	let ringMesh: Mesh | null = null
-	if (body.hasRings) {
-		ringGeometry = new RingGeometry(radius * 1.3, extent, 96)
-		ringMaterial = new MeshStandardMaterial({
-			color: color.clone().lerp(new Color('#E9C349'), 0.35),
-			transparent: true,
-			opacity: 0.38,
-			side: DoubleSide,
-			depthWrite: false,
-			roughness: 0.9,
-			metalness: 0,
-		})
-		ringMesh = new Mesh(ringGeometry, ringMaterial)
-		tiltGroup.add(ringMesh)
+	const ringMeshes: Mesh<RingGeometry, MeshStandardMaterial>[] = []
+	const authoredSystems = body.ringSystems ?? []
+	for (const system of authoredSystems) {
+		for (const [index, band] of system.ringSystem.bands.entries()) {
+			const geometry = new RingGeometry(
+				band.innerRadiusM / ASTRONOMICAL_UNIT_M * worldUnitsPerAu,
+				band.outerRadiusM / ASTRONOMICAL_UNIT_M * worldUnitsPerAu,
+				96,
+			)
+			const material = new MeshStandardMaterial({
+				color: new Color(resolveColor(band.color, color.clone().lerp(new Color('#E9C349'), 0.35).getStyle())),
+				transparent: (band.opacity ?? 0.38) < 1,
+				opacity: band.opacity ?? 0.38,
+				side: DoubleSide,
+				depthWrite: false,
+				roughness: 0.9,
+				metalness: 0,
+			})
+			const ringMesh = new Mesh(geometry, material)
+			ringMesh.name = `ring-band:${system.id}:${index}`
+			ringMesh.userData = {
+				ringSystemId: system.id,
+				ringSystemName: system.name,
+				bandName: band.name ?? null,
+				provenance: band.provenance,
+			}
+			ringMeshes.push(ringMesh)
+			tiltGroup.add(ringMesh)
+		}
 	}
+	anchor.userData.ringPresentation = ringMeshes.length === 0
+		? { status: 'unavailable', bandCount: 0 }
+		: {
+			status: 'authored',
+			bandCount: ringMeshes.length,
+		}
 
 	const markerMaterial = createOverviewMarkerMaterial(markerTexture, color)
 	const overviewMarker = new Sprite(markerMaterial)
@@ -157,6 +177,7 @@ export function createBodyVisual(args: {
 		tiltGroup,
 		spinGroup,
 		mesh,
+		ringMeshes,
 		radius,
 		extent,
 		ready: stellarSurface?.ready ?? planetSurface?.ready ?? Promise.resolve(),
@@ -188,7 +209,7 @@ export function createBodyVisual(args: {
 			stellarSurface?.setVisibilityMode(mode)
 			mesh.visible = visibility.meshVisible
 			planetSurface?.setGeometryVisible(visibility.meshVisible)
-			if (ringMesh) ringMesh.visible = visibility.meshVisible
+			for (const ringMesh of ringMeshes) ringMesh.visible = visibility.meshVisible
 			markerMaterial.opacity = visibility.markerOpacity
 			overviewMarker.scale.setScalar(visibility.markerDiameterPx * safeWorldUnitsPerPixel)
 			const selectionRadius = Math.max(
@@ -212,8 +233,10 @@ export function createBodyVisual(args: {
 			if (planetSurface) planetSurface.dispose()
 			else if (stellarSurface) stellarSurface.dispose()
 			else material.dispose()
-			ringGeometry?.dispose()
-			ringMaterial?.dispose()
+			for (const ringMesh of ringMeshes) {
+				ringMesh.geometry.dispose()
+				ringMesh.material.dispose()
+			}
 			markerMaterial.dispose()
 			selectionMaterial.dispose()
 		},

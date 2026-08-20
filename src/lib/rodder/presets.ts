@@ -50,7 +50,6 @@ export interface BodyPreset {
 	rotationPeriodS: number
 	axialTilt: number
 	satellites: number
-	hasRings: boolean
 	extra?: Record<string, unknown>
 	seedSurface?: PresetSurface
 	moons?: BodyPreset[]
@@ -165,7 +164,6 @@ export const rodderPresets: RodderPreset[] = [
 						rotationPeriodS: 5_067_360,
 						axialTilt: 0.034,
 						satellites: 0,
-						hasRings: false,
 					},
 					{
 						name: 'Venus',
@@ -188,7 +186,6 @@ export const rodderPresets: RodderPreset[] = [
 						rotationPeriodS: 20_997_360,
 						axialTilt: 177.36,
 						satellites: 0,
-						hasRings: false,
 					},
 					{
 						name: 'Earth',
@@ -211,7 +208,6 @@ export const rodderPresets: RodderPreset[] = [
 						rotationPeriodS: 86_164,
 						axialTilt: 23.44,
 						satellites: 1,
-						hasRings: false,
 						moons: [
 							{
 								name: 'Luna',
@@ -234,7 +230,6 @@ export const rodderPresets: RodderPreset[] = [
 								rotationPeriodS: 2_360_620,
 								axialTilt: 6.687,
 								satellites: 0,
-								hasRings: false,
 							},
 						],
 					},
@@ -263,7 +258,6 @@ export const rodderPresets: RodderPreset[] = [
 						rotationPeriodS: 88_642.664064,
 						axialTilt: 25.19,
 						satellites: 2,
-						hasRings: false,
 						extra: {
 							seedData: {
 								id: 'solar-system/mars', version: 1,
@@ -317,7 +311,7 @@ export const rodderPresets: RodderPreset[] = [
 								atmosphere: '', composition: 'Carbon chondrite',
 								orbitalPeriod: '0.319 days', orbitalPeriodDays: 0.3189, semiMajorAxisAu: 0.0000628,
 								eccentricity: 0.0151, inclination: 1.093, rotationPeriod: '0.319 days (tidally locked)',
-								rotationPeriodS: 27_554, axialTilt: 0, satellites: 0, hasRings: false,
+								rotationPeriodS: 27_554, axialTilt: 0, satellites: 0,
 							},
 							{
 								name: 'Deimos', bodyType: 'planet', mass: '1.476 × 10¹⁵ kg', massKg: 1.476e15, radius: '6.2 km', radiusM: 6_200,
@@ -325,7 +319,7 @@ export const rodderPresets: RodderPreset[] = [
 								atmosphere: '', composition: 'Carbon chondrite',
 								orbitalPeriod: '1.263 days', orbitalPeriodDays: 1.2624, semiMajorAxisAu: 0.000157,
 								eccentricity: 0.0002, inclination: 0.93, rotationPeriod: '1.263 days (tidally locked)',
-								rotationPeriodS: 109_075, axialTilt: 0, satellites: 0, hasRings: false,
+								rotationPeriodS: 109_075, axialTilt: 0, satellites: 0,
 							},
 						],
 					},
@@ -350,7 +344,6 @@ export const rodderPresets: RodderPreset[] = [
 						rotationPeriodS: 35_730,
 						axialTilt: 3.13,
 						satellites: 95,
-						hasRings: true,
 						moons: [
 							{
 								name: 'Io', bodyType: 'planet', mass: '8.932 × 10²² kg', massKg: 8.932e22, radius: '1,821.6 km', radiusM: 1_821_600,
@@ -358,7 +351,7 @@ export const rodderPresets: RodderPreset[] = [
 								atmosphere: 'SO₂ (thin)', composition: 'Silicates, sulfur',
 								orbitalPeriod: '1.769 days', orbitalPeriodDays: 1.7691, semiMajorAxisAu: 0.00282,
 								eccentricity: 0.0041, inclination: 0.05, rotationPeriod: '1.769 days (tidally locked)',
-								rotationPeriodS: 152_853, axialTilt: 0, satellites: 0, hasRings: false,
+								rotationPeriodS: 152_853, axialTilt: 0, satellites: 0,
 							},
 							{
 								name: 'Europa', bodyType: 'planet', mass: '4.800 × 10²² kg', massKg: 4.8e22, radius: '1,560.8 km', radiusM: 1_560_800,
@@ -366,7 +359,7 @@ export const rodderPresets: RodderPreset[] = [
 								atmosphere: 'O₂ (thin)', composition: 'Ice, silicates, subsurface ocean',
 								orbitalPeriod: '3.551 days', orbitalPeriodDays: 3.5512, semiMajorAxisAu: 0.00449,
 								eccentricity: 0.009, inclination: 0.47, rotationPeriod: '3.551 days (tidally locked)',
-								rotationPeriodS: 306_823, axialTilt: 0.1, satellites: 0, hasRings: false,
+								rotationPeriodS: 306_823, axialTilt: 0.1, satellites: 0,
 							},
 							{
 								name: 'Ganymede', bodyType: 'planet', mass: '1.482 × 10²³ kg', massKg: 1.482e23, radius: '2,634.1 km', radiusM: 2_634_100,
@@ -374,7 +367,7 @@ export const rodderPresets: RodderPreset[] = [
 								atmosphere: 'O₂ (thin)', composition: 'Ice, silicates',
 								orbitalPeriod: '7.155 days', orbitalPeriodDays: 7.1546, semiMajorAxisAu: 0.00716,
 								eccentricity: 0.0013, inclination: 0.2, rotationPeriod: '7.155 days (tidally locked)',
-								rotationPeriodS: 618_153, axialTilt: 0.33, satellites: 0, hasRings: false,
+								rotationPeriodS: 618_153, axialTilt: 0.33, satellites: 0,
 							},
 							{
 								name: 'Callisto', bodyType: 'planet', mass: '1.076 × 10²³ kg', massKg: 1.076e23, radius: '2,410.3 km', radiusM: 2_410_300,
@@ -382,7 +375,7 @@ export const rodderPresets: RodderPreset[] = [
 								atmosphere: 'CO₂ (thin)', composition: 'Ice, rock',
 								orbitalPeriod: '16.689 days', orbitalPeriodDays: 16.689, semiMajorAxisAu: 0.01259,
 								eccentricity: 0.0074, inclination: 0.192, rotationPeriod: '16.689 days (tidally locked)',
-								rotationPeriodS: 1_441_930, axialTilt: 0, satellites: 0, hasRings: false,
+								rotationPeriodS: 1_441_930, axialTilt: 0, satellites: 0,
 							},
 						],
 					},
@@ -407,7 +400,6 @@ export const rodderPresets: RodderPreset[] = [
 						rotationPeriodS: 38_018,
 						axialTilt: 26.73,
 						satellites: 146,
-						hasRings: true,
 						moons: [
 							{
 								name: 'Titan', bodyType: 'planet', mass: '1.345 × 10²³ kg', massKg: 1.345e23, radius: '2,574.7 km', radiusM: 2_574_700,
@@ -415,7 +407,7 @@ export const rodderPresets: RodderPreset[] = [
 								atmosphere: 'N₂ 98.4%, CH₄ 1.4%', composition: 'Ice, rock, hydrocarbon lakes',
 								orbitalPeriod: '15.945 days', orbitalPeriodDays: 15.945, semiMajorAxisAu: 0.00817,
 								eccentricity: 0.0288, inclination: 0.349, rotationPeriod: '15.945 days (tidally locked)',
-								rotationPeriodS: 1_377_648, axialTilt: 0, satellites: 0, hasRings: false,
+								rotationPeriodS: 1_377_648, axialTilt: 0, satellites: 0,
 							},
 							{
 								name: 'Enceladus', bodyType: 'planet', mass: '1.080 × 10²⁰ kg', massKg: 1.08e20, radius: '252.1 km', radiusM: 252_100,
@@ -423,7 +415,7 @@ export const rodderPresets: RodderPreset[] = [
 								atmosphere: 'H₂O vapor (geyser)', composition: 'Ice, subsurface ocean',
 								orbitalPeriod: '1.370 days', orbitalPeriodDays: 1.3702, semiMajorAxisAu: 0.00159,
 								eccentricity: 0.0047, inclination: 0.019, rotationPeriod: '1.370 days (tidally locked)',
-								rotationPeriodS: 118_387, axialTilt: 0, satellites: 0, hasRings: false,
+								rotationPeriodS: 118_387, axialTilt: 0, satellites: 0,
 							},
 						],
 					},
@@ -448,7 +440,6 @@ export const rodderPresets: RodderPreset[] = [
 						rotationPeriodS: 62_064,
 						axialTilt: 97.77,
 						satellites: 28,
-						hasRings: true,
 					},
 					{
 						name: 'Neptune',
@@ -471,7 +462,6 @@ export const rodderPresets: RodderPreset[] = [
 						rotationPeriodS: 57_996,
 						axialTilt: 28.32,
 						satellites: 16,
-						hasRings: true,
 						moons: [
 							{
 								name: 'Triton', bodyType: 'planet', mass: '2.139 × 10²² kg', massKg: 2.139e22, radius: '1,353.4 km', radiusM: 1_353_400,
@@ -479,7 +469,7 @@ export const rodderPresets: RodderPreset[] = [
 								atmosphere: 'N₂ (thin)', composition: 'Nitrogen ice, rock',
 								orbitalPeriod: '5.877 days (retrograde)', orbitalPeriodDays: 5.877, semiMajorAxisAu: 0.00237,
 								eccentricity: 0.000016, inclination: 156.885, rotationPeriod: '5.877 days (tidally locked)',
-								rotationPeriodS: 507_773, axialTilt: 0, satellites: 0, hasRings: false,
+								rotationPeriodS: 507_773, axialTilt: 0, satellites: 0,
 							},
 						],
 					},

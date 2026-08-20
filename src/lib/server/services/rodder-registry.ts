@@ -6,6 +6,7 @@ import {
 	contentRecords,
 } from '$lib/server/db/schema.js'
 import { RODDER_TREE_CTE } from '$lib/server/rodder/hierarchy.js'
+import { projectRingSystems, type RingProjectionRow } from '$lib/rodder/ring-projection.js'
 import {
 	annotateEffectivePeriods,
 	type EffectiveOrbitStar,
@@ -38,7 +39,9 @@ export async function listSystemsForRegistry() {
 			sr.sector_id AS "sectorId", sec.name AS "sectorName", sec.slug AS "sectorSlug",
 			sr.x AS "sectorX", sr.y AS "sectorY", sr.z AS "sectorZ",
 			(SELECT COUNT(*) FROM rodder_tree t WHERE t.root_id = ss.id AND t.kind = 'star')::int AS "starCount",
-			(SELECT COUNT(*) FROM rodder_tree t WHERE t.root_id = ss.id AND t.kind = 'body')::int AS "planetCount"
+			(SELECT COUNT(*) FROM rodder_tree t JOIN rodder_bodies counted_body ON counted_body.id = t.id
+				WHERE t.root_id = ss.id AND t.kind = 'body' AND counted_body.body_type IS DISTINCT FROM 'ring_system'
+			)::int AS "planetCount"
 		FROM rodder_bodies ss
 		LEFT JOIN rodder_sector_roots sr ON sr.body_id = ss.id
 		LEFT JOIN rodder_sectors sec ON sec.id = sr.sector_id
@@ -55,7 +58,9 @@ export async function listStarsForRegistry() {
 			CASE WHEN t.root_kind = 'system' THEN t.root_id END AS "systemId",
 			s.semi_major_axis_au AS "semiMajorAxisAu", s.eccentricity,
 			CASE WHEN p.kind = 'star' THEN s.parent_id END AS "parentStarId",
-			(SELECT COUNT(*) FROM rodder_tree b WHERE b.kind = 'body' AND b.nearest_star_id = s.id)::int AS "planetCount"
+			(SELECT COUNT(*) FROM rodder_tree b JOIN rodder_bodies counted_body ON counted_body.id = b.id
+				WHERE b.kind = 'body' AND b.nearest_star_id = s.id AND counted_body.body_type IS DISTINCT FROM 'ring_system'
+			)::int AS "planetCount"
 		FROM rodder_bodies s
 		JOIN rodder_tree t ON t.id = s.id
 		LEFT JOIN rodder_bodies p ON p.id = s.parent_id
@@ -72,7 +77,9 @@ export async function listBodiesForRegistry() {
 			t.nearest_star_id AS "starId",
 			CASE WHEN p.kind = 'body' THEN pb.parent_id END AS "parentId",
 			pb.semi_major_axis_au AS "semiMajorAxisAu", pb.eccentricity,
-			(SELECT COUNT(*) FROM rodder_bodies m WHERE m.parent_id = pb.id AND m.kind = 'body')::int AS "moonCount"
+			(SELECT COUNT(*) FROM rodder_bodies m
+				WHERE m.parent_id = pb.id AND m.kind = 'body' AND m.body_type IS DISTINCT FROM 'ring_system'
+			)::int AS "moonCount"
 		FROM rodder_bodies pb
 		JOIN rodder_tree t ON t.id = pb.id
 		LEFT JOIN rodder_bodies p ON p.id = pb.parent_id
@@ -151,7 +158,7 @@ export async function getRootMapEntities(rootId: number) {
 				pb.luminosity_w AS "luminosityW",
 				pb.composition,
 				pb.atmosphere,
-				pb.has_rings AS "hasRings",
+				pb.extra -> 'ringSystem' AS "ringSystem",
 				pb.extra -> 'surface' AS surface,
 				pb.extra -> 'weather' AS weather,
 				pb.semi_major_axis_au AS "semiMajorAxisAu",
@@ -164,7 +171,9 @@ export async function getRootMapEntities(rootId: number) {
 				CASE WHEN p.kind = 'system' THEN pb.parent_id END AS "parentSystemId",
 				pb.orbital_period_days AS "orbitalPeriodDays",
 				pb.epoch_phase AS "epochPhase",
-				(SELECT COUNT(*) FROM rodder_bodies m WHERE m.parent_id = pb.id AND m.kind = 'body')::int AS "moonCount"
+				(SELECT COUNT(*) FROM rodder_bodies m
+					WHERE m.parent_id = pb.id AND m.kind = 'body' AND m.body_type IS DISTINCT FROM 'ring_system'
+				)::int AS "moonCount"
 			FROM rodder_bodies pb
 			JOIN rodder_tree t ON t.id = pb.id
 			LEFT JOIN rodder_bodies p ON p.id = pb.parent_id
@@ -173,7 +182,7 @@ export async function getRootMapEntities(rootId: number) {
 		`),
 	])
 	const starRows = stars as unknown as (EffectiveOrbitStar & Record<string, unknown>)[]
-	const bodyRows = bodies as unknown as (EffectiveOrbitBody & Record<string, unknown>)[]
+	const bodyRows = bodies as unknown as (EffectiveOrbitBody & RingProjectionRow)[]
 	const storedStarPeriods = new Set(starRows.filter(row => row.orbitalPeriodDays != null).map(row => row.id))
 	const storedBodyPeriods = new Set(bodyRows.filter(row => row.orbitalPeriodDays != null).map(row => row.id))
 	const annotated = annotateEffectivePeriods(starRows, bodyRows)
@@ -182,10 +191,10 @@ export async function getRootMapEntities(rootId: number) {
 			...row,
 			effectivePeriodSource: periodSource(storedStarPeriods.has(row.id), row.orbitalPeriodDays),
 		})),
-		bodies: annotated.bodies.map(row => ({
+		bodies: projectRingSystems(annotated.bodies.map(row => ({
 			...row,
 			effectivePeriodSource: periodSource(storedBodyPeriods.has(row.id), row.orbitalPeriodDays),
-		})),
+		}))),
 	}
 }
 

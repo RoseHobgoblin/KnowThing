@@ -629,7 +629,6 @@ export const rodderBodies = pgTable(
 		atmosphere: text('atmosphere'),
 		surfacePressure: text('surface_pressure'),
 		satellites: integer('satellites'),
-		hasRings: boolean('has_rings').default(false),
 
 		// System-only. Sector-frame XYZ lives in rodder_sector_roots (0054);
 		// distance stays here as an independent approximate authored fact.

@@ -75,7 +75,6 @@ export function bodyInfoboxFields(model: BodyModel): FieldMap {
 	if (model.axialTilt != null) f.set('axial_tilt', String(model.axialTilt))
 	if (model.inclination != null) f.set('inclination', String(model.inclination))
 	if (model.satellites != null) f.set('satellites', String(model.satellites))
-	if (model.hasRings) f.set('has_rings', 'yes')
 
 	// Relationships.
 	if (model.satelliteOf) {
@@ -299,7 +298,7 @@ const PLANET_SECTIONS: SectionSpec[] = [
 	{ title: 'Rotation', fields: [['rotation_period', 'Rotation period'], ['axial_tilt', 'Axial tilt'], ['equatorial_velocity', 'Equatorial velocity']] },
 	{ title: 'Composition', fields: [['composition', 'Composition'], ['atmosphere', 'Atmosphere'], ['surface_pressure', 'Surface pressure']] },
 	{ title: 'Observation', fields: [['apparent_magnitude', 'Apparent magnitude'], ['angular_diameter', 'Angular diameter']] },
-	{ title: 'System', fields: [['satellites', 'Satellites'], ['has_rings', 'Rings']] },
+	{ title: 'System', fields: [['satellites', 'Satellites']] },
 ]
 
 const STAR_SECTIONS: SectionSpec[] = [
@@ -340,7 +339,7 @@ function buildSections(fields: FieldMap, specs: SectionSpec[]): FactSection[] {
 			const raw = fields.get(key)
 			if (!raw) continue
 			used.add(key)
-			let value = key === 'has_rings' ? 'Yes' : raw
+			let value = raw
 			const slugKey = LINK_SLUGS[key]
 			if (slugKey) {
 				const slug = fields.get(slugKey)

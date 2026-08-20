@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { ringSystemSchema } from './ring-system.js'
 
 const finiteNumber = z.number().finite()
 const nullableFiniteNumber = finiteNumber.nullable()
@@ -70,7 +71,12 @@ export const rootMapMemberSchema = z.object({
 	luminosityW: nullableFiniteNumber.optional(),
 	composition: z.string().nullable().optional(),
 	atmosphere: z.string().nullable().optional(),
-	hasRings: z.boolean().nullable().optional(),
+	ringSystems: z.array(z.object({
+		id: z.number().int().positive(),
+		name: z.string(),
+		slug: z.string(),
+		ringSystem: ringSystemSchema,
+	})).optional(),
 	hostStarTemperatureK: nullableFiniteNumber.optional(),
 	surface: surfaceProjectionSchema.optional(),
 	weather: surfaceProjectionSchema.optional(),
@@ -210,7 +216,7 @@ const authoredEntitySchema = z.object({
 		atmosphere: z.string().nullable(),
 		surfacePressure: z.string().nullable(),
 		satellites: z.number().int().nullable(),
-		hasRings: z.boolean(),
+		ringSystem: ringSystemSchema.nullable(),
 	}).nullable(),
 	system: z.object({
 		distanceLy: nullableFiniteNumber,

@@ -217,6 +217,31 @@ describe('buildPayload', () => {
 		expect(config.updateSchema.safeParse(payload).success).toBe(true)
 	})
 
+	it('round-trips the versioned ring system facet only for ring-system records', () => {
+		const config = RODDER_FORM_CONFIGS.body
+		const ringSystem = {
+			schemaVersion: 1 as const,
+			plane: 'parent-equatorial' as const,
+			origin: 'tidal-disruption' as const,
+			bands: [
+				{ name: 'Broad', innerRadiusM: 70_000_000, outerRadiusM: 90_000_000, provenance: 'authored' as const },
+				{ name: 'Narrow', innerRadiusM: 96_000_000, outerRadiusM: 99_000_000, provenance: 'authored' as const },
+			],
+		}
+		const draft = buildDraft(config, {
+			id: 9, name: 'Main rings', slug: 'main-rings', bodyType: 'ring_system', parentId: 3,
+			extra: { ringSystem },
+		})
+		expect(draft.ringSystem).toEqual(ringSystem)
+		const payload = buildPayload(config, { draft, selfId: 9, sectors: [], systems: [], stars: [], siblings: [] })
+		expect(payload.extra.ringSystem).toEqual(ringSystem)
+		expect(config.updateSchema.safeParse(payload).success).toBe(true)
+
+		draft.bodyType = 'planet'
+		expect(buildPayload(config, { draft, selfId: 9, sectors: [], systems: [], stars: [], siblings: [] }).extra)
+			.not.toHaveProperty('ringSystem')
+	})
+
 	it('sends locked overrides as null and unlocked overrides verbatim', () => {
 		const config = RODDER_FORM_CONFIGS.body
 		const ctx = makeCtx(config)

@@ -51,7 +51,6 @@ export interface BodyInput {
 	apparentMagnitude?: string | null
 	angularDiameter?: string | null
 	satellites?: number | null
-	hasRings?: boolean | null
 	extra?: unknown
 }
 
@@ -110,7 +109,6 @@ export function body(input: BodyInput, relations: BodyRelations = {}): BodyModel
 		apparentMagnitude: input.apparentMagnitude,
 		angularDiameter: input.angularDiameter,
 		satellites: input.satellites,
-		hasRings: input.hasRings,
 		extra: input.extra,
 	}
 	return deriveBody(row, relations)

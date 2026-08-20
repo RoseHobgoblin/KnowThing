@@ -1,11 +1,13 @@
+import { maximumRingRadiusM, type RingSystemProjection } from './ring-system.js'
+
 export const EARTH_RADIUS_M = 6_371_000
 export const SOLAR_RADIUS_M = 695_700_000
 export const ASTRONOMICAL_UNIT_M = 149_597_870_700
 
 export type BodySizingInput = {
 	radiusM?: number | null
-	hasRings?: boolean | null
 	bodyType?: string | null
+	ringSystems?: RingSystemProjection[] | null
 }
 
 function fallbackRadiusM(body: BodySizingInput, isStar: boolean, isSatellite: boolean): number {
@@ -37,7 +39,11 @@ export function physicalBodyExtent(
 	worldUnitsPerAu: number,
 ): number {
 	const radius = physicalBodyRadius(body, isStar, isSatellite, worldUnitsPerAu)
-	return body.hasRings ? radius * 1.9 : radius
+	const ringRadiusM = maximumRingRadiusM(body.ringSystems)
+	if (ringRadiusM != null) {
+		return Math.max(radius, ringRadiusM / ASTRONOMICAL_UNIT_M * worldUnitsPerAu)
+	}
+	return radius
 }
 
 const clamp = (value: number, minimum: number, maximum: number) =>
@@ -74,5 +80,10 @@ export function overviewBodyExtent(
 	isSatellite: boolean,
 ): number {
 	const radius = overviewBodyRadius(body, isStar, isSatellite)
-	return body.hasRings ? radius * 1.9 : radius
+	const ringRadiusM = maximumRingRadiusM(body.ringSystems)
+	if (ringRadiusM != null) {
+		const effectiveRadiusM = physicalBodyRadius(body, isStar, isSatellite, ASTRONOMICAL_UNIT_M)
+		return Math.max(radius, radius * ringRadiusM / effectiveRadiusM)
+	}
+	return radius
 }

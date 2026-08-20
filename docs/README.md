@@ -50,6 +50,7 @@ Point-in-time findings, comparisons, and gap analyses. These are evidence, not a
 Research catalogues and supporting material used by architecture and implementation work.
 
 - [Planetary Data Acquisition Catalogue](./references/Planetary-Data-Acquisition-Catalogue.md)
+- [AstroSynthesis 3 Ring-System Distillation](./references/AstroSynthesis-3-Ring-Systems.md)
 
 ## Document Conventions
 

@@ -14,6 +14,10 @@ import {
 } from '$lib/rodder/consumer-contract.js'
 import { sectorBoundsRadius } from '$lib/rodder/sector-view.js'
 import type { MapBody } from '$lib/rodder/root-layout.js'
+import {
+	parseRingSystem,
+	summarizeRingSystem,
+} from '$lib/rodder/ring-system.js'
 import { resolveRodderModel } from './rodder-models.js'
 import { getCalendarsForRoot, getRootMapEntities } from './rodder-registry.js'
 import {
@@ -120,10 +124,14 @@ function sourceFact(value: unknown, source: string | null, derived = false) {
 		: { value, status: derived ? 'derived' as const : 'authored' as const, source }
 }
 
-function authoredFor(row: RodderRow) {
-	const extensions = row.extra && typeof row.extra === 'object' && !Array.isArray(row.extra)
+function extensionsFor(row: RodderRow): Record<string, unknown> {
+	return row.extra && typeof row.extra === 'object' && !Array.isArray(row.extra)
 		? row.extra as Record<string, unknown>
 		: {}
+}
+
+function authoredFor(row: RodderRow) {
+	const extensions = extensionsFor(row)
 	return {
 		description: row.description ?? '',
 		article: {
@@ -171,7 +179,7 @@ function authoredFor(row: RodderRow) {
 				atmosphere: row.atmosphere ?? null,
 				surfacePressure: row.surfacePressure ?? null,
 				satellites: row.satellites ?? null,
-				hasRings: row.hasRings ?? false,
+				ringSystem: row.bodyType === 'ring_system' ? parseRingSystem(extensions.ringSystem) : null,
 			}
 			: null,
 		system: row.kind === 'system'
@@ -219,6 +227,12 @@ export async function resolveRodderEntityDocument(identifier: string): Promise<R
 		code: 'derived-model-unavailable', severity: 'warning', path: 'resolved.facts.model',
 		message: 'A normalized physical model could not be derived from the authored facts.',
 	})
+	if (entity.kind === 'body' && entity.bodyType === 'ring_system' && parseRingSystem(extensionsFor(entity).ringSystem) == null) {
+		diagnostics.push({
+			code: 'ring-system-unavailable', severity: 'warning', path: 'authored.planetary.ringSystem',
+			message: 'This ring-system record has no valid versioned band payload.',
+		})
+	}
 
 	let rootMap: RodderEntityDocument['displays']['rootMap'] = null
 	let effectivePeriodSource: 'stored' | 'derived' | 'unavailable' = entity.orbitalPeriodDays == null
@@ -266,6 +280,14 @@ export async function resolveRodderEntityDocument(identifier: string): Promise<R
 		bodyCount: sourceFact(bodyCount, 'hierarchy', true),
 	}
 	if (entity.kind === 'system') facts.systemType = sourceFact(deriveSystemType(starCount), 'hierarchy', true)
+	if (entity.kind === 'body' && entity.bodyType === 'ring_system') {
+		const ringSystem = parseRingSystem(extensionsFor(entity).ringSystem)
+		facts.ringSummary = sourceFact(
+			ringSystem ? summarizeRingSystem(ringSystem) : null,
+			ringSystem ? 'ring-system bands' : null,
+			true,
+		)
+	}
 
 	const identity = ref(entity)
 	const rootRef = ref(root)

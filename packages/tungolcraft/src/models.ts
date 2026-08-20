@@ -59,7 +59,6 @@ export interface BodyRow extends RodderRowLike {
 	apparentMagnitude?: string | null
 	angularDiameter?: string | null
 	satellites?: number | null
-	hasRings?: boolean | null
 }
 
 export interface StarRow extends RodderRowLike {
@@ -154,7 +153,6 @@ export interface BodyModel {
 
 	// System.
 	satellites: number | null
-	hasRings: boolean
 
 	// Relationships.
 	star: Ref | null
@@ -299,7 +297,6 @@ export function deriveBody(row: BodyRow, relations: BodyRelations = {}): BodyMod
 		equatorialVelocityMs: radiusM != null && rotationPeriodS != null ? (2 * Math.PI * radiusM) / rotationPeriodS : null,
 
 		satellites: row.satellites ?? relations.moonCount ?? null,
-		hasRings: row.hasRings ?? false,
 
 		star,
 		parentBody,

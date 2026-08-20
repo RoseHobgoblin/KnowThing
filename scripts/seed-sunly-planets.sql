@@ -11,43 +11,43 @@ INSERT INTO planetary_bodies (
 	name, slug, body_type, star_id,
 	mass_kg, radius_m, temperature_k, composition, atmosphere, surface_pressure,
 	orbital_period_days, semi_major_axis_au, eccentricity, inclination,
-	rotation_period_s, axial_tilt, satellites, has_rings, epoch_phase,
+	rotation_period_s, axial_tilt, satellites, epoch_phase,
 	description
 )
 VALUES
 	('Cinder', 'cinder', 'planet', (SELECT id FROM stars WHERE slug = 'the-sun'),
 	 2.4e23, 2.6e6, 440, 'Iron-nickel core, silicate crust', 'None (trace sodium exosphere)', '≈0 bar',
-	 89.0, 0.39, 0.21, 6.3, 5.07e6, 0.5, 0, false, 0.12,
+	 89.0, 0.39, 0.21, 6.3, 5.07e6, 0.5, 0, 0.12,
 	 'A scorched, airless cinder of a world, tidally battered and locked in a slow resonance with the Sun.'),
 
 	('Marrow', 'marrow', 'planet', (SELECT id FROM stars WHERE slug = 'the-sun'),
 	 4.6e24, 6.0e6, 735.15, 'Basaltic plains, sulfur highlands', 'Dense CO₂ with sulfuric-acid clouds', '88 bar',
-	 204.8, 0.68, 0.01, 3.4, 2.10e7, 2.6, 0, false, 0.44,
+	 204.8, 0.68, 0.01, 3.4, 2.10e7, 2.6, 0, 0.44,
 	 'A furnace beneath perpetual gold cloud. Its day outlasts its year, and it turns backward beneath the Sun.'),
 
 	('Cael', 'cael', 'planet', (SELECT id FROM stars WHERE slug = 'the-sun'),
 	 6.4e24, 6.4e6, 287.15, 'Silicate mantle, iron core, liquid-water oceans', 'N₂ / O₂', '1.0 bar',
-	 393.0, 1.05, 0.03, 0.0, 8.64e4, 23.4, 1, false, 0.78,
+	 393.0, 1.05, 0.03, 0.0, 8.64e4, 23.4, 1, 0.78,
 	 'The temperate jewel of the Sunly system — blue oceans, a breathable sky, and a single pale moon.'),
 
 	('Rustmere', 'rustmere', 'planet', (SELECT id FROM stars WHERE slug = 'the-sun'),
 	 6.9e23, 3.5e6, 218.15, 'Iron-oxide regolith, polar water ice', 'Thin CO₂', '0.008 bar',
-	 753.0, 1.62, 0.09, 1.9, 8.86e4, 25.2, 2, false, 0.29,
+	 753.0, 1.62, 0.09, 1.9, 8.86e4, 25.2, 2, 0.29,
 	 'A cold rust-red desert of dust storms and dry canyons, flanked by two captured potato-shaped moons.'),
 
 	('Gorm', 'gorm', 'planet', (SELECT id FROM stars WHERE slug = 'the-sun'),
 	 1.6e27, 6.8e7, 128.15, 'Hydrogen / helium over a metallic-hydrogen core', 'H₂ / He with ammonia bands', '— (no solid surface)',
-	 4456.0, 5.30, 0.048, 1.3, 3.6e4, 3.1, 34, true, 0.61,
+	 4456.0, 5.30, 0.048, 1.3, 3.6e4, 3.1, 34, 0.61,
 	 'A banded amber giant that rules the outer system, wrapped in faint dust rings and a swarm of moons.'),
 
 	('Halvane', 'halvane', 'planet', (SELECT id FROM stars WHERE slug = 'the-sun'),
 	 9.2e25, 2.4e7, 73.15, 'Water / ammonia / methane ices over a rocky core', 'H₂ / He / CH₄ (cyan tint)', '— (no solid surface)',
-	 11378.0, 9.90, 0.011, 0.8, 6.2e4, 28.3, 12, true, 0.05,
+	 11378.0, 9.90, 0.011, 0.8, 6.2e4, 28.3, 12, 0.05,
 	 'A serene cyan ice giant tilted into its orbit, ringed and cold, at the edge of the Sun''s warmth.'),
 
 	('Vesper', 'vesper', 'planet', (SELECT id FROM stars WHERE slug = 'the-sun'),
 	 1.4e22, 1.2e6, 43.15, 'Nitrogen-methane ice over rock', 'Tenuous N₂ (seasonal)', '10 µbar',
-	 42945.0, 24.0, 0.25, 17.1, 5.5e5, 12.0, 1, false, 0.90,
+	 42945.0, 24.0, 0.25, 17.1, 5.5e5, 12.0, 1, 0.90,
 	 'A tiny, tilted iceworld on a long eccentric path — the Sunly system''s frozen outer sentinel.')
 ON CONFLICT (slug) DO NOTHING;
 

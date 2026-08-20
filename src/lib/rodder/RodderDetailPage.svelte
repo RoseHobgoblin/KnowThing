@@ -133,6 +133,7 @@
 	})
 	const rootSelectionKeys = $derived.by(() => new Set<RootSelectionKey>([
 		...rootEntityKeys,
+		...rootBodies.flatMap(body => body.ringSystems?.map(system => `body:${system.id}` as const) ?? []),
 		...(apparentSky?.sources.map(source => source.key) ?? []),
 	]))
 	const linkedViewState = $derived(hasRootView

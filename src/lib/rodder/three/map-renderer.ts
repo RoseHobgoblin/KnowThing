@@ -5,6 +5,7 @@ import {
 	Group,
 	OrthographicCamera,
 	PerspectiveCamera,
+	Raycaster,
 	Scene,
 	Sphere,
 	SphereGeometry,
@@ -75,6 +76,7 @@ import {
 	resolveStarlightExposure,
 } from './starlight-controller.js'
 import { createApparentSkyPointMaterial } from './annotation-material.js'
+import type { RingSystemProjection } from '../ring-system.js'
 
 const MIN_ZOOM = 0.1
 const MAX_ZOOM = 1_000_000
@@ -318,6 +320,7 @@ export async function createRootMapRenderer(
 	const scratchView = new Vector3()
 	const scratchTarget = new Vector3()
 	const previousCameraPosition = new Vector3()
+	const raycaster = new Raycaster()
 
 	function currentTarget(out = scratchTarget): Vector3 {
 		return controls.getTarget(out, false)
@@ -747,7 +750,10 @@ export async function createRootMapRenderer(
 	function applySelection() {
 		const localSelection = selectedId?.startsWith('sky-root:') ? null : selectedId as EntityKey | null
 		const family = buildSelectionFamily(stars, bodies, localSelection, layout.primaryStar)
-		for (const [key, node] of nodes) node.visual.setSelected(key === selectedId, family.has(key))
+		for (const [key, node] of nodes) {
+			const ownsSelectedRing = node.body.ringSystems?.some(system => `body:${system.id}` === selectedId) ?? false
+			node.visual.setSelected(key === selectedId || ownsSelectedRing, family.has(key))
+		}
 		for (const node of skyNodes.values()) {
 			node.selection.visible = skyGroup.visible && node.visual.visible && node.key === selectedId
 		}
@@ -931,6 +937,31 @@ export async function createRootMapRenderer(
 					y: height / 2 + dy * factor,
 					angle: Math.atan2(dy, dx),
 				})
+			}
+			for (const ringSystem of node.body.ringSystems ?? []) {
+				const key = `body:${ringSystem.id}` as EntityKey
+				const selected = key === selectedId
+				const requested = selected || key === hoveredId || settings.labels === 'all'
+				if (requested && point.inside) {
+					const placement = placeRootLabel(
+						point.x,
+						point.y,
+						node.visual.getScreenExtentPx(),
+						height,
+						labels,
+					)
+					labels.push({
+						key,
+						name: ringSystem.name,
+						x: placement.x,
+						y: placement.y,
+						anchorX: point.x,
+						anchorY: point.y,
+						selected,
+						major: false,
+						pillar: placement.pillar,
+					})
+				}
 			}
 		}
 		for (const node of skyNodes.values()) {
@@ -1153,11 +1184,46 @@ export async function createRootMapRenderer(
 
 	type PointerHit =
 		| { kind: 'local', node: EntityNode, position: { x: number, y: number }, distance: number }
+		| { kind: 'ring', node: EntityNode, ringSystem: RingSystemProjection, position: { x: number, y: number }, distance: number }
 		| { kind: 'sky', node: SkyNode, position: { x: number, y: number }, distance: number }
+
+	function hitKey(hit: PointerHit | null): RootSelectionKey | null {
+		return hit?.kind === 'ring' ? `body:${hit.ringSystem.id}` : hit?.node.key ?? null
+	}
+
+	function ringSystemBody(hit: Extract<PointerHit, { kind: 'ring' }>): MapBody {
+		return {
+			id: hit.ringSystem.id,
+			name: hit.ringSystem.name,
+			slug: hit.ringSystem.slug,
+			bodyType: 'ring_system',
+			parentId: hit.node.body.id,
+		}
+	}
 
 	function closestTarget(event: PointerEvent): PointerHit | null {
 		const rect = canvas.getBoundingClientRect()
 		const pointer = { x: event.clientX - rect.left, y: event.clientY - rect.top }
+		const normalizedPointer = new Vector2(
+			pointer.x / Math.max(rect.width, 1) * 2 - 1,
+			-(pointer.y / Math.max(rect.height, 1)) * 2 + 1,
+		)
+		camera.updateMatrixWorld()
+		scene.updateMatrixWorld(true)
+		raycaster.setFromCamera(normalizedPointer, camera)
+		let nearestRing: PointerHit | null = null
+		let nearestRingDistance = Number.POSITIVE_INFINITY
+		for (const node of nodes.values()) {
+			const meshes = node.visual.ringMeshes.filter(mesh => mesh.visible && mesh.userData.ringSystemId != null)
+			const intersection = raycaster.intersectObjects(meshes, false)[0]
+			if (!intersection || intersection.distance >= nearestRingDistance) continue
+			const ringSystemId = Number(intersection.object.userData.ringSystemId)
+			const ringSystem = node.body.ringSystems?.find(system => system.id === ringSystemId)
+			if (!ringSystem) continue
+			nearestRingDistance = intersection.distance
+			nearestRing = { kind: 'ring', node, ringSystem, position: pointer, distance: 0 }
+		}
+		if (nearestRing) return nearestRing
 		let nearest: PointerHit | null = null
 		for (const node of nodes.values()) {
 			const point = projectNode(node)
@@ -1184,9 +1250,10 @@ export async function createRootMapRenderer(
 		if (dragStart && Math.hypot(event.clientX - dragStart.x, event.clientY - dragStart.y) > 4) suppressClick = true
 		if (!interaction.hoverInspection) return
 		const hit = closestTarget(event)
-		hoveredId = hit?.node.key ?? null
+		hoveredId = hitKey(hit)
 		let hoverTarget: Parameters<MapRendererCallbacks['onHover']>[0] = null
 		if (hit?.kind === 'local') hoverTarget = { kind: 'local', body: hit.node.body }
+		else if (hit?.kind === 'ring') hoverTarget = { kind: 'local', body: ringSystemBody(hit) }
 		else if (hit?.kind === 'sky') hoverTarget = { kind: 'sky', source: hit.node.source }
 		callbacks.onHover(hoverTarget, hit?.position ?? null)
 		canvas.style.cursor = hit ? 'pointer' : ''
@@ -1208,7 +1275,7 @@ export async function createRootMapRenderer(
 	function handleClick(event: MouseEvent) {
 		if (suppressClick || !interaction.selectionInspection) return
 		const hit = closestTarget(event as PointerEvent)
-		callbacks.onSelect(hit?.node.key ?? null)
+		callbacks.onSelect(hitKey(hit))
 	}
 	function handleDoubleClick(event: MouseEvent) {
 		if (!interaction.objectNavigation) return

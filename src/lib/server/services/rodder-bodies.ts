@@ -1,8 +1,8 @@
 import { error } from '@sveltejs/kit'
-import { eq, sql } from 'drizzle-orm'
+import { and, eq, inArray, sql } from 'drizzle-orm'
 import type { z } from 'zod'
 import { db } from '$lib/server/db/index.js'
-import { rodderBodies } from '$lib/server/db/schema.js'
+import { mediaAssetBindings, rodderBodies } from '$lib/server/db/schema.js'
 import {
 	CREATE_SCHEMAS,
 	UPDATE_SCHEMAS,
@@ -10,6 +10,7 @@ import {
 	type createStarSchema,
 	type createPlanetaryBodySchema,
 } from '$lib/rodder/schema.js'
+import { emptyRingSystem } from '$lib/rodder/ring-system.js'
 import { validateParentKind, isRodderKind, type RodderKind } from '$lib/rodder/parent-rules.js'
 import { mergeSectorPosition, type SectorPositionMerge } from '$lib/rodder/sector-position.js'
 import {
@@ -23,7 +24,6 @@ import { rodderPresets, type BodyPreset } from '$lib/rodder/presets.js'
 import { urlSlugify } from '$lib/utils/slugify.js'
 import { RODDER_TREE_CTE, rodderCycleWouldForm } from '$lib/server/rodder/hierarchy.js'
 import {
-	deleteRodderEntity,
 	applyFieldUpdates,
 	applyNameUpdate,
 	applySlugUpdate,
@@ -31,7 +31,7 @@ import {
 	STAR_OVERRIDE_MAP,
 	BODY_OVERRIDE_MAP,
 } from '$lib/server/rodder/update-helpers.js'
-import { moveContentByDomainSlug } from '$lib/server/services/content-records.js'
+import { deleteContentByDomainSlug, moveContentByDomainSlug } from '$lib/server/services/content-records.js'
 import {
 	normalizeRodderMediaBindings,
 	replaceMediaBindingsForOwner,
@@ -72,11 +72,13 @@ export async function listRodder(options: { kind?: RodderKind, starSlug?: string
 			sr.position_provenance AS "sectorPositionProvenance",
 			sr.position_uncertainty AS "sectorPositionUncertainty",
 			(SELECT COUNT(*) FROM rodder_tree t WHERE t.root_id = cb.id AND t.kind = 'star')::int AS "starCount",
-			(SELECT COUNT(*) FROM rodder_tree t
-				WHERE t.kind = 'body'
+			(SELECT COUNT(*) FROM rodder_tree t JOIN rodder_bodies counted_body ON counted_body.id = t.id
+				WHERE t.kind = 'body' AND counted_body.body_type IS DISTINCT FROM 'ring_system'
 					AND CASE cb.kind WHEN 'star' THEN t.nearest_star_id = cb.id ELSE t.root_id = cb.id END
 			)::int AS "planetCount",
-			(SELECT COUNT(*) FROM rodder_bodies m WHERE m.parent_id = cb.id AND m.kind = 'body')::int AS "moonCount"
+			(SELECT COUNT(*) FROM rodder_bodies m
+				WHERE m.parent_id = cb.id AND m.kind = 'body' AND m.body_type IS DISTINCT FROM 'ring_system'
+			)::int AS "moonCount"
 		FROM rodder_bodies cb
 		JOIN rodder_tree tree ON tree.id = cb.id
 		LEFT JOIN rodder_bodies p ON p.id = cb.parent_id
@@ -107,11 +109,13 @@ export async function getRodderBySlug(slug: string) {
 			sr.position_provenance AS "sectorPositionProvenance",
 			sr.position_uncertainty AS "sectorPositionUncertainty",
 			(SELECT COUNT(*) FROM rodder_tree t WHERE t.root_id = cb.id AND t.kind = 'star')::int AS "starCount",
-			(SELECT COUNT(*) FROM rodder_tree t
-				WHERE t.kind = 'body'
+			(SELECT COUNT(*) FROM rodder_tree t JOIN rodder_bodies counted_body ON counted_body.id = t.id
+				WHERE t.kind = 'body' AND counted_body.body_type IS DISTINCT FROM 'ring_system'
 					AND CASE cb.kind WHEN 'star' THEN t.nearest_star_id = cb.id ELSE t.root_id = cb.id END
 			)::int AS "planetCount",
-			(SELECT COUNT(*) FROM rodder_bodies m WHERE m.parent_id = cb.id AND m.kind = 'body')::int AS "moonCount"
+			(SELECT COUNT(*) FROM rodder_bodies m
+				WHERE m.parent_id = cb.id AND m.kind = 'body' AND m.body_type IS DISTINCT FROM 'ring_system'
+			)::int AS "moonCount"
 		FROM rodder_bodies cb
 		JOIN rodder_tree tree ON tree.id = cb.id
 		LEFT JOIN rodder_bodies p ON p.id = cb.parent_id
@@ -225,6 +229,10 @@ async function createRodderIn(dbx: Dbx, kind: RodderKind, data: CreateRodderInpu
 	const position = mergeSectorPosition(null, body)
 	if (position.kind === 'invalid') throw error(400, position.message)
 
+	const bodyExtra = mergeOverrideExtras(body.extra, body as Record<string, unknown>, BODY_OVERRIDE_MAP)
+	if (body.bodyType === 'ring_system' && bodyExtra.ringSystem == null) {
+		bodyExtra.ringSystem = emptyRingSystem()
+	}
 	const created = await insertRow(dbx, {
 		...common,
 		parentId: body.parentId ?? null,
@@ -248,8 +256,7 @@ async function createRodderIn(dbx: Dbx, kind: RodderKind, data: CreateRodderInpu
 		apparentMagnitude: body.apparentMagnitude?.trim() || null,
 		angularDiameter: body.angularDiameter?.trim() || null,
 		satellites: body.satellites ?? null,
-		hasRings: body.hasRings ?? false,
-		extra: mergeOverrideExtras(body.extra, body as Record<string, unknown>, BODY_OVERRIDE_MAP),
+		extra: bodyExtra,
 	})
 	if (body.parentId == null) {
 		const sectorId = await resolveSectorId(dbx, body.sectorId)
@@ -343,7 +350,6 @@ function presetBodyInput(preset: BodyPreset, parentId: number, extra: Record<str
 		rotationPeriodS: preset.rotationPeriodS,
 		axialTilt: preset.axialTilt,
 		satellites: preset.satellites,
-		hasRings: preset.hasRings,
 		extra,
 	})
 }
@@ -425,7 +431,6 @@ export async function updateRodder(slug: string, raw: unknown) {
 				'eccentricity', 'inclination', 'longitudeAscendingNode', 'argumentOfPeriapsis',
 				'epochPhase', 'rotationPeriodS', 'axialTilt', 'parentId', 'satellites'])
 		if (data.bodyType !== undefined) setClause.bodyType = data.bodyType
-		if (data.hasRings !== undefined) setClause.hasRings = data.hasRings ?? false
 	}
 
 	if (data.extra !== undefined) setClause.extra = data.extra ?? {}
@@ -478,9 +483,31 @@ export async function updateRodder(slug: string, raw: unknown) {
 
 export async function deleteRodder(slug: string) {
 	const [current] = await db
-		.select({ kind: rodderBodies.kind })
+		.select({ id: rodderBodies.id, kind: rodderBodies.kind, slug: rodderBodies.slug })
 		.from(rodderBodies)
 		.where(eq(rodderBodies.slug, slug))
 	const label = current && isRodderKind(current.kind) ? KIND_LABEL[current.kind] : 'Rodder entity'
-	return deleteRodderEntity(rodderBodies, rodderBodies.slug, slug, label)
+	if (!current) throw error(404, `${label} not found`)
+
+	await db.transaction(async (tx) => {
+		// Ring systems are owned topology. Remove them with the parent instead of
+		// letting the generic self-FK turn them into invalid independent roots.
+		const ringChildren = await tx.select({ id: rodderBodies.id, slug: rodderBodies.slug })
+			.from(rodderBodies)
+			.where(and(
+				eq(rodderBodies.parentId, current.id),
+				eq(rodderBodies.bodyType, 'ring_system'),
+			))
+		const removedIds = [current.id, ...ringChildren.map(child => child.id)]
+		await tx.delete(rodderBodies).where(inArray(rodderBodies.id, removedIds))
+		await tx.delete(mediaAssetBindings).where(and(
+			eq(mediaAssetBindings.ownerType, 'rodder'),
+			inArray(mediaAssetBindings.ownerId, removedIds),
+		))
+		for (const removedSlug of [current.slug, ...ringChildren.map(child => child.slug)]) {
+			await deleteContentByDomainSlug(tx, 'rodder', removedSlug)
+		}
+	})
+
+	return { success: true as const }
 }

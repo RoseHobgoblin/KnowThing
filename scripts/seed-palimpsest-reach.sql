@@ -147,14 +147,14 @@ INSERT INTO rodder_bodies (
 	mass_kg, radius_m, temperature_k, composition, atmosphere, surface_pressure,
 	orbital_period_days, semi_major_axis_au, eccentricity, epoch_phase, inclination,
 	longitude_ascending_node, argument_of_periapsis, rotation_period_s, axial_tilt,
-	satellites, has_rings, extra
+	satellites, extra
 ) VALUES
 (
 	'body', 'Nacre', 'nacre', (SELECT id FROM rodder_bodies WHERE slug = 'orison'), 'planet',
 	'An old ocean world whose pale island arcs are built from the mineralized shells of successive biospheres. Its cities prize annotated ruins more than untouched ground.',
 	6.5694e24, 6.1800e6, 286, 'silicate mantle, iron core, carbonate-rich oceanic crust', 'N2 76%, O2 19%, H2O and Ar 5%', '0.94 bar',
 	231.4, 0.68, 0.034, 0.17, 1.8, 44.0, 112.0, 79200, 19.6,
-	2, false,
+	2,
 	'{"surface":{"version":5,"fallback":"procedural","class":"terrestrial","seed":11011,"coverage":{"surfaceWater":0.82,"vegetation":0.34,"permanentSnowIce":0.08},"maps":{}},"weather":{"version":1,"clouds":{"mode":"procedural","meanCover":0.64,"seed":11012}}}'::jsonb
 ),
 (
@@ -162,7 +162,7 @@ INSERT INTO rodder_bodies (
 	'Nacre’s larger moon. Long-lived storms arrive when its bright limb crosses Palinode’s seasonal path, so coastal almanacs treat moonrise as a weather verb.',
 	1.0153e23, 1.5200e6, 206, 'silicates, hydrated salts, iron-poor crust', 'trace argon and sodium', '<0.001 bar',
 	15.8, 0.00162, 0.021, 0.42, 6.2, 91.0, 8.0, 1365120, 3.1,
-	0, false,
+	0,
 	'{"surface":{"version":5,"fallback":"procedural","class":"ice","seed":11013,"coverage":{"surfaceWater":null,"vegetation":null,"permanentSnowIce":null},"maps":{}},"weather":{"version":1,"clouds":{"mode":"none","meanCover":null,"seed":null}}}'::jsonb
 ),
 (
@@ -170,7 +170,7 @@ INSERT INTO rodder_bodies (
 	'A dark captured moon in a steep retrograde orbit. Noon eclipses cast an ash-grey moving spot across Nacre’s equatorial seas.',
 	8.1000e20, 2.9500e5, 174, 'carbonaceous chondrite and water ice', NULL, NULL,
 	41.3, 0.00335, 0.19, 0.81, 143.0, 17.0, 204.0, 3568320, 11.0,
-	0, false,
+	0,
 	'{"surface":{"version":5,"fallback":"procedural","class":"rocky","seed":11014,"coverage":{"surfaceWater":0,"vegetation":0,"permanentSnowIce":0.12},"maps":{}}}'::jsonb
 ),
 (
@@ -178,7 +178,7 @@ INSERT INTO rodder_bodies (
 	'A broad resonant belt rather than a single object. Its carbon-black members erase background stars in dense, sharply bounded occultation bands.',
 	3.9000e21, 4.8000e5, 168, 'carbonaceous and metallic asteroids', NULL, NULL,
 	821.0, 1.58, 0.12, 0.63, 4.7, 155.0, 73.0, 35280, 8.0,
-	0, false,
+	0,
 	'{"surface":{"version":5,"fallback":"procedural","class":"rocky","seed":11015,"coverage":{"surfaceWater":0,"vegetation":0,"permanentSnowIce":0},"maps":{}}}'::jsonb
 ),
 (
@@ -186,7 +186,7 @@ INSERT INTO rodder_bodies (
 	'A muted blue gas giant. Fine ice falls through its upper haze in a continuous “dry rain” that gave the planet its name.',
 	1.3666e27, 6.4200e7, 132, 'hydrogen, helium, methane and deep water-ammonia layers', 'H2 84%, He 14%, CH4 2%', 'not applicable (gas giant)',
 	2580, 3.40, 0.047, 0.28, 2.6, 11.0, 301.0, 38880, 26.0,
-	1, true,
+	1,
 	'{"surface":{"version":5,"fallback":"procedural","class":"gas","seed":11016,"coverage":{"surfaceWater":null,"vegetation":null,"permanentSnowIce":null},"maps":{}},"weather":{"version":1,"clouds":{"mode":"procedural","meanCover":0.92,"seed":11017}}}'::jsonb
 ),
 (
@@ -194,7 +194,7 @@ INSERT INTO rodder_bodies (
 	'A smooth ice moon with a deep conductive ocean. Its nearly featureless hemisphere was once used as a projection screen by orbital monasteries.',
 	4.8000e22, 1.3900e6, 96, 'water ice, ammonia brine, silicate core', 'trace water vapour', 'negligible',
 	6.4, 0.00073, 0.006, 0.12, 0.4, 61.0, 9.0, 552960, 0.7,
-	0, false,
+	0,
 	'{"surface":{"version":5,"fallback":"procedural","class":"ice","seed":11018,"coverage":{"surfaceWater":null,"vegetation":null,"permanentSnowIce":null},"maps":{}}}'::jsonb
 ),
 (
@@ -202,7 +202,7 @@ INSERT INTO rodder_bodies (
 	'Serein’s broad, charcoal-and-ice ring system. Shepherd fragments carve temporary script-like gaps that observers name and catalogue before they disappear.',
 	NULL, NULL, 88, 'water ice, carbonaceous dust, shepherd fragments', NULL, NULL,
 	0.61, 0.00016, 0.012, 0.36, 0.2, 12.0, 77.0, NULL, NULL,
-	0, false,
+	0,
 	'{}'::jsonb
 ),
 (
@@ -210,7 +210,7 @@ INSERT INTO rodder_bodies (
 	'A high-gravity desert world tiled with amber impact glass. Dawn winds make the youngest glass fields resonate like distant bells.',
 	1.0750e25, 7.5200e6, 318, 'iron-rich silicates and extensive fused-glass plains', 'N2 62%, CO2 31%, Ar 7%', '1.8 bar',
 	524.0, 1.34, 0.061, 0.71, 3.2, 202.0, 144.0, 112320, 7.0,
-	0, false,
+	0,
 	'{"surface":{"version":5,"fallback":"procedural","class":"rocky","seed":22011,"coverage":{"surfaceWater":0.01,"vegetation":0,"permanentSnowIce":0},"maps":{}},"weather":{"version":1,"clouds":{"mode":"procedural","meanCover":0.13,"seed":22012}}}'::jsonb
 ),
 (
@@ -218,7 +218,7 @@ INSERT INTO rodder_bodies (
 	'A cream-and-cobalt gas giant surrounded by derelict solar-weather stations. Several still broadcast precise but obsolete storm warnings.',
 	2.2207e27, 7.3400e7, 149, 'hydrogen and helium with water-ammonia cloud decks', 'H2 88%, He 11%, trace NH3 and H2O', 'not applicable (gas giant)',
 	3560, 4.82, 0.083, 0.08, 1.1, 32.0, 219.0, 34200, 14.0,
-	1, false,
+	1,
 	'{"surface":{"version":5,"fallback":"procedural","class":"gas","seed":22013,"coverage":{"surfaceWater":null,"vegetation":null,"permanentSnowIce":null},"maps":{}},"weather":{"version":1,"clouds":{"mode":"procedural","meanCover":0.98,"seed":22014}}}'::jsonb
 ),
 (
@@ -226,7 +226,7 @@ INSERT INTO rodder_bodies (
 	'A volcanic moon where abandoned calibration mirrors flash in sequence as they cross the terminator—the last working proof that the heliograph network once agreed on anything.',
 	8.7000e22, 1.8600e6, 238, 'silicate rock, sulfur compounds, small iron core', 'SO2 and sodium traces', '0.003 bar',
 	4.9, 0.00059, 0.009, 0.57, 0.8, 118.0, 43.0, 423360, 0.2,
-	0, false,
+	0,
 	'{"surface":{"version":5,"fallback":"procedural","class":"rocky","seed":22015,"coverage":{"surfaceWater":0,"vegetation":0,"permanentSnowIce":0},"maps":{}}}'::jsonb
 ),
 (
@@ -234,7 +234,7 @@ INSERT INTO rodder_bodies (
 	'A stripped iron-rich world already enduring Vey’s expansion. Its surviving settlements migrate through old polar boreholes to stay behind the thermal terminator.',
 	2.8700e24, 4.1200e6, 812, 'iron-nickel core with a thin refractory mantle', 'Na, O2 and vaporized silicates', '<0.01 bar',
 	52.7, 0.32, 0.093, 0.22, 5.4, 241.0, 17.0, 4553280, 0.4,
-	0, false,
+	0,
 	'{"surface":{"version":5,"fallback":"procedural","class":"rocky","seed":33011,"coverage":{"surfaceWater":0,"vegetation":0,"permanentSnowIce":0},"maps":{}}}'::jsonb
 ),
 (
@@ -242,7 +242,7 @@ INSERT INTO rodder_bodies (
 	'A massive ringed giant far enough from Vey to have survived its brightening so far. Its magnetotail forges a visible auroral wake across the orbit of Temper.',
 	3.0368e27, 7.8500e7, 214, 'hydrogen, helium and a heavy-element enriched core', 'H2 82%, He 16%, trace metal hydrides', 'not applicable (gas giant)',
 	4730, 6.70, 0.071, 0.49, 8.8, 63.0, 188.0, 36720, 31.0,
-	1, true,
+	1,
 	'{"surface":{"version":5,"fallback":"procedural","class":"gas","seed":33012,"coverage":{"surfaceWater":null,"vegetation":null,"permanentSnowIce":null},"maps":{}},"weather":{"version":1,"clouds":{"mode":"procedural","meanCover":0.87,"seed":33013}}}'::jsonb
 ),
 (
@@ -250,7 +250,7 @@ INSERT INTO rodder_bodies (
 	'A dense basaltic moon threaded with conductive ore. Anvilwake’s magnetosphere heats its fault network and lights violet aurorae even on the dayside.',
 	6.2000e23, 2.8800e6, 284, 'basalt, iron sulfides and a partially molten mantle', 'SO2, CO2 and sulfur aerosols', '0.18 bar',
 	9.7, 0.00108, 0.018, 0.69, 1.9, 277.0, 95.0, 838080, 1.2,
-	0, false,
+	0,
 	'{"surface":{"version":5,"fallback":"procedural","class":"rocky","seed":33014,"coverage":{"surfaceWater":0,"vegetation":0,"permanentSnowIce":0},"maps":{}},"weather":{"version":1,"clouds":{"mode":"procedural","meanCover":0.22,"seed":33015}}}'::jsonb
 ),
 (
@@ -258,7 +258,7 @@ INSERT INTO rodder_bodies (
 	'A circumbinary ocean world under two red suns. Black photosynthetic rafts gather along pressure ridges and sink for months when the suns eclipse one another.',
 	7.2861e24, 6.9100e6, 274, 'silicate core, deep global ocean, high-pressure ice mantle', 'N2 71%, CO2 18%, CH4 6%, H2O 5%', '2.7 bar',
 	304.0, 0.91, 0.026, 0.34, 0.7, 13.0, 251.0, 104400, 23.0,
-	1, false,
+	1,
 	'{"surface":{"version":5,"fallback":"procedural","class":"terrestrial","seed":44011,"coverage":{"surfaceWater":0.96,"vegetation":0.41,"permanentSnowIce":0.19},"maps":{}},"weather":{"version":1,"clouds":{"mode":"procedural","meanCover":0.79,"seed":44012}}}'::jsonb
 ),
 (
@@ -266,7 +266,7 @@ INSERT INTO rodder_bodies (
 	'A large grey moon whose tides organize Threnody’s floating ecologies into planet-spanning migration bands.',
 	2.9000e23, 2.4100e6, 167, 'silicate rock and water ice', 'trace nitrogen', 'negligible',
 	23.6, 0.00214, 0.014, 0.91, 4.3, 82.0, 11.0, 2039040, 5.0,
-	0, false,
+	0,
 	'{"surface":{"version":5,"fallback":"procedural","class":"ice","seed":44013,"coverage":{"surfaceWater":null,"vegetation":null,"permanentSnowIce":null},"maps":{}}}'::jsonb
 ),
 (
@@ -274,7 +274,7 @@ INSERT INTO rodder_bodies (
 	'A dusty circumbinary belt beyond Threnody. Its ice-rich fragments briefly brighten when the binary’s combined wind turns their tails toward the inner system.',
 	8.0000e21, 6.2000e5, 58, 'water ice, silicates and complex organics', NULL, NULL,
 	2280, 3.48, 0.17, 0.14, 12.0, 333.0, 67.0, 64800, 16.0,
-	0, false,
+	0,
 	'{"surface":{"version":5,"fallback":"procedural","class":"ice","seed":44014,"coverage":{"surfaceWater":null,"vegetation":null,"permanentSnowIce":null},"maps":{}}}'::jsonb
 ),
 (
@@ -282,7 +282,7 @@ INSERT INTO rodder_bodies (
 	'A disintegrating metallic remnant grazing the white dwarf. Its debris makes the thin, inclined line that gave Needle’s Rest its name.',
 	6.4000e20, 2.1000e5, 1040, 'iron, nickel and refractory ceramics', 'metal vapour tail', 'negligible',
 	0.61, 0.012, 0.11, 0.66, 71.0, 49.0, 208.0, 52704, 2.0,
-	0, false,
+	0,
 	'{"surface":{"version":5,"fallback":"procedural","class":"rocky","seed":55011,"coverage":{"surfaceWater":0,"vegetation":0,"permanentSnowIce":0},"maps":{}}}'::jsonb
 ),
 (
@@ -290,7 +290,7 @@ INSERT INTO rodder_bodies (
 	'A cold, iron-heavy survivor on a surprisingly circular orbit. Deep radar shows kilometer-scale voids arranged too regularly to be confidently geological.',
 	4.6000e24, 5.2800e6, 121, 'iron-rich mantle, silicate crust and subsurface volatiles', 'trace neon and argon', '<0.001 bar',
 	126.0, 0.42, 0.008, 0.05, 22.0, 167.0, 309.0, 92880, 74.0,
-	0, false,
+	0,
 	'{"surface":{"version":5,"fallback":"procedural","class":"rocky","seed":55012,"coverage":{"surfaceWater":0,"vegetation":0,"permanentSnowIce":0.31},"maps":{}}}'::jsonb
 );
 

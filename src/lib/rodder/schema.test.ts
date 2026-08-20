@@ -46,6 +46,20 @@ describe('planetary body schema', () => {
 		expect(result.success).toBe(false)
 	})
 
+	it('validates a ring-system facet and rejects it on ordinary bodies', () => {
+		const ringSystem = {
+			schemaVersion: 1 as const,
+			plane: 'parent-equatorial' as const,
+			bands: [{ innerRadiusM: 70_000_000, outerRadiusM: 90_000_000, provenance: 'authored' as const }],
+		}
+		expect(createPlanetaryBodySchema.safeParse({
+			name: 'Rings', slug: 'rings', parentId: 1, bodyType: 'ring_system', extra: { ringSystem },
+		}).success).toBe(true)
+		expect(createPlanetaryBodySchema.safeParse({
+			name: 'World', slug: 'world', parentId: 1, bodyType: 'planet', extra: { ringSystem },
+		}).success).toBe(false)
+	})
+
 	it('rejects eccentricity of 1 (unbound orbit)', () => {
 		expect(createPlanetaryBodySchema.safeParse({ name: 'X', slug: 'x', parentId: 1, eccentricity: 1 }).success).toBe(false)
 	})

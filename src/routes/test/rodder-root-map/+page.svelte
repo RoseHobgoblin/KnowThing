@@ -63,7 +63,17 @@
 			semiMajorAxisAu: 5.4, eccentricity: 0.19, inclination: 39,
 			longitudeAscendingNode: 205, argumentOfPeriapsis: 124, orbitalPeriodDays: 4_580,
 			epochPhase: 0.66, effectivePeriodSource: 'stored', radiusM: 62_000_000,
-			rotationPeriodS: 38_000, axialTilt: 19, color: 'pale yellow', hasRings: true,
+			rotationPeriodS: 38_000, axialTilt: 19, color: 'pale yellow',
+			ringSystems: [{
+				id: 130, name: 'Brontes ring system', slug: 'brontes-rings',
+				ringSystem: {
+					schemaVersion: 1, plane: 'parent-equatorial', origin: 'tidal-disruption',
+					bands: [
+						{ name: 'Broad band', innerRadiusM: 82_000_000, outerRadiusM: 104_000_000, color: '#d8c79a', opacity: 0.3, provenance: 'authored' },
+						{ name: 'Narrow band', innerRadiusM: 112_000_000, outerRadiusM: 118_000_000, color: '#eee1bb', opacity: 0.48, provenance: 'authored' },
+					],
+				},
+			}],
 		},
 		{
 			id: 14, name: 'Far Lantern', slug: 'far-lantern', bodyType: 'dwarf planet', starId: 1,
@@ -109,11 +119,12 @@
 		...stars.map(star => `star:${star.id}` as const),
 		...bodies.map(body => `body:${body.id}` as const),
 	])
+	const ringSystemKeys = bodies.flatMap(body => body.ringSystems?.map(system => `body:${system.id}` as const) ?? [])
 	const linkedViewState = $derived(rootViewStateFor(
 		$page.url.searchParams.get(RODDER_VIEW_QUERY_PARAM),
 		'aurelia-fixture',
 		{
-			selected: new Set<RootSelectionKey>([...entityKeys, ...apparentSky.sources.map(source => source.key)]),
+			selected: new Set<RootSelectionKey>([...entityKeys, ...ringSystemKeys, ...apparentSky.sources.map(source => source.key)]),
 			focus: entityKeys,
 		},
 	))

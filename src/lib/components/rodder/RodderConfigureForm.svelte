@@ -15,6 +15,7 @@
 	import SaveStatusBadge from '$lib/components/editor/SaveStatusBadge.svelte'
 	import FormNotice from '$lib/components/editor/FormNotice.svelte'
 	import RodderSurfacePreview from '$lib/components/rodder/RodderSurfacePreview.svelte'
+	import RingSystemEditor from '$lib/components/rodder/RingSystemEditor.svelte'
 	import MediaAssetPicker from '$lib/components/media/MediaAssetPicker.svelte'
 	import { rodderConfigureBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
@@ -151,11 +152,15 @@
 		}
 	})
 
-	const tabs = config.sections.map(section => ({ id: section.id, label: section.label }))
+	const availableSections = $derived(config.sections.filter(section => !section.visible || section.visible(ctx)))
+	const tabs = $derived(availableSections.map(section => ({ id: section.id, label: section.label })))
 	let activeTab = $state(config.sections[0].id)
+	const displayedActiveTab = $derived(availableSections.some(section => section.id === activeTab)
+		? activeTab
+		: (availableSections[0]?.id ?? config.sections[0].id))
 	const visibleSections = $derived(config.useTabs
-		? config.sections.filter(section => section.id === activeTab)
-		: config.sections)
+		? availableSections.filter(section => section.id === displayedActiveTab)
+		: availableSections)
 
 	// Preset select docked beside the tabs — applying is immediate on pick.
 	const presetItems = config.presets
@@ -174,7 +179,7 @@
 
 	const preview = $derived(config.preview ? config.preview(ctx) : null)
 	const surfacePreviewBody = $derived.by<MapBody | null>(() => {
-		if (kind !== 'body') return null
+		if (kind !== 'body' || draft.bodyType === 'ring_system') return null
 		const { starId, systemId } = parsePrimarySelection(typeof draft.starId === 'string' ? draft.starId : '')
 		return {
 			id: Number(initialRecord.id ?? 0),
@@ -212,7 +217,7 @@
 	let computedScope = $state<'tab' | 'all'>('tab')
 	const computedRows = $derived(
 		(config.computed ?? [])
-			.filter(row => !config.useTabs || computedScope === 'all' || row.tab == null || row.tab === activeTab)
+			.filter(row => !config.useTabs || computedScope === 'all' || row.tab == null || row.tab === displayedActiveTab)
 			.map(row => ({ label: row.label, value: row.compute(ctx) }))
 			.filter((row): row is { label: string, value: string } => row.value != null && row.value !== ''),
 	)
@@ -285,6 +290,7 @@
 </script>
 
 {#snippet fieldControl(spec: FieldSpec)}
+	{#if !spec.visible || spec.visible(ctx)}
 	{#if spec.control === 'name'}
 		<Input
 			label={labelOf(spec, ctx)}
@@ -340,7 +346,7 @@
 	{:else if spec.control === 'select'}
 		<Select label={labelOf(spec, ctx)} type="single" bind:value={draft[spec.key]} items={spec.options(ctx)} disabled={spec.disabled?.(ctx) ?? false} />
 	{:else if spec.control === 'checkbox'}
-		<Checkbox bind:value={draft[spec.key]} label={labelOf(spec, ctx)} />
+		<Checkbox bind:value={draft[spec.key]} label={labelOf(spec, ctx)} disabled={spec.disabled?.(ctx) ?? false} />
 	{:else if spec.control === 'media'}
 		<MediaAssetPicker
 			label={labelOf(spec, ctx)}
@@ -349,6 +355,8 @@
 			canUpload={permissions.canManageMedia}
 			bind:value={draft[spec.key]}
 		/>
+	{:else if spec.control === 'ring-system'}
+		<RingSystemEditor bind:value={draft[spec.key]} />
 	{:else if spec.control === 'lockable'}
 		<LockableDerivedField
 			label={labelOf(spec, ctx)}
@@ -360,6 +368,7 @@
 			placeholder={spec.placeholder}
 			hint={spec.hint}
 		/>
+	{/if}
 	{/if}
 {/snippet}
 
@@ -394,7 +403,12 @@
 		{#if config.useTabs || config.presets}
 			<div class="flex items-center justify-between gap-4">
 				{#if config.useTabs}
-					<TabNavigation navItems={tabs} bind:activeSectionId={activeTab} size="sm" />
+					<TabNavigation
+						navItems={tabs}
+						activeSectionId={displayedActiveTab}
+						onNavigationChange={id => activeTab = id}
+						size="sm"
+					/>
 				{:else}
 					<div></div>
 				{/if}

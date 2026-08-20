@@ -26,6 +26,7 @@ import { weatherRecipeFromDraft } from './weather-editor.js'
 import { parseStellarSurfaceRecipe } from './stellar-surface-model.js'
 import { stellarSurfaceRecipeFromDraft } from './stellar-surface-editor.js'
 import type { RodderMediaPurpose, MediaAssetBinding } from '$lib/media/asset-binding.js'
+import { emptyRingSystem, parseRingSystem, type RingSystem } from './ring-system.js'
 
 /**
  * Declarative field registry for the rodder configure forms.
@@ -67,6 +68,7 @@ interface FieldBase {
 	omitFromPayload?: boolean
 	disabled?: (ctx: FieldContext) => boolean
 	disabledReason?: string
+	visible?: (ctx: FieldContext) => boolean
 }
 
 export interface NameFieldSpec extends FieldBase { control: 'name', key: 'name', placeholder: string }
@@ -114,6 +116,11 @@ export interface MediaFieldSpec extends FieldBase {
 	purpose: RodderMediaPurpose
 	initial: (record: Record<string, any>) => MediaAssetBinding | null
 }
+export interface RingSystemFieldSpec extends FieldBase {
+	control: 'ring-system'
+	key: 'ringSystem'
+	initial: (record: Record<string, any>) => RingSystem
+}
 export interface LockableFieldSpec extends FieldBase {
 	control: 'lockable'
 	key: string
@@ -133,6 +140,7 @@ export type FieldSpec =
 	| SelectFieldSpec
 	| CheckboxFieldSpec
 	| MediaFieldSpec
+	| RingSystemFieldSpec
 	| LockableFieldSpec
 
 /** One row of the live "computed properties" side panel. Null values are hidden. */
@@ -152,7 +160,7 @@ export interface FormPreview {
 }
 
 export interface FieldGroup { cols: 1 | 2 | 3, fields: FieldSpec[] }
-export interface FormSection { id: string, label: string, intro?: string, groups: FieldGroup[] }
+export interface FormSection { id: string, label: string, intro?: string, groups: FieldGroup[], visible?: (ctx: FieldContext) => boolean }
 
 export interface PresetsConfig {
 	placeholder: string
@@ -247,6 +255,9 @@ export function buildDraft(config: RodderFormConfig, record: Record<string, any>
 			case 'media':
 				draft[spec.key] = spec.initial(record)
 				break
+			case 'ring-system':
+				draft[spec.key] = spec.initial(record)
+				break
 			case 'lockable': {
 				const value = 'extra' in spec.source
 					? extraString(spec.source.extra)
@@ -274,6 +285,8 @@ export function buildPayload(config: RodderFormConfig, ctx: FieldContext): Recor
 				break
 			case 'lockable':
 				payload[spec.key] = draft[lockFlagKey(spec.key)] ? draft[spec.key] : null
+				break
+			case 'ring-system':
 				break
 			default:
 				payload[spec.key] = draft[spec.key]
@@ -1138,6 +1151,18 @@ const bodyConfig: RodderFormConfig = {
 			],
 		},
 		{
+			id: 'rings', label: 'Rings',
+			intro: 'Ring bands are measured from the parent body\'s centre. Array order is radial order; gaps are the spaces between adjacent bands.',
+			visible: ctx => text(ctx, 'bodyType') === 'ring_system',
+			groups: [{
+				cols: 1,
+				fields: [{
+					control: 'ring-system', key: 'ringSystem', label: 'Ring system', omitFromPayload: true,
+					initial: record => parseRingSystem(record.extra?.ringSystem) ?? emptyRingSystem(),
+				}],
+			}],
+		},
+		{
 			id: 'orbit', label: 'Orbit',
 			intro: 'The orbital period is derived from the semi-major axis and the primary\'s mass — see the computed panel. Pin a custom period in the Overrides section below.',
 			groups: [{
@@ -1164,7 +1189,6 @@ const bodyConfig: RodderFormConfig = {
 				fields: [
 					{ control: 'text', key: 'apparentMagnitude', label: 'Apparent Magnitude', placeholder: '-3.86', hint: 'Brightness as seen from a reference point. Lower = brighter. Venus is about -4.6, full Moon is -12.7.' },
 					{ control: 'text', key: 'angularDiameter', label: 'Angular Diameter', placeholder: '3.5 arcsec', hint: 'Apparent size in the sky from a reference point. The Moon is ~31 arcminutes.' },
-					{ control: 'checkbox', key: 'hasRings', label: 'Has rings' },
 				],
 			}],
 		},
@@ -1178,7 +1202,13 @@ const bodyConfig: RodderFormConfig = {
 			: {}
 		const surface = surfaceRecipeFromDraft(ctx.draft)
 		const weather = weatherRecipeFromDraft(ctx.draft)
-		const common: Record<string, unknown> = { extra: { ...currentExtra, surface, weather } }
+		const nextExtra: Record<string, unknown> = { ...currentExtra, surface, weather }
+		if (text(ctx, 'bodyType') === 'ring_system') {
+			nextExtra.ringSystem = ctx.draft.ringSystem ?? emptyRingSystem()
+		} else {
+			delete nextExtra.ringSystem
+		}
+		const common: Record<string, unknown> = { extra: nextExtra }
 		const parentId = text(ctx, 'parentId')
 		if (parentId) return { parentId: Number(parentId), ...common }
 		const { starId, systemId } = bodyPrimarySelection(ctx)
@@ -1249,11 +1279,9 @@ const bodyConfig: RodderFormConfig = {
 	],
 	preview: (ctx) => {
 		const bodyType = text(ctx, 'bodyType') || 'planet'
-		const subtitleParts = [bodyType.replace('_', ' ')]
-		if (ctx.draft.hasRings) subtitleParts.push('ringed')
 		return {
 			title: text(ctx, 'name') || 'New body',
-			subtitle: subtitleParts.join(' · '),
+			subtitle: bodyType.replace('_', ' '),
 			color: null,
 		}
 	},
@@ -1277,7 +1305,6 @@ const bodyConfig: RodderFormConfig = {
 				inclination: preset.inclination,
 				rotationPeriodS: preset.rotationPeriodS,
 				axialTilt: preset.axialTilt,
-				hasRings: preset.hasRings,
 			}
 		},
 	},

@@ -25,6 +25,7 @@ describe('body visual selection', () => {
 		})
 		const original = visual.mesh.scale.clone()
 		const marker = visual.anchor.getObjectByName('overview-marker') as Sprite
+		expect(visual.ringMeshes).toHaveLength(0)
 		visual.setVisibility('enhanced', 1)
 		expect((marker.material as SpriteMaterial).opacity).toBeGreaterThan(0)
 		expect((marker.material as SpriteMaterial).depthTest).toBe(true)
@@ -73,6 +74,46 @@ describe('body visual selection', () => {
 		expect(visual.mesh.visible).toBe(false)
 		expect((marker.material as SpriteMaterial).opacity).toBeGreaterThan(0)
 		expect(visual.mesh.scale.equals(physicalScale)).toBe(true)
+
+		visual.dispose()
+		sphereGeometry.dispose()
+		markerTexture.dispose()
+		selectionTexture.dispose()
+	})
+
+	it('renders authored bands at physical radii with individual appearance and provenance', () => {
+		const sphereGeometry = new SphereGeometry(1, 8, 6)
+		const markerTexture = new Texture()
+		const selectionTexture = new Texture()
+		const visual = createBodyVisual({
+			body: {
+				id: 3, name: 'Ringed world', slug: 'ringed-world', bodyType: 'planet', radiusM: 10_000_000,
+				ringSystems: [{
+					id: 30, name: 'Main rings', slug: 'main-rings',
+					ringSystem: {
+						schemaVersion: 1, plane: 'parent-equatorial',
+						bands: [
+							{ name: 'Broad', innerRadiusM: 13_000_000, outerRadiusM: 17_000_000, color: '#abcdef', opacity: 0.25, provenance: 'authored' },
+							{ name: 'Narrow', innerRadiusM: 19_000_000, outerRadiusM: 20_000_000, opacity: 0.6, provenance: 'imported' },
+						],
+					},
+				}],
+			},
+			isStar: false,
+			isSatellite: false,
+			sphereGeometry,
+			markerTexture,
+			selectionTexture,
+			selectionColor: '#FFE088',
+			worldUnitsPerAu: 100,
+		})
+		expect(visual.ringMeshes).toHaveLength(2)
+		expect(visual.ringMeshes[0].name).toBe('ring-band:30:0')
+		expect(visual.ringMeshes[0].userData).toMatchObject({ bandName: 'Broad', provenance: 'authored' })
+		expect(visual.ringMeshes[0].material.opacity).toBe(0.25)
+		expect(visual.ringMeshes[0].material.emissive.getHex()).toBe(0)
+		expect(visual.extent).toBeCloseTo(20_000_000 / 149_597_870_700 * 100)
+		expect(visual.anchor.userData.ringPresentation).toEqual({ status: 'authored', bandCount: 2 })
 
 		visual.dispose()
 		sphereGeometry.dispose()

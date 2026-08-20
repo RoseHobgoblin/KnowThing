@@ -4,7 +4,7 @@
 
 **Last updated:** 8 August 2026
 
-**Related documents:** [Atlas Architecture](../../architecture/Atlas-Architecture.md), [Celestial Sector and System Model](../../architecture/celestial/Celestial-Sector-and-System-Model.md), [Celestial Views, Authoring, and Wiki Embeds](../../architecture/celestial/Celestial-Views-Authoring-and-Wiki-Embeds.md), [Celestial Surface Models](../../architecture/celestial/Celestial-Surface-Models.md), [Celestial Data Provenance and Ingest](../../architecture/celestial/Celestial-Data-Provenance-and-Ingest.md), [Calendar and Celestial Boundaries](../../architecture/celestial/Celestial-Calendar-Integration.md)
+**Related documents:** [Atlas Architecture](../../architecture/Atlas-Architecture.md), [Celestial Sector and System Model](../../architecture/celestial/Celestial-Sector-and-System-Model.md), [Celestial Views, Authoring, and Wiki Embeds](../../architecture/celestial/Celestial-Views-Authoring-and-Wiki-Embeds.md), [Celestial Surface Models](../../architecture/celestial/Celestial-Surface-Models.md), [Celestial Data Provenance and Ingest](../../architecture/celestial/Celestial-Data-Provenance-and-Ingest.md), [Calendar and Celestial Boundaries](../../architecture/celestial/Celestial-Calendar-Integration.md), [AstroSynthesis 3 Ring-System Distillation](../../references/AstroSynthesis-3-Ring-Systems.md)
 
 > **Maturity:** The camera, visibility, surface-composition, texture-LOD, and starlight sections describe the current implementation. Time controls are partial; reference frames, scientific overlays, and focused-body detail remain design intent. Review this document when one of those remaining phases enters implementation. **Expires on contact with implementation.**
 
@@ -216,6 +216,8 @@ orbit anchor
 ```
 
 Future uploaded or generated equirectangular maps can replace a material's color, normal, roughness, emissive, cloud, or height inputs without changing orbital placement, selection, or camera logic. Color textures use sRGB; scientific data maps remain linear. Atmosphere shells, cloud layers, and terrain displacement belong to focused-body levels of detail, not the system overview.
+
+The legacy fallback annulus and its boolean data have been removed. Rings now follow the [AstroSynthesis 3 ring-system distillation](../../references/AstroSynthesis-3-Ring-Systems.md): explicit parented ring-system identity, authored inner and outer extents, and multiple bands.
 
 ## Proposed Architecture
 

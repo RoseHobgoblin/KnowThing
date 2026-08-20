@@ -128,6 +128,7 @@
 	}
 
 	function surfaceDescription(body: MapBody): string | null {
+		if (body.bodyType === 'ring_system') return null
 		return body.isStar
 			? describeStellarSurfacePlan(composeStellarSurfacePlan(body, body.stellarSurface))
 			: describeSurfacePlan(composeSurfacePlan(body, body.surface))

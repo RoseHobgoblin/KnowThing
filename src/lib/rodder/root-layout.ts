@@ -16,6 +16,7 @@ import type { ScaleMode } from './map-settings.js'
 import type { SurfaceRecipe } from './surface-model.js'
 import type { StellarSurfaceRecipe } from './stellar-surface-model.js'
 import type { WeatherRecipe } from './weather-model.js'
+import type { RingSystemProjection } from './ring-system.js'
 
 export interface MapBody {
 	id: number
@@ -50,7 +51,8 @@ export interface MapBody {
 	luminosityW?: number | null
 	composition?: string | null
 	atmosphere?: string | null
-	hasRings?: boolean | null
+	/** Explicit child ring systems folded onto their physical parent for rendering. */
+	ringSystems?: RingSystemProjection[]
 	/** Renderer-only resolved host-star display temperature; never persisted. */
 	hostStarTemperatureK?: number | null
 	/** Versioned material recipe stored in the entity's extra JSONB. */
@@ -568,6 +570,10 @@ export function resolveSimpleBinary(stars: MapBody[]): ResolvedBinary | null {
 }
 
 export function buildLayout(stars: MapBody[], bodies: MapBody[], scale: ScaleMode): RootLayout {
+	// Ring-system records are annular child topology. Keep this guard at the
+	// renderer boundary as well as in the server projection so malformed or
+	// hand-built fixtures can never turn them into spherical moons.
+	bodies = bodies.filter(body => body.bodyType !== 'ring_system')
 	const rootBody = bodies.find(body => body.isRoot) ?? null
 	const resolvedBinary = resolveSimpleBinary(stars)
 	const hasStellarOrbitShape = stars.some(star => star.parentStarId != null || star.parentSystemId != null)

@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { RODDER_KINDS } from './parent-rules.js'
+import { ringSystemSchema } from './ring-system.js'
 
 const nullableUnitIntervalSchema = z.number().min(0).max(1).nullish()
 // Bound orbits have 0 ≤ e < 1. e ≥ 1 is a parabolic/hyperbolic escape trajectory,
@@ -10,11 +11,15 @@ const nullableEccentricitySchema = z.number().min(0).lt(1).nullish()
 // into the `extra` JSONB so the "lock to override" UI actually sticks.
 const overrideString = z.string().nullish()
 
+export const rodderExtraSchema = z.object({
+	ringSystem: ringSystemSchema.optional(),
+}).catchall(z.unknown())
+
 /** Fields shared by every rodder kind. */
 const coreSchema = z.object({
 	name: z.string().min(1),
 	slug: z.string().min(1),
-	extra: z.record(z.string(), z.unknown()).optional(),
+	extra: rodderExtraSchema.optional(),
 	description: z.string().optional(),
 })
 
@@ -117,7 +122,6 @@ const planetaryBodySchema = coreSchema.extend(orbiterSchema.shape).extend({
 	argumentOfPeriapsis: z.number().nullish(),
 
 	satellites: z.number().int().min(0).nullish(),
-	hasRings: z.boolean().optional(),
 })
 
 function validatePlanetaryBodyCreate(data: Partial<z.infer<typeof planetaryBodySchema>>, ctx: z.RefinementCtx) {
@@ -127,6 +131,9 @@ function validatePlanetaryBodyCreate(data: Partial<z.infer<typeof planetaryBodyS
 	if (data.parentId == null && starHasOrbitalData(data)) {
 		ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['parentId'], message: 'Unbound sector roots cannot carry parent-relative orbital data' })
 	}
+	if (data.bodyType !== 'ring_system' && data.extra?.ringSystem != null) {
+		ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['extra', 'ringSystem'], message: 'Only ring-system bodies may carry a ring-system facet' })
+	}
 }
 
 // Presence-aware update validation — the service merges with the current row and
@@ -134,6 +141,9 @@ function validatePlanetaryBodyCreate(data: Partial<z.infer<typeof planetaryBodyS
 function validatePlanetaryBodyUpdate(data: Partial<z.infer<typeof planetaryBodySchema>>, ctx: z.RefinementCtx) {
 	if ('parentId' in data && data.parentId == null && data.bodyType === 'ring_system') {
 		ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['parentId'], message: 'Ring systems must orbit a parent body' })
+	}
+	if (data.bodyType != null && data.bodyType !== 'ring_system' && data.extra?.ringSystem != null) {
+		ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['extra', 'ringSystem'], message: 'Only ring-system bodies may carry a ring-system facet' })
 	}
 }
 

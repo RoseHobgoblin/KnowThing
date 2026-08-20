@@ -158,7 +158,6 @@ describe('collision-aware orbit lanes', () => {
 			starId: 1,
 			semiMajorAxisAu: 0.2 + index * 0.055,
 			radiusM: index % 3 === 0 ? 69_900_000 : 6_371_000,
-			hasRings: index % 4 === 0,
 		}))
 		for (const mode of ['log', 'proportional', 'compact', 'inner'] as const) {
 			const layout = buildLayout([star({ id: 1, radiusM: 695_700_000 })], denseBodies, mode)
@@ -648,5 +647,26 @@ describe('buildScene', () => {
 		expect(scene.cameraOffset).toEqual({ x: 0, y: 0 })
 		expect(scene.selectionFamily.size).toBe(0)
 		expect(scene.directPositions).toHaveLength(2)
+	})
+
+	it('never sends ring-system records through body or satellite sphere topology', () => {
+		const ringRecord = body({
+			id: 13,
+			name: 'Outer rings',
+			slug: 'outer-rings',
+			bodyType: 'ring_system',
+			parentId: 11,
+			semiMajorAxisAu: 0.001,
+		})
+		const scene = buildScene({
+			stars: [soleStar],
+			bodies: [outerPlanet, ringRecord],
+			scale: 'log',
+			selectedId: null,
+			follow: false,
+		})
+		expect(scene.directPositions.map(position => position.body.id)).not.toContain(13)
+		expect(scene.satellitePositions.map(position => position.body.id)).not.toContain(13)
+		expect(scene.hitTargets.map(target => target.id)).not.toContain('body:13')
 	})
 })
