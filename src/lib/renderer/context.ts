@@ -2,7 +2,7 @@ import { getContext, setContext } from 'svelte'
 import { writable, type Writable } from 'svelte/store'
 import type { TemplateArg, WikiNode } from '$lib/parser/types.js'
 import type { CalendarConfig, ResolvedDate } from 'rimecraft'
-import type { RodderEntityDocument, RodderSectorDocument } from '$lib/rodder/consumer-contract.js'
+import type { RodderEntityDocument, RodderSectorDocument } from '$lib/feature/rodder/consumer-contract.js'
 
 const KNOW_CONTEXT_KEY = 'know-render-context'
 

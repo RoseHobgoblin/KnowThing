@@ -1,18 +1,18 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte'
 	import { page } from '$app/stores'
-	import MapControls from '$lib/rodder/MapControls.svelte'
-	import RootMap from '$lib/rodder/RootMap.svelte'
-	import CopyViewLink from '$lib/rodder/CopyViewLink.svelte'
-	import { DEFAULT_MAP_SETTINGS } from '$lib/rodder/map-settings.js'
-	import type { EntityKey, MapBody } from '$lib/rodder/root-layout.js'
-	import { buildApparentSky, type RootSelectionKey } from '$lib/rodder/apparent-sky.js'
+	import MapControls from '$lib/feature/rodder/MapControls.svelte'
+	import RootMap from '$lib/feature/rodder/RootMap.svelte'
+	import CopyViewLink from '$lib/feature/rodder/CopyViewLink.svelte'
+	import { DEFAULT_MAP_SETTINGS } from '$lib/feature/rodder/map-settings.js'
+	import type { EntityKey, MapBody } from '$lib/feature/rodder/root-layout.js'
+	import { buildApparentSky, type RootSelectionKey } from '$lib/feature/rodder/apparent-sky.js'
 	import {
 		RODDER_VIEW_QUERY_PARAM,
 		rootViewStateFor,
 		type RootCameraState,
 		type RootViewState,
-	} from '$lib/rodder/view-state.js'
+	} from '$lib/feature/rodder/view-state.js'
 
 	const stars: MapBody[] = [{
 		id: 1, name: 'Aurelia', slug: 'aurelia', bodyType: 'star', massKg: 1.989e30,

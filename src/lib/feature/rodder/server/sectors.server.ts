@@ -2,14 +2,14 @@ import { error } from '@sveltejs/kit'
 import { asc, eq, sql } from 'drizzle-orm'
 import { db } from '$lib/server/db/index.js'
 import { rodderBodies, rodderSectorRoots, rodderSectors } from '$lib/server/db/schema.js'
-import { RODDER_TREE_CTE } from '$lib/server/rodder/hierarchy.js'
+import { RODDER_TREE_CTE } from '$lib/feature/rodder/server/hierarchy.server.js'
 import {
 	buildApparentSky,
 	type ApparentSkyMemberInput,
 	type ApparentSkyRootInput,
 	type ApparentSkyResult,
-} from '$lib/rodder/apparent-sky.js'
-import { createSectorSchema, updateSectorSchema, type CreateSectorInput } from '$lib/rodder/sector-schema.js'
+} from '$lib/feature/rodder/apparent-sky.js'
+import { createSectorSchema, updateSectorSchema, type CreateSectorInput } from '$lib/feature/rodder/sector-schema.js'
 
 /**
  * Sectors and sector roots (Rodder-Sector-and-System-Model.md).

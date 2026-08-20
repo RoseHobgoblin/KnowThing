@@ -3,7 +3,7 @@ import { z } from 'zod'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
 import { parseBody, handleServiceCall } from '$lib/server/utils.js'
-import { createRodderFromPreset } from '$lib/server/services/rodder-bodies.js'
+import { createRodderFromPreset } from '$lib/feature/rodder/server/bodies.server.js'
 
 const seedPresetSchema = z.object({ preset: z.string().min(1) })
 

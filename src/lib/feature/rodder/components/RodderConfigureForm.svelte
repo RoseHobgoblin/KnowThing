@@ -14,8 +14,8 @@
 	import UnsavedChangesGuard from '$lib/components/editor/UnsavedChangesGuard.svelte'
 	import SaveStatusBadge from '$lib/components/editor/SaveStatusBadge.svelte'
 	import FormNotice from '$lib/components/editor/FormNotice.svelte'
-	import RodderSurfacePreview from '$lib/components/rodder/RodderSurfacePreview.svelte'
-	import RingSystemEditor from '$lib/components/rodder/RingSystemEditor.svelte'
+	import RodderSurfacePreview from '$lib/feature/rodder/components/RodderSurfacePreview.svelte'
+	import RingSystemEditor from '$lib/feature/rodder/components/RingSystemEditor.svelte'
 	import MediaAssetPicker from '$lib/components/media/MediaAssetPicker.svelte'
 	import { rodderConfigureBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
@@ -44,13 +44,13 @@
 		type SystemReferenceOption,
 		type StarReferenceOption,
 		type BodyReferenceOption,
-	} from '$lib/rodder/form-registry.js'
-	import { surfaceRecipeFromDraft } from '$lib/rodder/surface-editor.js'
-	import { weatherRecipeFromDraft } from '$lib/rodder/weather-editor.js'
-	import { stellarSurfaceRecipeFromDraft } from '$lib/rodder/stellar-surface-editor.js'
-	import { resolveHostStarTemperatureK } from '$lib/rodder/stellar-surface-model.js'
-	import { spectralColor } from '$lib/rodder/colors.js'
-	import type { MapBody } from '$lib/rodder/root-layout.js'
+	} from '$lib/feature/rodder/form-registry.js'
+	import { surfaceRecipeFromDraft } from '$lib/feature/rodder/surface-editor.js'
+	import { weatherRecipeFromDraft } from '$lib/feature/rodder/weather-editor.js'
+	import { stellarSurfaceRecipeFromDraft } from '$lib/feature/rodder/stellar-surface-editor.js'
+	import { resolveHostStarTemperatureK } from '$lib/feature/rodder/stellar-surface-model.js'
+	import { spectralColor } from '$lib/feature/rodder/colors.js'
+	import type { MapBody } from '$lib/feature/rodder/root-layout.js'
 
 	type RodderCrumb = { label: string, href: string }
 

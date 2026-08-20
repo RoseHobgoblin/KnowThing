@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types.js'
-	import RodderDetailPage from '$lib/rodder/RodderDetailPage.svelte'
+	import RodderDetailPage from '$lib/feature/rodder/RodderDetailPage.svelte'
 	import CalendarDetail from '$lib/feature/calendar/components/CalendarDetail.svelte'
 	import CalendarConfigure from '$lib/feature/calendar/components/CalendarConfigure.svelte'
 

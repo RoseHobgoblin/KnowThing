@@ -4,22 +4,22 @@
 	import type { TemplateArg } from '$lib/parser/types.js'
 	import { positionalArg } from '../args.js'
 	import { getKnowContext } from '$lib/renderer/context.js'
-	import RootMapView from '$lib/rodder/RootMap.svelte'
-	import { resolveRootMapEmbedConfiguration } from '$lib/rodder/embed-config.js'
+	import RootMapView from '$lib/feature/rodder/RootMap.svelte'
+	import { resolveRootMapEmbedConfiguration } from '$lib/feature/rodder/embed-config.js'
 	import {
 		defaultRootCameraState,
 		rodderViewUrl,
 		type RootCameraState,
 		type RootViewState,
-	} from '$lib/rodder/view-state.js'
-	import type { RootSelectionKey } from '$lib/rodder/apparent-sky.js'
-	import type { EntityKey, MapBody } from '$lib/rodder/root-layout.js'
+	} from '$lib/feature/rodder/view-state.js'
+	import type { RootSelectionKey } from '$lib/feature/rodder/apparent-sky.js'
+	import type { EntityKey, MapBody } from '$lib/feature/rodder/root-layout.js'
 	import {
 		advanceEmbedDay,
 		EMBED_PLAYBACK_RATE_OPTIONS,
 		formatEmbedDay,
 		formatEmbedPlaybackRate,
-	} from '$lib/rodder/embed-clock.js'
+	} from '$lib/feature/rodder/embed-clock.js'
 
 	let { args }: { args: TemplateArg[] } = $props()
 

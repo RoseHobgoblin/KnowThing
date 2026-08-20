@@ -7,7 +7,7 @@
 		type RingBandProvenance,
 		type RingSystem,
 		type RingSystemOrigin,
-	} from '$lib/rodder/ring-system.js'
+	} from '$lib/feature/rodder/ring-system.js'
 
 	let { value = $bindable(emptyRingSystem()) }: { value?: RingSystem } = $props()
 

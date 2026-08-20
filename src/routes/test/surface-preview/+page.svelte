@@ -1,7 +1,7 @@
 <script lang="ts">
-	import RodderSurfacePreview from '$lib/components/rodder/RodderSurfacePreview.svelte'
+	import RodderSurfacePreview from '$lib/feature/rodder/components/RodderSurfacePreview.svelte'
 	import CoverageInput from '$lib/components/ui/CoverageInput.svelte'
-	import type { MapBody } from '$lib/rodder/root-layout.js'
+	import type { MapBody } from '$lib/feature/rodder/root-layout.js'
 
 	let surfaceWater = $state<number | null>(0.55)
 	let cloudCoverage = $state<number | null>(0.48)

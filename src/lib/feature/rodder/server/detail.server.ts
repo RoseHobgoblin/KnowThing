@@ -1,11 +1,11 @@
 import { error, redirect } from '@sveltejs/kit'
 import type { Cookies } from '@sveltejs/kit'
-import type { MapBody } from '$lib/rodder/root-layout.js'
+import type { MapBody } from '$lib/feature/rodder/root-layout.js'
 import { hasRole } from '$lib/server/auth.js'
-import { resolveRodderModel } from '$lib/server/services/rodder-models.js'
+import { resolveRodderModel } from '$lib/feature/rodder/server/models.server.js'
 import type { BodyModel, StarModel } from 'tungolcraft'
-import { resolveParentStarHz, type ParentStarHz } from '$lib/server/rodder/habitable-zone.js'
-import { findNearestStarAncestor } from '$lib/server/rodder/hierarchy.js'
+import { resolveParentStarHz, type ParentStarHz } from '$lib/feature/rodder/server/habitable-zone.server.js'
+import { findNearestStarAncestor } from '$lib/feature/rodder/server/hierarchy.server.js'
 import {
 	findRodderBySlugOrName,
 	getBacklinksForRodder,
@@ -14,12 +14,12 @@ import {
 	listAllStarReferences,
 	listAllSystemReferences,
 	listAllBodyReferences,
-} from '$lib/server/services/rodder-registry.js'
-import { getSectorContextForRoot, listSectorReferences, type SectorContext } from '$lib/server/services/rodder-sectors.js'
-import type { ApparentSkyResult } from '$lib/rodder/apparent-sky.js'
-import { buildApparentSky } from '$lib/rodder/apparent-sky.js'
-import type { RodderEntityDocument } from '$lib/rodder/consumer-contract.js'
-import { resolveRodderEntityDocument } from '$lib/server/services/rodder-documents.js'
+} from '$lib/feature/rodder/server/registry.server.js'
+import { getSectorContextForRoot, listSectorReferences, type SectorContext } from '$lib/feature/rodder/server/sectors.server.js'
+import type { ApparentSkyResult } from '$lib/feature/rodder/apparent-sky.js'
+import { buildApparentSky } from '$lib/feature/rodder/apparent-sky.js'
+import type { RodderEntityDocument } from '$lib/feature/rodder/consumer-contract.js'
+import { resolveRodderEntityDocument } from '$lib/feature/rodder/server/documents.server.js'
 
 export interface RodderDetailContext {
 	identifier: string

@@ -2,7 +2,7 @@ import { eq, sql } from 'drizzle-orm'
 import { deriveSystemType } from 'tungolcraft'
 import { db } from '$lib/server/db/index.js'
 import { rodderBodies, rodderSectorRoots, rodderSectors } from '$lib/server/db/schema.js'
-import { RODDER_TREE_CTE } from '$lib/server/rodder/hierarchy.js'
+import { RODDER_TREE_CTE } from '$lib/feature/rodder/server/hierarchy.server.js'
 import {
 	rodderEntityDocumentSchema,
 	rodderSectorDocumentSchema,
@@ -11,20 +11,20 @@ import {
 	type RodderKind,
 	type RodderResourceRef,
 	type RodderSectorDocument,
-} from '$lib/rodder/consumer-contract.js'
-import { sectorBoundsRadius } from '$lib/rodder/sector-view.js'
-import type { MapBody } from '$lib/rodder/root-layout.js'
+} from '$lib/feature/rodder/consumer-contract.js'
+import { sectorBoundsRadius } from '$lib/feature/rodder/sector-view.js'
+import type { MapBody } from '$lib/feature/rodder/root-layout.js'
 import {
 	parseRingSystem,
 	summarizeRingSystem,
-} from '$lib/rodder/ring-system.js'
-import { resolveRodderModel } from './rodder-models.js'
-import { getCalendarsForRoot, getRootMapEntities } from './rodder-registry.js'
+} from '$lib/feature/rodder/ring-system.js'
+import { resolveRodderModel } from './models.server.js'
+import { getCalendarsForRoot, getRootMapEntities } from './registry.server.js'
 import {
 	getApparentSkyForRoot,
 	getSectorBySlug,
 	type SectorContext,
-} from './rodder-sectors.js'
+} from './sectors.server.js'
 
 type RodderRow = typeof rodderBodies.$inferSelect
 

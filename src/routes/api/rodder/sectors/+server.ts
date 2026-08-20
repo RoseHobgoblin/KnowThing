@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { handleServiceCall } from '$lib/server/utils.js'
 import { requireRole } from '$lib/server/auth.js'
-import { createSector, listSectorsForRegistry } from '$lib/server/services/rodder-sectors.js'
+import { createSector, listSectorsForRegistry } from '$lib/feature/rodder/server/sectors.server.js'
 
 /** GET /api/rodder/sectors — list sectors with root counts and frame contracts. */
 export const GET: RequestHandler = async () => {

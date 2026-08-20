@@ -7,7 +7,7 @@
 	import Button from '$lib/components/ui/Button.svelte'
 	import Input from '$lib/components/ui/Input.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
-	import { rodderPresets, type RodderPreset } from '$lib/rodder/presets.js'
+	import { rodderPresets, type RodderPreset } from '$lib/feature/rodder/presets.js'
 	import { urlSlugify } from '$lib/utils/slugify.js'
 	import { cn } from '$lib/utils.js'
 	import { pushError, pushSuccess } from '$lib/notifications.svelte.js'

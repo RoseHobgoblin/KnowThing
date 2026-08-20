@@ -2,8 +2,8 @@ import { error } from '@sveltejs/kit'
 import { and, eq } from 'drizzle-orm'
 import { db } from '$lib/server/db/index.js'
 import { media, mediaAssetBindings, mediaVersions } from '$lib/server/db/schema.js'
-import { parseSurfaceRecipe, type SurfaceMapChannel } from '$lib/rodder/surface-model.js'
-import { parseStellarSurfaceRecipe } from '$lib/rodder/stellar-surface-model.js'
+import { parseSurfaceRecipe, type SurfaceMapChannel } from '$lib/feature/rodder/surface-model.js'
+import { parseStellarSurfaceRecipe } from '$lib/feature/rodder/stellar-surface-model.js'
 import {
 	assessMediaCompatibility,
 	parseMediaAssetBinding,

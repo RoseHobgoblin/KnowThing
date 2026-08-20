@@ -2,15 +2,15 @@ import { db } from './db/index.js'
 import { rodderBodies, phonemes, languages, languageDialects, lexicon, definitions, graphemes, graphemePhonemes } from './db/schema.js'
 import { eq, and, or, sql, asc, inArray } from 'drizzle-orm'
 import type { FieldMap } from '$lib/infoboxes/types.js'
-import type { MapBody } from '$lib/rodder/root-layout.js'
-import type { ApparentSkyResult } from '$lib/rodder/apparent-sky.js'
+import type { MapBody } from '$lib/feature/rodder/root-layout.js'
+import type { ApparentSkyResult } from '$lib/feature/rodder/apparent-sky.js'
 import {
 	deriveBody, deriveStar,
 	type BodyModel, type StarModel, type BodyRow, type StarRow,
 } from 'tungolcraft'
-import { rodderDocumentInfoboxFields } from '$lib/rodder/projections.js'
-import { RODDER_TREE_CTE, findNearestStarAncestor } from '$lib/server/rodder/hierarchy.js'
-import { resolveRodderEntityDocument } from '$lib/server/services/rodder-documents.js'
+import { rodderDocumentInfoboxFields } from '$lib/feature/rodder/projections.js'
+import { RODDER_TREE_CTE, findNearestStarAncestor } from '$lib/feature/rodder/server/hierarchy.server.js'
+import { resolveRodderEntityDocument } from '$lib/feature/rodder/server/documents.server.js'
 
 export interface RootMapData {
 	rootName: string

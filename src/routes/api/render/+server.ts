@@ -5,7 +5,7 @@ import { extractDomainLinksFromAst, extractLinksFromAst, extractRodderDisplayRef
 import { resolveLinkTargets, serializeResolvedLinks } from '$lib/server/resolved-links.js'
 import { wikiSlugify } from '$lib/utils/slugify.js'
 import { parseBody } from '$lib/server/utils.js'
-import { resolveRodderEntityDocuments, resolveRodderSectorDocuments } from '$lib/server/services/rodder-documents.js'
+import { resolveRodderEntityDocuments, resolveRodderSectorDocuments } from '$lib/feature/rodder/server/documents.server.js'
 
 const renderSchema = z.object({
 	// The only parser entry point open to anonymous callers, so it needs its own

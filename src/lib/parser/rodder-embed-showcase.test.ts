@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { decodeRodderViewState } from '$lib/rodder/view-state.js'
+import { decodeRodderViewState } from '$lib/feature/rodder/view-state.js'
 import {
 	extractRodderDisplayRefs as extractRodderDisplayReferences,
 	parseWikitext,

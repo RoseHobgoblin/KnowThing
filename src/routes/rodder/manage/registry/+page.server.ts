@@ -3,7 +3,7 @@ import {
 	listBodiesForRegistry,
 	listStarsForRegistry,
 	listSystemsForRegistry,
-} from '$lib/server/services/rodder-registry.js'
+} from '$lib/feature/rodder/server/registry.server.js'
 
 export const load: PageServerLoad = async () => {
 	const [systems, stars, bodies] = await Promise.all([

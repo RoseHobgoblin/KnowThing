@@ -9,20 +9,20 @@ import {
 	type createSystemSchema,
 	type createStarSchema,
 	type createPlanetaryBodySchema,
-} from '$lib/rodder/schema.js'
-import { emptyRingSystem } from '$lib/rodder/ring-system.js'
-import { validateParentKind, isRodderKind, type RodderKind } from '$lib/rodder/parent-rules.js'
-import { mergeSectorPosition, type SectorPositionMerge } from '$lib/rodder/sector-position.js'
+} from '$lib/feature/rodder/schema.js'
+import { emptyRingSystem } from '$lib/feature/rodder/ring-system.js'
+import { validateParentKind, isRodderKind, type RodderKind } from '$lib/feature/rodder/parent-rules.js'
+import { mergeSectorPosition, type SectorPositionMerge } from '$lib/feature/rodder/sector-position.js'
 import {
 	getSectorRootForBody,
 	moveSectorRoot,
 	removeSectorRoot,
 	resolveSectorId,
 	upsertSectorRoot,
-} from '$lib/server/services/rodder-sectors.js'
-import { rodderPresets, type BodyPreset } from '$lib/rodder/presets.js'
+} from '$lib/feature/rodder/server/sectors.server.js'
+import { rodderPresets, type BodyPreset } from '$lib/feature/rodder/presets.js'
 import { urlSlugify } from '$lib/utils/slugify.js'
-import { RODDER_TREE_CTE, rodderCycleWouldForm } from '$lib/server/rodder/hierarchy.js'
+import { RODDER_TREE_CTE, rodderCycleWouldForm } from '$lib/feature/rodder/server/hierarchy.server.js'
 import {
 	applyFieldUpdates,
 	applyNameUpdate,
@@ -30,7 +30,7 @@ import {
 	mergeOverrideExtras,
 	STAR_OVERRIDE_MAP,
 	BODY_OVERRIDE_MAP,
-} from '$lib/server/rodder/update-helpers.js'
+} from '$lib/feature/rodder/server/update-helpers.server.js'
 import { deleteContentByDomainSlug, moveContentByDomainSlug } from '$lib/server/services/content-records.js'
 import {
 	normalizeRodderMediaBindings,
@@ -39,7 +39,7 @@ import {
 import {
 	installPresetSurface,
 	prepareRodderPresetAssets,
-} from '$lib/server/services/rodder-preset-assets.js'
+} from '$lib/feature/rodder/server/preset-assets.server.js'
 
 type CreateSystemInput = z.infer<typeof createSystemSchema>
 type CreateStarInput = z.infer<typeof createStarSchema>

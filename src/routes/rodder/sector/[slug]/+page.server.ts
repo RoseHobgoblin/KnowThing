@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types.js'
 import { error, redirect } from '@sveltejs/kit'
-import { resolveRodderSectorDocument } from '$lib/server/services/rodder-documents.js'
+import { resolveRodderSectorDocument } from '$lib/feature/rodder/server/documents.server.js'
 
 /** Read-only sector view: one sector's frame contract and its roots. */
 export const load: PageServerLoad = async ({ params }) => {

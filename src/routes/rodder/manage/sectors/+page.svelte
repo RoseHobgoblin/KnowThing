@@ -8,7 +8,7 @@
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import Input from '$lib/components/ui/Input.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
-	import { createSectorSchema } from '$lib/rodder/sector-schema.js'
+	import { createSectorSchema } from '$lib/feature/rodder/sector-schema.js'
 	import { urlSlugify } from '$lib/utils/slugify.js'
 	import { cn } from '$lib/utils.js'
 	import { pushError, pushSuccess } from '$lib/notifications.svelte.js'

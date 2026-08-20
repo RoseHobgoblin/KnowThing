@@ -8,7 +8,7 @@
 	import { resolve } from '$app/paths'
 	import { cn } from '$lib/utils'
 	import { normalizePermissions } from '$lib/permissions.js'
-	import { spectralColor } from '$lib/rodder/colors.js'
+	import { spectralColor } from '$lib/feature/rodder/colors.js'
 	import {
 		enrichSystems,
 		filterSystems,
@@ -18,7 +18,7 @@
 		type AtlasSystem,
 		type AtlasStar,
 		type AtlasBody,
-	} from '$lib/rodder/atlas.js'
+	} from '$lib/feature/rodder/atlas.js'
 	import SunDim from 'phosphor-svelte/lib/SunDim'
 	import StarIcon from 'phosphor-svelte/lib/Star'
 	import Planet from 'phosphor-svelte/lib/Planet'

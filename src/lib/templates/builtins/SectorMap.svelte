@@ -4,10 +4,10 @@
 	import type { TemplateArg } from '$lib/parser/types.js'
 	import { positionalArg } from '../args.js'
 	import { getKnowContext } from '$lib/renderer/context.js'
-	import SectorMapView from '$lib/rodder/SectorMap.svelte'
-	import { resolveSectorMapEmbedConfiguration } from '$lib/rodder/embed-config.js'
-	import { rodderViewUrl, type SectorCameraState, type SectorViewState } from '$lib/rodder/view-state.js'
-	import type { SectorRootView } from '$lib/rodder/sector-view.js'
+	import SectorMapView from '$lib/feature/rodder/SectorMap.svelte'
+	import { resolveSectorMapEmbedConfiguration } from '$lib/feature/rodder/embed-config.js'
+	import { rodderViewUrl, type SectorCameraState, type SectorViewState } from '$lib/feature/rodder/view-state.js'
+	import type { SectorRootView } from '$lib/feature/rodder/sector-view.js'
 
 	let { args }: { args: TemplateArg[] } = $props()
 

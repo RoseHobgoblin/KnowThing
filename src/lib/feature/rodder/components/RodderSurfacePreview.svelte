@@ -9,16 +9,16 @@
 		surfaceMediaUrl,
 		type SurfaceMapChannel,
 		type SurfacePlan,
-	} from '$lib/rodder/surface-model.js'
-	import { composeWeatherPlan } from '$lib/rodder/weather-model.js'
+	} from '$lib/feature/rodder/surface-model.js'
+	import { composeWeatherPlan } from '$lib/feature/rodder/weather-model.js'
 	import {
 		composeStellarSurfacePlan,
 		describeStellarSurfacePlan,
 		summarizeStellarSurfacePlan,
 		stellarSurfaceMediaUrl,
-	} from '$lib/rodder/stellar-surface-model.js'
-	import type { MapBody } from '$lib/rodder/root-layout.js'
-	import type { SurfacePreviewRenderer } from '$lib/rodder/three/surface-preview-renderer.js'
+	} from '$lib/feature/rodder/stellar-surface-model.js'
+	import type { MapBody } from '$lib/feature/rodder/root-layout.js'
+	import type { SurfacePreviewRenderer } from '$lib/feature/rodder/three/surface-preview-renderer.js'
 
 	let { body, isStar = false }: { body: MapBody, isStar?: boolean } = $props()
 
@@ -147,7 +147,7 @@
 			void applyBody(nextBody, nextIsStar, version)
 		})
 
-		void import('$lib/rodder/three/surface-preview-renderer.js')
+		void import('$lib/feature/rodder/three/surface-preview-renderer.js')
 			.then(({ createSurfacePreviewRenderer }) => {
 				if (destroyed) return
 				previewRenderer = createSurfacePreviewRenderer(host, (message) => {
@@ -235,7 +235,7 @@
 							if (version !== renderVersion) return
 							drawImagePlate(canvas, image)
 						} else if (photosphere.source === 'procedural') {
-							const { requestProceduralStellarTexture } = await import('$lib/rodder/three/procedural-texture-client.js')
+							const { requestProceduralStellarTexture } = await import('$lib/feature/rodder/three/procedural-texture-client.js')
 							const generated = await requestProceduralStellarTexture({
 								temperatureK: currentStellarPlan.temperatureK,
 								morphology: currentStellarPlan.morphology,
@@ -255,7 +255,7 @@
 							if (version !== renderVersion) return
 							drawImagePlate(canvas, image)
 						} else if (albedo.source === 'procedural') {
-							const { requestProceduralPlanetTexture } = await import('$lib/rodder/three/procedural-texture-client.js')
+							const { requestProceduralPlanetTexture } = await import('$lib/feature/rodder/three/procedural-texture-client.js')
 							const proceduralClouds = currentWeatherPlan.clouds.source === 'procedural' && currentWeatherPlan.clouds.meanCover != null
 								? {
 									meanCover: currentWeatherPlan.clouds.meanCover,

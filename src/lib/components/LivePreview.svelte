@@ -7,7 +7,7 @@
 	import type { WikiNode } from '$lib/parser/types.js'
 	import { createQuery, keepPreviousData } from '@tanstack/svelte-query'
 	import { api } from '$lib/api'
-	import type { RodderEntityDocument, RodderSectorDocument } from '$lib/rodder/consumer-contract.js'
+	import type { RodderEntityDocument, RodderSectorDocument } from '$lib/feature/rodder/consumer-contract.js'
 
 	let { content = '', domain = 'know' }: { content: string, domain?: string } = $props()
 

@@ -2,8 +2,8 @@ import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
 import { handleServiceCall } from '$lib/server/utils.js'
-import { deleteRodder, updateRodder } from '$lib/server/services/rodder-bodies.js'
-import { resolveRodderEntityDocument } from '$lib/server/services/rodder-documents.js'
+import { deleteRodder, updateRodder } from '$lib/feature/rodder/server/bodies.server.js'
+import { resolveRodderEntityDocument } from '$lib/feature/rodder/server/documents.server.js'
 
 /** GET /api/rodder/:slug */
 export const GET: RequestHandler = async ({ params, url }) => {
