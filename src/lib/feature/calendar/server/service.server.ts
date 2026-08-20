@@ -8,7 +8,7 @@ import { urlSlugify } from '$lib/utils/slugify.js'
 import type {
 	createCalendarSchema,
 	updateCalendarSchema,
-} from '$lib/server/http/calendar/schemas.js'
+} from './schemas.server.js'
 
 type CreateCalendarInput = z.infer<typeof createCalendarSchema>
 type UpdateCalendarInput = z.infer<typeof updateCalendarSchema>

@@ -1,8 +1,8 @@
 <script lang="ts">
 	import type { PageData } from './$types.js'
 	import RodderDetailPage from '$lib/rodder/RodderDetailPage.svelte'
-	import CalendarDetail from '$lib/components/calendar/CalendarDetail.svelte'
-	import CalendarConfigure from '$lib/components/calendar/CalendarConfigure.svelte'
+	import CalendarDetail from '$lib/feature/calendar/components/CalendarDetail.svelte'
+	import CalendarConfigure from '$lib/feature/calendar/components/CalendarConfigure.svelte'
 
 	let { data }: { data: PageData } = $props()
 

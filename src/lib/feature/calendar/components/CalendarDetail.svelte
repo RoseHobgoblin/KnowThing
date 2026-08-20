@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { CalendarConfig, ResolvedDate } from 'rimecraft'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
-	import CalendarWidget from '$lib/calendar/CalendarWidget.svelte'
+	import CalendarWidget from './CalendarWidget.svelte'
 	import { page } from '$app/stores'
 	import { normalizePermissions } from '$lib/permissions.js'
 	import GearSixIcon from 'phosphor-svelte/lib/GearSixIcon'

@@ -2,7 +2,7 @@ import { error, redirect } from '@sveltejs/kit'
 import type { Actions, PageServerLoad } from './$types.js'
 import { splitNamespaceTarget, type NamespaceKey } from '$lib/namespaces/registry.js'
 import { loadRodderDetail } from '$lib/server/loaders/rodder-detail.js'
-import { loadCalendarDetail } from '$lib/server/loaders/calendar-detail.js'
+import { loadCalendarDetail } from '$lib/feature/calendar/server/detail.server.js'
 import { entitySaveAction } from '$lib/server/services/entity-actions.js'
 
 const TRAILING_MODES = new Set(['edit', 'configure', 'history', 'move'])

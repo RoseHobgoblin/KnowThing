@@ -4,7 +4,7 @@
 	import Input from '$lib/components/ui/Input.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
 	import { calendarPresets } from 'rimecraft'
-	import CalendarWidget from '$lib/calendar/CalendarWidget.svelte'
+	import CalendarWidget from './CalendarWidget.svelte'
 	import { resolveDisplay } from 'rimecraft'
 	import type { CalendarConfig } from 'rimecraft'
 	import { page } from '$app/stores'

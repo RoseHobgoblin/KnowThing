@@ -9,7 +9,7 @@
 	import Moon from 'phosphor-svelte/lib/Moon'
 	import Planet from 'phosphor-svelte/lib/Planet'
 	import Star from 'phosphor-svelte/lib/Star'
-	import CalendarWidget from '$lib/calendar/CalendarWidget.svelte'
+	import CalendarWidget from '$lib/feature/calendar/components/CalendarWidget.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
 	import type { ApparentSkySource } from './apparent-sky.js'
 	import { resolveColor } from './colors.js'

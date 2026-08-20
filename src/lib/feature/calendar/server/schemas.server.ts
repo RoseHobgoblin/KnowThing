@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { staticDataSchema } from '$lib/calendar/schema.js'
+import { staticDataSchema } from '../schema.js'
 
 export const createCalendarSchema = z.object({
 	name: z.string().min(1, 'Name is required'),

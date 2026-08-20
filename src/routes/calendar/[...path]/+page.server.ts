@@ -1,6 +1,6 @@
 import { error, redirect } from '@sveltejs/kit'
 import type { PageServerLoad } from './$types.js'
-import { findCalendarBySlugCaseInsensitive } from '$lib/server/services/calendar.js'
+import { findCalendarBySlugCaseInsensitive } from '$lib/feature/calendar/server/service.server.js'
 
 const TRAILING = new Set(['configure', 'history'])
 

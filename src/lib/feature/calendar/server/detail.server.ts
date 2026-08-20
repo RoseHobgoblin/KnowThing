@@ -5,7 +5,7 @@ import { resolveDisplay } from 'rimecraft'
 import {
 	type Calendar,
 	findCalendarBySlugCaseInsensitive,
-} from '$lib/server/services/calendar.js'
+} from './service.server.js'
 
 export interface CalendarDetailContext {
 	identifier: string
