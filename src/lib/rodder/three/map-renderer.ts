@@ -1,6 +1,5 @@
 import {
 	ACESFilmicToneMapping,
-	AdditiveBlending,
 	CanvasTexture,
 	Color,
 	Group,
@@ -75,6 +74,7 @@ import {
 	focusedStarlightTarget,
 	resolveStarlightExposure,
 } from './starlight-controller.js'
+import { createApparentSkyPointMaterial } from './annotation-material.js'
 
 const MIN_ZOOM = 0.1
 const MAX_ZOOM = 1_000_000
@@ -124,22 +124,6 @@ type OrbitPath = {
 const ease = (t: number) => 1 - (1 - t) ** 3
 const worldPosition = (position: { x: number, y: number, z: number }) =>
 	new Vector3(position.x - CENTER, position.y - CENTER, position.z)
-
-function makeGlowTexture(): CanvasTexture {
-	const canvas = document.createElement('canvas')
-	canvas.width = 128
-	canvas.height = 128
-	const context = canvas.getContext('2d')!
-	const gradient = context.createRadialGradient(64, 64, 2, 64, 64, 64)
-	gradient.addColorStop(0, 'rgba(255,255,255,0.9)')
-	gradient.addColorStop(0.2, 'rgba(255,255,255,0.42)')
-	gradient.addColorStop(1, 'rgba(255,255,255,0)')
-	context.fillStyle = gradient
-	context.fillRect(0, 0, 128, 128)
-	const texture = new CanvasTexture(canvas)
-	texture.colorSpace = SRGBColorSpace
-	return texture
-}
 
 function makeSelectionTexture(): CanvasTexture {
 	const canvas = document.createElement('canvas')
@@ -290,7 +274,6 @@ export async function createRootMapRenderer(
 	// smooth when a 1024×512 plate is inspected at close zoom.
 	const sharedSphere = new SphereGeometry(1, 96, 64)
 	sharedSphere.rotateX(Math.PI / 2)
-	const glowTexture = makeGlowTexture()
 	const markerTexture = makeMarkerTexture()
 	const selectionTexture = makeSelectionTexture()
 	const skyPointTexture = makeSkyPointTexture()
@@ -492,15 +475,7 @@ export async function createRootMapRenderer(
 	function rebuildSky() {
 		clearSky()
 		for (const source of apparentSky.sources) {
-			const material = new SpriteMaterial({
-				map: skyPointTexture,
-				color: new Color(source.displayColor),
-				transparent: true,
-				blending: AdditiveBlending,
-				depthTest: true,
-				depthWrite: false,
-				toneMapped: false,
-			})
+			const material = createApparentSkyPointMaterial(skyPointTexture, source.displayColor)
 			const sprite = new Sprite(material)
 			const rendererDirection = apparentSkyDirectionForRenderer(
 				source.direction,
@@ -624,7 +599,6 @@ export async function createRootMapRenderer(
 			isStar,
 			isSatellite,
 			sphereGeometry: sharedSphere,
-			glowTexture,
 			markerTexture,
 			selectionTexture,
 			selectionColor: theme.accent,
@@ -1443,7 +1417,6 @@ export async function createRootMapRenderer(
 			clearSceneContent()
 			clearSky()
 			sharedSphere.dispose()
-			glowTexture.dispose()
 			markerTexture.dispose()
 			selectionTexture.dispose()
 			skyPointTexture.dispose()

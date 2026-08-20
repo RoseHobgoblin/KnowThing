@@ -10,7 +10,6 @@ export type VisibilityResult = VisibilityState & {
 	meshVisible: boolean
 	markerDiameterPx: number
 	markerOpacity: number
-	glowOpacity: number
 	pickRadiusPx: number
 	screenExtentPx: number
 }
@@ -51,7 +50,6 @@ export function resolveBodyVisibility(args: {
 			meshVisible: true,
 			markerDiameterPx: diameterPx,
 			markerOpacity: 0,
-			glowOpacity: 0,
 			pickRadiusPx: projectedRadiusPx,
 			screenExtentPx: projectedRadiusPx,
 		}
@@ -76,7 +74,6 @@ export function resolveBodyVisibility(args: {
 		meshVisible: args.mode !== 'markers' || projectedRadiusPx >= 0.75,
 		markerDiameterPx: diameterPx,
 		markerOpacity,
-		glowOpacity: args.kind === 'star' ? (args.mode === 'enhanced' ? 0.44 : 0.2) : 0,
 		pickRadiusPx: Math.max(minimumPickPx, projectedRadiusPx + 3),
 		screenExtentPx: Math.max(projectedRadiusPx, markerRadiusPx),
 	}

@@ -5,7 +5,6 @@ import { createBodyVisual } from './body-visual.js'
 describe('body visual selection', () => {
 	it('never changes the physical mesh scale when selection changes', () => {
 		const sphereGeometry = new SphereGeometry(1, 8, 6)
-		const glowTexture = new Texture()
 		const markerTexture = new Texture()
 		const selectionTexture = new Texture()
 		const visual = createBodyVisual({
@@ -19,7 +18,6 @@ describe('body visual selection', () => {
 			isStar: false,
 			isSatellite: false,
 			sphereGeometry,
-			glowTexture,
 			markerTexture,
 			selectionTexture,
 			selectionColor: '#FFE088',
@@ -42,14 +40,12 @@ describe('body visual selection', () => {
 		expect(visual.mesh.scale.equals(original)).toBe(true)
 		visual.dispose()
 		sphereGeometry.dispose()
-		glowTexture.dispose()
 		markerTexture.dispose()
 		selectionTexture.dispose()
 	})
 
 	it('changes aids, not physical scale, across visibility modes', () => {
 		const sphereGeometry = new SphereGeometry(1, 8, 6)
-		const glowTexture = new Texture()
 		const markerTexture = new Texture()
 		const selectionTexture = new Texture()
 		const visual = createBodyVisual({
@@ -57,7 +53,6 @@ describe('body visual selection', () => {
 			isStar: false,
 			isSatellite: false,
 			sphereGeometry,
-			glowTexture,
 			markerTexture,
 			selectionTexture,
 			selectionColor: '#FFE088',
@@ -81,7 +76,6 @@ describe('body visual selection', () => {
 
 		visual.dispose()
 		sphereGeometry.dispose()
-		glowTexture.dispose()
 		markerTexture.dispose()
 		selectionTexture.dispose()
 	})

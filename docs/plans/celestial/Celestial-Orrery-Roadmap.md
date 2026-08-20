@@ -71,7 +71,7 @@ These rules prevent a return to the SVG, Canvas, and Pixi-era compromises:
 
 1. **One physical coordinate system.** A body's world position is derived from its orbital data. A view mode may transform the camera or reference frame, but not the orbit's scale.
 2. **One physical mesh size.** Selection, hover, importance, and focus never change a sphere or ring's world-space dimensions.
-3. **Visibility is a separate layer.** Markers, glows, labels, and hit targets may use screen-space minimums. They identify the physical object; they are not the object.
+3. **Visibility is a separate layer.** Markers, labels, and hit targets may use screen-space minimums. They identify the physical object; they are not the object.
 4. **The selected state is an annotation.** Use a reticle, outline, bracket, or label treatment, never a swollen planet.
 5. **Every enhancement is switchable.** Physical mode must reveal what the data literally produces.
 6. **Tungolcraft owns astronomy.** Three.js owns cameras, scene presentation, and picking; it must not create competing orbital conventions.
@@ -127,12 +127,12 @@ Astronomical scale creates a real conflict: at a whole-system view, physically s
 | Mode | Physical mesh | Screen-space aid | Intended use |
 |---|---|---|---|
 | Physical | Exact relative size | Labels on request | Scale inspection and screenshots |
-| Enhanced | Exact relative size | Subtle marker, glow, and minimum pick target | Default exploration |
+| Enhanced | Exact relative size | Subtle marker and minimum pick target | Default exploration |
 | Markers | Optional at subpixel size | Clear symbols and labels | Dense systems and accessibility |
 
 Enhanced markers fade out as soon as the physical mesh becomes large enough to read. The threshold is based on projected angular size, with hysteresis so it does not flicker while zooming. Hover and selection decorate the marker or reticle, not the body mesh.
 
-Stars may have a restrained halo for visibility, but the photosphere remains physically sized. Orbit lines and labels follow the same principle: they are reference graphics, not geometry.
+Local stars do not receive decorative halo geometry. Their physical photosphere and scene light remain separate, and the ordinary marker level of detail identifies them while their disc is unresolved. Apparent-sky stars are different: they are remote unresolved sources, so their screen-space point-spread profile is an explicit display transfer function. Orbit lines and labels follow the same principle: they are reference graphics, not geometry.
 
 ### 3. Star-based lighting and exposure
 
@@ -302,7 +302,7 @@ Procedural textures now use a bounded shared scheduler and projected-physical-si
 
 Status: implemented for the declared unshadowed scope. The map now renders space as true black and gives every rendered luminous star its own inverse-square point light at the star's resolved 3D position. Stored luminosity wins, radius plus effective temperature can derive luminosity with Stefan–Boltzmann, and an unavailable value is visibly reported as a deterministic 1 L☉ display fallback. Point-light intensity compensates for the current AU-to-world scale, so changing system framing cannot change the irradiance of an otherwise identical orbit.
 
-Stars keep separate unlit photospheres, rings and planetary/cloud materials receive stellar light, and binary components illuminate from their independent live positions. Physical visibility has no non-physical fill and keeps a fixed reference exposure for brightness comparison. Enhanced and Markers retain a very weak exposure-compensated accessibility floor and use bounded automatic exposure when a readable non-stellar body occupies the optical centre. Exposure is driven by the view rather than selection, and the HUD reports fixed/auto policy, signed EV compensation, and the auto-exposure target. This changes the virtual camera, not stellar output. Shadow maps and eclipses remain deliberately deferred to the focused-body shadow-budget experiment.
+Stars keep separate unlit photospheres without decorative local halo sprites, rings and planetary/cloud materials receive stellar light, and binary components illuminate from their independent live positions. Physical visibility has no non-physical fill, including in starless roots, and keeps a fixed reference exposure for brightness comparison. Enhanced and Markers retain a very weak exposure-compensated accessibility floor and use bounded automatic exposure when a readable non-stellar body occupies the optical centre. Exposure is driven by the view rather than selection, and the HUD reports fixed/auto policy, signed EV compensation, and the auto-exposure target. This changes the virtual camera, not stellar output. Shadow maps and eclipses remain deliberately deferred to the focused-body shadow-budget experiment.
 
 The remaining lighting experiment is a deliberately bounded focused-body shadow budget. It must not turn all-system shadow rendering on by default or compromise on-demand rendering.
 

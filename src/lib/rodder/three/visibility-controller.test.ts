@@ -8,7 +8,6 @@ describe('body visibility controller', () => {
 		})
 		expect(result.meshVisible).toBe(true)
 		expect(result.markerOpacity).toBe(0)
-		expect(result.glowOpacity).toBe(0)
 		expect(result.pickRadiusPx).toBe(0.2)
 		expect(result.screenExtentPx).toBe(0.2)
 	})

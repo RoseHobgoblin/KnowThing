@@ -1,5 +1,4 @@
 import {
-	AdditiveBlending,
 	Color,
 	DoubleSide,
 	Group,
@@ -22,6 +21,7 @@ import { createPlanetSurfaceVisual, type PlanetSurfaceVisual } from './surface-m
 import { createStellarSurfaceVisual, type StellarSurfaceVisual } from './stellar-material.js'
 import type { ProceduralTextureSize } from './procedural-texture-client.js'
 import { resolveProceduralTextureLod, texturePriorityForLod } from './texture-lod.js'
+import { createOverviewMarkerMaterial } from './annotation-material.js'
 
 export type BodyVisual = {
 	anchor: Group
@@ -46,7 +46,6 @@ export function createBodyVisual(args: {
 	isStar: boolean
 	isSatellite: boolean
 	sphereGeometry: SphereGeometry
-	glowTexture: Texture
 	markerTexture: Texture
 	selectionTexture: Texture
 	selectionColor: string
@@ -58,7 +57,6 @@ export function createBodyVisual(args: {
 		isStar,
 		isSatellite,
 		sphereGeometry,
-		glowTexture,
 		markerTexture,
 		selectionTexture,
 		selectionColor,
@@ -126,35 +124,7 @@ export function createBodyVisual(args: {
 		tiltGroup.add(ringMesh)
 	}
 
-	let glowMaterial: SpriteMaterial | null = null
-	let glow: Sprite | null = null
-	if (isStar) {
-		glowMaterial = new SpriteMaterial({
-			map: glowTexture,
-			color,
-			transparent: true,
-			opacity: 0.44,
-			depthWrite: false,
-			blending: AdditiveBlending,
-		})
-		glow = new Sprite(glowMaterial)
-		glow.scale.set(radius * 5, radius * 5, 1)
-		anchor.add(glow)
-	}
-
-	const markerMaterial = new SpriteMaterial({
-		map: markerTexture,
-		color,
-		transparent: true,
-		opacity: 0.9,
-		// Markers are interface annotations, not luminous scene objects. Keeping
-		// them out of tone mapping prevents auto exposure from bleaching their tint.
-		toneMapped: false,
-		// Markers may assist a subpixel body, but must still disappear behind
-		// foreground stars and planets already present in the depth buffer.
-		depthTest: true,
-		depthWrite: false,
-	})
+	const markerMaterial = createOverviewMarkerMaterial(markerTexture, color)
 	const overviewMarker = new Sprite(markerMaterial)
 	overviewMarker.name = 'overview-marker'
 	overviewMarker.renderOrder = 8
@@ -221,8 +191,6 @@ export function createBodyVisual(args: {
 			if (ringMesh) ringMesh.visible = visibility.meshVisible
 			markerMaterial.opacity = visibility.markerOpacity
 			overviewMarker.scale.setScalar(visibility.markerDiameterPx * safeWorldUnitsPerPixel)
-			if (glowMaterial) glowMaterial.opacity = visibility.glowOpacity
-			if (glow) glow.visible = visibility.glowOpacity > 0
 			const selectionRadius = Math.max(
 				extent + safeWorldUnitsPerPixel * 3,
 				safeWorldUnitsPerPixel * 8,
@@ -246,7 +214,6 @@ export function createBodyVisual(args: {
 			else material.dispose()
 			ringGeometry?.dispose()
 			ringMaterial?.dispose()
-			glowMaterial?.dispose()
 			markerMaterial.dispose()
 			selectionMaterial.dispose()
 		},

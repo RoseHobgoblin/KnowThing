@@ -17,7 +17,7 @@ export const SOLAR_IRRADIANCE_DISPLAY = 2.6
 export const DEFAULT_STARLIGHT_EXPOSURE = 1.05
 export const MIN_STARLIGHT_EXPOSURE = 0.08
 export const MAX_STARLIGHT_EXPOSURE = 512
-const UNLIT_AMBIENT_FILL = 0.42
+const STARLESS_AMBIENT_FILL = 0.42
 const MAX_RENDER_LUMINOSITY_SOLAR = 1e6
 
 export type StarlightSummary = {
@@ -204,12 +204,17 @@ export class StarlightController {
 
 	summary(): StarlightSummary {
 		const summary = summaryFor(this.#records.values())
-		if (summary.lightCount === 0) summary.label = 'No stellar light Â· ambient presentation'
+		if (summary.lightCount === 0) {
+			summary.label = this.#visibilityMode === 'physical'
+				? 'No stellar light Â· unlit in Physical'
+				: 'No stellar light Â· ambient presentation'
+		}
 		return summary
 	}
 
 	#baseFillIntensity(): number {
-		return this.#hasStarlight ? starlightFillIntensity(this.#visibilityMode) : UNLIT_AMBIENT_FILL
+		if (this.#visibilityMode === 'physical') return 0
+		return this.#hasStarlight ? starlightFillIntensity(this.#visibilityMode) : STARLESS_AMBIENT_FILL
 	}
 
 	clearStarLights(): void {
