@@ -4,20 +4,19 @@ import {
 	CanvasTexture,
 	Color,
 	Group,
-	MOUSE,
 	OrthographicCamera,
 	PerspectiveCamera,
 	Scene,
+	Sphere,
 	SphereGeometry,
 	Sprite,
 	SpriteMaterial,
 	SRGBColorSpace,
-	TOUCH,
 	Vector2,
 	Vector3,
 	WebGLRenderer,
 } from 'three'
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+import { RodderCameraControls } from './camera-controls.js'
 import { FULL_VIEW_INTERACTION } from '../consumer-contract.js'
 import { Line2 } from 'three/addons/lines/Line2.js'
 import { LineGeometry } from 'three/addons/lines/LineGeometry.js'
@@ -80,8 +79,9 @@ import {
 const MIN_ZOOM = 0.1
 const MAX_ZOOM = 1_000_000
 const ORRERY_FOV_DEG = 50
-const VIEW_TRANSITION_MS = 450
-const FLY_TO_MS = 600
+const VIEW_TRANSITION_SECONDS = 0.45
+const FLY_TO_SECONDS = 0.6
+const VIEW_TRANSITION_MS = VIEW_TRANSITION_SECONDS * 1_000
 const KEYBOARD_PAN_SPEED_PX = 210
 const CAMERA_ZOOM_SPEED = 1.8
 const CAMERA_SURFACE_CLEARANCE = 1.03
@@ -119,17 +119,6 @@ type OrbitPath = {
 	material: LineMaterial
 	direct?: DirectOrbitLayout
 	satellite?: SatelliteLayout
-}
-
-type FlyState = {
-	startedAt: number
-	duration: number
-	fromTarget: Vector3
-	toTarget: Vector3
-	fromCamera: Vector3
-	toCamera: Vector3
-	fromZoom: number
-	toZoom: number
 }
 
 const ease = (t: number) => 1 - (1 - t) ** 3
@@ -280,20 +269,18 @@ export async function createRootMapRenderer(
 	planCamera.up.set(0, 0, 1)
 	orreryCamera.up.set(0, 0, 1)
 	let camera: OrthographicCamera | PerspectiveCamera = orreryCamera
-	const controls = new OrbitControls<OrthographicCamera | PerspectiveCamera>(camera, canvas)
-	controls.enableDamping = true
-	controls.dampingFactor = 0.085
-	controls.screenSpacePanning = true
-	controls.zoomToCursor = true
-	controls.zoomSpeed = CAMERA_ZOOM_SPEED
+	const controls = new RodderCameraControls(camera, {
+		domElement: canvas,
+		input: 'orbit',
+		smoothTime: VIEW_TRANSITION_SECONDS,
+		dollySpeed: CAMERA_ZOOM_SPEED,
+	})
 	controls.minZoom = MIN_ZOOM
 	controls.maxZoom = MAX_ZOOM
 	controls.minDistance = 0.001
 	controls.maxDistance = 10_000
 	controls.minPolarAngle = 0.015
 	controls.maxPolarAngle = Math.PI / 2 - 0.015
-	controls.touches.ONE = TOUCH.ROTATE
-	controls.touches.TWO = TOUCH.DOLLY_PAN
 	let interaction = { ...FULL_VIEW_INTERACTION }
 	const handleWheel = (event: WheelEvent) => {
 		if (interaction.cameraMovement) event.preventDefault()
@@ -334,7 +321,6 @@ export async function createRootMapRenderer(
 	let viewFrom = 1
 	let viewTo = 1
 	let viewStartedAt: number | null = null
-	let fly: FlyState | null = null
 	let lastFollowPosition: Vector3 | null = null
 	let destroyed = false
 	let visible = !document.hidden
@@ -347,7 +333,27 @@ export async function createRootMapRenderer(
 	const pressedPanKeys = new Set<string>()
 	const scratchWorld = new Vector3()
 	const scratchView = new Vector3()
+	const scratchTarget = new Vector3()
 	const previousCameraPosition = new Vector3()
+
+	function currentTarget(out = scratchTarget): Vector3 {
+		return controls.getTarget(out, false)
+	}
+
+	function applyCameraPose(position: Vector3, target: Vector3, zoom: number, transition: boolean, smoothTime: number) {
+		const completion = controls.setPose({
+			position,
+			target,
+			zoom: camera === planCamera ? zoom : undefined,
+			transition,
+			smoothTime,
+		})
+		if (transition) {
+			void completion.then((isCurrent) => {
+				if (isCurrent && !destroyed) settleTextureLods()
+			})
+		}
+	}
 
 	function defaultCameraDirection(view: MapSettingsState['view']): Vector3 {
 		if (view === 'plan') {
@@ -367,10 +373,14 @@ export async function createRootMapRenderer(
 
 	function orreryFrameDistance(): number {
 		return perspectiveDistanceToFrameSphere(
-			Math.max(layout.maxVisualRadius, SIZE * 0.45),
+			orreryFrameRadius(),
 			width / height,
 			orreryCamera.fov,
 		)
+	}
+
+	function orreryFrameRadius(): number {
+		return Math.max(layout.maxVisualRadius, SIZE * 0.45)
 	}
 
 	function updateControlDistanceLimits() {
@@ -381,34 +391,41 @@ export async function createRootMapRenderer(
 
 	function resetCameraForView(view: MapSettingsState['view'], target = new Vector3()) {
 		camera = view === 'plan' ? planCamera : orreryCamera
-		controls.object = camera
-		controls.target.copy(target)
+		controls.camera = camera
 		camera.zoom = 1
-		const distance = view === 'plan' ? PLAN_CAMERA_DISTANCE : orreryFrameDistance()
-		camera.position.copy(target).addScaledVector(defaultCameraDirection(view), distance)
-		camera.lookAt(target)
-		camera.updateProjectionMatrix()
+		const distance = view === 'plan' ? PLAN_CAMERA_DISTANCE : 1
+		const position = target.clone().addScaledVector(defaultCameraDirection(view), distance)
+		if (view === 'orrery') {
+			void controls.frameSphere(
+				position,
+				new Sphere(target, orreryFrameRadius() * 1.08),
+				{ smoothTime: VIEW_TRANSITION_SECONDS },
+			)
+		} else {
+			applyCameraPose(position, target, 1, false, VIEW_TRANSITION_SECONDS)
+		}
+		controls.update(0)
 		updateControlDistanceLimits()
 	}
 
 	function switchCameraForView(view: MapSettingsState['view'], immediate: boolean) {
+		const targetNow = currentTarget(new Vector3())
 		const activeView = camera === planCamera ? 'plan' : 'orrery'
 		const activeZoom = camera === planCamera
 			? camera.zoom
-			: orreryFrameDistance() / Math.max(camera.position.distanceTo(controls.target), Number.EPSILON)
-		const activeDirection = camera.position.clone().sub(controls.target).normalize()
-		const sourceWasDefault = controls.target.lengthSq() <= 0.01
+			: orreryFrameDistance() / Math.max(camera.position.distanceTo(targetNow), Number.EPSILON)
+		const activeDirection = camera.position.clone().sub(targetNow).normalize()
+		const sourceWasDefault = targetNow.lengthSq() <= 0.01
 			&& Math.abs(activeZoom - 1) <= 0.001
 			&& activeDirection.dot(defaultCameraDirection(activeView)) >= 0.9999
-		const target = sourceWasDefault ? new Vector3() : controls.target.clone()
+		const target = sourceWasDefault ? new Vector3() : targetNow
 		const matchedScale = worldUnitsPerPixelAt(target)
-		const sourceDirection = camera.position.clone().sub(controls.target)
+		const sourceDirection = camera.position.clone().sub(targetNow)
 		if (sourceDirection.lengthSq() < Number.EPSILON) sourceDirection.copy(defaultCameraDirection(view))
 		else sourceDirection.normalize()
 
 		camera = view === 'plan' ? planCamera : orreryCamera
-		controls.object = camera
-		controls.target.copy(target)
+		controls.camera = camera
 
 		let distance = PLAN_CAMERA_DISTANCE
 		if (camera === planCamera) {
@@ -429,35 +446,16 @@ export async function createRootMapRenderer(
 
 		const fromCamera = target.clone().addScaledVector(sourceDirection, distance)
 		const toCamera = target.clone().addScaledVector(defaultCameraDirection(view), distance)
-		camera.position.copy(immediate ? toCamera : fromCamera)
-		camera.lookAt(target)
+		applyCameraPose(fromCamera, target, camera.zoom, false, VIEW_TRANSITION_SECONDS)
+		controls.update(0)
 		configureControls()
-
-		if (immediate) {
-			fly = null
-			controls.update()
-		} else {
-			fly = {
-				startedAt: performance.now(),
-				duration: VIEW_TRANSITION_MS,
-				fromCamera,
-				toCamera,
-				fromTarget: target.clone(),
-				toTarget: target,
-				fromZoom: camera.zoom,
-				toZoom: camera.zoom,
-			}
-		}
+		applyCameraPose(toCamera, target, camera.zoom, !immediate, VIEW_TRANSITION_SECONDS)
 	}
 
 	function configureControls() {
 		const plan = settings.view === 'plan'
 		controls.enabled = interaction.cameraMovement
-		controls.enableRotate = !plan
-		controls.mouseButtons.LEFT = plan ? MOUSE.PAN : MOUSE.ROTATE
-		controls.mouseButtons.MIDDLE = MOUSE.DOLLY
-		controls.mouseButtons.RIGHT = MOUSE.PAN
-		controls.touches.ONE = plan ? TOUCH.PAN : TOUCH.ROTATE
+		controls.setInputProfile(plan ? 'plan' : 'orbit')
 	}
 
 	resetCameraForView('orrery')
@@ -535,7 +533,7 @@ export async function createRootMapRenderer(
 
 	function resize(nextWidth: number, nextHeight: number) {
 		const previousOrreryZoom = camera === orreryCamera
-			? orreryFrameDistance() / Math.max(camera.position.distanceTo(controls.target), Number.EPSILON)
+			? orreryFrameDistance() / Math.max(camera.position.distanceTo(currentTarget()), Number.EPSILON)
 			: null
 		width = Math.max(1, Math.round(nextWidth))
 		height = Math.max(1, Math.round(nextHeight))
@@ -554,9 +552,11 @@ export async function createRootMapRenderer(
 		orreryCamera.aspect = width / height
 		orreryCamera.updateProjectionMatrix()
 		if (previousOrreryZoom != null) {
-			const direction = camera.position.clone().sub(controls.target).normalize()
-			camera.position.copy(controls.target).addScaledVector(direction, orreryFrameDistance() / previousOrreryZoom)
-			fly = null
+			const target = currentTarget(new Vector3())
+			const direction = camera.position.clone().sub(target).normalize()
+			const position = target.clone().addScaledVector(direction, orreryFrameDistance() / previousOrreryZoom)
+			applyCameraPose(position, target, camera.zoom, false, VIEW_TRANSITION_SECONDS)
+			controls.update(0)
 		}
 		updateControlDistanceLimits()
 		renderer.setSize(width, height, false)
@@ -642,6 +642,8 @@ export async function createRootMapRenderer(
 		clearSceneContent()
 		rebuildSky()
 		layout = buildPhysicalLayout(stars, bodies)
+		const boundaryRadius = orreryFrameRadius() * 1.25
+		controls.setBoundaryRadius(boundaryRadius)
 		if (layout.primaryStar) addNode(layout.primaryStar, true, false)
 		if (layout.rootBody) addNode(layout.rootBody, false, false)
 		for (const direct of layout.directOrbits) addNode(direct.body, direct.body.isStar, false)
@@ -754,8 +756,10 @@ export async function createRootMapRenderer(
 				const world = worldPosition(next)
 				if (lastFollowPosition) {
 					const delta = world.clone().sub(lastFollowPosition)
-					camera.position.add(delta)
-					controls.target.add(delta)
+					const target = currentTarget(new Vector3()).add(delta)
+					controls.interrupt()
+					void controls.moveTo(target.x, target.y, target.z, false)
+					controls.update(0)
 				}
 				lastFollowPosition = world
 			}
@@ -822,7 +826,7 @@ export async function createRootMapRenderer(
 			const node = nodes.get(path.key)
 			const representative = node
 				? node.visual.anchor.getWorldPosition(scratchWorld)
-				: controls.target
+				: currentTarget()
 			path.material.dashScale = screenDashScale(worldUnitsPerPixelAt(representative))
 		}
 	}
@@ -878,9 +882,13 @@ export async function createRootMapRenderer(
 		})
 	}
 
+	function handleControlsRest() {
+		if (!controls.intentActive) settleTextureLods()
+	}
+
 	function updatePerspectiveClipping() {
 		if (camera !== orreryCamera) return
-		const distance = Math.max(camera.position.distanceTo(controls.target), Number.EPSILON)
+		const distance = Math.max(camera.position.distanceTo(currentTarget()), Number.EPSILON)
 		const frameDistance = orreryFrameDistance()
 		const near = Math.max(1e-9, distance / 1_000)
 		const far = Math.max(frameDistance * 4, distance + SIZE * 2, SKY_RADIUS * 1.1)
@@ -994,7 +1002,7 @@ export async function createRootMapRenderer(
 		const scaleBarPixels = 80
 		const scaleBarAu = layout.worldUnitsPerAu == null
 			? null
-			: scaleBarPixels * worldUnitsPerPixelAt(controls.target) / layout.worldUnitsPerAu
+			: scaleBarPixels * worldUnitsPerPixelAt(currentTarget()) / layout.worldUnitsPerAu
 		const snapshot: OverlaySnapshot = {
 			labels,
 			indicators,
@@ -1016,7 +1024,7 @@ export async function createRootMapRenderer(
 
 	function cameraZoomLevel(): number {
 		if (camera === planCamera) return camera.zoom
-		return orreryFrameDistance() / Math.max(camera.position.distanceTo(controls.target), Number.EPSILON)
+		return orreryFrameDistance() / Math.max(camera.position.distanceTo(currentTarget()), Number.EPSILON)
 	}
 
 	function updateToneMappingExposure() {
@@ -1054,21 +1062,23 @@ export async function createRootMapRenderer(
 
 	function notifyView() {
 		const zoomLevel = cameraZoomLevel()
-		const direction = camera.position.clone().sub(controls.target).normalize()
+		const target = currentTarget(new Vector3())
+		const direction = camera.position.clone().sub(target).normalize()
 		const orientationMoved = direction.dot(defaultCameraDirection(settings.view)) < 0.9999
 		callbacks.onViewChange({
 			zoomLevel,
-			isMoved: Math.abs(zoomLevel - 1) > 0.001 || controls.target.lengthSq() > 0.01 || orientationMoved,
+			isMoved: Math.abs(zoomLevel - 1) > 0.001 || target.lengthSq() > 0.01 || orientationMoved,
 		})
 	}
 
 	function getCameraState() {
-		const direction = camera.position.clone().sub(controls.target)
+		const target = currentTarget(new Vector3())
+		const direction = camera.position.clone().sub(target)
 		const distance = Math.max(direction.length(), Number.EPSILON)
 		direction.normalize()
 		return {
 			projection: camera === planCamera ? 'orthographic' as const : 'perspective' as const,
-			target: controls.target.toArray() as [number, number, number],
+			target: target.toArray() as [number, number, number],
 			direction: direction.toArray() as [number, number, number],
 			distance,
 			zoom: camera === planCamera ? camera.zoom : cameraZoomLevel(),
@@ -1086,7 +1096,6 @@ export async function createRootMapRenderer(
 		if (direction.lengthSq() <= Number.EPSILON) return
 		direction.normalize()
 
-		fly = null
 		viewStartedAt = null
 		viewBlend = settings.view === 'orrery' ? 1 : 0
 		viewFrom = viewBlend
@@ -1094,24 +1103,23 @@ export async function createRootMapRenderer(
 		orreryCamera.fov = state.fieldOfView
 		orreryCamera.updateProjectionMatrix()
 		camera = settings.view === 'plan' ? planCamera : orreryCamera
-		controls.object = camera
-		controls.target.copy(target)
+		controls.camera = camera
+		let position: Vector3
+		let zoom = 1
 		if (camera === planCamera) {
-			camera.zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, state.zoom))
-			camera.position.copy(target).addScaledVector(direction, PLAN_CAMERA_DISTANCE)
+			zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, state.zoom))
+			position = target.clone().addScaledVector(direction, PLAN_CAMERA_DISTANCE)
 		} else {
-			camera.zoom = 1
-			camera.position.copy(target).addScaledVector(
+			position = target.clone().addScaledVector(
 				direction,
 				Math.min(controls.maxDistance, Math.max(controls.minDistance, state.distance)),
 			)
 		}
-		camera.lookAt(target)
-		camera.updateProjectionMatrix()
+		applyCameraPose(position, target, zoom, false, VIEW_TRANSITION_SECONDS)
+		controls.update(0)
 		configureControls()
 		lastFollowPosition = null
 		applyPositions()
-		controls.update()
 		notifyView()
 		queueMicrotask(settleTextureLods)
 		schedule()
@@ -1123,14 +1131,10 @@ export async function createRootMapRenderer(
 		const vertical = Number(pressedPanKeys.has('KeyW') || pressedPanKeys.has('ArrowUp'))
 			- Number(pressedPanKeys.has('KeyS') || pressedPanKeys.has('ArrowDown'))
 		if (horizontal === 0 && vertical === 0) return false
-		camera.updateMatrixWorld()
-		const right = new Vector3().setFromMatrixColumn(camera.matrixWorld, 0)
-		const up = new Vector3().setFromMatrixColumn(camera.matrixWorld, 1)
-		const direction = right.multiplyScalar(horizontal).add(up.multiplyScalar(vertical)).normalize()
-		const distance = KEYBOARD_PAN_SPEED_PX * deltaSeconds * worldUnitsPerPixelAt(controls.target)
-		camera.position.addScaledVector(direction, distance)
-		controls.target.addScaledVector(direction, distance)
-		fly = null
+		const distance = KEYBOARD_PAN_SPEED_PX * deltaSeconds * worldUnitsPerPixelAt(currentTarget())
+		controls.interrupt()
+		void controls.truck(horizontal * distance, -vertical * distance, false)
+		controls.update(0)
 		return true
 	}
 
@@ -1142,7 +1146,7 @@ export async function createRootMapRenderer(
 		let cameraSettled = false
 		let animate = applyKeyboardPan(deltaSeconds)
 		previousCameraPosition.copy(camera.position)
-		animate = controls.update() || animate
+		animate = controls.update(deltaSeconds) || animate
 		if (viewStartedAt != null) {
 			const progress = Math.min(1, (now - viewStartedAt) / VIEW_TRANSITION_MS)
 			viewBlend = viewFrom + (viewTo - viewFrom) * ease(progress)
@@ -1152,19 +1156,11 @@ export async function createRootMapRenderer(
 				cameraSettled = true
 			} else animate = true
 		}
-		if (fly) {
-			const progress = Math.min(1, (now - fly.startedAt) / fly.duration)
-			const t = ease(progress)
-			controls.target.lerpVectors(fly.fromTarget, fly.toTarget, t)
-			camera.position.lerpVectors(fly.fromCamera, fly.toCamera, t)
-			camera.zoom = fly.fromZoom + (fly.toZoom - fly.fromZoom) * t
-			camera.updateProjectionMatrix()
-			if (progress >= 1) {
-				fly = null
-				cameraSettled = true
-			} else animate = true
+		if (constrainCameraOutsideBodies()) {
+			applyCameraPose(camera.position, currentTarget(new Vector3()), camera.zoom, false, VIEW_TRANSITION_SECONDS)
+			controls.update(0)
+			animate = true
 		}
-		animate = constrainCameraOutsideBodies() || animate
 		updatePerspectiveClipping()
 		updateVisualScales()
 		updateToneMappingExposure()
@@ -1255,9 +1251,10 @@ export async function createRootMapRenderer(
 		callbacks.onHover(null, null)
 		canvas.style.cursor = ''
 		const target = hit.node.visual.anchor.position.clone()
-		const offsetDirection = camera.position.clone().sub(controls.target).normalize()
+		const current = currentTarget(new Vector3())
+		const offsetDirection = camera.position.clone().sub(current).normalize()
 		let targetZoom = camera.zoom
-		let targetDistance = camera.position.distanceTo(controls.target)
+		let targetDistance = camera.position.distanceTo(current)
 		if (camera === planCamera) {
 			targetZoom = Math.min(
 				MAX_ZOOM,
@@ -1279,21 +1276,11 @@ export async function createRootMapRenderer(
 			)
 		}
 		const targetCamera = target.clone().addScaledVector(offsetDirection, targetDistance)
-		if (globalThis.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-			controls.target.copy(target)
-			camera.position.copy(targetCamera)
-			camera.zoom = targetZoom
-			camera.updateProjectionMatrix()
-			fly = null
+		const reducedMotion = globalThis.matchMedia('(prefers-reduced-motion: reduce)').matches
+		applyCameraPose(targetCamera, target, targetZoom, !reducedMotion, FLY_TO_SECONDS)
+		if (reducedMotion) {
+			controls.update(0)
 			queueMicrotask(settleTextureLods)
-		} else {
-			fly = {
-				startedAt: performance.now(),
-				duration: FLY_TO_MS,
-				fromTarget: controls.target.clone(), toTarget: target,
-				fromCamera: camera.position.clone(), toCamera: targetCamera,
-				fromZoom: camera.zoom, toZoom: targetZoom,
-			}
 		}
 		schedule()
 	}
@@ -1337,8 +1324,12 @@ export async function createRootMapRenderer(
 	canvas.addEventListener('keydown', handleKeyDown)
 	canvas.addEventListener('keyup', handleKeyUp)
 	canvas.addEventListener('blur', handleCanvasBlur)
-	controls.addEventListener('change', schedule)
-	controls.addEventListener('end', settleTextureLods)
+	controls.listen({
+		onControl: schedule,
+		onTransitionStart: schedule,
+		onUpdate: schedule,
+		onRest: handleControlsRest,
+	})
 	document.addEventListener('visibilitychange', handleVisibility)
 	const intersectionObserver = new IntersectionObserver((entries) => {
 		intersecting = entries.at(-1)?.isIntersecting ?? true
@@ -1417,7 +1408,6 @@ export async function createRootMapRenderer(
 		},
 		resize,
 		resetView() {
-			fly = null
 			viewStartedAt = null
 			viewBlend = settings.view === 'orrery' ? 1 : 0
 			viewFrom = viewBlend
@@ -1426,7 +1416,6 @@ export async function createRootMapRenderer(
 			callbacks.onFocusChange(null)
 			lastFollowPosition = null
 			applyPositions()
-			controls.update()
 			queueMicrotask(settleTextureLods)
 			schedule()
 		},
@@ -1450,8 +1439,6 @@ export async function createRootMapRenderer(
 			canvas.removeEventListener('keydown', handleKeyDown)
 			canvas.removeEventListener('keyup', handleKeyUp)
 			canvas.removeEventListener('blur', handleCanvasBlur)
-			controls.removeEventListener('change', schedule)
-			controls.removeEventListener('end', settleTextureLods)
 			controls.dispose()
 			clearSceneContent()
 			clearSky()

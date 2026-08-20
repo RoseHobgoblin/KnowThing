@@ -6,12 +6,14 @@ import {
 	Mesh,
 	PerspectiveCamera,
 	Scene,
+	Sphere,
 	SphereGeometry,
 	SRGBColorSpace,
+	Vector3,
 	WebGLRenderer,
 } from 'three'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import type { MapBody } from '../root-layout.js'
+import { RodderCameraControls } from './camera-controls.js'
 import { createPlanetSurfaceVisual, type PlanetSurfaceVisual } from './surface-material.js'
 import { createStellarSurfaceVisual, type StellarSurfaceVisual } from './stellar-material.js'
 
@@ -60,17 +62,19 @@ export function createSurfacePreviewRenderer(
 	const camera = new PerspectiveCamera(36, 1, 0.1, 20)
 	camera.up.set(0, 0, 1)
 	const initialCameraPosition = camera.position.set(2.45, -2.45, 1.15).clone()
-	camera.lookAt(0, 0, 0)
-
-	const controls = new OrbitControls(camera, canvas)
-	controls.enableDamping = false
-	controls.enablePan = false
-	controls.enableZoom = true
+	const controls = new RodderCameraControls(camera, {
+		domElement: canvas,
+		input: 'preview',
+		smoothTime: 0.25,
+		draggingSmoothTime: 0.1,
+		dollySpeed: 0.65,
+		rotateSpeed: 0.7,
+	})
 	controls.minDistance = 2.45
 	controls.maxDistance = 5.2
-	controls.rotateSpeed = 0.7
-	controls.zoomSpeed = 0.65
-	controls.target.set(0, 0, 0)
+	controls.setBoundaryRadius(0.001)
+	void controls.setPose({ position: initialCameraPosition, target: new Vector3() })
+	controls.update(0)
 
 	// Neutral authoring light: enough fill to inspect the whole recipe while a
 	// directional key still exposes roughness, bump, clouds, and the terminator.
@@ -90,10 +94,17 @@ export function createSurfacePreviewRenderer(
 	let frameHandle = 0
 	let disposed = false
 	let generation = 0
+	let lastFrameAt = performance.now()
+	const framingSphere = new Sphere(new Vector3(), 1.12)
 
-	function render(): void {
+	function render(now: number): void {
 		frameHandle = 0
-		if (!disposed) renderer.render(scene, camera)
+		if (disposed) return
+		const deltaSeconds = Math.min(0.05, Math.max(0, (now - lastFrameAt) / 1_000))
+		lastFrameAt = now
+		const controlsMoved = controls.update(deltaSeconds)
+		renderer.render(scene, camera)
+		if (controlsMoved) scheduleRender()
 	}
 
 	function scheduleRender(): void {
@@ -111,9 +122,12 @@ export function createSurfacePreviewRenderer(
 	}
 
 	function resetView(): void {
-		camera.position.copy(initialCameraPosition)
-		controls.target.set(0, 0, 0)
-		controls.update()
+		const reducedMotion = globalThis.matchMedia('(prefers-reduced-motion: reduce)').matches
+		void controls.frameSphere(initialCameraPosition, framingSphere, {
+			transition: !reducedMotion,
+			smoothTime: 0.25,
+		})
+		if (reducedMotion) controls.update(0)
 		scheduleRender()
 	}
 
@@ -153,6 +167,8 @@ export function createSurfacePreviewRenderer(
 		mesh.scale.setScalar(1)
 		scene.add(mesh)
 		if (surface?.cloudMesh) scene.add(surface.cloudMesh)
+		void controls.fitSphere(framingSphere)
+		controls.update(0)
 		scheduleRender()
 		await (isStar ? stellarSurface!.ready : surface!.ready)
 		if (!disposed && currentGeneration === generation) scheduleRender()
@@ -163,9 +179,20 @@ export function createSurfacePreviewRenderer(
 		onUnavailable('The surface preview graphics context was lost. The base color plate remains available.')
 	}
 
+	function handleControlsSleep(): void {
+		if (!frameHandle) return
+		cancelAnimationFrame(frameHandle)
+		frameHandle = 0
+	}
+
 	canvas.addEventListener('webglcontextlost', handleContextLost)
-	controls.addEventListener('change', scheduleRender)
-	scheduleRender()
+	controls.listen({
+		onControl: scheduleRender,
+		onTransitionStart: scheduleRender,
+		onUpdate: scheduleRender,
+		onSleep: handleControlsSleep,
+	})
+	resetView()
 
 	return {
 		setBody,
@@ -176,7 +203,6 @@ export function createSurfacePreviewRenderer(
 			generation += 1
 			if (frameHandle) cancelAnimationFrame(frameHandle)
 			canvas.removeEventListener('webglcontextlost', handleContextLost)
-			controls.removeEventListener('change', scheduleRender)
 			controls.dispose()
 			clearSurface()
 			sphereGeometry.dispose()

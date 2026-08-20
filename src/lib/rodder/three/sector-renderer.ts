@@ -5,6 +5,7 @@ import {
 	Group,
 	PerspectiveCamera,
 	Scene,
+	Sphere,
 	Sprite,
 	SpriteMaterial,
 	SRGBColorSpace,
@@ -12,7 +13,7 @@ import {
 	Vector3,
 	WebGLRenderer,
 } from 'three'
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+import { RodderCameraControls } from './camera-controls.js'
 import type { ThemePalette } from '../root-layout.js'
 import { FULL_VIEW_INTERACTION } from '../consumer-contract.js'
 import {
@@ -40,6 +41,7 @@ import {
 const FOV_DEG = 50
 const PICK_RADIUS_PX = 14
 const MARKER_SCALE = 1 / 34 // marker world size as a fraction of bounds radius
+const CAMERA_SMOOTH_TIME = 0.35
 
 function makeDiscTexture(): CanvasTexture {
 	const canvas = document.createElement('canvas')
@@ -120,11 +122,11 @@ export function createSectorRenderer(
 	let height = Math.max(1, Math.round(host.getBoundingClientRect().height || width))
 	const camera = new PerspectiveCamera(FOV_DEG, width / height, 0.01, 100_000)
 	camera.up.set(0, 0, 1)
-	const controls = new OrbitControls(camera, canvas)
-	controls.enableDamping = true
-	controls.dampingFactor = 0.085
-	controls.screenSpacePanning = true
-	controls.zoomToCursor = true
+	const controls = new RodderCameraControls(camera, {
+		domElement: canvas,
+		input: 'orbit',
+		smoothTime: CAMERA_SMOOTH_TIME,
+	})
 	// Full free orbit apart from the exact poles (Z-up look-at singularity).
 	controls.minPolarAngle = 0.015
 	controls.maxPolarAngle = Math.PI - 0.015
@@ -148,6 +150,8 @@ export function createSectorRenderer(
 	let suppressClick = false
 	let currentGrid: GridHelper | null = null
 	const scratch = new Vector3()
+	const scratchTarget = new Vector3()
+	let lastFrameAt = performance.now()
 
 	type RootNode = { root: PositionedSectorRoot, sprite: Sprite, ring: Sprite, material: SpriteMaterial }
 	const nodes = new Map<string, RootNode>()
@@ -195,6 +199,9 @@ export function createSectorRenderer(
 
 		roots = positionedRoots(nextRoots)
 		boundsRadius = sectorBoundsRadius(nextRoots)
+		controls.minDistance = Math.max(boundsRadius * MARKER_SCALE * 1.5, Number.EPSILON)
+		controls.maxDistance = boundsRadius * 12
+		controls.setBoundaryRadius(boundsRadius * 1.25)
 		rebuildGrid()
 
 		const markerSize = boundsRadius * MARKER_SCALE
@@ -243,9 +250,13 @@ export function createSectorRenderer(
 	}
 
 	function resetView() {
-		controls.target.set(0, 0, 0)
-		camera.position.copy(defaultCameraPosition(controls.target))
-		camera.lookAt(controls.target)
+		const target = new Vector3()
+		void controls.frameSphere(
+			defaultCameraPosition(target),
+			new Sphere(target, boundsRadius * 1.1),
+			{ smoothTime: CAMERA_SMOOTH_TIME },
+		)
+		controls.update(0)
 		schedule()
 	}
 
@@ -290,7 +301,7 @@ export function createSectorRenderer(
 			})
 		}
 		// Legend: the on-screen length of one grid cell at the controls target.
-		const distance = camera.position.distanceTo(controls.target)
+		const distance = camera.position.distanceTo(controls.getTarget(scratchTarget, false))
 		const worldPerPixel = 2 * distance * Math.tan(FOV_DEG * Math.PI / 360) / height
 		const legendPixels = gridSpacing / worldPerPixel
 		const snapshot: SectorOverlaySnapshot = {
@@ -309,17 +320,34 @@ export function createSectorRenderer(
 
 	function schedule() {
 		needsRender = true
+		if (!destroyed && frameHandle === 0 && !document.hidden) frameHandle = requestAnimationFrame(frame)
 	}
 
-	function frame() {
+	function frame(now: number) {
+		frameHandle = 0
 		if (destroyed) return
-		frameHandle = requestAnimationFrame(frame)
 		if (document.hidden) return
-		const controlsMoved = controls.update()
+		const deltaSeconds = Math.min(0.05, Math.max(0, (now - lastFrameAt) / 1_000))
+		lastFrameAt = now
+		const controlsMoved = controls.update(deltaSeconds)
 		if (!needsRender && !controlsMoved) return
 		needsRender = false
 		renderer.render(scene, camera)
 		publishOverlay()
+		if (controlsMoved) schedule()
+	}
+
+	function handleVisibility() {
+		if (!document.hidden) {
+			lastFrameAt = performance.now()
+			schedule()
+		}
+	}
+
+	function handleControlsSleep() {
+		if (!frameHandle) return
+		cancelAnimationFrame(frameHandle)
+		frameHandle = 0
 	}
 
 	function handlePointerDown(event: PointerEvent) {
@@ -371,12 +399,18 @@ export function createSectorRenderer(
 	canvas.addEventListener('click', handleClick)
 	canvas.addEventListener('dblclick', handleDoubleClick)
 	canvas.addEventListener('webglcontextlost', handleContextLost)
-	controls.addEventListener('change', schedule)
+	controls.listen({
+		onControl: schedule,
+		onTransitionStart: schedule,
+		onUpdate: schedule,
+		onSleep: handleControlsSleep,
+	})
+	document.addEventListener('visibilitychange', handleVisibility)
 
 	applyTheme()
 	resetView()
 	renderer.setSize(width, height, false)
-	frameHandle = requestAnimationFrame(frame)
+	schedule()
 
 	return {
 		canvas,
@@ -417,18 +451,26 @@ export function createSectorRenderer(
 		focusRoot(slug) {
 			const node = nodes.get(slug)
 			if (!node) return
-			const offset = camera.position.clone().sub(controls.target)
+			const target = controls.getTarget(new Vector3(), false)
+			const offset = camera.position.clone().sub(target)
 			// Come in closer than the whole-sector framing, but never inside the marker.
 			const focusDistance = Math.max(boundsRadius * 0.45, gridSpacing * 1.5)
 			offset.setLength(Math.min(offset.length(), focusDistance))
-			controls.target.copy(node.sprite.position)
-			camera.position.copy(node.sprite.position).add(offset)
+			const reducedMotion = globalThis.matchMedia('(prefers-reduced-motion: reduce)').matches
+			void controls.setPose({
+				position: node.sprite.position.clone().add(offset),
+				target: node.sprite.position,
+				transition: !reducedMotion,
+				smoothTime: CAMERA_SMOOTH_TIME,
+			})
+			if (reducedMotion) controls.update(0)
 			schedule()
 		},
 		getCameraState() {
+			const target = controls.getTarget(new Vector3(), false)
 			return {
 				position: camera.position.toArray() as [number, number, number],
-				target: controls.target.toArray() as [number, number, number],
+				target: target.toArray() as [number, number, number],
 				fieldOfView: camera.fov,
 			}
 		},
@@ -439,11 +481,13 @@ export function createSectorRenderer(
 				state.position[1] - state.target[1],
 				state.position[2] - state.target[2],
 			) <= 1e-9) return
-			camera.position.fromArray(state.position)
-			controls.target.fromArray(state.target)
 			camera.fov = Math.min(179, Math.max(1, state.fieldOfView))
-			camera.lookAt(controls.target)
 			camera.updateProjectionMatrix()
+			void controls.setPose({
+				position: new Vector3().fromArray(state.position),
+				target: new Vector3().fromArray(state.target),
+			})
+			controls.update(0)
 			schedule()
 		},
 		destroy() {
@@ -455,6 +499,7 @@ export function createSectorRenderer(
 			canvas.removeEventListener('click', handleClick)
 			canvas.removeEventListener('dblclick', handleDoubleClick)
 			canvas.removeEventListener('webglcontextlost', handleContextLost)
+			document.removeEventListener('visibilitychange', handleVisibility)
 			controls.dispose()
 			for (const node of nodes.values()) {
 				node.material.dispose()
