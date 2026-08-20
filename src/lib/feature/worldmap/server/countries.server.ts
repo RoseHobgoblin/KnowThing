@@ -3,7 +3,7 @@ import { and, eq, sql } from 'drizzle-orm'
 import type { z } from 'zod'
 import { db } from '$lib/server/db/index.js'
 import { countries } from '$lib/server/db/schema.js'
-import type { createCountrySchema, updateCountrySchema } from '$lib/worldmap/schema.js'
+import type { createCountrySchema, updateCountrySchema } from '$lib/feature/worldmap/schema.js'
 
 type CreateCountryInput = z.infer<typeof createCountrySchema>
 type UpdateCountryInput = z.infer<typeof updateCountrySchema>

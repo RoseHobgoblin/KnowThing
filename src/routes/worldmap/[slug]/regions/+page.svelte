@@ -3,7 +3,7 @@
 	import { m } from '$lib/paraglide/messages.js'
 	import { pushError, pushSuccess } from '$lib/notifications.svelte'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
-	import WorldSvgMap from '$lib/components/worldmap/WorldSvgMap.svelte'
+	import WorldSvgMap from '$lib/feature/worldmap/components/WorldSvgMap.svelte'
 	import Button from '$lib/components/ui/Button.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
 	import { worldmapRegionAssignmentsBreadcrumbs } from '$lib/utils/breadcrumbs.js'

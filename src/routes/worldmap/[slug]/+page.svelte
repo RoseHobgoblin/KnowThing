@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { m } from '$lib/paraglide/messages.js'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
-	import WorldSvgMap from '$lib/components/worldmap/WorldSvgMap.svelte'
+	import WorldSvgMap from '$lib/feature/worldmap/components/WorldSvgMap.svelte'
 	import { worldmapDetailBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 
 	type RegionItem = {

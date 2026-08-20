@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
 import { handleServiceCall } from '$lib/server/utils.js'
-import { ingestWorldMapBySlug } from '$lib/server/services/worldmap.js'
+import { ingestWorldMapBySlug } from '$lib/feature/worldmap/server/service.server.js'
 
 export const POST: RequestHandler = async (event) => {
 	requireRole(event, 'admin')
