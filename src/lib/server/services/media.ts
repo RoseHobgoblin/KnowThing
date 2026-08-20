@@ -10,10 +10,12 @@ import {
 	contentMediaUsage,
 	contentRecords,
 	media,
+	mediaAssetBindings,
 	mediaCategories,
 	mediaHistory,
 	mediaVersions,
 	users,
+	rodderBodies,
 } from '$lib/server/db/schema.js'
 import { getSiteConfig } from '$lib/server/settings.js'
 import { sanitizeSvg, stripExifMetadata, verifyMimeType } from './media-sanitize.js'
@@ -41,6 +43,24 @@ async function getMediaRecord(filename: string) {
 
 export async function findMediaRecord(filename: string) {
 	return getMediaRecord(filename)
+}
+
+export async function findMediaRecordById(id: number) {
+	const [record] = await db.select().from(media).where(eq(media.id, id)).limit(1)
+	return record ?? null
+}
+
+/** Resolve one immutable revision without exposing storage paths to the client. */
+export async function findMediaRevision(id: number, hash: string) {
+	const record = await findMediaRecordById(id)
+	if (!record) return null
+	if (record.hash === hash) return record
+	const [version] = await db
+		.select()
+		.from(mediaVersions)
+		.where(and(eq(mediaVersions.filename, record.filename), eq(mediaVersions.hash, hash)))
+		.limit(1)
+	return version ?? null
 }
 
 export async function getMediaDetail(filename: string) {
@@ -86,6 +106,20 @@ export async function getMediaDetail(filename: string) {
 		.from(contentMediaUsage)
 		.innerJoin(contentRecords, eq(contentMediaUsage.contentRecordId, contentRecords.id))
 		.where(eq(contentMediaUsage.filename, filename))
+	const assetUsage = await db
+		.select({
+			ownerType: mediaAssetBindings.ownerType,
+			ownerId: mediaAssetBindings.ownerId,
+			slot: mediaAssetBindings.slot,
+			name: rodderBodies.name,
+			slug: rodderBodies.slug,
+		})
+		.from(mediaAssetBindings)
+		.leftJoin(rodderBodies, and(
+			eq(mediaAssetBindings.ownerType, 'rodder'),
+			eq(mediaAssetBindings.ownerId, rodderBodies.id),
+		))
+		.where(eq(mediaAssetBindings.mediaId, file.id))
 
 	const history = await db
 		.select({
@@ -120,6 +154,7 @@ export async function getMediaDetail(filename: string) {
 		uploaderName,
 		categories: categories.map(c => c.category),
 		usage: usage.map(u => u.pageSlug),
+		assetUsage,
 		history,
 		versions,
 	}
@@ -602,6 +637,14 @@ export async function renameMediaFile(userId: number, oldFilename: string, newFi
 export async function deleteMediaFile(userId: number, filename: string) {
 	const record = await getMediaRecord(filename)
 	if (!record) throw error(404, 'File not found')
+	const [binding] = await db
+		.select({ slot: mediaAssetBindings.slot })
+		.from(mediaAssetBindings)
+		.where(eq(mediaAssetBindings.mediaId, record.id))
+		.limit(1)
+	if (binding) {
+		throw error(409, `This file supplies structured data (${binding.slot}) and cannot be deleted until that binding is cleared.`)
+	}
 
 	try {
 		await unlink(record.filepath)

@@ -1,30 +1,31 @@
 import { db } from './db/index.js'
-import { celestialBodies, phonemes, languages, languageDialects, lexicon, definitions, graphemes, graphemePhonemes } from './db/schema.js'
+import { rodderBodies, phonemes, languages, languageDialects, lexicon, definitions, graphemes, graphemePhonemes } from './db/schema.js'
 import { eq, and, or, sql, asc, inArray } from 'drizzle-orm'
 import type { FieldMap } from '$lib/infoboxes/types.js'
-import type { MapBody } from '$lib/celestial/system-layout.js'
-import { deriveSystemType } from 'tungolcraft'
+import type { MapBody } from '$lib/rodder/root-layout.js'
+import type { ApparentSkyResult } from '$lib/rodder/apparent-sky.js'
 import {
 	deriveBody, deriveStar,
 	type BodyModel, type StarModel, type BodyRow, type StarRow,
 } from 'tungolcraft'
-import { bodyInfoboxFields, starInfoboxFields } from '$lib/celestial/projections.js'
-import { CELESTIAL_TREE_CTE, findNearestStarAncestor } from '$lib/server/celestial/hierarchy.js'
-import { getSystemMapEntities } from '$lib/server/services/celestial-registry.js'
+import { rodderDocumentInfoboxFields } from '$lib/rodder/projections.js'
+import { RODDER_TREE_CTE, findNearestStarAncestor } from '$lib/server/rodder/hierarchy.js'
+import { resolveRodderEntityDocument } from '$lib/server/services/rodder-documents.js'
 
-export interface SystemMapData {
-	systemName: string
+export interface RootMapData {
+	rootName: string
 	stars: MapBody[]
 	bodies: MapBody[]
+	apparentSky: ApparentSkyResult
 }
 
 /** Total mass of a system's stars — the effective mass of its barycenter. */
 async function systemStellarMassKg(systemId: number): Promise<number | null> {
 	const [row] = await db.execute(sql`
-		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
+		WITH RECURSIVE ${RODDER_TREE_CTE}
 		SELECT SUM(cb.mass_kg)::double precision AS "massKg"
-		FROM celestial_bodies cb
-		JOIN celestial_tree t ON t.id = cb.id
+		FROM rodder_bodies cb
+		JOIN rodder_tree t ON t.id = cb.id
 		WHERE cb.kind = 'star' AND t.root_id = ${systemId}
 	`)
 	const mass = (row as unknown as { massKg: number | null } | undefined)?.massKg
@@ -43,8 +44,8 @@ async function buildBodyModel(row: BodyRow & { id: number, parentId?: number | n
 
 	if (row.parentId != null) {
 		const [parent] = await db
-			.select({ kind: celestialBodies.kind, name: celestialBodies.name, slug: celestialBodies.slug, massKg: celestialBodies.massKg })
-			.from(celestialBodies).where(eq(celestialBodies.id, row.parentId))
+			.select({ kind: rodderBodies.kind, name: rodderBodies.name, slug: rodderBodies.slug, massKg: rodderBodies.massKg })
+			.from(rodderBodies).where(eq(rodderBodies.id, row.parentId))
 		if (parent?.kind === 'body') parentBody = parent
 		if (parent?.kind === 'system') {
 			// Circumbinary: the primary is the system barycenter, whose effective
@@ -59,8 +60,8 @@ async function buildBodyModel(row: BodyRow & { id: number, parentId?: number | n
 
 	const [{ count: moonCount }] = await db
 		.select({ count: sql<number>`count(*)::int` })
-		.from(celestialBodies)
-		.where(and(eq(celestialBodies.parentId, row.id), eq(celestialBodies.kind, 'body')))
+		.from(rodderBodies)
+		.where(and(eq(rodderBodies.parentId, row.id), eq(rodderBodies.kind, 'body')))
 
 	return deriveBody(row, { star, parentBody, system, moonCount })
 }
@@ -72,8 +73,8 @@ async function buildStarModel(row: StarRow & { id: number, parentId?: number | n
 	let parentSystemId: number | null = null
 	if (row.parentId != null) {
 		const [parent] = await db
-			.select({ kind: celestialBodies.kind, name: celestialBodies.name, slug: celestialBodies.slug, massKg: celestialBodies.massKg })
-			.from(celestialBodies).where(eq(celestialBodies.id, row.parentId))
+			.select({ kind: rodderBodies.kind, name: rodderBodies.name, slug: rodderBodies.slug, massKg: rodderBodies.massKg })
+			.from(rodderBodies).where(eq(rodderBodies.id, row.parentId))
 		if (parent?.kind === 'star') parentStar = { name: parent.name, slug: parent.slug, massKg: parent.massKg }
 		if (parent?.kind === 'system') {
 			parentSystemId = row.parentId
@@ -89,24 +90,24 @@ async function buildStarModel(row: StarRow & { id: number, parentId?: number | n
 	// Companions are never stored — they derive from the graph: child stars
 	// orbiting this one, plus co-components of the same barycenter.
 	const companions = await db
-		.select({ name: celestialBodies.name, slug: celestialBodies.slug })
-		.from(celestialBodies)
+		.select({ name: rodderBodies.name, slug: rodderBodies.slug })
+		.from(rodderBodies)
 		.where(and(
-			eq(celestialBodies.kind, 'star'),
-			sql`${celestialBodies.id} <> ${row.id}`,
+			eq(rodderBodies.kind, 'star'),
+			sql`${rodderBodies.id} <> ${row.id}`,
 			parentSystemId == null
-				? eq(celestialBodies.parentId, row.id)
-				: or(eq(celestialBodies.parentId, row.id), eq(celestialBodies.parentId, parentSystemId)),
+				? eq(rodderBodies.parentId, row.id)
+				: or(eq(rodderBodies.parentId, row.id), eq(rodderBodies.parentId, parentSystemId)),
 		))
-		.orderBy(celestialBodies.name)
+		.orderBy(rodderBodies.name)
 
 	// Planets orbit the star directly; satellites are every deeper body whose
 	// nearest star ancestor is this one (moons, submoons, …).
 	const [counts] = await db.execute(sql`
-		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
+		WITH RECURSIVE ${RODDER_TREE_CTE}
 		SELECT
-			(SELECT COUNT(*) FROM celestial_tree t WHERE t.kind = 'body' AND t.parent_id = ${row.id})::int AS planets,
-			(SELECT COUNT(*) FROM celestial_tree t WHERE t.kind = 'body' AND t.nearest_star_id = ${row.id} AND t.parent_id <> ${row.id})::int AS satellites
+			(SELECT COUNT(*) FROM rodder_tree t WHERE t.kind = 'body' AND t.parent_id = ${row.id})::int AS planets,
+			(SELECT COUNT(*) FROM rodder_tree t WHERE t.kind = 'body' AND t.nearest_star_id = ${row.id} AND t.parent_id <> ${row.id})::int AS satellites
 	`)
 	const c = counts as unknown as { planets?: number, satellites?: number } | undefined
 
@@ -120,20 +121,20 @@ async function buildStarModel(row: StarRow & { id: number, parentId?: number | n
 }
 
 /**
- * Resolve the typed model for a celestial entity — the model-layer entry point
+ * Resolve the typed model for a rodder entity — the model-layer entry point
  * used by pages/consumers that want structured data rather than infobox fields.
  */
-export async function resolveCelestialModel(type: string, slug: string): Promise<BodyModel | StarModel | null> {
+export async function resolveRodderModel(type: string, slug: string): Promise<BodyModel | StarModel | null> {
 	if (type === 'star') {
-		const [row] = await db.select().from(celestialBodies)
-			.where(and(eq(celestialBodies.slug, slug), eq(celestialBodies.kind, 'star')))
+		const [row] = await db.select().from(rodderBodies)
+			.where(and(eq(rodderBodies.slug, slug), eq(rodderBodies.kind, 'star')))
 		return row ? buildStarModel(row) : null
 	}
-	// 'body' is the canonical internal kind; 'planet'/'celestial'/'celestial body'
+	// 'body' is the canonical internal kind; 'planet'/'rodder'/'rodder body'
 	// remain as user-facing infobox template vocabulary.
-	if (type === 'body' || type === 'planet' || type === 'celestial' || type === 'celestial body') {
-		const [row] = await db.select().from(celestialBodies)
-			.where(and(eq(celestialBodies.slug, slug), eq(celestialBodies.kind, 'body')))
+	if (type === 'body' || type === 'planet' || type === 'rodder' || type === 'rodder body') {
+		const [row] = await db.select().from(rodderBodies)
+			.where(and(eq(rodderBodies.slug, slug), eq(rodderBodies.kind, 'body')))
 		return row ? buildBodyModel(row) : null
 	}
 	return null
@@ -142,83 +143,23 @@ export async function resolveCelestialModel(type: string, slug: string): Promise
 /** Domain mapper registry: infobox type → table query + field mapper */
 const DOMAIN_RESOLVERS: Record<string, (slug: string) => Promise<FieldMap | null>> = {
 	star: async (slug) => {
-		const model = await resolveCelestialModel('star', slug)
-		return model?.kind === 'star' ? starInfoboxFields(model) : null
+		const document = await resolveRodderEntityDocument(slug)
+		return document ? rodderDocumentInfoboxFields(document) : null
 	},
 	planet: async (slug) => {
-		const model = await resolveCelestialModel('body', slug)
-		return model?.kind === 'body' ? bodyInfoboxFields(model) : null
+		const document = await resolveRodderEntityDocument(slug)
+		return document ? rodderDocumentInfoboxFields(document) : null
 	},
 }
 
-// celestial aliases all resolve to the planetary_bodies table
-DOMAIN_RESOLVERS['celestial'] = DOMAIN_RESOLVERS['planet']
-DOMAIN_RESOLVERS['celestial body'] = DOMAIN_RESOLVERS['planet']
+// rodder aliases all resolve to the planetary_bodies table
+DOMAIN_RESOLVERS['rodder'] = DOMAIN_RESOLVERS['planet']
+DOMAIN_RESOLVERS['rodder body'] = DOMAIN_RESOLVERS['planet']
 
 // Star systems — auto-computed from child stars and planets
 DOMAIN_RESOLVERS['system'] = async (slug) => {
-	const [system] = await db.select().from(celestialBodies)
-		.where(and(eq(celestialBodies.slug, slug), eq(celestialBodies.kind, 'system')))
-	if (!system) return null
-
-	// Fetch stars in this system (all descendants — companions included)
-	const systemStars = await db.execute(sql`
-		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
-		SELECT s.name, s.spectral_type, s.slug
-		FROM celestial_bodies s
-		JOIN celestial_tree t ON t.id = s.id
-		WHERE s.kind = 'star' AND t.root_id = ${system.id}
-		ORDER BY t.depth, s.name
-	`)
-
-	// Count planets (bodies orbiting a star or the system barycenter) vs
-	// satellites (bodies orbiting a body)
-	const [counts] = await db.execute(sql`
-		WITH RECURSIVE ${CELESTIAL_TREE_CTE}
-		SELECT
-			(SELECT COUNT(*) FROM celestial_tree t JOIN celestial_bodies pp ON pp.id = t.parent_id
-				WHERE t.root_id = ${system.id} AND t.kind = 'body' AND pp.kind IN ('star', 'system'))::int AS planets,
-			(SELECT COUNT(*) FROM celestial_tree t JOIN celestial_bodies pp ON pp.id = t.parent_id
-				WHERE t.root_id = ${system.id} AND t.kind = 'body' AND pp.kind = 'body')::int AS satellites
-	`)
-
-	const fields = new Map<string, string>([
-		['name', system.name],
-		['system_type', deriveSystemType(systemStars.length)],
-	])
-
-	// Stars list
-	const starNames = (systemStars as any[]).map((s: any) => {
-		const link = `[[${s.slug}|${s.name}]]`
-		return s.spectral_type ? `${link} (${s.spectral_type})` : link
-	})
-	fields.set('stars', starNames.join(', '))
-	fields.set('star_count', String(systemStars.length))
-
-	const c = counts as any
-	if (c?.planets) fields.set('planets', String(c.planets))
-	if (c?.satellites) fields.set('satellites', String(c.satellites))
-
-	// System-level placement / metadata (non-derivable, edited via the system configure form)
-	if (system.distanceLy != null) fields.set('distance', `${system.distanceLy.toLocaleString('en-US', { maximumFractionDigits: 2 })} ly`)
-	if (system.galacticX != null && system.galacticY != null && system.galacticZ != null) {
-		const fmt = (n: number) => n.toLocaleString('en-US', { maximumFractionDigits: 1 })
-		fields.set('coordinates', `(${fmt(system.galacticX)}, ${fmt(system.galacticY)}, ${fmt(system.galacticZ)}) ly`)
-	}
-	if (system.formationAge) fields.set('formation_age', system.formationAge)
-	if (system.designations) fields.set('designations', system.designations)
-
-	if (system.description) fields.set('description', system.description)
-
-	// Merge extra
-	const extra = system.extra as Record<string, unknown> | undefined
-	if (extra) {
-		for (const [k, v] of Object.entries(extra)) {
-			if (v != null && v !== '') fields.set(k, String(v))
-		}
-	}
-
-	return fields
+	const document = await resolveRodderEntityDocument(slug)
+	return document ? rodderDocumentInfoboxFields(document) : null
 }
 DOMAIN_RESOLVERS['star system'] = DOMAIN_RESOLVERS['system']
 DOMAIN_RESOLVERS['planetary system'] = DOMAIN_RESOLVERS['system']
@@ -318,31 +259,28 @@ DOMAIN_RESOLVERS['word'] = async (ref) => {
 }
 
 /**
- * Fetch full system map data for rendering {{System map|slug}}.
+ * Fetch full root map data for rendering {{Root map|slug}}.
  */
-export async function resolveSystemMapData(slug: string): Promise<SystemMapData | null> {
-	const [system] = await db.select({ id: celestialBodies.id, name: celestialBodies.name })
-		.from(celestialBodies)
-		.where(and(eq(celestialBodies.slug, slug), eq(celestialBodies.kind, 'system')))
-	if (!system) return null
-
-	const { stars, bodies } = await getSystemMapEntities(system.id)
-
+export async function resolveRootMapData(slug: string): Promise<RootMapData | null> {
+	const document = await resolveRodderEntityDocument(slug)
+	const display = document?.displays.rootMap
+	if (!display) return null
 	return {
-		systemName: system.name,
-		stars: stars as unknown as MapBody[],
-		bodies: bodies as unknown as MapBody[],
+		rootName: display.rootName,
+		stars: display.stars as unknown as MapBody[],
+		bodies: display.bodies as unknown as MapBody[],
+		apparentSky: display.apparentSky,
 	}
 }
 
 /**
- * Batch-fetch system map data for multiple slugs.
+ * Batch-fetch root map data for multiple slugs.
  */
-export async function resolveAllSystemMaps(slugs: string[]): Promise<Record<string, SystemMapData>> {
-	const result: Record<string, SystemMapData> = {}
+export async function resolveAllRootMaps(slugs: string[]): Promise<Record<string, RootMapData>> {
+	const result: Record<string, RootMapData> = {}
 	await Promise.all(
 		slugs.map(async (slug) => {
-			const data = await resolveSystemMapData(slug)
+			const data = await resolveRootMapData(slug)
 			if (data) result[slug] = data
 		}),
 	)

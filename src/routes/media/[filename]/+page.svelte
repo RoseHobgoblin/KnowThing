@@ -3,6 +3,7 @@
 	import type { PageData } from './$types.js'
 	import { page } from '$app/stores'
 	import { invalidateAll, goto } from '$app/navigation'
+	import { resolve } from '$app/paths'
 	import { normalizePermissions } from '$lib/permissions.js'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
@@ -18,6 +19,7 @@
 	let { data }: { data: PageData } = $props()
 	const initialFile = $state.snapshot(untrack(() => data.file))
 	const initialCategories = $state.snapshot(untrack(() => data.categories))
+	const totalUsage = $derived(data.usage.length + data.assetUsage.length)
 	const initialDetails = {
 		description: initialFile.description || '',
 		categoriesInput: initialCategories.join(', '),
@@ -106,7 +108,7 @@
 	async function deleteFile() {
 		const ok = await confirmDialog.confirm(
 			m.media_delete_file(),
-			`${m.media_delete_confirm({ name: data.file.filename })}${data.usage.length > 0 ? m.media_delete_warning({ count: data.usage.length }) : ''}`,
+			`${m.media_delete_confirm({ name: data.file.filename })}${totalUsage > 0 ? m.media_delete_warning({ count: totalUsage }) : ''}`,
 			m.media_delete_file(),
 			m.common_cancel(),
 		)
@@ -116,7 +118,7 @@
 			await queryClient.invalidateQueries({ queryKey: ['media'] })
 			recordGone = true
 			pushSuccess(m.media_file_deleted())
-			await goto('/dashboard/media')
+			await goto(resolve('/dashboard/media'))
 		} catch (error) {
 			pushError(error instanceof Error ? error.message : m.media_delete_failed())
 		}
@@ -180,7 +182,7 @@
 			pushSuccess(m.media_renamed_toast({ name: finalName, count: body.rewrittenPages ?? 0 }))
 			renameOpen = false
 			recordGone = true
-			await goto(`/media/${encodeURIComponent(finalName)}`)
+			await goto(resolve('/media/[filename]', { filename: finalName }))
 		} catch (error) {
 			pushError(error instanceof Error ? error.message : m.media_rename_failed())
 		}
@@ -196,7 +198,7 @@
 <div class="space-y-6">
 	<nav class="text-sm text-dim">
 		{#if canManageMedia}
-			<a href="/dashboard/media" class="hover:text-link">{m.media_breadcrumb()}</a>
+			<a href={resolve('/dashboard/media')} class="hover:text-link">{m.media_breadcrumb()}</a>
 			<span class="mx-1">></span>
 		{/if}
 		<span class="text-secondary">{data.file.filename}</span>
@@ -332,11 +334,11 @@
 							{copied ? m.media_copied() : m.media_copy_wikitext()}
 						</button>
 					{/if}
-					<a href="/api/media/{data.file.filename}" target="_blank" class="block px-3 py-2 text-sm text-secondary transition-colors hover:bg-page">
+					<a href={resolve('/api/media/[...filename]', { filename: data.file.filename })} target="_blank" class="block px-3 py-2 text-sm text-secondary transition-colors hover:bg-page">
 						{m.media_view_full_size()} ->
 					</a>
 					{#if data.file.mimeType === 'image/svg+xml'}
-						<a href="/api/media/{data.file.filename}?format=svg" target="_blank" download class="block px-3 py-2 text-sm text-secondary transition-colors hover:bg-page">
+						<a href={`${resolve('/api/media/[...filename]', { filename: data.file.filename })}?format=svg`} target="_blank" download class="block px-3 py-2 text-sm text-secondary transition-colors hover:bg-page">
 							{m.media_download_svg()} ->
 						</a>
 					{/if}
@@ -395,7 +397,7 @@
 							</div>
 						{/if}
 						<button onclick={deleteFile} class="w-full text-left px-3 py-2 text-sm text-error transition-colors hover:bg-error-bg">
-							{m.media_delete_file()}{data.usage.length > 0 ? ` ${m.media_delete_used_suffix({ count: data.usage.length })}` : ''}
+							{m.media_delete_file()}{totalUsage > 0 ? ` ${m.media_delete_used_suffix({ count: totalUsage })}` : ''}
 						</button>
 					{/if}
 				</div>
@@ -431,13 +433,31 @@
 				{#if data.usage.length > 0}
 					<ul class="text-sm space-y-1">
 						{#each data.usage as slug (slug)}
-							<li><a href="/know/{slug}" class="text-link hover:text-link-hover hover:underline">{slug.replaceAll('_', ' ')}</a></li>
+							<li><a href={resolve('/know/[slug]', { slug })} class="text-link hover:text-link-hover hover:underline">{slug.replaceAll('_', ' ')}</a></li>
 						{/each}
 					</ul>
 				{:else}
 					<p class="text-sm text-secondary">{m.media_not_used()}</p>
 				{/if}
 			</div>
+
+			{#if data.assetUsage.length > 0}
+				<div class="bg-surface p-4">
+					<h3 class="mb-3 text-sm font-semibold text-body">Used as structured data ({data.assetUsage.length})</h3>
+					<ul class="space-y-1 text-sm">
+						{#each data.assetUsage as binding (`${binding.ownerType}:${binding.ownerId}:${binding.slot}`)}
+							<li>
+								{#if binding.ownerType === 'rodder' && binding.slug}
+									<a href={resolve('/rodder/[...path]', { path: binding.slug })} class="text-link hover:text-link-hover hover:underline">{binding.name ?? binding.slug}</a>
+								{:else}
+									<span class="text-body">{binding.ownerType} #{binding.ownerId}</span>
+								{/if}
+								<span class="ml-2 font-mono text-xs text-dim">{binding.slot}</span>
+							</li>
+						{/each}
+					</ul>
+				</div>
+			{/if}
 		</div>
 	</div>
 

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types.js'
-	import CelestialDetailPage from '$lib/celestial/CelestialDetailPage.svelte'
+	import RodderDetailPage from '$lib/rodder/RodderDetailPage.svelte'
 	import CalendarDetail from '$lib/components/calendar/CalendarDetail.svelte'
 	import CalendarConfigure from '$lib/components/calendar/CalendarConfigure.svelte'
 
@@ -12,7 +12,7 @@
 				? `Configure ${data.calendar.name} — KnowThing`
 				: `${data.calendar.name} — Calendar — KnowThing`
 		}
-		return null // Celestial component manages its own <svelte:head>
+		return null // Rodder component manages its own <svelte:head>
 	})
 </script>
 
@@ -20,8 +20,8 @@
 	{#if headTitle}<title>{headTitle}</title>{/if}
 </svelte:head>
 
-{#if data.namespace === 'Celestial'}
-	<CelestialDetailPage data={data} />
+{#if data.namespace === 'Rodder'}
+	<RodderDetailPage data={data} />
 {:else if data.namespace === 'Calendar'}
 	{#if data.mode === 'configure'}
 		<CalendarConfigure

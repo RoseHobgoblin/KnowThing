@@ -15,7 +15,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		canManageWordbook: user ? hasRole(user.role, 'editor') : false,
 		canManageMedia: user ? hasRole(user.role, 'editor') : false,
 		canConfigureCalendar: user ? hasRole(user.role, 'editor') : false,
-		canConfigureCelestial: user ? hasRole(user.role, 'editor') : false,
+		canConfigureRodder: user ? hasRole(user.role, 'editor') : false,
 		canManageSettings: user ? hasRole(user.role, 'admin') : false,
 		canManageUsers: user ? hasRole(user.role, 'admin') : false,
 		canManageLanguages: user ? hasRole(user.role, 'admin') : false,

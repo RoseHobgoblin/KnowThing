@@ -81,7 +81,7 @@ $md$),
 The '''Astral Concord''' is the dominant religion of the [[Khessar|Emirate of Khessar]] and of the caravan cities of the [[Marran Desert]]. It teaches that the cosmos is bound by a fixed and knowable order — the Concord — written across the heavens in the "nine stars," the constant lights by which the desert may be crossed and the year reckoned.
 
 == Beliefs ==
-The Concord recognises no personal god but venerates the Nine: nine fixed stars held to be the regents of the celestial order. To read the stars truly is, in Astral teaching, both a science and an act of worship, for the same order that steers a caravan governs the turning of the seasons and the fate of nations. Its scripture, the ''[[Ephemerides]]'', is as much an almanac as a book of doctrine.
+The Concord recognises no personal god but venerates the Nine: nine fixed stars held to be the regents of the rodder order. To read the stars truly is, in Astral teaching, both a science and an act of worship, for the same order that steers a caravan governs the turning of the seasons and the fate of nations. Its scripture, the ''[[Ephemerides]]'', is as much an almanac as a book of doctrine.
 
 == History ==
 Tradition ascribes the faith's founding to [[Marran the Elder]], a desert astronomer of the 6th century whose star-tables first made the deep desert reliably passable. The priest-astronomers who followed became keepers of the roads, the wells, and the calendar, and their authority grew with the caravan trade that depended on them.

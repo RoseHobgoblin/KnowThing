@@ -10,7 +10,7 @@ export interface Breadcrumb {
 	label: string
 	href?: string
 	/**
-	 * For namespaced labels like "Celestial:Therne": link only the prefix
+	 * For namespaced labels like "Rodder:Therne": link only the prefix
 	 * before the first ":" to this href; render the colon and the rest inert.
 	 */
 	namespaceHref?: string
@@ -88,24 +88,32 @@ export function wordbookEditLanguageBreadcrumbs(
 	]
 }
 
-// ── Celestial ──────────────────────────────────────────────────────────
+// ── Rodder ──────────────────────────────────────────────────────────
 
-/** Hub breadcrumb (e.g. /celestial) */
-export function celestialRegistryBreadcrumbs(): Breadcrumb[] {
-	return [{ label: 'Celestial' }]
+/** Hub breadcrumb (e.g. /rodder) */
+export function rodderRegistryBreadcrumbs(): Breadcrumb[] {
+	return [{ label: 'Rodder' }]
 }
 
-/** Single-crumb namespaced form: e.g. "Celestial:Sun". */
-export function celestialBreadcrumbs(name: string): Breadcrumb[] {
-	return [{ label: `Celestial:${name.replaceAll(/\s+/g, '_')}`, namespaceHref: '/celestial' }]
+/** Single-crumb namespaced form: e.g. "Rodder:Sun". */
+export function rodderBreadcrumbs(name: string): Breadcrumb[] {
+	return [{ label: `Rodder:${name.replaceAll(/\s+/g, '_')}`, namespaceHref: '/rodder' }]
 }
 
-export function celestialConfigureBreadcrumbs(
+/** Sector page (e.g. /rodder/sector/local-sector). */
+export function rodderSectorBreadcrumbs(name: string): Breadcrumb[] {
+	return [
+		{ label: 'Rodder', href: '/rodder' },
+		{ label: name },
+	]
+}
+
+export function rodderConfigureBreadcrumbs(
 	_parentCrumbs: { label: string, href: string }[],
 	body: { name: string, slug: string },
 ): Breadcrumb[] {
 	return [
-		{ label: `Celestial:${body.name.replaceAll(/\s+/g, '_')}`, href: `/Celestial:${body.slug}`, namespaceHref: '/celestial' },
+		{ label: `Rodder:${body.name.replaceAll(/\s+/g, '_')}`, href: `/Rodder:${body.slug}`, namespaceHref: '/rodder' },
 		{ label: 'Configure' },
 	]
 }
@@ -174,11 +182,11 @@ export function breadcrumbJsonLd(
 		{ '@type': 'ListItem', 'position': 1, 'name': rootLabel, 'item': `${origin}/` },
 	]
 
-	for (let i = 0; i < crumbs.length; i++) {
-		const crumb = crumbs[i]
+	for (let index = 0; index < crumbs.length; index++) {
+		const crumb = crumbs[index]
 		const entry: Record<string, unknown> = {
 			'@type': 'ListItem',
-			'position': i + 2,
+			'position': index + 2,
 			'name': crumb.label,
 		}
 		if (crumb.href) entry.item = `${origin}${crumb.href}`

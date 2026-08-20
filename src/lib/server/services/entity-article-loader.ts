@@ -3,14 +3,14 @@
 //
 // Mirrors `article-loader.ts` + `content-records.ts` but reads/writes prose on
 // a structured row's `body` field instead of a `content_records` row. Used by
-// celestial routes after Phase 4 migration; reused by Wordbook (Phase 5),
+// rodder routes after Phase 4 migration; reused by Wordbook (Phase 5),
 // Calendar (Phase 6), Categories (Phase 7), CarveCraft (Phase 8).
 // ============================================================================
 
 import { eq, sql } from 'drizzle-orm'
 import { db } from '$lib/server/db/index.js'
 import {
-	celestialBodies,
+	rodderBodies,
 	languages, lexicon,
 	calendars, categories, countries, worldMaps,
 	contentLinks,
@@ -23,13 +23,13 @@ import type { WikiNode } from '$lib/parser/types.js'
 
 export type EntityKind = EntitySource extends infer T ? T extends { kind: infer K } ? K : never : never
 
-// All three celestial kinds live in the unified celestial_bodies table; the
+// All three rodder kinds live in the unified rodder_bodies table; the
 // persisted kind string on entity_revisions/content_links matches the row's
 // `kind` column ('planet' was rewritten to 'body' by migration 0043).
 const ENTITY_TABLES = {
-	star: celestialBodies,
-	body: celestialBodies,
-	system: celestialBodies,
+	star: rodderBodies,
+	body: rodderBodies,
+	system: rodderBodies,
 	language: languages,
 	lexicon,
 	calendar: calendars,
@@ -104,7 +104,7 @@ export async function saveEntityBody(
 	database: ContentEffectsDatabase,
 	input: SaveEntityBodyInput,
 ): Promise<SaveEntityBodyResult> {
-	const table = tableFor(input.kind) as typeof celestialBodies
+	const table = tableFor(input.kind) as typeof rodderBodies
 
 	// Read existing row for snapshot. Use a generic any-cast since each table
 	// has its own schema but we only need the body fields here.
@@ -160,9 +160,9 @@ export async function saveEntityBody(
  * articles' `domain` column.)
  */
 const SOURCE_DOMAIN_FOR_KIND: Partial<Record<EntityKind, string>> = {
-	star: 'celestial',
-	body: 'celestial',
-	system: 'celestial',
+	star: 'rodder',
+	body: 'rodder',
+	system: 'rodder',
 	language: 'wordbook',
 	lexicon: 'wordbook',
 	calendar: 'calendar',

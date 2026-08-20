@@ -1,0 +1,26 @@
+name: Rodder checks
+
+on:
+  pull_request:
+    paths:
+      - 'src/lib/rodder/**'
+      - 'packages/tungolcraft/**'
+      - 'package*.json'
+      - '.github/workflows/rodder-root-map.yml'
+  push:
+    branches: [main]
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm --workspace packages/tungolcraft run build
+      - run: npm run check
+      - run: npx vitest run src/lib/rodder/root-layout.test.ts src/lib/rodder/view-state.test.ts packages/tungolcraft/src/orbit.test.ts

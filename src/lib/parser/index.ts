@@ -41,7 +41,7 @@ export function extractLinksFromAst(ast: WikiNode): string[] {
  *    backlinks need tracking through content_links the same way)
  *
  * Domain naming convention for content_links:
- *   - namespace_link → lowercased namespace key ('celestial', 'category', …)
+ *   - namespace_link → lowercased namespace key ('rodder', 'category', …)
  *   - wordbook_link  → 'wordbook'; targetSlug is `${language}/${word}` (or
  *                       just `${language}` for language-only links)
  *   - {{wt|word|lang}} templates → 'wordbook' with `${lang}/${word}`, so
@@ -185,7 +185,10 @@ export function extractInfoboxImageRef(
 			let image: string | undefined
 			for (const field of fields) {
 				const value = node.args.find(a => a.name?.toLowerCase().trim() === field)?.value?.trim()
-				if (value) { image = value; break }
+				if (value) {
+					image = value
+					break
+				}
 			}
 			const fromArg = node.args.find(a => a.name?.toLowerCase().trim() === 'from')?.value?.trim()
 			if (image) result = { image }
@@ -230,18 +233,26 @@ export function extractCollectionRefs(ast: WikiNode): { type: string, slug: stri
 }
 
 /**
- * Walk a pre-parsed AST and find {{System map|slug}} templates.
+ * Walk a pre-parsed AST and find {{Root map|slug}} templates.
  * Returns the system slugs to pre-fetch.
  */
-export function extractSystemMapRefs(ast: WikiNode): string[] {
-	const slugs: string[] = []
+export function extractRootMapRefs(ast: WikiNode): string[] {
+	return extractRodderDisplayRefs(ast).filter(ref => ref.kind === 'root').map(ref => ref.slug)
+}
+
+export type RodderDisplayReference = { kind: 'root' | 'sector', slug: string }
+
+/** Discover Rodder display targets without interpreting their presentation arguments. */
+export function extractRodderDisplayRefs(ast: WikiNode): RodderDisplayReference[] {
+	const references: RodderDisplayReference[] = []
 	walkNodes([ast], (node) => {
-		if (node.type === 'template' && node.name.toLowerCase().trim() === 'system map') {
-			const slug = node.args[0]?.value?.trim()
-			if (slug) slugs.push(slug)
-		}
+		if (node.type !== 'template') return
+		const name = node.name.toLowerCase().trim()
+		if (name !== 'root map' && name !== 'sector map') return
+		const slug = node.args.find(argument => !argument.name)?.value.trim()
+		if (slug) references.push({ kind: name === 'root map' ? 'root' : 'sector', slug })
 	})
-	return slugs
+	return references
 }
 
 /**

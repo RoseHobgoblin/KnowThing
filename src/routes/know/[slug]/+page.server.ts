@@ -1,7 +1,8 @@
 import { redirect } from '@sveltejs/kit'
 import type { PageServerLoad } from './$types.js'
-import { parseWikitext, extractCategoriesFromAst, extractInfoboxFromRefs, extractSystemMapRefs, extractCollectionRefs, extractSummaryFromAst } from '$lib/parser/index.js'
-import { resolveAllStructuredData, resolveAllStructuredCollections, resolveAllSystemMaps } from '$lib/server/structured-data.js'
+import { parseWikitext, extractCategoriesFromAst, extractInfoboxFromRefs, extractRodderDisplayRefs, extractCollectionRefs, extractSummaryFromAst } from '$lib/parser/index.js'
+import { resolveAllStructuredData, resolveAllStructuredCollections } from '$lib/server/structured-data.js'
+import { resolveRodderEntityDocuments, resolveRodderSectorDocuments } from '$lib/server/services/rodder-documents.js'
 import { getResolvedLinks, serializeResolvedLinks } from '$lib/server/resolved-links.js'
 import { lookupMediaInfo, resolveCardImageSync } from '$lib/server/services/page-card.js'
 import { findPageCaseInsensitive, findPageInAnyDomain } from '$lib/server/services/pages.js'
@@ -17,7 +18,7 @@ export const load: PageServerLoad = async ({ params }) => {
 	}
 
 	if (!record) {
-		// Check if this slug exists in another domain (e.g. moved to celestial)
+		// Check if this slug exists in another domain (e.g. moved to rodder)
 		const otherDomain = await findPageInAnyDomain(params.slug)
 
 		if (otherDomain) {
@@ -61,10 +62,17 @@ export const load: PageServerLoad = async ({ params }) => {
 		}
 	}
 
-	const systemMapSlugs = extractSystemMapRefs(ast)
-	const systemMaps = systemMapSlugs.length > 0
-		? await resolveAllSystemMaps(systemMapSlugs)
-		: null
+	const displayReferences = [...new Map(extractRodderDisplayRefs(ast).map(reference => [
+		`${reference.kind}:${reference.slug.toLowerCase()}`,
+		reference,
+	])).values()]
+	const selectedDisplays = displayReferences.slice(0, 24)
+	const rootMapSlugs = selectedDisplays.filter(reference => reference.kind === 'root').map(reference => reference.slug)
+	const sectorMapSlugs = selectedDisplays.filter(reference => reference.kind === 'sector').map(reference => reference.slug)
+	const [rodderEntities, rodderSectors] = await Promise.all([
+		rootMapSlugs.length > 0 ? resolveRodderEntityDocuments(rootMapSlugs) : Promise.resolve({}),
+		sectorMapSlugs.length > 0 ? resolveRodderSectorDocuments(sectorMapSlugs) : Promise.resolve({}),
+	])
 
 	const collectionRefs = extractCollectionRefs(ast)
 	let structuredCollections: Record<string, Record<string, unknown>[]> | null = null
@@ -95,7 +103,9 @@ export const load: PageServerLoad = async ({ params }) => {
 		languageMatch,
 		structuredData,
 		structuredCollections,
-		systemMaps,
+		rodderEntities,
+		rodderSectors,
+		rodderDisplayOverflow: Math.max(0, displayReferences.length - selectedDisplays.length),
 		resolvedLinks: serializeResolvedLinks(resolvedLinks),
 		description,
 		card: {

@@ -17,8 +17,8 @@
 		'periapsis', 'apoapsis', 'mean_orbital_speed',
 		'satellite_of', 'satellite_of_slug', 'parent_star', 'parent_star_slug',
 		'rotation_period', 'axial_tilt', 'equatorial_velocity',
-		'apparent_magnitude', 'angular_diameter', 'albedo',
-		'satellites', 'has_rings', 'description',
+		'apparent_magnitude', 'angular_diameter',
+		'satellites', 'description',
 	])
 
 	const title = $derived(getField(fields, 'name') ?? '')
@@ -57,16 +57,14 @@
 
 	const apparentMagnitude = $derived(getField(fields, 'apparent_magnitude') ?? '')
 	const angularDiameter = $derived(getField(fields, 'angular_diameter') ?? '')
-	const albedo = $derived(getField(fields, 'albedo') ?? '')
 
 	const satellites = $derived(getField(fields, 'satellites') ?? '')
-	const hasRings = $derived(getField(fields, 'has_rings') ?? '')
 
 	const hasComposition = $derived(composition || atmosphere || surfacePressure)
 	const hasOrbital = $derived(satelliteOf || orbitalPeriod || semiMajorAxis || eccentricity || inclination || periapsis || apoapsis || meanOrbitalSpeed)
 	const hasRotation = $derived(rotationPeriod || axialTilt || equatorialVelocity)
-	const hasObservation = $derived(apparentMagnitude || angularDiameter || albedo)
-	const hasSystem = $derived(satellites || hasRings)
+	const hasObservation = $derived(apparentMagnitude || angularDiameter)
+	const hasSystem = $derived(satellites)
 
 	const remaining = $derived(getRemainingFields(fields, KNOWN_KEYS))
 </script>
@@ -121,16 +119,12 @@
 		<InfoboxSection title="Observation" variant="raised">
 		<InfoboxRow label="Apparent magnitude" value={apparentMagnitude} />
 		<InfoboxRow label="Angular diameter" value={angularDiameter} />
-		<InfoboxRow label="Albedo" value={albedo} />
 		</InfoboxSection>
 	{/if}
 
 	{#if hasSystem}
 		<InfoboxSection title="System" variant="raised">
 		<InfoboxRow label="Satellites" value={satellites} />
-		{#if hasRings}
-			<InfoboxRow label="Rings" value="Yes" />
-		{/if}
 		</InfoboxSection>
 	{/if}
 

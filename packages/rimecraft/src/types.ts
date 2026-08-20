@@ -31,7 +31,7 @@ export interface StaticCalendarData {
 	/** Length of one calendar day in real seconds. Default: 86400 (24 Earth-hours).
 	 *  Use 72000 for a 20-hour day, 43200 for a 12-hour day, etc. */
 	day_length_seconds?: number
-	/** Injected from celestial data when the calendar has a planet_id.
+	/** Injected from rodder data when the calendar has a planet_id.
 	 *  Provides orbital mechanics for lunisolar intercalation and derived physics. */
 	planet?: {
 		orbital_period_days: number
@@ -95,8 +95,8 @@ export interface Moon {
 	face_color: string
 	/** Hex color for shadow portion */
 	shadow_color: string
-	/** Links to planetary_bodies.id — when set, cycle/offset are derived from the celestial body */
-	celestial_id?: number
+	/** Links to planetary_bodies.id — when set, cycle/offset are derived from the rodder body */
+	rodder_id?: number
 }
 
 export interface Era {

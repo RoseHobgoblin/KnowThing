@@ -1,10 +1,11 @@
 import { json } from '@sveltejs/kit'
 import { z } from 'zod'
 import type { RequestHandler } from './$types.js'
-import { extractDomainLinksFromAst, extractLinksFromAst, parseWikitext } from '$lib/parser/index.js'
+import { extractDomainLinksFromAst, extractLinksFromAst, extractRodderDisplayRefs, parseWikitext } from '$lib/parser/index.js'
 import { resolveLinkTargets, serializeResolvedLinks } from '$lib/server/resolved-links.js'
 import { wikiSlugify } from '$lib/utils/slugify.js'
 import { parseBody } from '$lib/server/utils.js'
+import { resolveRodderEntityDocuments, resolveRodderSectorDocuments } from '$lib/server/services/rodder-documents.js'
 
 const renderSchema = z.object({
 	// The only parser entry point open to anonymous callers, so it needs its own
@@ -36,6 +37,23 @@ export const POST: RequestHandler = async ({ request }) => {
 	].slice(0, MAX_PREVIEW_LINK_TARGETS)
 
 	const resolvedLinks = await resolveLinkTargets(targets)
+	const displayReferences = [...new Map(extractRodderDisplayRefs(ast).map(reference => [
+		`${reference.kind}:${reference.slug.toLowerCase()}`,
+		reference,
+	])).values()]
+	const selectedDisplays = displayReferences.slice(0, 24)
+	const rootSlugs = selectedDisplays.filter(reference => reference.kind === 'root').map(reference => reference.slug)
+	const sectorSlugs = selectedDisplays.filter(reference => reference.kind === 'sector').map(reference => reference.slug)
+	const [rodderEntities, rodderSectors] = await Promise.all([
+		resolveRodderEntityDocuments(rootSlugs),
+		resolveRodderSectorDocuments(sectorSlugs),
+	])
 
-	return json({ ast, resolvedLinks: serializeResolvedLinks(resolvedLinks) })
+	return json({
+		ast,
+		resolvedLinks: serializeResolvedLinks(resolvedLinks),
+		rodderEntities,
+		rodderSectors,
+		rodderDisplayOverflow: Math.max(0, displayReferences.length - selectedDisplays.length),
+	})
 }

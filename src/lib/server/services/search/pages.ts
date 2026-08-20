@@ -20,7 +20,7 @@ export async function searchPagesRaw(
 	snippet: string
 }>> {
 	// TODO Phase 7: replace this UNION with a `searchable_pages` materialised
-	// view that pre-computes tsvectors. Stopgap unions celestial entity tables
+	// view that pre-computes tsvectors. Stopgap unions rodder entity tables
 	// directly so post-Phase-4 entities surface in search.
 	return db.execute(sql`
 		SELECT * FROM (
@@ -49,7 +49,7 @@ export async function searchPagesRaw(
 			UNION ALL
 
 			SELECT
-				'celestial' AS domain,
+				'rodder' AS domain,
 				slug,
 				NULL AS "parentPath",
 				name AS title,
@@ -71,7 +71,7 @@ export async function searchPagesRaw(
 					websearch_to_tsquery('english', ${query}),
 					${`StartSel=<mark>, StopSel=</mark>, MaxWords=${options.headlineMaxWords}, MinWords=${options.headlineMinWords}`}
 				) AS snippet
-			FROM celestial_bodies
+			FROM rodder_bodies
 			WHERE to_tsvector('english', name || ' ' || COALESCE(body_plain_text, '')) @@ websearch_to_tsquery('english', ${query})
 
 			UNION ALL
@@ -169,7 +169,7 @@ export async function countPageSearchResults(query: string): Promise<number> {
 	const [{ count }] = await db.execute<{ count: number }>(sql`
 		SELECT (
 			(SELECT COUNT(*) FROM content_records WHERE search_vector @@ websearch_to_tsquery('english', ${query}))
-			+ (SELECT COUNT(*) FROM celestial_bodies WHERE to_tsvector('english', name || ' ' || COALESCE(body_plain_text, '')) @@ websearch_to_tsquery('english', ${query}))
+			+ (SELECT COUNT(*) FROM rodder_bodies WHERE to_tsvector('english', name || ' ' || COALESCE(body_plain_text, '')) @@ websearch_to_tsquery('english', ${query}))
 			+ (SELECT COUNT(*) FROM languages WHERE to_tsvector('english', name || ' ' || COALESCE(body_plain_text, '')) @@ websearch_to_tsquery('english', ${query}))
 			+ (SELECT COUNT(*) FROM lexicon WHERE to_tsvector('english', word || ' ' || COALESCE(body_plain_text, '')) @@ websearch_to_tsquery('english', ${query}))
 			+ (SELECT COUNT(*) FROM calendars WHERE to_tsvector('english', name || ' ' || COALESCE(body_plain_text, '')) @@ websearch_to_tsquery('english', ${query}))

@@ -243,7 +243,7 @@ export const calendars = pgTable('calendars', {
 	description: text('description').default(''),
 	isPrimary: boolean('is_primary').default(false).notNull(),
 	staticData: jsonb('static_data').notNull(),
-	planetId: integer('planet_id').references((): AnyPgColumn => celestialBodies.id, { onDelete: 'set null' }),
+	planetId: integer('planet_id').references((): AnyPgColumn => rodderBodies.id, { onDelete: 'set null' }),
 	body: text('body').notNull().default(''),
 	bodyParsedAst: jsonb('body_parsed_ast'),
 	bodyPlainText: text('body_plain_text').notNull().default(''),
@@ -569,11 +569,11 @@ export const lexiconRelations = pgTable(
 )
 
 // ============================================================================
-// Celestial Bodies
+// Rodder Bodies
 // ============================================================================
 
 /**
- * Unified celestial entity table (migration 0043). One row per system, star,
+ * Unified rodder entity table (migration 0043). One row per system, star,
  * or body; `kind` discriminates, `parentId` is the single hierarchy edge
  * (star→system|star, body→star|body, system→none). Dynamical role (planet vs
  * moon vs companion) is NOT stored — it derives from the parent's kind.
@@ -581,8 +581,8 @@ export const lexiconRelations = pgTable(
  * structural CHECKs (see 0043). `legacyKind`/`legacyId` are migration audit
  * columns, dropped in the follow-up cleanup migration.
  */
-export const celestialBodies = pgTable(
-	'celestial_bodies',
+export const rodderBodies = pgTable(
+	'rodder_bodies',
 	{
 		id: serial('id').primaryKey(),
 		kind: text('kind').notNull(),
@@ -592,7 +592,7 @@ export const celestialBodies = pgTable(
 		// resolve via the underscored display name instead. Column dropped in the
 		// 0044 legacy-cleanup migration.
 		pageSlug: text('page_slug'),
-		parentId: integer('parent_id').references((): AnyPgColumn => celestialBodies.id, { onDelete: 'set null' }),
+		parentId: integer('parent_id').references((): AnyPgColumn => rodderBodies.id, { onDelete: 'set null' }),
 
 		// Shared physical / observational.
 		massKg: doublePrecision('mass_kg'),
@@ -614,7 +614,7 @@ export const celestialBodies = pgTable(
 		rotationPeriodS: doublePrecision('rotation_period_s'),
 		axialTilt: doublePrecision('axial_tilt'),
 
-		// Star-only.
+		// Shared effective/representative temperature; luminosity fields remain star-only.
 		spectralType: text('spectral_type'),
 		luminosityW: doublePrecision('luminosity_w'),
 		luminosityVisual: text('luminosity_visual'),
@@ -625,19 +625,14 @@ export const celestialBodies = pgTable(
 
 		// Body-only. bodyType is required for kind='body' (CHECK in 0043).
 		bodyType: text('body_type'),
-		temperature: text('temperature'),
 		composition: text('composition'),
 		atmosphere: text('atmosphere'),
 		surfacePressure: text('surface_pressure'),
-		albedo: text('albedo'),
 		satellites: integer('satellites'),
-		hasRings: boolean('has_rings').default(false),
 
-		// System-only.
+		// System-only. Sector-frame XYZ lives in rodder_sector_roots (0054);
+		// distance stays here as an independent approximate authored fact.
 		distanceLy: doublePrecision('distance_ly'),
-		galacticX: doublePrecision('galactic_x'),
-		galacticY: doublePrecision('galactic_y'),
-		galacticZ: doublePrecision('galactic_z'),
 		formationAge: text('formation_age'),
 		designations: text('designations'),
 
@@ -656,9 +651,93 @@ export const celestialBodies = pgTable(
 		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 	},
 	table => [
-		index('idx_celestial_bodies_slug').on(table.slug),
-		index('idx_celestial_bodies_parent').on(table.parentId),
-		index('idx_celestial_bodies_kind_parent').on(table.kind, table.parentId),
+		index('idx_rodder_bodies_slug').on(table.slug),
+		index('idx_rodder_bodies_parent').on(table.parentId),
+		index('idx_rodder_bodies_kind_parent').on(table.kind, table.parentId),
+	],
+)
+
+/**
+ * A rodder sector (migration 0054): a bounded 3D authoring space with an
+ * explicit reference-frame contract — units, shape/extent, origin semantics,
+ * axes, handedness, provenance. Sector-map positions are meaningless without
+ * this record; bare XYZ values must never be stored outside a declared frame.
+ * Enum-ish columns carry DB CHECKs (see 0054); extent columns are nullable so
+ * an undeclared extent stays visibly unavailable.
+ */
+export const rodderSectors = pgTable('rodder_sectors', {
+	id: serial('id').primaryKey(),
+	name: text('name').notNull(),
+	slug: text('slug').unique().notNull(),
+	description: text('description').notNull().default(''),
+
+	// Frame contract.
+	units: text('units').notNull().default('ly'), // 'ly' | 'pc'
+	shape: text('shape'), // 'sphere' | 'cuboid' | null (undeclared)
+	radius: doublePrecision('radius'),
+	extentX: doublePrecision('extent_x'),
+	extentY: doublePrecision('extent_y'),
+	extentZ: doublePrecision('extent_z'),
+	originKind: text('origin_kind').notNull().default('frame-centred'), // 'object-centred' | 'frame-centred' | 'imported'
+	originBodyId: integer('origin_body_id').references(() => rodderBodies.id, { onDelete: 'set null' }),
+	axesNote: text('axes_note'),
+	handedness: text('handedness').notNull().default('right-handed'), // 'right-handed' | 'left-handed'
+	referenceEpoch: text('reference_epoch'),
+	provenance: text('provenance').notNull().default('authored'), // 'authored' | 'imported' | 'transformed' | 'approximate' | 'legacy'
+
+	createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
+/**
+ * An independently positioned root object on a sector map. One row per root;
+ * `bodyId` is unique — an object is a root of at most one sector and loses the
+ * root record when attached beneath an orbital parent. XYZ is in the sector's
+ * units and nullable (a root may exist before its position is known); the app
+ * layer requires complete triples on write, while legacy-migrated rows keep
+ * whatever the old galactic_x/y/z columns held, verbatim.
+ */
+export const rodderSectorRoots = pgTable(
+	'rodder_sector_roots',
+	{
+		id: serial('id').primaryKey(),
+		sectorId: integer('sector_id').references(() => rodderSectors.id, { onDelete: 'cascade' }).notNull(),
+		bodyId: integer('body_id').references(() => rodderBodies.id, { onDelete: 'cascade' }).unique().notNull(),
+
+		x: doublePrecision('x'),
+		y: doublePrecision('y'),
+		z: doublePrecision('z'),
+		positionProvenance: text('position_provenance').notNull().default('authored'), // 'authored' | 'imported' | 'derived' | 'approximate' | 'legacy'
+		positionUncertainty: doublePrecision('position_uncertainty'),
+		notes: text('notes'),
+
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+	},
+	table => [
+		index('idx_sector_roots_sector').on(table.sectorId),
+	],
+)
+
+/** Stable, revision-pinned Media usage by structured domain records. */
+export const mediaAssetBindings = pgTable(
+	'media_asset_bindings',
+	{
+		id: serial('id').primaryKey(),
+		mediaId: integer('media_id').references(() => media.id, { onDelete: 'restrict' }).notNull(),
+		ownerType: text('owner_type').notNull(),
+		ownerId: integer('owner_id').notNull(),
+		slot: text('slot').notNull(),
+		contentHash: text('content_hash').notNull(),
+		filenameSnapshot: text('filename_snapshot').notNull(),
+		interpretation: jsonb('interpretation').default({}).notNull(),
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+	},
+	table => [
+		uniqueIndex('uidx_media_asset_binding_owner_slot').on(table.ownerType, table.ownerId, table.slot),
+		index('idx_media_asset_bindings_media').on(table.mediaId),
+		index('idx_media_asset_bindings_owner').on(table.ownerType, table.ownerId),
 	],
 )
 
@@ -844,7 +923,7 @@ export const inflectedForms = pgTable(
 
 // ============================================================================
 // Namespace migration scaffolding (Phase 1 — additive). Wired up by later
-// phases. See docs/MIGRATION-PHASE-0-AUDIT.md and the migration plan.
+// phases. See docs/audits/MIGRATION-PHASE-0-AUDIT.md and the migration plan.
 // ============================================================================
 
 export const categories = pgTable(

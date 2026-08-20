@@ -1,6 +1,6 @@
 /**
  * Reverse-migration: move prose out of `calendars.body` BACK into
- * `content_records` (domain='know'). Mirror of revert-celestial-prose.ts /
+ * `content_records` (domain='know'). Mirror of revert-rodder-prose.ts /
  * revert-wordbook-prose.ts. Calendars don't carry a page_slug column, so the
  * Know slug derives from the calendar name (spaces → underscores).
  *

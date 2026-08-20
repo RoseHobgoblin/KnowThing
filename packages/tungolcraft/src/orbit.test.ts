@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
 	meanAnomaly, solveKeplerE, meanMotion, trueAnomaly,
 	stateVectorAtTrueAnomaly, velocityAtTrueAnomaly, stateVectorAtEpoch,
-	validateOrbitalElements, OrbitalDomainError,
+	validateOrbitalElements, OrbitalDomainError, rotatePerifocalToInertial,
 	type OrbitalElements,
 } from './orbit.js'
 import { au, NOMINAL_SOLAR_GM } from './index.js'
@@ -21,6 +21,46 @@ const ORBIT: OrbitalElements = {
 }
 
 const magnitude = (v: { x: number, y: number, z: number }) => Math.hypot(v.x, v.y, v.z)
+
+describe('rotatePerifocalToInertial', () => {
+	it('is the identity at zero orientation', () => {
+		expect(rotatePerifocalToInertial(
+			{ x: 1, y: 2, z: 0 },
+			{ inclinationDeg: 0, longitudeAscendingNodeDeg: 0, argumentOfPeriapsisDeg: 0 },
+		)).toEqual({ x: 1, y: 2, z: 0 })
+	})
+
+	it('rotates a quarter-orbit fully out of the reference plane at 90 degrees inclination', () => {
+		const result = rotatePerifocalToInertial(
+			{ x: 0, y: 4, z: 0 },
+			{ inclinationDeg: 90, longitudeAscendingNodeDeg: 0, argumentOfPeriapsisDeg: 0 },
+		)
+		expect(result.x).toBeCloseTo(0)
+		expect(result.y).toBeCloseTo(0)
+		expect(result.z).toBeCloseTo(4)
+	})
+
+	it('composes node and periapsis rotations in the reference plane', () => {
+		const result = rotatePerifocalToInertial(
+			{ x: 3, y: 0, z: 0 },
+			{ inclinationDeg: 0, longitudeAscendingNodeDeg: 30, argumentOfPeriapsisDeg: 60 },
+		)
+		expect(result.x).toBeCloseTo(0)
+		expect(result.y).toBeCloseTo(3)
+		expect(result.z).toBeCloseTo(0)
+	})
+
+	it('rejects non-finite vectors and orientations', () => {
+		expect(() => rotatePerifocalToInertial(
+			{ x: Number.NaN, y: 0, z: 0 },
+			{ inclinationDeg: 0, longitudeAscendingNodeDeg: 0, argumentOfPeriapsisDeg: 0 },
+		)).toThrow(OrbitalDomainError)
+		expect(() => rotatePerifocalToInertial(
+			{ x: 0, y: 0, z: 0 },
+			{ inclinationDeg: Infinity, longitudeAscendingNodeDeg: 0, argumentOfPeriapsisDeg: 0 },
+		)).toThrow(OrbitalDomainError)
+	})
+})
 
 describe('meanAnomaly', () => {
 	it('rejects a zero period instead of manufacturing an anomaly', () => {

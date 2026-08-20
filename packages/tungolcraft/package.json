@@ -1,7 +1,7 @@
 {
 	"name": "tungolcraft",
 	"version": "0.1.0",
-	"description": "An explainable astrophysics modelling toolkit for arbitrary celestial systems.",
+	"description": "An explainable astrophysics modelling toolkit for arbitrary rodder systems.",
 	"type": "module",
 	"license": "MIT",
 	"author": "J. L. Bowden",

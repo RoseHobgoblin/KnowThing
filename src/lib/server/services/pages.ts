@@ -2,7 +2,7 @@ import { error } from '@sveltejs/kit'
 import { and, desc, eq, sql } from 'drizzle-orm'
 import {
 	calendars,
-	celestialBodies,
+	rodderBodies,
 	contentCategories,
 	contentLinks,
 	contentRecords,
@@ -223,18 +223,18 @@ export async function findPageInAnyDomain(slug: string) {
 		.limit(1)
 	if (record) return record
 
-	// Phase 4+: structured entities own their pages. Probe the celestial
+	// Phase 4+: structured entities own their pages. Probe the rodder
 	// table when content_records misses, so /know/Therne still redirects to
-	// /celestial/therne after the celestial shadow rows have been dropped.
+	// /rodder/therne after the rodder shadow rows have been dropped.
 	// Title links like [[Sunly system]] arrive wiki-slugified (spaces →
 	// underscores), so match the underscored display name too.
 	const lower = slug.toLowerCase()
-	const [celestial] = await db
-		.select({ slug: celestialBodies.slug })
-		.from(celestialBodies)
-		.where(sql`LOWER(${celestialBodies.slug}) = ${lower} OR LOWER(REPLACE(${celestialBodies.name}, ' ', '_')) = ${lower}`)
+	const [rodder] = await db
+		.select({ slug: rodderBodies.slug })
+		.from(rodderBodies)
+		.where(sql`LOWER(${rodderBodies.slug}) = ${lower} OR LOWER(REPLACE(${rodderBodies.name}, ' ', '_')) = ${lower}`)
 		.limit(1)
-	if (celestial) return { domain: 'celestial', slug: celestial.slug, parentPath: null }
+	if (rodder) return { domain: 'rodder', slug: rodder.slug, parentPath: null }
 
 	// Wordbook languages — surface as /wordbook/<slug>.
 	const [language] = await db

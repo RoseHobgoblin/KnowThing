@@ -152,11 +152,6 @@ body {
 	outline-offset: 2px;
 }
 
-h1, h2, h3, h4, h5, h6 {
-	font-family: var(--font-heading);
-	color: var(--color-heading);
-}
-
 /* Gold rule under headings in article content. `display: flow-root`
    establishes a block formatting context so the heading's box (and its
    border-bottom) shrinks to fit alongside any right-floated infobox

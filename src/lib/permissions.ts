@@ -5,7 +5,7 @@ export type AppPermissions = {
 	canManageWordbook: boolean
 	canManageMedia: boolean
 	canConfigureCalendar: boolean
-	canConfigureCelestial: boolean
+	canConfigureRodder: boolean
 	canManageSettings: boolean
 	canManageUsers: boolean
 	canManageLanguages: boolean
@@ -19,7 +19,7 @@ export const DEFAULT_PERMISSIONS: AppPermissions = {
 	canManageWordbook: false,
 	canManageMedia: false,
 	canConfigureCalendar: false,
-	canConfigureCelestial: false,
+	canConfigureRodder: false,
 	canManageSettings: false,
 	canManageUsers: false,
 	canManageLanguages: false,

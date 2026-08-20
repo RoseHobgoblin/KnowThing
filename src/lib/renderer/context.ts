@@ -2,6 +2,7 @@ import { getContext, setContext } from 'svelte'
 import { writable, type Writable } from 'svelte/store'
 import type { TemplateArg, WikiNode } from '$lib/parser/types.js'
 import type { CalendarConfig, ResolvedDate } from 'rimecraft'
+import type { RodderEntityDocument, RodderSectorDocument } from '$lib/rodder/consumer-contract.js'
 
 const KNOW_CONTEXT_KEY = 'know-render-context'
 
@@ -15,7 +16,7 @@ export interface KnowRenderContext {
 	mediaBaseUrl: string
 	/** Base URL for article pages, e.g. '/know' */
 	pageBaseUrl: string
-	/** Content domain for this page (know, celestial, calendar) — used for link resolution */
+	/** Content domain for this page (know, rodder, calendar) — used for link resolution */
 	sourceDomain: string
 	/** Footnotes collected by WikiReference, consumed by WikiReferenceList */
 	footnotes: Writable<FootnoteEntry[]>
@@ -37,8 +38,11 @@ export interface KnowRenderContext {
 	structuredData: Map<string, Map<string, string>> | null
 	/** Pre-fetched array-shaped structured data (phoneme grids, etc) keyed by `${type}:${slug}` */
 	structuredCollections: Record<string, Record<string, unknown>[]> | null
-	/** Pre-fetched system map data for {{System map|slug}} */
-	systemMaps: Record<string, { systemName: string, stars: any[], bodies: any[] }> | null
+	/** Pre-fetched public Rodder documents for map templates. Null values are resolved missing targets. */
+	rodderEntities: Map<string, RodderEntityDocument | null> | null
+	rodderSectors: Map<string, RodderSectorDocument | null> | null
+	/** Number of unique display targets skipped by the per-document safety ceiling. */
+	rodderDisplayOverflow: number
 }
 
 export interface FootnoteEntry {
@@ -61,7 +65,9 @@ function defaultKnowContext(overrides: Partial<KnowRenderContext> = {}): KnowRen
 		calendarConfig: null,
 		structuredData: null,
 		structuredCollections: null,
-		systemMaps: null,
+		rodderEntities: null,
+		rodderSectors: null,
+		rodderDisplayOverflow: 0,
 		...overrides,
 	}
 }

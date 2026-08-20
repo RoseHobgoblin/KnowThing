@@ -15,7 +15,7 @@ export function wikiSlugify(title: string): string {
 
 /**
  * Convert a name to a URL-friendly slug: lowercase, spaces/special chars → hyphens.
- * Used for /celestial/, /wordbook/, and other domain URLs.
+ * Used for /rodder/, /wordbook/, and other domain URLs.
  * e.g. "The Sun" → "the-sun", "Aide the Sun" → "aide-the-sun"
  */
 export function urlSlugify(name: string): string {

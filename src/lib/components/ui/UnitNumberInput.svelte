@@ -22,6 +22,7 @@
 		placeholder,
 		hint,
 		error,
+		disabled = false,
 	}: {
 		label: string
 		/** The canonical stored value (always in the first unit's terms when factor = 1). */
@@ -31,6 +32,7 @@
 		placeholder?: string
 		hint?: string
 		error?: string
+		disabled?: boolean
 	} = $props()
 
 	const id = useId('unit-input')
@@ -56,6 +58,9 @@
 	let unitIndex = $state(pickUnit(untrack(() => value)))
 	let text = $state(format(untrack(() => value), untrack(() => unitIndex)))
 	let focused = $state(false)
+	// This is deliberately non-reactive: it distinguishes our writes from a
+	// genuine parent update without creating another effect dependency.
+	let lastCommittedValue = untrack(() => value)
 
 	// Re-sync the display when the stored value changes from outside (preset
 	// apply, discard) — but never while the user is typing in the field.
@@ -63,20 +68,34 @@
 		const storedValue = value
 		const isFocused = focused
 		untrack(() => {
-			if (isFocused) return
+			if (isFocused || Object.is(storedValue, lastCommittedValue)) return
 			const index = storedValue == null ? unitIndex : pickUnit(storedValue)
 			unitIndex = index
 			text = format(storedValue, index)
+			lastCommittedValue = storedValue
 		})
 	})
 
-	function onInput() {
-		if (text.trim() === '') {
-			value = null
+	function commit(nextValue: number | null) {
+		lastCommittedValue = nextValue
+		value = nextValue
+	}
+
+	function onInput(event: Event & { currentTarget: HTMLInputElement }) {
+		const nextText = event.currentTarget.value
+		text = nextText
+		if (nextText.trim() === '') {
+			commit(null)
 			return
 		}
-		const typed = Number(text)
-		if (Number.isFinite(typed)) value = typed * units[unitIndex].factor
+		const typed = Number(nextText)
+		if (Number.isFinite(typed)) commit(typed * units[unitIndex].factor)
+	}
+
+	function onBlur() {
+		focused = false
+		// Clean up precision without automatically changing the chosen unit.
+		text = format(value, unitIndex)
 	}
 
 	// Switch display unit without changing the stored value — reformats the text
@@ -94,7 +113,7 @@
 			<Label for={id}>{label}</Label>
 			{#if hint}
 				<Tooltip content={hint} side="top">
-					<span class="text-secondary transition-colors cursor-help hover:text-body"><QuestionIcon size={12} weight="bold" /></span>
+					<span class="cursor-help text-secondary transition-colors hover:text-body"><QuestionIcon size={12} weight="bold" /></span>
 				</Tooltip>
 			{/if}
 		</div>
@@ -105,23 +124,25 @@
 			{id}
 			type="number"
 			step="any"
-			bind:value={text}
+			value={text}
 			{placeholder}
 			aria-invalid={!!error}
+			{disabled}
 			class="
-				flex w-full min-w-0 px-3 py-2 pr-20 text-sm text-body bg-page outline-none transition-colors
+				flex w-full min-w-0 bg-page px-3 py-2 pr-20 text-sm text-body transition-colors outline-none
 				placeholder:text-dim
 				focus:ring-2 focus:ring-accent
 				aria-invalid:ring-1 aria-invalid:ring-error-border
 			"
 			onfocus={() => focused = true}
-			onblur={() => focused = false}
+			onblur={onBlur}
 			oninput={onInput}
 		/>
-		<div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+		<div class="absolute top-1/2 right-2 flex -translate-y-1/2 items-center gap-1.5">
 			{#if units.length > 1}
 				<Select.Root
 					type="single"
+					{disabled}
 					value={String(unitIndex)}
 					onValueChange={v => selectUnit(Number(v))}
 				>
@@ -129,7 +150,7 @@
 						aria-label="Display unit"
 						title="Change display unit — stored in {storageUnit.label}"
 						class="
-							inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-semibold bg-accent-subtle text-accent border border-accent-border/60 cursor-pointer
+							inline-flex cursor-pointer items-center gap-1 border border-accent-border/60 bg-accent-subtle px-1.5 py-0.5 text-xs font-semibold text-accent
 							transition-colors
 							hover:bg-accent-subtle/60
 							data-[state=open]:ring-2 data-[state=open]:ring-accent
@@ -141,7 +162,7 @@
 					<Select.Portal>
 						<Select.Content
 							class="
-								z-9999 max-h-64 min-w-24 select-none bg-surface shadow-lg outline-none overflow-hidden
+								z-9999 max-h-64 min-w-24 overflow-hidden bg-surface shadow-lg outline-none select-none
 								data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95
 								data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95
 							"
@@ -152,7 +173,7 @@
 										value={String(index)}
 										label={unit.label}
 										class="
-											flex items-center justify-between gap-2 w-full px-2.5 py-1.5 text-xs select-none cursor-pointer text-body outline-none transition-colors
+											flex w-full cursor-pointer items-center justify-between gap-2 px-2.5 py-1.5 text-xs text-body transition-colors outline-none select-none
 											data-highlighted:bg-raised data-highlighted:text-heading
 										"
 									>
@@ -168,9 +189,6 @@
 						</Select.Content>
 					</Select.Portal>
 				</Select.Root>
-				{#if units[unitIndex].factor !== storageUnit.factor}
-					<span class="text-xs text-secondary">{storageUnit.label}</span>
-				{/if}
 			{:else}
 				<span class="text-xs text-secondary">{units[unitIndex].label}</span>
 			{/if}
@@ -178,7 +196,7 @@
 	</div>
 
 	{#if error !== undefined}
-		<div class="text-error text-xs transition-opacity absolute bottom-0 left-0 pointer-events-none" class:opacity-0={!error}>
+		<div class="pointer-events-none absolute bottom-0 left-0 text-xs text-error transition-opacity" class:opacity-0={!error}>
 			{error}
 		</div>
 	{/if}

@@ -1,0 +1,152 @@
+{
+  "$schema": "https://knowthing.invalid/schemas/planet-seed-manifest-v1.json",
+  "version": 1,
+  "id": "solar-system/mars",
+  "body": "Mars",
+  "acquiredOn": "2026-08-08",
+  "purpose": "Authoritative base products for the built-in Mars preset; renderer artifacts are derivatives, not replacements for their scientific sources.",
+  "referenceFrame": {
+    "name": "IAU_MARS",
+    "authority": "IAU WGCCRE 2015 constants distributed by NASA NAIF in pck00011.tpc",
+    "naifBodyCode": 499,
+    "radiiM": [3396190, 3396190, 3376200],
+    "latitudeType": "planetocentric",
+    "longitudeDirection": "positive-east",
+    "longitudeDomain": "-180..180",
+    "plateProjection": "simple-cylindrical/equirectangular",
+    "northAtTop": true,
+    "localKernel": "source/pck00011.tpc",
+    "sourceUrl": "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/pck00011.tpc",
+    "sourceSha256": "3dff7b1dbeceaa01f25467767d3fa25816051c85d162d1edf04acb310ee28bb1"
+  },
+  "physicalFacts": {
+    "sourceUrl": "https://ssd.jpl.nasa.gov/planets/phys_par.html",
+	"atmosphereSourceUrl": "https://ntrs.nasa.gov/citations/20220019141",
+    "values": {
+      "equatorialRadiusM": 3396190,
+      "meanRadiusM": 3389500,
+      "massKg": 6.41691e23,
+      "bulkDensityKgM3": 3934,
+      "siderealRotationPeriodS": 88642.664064,
+      "siderealOrbitalPeriodDays": 686.9795859,
+      "geometricAlbedo": 0.15,
+      "equatorialGravityMS2": 3.71,
+      "escapeVelocityMS": 5030
+    }
+  },
+  "orbitalElements": {
+    "sourceUrl": "https://ssd.jpl.nasa.gov/planets/approx_pos.html",
+    "frame": "mean ecliptic and equinox of J2000",
+    "validity": "3000 BC to 3000 AD low-precision approximation",
+    "epoch": "J2000.0",
+    "values": {
+      "semiMajorAxisAu": 1.52371243,
+      "eccentricity": 0.09336511,
+      "inclinationDeg": 1.85181869,
+      "longitudeAscendingNodeDeg": 49.71320984,
+      "longitudePerihelionDeg": -23.91744784,
+      "argumentOfPeriapsisDeg": 286.36934232,
+      "meanLongitudeDeg": -4.56813164,
+      "meanAnomalyDegAtJ2000": 19.3493162
+    },
+    "applicationNote": "KnowThing records orientation but does not apply the J2000 mean anomaly to its fictional-calendar day zero. The preset therefore keeps its deterministic local epoch phase instead of claiming ephemeris alignment."
+  },
+  "products": [
+    {
+      "id": "usgs-mars-viking-mdim21-color",
+      "role": "surface-appearance",
+      "status": "installed-renderer-derivative",
+      "title": "Mars Viking Colorized Global Mosaic (MDIM 2.1)",
+      "publisher": "USGS Astrogeology Science Center",
+      "sourceProductUrl": "https://astrogeology.usgs.gov/search/map/mars_viking_colorized_global_mosaic_232m",
+      "sourceAssetUrl": "https://astrogeology.usgs.gov/ckan/dataset/7131d503-cdc9-45a5-8f83-5126c0fd397e/resource/5ea881c6-01b3-41fa-a7af-42d2131b54f1/download/mars_viking_mdim21_clrmosaic_1km.jpg",
+      "sourceAssetSha256": "fdfcd335559c3dc67052b7e8a9565d850e336ac0d1f3ea7f5eb7826ffb44ecb2",
+      "sourceResolutionMPerPixel": 1000,
+      "license": "Public domain; no use constraints stated by USGS",
+      "meaning": "A cartographically controlled, colorized Viking image mosaic for global appearance. It is not a calibrated intrinsic reflectance field.",
+      "runtime": {
+        "path": "runtime/mars-mdim21-color-4096x2048.webp",
+        "mimeType": "image/webp",
+        "width": 4096,
+        "height": 2048,
+        "bytes": 2696266,
+        "sha256": "81a2e8e4f2fb07a60c6147b91edc303cf2f2d815e3224fd3755e5db888810fd8",
+        "derivation": "Lanczos resample of the USGS 1 km ancillary JPEG to a 4096 x 2048 sRGB plate; no relighting or generated detail."
+      }
+    },
+    {
+      "id": "pds-mgs-mola-megdr-16ppd-topography",
+      "role": "elevation",
+      "status": "installed-renderer-derivative",
+      "title": "MGS MOLA Mission Experiment Gridded Data Record, median topography, 16 pixels/degree",
+      "publisher": "NASA PDS Geosciences Node",
+      "dataSetId": "MGS-M-MOLA-5-MEGDR-L3-V1.0",
+      "productId": "MEGT90N000EB.IMG",
+      "sourceProductUrl": "https://pds-geosciences.wustl.edu/missions/mgs/megdr.html",
+      "sourceAssetUrl": "https://pds-geosciences.wustl.edu/mgs/mgs-m-mola-5-megdr-l3-v1/mgsl_300x/meg016/megt90n000eb.img",
+      "sourceLabelUrl": "https://pds-geosciences.wustl.edu/mgs/mgs-m-mola-5-megdr-l3-v1/mgsl_300x/meg016/megt90n000eb.lbl",
+      "sourceAssetSha256": "d18d9b9ab8c5516d02e157dd2cde0f1d0d160c21940e953ba22391269a545e7b",
+      "sourceLabelSha256": "0f2bd919dddb86d83489a008d3007bd915507c892a0f22ce49ad5dd5d2fc7d8a",
+      "localLabel": "source/MEGT90N000EB.LBL",
+      "meaning": "Median topography in metres: planetary radius minus the GMM3 (mgm1025) areoid evaluated to degree and order 50. Empty bins are interpolated by the source product.",
+      "measurement": {
+        "unit": "m",
+        "minimum": -8177,
+        "maximum": 21171,
+        "verticalDatum": "Mars GMM3 (mgm1025) areoid, degree/order 50",
+        "positiveDirection": "outward/up",
+        "sourceResolutionPixelsPerDegree": 16,
+        "sourceResolutionMPerPixelAtEquator": 3705
+      },
+      "runtime": {
+        "path": "runtime/mars-mola-megdr-topography-4096x2048.png",
+        "mimeType": "image/png",
+        "width": 4096,
+        "height": 2048,
+        "bytes": 2629834,
+        "sha256": "7ebe4a0c4c2166f1661f4b7d27a0a87c2bdb9edb3a6b20e7a659c32c329fbf2f",
+        "encoding": "8-bit linear grayscale; elevation_m = sample / 255 * 29348 - 8177",
+        "derivation": "The signed big-endian PDS3 samples were longitude-rolled from 0..360 east to -180..180, linearly encoded, then Lanczos-resampled to 4096 x 2048."
+      }
+    },
+    {
+      "id": "usgs-mgs-tes-bolometric-albedo",
+      "role": "bolometric-albedo",
+      "status": "catalogued-not-material-bound",
+      "title": "Mars MGS TES Global Bolometric Albedo Map",
+      "publisher": "USGS Astrogeology Science Center",
+      "authors": "Christensen, P. et al.",
+      "sourceProductUrl": "https://astrogeology.usgs.gov/search/map/mars_mgs_tes_global_bolometric_albedo_map_7410m",
+      "sourceAssetUrl": "https://planetarymaps.usgs.gov/mosaic/Mars_MGS_TES_Albedo_mosaic_global_7410m.tif",
+      "sourceLabelUrl": "https://astrogeology.usgs.gov/ckan/dataset/a5083068-715f-448d-9ff7-463a72d7c903/resource/77cb978e-f586-4b04-a28f-1d6d5dfc8488/download/mars_mgs_tes_albedo_mosaic_global_7410m.lbl",
+      "sourceAssetSha256": "c91dfcaa1834b96db383beddec537d85e8e82b782682744ee723907ed9e58178",
+      "sourceLabelSha256": "674be9e18a8bf7498f134800a8a555bbb112de67dff8d072b4a9e31f12568a64",
+      "localLabel": "source/Mars_MGS_TES_Albedo_mosaic_global_7410m.LBL",
+      "license": "Public domain; cite the authors",
+      "meaning": "Measured Lambert bolometric albedo from TES visible/near-IR observations (0.3-2.9 micrometres), not an sRGB colour texture.",
+      "runtime": {
+        "path": "runtime/mars-tes-bolometric-albedo-1440x720.png",
+        "mimeType": "image/png",
+        "width": 1440,
+        "height": 720,
+        "bytes": 1800400,
+        "sha256": "14f7e56feb9e5687d5d6f4efc3add8f5bb416f40ac4d79d16e513991acc90ca5",
+        "encoding": "16-bit linear grayscale; albedo_fraction = sample / 65535",
+        "observedRange": [0.03541252762079239, 0.3449055850505829],
+        "derivation": "Lanczos-resampled from the 32-bit floating-point 2880 x 1440 USGS GeoTIFF and encoded over the physical 0..1 range."
+      },
+      "bindingNote": "Retained for a future analytical/physical albedo layer. Binding this grayscale measurement as the current sRGB appearance channel would make Mars falsely grey."
+    }
+  ],
+  "installedSurfaceChannels": {
+    "albedo": "usgs-mars-viking-mdim21-color",
+    "elevation": "pds-mgs-mola-megdr-16ppd-topography"
+  },
+  "intentionallyUnavailable": {
+    "normal": "Derive later from measured elevation with a recorded tangent-space convention.",
+    "roughness": "No defensible global PBR roughness source has been selected; use a constant material value.",
+    "clouds": "Mars clouds and dust are time-dependent observations, not a timeless opacity plate.",
+    "emissive": "Mars has no canonical intrinsic visible-light emissive surface map.",
+    "geologyAndNomenclature": "Global geology and IAU place names belong in future queryable Atlas vector layers, not baked into the material texture."
+  }
+}

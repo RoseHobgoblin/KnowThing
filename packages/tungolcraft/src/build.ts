@@ -40,17 +40,17 @@ export interface BodyInput {
 	rotationPeriod?: Seconds | null
 	axialTilt?: number | null
 
+	// Physical representative temperature.
+	temperature?: Kelvin | null
+
 	// Free-form passthrough text.
-	temperature?: string | null
 	age?: string | null
 	composition?: string | null
 	atmosphere?: string | null
 	surfacePressure?: string | null
 	apparentMagnitude?: string | null
 	angularDiameter?: string | null
-	albedo?: string | null
 	satellites?: number | null
-	hasRings?: boolean | null
 	extra?: unknown
 }
 
@@ -101,16 +101,14 @@ export function body(input: BodyInput, relations: BodyRelations = {}): BodyModel
 		inclination: input.inclination,
 		rotationPeriodS: input.rotationPeriod,
 		axialTilt: input.axialTilt,
-		temperature: input.temperature,
+		temperatureK: input.temperature,
 		age: input.age,
 		composition: input.composition,
 		atmosphere: input.atmosphere,
 		surfacePressure: input.surfacePressure,
 		apparentMagnitude: input.apparentMagnitude,
 		angularDiameter: input.angularDiameter,
-		albedo: input.albedo,
 		satellites: input.satellites,
-		hasRings: input.hasRings,
 		extra: input.extra,
 	}
 	return deriveBody(row, relations)

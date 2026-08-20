@@ -93,10 +93,10 @@ const KEYWORD_MAP: Record<string, InfoboxType> = {
 	'star system': 'system',
 	'planetary system': 'system',
 
-	// Planet / celestial body
+	// Planet / rodder body
 	'planet': 'planet',
-	'celestial': 'planet',
-	'celestial body': 'planet',
+	'rodder': 'planet',
+	'rodder body': 'planet',
 	'satellite': 'planet',
 	'asteroid': 'planet',
 }

@@ -6,7 +6,7 @@ import type { ParamMatcher } from '@sveltejs/kit'
  * server-side; this matcher only acts as a routing predicate.
  *
  * Examples:
- *   /Celestial:Therne          ✓
+ *   /Rodder:Therne          ✓
  *   /Calendar:Iron_Flowers     ✓
  *   /Category:Mountains/Sub    ✓ (subpath after identifier kept by [...catchall])
  *   /know/Therne               ✗ (no colon in first segment)

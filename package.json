@@ -17,6 +17,7 @@
 		"lint": "eslint .",
 		"test": "vitest run",
 		"test:watch": "vitest",
+		"seed:assets:mars": "node scripts/fetch-mars-seed-assets.mjs",
 		"db:migrate": "node --env-file=.env --loader ts-node/esm src/lib/server/db/migrate.ts"
 	},
 	"devDependencies": {
@@ -29,6 +30,7 @@
 		"@tailwindcss/typography": "^0.5.19",
 		"@tailwindcss/vite": "^4.2.2",
 		"@types/bcrypt": "^6.0.0",
+		"@types/three": "^0.185.4",
 		"drizzle-kit": "^0.31.10",
 		"eslint": "^10.1.0",
 		"eslint-plugin-better-tailwindcss": "^4.3.2",
@@ -60,13 +62,12 @@
 		"bcrypt": "^6.0.0",
 		"better-auth": "^1.6.25",
 		"bits-ui": "^2.16.4",
+		"camera-controls": "^3.1.2",
 		"clsx": "^2.1.1",
 		"diff": "^8.0.3",
 		"drizzle-orm": "^0.45.2",
 		"isomorphic-dompurify": "^3.19.0",
 		"phosphor-svelte": "^3.1.0",
-		"pixi-viewport": "^6.0.3",
-		"pixi.js": "^8.19.0",
 		"postgres": "^3.4.8",
 		"rate-limiter-flexible": "^11.2.0",
 		"rimecraft": "*",
@@ -75,6 +76,7 @@
 		"svelte-flag-icons": "^3.0.1",
 		"svelte-sonner": "^1.1.1",
 		"tailwind-merge": "^3.5.0",
+		"three": "^0.185.1",
 		"tungolcraft": "*",
 		"zod": "^4.3.6"
 	}

@@ -8,7 +8,7 @@
 // ============================================================================
 
 export const NAMESPACE_KEYS = [
-	'Celestial',
+	'Rodder',
 	'Calendar',
 	'Category',
 	'Country',

@@ -16,7 +16,6 @@ SvelteKit 2 with Svelte 5 (runes), TypeScript strict, Drizzle ORM on PostgreSQL,
 - UI primitives from `$lib/components/ui/` — never raw HTML inputs/selects
 - Zod validation on all API inputs before database access
 - `db.transaction()` for multi-step mutations
-- See `docs/CODE-REVIEW.md` for detailed review guidelines
 
 ## Guard Rails
 - NEVER commit `.env` files

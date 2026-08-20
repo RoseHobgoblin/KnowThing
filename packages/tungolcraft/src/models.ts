@@ -1,5 +1,5 @@
 /**
- * Typed celestial models — the engine's whole-body representation.
+ * Typed rodder models — the engine's whole-body representation.
  *
  * A model is the canonical, presentation-independent view of a star or planet:
  * raw SI numbers and structured relationships, never formatted strings and
@@ -25,14 +25,14 @@ import {
 } from './physics.js'
 import { kg, m, au, days, kelvin, watts, addMu, muFromMass } from './units.js'
 
-/** A reference to another celestial entity. */
+/** A reference to another rodder entity. */
 export interface Ref {
 	name: string
 	slug: string
 }
 
 /** Raw physical/orbital inputs shared by stars and planetary bodies. */
-export interface CelestialRowLike {
+export interface RodderRowLike {
 	name: string
 	slug: string
 	description?: string | null
@@ -46,9 +46,9 @@ export interface CelestialRowLike {
 	extra?: unknown
 }
 
-export interface BodyRow extends CelestialRowLike {
+export interface BodyRow extends RodderRowLike {
 	bodyType?: string | null
-	temperature?: string | null
+	temperatureK?: number | null
 	age?: string | null
 	composition?: string | null
 	atmosphere?: string | null
@@ -58,12 +58,10 @@ export interface BodyRow extends CelestialRowLike {
 	argumentOfPeriapsis?: number | null
 	apparentMagnitude?: string | null
 	angularDiameter?: string | null
-	albedo?: string | null
 	satellites?: number | null
-	hasRings?: boolean | null
 }
 
-export interface StarRow extends CelestialRowLike {
+export interface StarRow extends RodderRowLike {
 	/**
 	 * Relative semi-major axis of the stellar pair (the separation orbit), in AU.
 	 * Kepler's two-body period uses this value with μ_total. Database adapters
@@ -116,15 +114,16 @@ export interface BodyModel {
 	bodyType: string
 	description: string | null
 
+	// Physical representative temperature in Kelvin.
+	temperatureK: number | null
+
 	// Passthrough text (free-form, stored verbatim).
-	temperature: string | null
 	age: string | null
 	composition: string | null
 	atmosphere: string | null
 	surfacePressure: string | null
 	apparentMagnitude: string | null
 	angularDiameter: string | null
-	albedo: string | null
 
 	// Physical — raw SI.
 	massKg: number | null
@@ -154,7 +153,6 @@ export interface BodyModel {
 
 	// System.
 	satellites: number | null
-	hasRings: boolean
 
 	// Relationships.
 	star: Ref | null
@@ -231,7 +229,7 @@ function toExtraMap(extra: unknown): ExtraMap {
 const positive = (n: number | null | undefined): number | null => (n != null && n > 0 ? n : null)
 
 /** Apply `f` to a value when present, else null. */
-function mapNum(n: number | null, f: (n: number) => number): number | null {
+function mapNumber(n: number | null, f: (n: number) => number): number | null {
 	return n == null ? null : f(n)
 }
 
@@ -240,6 +238,7 @@ export function deriveBody(row: BodyRow, relations: BodyRelations = {}): BodyMod
 	const radiusM = positive(row.radiusM)
 	const semiMajorAxisAu = positive(row.semiMajorAxisAu)
 	const rotationPeriodS = positive(row.rotationPeriodS)
+	const temperatureK = positive(row.temperatureK)
 	const eccentricity = row.eccentricity ?? null
 
 	// A moon orbits its parent body; a planet orbits the star; a circumbinary
@@ -266,23 +265,22 @@ export function deriveBody(row: BodyRow, relations: BodyRelations = {}): BodyMod
 		bodyType: row.bodyType ?? 'planet',
 		description: row.description ?? null,
 
-		temperature: row.temperature ?? null,
+		temperatureK,
 		age: row.age ?? null,
 		composition: row.composition ?? null,
 		atmosphere: row.atmosphere ?? null,
 		surfacePressure: row.surfacePressure ?? null,
 		apparentMagnitude: row.apparentMagnitude ?? null,
 		angularDiameter: row.angularDiameter ?? null,
-		albedo: row.albedo ?? null,
 
 		massKg,
 		radiusM,
 		densityKgM3: massKg != null && radiusM != null ? computeDensity(kg(massKg), m(radiusM)) : null,
 		gravityMs2: massKg != null && radiusM != null ? computeSurfaceGravity(kg(massKg), m(radiusM)) : null,
 		escapeVelocityMs: massKg != null && radiusM != null ? computeEscapeVelocity(kg(massKg), m(radiusM)) : null,
-		circumferenceM: mapNum(radiusM, r => 2 * Math.PI * r),
-		surfaceAreaM2: mapNum(radiusM, r => 4 * Math.PI * r * r),
-		volumeM3: mapNum(radiusM, r => (4 / 3) * Math.PI * r ** 3),
+		circumferenceM: mapNumber(radiusM, r => 2 * Math.PI * r),
+		surfaceAreaM2: mapNumber(radiusM, r => 4 * Math.PI * r * r),
+		volumeM3: mapNumber(radiusM, r => (4 / 3) * Math.PI * r ** 3),
 
 		semiMajorAxisAu,
 		orbitalPeriodDays,
@@ -299,7 +297,6 @@ export function deriveBody(row: BodyRow, relations: BodyRelations = {}): BodyMod
 		equatorialVelocityMs: radiusM != null && rotationPeriodS != null ? (2 * Math.PI * radiusM) / rotationPeriodS : null,
 
 		satellites: row.satellites ?? relations.moonCount ?? null,
-		hasRings: row.hasRings ?? false,
 
 		star,
 		parentBody,
