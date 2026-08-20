@@ -808,7 +808,7 @@ Downloadable author templates should initially include:
 
 ## Implemented Reference Fixture: Mars
 
-The built-in Solar System preset now uses Mars as the first provider-derived acquisition fixture. Its machine-readable package is served from `/seed-data/rodder/mars/manifest.json`, and `npm run seed:assets:mars` reproducibly fetches and validates the upstream products before rebuilding the runtime plates.
+The built-in Solar System preset now uses Mars as the first provider-derived acquisition fixture. Its machine-readable package is served from `/seed-data/rodder/mars/manifest.json`, and `bun run seed:assets:mars` reproducibly fetches and validates the upstream products before rebuilding the runtime plates.
 
 The fixture deliberately separates three products that all resemble “a map of Mars”:
 

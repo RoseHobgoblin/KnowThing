@@ -3,10 +3,11 @@ name: Rodder checks
 on:
   pull_request:
     paths:
-      - 'src/lib/rodder/**'
-      - 'packages/tungolcraft/**'
-      - 'package*.json'
-      - '.github/workflows/rodder-root-map.yml'
+      - "src/lib/feature/rodder/**"
+      - "packages/tungolcraft/**"
+      - "package.json"
+      - "bun.lock"
+      - ".github/workflows/rodder-root-map.yml"
   push:
     branches: [main]
 
@@ -16,11 +17,10 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm --workspace packages/tungolcraft run build
-      - run: npm run check
-      - run: npx vitest run src/lib/rodder/root-layout.test.ts src/lib/rodder/view-state.test.ts packages/tungolcraft/src/orbit.test.ts
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+      - run: bun run --filter tungolcraft build
+      - run: bun run check
+      - run: bun run test:rodder

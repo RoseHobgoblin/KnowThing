@@ -582,7 +582,7 @@ explanation or a model-version increment.
 
 The initial evidence corpus is implemented in `benchmarks/fixtures.json` and
 covers every model in section 12. Tolerances combine as
-`absolute + relative * abs(expected)`. `npm run benchmarks` fails on numerical
+`absolute + relative * abs(expected)`. `bun run benchmarks` fails on numerical
 drift, model-version mismatch, invalid units or failed evaluation. Generated
 `VALIDATION.md` and `MODEL-REFERENCE.md` pages are checked in CI, while the
 machine-readable report is retained as a workflow artifact.

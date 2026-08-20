@@ -5,14 +5,14 @@ on:
     paths:
       - ".github/workflows/tungolcraft.yml"
       - "package.json"
-      - "package-lock.json"
+      - "bun.lock"
       - "packages/tungolcraft/**"
   push:
     branches: [main]
     paths:
       - ".github/workflows/tungolcraft.yml"
       - "package.json"
-      - "package-lock.json"
+      - "bun.lock"
       - "packages/tungolcraft/**"
 
 jobs:
@@ -24,32 +24,31 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: 22
-          cache: npm
+          bun-version: 1.4.0
 
       - name: Install workspace
-        run: npm ci --ignore-scripts
+        run: bun install --frozen-lockfile --ignore-scripts
 
       - name: Test package
-        run: npm run test --workspace=tungolcraft
+        run: bun run --filter tungolcraft test
 
       - name: Type-check package
-        run: npm run typecheck --workspace=tungolcraft
+        run: bun run --filter tungolcraft typecheck
 
       - name: Build package
-        run: npm run build --workspace=tungolcraft
+        run: bun run --filter tungolcraft build
 
       - name: Verify generated scientific documentation
-        run: npm run documentation:check --workspace=tungolcraft
+        run: bun run --filter tungolcraft documentation:check
 
       - name: Run scientific benchmarks
-        run: node packages/tungolcraft/scripts/run-benchmarks.mjs --json --output artifacts/tungolcraft-benchmarks.json > /dev/null
+        run: bun packages/tungolcraft/scripts/run-benchmarks.mjs --json --output artifacts/tungolcraft-benchmarks.json > /dev/null
 
       - name: Test packed package in a clean consumer
-        run: npm run pack:smoke --workspace=tungolcraft
+        run: bun run --filter tungolcraft pack:smoke
 
       - name: Upload scientific evidence
         uses: actions/upload-artifact@v4

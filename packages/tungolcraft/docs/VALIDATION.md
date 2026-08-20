@@ -54,6 +54,6 @@ Passing these fixtures demonstrates reproducibility within the declared
 models. It does not make Tungolcraft an ephemeris, climate simulator or
 long-term N-body stability proof.
 
-Run `npm run benchmarks --workspace=tungolcraft` for human-readable output.
-After building, `npm run benchmarks:json --workspace=tungolcraft` emits the
+Run `bun run --filter tungolcraft benchmarks` for human-readable output.
+After building, `bun run --filter tungolcraft benchmarks:json` emits the
 machine-readable report.

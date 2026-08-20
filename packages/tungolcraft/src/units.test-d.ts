@@ -1,6 +1,6 @@
 /**
  * Compile-time unit-safety assertions. Not run by Vitest — validated by
- * `npm run typecheck` (tsc). Each `@ts-expect-error` line asserts that a unit
+ * `bun run typecheck` (tsc). Each `@ts-expect-error` line asserts that a unit
  * mixup is REJECTED; if the compiler ever stops catching one, tsc fails on the
  * now-unused directive. Keep this file green to keep the unit system honest.
  */
