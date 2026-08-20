@@ -17,21 +17,21 @@ import { db } from '$lib/server/db/index.js'
  *   `planetary_bodies.star_id` column.
  */
 export const RODDER_TREE_CTE = sql`
-	rodder_tree AS (
-		SELECT cb.id, cb.kind, cb.parent_id,
-			cb.id AS root_id, cb.kind AS root_kind,
-			CASE WHEN cb.kind = 'star' THEN cb.id END AS nearest_star_id,
-			0 AS depth
-		FROM rodder_bodies cb
-		WHERE cb.parent_id IS NULL
-		UNION ALL
-		SELECT cb.id, cb.kind, cb.parent_id,
-			t.root_id, t.root_kind,
-			CASE WHEN cb.kind = 'star' THEN cb.id ELSE t.nearest_star_id END,
-			t.depth + 1
-		FROM rodder_bodies cb
-		JOIN rodder_tree t ON cb.parent_id = t.id
-	)
+  rodder_tree AS (
+  	SELECT cb.id, cb.kind, cb.parent_id,
+  		cb.id AS root_id, cb.kind AS root_kind,
+  		CASE WHEN cb.kind = 'star' THEN cb.id END AS nearest_star_id,
+  		0 AS depth
+  	FROM rodder_bodies cb
+  	WHERE cb.parent_id IS NULL
+  	UNION ALL
+  	SELECT cb.id, cb.kind, cb.parent_id,
+  		t.root_id, t.root_kind,
+  		CASE WHEN cb.kind = 'star' THEN cb.id ELSE t.nearest_star_id END,
+  		t.depth + 1
+  	FROM rodder_bodies cb
+  	JOIN rodder_tree t ON cb.parent_id = t.id
+  )
 `
 
 /**
