@@ -6,7 +6,7 @@ import { languageDialects, languages } from '$lib/server/db/schema.js'
 import type {
 	createDialectSchema,
 	updateDialectSchema,
-} from '$lib/server/http/languages/schemas.js'
+} from '$lib/feature/wordbook/server/language-schemas.server.js'
 
 type CreateDialectInput = z.infer<typeof createDialectSchema>
 type UpdateDialectInput = z.infer<typeof updateDialectSchema>

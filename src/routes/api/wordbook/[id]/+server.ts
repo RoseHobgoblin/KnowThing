@@ -5,9 +5,9 @@ import {
 	deleteWordbookEntry,
 	getWordbookEntry,
 	updateWordbookEntry,
-} from '$lib/server/services/wordbook.js'
+} from '$lib/feature/wordbook/server/service.server.js'
 import { parseBody, handleServiceCall } from '$lib/server/utils.js'
-import { updateWordSchema } from '$lib/server/http/wordbook/schemas.js'
+import { updateWordSchema } from '$lib/feature/wordbook/server/schemas.server.js'
 
 function parseId(raw: string) {
 	const id = Number.parseInt(raw)

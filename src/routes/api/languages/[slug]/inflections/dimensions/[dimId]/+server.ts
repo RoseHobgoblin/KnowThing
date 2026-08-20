@@ -2,8 +2,8 @@ import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
 import { parseBody, handleServiceCall } from '$lib/server/utils.js'
-import { updateDimensionSchema } from '$lib/server/http/languages/schemas.js'
-import { deleteDimension, updateDimension } from '$lib/server/services/inflections.js'
+import { updateDimensionSchema } from '$lib/feature/wordbook/server/language-schemas.server.js'
+import { deleteDimension, updateDimension } from '$lib/feature/wordbook/server/inflections.server.js'
 
 function parseDimId(raw: string) {
 	const id = Number.parseInt(raw)

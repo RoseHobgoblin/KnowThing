@@ -16,8 +16,8 @@ import {
 } from './db/schema.js'
 import { eq, sql, and } from 'drizzle-orm'
 import type { NamespaceKey } from '../namespaces/registry.js'
-import type { WordbookPath } from '../sections/wordbook-path.js'
-import { buildWordbookHref } from '../sections/wordbook-path.js'
+import type { WordbookPath } from '$lib/feature/wordbook/path.js'
+import { buildWordbookHref } from '$lib/feature/wordbook/path.js'
 
 export type EntityKind =
 	| 'rodder-system'

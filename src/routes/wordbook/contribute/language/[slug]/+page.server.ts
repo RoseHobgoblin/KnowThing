@@ -4,11 +4,11 @@ import { hasRole } from '$lib/server/auth.js'
 import {
 	getLanguageRowBySlug,
 	listLanguageOptionsExcluding,
-} from '$lib/server/services/languages.js'
-import { listDialectsByLanguageId } from '$lib/server/services/dialects.js'
-import { listPhonemesByLanguageId, listPhonemeSummaryForLanguage } from '$lib/server/services/phonemes.js'
-import { listGraphemesByLanguageId } from '$lib/server/services/graphemes.js'
-import { countRulesByClass, getInflectionsByLanguageId } from '$lib/server/services/inflections.js'
+} from '$lib/feature/wordbook/server/languages.server.js'
+import { listDialectsByLanguageId } from '$lib/feature/wordbook/server/dialects.server.js'
+import { listPhonemesByLanguageId, listPhonemeSummaryForLanguage } from '$lib/feature/wordbook/server/phonemes.server.js'
+import { listGraphemesByLanguageId } from '$lib/feature/wordbook/server/graphemes.server.js'
+import { countRulesByClass, getInflectionsByLanguageId } from '$lib/feature/wordbook/server/inflections.server.js'
 
 export const load: PageServerLoad = async ({ locals, params }) => {
 	if (!locals.user) throw redirect(302, '/auth/login')

@@ -12,7 +12,7 @@
 	import WikiOrderedList from './nodes/WikiOrderedList.svelte'
 	import WikiDefinitionList from './nodes/WikiDefinitionList.svelte'
 	import WikiInternalLink from './nodes/WikiInternalLink.svelte'
-	import WikiWordbookLink from './nodes/WikiWordbookLink.svelte'
+	import WikiWordbookLink from '$lib/feature/wordbook/components/WikiWordbookLink.svelte'
 	import WikiDomainLink from './nodes/WikiDomainLink.svelte'
 	import WikiNamespaceLink from './nodes/WikiNamespaceLink.svelte'
 	import WikiExternalLink from './nodes/WikiExternalLink.svelte'

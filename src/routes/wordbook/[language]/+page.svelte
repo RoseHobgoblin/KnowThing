@@ -2,9 +2,9 @@
 	import type { PageData } from './$types.js'
 	import { page } from '$app/stores'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
-	import AlphabetNav from '$lib/components/wordbook/AlphabetNav.svelte'
-	import WordEntry from '$lib/components/wordbook/WordEntry.svelte'
-	import InflectionSummary from '$lib/components/wordbook/InflectionSummary.svelte'
+	import AlphabetNav from '$lib/feature/wordbook/components/AlphabetNav.svelte'
+	import WordEntry from '$lib/feature/wordbook/components/WordEntry.svelte'
+	import InflectionSummary from '$lib/feature/wordbook/components/InflectionSummary.svelte'
 	import { createKnowContext } from '$lib/renderer/context.js'
 	import { m } from '$lib/paraglide/messages.js'
 

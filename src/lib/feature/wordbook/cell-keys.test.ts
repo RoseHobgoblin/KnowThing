@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { applyPattern, cellKeyLabel, generateCellKeys } from '../cell-keys.js'
+import { applyPattern, cellKeyLabel, generateCellKeys } from './cell-keys.js'
 
 describe('generateCellKeys', () => {
 	it('returns empty for no dimensions', () => {

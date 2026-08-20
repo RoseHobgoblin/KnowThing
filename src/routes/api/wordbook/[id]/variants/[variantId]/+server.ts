@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
-import { deleteEntryVariant } from '$lib/server/services/wordbook.js'
+import { deleteEntryVariant } from '$lib/feature/wordbook/server/service.server.js'
 import { handleServiceCall } from '$lib/server/utils.js'
 
 /** DELETE /api/wordbook/:id/variants/:variantId */

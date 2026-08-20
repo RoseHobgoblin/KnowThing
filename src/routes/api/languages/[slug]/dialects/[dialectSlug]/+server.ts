@@ -2,8 +2,8 @@ import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
 import { parseBody, handleServiceCall } from '$lib/server/utils.js'
-import { updateDialectSchema } from '$lib/server/http/languages/schemas.js'
-import { deleteDialect, updateDialect } from '$lib/server/services/dialects.js'
+import { updateDialectSchema } from '$lib/feature/wordbook/server/language-schemas.server.js'
+import { deleteDialect, updateDialect } from '$lib/feature/wordbook/server/dialects.server.js'
 
 /** PUT /api/languages/:slug/dialects/:dialectSlug */
 export const PUT: RequestHandler = async (event) => {

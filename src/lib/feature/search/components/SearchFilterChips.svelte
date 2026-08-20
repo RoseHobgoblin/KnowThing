@@ -1,5 +1,5 @@
 <script lang="ts">
-	import TagPill from '$lib/components/wordbook/TagPill.svelte'
+	import TagPill from '$lib/feature/wordbook/components/TagPill.svelte'
 
 	let {
 		query,

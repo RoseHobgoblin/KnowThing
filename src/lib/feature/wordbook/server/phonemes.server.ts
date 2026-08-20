@@ -8,7 +8,7 @@ import {
 	type createPhonemeSchema,
 	PHONEME_TYPES,
 	type updatePhonemeSchema,
-} from '$lib/server/http/languages/schemas.js'
+} from '$lib/feature/wordbook/server/language-schemas.server.js'
 
 type CreatePhonemeInput = z.infer<typeof createPhonemeSchema>
 type UpdatePhonemeInput = z.infer<typeof updatePhonemeSchema>

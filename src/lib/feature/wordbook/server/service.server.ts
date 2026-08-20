@@ -12,7 +12,7 @@ import {
 	lexiconVariants,
 	users,
 } from '$lib/server/db/schema.js'
-import { getInflectionTable, rebuildInflectedForms } from '$lib/server/wordbook/inflection.js'
+import { getInflectionTable, rebuildInflectedForms } from '$lib/feature/wordbook/server/inflection.server.js'
 
 const VALID_RELATION_TYPES = new Set(['derived_from', 'loan_from', 'compound_of'])
 

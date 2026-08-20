@@ -2,8 +2,8 @@ import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
 import { parseBody, handleServiceCall } from '$lib/server/utils.js'
-import { updateParadigmClassSchema } from '$lib/server/http/languages/schemas.js'
-import { deleteParadigmClass, getParadigmClass, updateParadigmClass } from '$lib/server/services/inflections.js'
+import { updateParadigmClassSchema } from '$lib/feature/wordbook/server/language-schemas.server.js'
+import { deleteParadigmClass, getParadigmClass, updateParadigmClass } from '$lib/feature/wordbook/server/inflections.server.js'
 
 function parseClassId(raw: string) {
 	const id = Number.parseInt(raw)

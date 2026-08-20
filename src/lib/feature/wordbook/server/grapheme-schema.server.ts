@@ -26,4 +26,4 @@ export function validateReorderPayload(order: number[], existingIds: Set<number>
 	return 'ok'
 }
 
-export { normalizeAxis as normalizeEnvironment } from './utils.js'
+export { normalizeAxis as normalizeEnvironment } from '$lib/server/utils.js'

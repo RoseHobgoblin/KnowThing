@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { normalizeEnvironment, createGraphemeSchema, validateReorderPayload } from '$lib/server/graphemes.js'
+import { normalizeEnvironment, createGraphemeSchema, validateReorderPayload } from '$lib/feature/wordbook/server/grapheme-schema.server.js'
 
 describe('normalizeEnvironment', () => {
 	it('lowercases and trims', () => {

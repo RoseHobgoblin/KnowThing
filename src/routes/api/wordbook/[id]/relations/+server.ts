@@ -1,9 +1,9 @@
 import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
-import { computeCognates, getDirectRelations, getEtymologyChain } from '$lib/server/wordbook/etymology.js'
-import { addEntryRelation, getEntryLanguageId } from '$lib/server/services/wordbook.js'
-import { addRelationSchema } from '$lib/server/http/wordbook/schemas.js'
+import { computeCognates, getDirectRelations, getEtymologyChain } from '$lib/feature/wordbook/server/etymology.server.js'
+import { addEntryRelation, getEntryLanguageId } from '$lib/feature/wordbook/server/service.server.js'
+import { addRelationSchema } from '$lib/feature/wordbook/server/schemas.server.js'
 import { handleServiceCall, parseBody } from '$lib/server/utils.js'
 
 function parseId(raw: string) {

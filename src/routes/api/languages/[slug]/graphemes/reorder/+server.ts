@@ -3,7 +3,7 @@ import { z } from 'zod'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
 import { parseBody, handleServiceCall } from '$lib/server/utils.js'
-import { reorderGraphemes } from '$lib/server/services/graphemes.js'
+import { reorderGraphemes } from '$lib/feature/wordbook/server/graphemes.server.js'
 
 const reorderSchema = z.object({
 	order: z.array(z.number().int()),

@@ -2,8 +2,8 @@ import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
 import { parseBody, handleServiceCall } from '$lib/server/utils.js'
-import { updateLanguageSchema } from '$lib/server/http/languages/schemas.js'
-import { deleteLanguage, getLanguageBySlug, updateLanguage } from '$lib/server/services/languages.js'
+import { updateLanguageSchema } from '$lib/feature/wordbook/server/language-schemas.server.js'
+import { deleteLanguage, getLanguageBySlug, updateLanguage } from '$lib/feature/wordbook/server/languages.server.js'
 
 /** GET /api/languages/:slug — with inherited family from ancestors */
 export const GET: RequestHandler = async ({ params }) => {

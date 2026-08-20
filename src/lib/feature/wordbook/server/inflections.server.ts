@@ -8,14 +8,14 @@ import {
 	paradigmClasses,
 	paradigmRules,
 } from '$lib/server/db/schema.js'
-import { generateCellKeys } from '$lib/wordbook/cell-keys.js'
-import { rebuildClassForms } from '$lib/server/wordbook/inflection.js'
+import { generateCellKeys } from '$lib/feature/wordbook/cell-keys.js'
+import { rebuildClassForms } from '$lib/feature/wordbook/server/inflection.server.js'
 import type {
 	createDimensionSchema,
 	createParadigmClassSchema,
 	updateDimensionSchema,
 	updateParadigmClassSchema,
-} from '$lib/server/http/languages/schemas.js'
+} from '$lib/feature/wordbook/server/language-schemas.server.js'
 
 type CreateDimensionInput = z.infer<typeof createDimensionSchema>
 type UpdateDimensionInput = z.infer<typeof updateDimensionSchema>

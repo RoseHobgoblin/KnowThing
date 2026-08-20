@@ -3,12 +3,12 @@ import { asc, eq, ne, sql } from 'drizzle-orm'
 import type { z } from 'zod'
 import { db } from '$lib/server/db/index.js'
 import { languages } from '$lib/server/db/schema.js'
-import { isDescendant, queryLanguagesWithFamily } from '$lib/server/wordbook/language-tree.js'
+import { isDescendant, queryLanguagesWithFamily } from '$lib/feature/wordbook/server/language-tree.server.js'
 import {
 	type createLanguageSchema,
 	LANGUAGE_TYPES,
 	type updateLanguageSchema,
-} from '$lib/server/http/languages/schemas.js'
+} from '$lib/feature/wordbook/server/language-schemas.server.js'
 
 type CreateLanguageInput = z.infer<typeof createLanguageSchema>
 type UpdateLanguageInput = z.infer<typeof updateLanguageSchema>

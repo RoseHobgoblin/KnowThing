@@ -9,7 +9,7 @@ import {
 	languages,
 } from '$lib/server/db/schema.js'
 import { eq, and, asc, sql, inArray } from 'drizzle-orm'
-import { applyPattern, generateCellKeys } from '$lib/wordbook/cell-keys.js'
+import { applyPattern, generateCellKeys } from '$lib/feature/wordbook/cell-keys.js'
 
 /** Either the root db or a transaction — lets rebuilds run atomically inside callers' txs. */
 export type DbExecutor = Pick<typeof db, 'select' | 'insert' | 'update' | 'delete' | 'execute'>
@@ -34,7 +34,7 @@ export interface InflectionTable {
 
 // Re-export for consumers (applyPattern lives in the shared lib — it's pure
 // and also drives editor previews)
-export { applyPattern, generateCellKeys } from '$lib/wordbook/cell-keys.js'
+export { applyPattern, generateCellKeys } from '$lib/feature/wordbook/cell-keys.js'
 
 // ── Data loading ────────────────────────────────────────────────
 

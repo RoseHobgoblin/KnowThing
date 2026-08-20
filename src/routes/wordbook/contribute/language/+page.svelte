@@ -2,7 +2,7 @@
 	import type { PageData } from './$types.js'
 	import { goto } from '$app/navigation'
 	import { pushSuccess } from '$lib/notifications.svelte'
-	import LanguageForm from '$lib/components/wordbook/LanguageForm.svelte'
+	import LanguageForm from '$lib/feature/wordbook/components/LanguageForm.svelte'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import { wordbookAddLanguageBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import { page } from '$app/stores'

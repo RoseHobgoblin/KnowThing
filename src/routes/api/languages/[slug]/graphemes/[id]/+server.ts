@@ -2,8 +2,8 @@ import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
 import { parseBody, handleServiceCall } from '$lib/server/utils.js'
-import { updateGraphemeSchema } from '$lib/server/http/languages/schemas.js'
-import { deleteGrapheme, updateGrapheme } from '$lib/server/services/graphemes.js'
+import { updateGraphemeSchema } from '$lib/feature/wordbook/server/language-schemas.server.js'
+import { deleteGrapheme, updateGrapheme } from '$lib/feature/wordbook/server/graphemes.server.js'
 
 function parseId(raw: string) {
 	const id = Number(raw)

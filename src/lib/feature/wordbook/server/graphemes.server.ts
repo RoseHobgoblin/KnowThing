@@ -7,8 +7,8 @@ import {
 	createGraphemeSchema,
 	normalizeEnvironment,
 	validateReorderPayload,
-} from '$lib/server/graphemes.js'
-import type { updateGraphemeSchema } from '$lib/server/http/languages/schemas.js'
+} from '$lib/feature/wordbook/server/grapheme-schema.server.js'
+import type { updateGraphemeSchema } from '$lib/feature/wordbook/server/language-schemas.server.js'
 
 type CreateGraphemeInput = z.infer<typeof createGraphemeSchema>
 type UpdateGraphemeInput = z.infer<typeof updateGraphemeSchema>

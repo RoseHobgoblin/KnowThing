@@ -2,8 +2,8 @@ import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
 import { parseBody, handleServiceCall } from '$lib/server/utils.js'
-import { createGraphemeSchema } from '$lib/server/graphemes.js'
-import { createGrapheme, listGraphemes } from '$lib/server/services/graphemes.js'
+import { createGraphemeSchema } from '$lib/feature/wordbook/server/grapheme-schema.server.js'
+import { createGrapheme, listGraphemes } from '$lib/feature/wordbook/server/graphemes.server.js'
 
 /** GET — list a language's graphemes with their phoneme sequences folded in. */
 export const GET: RequestHandler = async ({ params }) => {

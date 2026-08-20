@@ -7,7 +7,7 @@ import { getResolvedLinks, serializeResolvedLinks } from '$lib/server/resolved-l
 import { lookupMediaInfo, resolveCardImageSync } from '$lib/server/services/page-card.js'
 import { findPageCaseInsensitive, findPageInAnyDomain } from '$lib/server/services/pages.js'
 import { buildHref } from '$lib/server/resolved-links.js'
-import { findLanguageMatchByPageSlug, findWordbookMatchByTitle } from '$lib/server/services/wordbook.js'
+import { findLanguageMatchByPageSlug, findWordbookMatchByTitle } from '$lib/feature/wordbook/server/service.server.js'
 
 export const load: PageServerLoad = async ({ params }) => {
 	const record = await findPageCaseInsensitive('know', params.slug)

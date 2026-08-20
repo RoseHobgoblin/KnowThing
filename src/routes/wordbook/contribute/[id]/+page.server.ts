@@ -1,10 +1,10 @@
 import type { PageServerLoad } from './$types.js'
 import { redirect, error } from '@sveltejs/kit'
 import { hasRole } from '$lib/server/auth.js'
-import { getEntryWithDefinitions } from '$lib/server/services/wordbook.js'
-import { listLanguageOptions } from '$lib/server/services/languages.js'
-import { listClassesForLanguage } from '$lib/server/services/inflections.js'
-import { getInflectionTable } from '$lib/server/wordbook/inflection.js'
+import { getEntryWithDefinitions } from '$lib/feature/wordbook/server/service.server.js'
+import { listLanguageOptions } from '$lib/feature/wordbook/server/languages.server.js'
+import { listClassesForLanguage } from '$lib/feature/wordbook/server/inflections.server.js'
+import { getInflectionTable } from '$lib/feature/wordbook/server/inflection.server.js'
 
 export const load: PageServerLoad = async ({ locals, params }) => {
 	if (!locals.user) throw redirect(302, '/auth/login')
