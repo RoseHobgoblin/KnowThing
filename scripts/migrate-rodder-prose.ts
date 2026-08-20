@@ -3,8 +3,8 @@
  * into the structured row's body field. Idempotent — safe to re-run.
  *
  * Usage:
- *   DATABASE_URL=... node --env-file=.env --loader ts-node/esm scripts/migrate-rodder-prose.ts        # dry-run
- *   DATABASE_URL=... node --env-file=.env --loader ts-node/esm scripts/migrate-rodder-prose.ts --apply  # actually mutate
+ *   bun --env-file=.env scripts/migrate-rodder-prose.ts          # dry-run
+ *   bun --env-file=.env scripts/migrate-rodder-prose.ts --apply  # actually mutate
  *
  * For each rodder content_records row:
  *   1. Find matching entity (system → star → planet) by slug or pageSlug.

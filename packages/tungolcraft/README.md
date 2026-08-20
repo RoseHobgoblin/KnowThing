@@ -188,7 +188,7 @@ assumption. See the [uncertainty guide](./docs/UNCERTAINTY.md).
 ## Scientific evidence
 
 ```sh
-npm run benchmarks --workspace=tungolcraft
+bun run --filter tungolcraft benchmarks
 ```
 
 The committed corpus covers all twenty catalogue models with NASA and IAU

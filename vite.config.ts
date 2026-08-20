@@ -6,7 +6,12 @@ import { fileURLToPath } from 'node:url'
 
 export default defineConfig({
 	test: {
-		include: ['src/**/*.test.ts', 'packages/**/*.test.ts'],
+		include: ['src/**/*.test.ts', 'packages/**/*.test.ts', 'scripts/**/*.test.ts'],
+		server: {
+			// Vitest's native externalization loses Zod's named export when the
+			// worker itself runs on Bun. Let Vite transform Zod with the sources.
+			deps: { inline: [/\/zod\//] },
+		},
 	},
 	server: {
 		fs: {

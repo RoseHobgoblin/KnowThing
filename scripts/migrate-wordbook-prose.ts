@@ -12,8 +12,8 @@
  * attributed to the language. (None do today — confirmed in audit.)
  *
  * Usage:
- *   DATABASE_URL=... node --experimental-strip-types scripts/migrate-wordbook-prose.ts          # dry run
- *   DATABASE_URL=... node --experimental-strip-types scripts/migrate-wordbook-prose.ts --apply  # mutate
+ *   bun --env-file=.env scripts/migrate-wordbook-prose.ts          # dry run
+ *   bun --env-file=.env scripts/migrate-wordbook-prose.ts --apply  # mutate
  */
 
 import postgres from 'postgres'

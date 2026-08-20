@@ -1,9 +1,12 @@
-import adapter from '@sveltejs/adapter-node'
+import adapter from 'svelte-adapter-bun'
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
 	kit: {
-		adapter: adapter(),
+		adapter: adapter({
+			precompress: true,
+			serveAssets: true,
+		}),
 	},
 	vitePlugin: {
 		dynamicCompileOptions: ({ filename }) =>

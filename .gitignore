@@ -6,6 +6,7 @@ node_modules
 .netlify
 .wrangler
 /.svelte-kit
+packages/*/.svelte-kit
 /build
 
 # Workspace package builds (tsc output — exports point at src/, dist is optional).
