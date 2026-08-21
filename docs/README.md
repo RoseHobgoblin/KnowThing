@@ -4,6 +4,7 @@ This directory contains product architecture, delivery plans, audits, reference 
 
 ## Start Here
 
+- [Polities, Territories, and Political Relationships](./architecture/Polities-Territories-and-Political-Relationships.md) — political identity, territorial authority, classifications, and nested political structures.
 - [Structured Data Vision](./architecture/STRUCTURED-DATA-VISION.md) — product-wide structured worldbuilding direction.
 - [Atlas Architecture](./architecture/Atlas-Architecture.md) — multiscale spatial publishing architecture.
 - [Celestial Sector and System Model](./architecture/celestial/Celestial-Sector-and-System-Model.md) — adopted sector, root-system, interstellar-object, and Orrery transition model.
@@ -15,6 +16,7 @@ This directory contains product architecture, delivery plans, audits, reference 
 
 Durable product and technical decisions. These documents define target boundaries and contracts, although individual sections may still be design intent.
 
+- [Polities, Territories, and Political Relationships](./architecture/Polities-Territories-and-Political-Relationships.md)
 - [Atlas Architecture](./architecture/Atlas-Architecture.md)
 - [Structured Data Vision](./architecture/STRUCTURED-DATA-VISION.md)
 - [Celestial architecture](./architecture/celestial/)

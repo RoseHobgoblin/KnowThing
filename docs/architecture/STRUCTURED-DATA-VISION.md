@@ -3,7 +3,7 @@
 **Status:** Product architecture direction
 **Decision date:** 18 August 2026
 **Applies to:** all KnowThing domains, structured authoring, relationships, queries, and WikiText displays
-**Related documents:** [Atlas Architecture](./Atlas-Architecture.md), [Celestial Views, Authoring, and Wiki Embeds](./celestial/Celestial-Views-Authoring-and-Wiki-Embeds.md), [Celestial Sector and System Model](./celestial/Celestial-Sector-and-System-Model.md)
+**Related documents:** [Atlas Architecture](./Atlas-Architecture.md), [Polities, Territories, and Political Relationships](./Polities-Territories-and-Political-Relationships.md), [Celestial Views, Authoring, and Wiki Embeds](./celestial/Celestial-Views-Authoring-and-Wiki-Embeds.md), [Celestial Sector and System Model](./celestial/Celestial-Sector-and-System-Model.md)
 
 > **Maturity:** KnowThing currently implements several typed structured-data systems with their own tables and services. Wiki templates already render some of that data as page content. The generic object/facet model described here is future architecture. Current systems should evolve toward its contracts through adapters rather than being prematurely replaced by an unvalidated property bag.
 
