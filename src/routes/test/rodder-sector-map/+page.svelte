@@ -1,15 +1,15 @@
 <script lang="ts">
 	import { untrack } from 'svelte'
 	import { page } from '$app/stores'
-	import CopyViewLink from '$lib/rodder/CopyViewLink.svelte'
-	import SectorMap from '$lib/rodder/SectorMap.svelte'
-	import type { SectorRootView } from '$lib/rodder/sector-view.js'
+	import CopyViewLink from '$lib/feature/rodder/public/ui/CopyViewLink.svelte'
+	import SectorMap from '$lib/feature/rodder/public/ui/SectorMap.svelte'
+	import type { SectorRootView } from '$lib/feature/rodder/public/sector-view.js'
 	import {
 		RODDER_VIEW_QUERY_PARAM,
 		sectorViewStateFor,
 		type SectorCameraState,
 		type SectorViewState,
-	} from '$lib/rodder/view-state.js'
+	} from '$lib/feature/rodder/public/view-state.js'
 
 	const roots: SectorRootView[] = [
 		{ rootId: 1, bodyId: 101, name: 'Orison Fold', slug: 'orison-fold', kind: 'system', x: 0, y: 0, z: 0, positionProvenance: 'authored', positionUncertainty: null, distanceLy: 0, starCount: 1, planetCount: 4 },

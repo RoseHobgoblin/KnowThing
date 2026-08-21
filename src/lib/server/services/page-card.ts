@@ -9,7 +9,7 @@ import {
 	extractSummaryFromAst,
 	getInfoboxImageFields,
 } from '$lib/parser/index.js'
-import { resolveAllStructuredData } from '$lib/server/structured-data.js'
+import { resolveAllStructuredData } from '$lib/composition/structured-data.server.js'
 import type { WikiNode } from '$lib/parser/types.js'
 
 export interface PageCard {

@@ -2,12 +2,12 @@ import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
 import { parseBody, handleServiceCall } from '$lib/server/utils.js'
-import { updateParadigmClassSchema } from '$lib/server/http/languages/schemas.js'
-import { deleteParadigmClass, getParadigmClass, updateParadigmClass } from '$lib/server/services/inflections.js'
+import { updateParadigmClassSchema } from '$lib/feature/wordbook/public/server/language-schemas.server.js'
+import { deleteParadigmClass, getParadigmClass, updateParadigmClass } from '$lib/feature/wordbook/public/server/inflections.server.js'
 
 function parseClassId(raw: string) {
 	const id = Number.parseInt(raw)
-	if (isNaN(id)) return null
+	if (Number.isNaN(id)) return null
 	return id
 }
 

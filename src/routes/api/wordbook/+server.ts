@@ -1,10 +1,10 @@
 import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
-import { createWordbookEntry } from '$lib/server/services/wordbook.js'
-import { searchWordbookEntries } from '$lib/server/services/search/wordbook.js'
+import { createWordbookEntry } from '$lib/feature/wordbook/public/server/entries.server.js'
+import { searchWordbookEntries } from '$lib/feature/wordbook/public/server/search.server.js'
 import { parseBody, handleServiceCall } from '$lib/server/utils.js'
-import { createWordSchema } from '$lib/server/http/wordbook/schemas.js'
+import { createWordSchema } from '$lib/feature/wordbook/public/server/schemas.server.js'
 
 /** GET /api/wordbook — search and browse */
 export const GET: RequestHandler = async ({ url }) => {

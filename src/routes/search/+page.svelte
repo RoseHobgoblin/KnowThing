@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { SvelteURLSearchParams } from 'svelte/reactivity'
 	import type { PageData } from './$types.js'
-	import SearchForm from '$lib/components/search/SearchForm.svelte'
-	import SearchScopeTabs from '$lib/components/search/SearchScopeTabs.svelte'
-	import SearchFilters from '$lib/components/search/SearchFilters.svelte'
-	import SearchFilterChips from '$lib/components/search/SearchFilterChips.svelte'
-	import SearchResults from '$lib/components/search/SearchResults.svelte'
-	import SearchEmptyState from '$lib/components/search/SearchEmptyState.svelte'
-	import SearchPagination from '$lib/components/search/SearchPagination.svelte'
+	import SearchForm from '$lib/feature/search/public/ui/SearchForm.svelte'
+	import SearchScopeTabs from '$lib/feature/search/public/ui/SearchScopeTabs.svelte'
+	import SearchFilters from '$lib/feature/search/public/ui/SearchFilters.svelte'
+	import SearchFilterChips from '$lib/feature/search/public/ui/SearchFilterChips.svelte'
+	import SearchResults from '$lib/feature/search/public/ui/SearchResults.svelte'
+	import SearchEmptyState from '$lib/feature/search/public/ui/SearchEmptyState.svelte'
+	import SearchPagination from '$lib/feature/search/public/ui/SearchPagination.svelte'
 
 	let { data }: { data: PageData } = $props()
 
@@ -22,6 +22,13 @@
 
 	function scopeHref(scope: SearchScope) {
 		return buildHref('/search', scope)
+	}
+
+	function scopeCount(scope: SearchScope): number {
+		if (scope === 'all') return data.pagination.totalResults
+		if (scope === 'pages') return data.countsByScope.pages
+		if (scope === 'wordbook') return data.countsByScope.wordbook
+		return data.countsByScope.media
 	}
 
 	function buildHref(basePath: string, scope: SearchScope, page = 1) {
@@ -73,13 +80,7 @@
 			value: scope.value,
 			label: scope.label,
 			href: scopeHref(scope.value),
-			count: scope.value === 'all'
-				? data.pagination.totalResults
-				: scope.value === 'pages'
-					? data.countsByScope.pages
-					: scope.value === 'wordbook'
-						? data.countsByScope.wordbook
-						: data.countsByScope.media,
+			count: scopeCount(scope.value),
 		}))}
 	/>
 

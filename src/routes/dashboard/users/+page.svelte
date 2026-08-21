@@ -9,7 +9,7 @@
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import Badge from '$lib/components/ui/Badge.svelte'
 	import { createMutation } from '@tanstack/svelte-query'
-	import { api } from '$lib/api'
+	import { requestJson as api } from '$lib/transport/json.js'
 	import { m } from '$lib/paraglide/messages.js'
 
 	let { data }: { data: PageData } = $props()

@@ -13,7 +13,7 @@
 	import FormNotice from '$lib/components/editor/FormNotice.svelte'
 	import RecordModeBanner from '$lib/components/editor/RecordModeBanner.svelte'
 	import { createMutation, useQueryClient } from '@tanstack/svelte-query'
-	import { api } from '$lib/api'
+	import { requestJson as api } from '$lib/transport/json.js'
 	import { m } from '$lib/paraglide/messages.js'
 
 	let { data }: { data: PageData } = $props()

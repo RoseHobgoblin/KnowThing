@@ -2,8 +2,8 @@ import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
 import { parseBody, handleServiceCall } from '$lib/server/utils.js'
-import { createPhonemeSchema } from '$lib/server/http/languages/schemas.js'
-import { createPhoneme, listPhonemes } from '$lib/server/services/phonemes.js'
+import { createPhonemeSchema } from '$lib/feature/wordbook/public/server/language-schemas.server.js'
+import { createPhoneme, listPhonemes } from '$lib/feature/wordbook/public/server/phonemes.server.js'
 
 /** GET /api/languages/:slug/phonemes — list a language's phoneme inventory. */
 export const GET: RequestHandler = async ({ params, url }) => {

@@ -9,6 +9,8 @@ import preferStyleDirective from './prefer-style-directive.js'
 import noOnclickDisabledGuard from './no-onclick-disabled-guard.js'
 import noDynamicTailwindClass from './no-dynamic-tailwind-class.js'
 import noPxArbitraryTailwind from './no-px-arbitrary-tailwind.js'
+import featureBoundaries from './feature-boundaries.js'
+import noFeatureBarrels from './no-feature-barrels.js'
 
 const plugin = {
 	rules: {
@@ -23,6 +25,8 @@ const plugin = {
 		'no-onclick-disabled-guard': noOnclickDisabledGuard,
 		'no-dynamic-tailwind-class': noDynamicTailwindClass,
 		'no-px-arbitrary-tailwind': noPxArbitraryTailwind,
+		'feature-boundaries': featureBoundaries,
+		'no-feature-barrels': noFeatureBarrels,
 	},
 }
 

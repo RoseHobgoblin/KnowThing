@@ -1,6 +1,6 @@
 import { error, redirect } from '@sveltejs/kit'
 import type { PageServerLoad } from './$types.js'
-import { resolveRodderCanonicalSlug } from '$lib/server/services/rodder-registry.js'
+import { resolveRodderCanonicalSlug } from '$lib/feature/rodder/public/server/registry.server.js'
 
 const TRAILING = new Set(['edit', 'configure', 'history', 'move'])
 

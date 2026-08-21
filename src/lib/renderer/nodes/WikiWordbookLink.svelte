@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { WordbookLinkNode } from '$lib/parser/types.js'
-	import WikiNode from '../WikiNode.svelte'
-	import { getKnowContext } from '../context.js'
+	import WikiNode from '$lib/renderer/WikiNode.svelte'
+	import { getKnowContext } from '$lib/renderer/context.js'
 
 	let { node }: { node: WordbookLinkNode } = $props()
 

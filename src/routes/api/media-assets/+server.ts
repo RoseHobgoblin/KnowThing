@@ -1,6 +1,6 @@
 import { error, json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
-import { findMediaRecord } from '$lib/server/services/media.js'
+import { findMediaRecord } from '$lib/feature/media/public/server/media.server.js'
 
 /** Resolve a legacy filename binding so the editor can show its real status. */
 export const GET: RequestHandler = async ({ url }) => {

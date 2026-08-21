@@ -4,12 +4,11 @@
 	import WikiNodeComponent from '$lib/renderer/WikiNode.svelte'
 	import { createKnowContext, type ResolvedLink } from '$lib/renderer/context.js'
 	import { page } from '$app/stores'
-	import type { WikiNode } from '$lib/parser/types.js'
 	import { createQuery, keepPreviousData } from '@tanstack/svelte-query'
-	import { api } from '$lib/api'
-	import type { RodderEntityDocument, RodderSectorDocument } from '$lib/rodder/consumer-contract.js'
+	import { renderWikiPreview } from '$lib/renderer/render-client.js'
+	import { CORE_WIKI_TEMPLATES, type BuiltinEntry } from '$lib/templates/registry.js'
 
-	let { content = '', domain = 'know' }: { content: string, domain?: string } = $props()
+	let { content = '', domain = 'know', mediaBaseUrl = '', templateComponents = CORE_WIKI_TEMPLATES }: { content: string, domain?: string, mediaBaseUrl?: string, templateComponents?: ReadonlyMap<string, BuiltinEntry> } = $props()
 
 	let debouncedContent = $state('')
 	let debounceTimer: ReturnType<typeof setTimeout>
@@ -18,10 +17,13 @@
 
 	// Without this map the renderer paints every wikilink as a red (missing)
 	// link, so the preview would report even existing pages as broken. It is
-	// filled from /api/render, which resolves targets the same way a save does.
+	// Filled by the render capability, which resolves targets like a save does.
 	const resolvedLinks = new SvelteMap<string, ResolvedLink>()
-	const rodderEntities = new SvelteMap<string, RodderEntityDocument | null>()
-	const rodderSectors = new SvelteMap<string, RodderSectorDocument | null>()
+	const extensionResources = new SvelteMap<string, unknown>()
+	const entityResources = new SvelteMap<string, unknown>()
+	const sectorResources = new SvelteMap<string, unknown>()
+	extensionResources.set('rodder:entities', entityResources)
+	extensionResources.set('rodder:sectors', sectorResources)
 	let rodderDisplayOverflow = $state(0)
 
 	// setContext runs once at init — reading current prop/store values here is
@@ -29,16 +31,16 @@
 	untrack(() =>
 		createKnowContext({
 			resolvedLinks,
-			mediaBaseUrl: '/api/media',
+			mediaBaseUrl,
 			pageBaseUrl: `/${domain}`,
 			sourceDomain: domain,
 			calendarDate: layoutData.calendarDate ?? null,
-			rodderEntities,
-			rodderSectors,
+			extensionResources,
+			templateComponents,
 		}),
 	)
 
-	// Debounced fetch to /api/render
+	// Debounced render-capability request.
 	$effect(() => {
 		const _c = content
 		clearTimeout(debounceTimer)
@@ -55,15 +57,7 @@
 
 	const preview = createQuery(() => ({
 		queryKey: ['render-preview', domain, debouncedContent],
-		queryFn: () => api<{
-			ast: WikiNode
-			resolvedLinks: Record<string, ResolvedLink>
-			rodderEntities: Record<string, RodderEntityDocument | null>
-			rodderSectors: Record<string, RodderSectorDocument | null>
-			rodderDisplayOverflow: number
-		}>(
-			'POST', '/api/render', { content: debouncedContent, domain },
-		),
+		queryFn: () => renderWikiPreview(debouncedContent, domain),
 		enabled: debouncedContent.trim().length > 0,
 		// The key holds the whole document, so every settled edit is a cache miss.
 		// Without this the rendered article is replaced by the loading line on each
@@ -79,10 +73,10 @@
 		if (links) {
 			for (const [key, value] of Object.entries(links)) resolvedLinks.set(key, value)
 		}
-		rodderEntities.clear()
-		for (const [key, value] of Object.entries(preview.data?.rodderEntities ?? {})) rodderEntities.set(key, value)
-		rodderSectors.clear()
-		for (const [key, value] of Object.entries(preview.data?.rodderSectors ?? {})) rodderSectors.set(key, value)
+		entityResources.clear()
+		for (const [key, value] of Object.entries(preview.data?.rodderEntities ?? {})) entityResources.set(key, value)
+		sectorResources.clear()
+		for (const [key, value] of Object.entries(preview.data?.rodderSectors ?? {})) sectorResources.set(key, value)
 		rodderDisplayOverflow = preview.data?.rodderDisplayOverflow ?? 0
 	})
 </script>

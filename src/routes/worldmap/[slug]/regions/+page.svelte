@@ -3,12 +3,12 @@
 	import { m } from '$lib/paraglide/messages.js'
 	import { pushError, pushSuccess } from '$lib/notifications.svelte'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
-	import WorldSvgMap from '$lib/components/worldmap/WorldSvgMap.svelte'
+	import WorldSvgMap from '$lib/feature/worldmap/public/ui/WorldSvgMap.svelte'
 	import Button from '$lib/components/ui/Button.svelte'
 	import Select from '$lib/components/ui/Select.svelte'
 	import { worldmapRegionAssignmentsBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import { createMutation } from '@tanstack/svelte-query'
-	import { api } from '$lib/api'
+	import { requestJson as api } from '$lib/transport/json.js'
 
 	type RegionRow = {
 		id: number

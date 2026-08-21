@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
-import { deleteEntryRelation } from '$lib/server/services/wordbook.js'
+import { deleteEntryRelation } from '$lib/feature/wordbook/public/server/relations.server.js'
 import { handleServiceCall } from '$lib/server/utils.js'
 
 /** DELETE /api/wordbook/:id/relations/:relationId */

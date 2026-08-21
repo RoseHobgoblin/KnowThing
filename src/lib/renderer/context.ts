@@ -1,10 +1,21 @@
-import { getContext, setContext } from 'svelte'
+import { createContext, type Component } from 'svelte'
 import { writable, type Writable } from 'svelte/store'
 import type { TemplateArg, WikiNode } from '$lib/parser/types.js'
 import type { CalendarConfig, ResolvedDate } from 'rimecraft'
-import type { RodderEntityDocument, RodderSectorDocument } from '$lib/rodder/consumer-contract.js'
+import { CORE_WIKI_TEMPLATES, type BuiltinEntry } from '$lib/templates/registry.js'
 
-const KNOW_CONTEXT_KEY = 'know-render-context'
+export interface MediaRenderProps {
+	filename: string
+	alt?: string
+	caption?: string
+	displayWidth?: number
+	sizes?: string
+	class?: string
+	loading?: 'eager' | 'lazy'
+	linkable?: boolean
+}
+
+const [getRenderContext, setRenderContext] = createContext<KnowRenderContext>()
 
 export interface ResolvedLink {
 	href: string
@@ -38,11 +49,12 @@ export interface KnowRenderContext {
 	structuredData: Map<string, Map<string, string>> | null
 	/** Pre-fetched array-shaped structured data (phoneme grids, etc) keyed by `${type}:${slug}` */
 	structuredCollections: Record<string, Record<string, unknown>[]> | null
-	/** Pre-fetched public Rodder documents for map templates. Null values are resolved missing targets. */
-	rodderEntities: Map<string, RodderEntityDocument | null> | null
-	rodderSectors: Map<string, RodderSectorDocument | null> | null
-	/** Number of unique display targets skipped by the per-document safety ceiling. */
-	rodderDisplayOverflow: number
+	/** Feature-owned serializable resources, keyed by an agreed composition key. */
+	extensionResources: ReadonlyMap<string, unknown>
+	/** Immutable registry assembled at the route/composition boundary. */
+	templateComponents: ReadonlyMap<string, BuiltinEntry>
+	/** Media rendering is supplied by composition; the renderer never imports Media. */
+	mediaRenderer: Component<MediaRenderProps> | null
 }
 
 export interface FootnoteEntry {
@@ -65,16 +77,16 @@ function defaultKnowContext(overrides: Partial<KnowRenderContext> = {}): KnowRen
 		calendarConfig: null,
 		structuredData: null,
 		structuredCollections: null,
-		rodderEntities: null,
-		rodderSectors: null,
-		rodderDisplayOverflow: 0,
+		extensionResources: new Map(),
+		templateComponents: CORE_WIKI_TEMPLATES,
+		mediaRenderer: null,
 		...overrides,
 	}
 }
 
 export function createKnowContext(overrides: Partial<KnowRenderContext> = {}): KnowRenderContext {
 	const ctx = defaultKnowContext(overrides)
-	setContext(KNOW_CONTEXT_KEY, ctx)
+	setRenderContext(ctx)
 	return ctx
 }
 
@@ -85,7 +97,11 @@ export function createKnowContext(overrides: Partial<KnowRenderContext> = {}): K
  * instead: links resolve to their deterministic redlink hrefs, and the page renders.
  */
 export function getKnowContext(): KnowRenderContext {
-	return getContext<KnowRenderContext>(KNOW_CONTEXT_KEY) ?? defaultKnowContext()
+	try {
+		return getRenderContext() ?? defaultKnowContext()
+	} catch {
+		return defaultKnowContext()
+	}
 }
 
 // Re-export — callers import slugify from here

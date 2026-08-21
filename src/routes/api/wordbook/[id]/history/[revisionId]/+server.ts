@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
-import { getEntryRevision, restoreEntryRevision } from '$lib/server/services/wordbook.js'
+import { getEntryRevision, restoreEntryRevision } from '$lib/feature/wordbook/public/server/revisions.server.js'
 import { handleServiceCall } from '$lib/server/utils.js'
 
 function parseIds(params: { id: string, revisionId: string }) {
