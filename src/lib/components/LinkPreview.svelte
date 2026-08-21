@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { createQuery } from '@tanstack/svelte-query'
-	import { api } from '$lib/api'
+	import { loadPageSummary } from '$lib/renderer/render-client.js'
 
 	let {
 		slug,
@@ -20,7 +20,7 @@
 
 	const query = createQuery(() => ({
 		queryKey: ['page-summary', domain, slug],
-		queryFn: () => api<PageSummary>('GET', `/api/pages/summary?slug=${encodeURIComponent(slug)}&domain=${encodeURIComponent(domain)}`),
+		queryFn: () => loadPageSummary<PageSummary>(slug, domain),
 	}))
 
 	const title = $derived(query.data?.title ?? '')

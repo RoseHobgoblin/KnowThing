@@ -7,7 +7,7 @@ import {
 	overviewBodyRadius,
 	physicalBodyExtent,
 	physicalBodyRadius,
-} from './body-sizing.js'
+} from './public/body-sizing.js'
 
 describe('overview body sizing', () => {
 	it('compresses physical radii without erasing their ordering', () => {

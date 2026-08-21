@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
-import { listEntryRevisions } from '$lib/feature/wordbook/server/service.server.js'
+import { listEntryRevisions } from '$lib/feature/wordbook/public/server/revisions.server.js'
 import { handleServiceCall } from '$lib/server/utils.js'
 
 /** GET /api/wordbook/:id/history — list an entry's revisions (metadata only) */

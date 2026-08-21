@@ -5,7 +5,7 @@ import {
 	formatEmbedDay,
 	formatEmbedPlaybackRate,
 	parseEmbedPlaybackRate,
-} from './embed-clock.js'
+} from './public/embed-clock.js'
 
 describe('Rodder embed clock', () => {
 	it('advances simulated days using elapsed real time', () => {

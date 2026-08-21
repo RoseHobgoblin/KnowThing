@@ -3,7 +3,7 @@ import {
 	SOLAR_LUMINOSITY_W,
 	describeStarlightLuminosity,
 	resolveStarlightLuminosity,
-} from './starlight-model.js'
+} from './public/starlight-model.js'
 
 const star = {
 	id: 1,

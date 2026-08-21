@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { mergeSectorPosition } from './sector-position.js'
+import { mergeSectorPosition } from './public/sector-position.js'
 
 describe('mergeSectorPosition', () => {
 	it('is unchanged when no sector field is present in the patch', () => {

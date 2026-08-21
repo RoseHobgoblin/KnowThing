@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { surfaceRecipeFromDraft } from './surface-editor.js'
+import { surfaceRecipeFromDraft } from './public/surface-editor.js'
 
 describe('surface editor recipe', () => {
 	it('uses the validated v5 recipe for preview and persistence', () => {

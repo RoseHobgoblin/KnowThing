@@ -2,8 +2,8 @@ import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
 import { parseBody, handleServiceCall } from '$lib/server/utils.js'
-import { createLanguageSchema } from '$lib/feature/wordbook/server/language-schemas.server.js'
-import { createLanguage, listLanguages } from '$lib/feature/wordbook/server/languages.server.js'
+import { createLanguageSchema } from '$lib/feature/wordbook/public/server/language-schemas.server.js'
+import { createLanguage, listLanguages } from '$lib/feature/wordbook/public/server/languages.server.js'
 
 /** GET /api/languages — list all languages with word counts, inheriting family from ancestors */
 export const GET: RequestHandler = async () => {

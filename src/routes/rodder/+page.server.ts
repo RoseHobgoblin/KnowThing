@@ -3,8 +3,8 @@ import {
 	listBodiesForRegistry,
 	listStarsForRegistry,
 	listSystemsForRegistry,
-} from '$lib/feature/rodder/server/registry.server.js'
-import { listSectorsForRegistry } from '$lib/feature/rodder/server/sectors.server.js'
+} from '$lib/feature/rodder/public/server/registry.server.js'
+import { listSectorsForRegistry } from '$lib/feature/rodder/public/server/sectors.server.js'
 
 export const load: PageServerLoad = async () => {
 	const [systems, stars, bodies, sectors] = await Promise.all([

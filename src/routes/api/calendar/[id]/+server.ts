@@ -2,12 +2,12 @@ import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
 import { parseBody, handleServiceCall } from '$lib/server/utils.js'
-import { updateCalendarSchema } from '$lib/feature/calendar/server/schemas.server.js'
-import { deleteCalendar, getCalendarById, updateCalendar } from '$lib/feature/calendar/server/service.server.js'
+import { updateCalendarSchema } from '$lib/feature/calendar/public/server/schemas.server.js'
+import { deleteCalendar, getCalendarById, updateCalendar } from '$lib/feature/calendar/public/server/calendars.server.js'
 
 function parseId(raw: string) {
 	const id = Number.parseInt(raw)
-	if (isNaN(id)) return null
+	if (Number.isNaN(id)) return null
 	return id
 }
 

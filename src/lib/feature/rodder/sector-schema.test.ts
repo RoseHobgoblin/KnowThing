@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createSectorSchema } from './sector-schema.js'
+import { createSectorSchema } from './public/sector-schema.js'
 
 const base = { name: 'Local Sector', slug: 'local-sector' }
 

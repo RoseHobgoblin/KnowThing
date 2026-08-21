@@ -8,7 +8,7 @@ import {
 	type StarRow,
 } from 'tungolcraft'
 import { db } from '$lib/server/db/index.js'
-import { rodderBodies } from '$lib/server/db/schema.js'
+import { rodderBodies } from '$lib/feature/rodder/server/schema.server.js'
 import { findNearestStarAncestor, RODDER_TREE_CTE } from '$lib/feature/rodder/server/hierarchy.server.js'
 
 async function systemStellarMassKg(systemId: number): Promise<number | null> {

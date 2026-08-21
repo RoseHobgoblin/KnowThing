@@ -1,9 +1,9 @@
 import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
-import { getInflectionTable } from '$lib/feature/wordbook/server/inflection.server.js'
-import { updateEntryInflection } from '$lib/feature/wordbook/server/service.server.js'
-import { updateInflectionSchema } from '$lib/feature/wordbook/server/schemas.server.js'
+import { getInflectionTable } from '$lib/feature/wordbook/public/server/inflection.server.js'
+import { updateEntryInflection } from '$lib/feature/wordbook/public/server/entry-inflections.server.js'
+import { updateInflectionSchema } from '$lib/feature/wordbook/public/server/schemas.server.js'
 import { handleServiceCall, parseBody } from '$lib/server/utils.js'
 
 /** GET /api/wordbook/:id/inflection — get inflection table */

@@ -2,8 +2,8 @@ import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
 import { parseBody, handleServiceCall } from '$lib/server/utils.js'
-import { updateWorldMapSchema } from '$lib/feature/worldmap/schema.js'
-import { deleteMap, getMapBySlug, updateMap } from '$lib/feature/worldmap/server/maps.server.js'
+import { updateWorldMapSchema } from '$lib/feature/worldmap/public/worldmap-contracts.js'
+import { deleteMap, getMapBySlug, updateMap } from '$lib/feature/worldmap/public/server/maps.server.js'
 
 export const GET: RequestHandler = async ({ params }) => {
 	return handleServiceCall(async () => json(await getMapBySlug(params.slug)))

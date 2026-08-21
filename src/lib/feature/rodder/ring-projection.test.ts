@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { projectRingSystems } from './ring-projection.js'
+import { projectRingSystems } from './public/ring-projection.js'
 
 describe('ring-system map projection', () => {
 	it('attaches valid children to their parent and removes them from sphere topology', () => {

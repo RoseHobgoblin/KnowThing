@@ -1,17 +1,17 @@
 import type { PageServerLoad } from './$types.js'
 import { error, redirect } from '@sveltejs/kit'
-import { getDirectRelations, computeCognates, getEtymologyChain } from '$lib/feature/wordbook/server/etymology.server.js'
-import { getInflectionTable } from '$lib/feature/wordbook/server/inflection.server.js'
+import { getDirectRelations, computeCognates, getEtymologyChain } from '$lib/feature/wordbook/public/server/etymology.server.js'
+import { getInflectionTable } from '$lib/feature/wordbook/public/server/inflection.server.js'
+import { getLanguageBySlug } from '$lib/feature/wordbook/public/server/language-entries.server.js'
 import {
-	getLanguageBySlug,
 	listDefinitionsForEntries,
 	listHomographs,
-	listVariantsForEntries,
-} from '$lib/feature/wordbook/server/service.server.js'
-import { listClassesForLanguage } from '$lib/feature/wordbook/server/inflections.server.js'
+} from '$lib/feature/wordbook/public/server/entries.server.js'
+import { listVariantsForEntries } from '$lib/feature/wordbook/public/server/variants.server.js'
+import { listClassesForLanguage } from '$lib/feature/wordbook/public/server/inflections.server.js'
 import { getResolvedLinks, serializeResolvedLinks } from '$lib/server/resolved-links.js'
 import { extractCollectionRefs, parseWikitext } from '$lib/parser/index.js'
-import { resolveAllStructuredCollections } from '$lib/server/structured-data.js'
+import { resolveAllStructuredCollections } from '$lib/composition/structured-data.server.js'
 import type { WikiNode } from '$lib/parser/types.js'
 
 function groupBy<T>(items: T[], keyFn: (item: T) => number): Map<number, T[]> {

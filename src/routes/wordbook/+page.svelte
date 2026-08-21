@@ -1,8 +1,8 @@
 <script lang="ts">
 	import type { PageData } from './$types.js'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
-	import LanguageCard from '$lib/feature/wordbook/components/LanguageCard.svelte'
-	import WordEntry from '$lib/feature/wordbook/components/WordEntry.svelte'
+	import LanguageCard from '$lib/feature/wordbook/public/ui/LanguageCard.svelte'
+	import WordEntry from '$lib/feature/wordbook/public/ui/WordEntry.svelte'
 	import { wordbookBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import { page } from '$app/stores'
 	import { createKnowContext } from '$lib/renderer/context.js'

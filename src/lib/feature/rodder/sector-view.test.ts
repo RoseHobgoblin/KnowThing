@@ -7,7 +7,7 @@ import {
 	sectorGridSpacing,
 	unpositionedRoots,
 	type SectorRootView,
-} from './sector-view.js'
+} from './public/sector-view.js'
 
 function root(overrides: Partial<SectorRootView>): SectorRootView {
 	return {

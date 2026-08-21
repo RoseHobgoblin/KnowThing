@@ -1,9 +1,9 @@
 import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
-import { uploadMediaFile } from '$lib/feature/media/server/service.server.js'
-import { listMedia } from '$lib/feature/search/server/media.server.js'
-import { parseUnifiedSearchParams } from '$lib/feature/search/server/query.server.js'
+import { uploadMediaFile } from '$lib/feature/media/public/server/media.server.js'
+import { listMedia } from '$lib/feature/media/public/server/search.server.js'
+import { parseUnifiedSearchParams } from '$lib/feature/search/public/server/query.server.js'
 import { handleServiceCall } from '$lib/server/utils.js'
 
 /** GET /api/media — list media with search, filter, pagination */
@@ -15,7 +15,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		sort: params.filters.sort ?? 'newest',
 		unused: params.filters.unused,
 		imageOnly: url.searchParams.get('kind') === 'image',
-		rodderPlate: url.searchParams.get('rodderPlate') === 'true',
+		aspectRatio: Number(url.searchParams.get('aspectRatio')) || undefined,
 		limit: Math.min(params.limit, 200),
 		offset: params.offset,
 	})

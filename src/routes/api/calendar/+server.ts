@@ -2,8 +2,8 @@ import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
 import { parseBody, handleServiceCall } from '$lib/server/utils.js'
-import { createCalendarSchema } from '$lib/feature/calendar/server/schemas.server.js'
-import { createCalendar, getPrimaryCalendar } from '$lib/feature/calendar/server/service.server.js'
+import { createCalendarSchema } from '$lib/feature/calendar/public/server/schemas.server.js'
+import { createCalendar, getPrimaryCalendar } from '$lib/feature/calendar/public/server/calendars.server.js'
 
 /** GET /api/calendar — get primary calendar */
 export const GET: RequestHandler = async () => {

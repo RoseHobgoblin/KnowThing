@@ -2,8 +2,8 @@ import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
 import { handleServiceCall, parseBody } from '$lib/server/utils.js'
-import { assignWorldMapRegionsToKnowPages } from '$lib/feature/worldmap/server/service.server.js'
-import { assignRegionsSchema } from '$lib/feature/worldmap/server/schemas.server.js'
+import { assignWorldMapRegionsToKnowPages } from '$lib/feature/worldmap/public/server/map-ingestion.server.js'
+import { assignRegionsSchema } from '$lib/feature/worldmap/public/server/schemas.server.js'
 
 export const PUT: RequestHandler = async (event) => {
 	requireRole(event, 'admin')

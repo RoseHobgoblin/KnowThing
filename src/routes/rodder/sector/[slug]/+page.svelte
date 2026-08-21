@@ -4,8 +4,8 @@
 	import { resolve } from '$app/paths'
 	import { cn } from '$lib/utils.js'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
-	import SectorMap from '$lib/feature/rodder/SectorMap.svelte'
-	import CopyViewLink from '$lib/feature/rodder/CopyViewLink.svelte'
+	import SectorMap from '$lib/feature/rodder/public/ui/SectorMap.svelte'
+	import CopyViewLink from '$lib/feature/rodder/public/ui/CopyViewLink.svelte'
 	import { rodderSectorBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import {
 		formatSectorDistance,
@@ -15,13 +15,13 @@
 		unitsLabel,
 		unpositionedRoots,
 		type SectorRootView,
-	} from '$lib/feature/rodder/sector-view.js'
+	} from '$lib/feature/rodder/public/sector-view.js'
 	import {
 		RODDER_VIEW_QUERY_PARAM,
 		sectorViewStateFor,
 		type SectorCameraState,
 		type SectorViewState,
-	} from '$lib/feature/rodder/view-state.js'
+	} from '$lib/feature/rodder/public/view-state.js'
 	import type { PageData } from './$types.js'
 	import { normalizePermissions } from '$lib/permissions.js'
 	import GearSix from 'phosphor-svelte/lib/GearSix'

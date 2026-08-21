@@ -2,11 +2,10 @@ import { createHash } from 'node:crypto'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { error } from '@sveltejs/kit'
-import { eq } from 'drizzle-orm'
 import { env } from '$env/dynamic/private'
-import type { BodyPreset, RodderPreset, PresetMediaAsset } from '$lib/feature/rodder/presets.js'
-import { SURFACE_RECIPE_VERSION } from '$lib/feature/rodder/surface-model.js'
-import { media } from '$lib/server/db/schema.js'
+import type { BodyPreset, RodderPreset, PresetMediaAsset } from '$lib/feature/rodder/public/presets.js'
+import { SURFACE_RECIPE_VERSION } from '$lib/feature/rodder/public/surface-model.js'
+import { findOrCreateMediaRecord } from '$lib/feature/media/public/resolve-image.server.js'
 import { db } from '$lib/server/db/index.js'
 
 type Dbx = Pick<typeof db, 'insert' | 'select'>
@@ -96,29 +95,19 @@ export async function prepareRodderPresetAssets(preset: RodderPreset): Promise<M
 
 async function ensureMediaRow(dbx: Dbx, prepared: PreparedAsset) {
 	const asset = prepared.definition
-	const [existing] = await dbx.select().from(media).where(eq(media.filename, asset.filename)).limit(1)
-	if (existing) {
-		if (existing.hash !== asset.contentHash) {
+	const { record, created } = await findOrCreateMediaRecord(dbx, {
+		filename: asset.filename, filepath: prepared.filepath, mimeType: asset.mimeType,
+		width: asset.width, height: asset.height, sizeBytes: asset.sizeBytes,
+		hash: asset.contentHash, description: asset.description, originalFilename: asset.filename,
+		hasThumb150: false, hasThumb300: false, hasThumb600: false, hasRaster: false,
+	})
+	if (!created) {
+		if (record.hash !== asset.contentHash) {
 			throw error(409, `Media already contains different content named ${asset.filename}.`)
 		}
-		return existing
+		return record
 	}
-	const [created] = await dbx.insert(media).values({
-		filename: asset.filename,
-		filepath: prepared.filepath,
-		mimeType: asset.mimeType,
-		width: asset.width,
-		height: asset.height,
-		sizeBytes: asset.sizeBytes,
-		hash: asset.contentHash,
-		description: asset.description,
-		originalFilename: asset.filename,
-		hasThumb150: false,
-		hasThumb300: false,
-		hasThumb600: false,
-		hasRaster: false,
-	}).returning()
-	return created
+	return record
 }
 
 /** Install immutable Media rows and compose the current surface recipe. */

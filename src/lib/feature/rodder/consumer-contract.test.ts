@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
-import { DISPLAY_INTERACTION_PRESETS, rodderEntityDocumentSchema, rodderSectorDocumentSchema } from './consumer-contract.js'
+import { DISPLAY_INTERACTION_PRESETS, rodderEntityDocumentSchema, rodderSectorDocumentSchema } from './public/consumer-contract.js'
 
 const identity = { id: 1, kind: 'system', name: 'Root', slug: 'root', href: '/Rodder:root' }
 const diagnostics = [{ code: 'test', severity: 'info', message: 'Visible locally.', path: null }]

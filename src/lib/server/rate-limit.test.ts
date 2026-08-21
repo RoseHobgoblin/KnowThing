@@ -120,7 +120,9 @@ describe('429 response', () => {
 	it('speaks JSON to API callers and plain text to form posts', async () => {
 		const api = rateLimitedResponse(fakeEvent('/api/pages', 'POST', '1.1.1.1'), decision)
 		expect(api.headers.get('Content-Type')).toBe('application/json')
-		expect(await api.json()).toEqual({ error: expect.stringContaining('42 seconds') })
+		expect(await api.json()).toEqual({
+			error: { code: 'rate_limited', message: expect.stringContaining('42 seconds') },
+		})
 
 		const form = rateLimitedResponse(fakeEvent('/auth/login', 'POST', '1.1.1.1'), decision)
 		expect(form.headers.get('Content-Type')).toContain('text/plain')

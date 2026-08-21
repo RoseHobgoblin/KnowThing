@@ -2,7 +2,7 @@
 	import type { PageData } from './$types.js'
 	import { invalidateAll } from '$app/navigation'
 	import { resolve } from '$app/paths'
-	import { api } from '$lib/api.js'
+	import { requestJson as api } from '$lib/transport/json.js'
 	import Button from '$lib/components/ui/Button.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import { pushError, pushSuccess } from '$lib/notifications.svelte.js'

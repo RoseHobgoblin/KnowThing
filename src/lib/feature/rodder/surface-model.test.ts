@@ -5,7 +5,7 @@ import {
 	parseSurfaceRecipe,
 	surfaceMediaUrl,
 	summarizeSurfacePlan,
-} from './surface-model.js'
+} from './public/surface-model.js'
 
 const body = { id: 7, slug: 'pelagos', bodyType: 'earth-like ocean garden world' }
 

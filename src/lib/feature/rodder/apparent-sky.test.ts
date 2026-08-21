@@ -9,7 +9,7 @@ import {
 	type ApparentSkyMemberInput,
 	type ApparentSkyObserver,
 	type ApparentSkyRootInput,
-} from './apparent-sky.js'
+} from './public/apparent-sky.js'
 
 const observer: ApparentSkyObserver = {
 	rootId: 1,

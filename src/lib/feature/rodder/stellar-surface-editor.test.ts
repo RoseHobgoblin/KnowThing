@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { stellarSurfaceRecipeFromDraft } from './stellar-surface-editor.js'
+import { stellarSurfaceRecipeFromDraft } from './public/stellar-surface-editor.js'
 
 describe('stellar surface editor recipe', () => {
 	it('shares one validated Starwright recipe between preview and persistence', () => {

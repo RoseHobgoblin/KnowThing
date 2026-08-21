@@ -4,7 +4,7 @@ import {
 	updatePlanetaryBodySchema,
 	createStarSchema,
 	updateStarSchema,
-} from './schema.js'
+} from './public/schema.js'
 
 describe('planetary body schema', () => {
 	it('create accepts an independent sector root without orbital data', () => {

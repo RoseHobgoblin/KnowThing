@@ -5,7 +5,8 @@ import { extractDomainLinksFromAst, extractLinksFromAst, extractRodderDisplayRef
 import { resolveLinkTargets, serializeResolvedLinks } from '$lib/server/resolved-links.js'
 import { wikiSlugify } from '$lib/utils/slugify.js'
 import { parseBody } from '$lib/server/utils.js'
-import { resolveRodderEntityDocuments, resolveRodderSectorDocuments } from '$lib/feature/rodder/server/documents.server.js'
+import { resolveRodderEntityDocuments, resolveRodderSectorDocuments } from '$lib/feature/rodder/public/server/documents.server.js'
+import { RODDER_CALENDAR_PORT } from '$lib/composition/rodder-calendar-port.server.js'
 
 const renderSchema = z.object({
 	// The only parser entry point open to anonymous callers, so it needs its own
@@ -45,7 +46,7 @@ export const POST: RequestHandler = async ({ request }) => {
 	const rootSlugs = selectedDisplays.filter(reference => reference.kind === 'root').map(reference => reference.slug)
 	const sectorSlugs = selectedDisplays.filter(reference => reference.kind === 'sector').map(reference => reference.slug)
 	const [rodderEntities, rodderSectors] = await Promise.all([
-		resolveRodderEntityDocuments(rootSlugs),
+		resolveRodderEntityDocuments(rootSlugs, RODDER_CALENDAR_PORT),
 		resolveRodderSectorDocuments(sectorSlugs),
 	])
 

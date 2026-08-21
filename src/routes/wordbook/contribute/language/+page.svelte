@@ -2,12 +2,12 @@
 	import type { PageData } from './$types.js'
 	import { goto } from '$app/navigation'
 	import { pushSuccess } from '$lib/notifications.svelte'
-	import LanguageForm from '$lib/feature/wordbook/components/LanguageForm.svelte'
+	import LanguageForm from '$lib/feature/wordbook/public/ui/LanguageForm.svelte'
 	import ArticleShell from '$lib/components/ArticleShell.svelte'
 	import { wordbookAddLanguageBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import { page } from '$app/stores'
 	import { createMutation } from '@tanstack/svelte-query'
-	import { api } from '$lib/api'
+	import { requestJson as api } from '$lib/transport/json.js'
 	import { m } from '$lib/paraglide/messages.js'
 
 	let { data }: { data: PageData } = $props()

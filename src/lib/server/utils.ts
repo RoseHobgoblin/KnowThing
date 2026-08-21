@@ -1,6 +1,7 @@
-import { isHttpError, json } from '@sveltejs/kit'
+import { isHttpError } from '@sveltejs/kit'
 import { APIError } from 'better-auth/api'
 import type { z } from 'zod'
+import { apiError } from './http/json-endpoint.js'
 
 /**
  * Validate an already-parsed value against a Zod schema.
@@ -15,7 +16,7 @@ export function parseInput<T extends z.ZodTypeAny>(body: unknown, schema: T): z.
 		const issues = parsed.error.issues.map(issue =>
 			issue.path.length > 0 ? `${issue.path.join('.')}: ${issue.message}` : issue.message,
 		)
-		return json({ error: issues[0], issues }, { status: 400 })
+		return apiError(400, 'validation_failed', issues[0], issues)
 	}
 	return parsed.data
 }
@@ -32,7 +33,7 @@ export async function parseBody<T extends z.ZodTypeAny>(
 	try {
 		body = await request.json()
 	} catch {
-		return json({ error: 'Invalid JSON body' }, { status: 400 })
+		return apiError(400, 'invalid_json', 'Invalid JSON body')
 	}
 	return parseInput(body, schema)
 }
@@ -56,21 +57,21 @@ export async function handleServiceCall<T>(function_: () => Promise<T>): Promise
 		return await function_()
 	} catch (error: unknown) {
 		if (isHttpError(error)) {
-			return json({ error: error.body?.message ?? 'Request failed' }, { status: error.status })
+			return apiError(error.status, `http_${error.status}`, error.body?.message ?? 'Request failed')
 		}
 		if (error instanceof APIError) {
-			return json({ error: error.message }, { status: error.statusCode })
+			return apiError(error.statusCode, `auth_${error.statusCode}`, error.message)
 		}
 		const pgCode = (error as { code?: string })?.code
 		if (pgCode && PG_ERROR_RESPONSES[pgCode]) {
 			const { status, message } = PG_ERROR_RESPONSES[pgCode]
-			return json({ error: message }, { status })
+			return apiError(status, `database_${pgCode}`, message)
 		}
 		// The client gets a structured opaque 500 (below); this is the only place
 		// the real error is preserved for the server operator.
 		// eslint-disable-next-line local/no-console-server
 		console.error('Unhandled service error:', error)
-		return json({ error: 'Internal server error' }, { status: 500 })
+		return apiError(500, 'internal_error', 'An unexpected error occurred')
 	}
 }
 

@@ -4,6 +4,9 @@
 	import { enhance } from '$app/forms'
 	import Editor from '$lib/components/Editor.svelte'
 	import LivePreview from '$lib/components/LivePreview.svelte'
+	import { WIKI_TEMPLATE_REGISTRY } from '$lib/composition/wiki-templates.js'
+	import { MEDIA_CONTENT_BASE_URL } from '$lib/feature/media/public/media-urls.js'
+	import { searchPageSuggestions } from '$lib/feature/search/public/search-client.js'
 	import Input from '$lib/components/ui/Input.svelte'
 	import SaveStatusBadge from '$lib/components/editor/SaveStatusBadge.svelte'
 	import UnsavedChangesGuard from '$lib/components/editor/UnsavedChangesGuard.svelte'
@@ -68,13 +71,13 @@
 
 	<div class="flex min-h-0 flex-1 gap-4">
 		<div class="{showPreview ? 'w-1/2' : 'w-full'}">
-			<Editor value={form?.content ?? ''} onchange={v => (content = v)} />
+			<Editor value={form?.content ?? ''} onchange={v => (content = v)} searchPages={searchPageSuggestions} />
 		</div>
 
 		{#if showPreview}
 			<div class="w-1/2 overflow-hidden">
 				<div class="border-b border-border-strong bg-raised px-3 py-1 text-xs font-medium text-dim">{m.common_preview()}</div>
-				<LivePreview {content} />
+				<LivePreview {content} mediaBaseUrl={MEDIA_CONTENT_BASE_URL} templateComponents={WIKI_TEMPLATE_REGISTRY} />
 			</div>
 		{/if}
 	</div>

@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import sharp from 'sharp'
 import { describe, expect, it } from 'vitest'
-import { getBodyPresets } from './presets.js'
+import { getBodyPresets } from './public/presets.js'
 
 describe('Mars preset data package', () => {
 	it('carries physical, orbital, frame, and truthful surface defaults', () => {

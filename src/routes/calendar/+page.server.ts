@@ -3,7 +3,7 @@ import type { CalendarConfig, StaticCalendarData } from 'rimecraft'
 import {
 	type Calendar,
 	listAllCalendars,
-} from '$lib/feature/calendar/server/service.server.js'
+} from '$lib/feature/calendar/public/server/calendars.server.js'
 
 export const load: PageServerLoad = async () => {
 	const allCalendars = await listAllCalendars()

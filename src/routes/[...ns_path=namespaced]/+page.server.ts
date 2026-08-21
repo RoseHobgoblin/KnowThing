@@ -1,9 +1,10 @@
 import { error, redirect } from '@sveltejs/kit'
 import type { Actions, PageServerLoad } from './$types.js'
 import { splitNamespaceTarget, type NamespaceKey } from '$lib/namespaces/registry.js'
-import { loadRodderDetail } from '$lib/feature/rodder/server/detail.server.js'
-import { loadCalendarDetail } from '$lib/feature/calendar/server/detail.server.js'
+import { loadRodderDetail } from '$lib/feature/rodder/public/server/detail.server.js'
+import { loadCalendarDetail } from '$lib/feature/calendar/public/server/detail.server.js'
 import { entitySaveAction } from '$lib/server/services/entity-actions.js'
+import { RODDER_CALENDAR_PORT } from '$lib/composition/rodder-calendar-port.server.js'
 
 const TRAILING_MODES = new Set(['edit', 'configure', 'history', 'move'])
 
@@ -38,6 +39,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 				user: locals.user,
 				loginRedirectPath: `/Rodder:${identifier}${suffix}`,
 				canonicalize: slug => `/Rodder:${slug}`,
+				calendarPort: RODDER_CALENDAR_PORT,
 			})
 			return { namespace: 'Rodder' as const, ...data }
 		}

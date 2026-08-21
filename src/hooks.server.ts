@@ -5,6 +5,7 @@ import { svelteKitHandler } from 'better-auth/svelte-kit'
 import { auth, authTrustedOrigins } from '$lib/server/better-auth.js'
 import { toAuthUser } from '$lib/server/auth.js'
 import { applyRateLimitHeaders, enforceRateLimit, rateLimitedResponse } from '$lib/server/rate-limit.js'
+import { normalizeApiErrorResponse } from '$lib/server/http/json-endpoint.js'
 
 /**
  * Canonicalise legacy URLs to their post-namespace-flip forms. Runs first so
@@ -74,7 +75,14 @@ const betterAuth: Handle = async ({ event, resolve }) => {
 	return svelteKitHandler({ event, resolve, auth, building })
 }
 
+const normalizeJsonApiErrors: Handle = async ({ event, resolve }) => {
+	const response = await resolve(event)
+	return event.url.pathname.startsWith('/api/') ? normalizeApiErrorResponse(response) : response
+}
+
 // Locale is resolved client-side from localStorage (see `$lib/i18n.svelte.ts`),
 // so there's no Paraglide server middleware here — SSR renders the base locale
 // and the client applies the stored one after mount.
-export const handle = sequence(canonicalizeUrl, verifyRequestOrigin, rateLimit, betterAuth)
+// Keep transport normalization outermost so failures produced by security,
+// rate-limit, auth, and route handlers all share the same API contract.
+export const handle = sequence(normalizeJsonApiErrors, canonicalizeUrl, verifyRequestOrigin, rateLimit, betterAuth)

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { composeWeatherPlan, parseWeatherRecipe } from './weather-model.js'
+import { composeWeatherPlan, parseWeatherRecipe } from './public/weather-model.js'
 
 describe('weather recipe', () => {
 	it('defaults to no cloud layer', () => {

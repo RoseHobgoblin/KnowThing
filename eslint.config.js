@@ -148,6 +148,8 @@ export default defineConfig(
 			'local/no-onclick-disabled-guard': 'warn',
 			'local/no-dynamic-tailwind-class': 'error',
 			'local/no-px-arbitrary-tailwind': 'warn',
+			'local/feature-boundaries': 'error',
+			'local/no-feature-barrels': 'error',
 
 			// Built-in restrictions
 			'no-restricted-globals': ['error', {

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { ImageOption } from '$lib/parser/types.js'
-	import MediaImage from '$lib/feature/media/components/MediaImage.svelte'
+	import MediaRender from '../MediaRender.svelte'
 
 	let { filename, options }: { filename: string, options: ImageOption[] } = $props()
 
@@ -40,7 +40,7 @@
 
 {#if isThumb || isFrame}
 	<figure class="know-image-frame bg-page p-1 mb-4 overflow-hidden max-w-full {alignClass}">
-		<MediaImage
+		<MediaRender
 			{filename}
 			{alt}
 			caption={caption?.text ?? ''}
@@ -53,7 +53,7 @@
 		{/if}
 	</figure>
 {:else}
-	<MediaImage
+	<MediaRender
 		{filename}
 		{alt}
 		caption={caption?.text ?? ''}

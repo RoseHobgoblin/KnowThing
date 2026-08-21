@@ -2,13 +2,14 @@ import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
 import { handleServiceCall } from '$lib/server/utils.js'
-import { deleteRodder, updateRodder } from '$lib/feature/rodder/server/bodies.server.js'
-import { resolveRodderEntityDocument } from '$lib/feature/rodder/server/documents.server.js'
+import { deleteRodder, updateRodder } from '$lib/feature/rodder/public/server/bodies.server.js'
+import { resolveRodderEntityDocument } from '$lib/feature/rodder/public/server/documents.server.js'
+import { RODDER_CALENDAR_PORT } from '$lib/composition/rodder-calendar-port.server.js'
 
 /** GET /api/rodder/:slug */
 export const GET: RequestHandler = async ({ params, url }) => {
 	return handleServiceCall(async () => {
-		const document = await resolveRodderEntityDocument(params.slug)
+		const document = await resolveRodderEntityDocument(params.slug, RODDER_CALENDAR_PORT)
 		if (!document) return json({ error: 'Rodder entity not found' }, { status: 404 })
 		return json(document, url.searchParams.get('download') === '1'
 			? { headers: { 'content-disposition': `attachment; filename*=UTF-8''${encodeURIComponent(`${document.identity.slug}.rodder.json`)}` } }

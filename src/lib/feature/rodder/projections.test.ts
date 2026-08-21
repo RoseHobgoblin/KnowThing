@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { deriveBody, deriveStar } from 'tungolcraft'
-import type { RodderEntityDocument } from './consumer-contract.js'
-import { bodyInfoboxFields, rodderDocumentInfoboxFields, starInfoboxFields, rodderStatTiles } from './projections.js'
+import type { RodderEntityDocument } from './public/consumer-contract.js'
+import { bodyInfoboxFields, rodderDocumentInfoboxFields, starInfoboxFields, rodderStatTiles } from './public/projections.js'
 
 const EARTH = { name: 'Earth', slug: 'earth', massKg: 5.972e24, radiusM: 6.371e6, semiMajorAxisAu: 1, eccentricity: 0.0167, rotationPeriodS: 86_164 }
 const SUN = { name: 'Sun', slug: 'the-sun', massKg: 1.989e30, radiusM: 6.9634e8, temperatureK: 5778 }

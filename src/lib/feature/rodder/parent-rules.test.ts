@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { validateParentKind, isRodderKind, RODDER_KINDS, type RodderKind } from './parent-rules.js'
+import { validateParentKind, isRodderKind, RODDER_KINDS, type RodderKind } from './public/parent-rules.js'
 
 describe('validateParentKind', () => {
 	// The full kind × parentKind matrix. `null` in the expectation means the

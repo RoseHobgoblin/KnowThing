@@ -2,8 +2,8 @@ import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
 import { parseBody, handleServiceCall } from '$lib/server/utils.js'
-import { createParadigmClassSchema } from '$lib/feature/wordbook/server/language-schemas.server.js'
-import { createParadigmClass } from '$lib/feature/wordbook/server/inflections.server.js'
+import { createParadigmClassSchema } from '$lib/feature/wordbook/public/server/language-schemas.server.js'
+import { createParadigmClass } from '$lib/feature/wordbook/public/server/inflections.server.js'
 
 /** POST /api/languages/:slug/inflections/classes — create a paradigm class */
 export const POST: RequestHandler = async (event) => {

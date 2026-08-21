@@ -8,7 +8,7 @@ import {
 	sectorViewStateFor,
 	type RootViewState,
 	type SectorViewState,
-} from './view-state.js'
+} from './public/view-state.js'
 
 const rootState: RootViewState = {
 	version: 1,

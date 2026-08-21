@@ -3,7 +3,7 @@ import {
 	parseRingSystem,
 	ringSystemSchema,
 	summarizeRingSystem,
-} from './ring-system.js'
+} from './public/ring-system.js'
 
 const bands = [
 	{ name: 'Broad band', innerRadiusM: 70_000_000, outerRadiusM: 90_000_000, opacity: 0.28, provenance: 'authored' as const },

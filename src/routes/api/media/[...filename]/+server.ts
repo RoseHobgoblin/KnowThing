@@ -1,7 +1,7 @@
 import { error, json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { readFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import path from 'node:path'
 import { env } from '$env/dynamic/private'
 import { requireRole } from '$lib/server/auth.js'
 import {
@@ -11,9 +11,10 @@ import {
 	replaceMediaFile,
 	restoreMediaVersion,
 	updateMediaMetadata,
-} from '$lib/feature/media/server/service.server.js'
+} from '$lib/feature/media/public/server/media.server.js'
 import { handleServiceCall } from '$lib/server/utils.js'
 
+const { join } = path
 const UPLOAD_DIR = env.UPLOAD_DIR || './uploads'
 const THUMB_DIR = join(UPLOAD_DIR, 'thumbs')
 const RASTER_DIR = join(UPLOAD_DIR, 'rasters')

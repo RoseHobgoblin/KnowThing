@@ -1,13 +1,13 @@
 import type { PageServerLoad } from './$types.js'
 import { error, redirect } from '@sveltejs/kit'
-import { getAncestryChain, getChildren } from '$lib/feature/wordbook/server/language-tree.server.js'
-import { listDialectsByLanguageId } from '$lib/feature/wordbook/server/dialects.server.js'
-import { getInflectionsByLanguageId } from '$lib/feature/wordbook/server/inflections.server.js'
+import { getAncestryChain, getChildren } from '$lib/feature/wordbook/public/server/language-tree.server.js'
+import { listDialectsByLanguageId } from '$lib/feature/wordbook/public/server/dialects.server.js'
+import { getInflectionsByLanguageId } from '$lib/feature/wordbook/public/server/inflections.server.js'
 import {
 	getLanguageWithFamily,
 	listActiveLetters,
 	listLanguageEntries,
-} from '$lib/feature/wordbook/server/service.server.js'
+} from '$lib/feature/wordbook/public/server/language-entries.server.js'
 
 export const load: PageServerLoad = async ({ params, url }) => {
 	const lang = await getLanguageWithFamily(params.language)

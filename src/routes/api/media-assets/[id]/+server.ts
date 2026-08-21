@@ -1,6 +1,6 @@
 import { error, json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
-import { findMediaRecordById } from '$lib/feature/media/server/service.server.js'
+import { findMediaRecordById } from '$lib/feature/media/public/server/media.server.js'
 
 /** Metadata lookup for a stable Media identity. */
 export const GET: RequestHandler = async ({ params }) => {

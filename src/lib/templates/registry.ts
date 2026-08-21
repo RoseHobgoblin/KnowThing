@@ -1,4 +1,5 @@
 import type { Component } from 'svelte'
+import { immutableMap } from '$lib/utils/immutable-map.js'
 
 import Quote from './builtins/Quote.svelte'
 import Hatnote from './builtins/Hatnote.svelte'
@@ -24,8 +25,6 @@ import WikiList from './builtins/WikiList.svelte'
 import NativeName from './builtins/NativeName.svelte'
 import Marriage from './builtins/Marriage.svelte'
 import CollapsibleList from './builtins/CollapsibleList.svelte'
-import RootMap from './builtins/RootMap.svelte'
-import SectorMap from './builtins/SectorMap.svelte'
 import PhonemeGrid from '$lib/renderer/structured/PhonemeGrid.svelte'
 import PhonologySection from '$lib/renderer/structured/PhonologySection.svelte'
 import DiphthongList from '$lib/renderer/structured/DiphthongList.svelte'
@@ -47,7 +46,7 @@ export interface BuiltinEntry {
 	staticProps?: Record<string, unknown>
 }
 
-export const BUILTIN_TEMPLATES: Record<string, BuiltinEntry> = {
+const CORE_ENTRIES: Record<string, BuiltinEntry> = {
 	'quote': { component: Quote },
 	'main': { component: Hatnote, staticProps: { variant: 'main' } },
 	'see also': { component: Hatnote, staticProps: { variant: 'see-also' } },
@@ -92,11 +91,23 @@ export const BUILTIN_TEMPLATES: Record<string, BuiltinEntry> = {
 	'cite web': { component: Citation },
 	'cite journal': { component: Citation },
 	'wt': { component: Wt },
-	'root map': { component: RootMap },
-	'sector map': { component: SectorMap },
 	'consonants': { component: PhonemeGrid, staticProps: { type: 'consonant' } },
 	'vowels': { component: PhonemeGrid, staticProps: { type: 'vowel' } },
 	'diphthongs': { component: DiphthongList },
 	'phonology': { component: PhonologySection },
 	'orthography': { component: OrthographyTable },
+}
+
+export const CORE_WIKI_TEMPLATES = immutableMap(new Map(Object.entries(CORE_ENTRIES)))
+
+export function createTemplateRegistry(...sources: ReadonlyMap<string, BuiltinEntry>[]): ReadonlyMap<string, BuiltinEntry> {
+	const registry = new Map<string, BuiltinEntry>()
+	for (const source of sources) {
+		for (const [rawName, entry] of source) {
+			const name = rawName.trim().toLowerCase()
+			if (registry.has(name)) throw new Error(`Duplicate Wiki template registration: ${name}`)
+			registry.set(name, entry)
+		}
+	}
+	return immutableMap(registry)
 }

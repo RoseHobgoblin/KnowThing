@@ -1,13 +1,15 @@
 import { redirect } from '@sveltejs/kit'
 import type { PageServerLoad } from './$types.js'
 import { parseWikitext, extractCategoriesFromAst, extractInfoboxFromRefs, extractRodderDisplayRefs, extractCollectionRefs, extractSummaryFromAst } from '$lib/parser/index.js'
-import { resolveAllStructuredData, resolveAllStructuredCollections } from '$lib/server/structured-data.js'
-import { resolveRodderEntityDocuments, resolveRodderSectorDocuments } from '$lib/feature/rodder/server/documents.server.js'
+import { resolveAllStructuredData, resolveAllStructuredCollections } from '$lib/composition/structured-data.server.js'
+import { resolveRodderEntityDocuments, resolveRodderSectorDocuments } from '$lib/feature/rodder/public/server/documents.server.js'
+import { RODDER_CALENDAR_PORT } from '$lib/composition/rodder-calendar-port.server.js'
 import { getResolvedLinks, serializeResolvedLinks } from '$lib/server/resolved-links.js'
 import { lookupMediaInfo, resolveCardImageSync } from '$lib/server/services/page-card.js'
 import { findPageCaseInsensitive, findPageInAnyDomain } from '$lib/server/services/pages.js'
 import { buildHref } from '$lib/server/resolved-links.js'
-import { findLanguageMatchByPageSlug, findWordbookMatchByTitle } from '$lib/feature/wordbook/server/service.server.js'
+import { findLanguageMatchByPageSlug } from '$lib/feature/wordbook/public/server/language-entries.server.js'
+import { findWordbookMatchByTitle } from '$lib/feature/wordbook/public/server/entries.server.js'
 
 export const load: PageServerLoad = async ({ params }) => {
 	const record = await findPageCaseInsensitive('know', params.slug)
@@ -70,7 +72,7 @@ export const load: PageServerLoad = async ({ params }) => {
 	const rootMapSlugs = selectedDisplays.filter(reference => reference.kind === 'root').map(reference => reference.slug)
 	const sectorMapSlugs = selectedDisplays.filter(reference => reference.kind === 'sector').map(reference => reference.slug)
 	const [rodderEntities, rodderSectors] = await Promise.all([
-		rootMapSlugs.length > 0 ? resolveRodderEntityDocuments(rootMapSlugs) : Promise.resolve({}),
+		rootMapSlugs.length > 0 ? resolveRodderEntityDocuments(rootMapSlugs, RODDER_CALENDAR_PORT) : Promise.resolve({}),
 		sectorMapSlugs.length > 0 ? resolveRodderSectorDocuments(sectorMapSlugs) : Promise.resolve({}),
 	])
 

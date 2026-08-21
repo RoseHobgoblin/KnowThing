@@ -11,7 +11,7 @@ import {
 	type RodderFormConfig,
 	type FieldContext,
 	type SelectFieldSpec,
-} from './form-registry.js'
+} from './public/form-registry.js'
 
 function makeCtx(config: RodderFormConfig, overrides: Partial<FieldContext> = {}): FieldContext {
 	return {

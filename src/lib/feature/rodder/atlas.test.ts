@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { enrichSystems, filterSystems, matchedBodyName, type AtlasSystem, type AtlasStar, type AtlasBody } from './atlas.js'
+import { enrichSystems, filterSystems, matchedBodyName, type AtlasSystem, type AtlasStar, type AtlasBody } from './public/atlas.js'
 
 const systems: AtlasSystem[] = [
 	{ id: 1, name: 'Sunly', slug: 'Sunly', starCount: 2, planetCount: 3 },

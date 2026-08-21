@@ -1,9 +1,9 @@
 <script lang="ts">
-	import MapControls from '$lib/feature/rodder/MapControls.svelte'
-	import RootMap from '$lib/feature/rodder/RootMap.svelte'
-	import type { LabelMode, TrailMode, ViewMode, VisibilityMode } from '$lib/feature/rodder/map-settings.js'
-	import type { EntityKey, MapBody } from '$lib/feature/rodder/root-layout.js'
-	import { buildApparentSky, type RootSelectionKey } from '$lib/feature/rodder/apparent-sky.js'
+	import MapControls from '$lib/feature/rodder/public/ui/MapControls.svelte'
+	import RootMap from '$lib/feature/rodder/public/ui/RootMap.svelte'
+	import type { LabelMode, TrailMode, ViewMode, VisibilityMode } from '$lib/feature/rodder/public/map-settings.js'
+	import type { EntityKey, MapBody } from '$lib/feature/rodder/public/root-layout.js'
+	import { buildApparentSky, type RootSelectionKey } from '$lib/feature/rodder/public/apparent-sky.js'
 
 	const bodies: MapBody[] = [
 		{

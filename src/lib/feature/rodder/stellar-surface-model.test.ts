@@ -6,7 +6,7 @@ import {
 	parseStellarSurfaceRecipe,
 	representativeHostStar,
 	resolveHostStarTemperatureK,
-} from './stellar-surface-model.js'
+} from './public/stellar-surface-model.js'
 
 describe('stellar surface recipe', () => {
 	it('validates untrusted values and preserves a photosphere upload', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { weatherRecipeFromDraft } from './weather-editor.js'
+import { weatherRecipeFromDraft } from './public/weather-editor.js'
 
 describe('weather editor recipe', () => {
 	it('stores representative procedural clouds separately from the surface recipe', () => {

@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types.js'
 import { error } from '@sveltejs/kit'
-import { getMapWithImage, listMapRegionsWithGeometry } from '$lib/feature/worldmap/server/maps.server.js'
+import { getMapWithImage, listMapRegionsWithGeometry } from '$lib/feature/worldmap/public/server/maps.server.js'
 
 export const load: PageServerLoad = async ({ params }) => {
 	const map = await getMapWithImage(params.slug)

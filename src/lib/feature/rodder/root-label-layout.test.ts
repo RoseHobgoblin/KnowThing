@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { placeRootLabel } from './root-label-layout.js'
+import { placeRootLabel } from './public/root-label-layout.js'
 
 describe('root label pillars', () => {
 	it('gives converged body anchors distinct vertical tiers', () => {

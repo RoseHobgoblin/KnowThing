@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte'
-	import MediaImage from '$lib/feature/media/components/MediaImage.svelte'
+	import MediaRender from '$lib/renderer/MediaRender.svelte'
 	import InlineMarkup from '$lib/renderer/InlineMarkup.svelte'
 
 	let {
@@ -29,7 +29,7 @@
 	{/if}
 	{#if image}
 		<div class="infobox-media">
-			<MediaImage
+			<MediaRender
 				filename={image}
 				alt={imageCaption || image}
 				caption={imageCaption}

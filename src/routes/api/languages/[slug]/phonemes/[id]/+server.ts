@@ -2,8 +2,8 @@ import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
 import { parseBody, handleServiceCall } from '$lib/server/utils.js'
-import { updatePhonemeSchema } from '$lib/feature/wordbook/server/language-schemas.server.js'
-import { deletePhoneme, getPhoneme, updatePhoneme } from '$lib/feature/wordbook/server/phonemes.server.js'
+import { updatePhonemeSchema } from '$lib/feature/wordbook/public/server/language-schemas.server.js'
+import { deletePhoneme, getPhoneme, updatePhoneme } from '$lib/feature/wordbook/public/server/phonemes.server.js'
 
 function parseId(raw: string) {
 	const id = Number(raw)

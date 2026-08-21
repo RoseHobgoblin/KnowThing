@@ -7,8 +7,8 @@ import {
 	rodderDisplayConfigSchema,
 	rodderEntityDocumentSchema,
 	rodderSectorDocumentSchema,
-} from '$lib/feature/rodder/consumer-contract.js'
-import { rodderViewSchema } from '$lib/feature/rodder/view-state.js'
+} from '$lib/feature/rodder/public/consumer-contract.js'
+import { rodderViewSchema } from '$lib/feature/rodder/public/view-state.js'
 
 function jsonSchema(schema: z.ZodType) {
 	return z.toJSONSchema(schema, { unrepresentable: 'any' })

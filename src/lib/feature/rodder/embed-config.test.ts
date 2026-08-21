@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import type { TemplateArg } from '$lib/parser/types.js'
-import { buildApparentSky } from './apparent-sky.js'
-import { resolveRootMapEmbedConfiguration, resolveSectorMapEmbedConfiguration } from './embed-config.js'
-import type { MapBody } from './root-layout.js'
-import { encodeRodderViewState, type RootViewState } from './view-state.js'
+import { buildApparentSky } from './public/apparent-sky.js'
+import { resolveRootMapEmbedConfiguration, resolveSectorMapEmbedConfiguration } from './public/embed-config.js'
+import type { MapBody } from './public/root-layout.js'
+import { encodeRodderViewState, type RootViewState } from './public/view-state.js'
 
 const stars: MapBody[] = [{ id: 1, name: 'Primary', slug: 'primary', bodyType: 'star', isStar: true }]
 const bodies: MapBody[] = [{ id: 2, name: 'World', slug: 'world', bodyType: 'planet', semiMajorAxisAu: 1 }]

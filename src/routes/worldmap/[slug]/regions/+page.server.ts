@@ -6,7 +6,7 @@ import {
 	listKnowPageOptions,
 	listMapRegionsForAdmin,
 	listSvgMedia,
-} from '$lib/feature/worldmap/server/maps.server.js'
+} from '$lib/feature/worldmap/public/server/maps.server.js'
 
 export const load: PageServerLoad = async (event) => {
 	requireAdmin(event)

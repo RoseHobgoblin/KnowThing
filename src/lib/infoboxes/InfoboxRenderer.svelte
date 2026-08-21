@@ -6,7 +6,7 @@
 	import InfoboxShell from './InfoboxShell.svelte'
 	import InfoboxRow from './InfoboxRow.svelte'
 	import InfoboxSection_ from './InfoboxSection.svelte'
-	import MediaImage from '$lib/feature/media/components/MediaImage.svelte'
+	import MediaRender from '$lib/renderer/MediaRender.svelte'
 	import InlineMarkup from '$lib/renderer/InlineMarkup.svelte'
 
 	let { schema, fields }: { schema: InfoboxSchema, fields: FieldMap } = $props()
@@ -93,7 +93,7 @@
 			<div class="flex items-start justify-center gap-4 flex-wrap">
 					{#each resolvedHeaderImages as img, imgIndex (imgIndex)}
 						<figure class="flex flex-col items-center gap-1 m-0" style="width: {img.width}px;">
-							<MediaImage
+							<MediaRender
 								filename={img.file}
 								alt={img.alt}
 								caption={img.caption}

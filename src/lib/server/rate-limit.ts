@@ -235,8 +235,8 @@ export function applyRateLimitHeaders(headers: Headers, decision: RateLimitDecis
 	headers.set('RateLimit-Reset', String(decision.resetSeconds))
 }
 
-/** The 429. JSON for `/api/` so `$lib/api`'s `{ error }` unwrapping shows the
- *  message; plain text elsewhere, where the browser renders the body directly. */
+/** API failures use the shared nested error contract; browser pages receive
+ * plain text because they render the response body directly. */
 export function rateLimitedResponse(event: RequestEvent, decision: RateLimitDecision): Response {
 	const message = `Too many requests. Try again in ${decision.resetSeconds} seconds.`
 	const isApi = isUnder(event.url.pathname, '/api')
@@ -246,7 +246,9 @@ export function rateLimitedResponse(event: RequestEvent, decision: RateLimitDeci
 	})
 	applyRateLimitHeaders(headers, decision)
 
-	return new Response(isApi ? JSON.stringify({ error: message }) : message, {
+	return new Response(isApi
+		? JSON.stringify({ error: { code: 'rate_limited', message } })
+		: message, {
 		status: 429,
 		headers,
 	})
