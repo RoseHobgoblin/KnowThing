@@ -13,9 +13,7 @@ SvelteKit 2 with Svelte 5 (runes), Bun 1.4, Elysia, TypeScript strict, Drizzle O
 
 
 ## Code Style
-- Svelte 5 runes (`$state`, `$derived`, `$effect`) — no legacy reactive syntax
-- Tailwind utility classes with custom theme tokens from `src/app.css`
-- UI primitives from `$lib/components/ui/` — never raw HTML inputs/selects
+- Svelte 5 runes (`$state`, `$derived`). If you ever feel the need to use `$effect`, you are doing something wrong.
 - Zod validation on all API inputs before database access
 - `db.transaction()` for multi-step mutations
 
