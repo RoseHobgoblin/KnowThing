@@ -1,6 +1,7 @@
 <script lang="ts">
-	import MediaAssetPicker from '$lib/components/media/MediaAssetPicker.svelte'
-	import type { MediaAssetBinding } from '$lib/media/asset-binding.js'
+	import MediaAssetPicker from '$lib/feature/media/public/ui/MediaAssetPicker.svelte'
+	import { rodderMediaProfile } from '$lib/feature/rodder/public/media-binding.js'
+	import type { MediaAssetBinding } from '$lib/feature/media/public/media-binding.js'
 
 	let value = $state<MediaAssetBinding | null>(null)
 	let ready = $state(false)
@@ -17,7 +18,7 @@
 		<MediaAssetPicker
 			label="Base color / appearance map"
 			hint="sRGB 2:1 equirectangular image"
-			purpose="surface-albedo"
+			profile={rodderMediaProfile('surface-albedo')}
 			canUpload
 			bind:value
 		/>

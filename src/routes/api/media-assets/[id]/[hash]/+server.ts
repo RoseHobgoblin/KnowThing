@@ -1,7 +1,7 @@
 import { error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { readFile } from 'node:fs/promises'
-import { findMediaRevision } from '$lib/server/services/media.js'
+import { findMediaRevision } from '$lib/feature/media/public/server/media.server.js'
 
 const HASH_PATTERN = /^[\da-f]{64}$/i
 

@@ -6,7 +6,7 @@
 	import { detectInfoboxType } from '$lib/infoboxes/detect.js'
 	import { buildFieldMap } from '$lib/infoboxes/types.js'
 	import type { InfoboxType, FieldMap } from '$lib/infoboxes/types.js'
-	import { BUILTIN_TEMPLATES, type BuiltinEntry } from '$lib/templates/registry.js'
+	import type { BuiltinEntry } from '$lib/templates/registry.js'
 	import { formatArgs } from '$lib/templates/args.js'
 	import { SvelteMap } from 'svelte/reactivity'
 
@@ -55,7 +55,7 @@
 			return { kind: 'infobox', infoboxType: detectInfoboxType(normalizedName, fields), fields }
 		}
 
-		const builtin = BUILTIN_TEMPLATES[lowerName]
+		const builtin = ctx.templateComponents.get(lowerName)
 		if (builtin) return { kind: 'builtin', entry: builtin }
 
 		const dbTemplate = ctx.templates?.get(lowerName)

@@ -4,6 +4,9 @@
 	import { enhance } from '$app/forms'
 	import Editor from '$lib/components/Editor.svelte'
 	import LivePreview from '$lib/components/LivePreview.svelte'
+	import { WIKI_TEMPLATE_REGISTRY } from '$lib/composition/wiki-templates.js'
+	import { MEDIA_CONTENT_BASE_URL } from '$lib/feature/media/public/media-urls.js'
+	import { searchPageSuggestions } from '$lib/feature/search/public/search-client.js'
 	import SaveStatusBadge from '$lib/components/editor/SaveStatusBadge.svelte'
 	import UnsavedChangesGuard from '$lib/components/editor/UnsavedChangesGuard.svelte'
 	import RecordModeBanner from '$lib/components/editor/RecordModeBanner.svelte'
@@ -73,7 +76,7 @@
 		<div class="flex min-h-0 flex-1 flex-col md:flex-row">
 			<!-- Editor pane -->
 			<div class="min-h-0 min-w-0 flex-1 overflow-hidden {showPreview ? 'h-1/2 md:h-auto' : ''}">
-				<Editor value={data.content} onchange={v => (content = v)} />
+				<Editor value={data.content} onchange={v => (content = v)} searchPages={searchPageSuggestions} />
 			</div>
 
 			<!-- Preview pane -->
@@ -81,7 +84,7 @@
 				<div class="flex h-1/2 min-h-0 w-full shrink-0 flex-col border-l border-border bg-surface md:h-auto md:w-[45%] md:max-w-2xl">
 					<div class="border-b border-border-subtle bg-raised px-6 py-1.5 text-xs font-medium tracking-wide text-secondary uppercase">{m.common_preview()}</div>
 					<div class="flex-1 overflow-y-auto px-6 py-4">
-						<LivePreview {content} />
+						<LivePreview {content} mediaBaseUrl={MEDIA_CONTENT_BASE_URL} templateComponents={WIKI_TEMPLATE_REGISTRY} />
 					</div>
 				</div>
 			{/if}

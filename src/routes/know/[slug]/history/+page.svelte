@@ -2,7 +2,7 @@
 	import type { PageData } from './$types.js'
 	import { invalidateAll } from '$app/navigation'
 	import { createMutation } from '@tanstack/svelte-query'
-	import { api } from '$lib/api'
+	import { requestJson as api } from '$lib/transport/json.js'
 	import { pushSuccess, pushError } from '$lib/notifications.svelte'
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte'
 	import { m } from '$lib/paraglide/messages.js'

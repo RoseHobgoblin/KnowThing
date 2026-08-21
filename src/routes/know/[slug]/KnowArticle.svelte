@@ -17,6 +17,10 @@
 	import { buildFieldMap, getField } from '$lib/infoboxes/types.js'
 	import { detectInfoboxType } from '$lib/infoboxes/detect.js'
 	import { m } from '$lib/paraglide/messages.js'
+	import type { RodderEntityDocument, RodderSectorDocument } from '$lib/feature/rodder/public/consumer-contract.js'
+	import { RODDER_ENTITY_RESOURCE, RODDER_SECTOR_RESOURCE } from '$lib/feature/rodder/public/wiki-resources.js'
+	import { WIKI_TEMPLATE_REGISTRY } from '$lib/composition/wiki-templates.js'
+	import MediaImage from '$lib/feature/media/public/ui/MediaImage.svelte'
 
 	let {
 		title,
@@ -43,8 +47,8 @@
 		languageMatch: { languageSlug: string, languageName: string } | null
 		structuredData: Record<string, Record<string, string>> | null
 		structuredCollections: Record<string, Record<string, unknown>[]> | null
-		rodderEntities: Record<string, KnowRenderContext['rodderEntities'] extends Map<string, infer T> | null ? T : never>
-		rodderSectors: Record<string, KnowRenderContext['rodderSectors'] extends Map<string, infer T> | null ? T : never>
+		rodderEntities: Record<string, RodderEntityDocument | null>
+		rodderSectors: Record<string, RodderSectorDocument | null>
 		rodderDisplayOverflow: number
 		resolvedLinks: Record<string, { href: string, exists: boolean }> | null
 		ondeletepage: () => void
@@ -93,9 +97,12 @@
 		calendarConfig: $page.data.calendarConfig ?? null,
 		structuredData: buildStructuredData(rawStructuredData),
 		structuredCollections: (structuredCollections ?? null) as KnowRenderContext['structuredCollections'],
-		rodderEntities: new SvelteMap(Object.entries(rodderEntities)),
-		rodderSectors: new SvelteMap(Object.entries(rodderSectors)),
-		rodderDisplayOverflow,
+		extensionResources: new SvelteMap<string, unknown>([
+			[RODDER_ENTITY_RESOURCE, new SvelteMap(Object.entries(rodderEntities))] as const,
+			[RODDER_SECTOR_RESOURCE, new SvelteMap(Object.entries(rodderSectors))] as const,
+		]),
+		templateComponents: WIKI_TEMPLATE_REGISTRY,
+		mediaRenderer: MediaImage,
 	})))
 </script>
 

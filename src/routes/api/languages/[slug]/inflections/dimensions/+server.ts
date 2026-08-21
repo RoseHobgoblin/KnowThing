@@ -2,8 +2,8 @@ import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
 import { parseBody, handleServiceCall } from '$lib/server/utils.js'
-import { createDimensionSchema } from '$lib/server/http/languages/schemas.js'
-import { createDimension } from '$lib/server/services/inflections.js'
+import { createDimensionSchema } from '$lib/feature/wordbook/public/server/language-schemas.server.js'
+import { createDimension } from '$lib/feature/wordbook/public/server/inflections.server.js'
 
 /** POST /api/languages/:slug/inflections/dimensions — add a dimension */
 export const POST: RequestHandler = async (event) => {

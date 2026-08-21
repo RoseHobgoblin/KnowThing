@@ -1,8 +1,8 @@
 import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
-import { addEntryDefinition, replaceEntryDefinitions } from '$lib/server/services/wordbook.js'
-import { addDefinitionSchema, replaceDefinitionsSchema } from '$lib/server/http/wordbook/schemas.js'
+import { addEntryDefinition, replaceEntryDefinitions } from '$lib/feature/wordbook/public/server/definitions.server.js'
+import { addDefinitionSchema, replaceDefinitionsSchema } from '$lib/feature/wordbook/public/server/schemas.server.js'
 import { handleServiceCall, parseBody } from '$lib/server/utils.js'
 
 /** POST /api/wordbook/:id/definitions — add a new sense */

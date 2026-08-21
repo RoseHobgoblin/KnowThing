@@ -1,7 +1,7 @@
 import type { PageServerLoad } from './$types.js'
 import { error, redirect } from '@sveltejs/kit'
 import { hasRole } from '$lib/server/auth.js'
-import { listLanguageOptions } from '$lib/server/services/languages.js'
+import { listLanguageOptions } from '$lib/feature/wordbook/public/server/languages.server.js'
 
 export const load: PageServerLoad = async ({ locals }) => {
 	if (!locals.user) throw redirect(302, '/auth/login')

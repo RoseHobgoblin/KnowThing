@@ -8,7 +8,7 @@
 	import Input from '$lib/components/ui/Input.svelte'
 	import Skeleton from '$lib/components/ui/Skeleton.svelte'
 	import { createMutation, createQuery } from '@tanstack/svelte-query'
-	import { api } from '$lib/api'
+	import { requestJson as api } from '$lib/transport/json.js'
 	import { cn } from '$lib/utils'
 	import { m } from '$lib/paraglide/messages.js'
 	import { SvelteURLSearchParams } from 'svelte/reactivity'

@@ -1,6 +1,6 @@
 import type { WikiNode, TemplateArg as TemplateArgument, ImageOption, GalleryItem } from './types.js'
 import { canonicalizeNamespace } from '../namespaces/registry.js'
-import { parseWordbookPath } from '../sections/wordbook-path.js'
+import { parseWordbookPath } from './wordbook-path.js'
 
 /**
  * Parse inline wikitext markup into WikiNode[].

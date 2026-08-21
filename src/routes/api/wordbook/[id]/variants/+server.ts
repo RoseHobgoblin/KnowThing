@@ -1,8 +1,8 @@
 import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
-import { addEntryVariant, listEntryVariants } from '$lib/server/services/wordbook.js'
-import { addVariantSchema } from '$lib/server/http/wordbook/schemas.js'
+import { addEntryVariant, listEntryVariants } from '$lib/feature/wordbook/public/server/variants.server.js'
+import { addVariantSchema } from '$lib/feature/wordbook/public/server/schemas.server.js'
 import { handleServiceCall, parseBody } from '$lib/server/utils.js'
 
 function parseId(raw: string) {

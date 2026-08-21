@@ -11,7 +11,7 @@
 	import { worldmapBreadcrumbs } from '$lib/utils/breadcrumbs.js'
 	import { urlSlugify } from '$lib/utils/slugify.js'
 	import { createMutation } from '@tanstack/svelte-query'
-	import { api } from '$lib/api'
+	import { requestJson as api } from '$lib/transport/json.js'
 
 	type MapListItem = {
 		id: number

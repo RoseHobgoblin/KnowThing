@@ -18,14 +18,16 @@
 	import ListBullets from 'phosphor-svelte/lib/ListBullets'
 	import Table from 'phosphor-svelte/lib/Table'
 	import { useQueryClient } from '@tanstack/svelte-query'
-	import { api } from '$lib/api'
+	type PageSuggestionResponse = { results: Array<{ title: string, meta?: string[] }> }
 
 	let {
 		value = '',
 		onchange,
+		searchPages = async () => ({ results: [] }),
 	}: {
 		value: string
 		onchange?: (value: string) => void
+		searchPages?: (query: string, limit: number) => Promise<PageSuggestionResponse>
 	} = $props()
 
 	let container: HTMLDivElement
@@ -142,9 +144,7 @@
 			try {
 				const payload = await queryClient.fetchQuery({
 					queryKey: ['search', 'pages', query, 8],
-					queryFn: () => api<{ results?: Array<{ title: string, meta?: string[] }> }>(
-						'GET', `/api/search?q=${encodeURIComponent(query)}&scope=pages&limit=8`,
-					),
+					queryFn: () => searchPages(query, 8),
 				})
 				const results = payload.results ?? []
 				return {

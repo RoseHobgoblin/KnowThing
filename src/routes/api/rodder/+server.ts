@@ -1,10 +1,10 @@
 import { json } from '@sveltejs/kit'
 import type { RequestHandler } from './$types.js'
 import { requireRole } from '$lib/server/auth.js'
-import { CREATE_SCHEMAS, rodderKindSchema } from '$lib/rodder/schema.js'
-import { isRodderKind } from '$lib/rodder/parent-rules.js'
+import { CREATE_SCHEMAS, rodderKindSchema } from '$lib/feature/rodder/public/schema.js'
+import { isRodderKind } from '$lib/feature/rodder/public/parent-rules.js'
 import { parseInput, handleServiceCall } from '$lib/server/utils.js'
-import { createRodder, listRodder } from '$lib/server/services/rodder-bodies.js'
+import { createRodder, listRodder } from '$lib/feature/rodder/public/server/bodies.server.js'
 
 /** GET /api/rodder?kind=system|star|body&star=<slug> — list rodder entities */
 export const GET: RequestHandler = async ({ url }) => {

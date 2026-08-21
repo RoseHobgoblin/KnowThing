@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types.js'
-	import CalendarHub from '$lib/components/calendar/CalendarHub.svelte'
+	import CalendarHub from '$lib/feature/calendar/public/ui/CalendarHub.svelte'
 
 	let { data }: { data: PageData } = $props()
 </script>
