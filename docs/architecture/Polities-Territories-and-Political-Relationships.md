@@ -5,7 +5,7 @@
 **Applies to:** countries, states, provinces, empires, political organizations, territorial authority, political hierarchies, and their displays
 **Related documents:** [Structured Data Vision](./STRUCTURED-DATA-VISION.md), [Atlas Architecture](./Atlas-Architecture.md), [Celestial Views, Authoring, and Wiki Embeds](./celestial/Celestial-Views-Authoring-and-Wiki-Embeds.md)
 
-> **Maturity:** KnowThing currently has a WorldMap-owned countries table, country CRUD services, Country namespace resolution, map-region assignments, and a WikiText country infobox. Country detail pages are not yet wired up, and the general polity, territorial-authority, designation, recognition, and temporal-relationship model described here is design intent. The existing country system should be exposed through a polity capability adapter before its persistence is generalized.
+> **Maturity:** KnowThing currently has a WorldMap-owned countries table, country CRUD services, Country namespace resolution, map-region assignments, and a WikiText country infobox. Country detail pages are not yet wired up. The first proposed polity slice is limited to polity identity, polity-to-polity relationships, and temporal classifications. Territory, authority, organization, asset, network, and political-map contracts remain design intent and are not prerequisites for that slice. The existing country system should be exposed through a polity capability adapter before its persistence is generalized.
 
 ## Decision Summary
 
@@ -22,6 +22,8 @@ These words describe different dimensions:
 - constitutional, administrative, diplomatic, spatial, and territorial relationships remain distinct.
 
 An object may support several of these capabilities at once. A constituent republic can be a polity, administer a territory, participate in a federation, and be described as a country by one source and as a province by another. Composition is the model; labels select authoring and display profiles rather than determining identity.
+
+Territory is optional. A polity may govern one territory, several disconnected territories, a changing territory, or no territory at all. A fleet republic, government in exile, or other landless political community remains a polity because political agency—not land—is the defining capability.
 
 ## Why a Single Taxonomy Fails
 
@@ -72,11 +74,15 @@ Polities may include:
 
 Polity identity persists through ordinary changes of ruler, constitution, government form, capital, borders, and international status. A monarchy becoming a republic is normally a change to the same polity, not automatic creation of a replacement object. Authors may record a successor relationship when canon treats the change as a genuine political discontinuity.
 
+A polity does not require a territory row, geometry, map region, capital, population, or sovereign status. Those capabilities and relationships become available when the author has data for them.
+
 ### Government and Organization
 
 A polity is not necessarily identical to the organization currently governing it. A cabinet, crown, council, colonial administration, ministry, or occupying authority may have its own organization identity, membership, offices, and lifecycle.
 
 The two may remain one object for shallow authoring when no distinction is useful. They should become related objects when the government can be replaced, exiled, divided, or discussed independently of the polity. Displays may still present them together.
+
+Organization and polity are independent capabilities. A trade league may be an organization whose members possess territories without the league possessing one. A fleet republic may be both an organization and a polity while possessing only vessels and other assets. KnowThing does not infer polity status from organizational size, influence, property, or military power.
 
 ### Territory and Region
 
@@ -174,8 +180,11 @@ At minimum, a relationship or classification may carry:
 
     valid from
     valid until
-    asserted by or source
+    asserted by
+    provenance or source
     revision and publication state
+
+Temporal values have two representations with different jobs. The authored calendar expression—the date as written, with the pinned calendar revision used to resolve it—is retained as the record of intent. A normalized world-epoch coordinate may additionally be derived for comparison, ordering, and cross-calendar display through the rimecraft calendar engine. Revising the current calendar definition does not silently change a coordinate resolved through an older pinned revision. Re-resolution requires an explicit correction, rebase, or migration. Approximate and partial dates are legal: normalization records their precision instead of inventing false exactness, and a setting epoch is required only when cross-calendar comparison is first needed.
 
 The model distinguishes:
 
@@ -186,6 +195,8 @@ The model distinguishes:
 - current status from historical status;
 - unknown status from an absent or invalid record.
 
+Perspective is opt-in per fact, and perspective is not provenance. An absent asserted-by means the encyclopedia's canonical perspective — the default stance of an omniscient author. An absent source means the assertion is unsourced. Neither absence means unknown; unknown remains its own state. The asserted-by field earns its place the first time an author records a genuinely contested fact.
+
 A display may choose an authored perspective, compare perspectives, or show contested status. It must not silently resolve a dispute merely because a map needs one colour.
 
 ## Worked Example
@@ -195,40 +206,48 @@ Consider a republic inside a federation that is treated as a country and belongs
     Asterion Empire                         polity
       Helian Federation                    polity; country display profile
         Red Republic                       polity; republican government form
-          Northreach                       administrative unit; territory
 
     Red Republic
       constituent of -> Helian Federation
-      administers -> Red Republic Territory
 
     Helian Federation
       state structure: federation
-      member of / subject to -> Asterion Empire
-      administers -> Federation Territory
-
-    Northreach
-      administrative subdivision of -> Red Republic
-        designation: province
-      located on -> Planet Orra
-
-    Asterion Empire
-      claims -> Planet Orra
-      controls -> Orra Orbital Corridor
+      member of / dependency of / vassal of -> Asterion Empire
 
 The exact relationship between the federation and empire must be authored: membership, dependency, vassalage, and constitutional membership mean different things. The phrase \"belongs to an empire\" is insufficient canonical data.
 
-The planet is spatially related to its system. It does not politically belong to the empire merely because the empire's hierarchy display contains it. Political authority is represented by claims, control, administration, recognition, and constitutional relationships.
+This structure requires only polity identities, temporal classifications, and typed polity-to-polity relationships. It does not require territory, maps, populations, or a generic facet database.
+
+Later capabilities may add Northreach as an administrative unit, connect the polities to territories, record claims or control over Planet Orra, and show different political map modes. Those additions consume the same polity identities; they do not redefine the initial hierarchy.
+
+A landless fleet republic also fits the initial model: it is a polity with classifications and political relationships but no territory. Its vessels, membership, routes, portals, and other assets belong to organization, asset, and network capabilities rather than being disguised as territory.
+
+## Science-Fiction and Fantasy Scope Tests
+
+The initial model should accommodate common speculative settings without adding one-off political types:
+
+- A **fleet republic** is a polity without required territory. Its ships, inhabitants, and routes are future asset, population, organization, and network relationships.
+- A **trade or city league** is an organization whose members may be polities. The league receives polity capability only if the author treats the league itself as a political actor.
+- A **portal empire** controls portal objects and a network connecting them. Disconnected territorial holdings remain ordinary multiple territories; the portal network is not territory.
+- A **sentient planet who is also a king** is two objects whose lifecycles diverge. Geridxxa is one object with celestial and person facets; the Kingdom of Geridxxa is a distinct polity he rules, related to him by an office relationship rather than a shared identity. The kingdom's eventual territory may span his own surface alongside his subjects' conquests: a territory's spatial anchor and the polity's monarch may be the same object, and no authority is inferred from that coincidence. The polity domain does not create a special sentient-world type.
+- A **hive polity** initially needs no special schema. It is a polity or organization with whatever membership facts the future organization capability can support.
+- A **splitting or merging artificial intelligence state** uses the same split, merge, predecessor, successor, and continuity relationships needed by ordinary historical polities.
+- A **necromantic population** is still a population. Population values must not implicitly mean living biological humans; demographic categories are added only when a real authoring or query need exists.
+
+Conditional nocturnal rule, prophetic legitimacy, belief-dependent borders, and similar setting-specific metaphysics remain prose until a real workflow requires structured validation, querying, or display. Their possibility does not justify fields in the first polity schema.
 
 ## Authoring and Displays
 
 Authors should not need to understand the complete ontology before creating an object. Profiles provide shallow entry paths:
 
-- **Country** may preselect a polity capability and offer common government, capital, symbol, and territorial displays.
+- **Country** may preselect a polity capability and offer common government, structure, symbol, and relationship displays. Capital and territorial displays appear only when compatible place and territory capabilities exist.
 - **Federation** may additionally offer constituent-polity authoring.
 - **Province** may start with a territory or place plus an administrative relationship.
 - **Empire** may emphasize member, dependency, claim, and control relationships across spatial contexts.
 
 Profiles are reusable authoring and display configurations. They are not permanent storage types and do not prevent later composition.
+
+The first slice needs only Country, Federation, and Empire profiles over polity data. Province remains a future cross-capability profile because a directly administered province may be a place or territory without being a polity.
 
 The same underlying records may render as:
 
@@ -250,14 +269,54 @@ The existing country implementation is useful typed data and must not be mirrore
 The transition should be:
 
 1. Define a presentation-neutral polity document or capability contract.
-2. Project existing countries records, prose, map-region assignments, and media through that contract.
+2. Project existing country identity, prose, media, and profile-compatible fields through that contract. Keep map-region assignments behind the existing WorldMap boundary.
 3. Wire Country pages and the country infobox to the same projection.
 4. Treat **Country** as the first authoring and display profile rather than the canonical object kind.
-5. Keep WorldMap as a consumer of polity and territorial capabilities; it should not permanently own political identity.
-6. Add typed relationship and temporal contracts only when stable cross-domain object references are available.
-7. Migrate persistence deliberately when generic objects and facets can preserve identity, revisions, permissions, validation, and map integration.
+5. Add typed polity-to-polity relationships and temporal classifications within the polity domain.
+6. Keep existing WorldMap country assignments as legacy cartographic data; do not promote them into canonical ownership assertions.
+7. Add territory, organization, asset, network, and other cross-domain relationships only when their capability and identity contracts exist.
+8. Migrate persistence deliberately when generic objects and facets can preserve identity, revisions, permissions, validation, and map integration.
 
 Until that transition, do not broaden the existing extra property bag into the future polity schema. Leaders, languages, predecessors, memberships, populations, claims, and territorial history should remain prose or existing WikiText fields rather than becoming comma-separated or unvalidated JSON copies of future relationships.
+
+The conceptual polities table may be realized by generalizing the existing countries table or by transactionally migrating it. KnowThing must not keep independently mutable country and polity rows for the same subject.
+
+## Minimal Implementation Model
+
+The preceding sections describe the end state. The first persistence slice is deliberately smaller: three tables forming one polity graph and a classification timeline.
+
+    polities                identity, name, slug, display profile, prose
+    polity_relationships    from polity -> to polity, relationship kind, local designation, validity interval
+    polity_classifications  polity, axis (government form | structure), value, validity interval
+
+Rules that keep the slice honest:
+
+- **Polities are one flat table.** Anything with political agency — empire, federation, republic, autonomous province — is a polity row. There is no kind column and no parent column. Structure lives entirely in edges.
+- **A relationship-relative designation lives on the relationship.** The Red Republic's constitutional relationship to the Helian Federation may call it a *constituent republic*. Objects keep their own names and self-designations; relationships carry labels that are meaningful only within that connection.
+- **Government form and structure live in the classification table from day one.** A polity with no authored history has a single open-ended interval row, so shallow authoring still looks like a dropdown. A monarchy becoming a republic closes one interval and opens another; no schema migration is required for the most predictable historical event in the domain.
+- **Relationship kinds are a small curated enum.** Constitutional, dependency, diplomatic, and succession relationships share one polity-relationship table distinguished by kind (constituent of, member of, vassal of, allied with, successor of, split from, merged from).
+- **Country is never stored as a canonical kind.** It may be stored as an authored display profile — presentation configuration carrying no political semantics — or answered by a query over edges. Canon is authored, not derived.
+- **Territory is not required.** No polity row requires geometry, a map region, or an authority edge. Landless and mobile polities use the same model as territorial polities.
+- **Assets and networks are not territories.** Vessels, stations, portals, routes, and similar resources remain separate objects or future capabilities. Owning a portal network does not require inventing territorial geometry around it.
+- **Organizations are not inferred to be polities.** A league, guild, company, church, or government organization receives polity capability only when the author intends to represent it as a political actor. Organization membership and assets are deferred rather than copied into polity fields.
+
+In the worked example above, the federation–empire question is forced at authoring time: the author must choose the relationship kind because "belongs to an empire" is a prompt for a fact, not a fact. Northreach is deferred unless it has enough political agency to be authored as a polity; an ordinary directly administered province belongs to the later place, territory, and administrative-relationship model.
+
+### Deferred Features
+
+Each deferral names its upgrade trigger. Deferral is sequencing, not rejection.
+
+| Deferred | Interim answer | Build when |
+|---|---|---|
+| Territories, territorial authority, claims, and political map modes | Existing WorldMap assignments remain cartographic data; political facts remain prose | Atlas and generic spatial capabilities have stable identity and temporal contracts |
+| Organizations, membership, offices, and governments | Prose or an independent organization feature | The organization facet or a concrete cross-domain workflow enters implementation |
+| Assets and networks, including fleets, stations, portals, and routes | Existing celestial or future network records; polity connection remains prose | Stable asset and network capabilities can expose cross-domain relationships |
+| Population observations and demographic categories | Prose and existing infobox presentation | A queryable population-observation capability is designed |
+| Perspective and recognition (asserted by, recognized-by edges) | Omniscient canon: one unsourced assertion per fact | The first contested recognition or other perspective-dependent political fact is authored |
+| Perspective-dependent classification axes (political status) | Government form and structure via the classification table; status read from edges | The first status assertion that needs an asserting perspective |
+| Generic object/facet persistence | These three purpose-built tables exposed through a polity capability | The facet model's identity, revision, and permission contracts are concrete |
+
+Deferral is a boundary, not permission to add comma-separated or unvalidated substitutes to polity records. A fleet republic needs no special field in the first slice: it is simply a polity without territory. Its fleet, members, and routes become related capabilities later.
 
 ## Integrity Rules
 
@@ -284,6 +343,8 @@ Unknown, unrecognized, disputed, defunct, and not yet authored are distinct stat
 - treating sovereignty as a boolean;
 - requiring every province or territory to be a polity;
 - requiring every polity to control or claim a mappable territory;
+- treating territory, map regions, population, organizations, assets, or networks as prerequisites for polity authoring;
+- implementing political map modes or a territorial-authority graph in the first polity slice;
 - forcing governments, polities, populations, and territories to share one identity;
 - encoding every historical or legal nuance before shallow country authoring works;
 - inferring canonical ownership from a map colour or containment tree;
@@ -292,7 +353,22 @@ Unknown, unrecognized, disputed, defunct, and not yet authored are distinct stat
 
 ## Acceptance Criteria
 
-This direction is working when:
+### First polity slice
+
+The first slice is complete when:
+
+1. a polity can be created, revised, linked, and displayed without territory or map data;
+2. Country, Federation, and Empire profiles provide shallow authoring without becoming canonical kinds;
+3. a constituent republic can be related to a federation that is related to a larger empire without ambiguous parent links;
+4. government form and state structure can change over authored time without replacing polity identity;
+5. predecessor, successor, split, and merge relationships preserve explicit political continuity;
+6. the country infobox and Country page consume the same presentation-neutral polity projection;
+7. existing country records are adapted or migrated without a second competing write model;
+8. no initial polity field stores copied territory, organization, asset, network, population, or map truth.
+
+### End-state direction
+
+The broader direction is working when:
 
 1. a constituent republic can exist inside a federation that participates in a larger empire without ambiguous parent links;
 2. one polity may administer, claim, or control several territories and one territory may have several simultaneous assertions;
@@ -313,4 +389,5 @@ Review this document when:
 - WorldMap country ownership is moved or adapted behind a public capability;
 - the first territorial claim, administrative hierarchy, or historical political map enters implementation;
 - an authored setting cannot express its political structure using these distinctions;
+- a deferred feature's build trigger in the Minimal Implementation Model fires;
 - permissions, revisions, or publication rules are added to cross-object political assertions.
