@@ -71,6 +71,15 @@ describe('Rodder view links', () => {
 		expect(decodeRodderViewState(encoded)).toEqual(legacyState)
 	})
 
+	it('accepts legacy orthographic plan cameras for physical-distance migration', () => {
+		const legacyPlanState: RootViewState = {
+			...rootState,
+			mode: 'plan',
+			camera: { ...rootState.camera, projection: 'orthographic' },
+		}
+		expect(decodeRodderViewState(JSON.stringify(legacyPlanState))).toEqual(legacyPlanState)
+	})
+
 	it('round-trips a complete sector composition', () => {
 		const url = rodderViewUrl('https://example.test/rodder/sector/palimpsest-reach?focus=old#map', sectorState)
 		expect(url.searchParams.has('focus')).toBe(false)
@@ -82,7 +91,7 @@ describe('Rodder view links', () => {
 		'not json',
 		JSON.stringify({ ...rootState, version: 0 }),
 		JSON.stringify({ ...rootState, camera: { ...rootState.camera, distance: Number.NaN } }),
-		JSON.stringify({ ...rootState, mode: 'plan' }),
+		JSON.stringify({ ...rootState, camera: { ...rootState.camera, projection: 'orthographic' } }),
 		JSON.stringify({ ...rootState, exposure: 'fixed' }),
 	])('safely ignores invalid or obsolete state: %s', (raw) => {
 		expect(decodeRodderViewState(raw)).toBeNull()

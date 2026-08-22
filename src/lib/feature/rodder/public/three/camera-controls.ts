@@ -98,17 +98,16 @@ export class RodderCameraControls extends CameraControls {
 	}
 
 	setInputProfile(profile: CameraInputProfile): void {
-		// Cursor-centred magnification is natural on an orthographic map. In a
-		// spatial view it silently moves the orbit pivot, so perspective profiles
-		// instead travel directly toward or away from their explicit anchor.
+		// Plan and orbit views both use a fixed-lens perspective camera. Plan keeps
+		// cursor-centred travel, but the wheel always dollies the camera physically.
 		this.dollyToCursor = this.dollyToCursorOverride ?? profile === 'plan'
 		if (profile === 'plan') {
 			this.mouseButtons.left = CameraControls.ACTION.TRUCK
-			this.mouseButtons.middle = CameraControls.ACTION.ZOOM
+			this.mouseButtons.middle = CameraControls.ACTION.DOLLY
 			this.mouseButtons.right = CameraControls.ACTION.TRUCK
-			this.mouseButtons.wheel = CameraControls.ACTION.ZOOM
+			this.mouseButtons.wheel = CameraControls.ACTION.DOLLY
 			this.touches.one = CameraControls.ACTION.TOUCH_TRUCK
-			this.touches.two = CameraControls.ACTION.TOUCH_ZOOM_TRUCK
+			this.touches.two = CameraControls.ACTION.TOUCH_DOLLY_TRUCK
 			return
 		}
 
