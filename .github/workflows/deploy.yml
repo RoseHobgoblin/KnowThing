@@ -3,6 +3,15 @@ name: Deploy
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
+
+# Serialize production pushes while allowing each pull request to validate
+# independently. This prevents two main-branch image builds from competing on
+# the production host when commits land close together.
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -28,6 +37,7 @@ jobs:
           bun run build
 
       - name: Deploy to server
+        if: github.event_name == 'push'
         uses: appleboy/ssh-action@v1
         env:
           BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
