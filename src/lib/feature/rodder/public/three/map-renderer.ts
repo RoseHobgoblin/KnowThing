@@ -309,6 +309,7 @@ export async function createRootMapRenderer(
 	let viewStartedAt: number | null = null
 	let lastFocusPosition: Vector3 | null = null
 	let destroyed = false
+	let contextLost = false
 	let visible = !document.hidden
 	let intersecting = true
 	let frameHandle = 0
@@ -1147,7 +1148,7 @@ export async function createRootMapRenderer(
 
 	function frame(now: number) {
 		frameHandle = 0
-		if (destroyed || !visible || !intersecting) return
+		if (destroyed || contextLost || !visible || !intersecting) return
 		const deltaSeconds = Math.min(0.05, Math.max(0, (now - lastFrameAt) / 1_000))
 		lastFrameAt = now
 		let cameraSettled = false
@@ -1180,7 +1181,7 @@ export async function createRootMapRenderer(
 	}
 
 	function schedule() {
-		if (destroyed || frameHandle || !visible || !intersecting) return
+		if (destroyed || contextLost || frameHandle || !visible || !intersecting) return
 		frameHandle = requestAnimationFrame(frame)
 	}
 
@@ -1352,8 +1353,25 @@ export async function createRootMapRenderer(
 	}
 	function handleContextLost(event: Event) {
 		event.preventDefault()
-		callbacks.onUnavailable?.('The graphics context was lost. Reload the page to restore the interactive map.')
+		contextLost = true
+		if (frameHandle) cancelAnimationFrame(frameHandle)
+		frameHandle = 0
+		callbacks.onUnavailable?.('The graphics context was interrupted. Restoring the interactive map…')
 		callbacks.onOverlayChange?.({ labels: [], indicators: [], legend: null, projection: null, status: 'unavailable' })
+	}
+	function handleContextRestored() {
+		if (destroyed) return
+		contextLost = false
+		overlaySignature = ''
+		lastFrameAt = performance.now()
+		callbacks.onAvailable?.()
+		callbacks.onOverlayChange?.({
+			labels: [], indicators: [], legend: null,
+			projection: camera === planCamera ? 'orthographic' : 'perspective',
+			status: 'initializing',
+		})
+		schedule()
+		queueMicrotask(settleTextureLods)
 	}
 	function handleKeyDown(event: KeyboardEvent) {
 		if (!interaction.cameraMovement || !PAN_KEYS.has(event.code) || event.altKey || event.ctrlKey || event.metaKey) return
@@ -1397,6 +1415,7 @@ export async function createRootMapRenderer(
 	canvas.addEventListener('dblclick', handleDoubleClick)
 	canvas.addEventListener('wheel', handleWheel, { passive: false })
 	canvas.addEventListener('webglcontextlost', handleContextLost)
+	canvas.addEventListener('webglcontextrestored', handleContextRestored)
 	canvas.addEventListener('keydown', handleKeyDown)
 	canvas.addEventListener('keyup', handleKeyUp)
 	canvas.addEventListener('blur', handleCanvasBlur)
@@ -1486,6 +1505,16 @@ export async function createRootMapRenderer(
 			schedule()
 		},
 		setTheme(nextTheme) {
+			if (
+				theme.page === nextTheme.page
+				&& theme.surface === nextTheme.surface
+				&& theme.accent === nextTheme.accent
+				&& theme.accentLight === nextTheme.accentLight
+				&& theme.secondary === nextTheme.secondary
+				&& theme.dim === nextTheme.dim
+				&& theme.heading === nextTheme.heading
+				&& theme.faint === nextTheme.faint
+			) return
 			theme = nextTheme
 			rebuild()
 		},
@@ -1520,6 +1549,7 @@ export async function createRootMapRenderer(
 			canvas.removeEventListener('dblclick', handleDoubleClick)
 			canvas.removeEventListener('wheel', handleWheel)
 			canvas.removeEventListener('webglcontextlost', handleContextLost)
+			canvas.removeEventListener('webglcontextrestored', handleContextRestored)
 			canvas.removeEventListener('keydown', handleKeyDown)
 			canvas.removeEventListener('keyup', handleKeyUp)
 			canvas.removeEventListener('blur', handleCanvasBlur)

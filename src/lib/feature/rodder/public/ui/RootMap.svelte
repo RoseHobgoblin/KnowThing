@@ -179,6 +179,7 @@
 				onViewChange: (nextView) => { viewState = nextView },
 				onOverlayChange: (snapshot) => { overlay = snapshot },
 				onUnavailable: (reason) => { unavailableReason = reason },
+				onAvailable: () => { unavailableReason = null },
 			})
 			if (cancelled || !canvasHost) {
 				instance.destroy()

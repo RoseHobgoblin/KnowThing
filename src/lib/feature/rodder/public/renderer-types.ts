@@ -51,6 +51,8 @@ export type MapRendererCallbacks = {
 	onViewChange: (view: { isMoved: boolean }) => void
 	onOverlayChange?: (snapshot: OverlaySnapshot) => void
 	onUnavailable?: (reason: string) => void
+	/** Called when a transient graphics-context interruption has recovered. */
+	onAvailable?: () => void
 }
 
 export type RootMapRenderer = {
