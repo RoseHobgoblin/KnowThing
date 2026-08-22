@@ -11,6 +11,7 @@ import noDynamicTailwindClass from './no-dynamic-tailwind-class.js'
 import noPxArbitraryTailwind from './no-px-arbitrary-tailwind.js'
 import featureBoundaries from './feature-boundaries.js'
 import noFeatureBarrels from './no-feature-barrels.js'
+import noEffect from './no-effect.js'
 
 const plugin = {
 	rules: {
@@ -27,6 +28,7 @@ const plugin = {
 		'no-px-arbitrary-tailwind': noPxArbitraryTailwind,
 		'feature-boundaries': featureBoundaries,
 		'no-feature-barrels': noFeatureBarrels,
+		'no-effect': noEffect,
 	},
 }
 
