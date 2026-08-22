@@ -68,7 +68,6 @@
 	let hoveredBody = $state<MapBody | null>(null)
 	let hoveredSkySource = $state<ApparentSkySource | null>(null)
 	let hoverPosition = $state<{ x: number, y: number } | null>(null)
-	let viewState = $state({ isMoved: false })
 	let overlay = $state.raw<OverlaySnapshot>(EMPTY_OVERLAY)
 	let unavailableReason = $state<string | null>(null)
 
@@ -176,9 +175,9 @@
 				onActivateSkySource: (rootSlug) => {
 					goto(resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${rootSlug}` }))
 				},
-				onViewChange: (nextView) => { viewState = nextView },
 				onOverlayChange: (snapshot) => { overlay = snapshot },
 				onUnavailable: (reason) => { unavailableReason = reason },
+				onAvailable: () => { unavailableReason = null },
 			})
 			if (cancelled || !canvasHost) {
 				instance.destroy()
@@ -283,14 +282,6 @@
 	</div>
 	{/if}
 
-	{#if interaction.controlsVisible && interaction.cameraMovement && viewState.isMoved}
-		<button
-			class="absolute top-2 right-2 z-10 bg-surface/85 px-2 py-1 text-xs font-medium text-dim transition-colors hover:text-accent"
-			onclick={() => renderer?.resetView()}
-			aria-label="Return to system view"
-		>System view</button>
-	{/if}
-
 	{#if !unavailableReason}
 		<div class="pointer-events-none absolute inset-0 z-5 overflow-hidden" aria-hidden="true">
 			{#each overlay.labels as label (label.key)}
@@ -328,19 +319,11 @@
 					<span>{indicator.name}</span>
 				</div>
 			{/each}
-			{#if overlay.legend}
-				<div class="absolute right-2 bottom-2 inline-flex items-center gap-1.5 bg-surface/75 px-2 py-1 text-[0.65rem] text-secondary">
-					{#if overlay.legend.pixels > 0}
-						<span class="inline-block border-t border-secondary" style:width="{overlay.legend.pixels}px"></span>
-					{/if}
-					{overlay.legend.label}
-				</div>
-			{/if}
 			{#if interaction.controlsVisible}
 				<div class="absolute bottom-2 left-2 hidden bg-surface/65 px-2 py-1 text-[0.65rem] text-secondary sm:block">
 					{#if focusedName}<span class="font-medium text-heading">Focused: {focusedName}</span> · {/if}
 					{view === 'plan'
-						? 'Drag to pan · Scroll to change scale · Double-click to focus'
+						? 'Drag to pan · Scroll to travel · Double-click to focus'
 						: 'Drag to orbit · Right-drag to pan · Scroll to travel · Double-click to focus'}
 				</div>
 			{/if}

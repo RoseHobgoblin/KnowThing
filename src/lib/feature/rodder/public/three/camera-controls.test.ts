@@ -117,8 +117,8 @@ describe('rodder camera-controls adapter', () => {
 		controls.setInputProfile('plan')
 		expect(controls.dollyToCursor).toBe(true)
 		expect(controls.mouseButtons.left).toBe(RodderCameraControls.ACTION.TRUCK)
-		expect(controls.mouseButtons.wheel).toBe(RodderCameraControls.ACTION.ZOOM)
-		expect(controls.touches.two).toBe(RodderCameraControls.ACTION.TOUCH_ZOOM_TRUCK)
+		expect(controls.mouseButtons.wheel).toBe(RodderCameraControls.ACTION.DOLLY)
+		expect(controls.touches.two).toBe(RodderCameraControls.ACTION.TOUCH_DOLLY_TRUCK)
 
 		controls.setInputProfile('preview')
 		expect(controls.dollyToCursor).toBe(false)

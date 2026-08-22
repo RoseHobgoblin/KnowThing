@@ -175,8 +175,9 @@ export function resolveRootMapEmbedConfiguration(
 		else errors.push({ argument: 'selected', message: 'The selected slug is not available in this display.' })
 	}
 
-	const expectedProjection = mode === 'plan' ? 'orthographic' : 'perspective'
-	const camera = seeded?.camera.projection === expectedProjection ? seeded.camera : null
+	const compatibleCamera = seeded?.camera.projection === 'perspective'
+		|| (mode === 'plan' && seeded?.camera.projection === 'orthographic')
+	const camera = compatibleCamera ? seeded?.camera ?? null : null
 	if (seeded && !camera) errors.push({ argument: 'mode', message: 'The mode override requires automatic camera framing.' })
 
 	return {

@@ -69,10 +69,10 @@ export type RodderViewState = RootViewState | SectorViewState
 export function defaultRootCameraState(mode: ViewMode): RootCameraState {
 	return mode === 'plan'
 		? {
-			projection: 'orthographic',
+			projection: 'perspective',
 			target: [0, 0, 0],
 			direction: [0, -0.015, 0.9998875],
-			distance: 1_000,
+			distance: 20,
 			zoom: 1,
 			fieldOfView: 50,
 		}
@@ -128,8 +128,8 @@ export const rootViewSchema = z.object({
 	scale: z.enum(['log', 'proportional', 'compact', 'inner']),
 	follow: z.boolean(),
 }).superRefine((state, context) => {
-	const expectedProjection = state.mode === 'plan' ? 'orthographic' : 'perspective'
-	if (state.camera.projection !== expectedProjection) {
+	const legacyPlanCamera = state.mode === 'plan' && state.camera.projection === 'orthographic'
+	if (state.camera.projection !== 'perspective' && !legacyPlanCamera) {
 		context.addIssue({ code: 'custom', path: ['camera', 'projection'], message: 'Projection does not match mode' })
 	}
 	const expectedExposure = state.visibility === 'physical' ? 'fixed' : 'auto'
