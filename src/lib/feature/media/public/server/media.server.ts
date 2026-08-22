@@ -1,8 +1,10 @@
 import { error } from '@sveltejs/kit'
 import { createHash } from 'node:crypto'
-import { mkdir, rename as fsRename, unlink, writeFile } from 'node:fs/promises'
+import { mkdir, rename as fsRename, unlink } from 'node:fs/promises'
 import path from 'node:path'
 import sharp from 'sharp'
+import type { Sharp } from 'sharp'
+import writeFileAtomic from 'write-file-atomic'
 import { and, desc, eq, sql } from 'drizzle-orm'
 import { env } from '$env/dynamic/private'
 import { db } from '$lib/server/db/index.js'
@@ -25,6 +27,10 @@ const RASTER_DIR = join(UPLOAD_DIR, 'rasters')
 const MAX_UPLOAD_SIZE = Number.parseInt(env.MAX_UPLOAD_SIZE || '10485760')
 const THUMB_SIZES = [150, 300, 600] as const
 const RASTER_WIDTH = 1200
+
+async function writeSharpOutputAtomic(filepath: string, image: Sharp): Promise<void> {
+	await writeFileAtomic(filepath, await image.toBuffer())
+}
 
 function normalizeCategories(categories?: string[]) {
 	if (!categories) return
@@ -203,7 +209,7 @@ export async function uploadMediaFile(userId: number, file: File) {
 	await mkdir(THUMB_DIR, { recursive: true })
 
 	const filepath = join(UPLOAD_DIR, filename)
-	await writeFile(filepath, buffer)
+	await writeFileAtomic(filepath, buffer)
 
 	let width: number | null = null
 	let height: number | null = null
@@ -215,17 +221,21 @@ export async function uploadMediaFile(userId: number, file: File) {
 	if (file.type === 'image/svg+xml') {
 		try {
 			await mkdir(RASTER_DIR, { recursive: true })
-			await sharp(buffer, { density: 192 })
-				.resize(RASTER_WIDTH, undefined, { withoutEnlargement: false })
-				.png()
-				.toFile(join(RASTER_DIR, `${filename}.png`))
+			await writeSharpOutputAtomic(
+				join(RASTER_DIR, `${filename}.png`),
+				sharp(buffer, { density: 192 })
+					.resize(RASTER_WIDTH, undefined, { withoutEnlargement: false })
+					.png(),
+			)
 			hasRaster = true
 
 			for (const size of THUMB_SIZES) {
-				await sharp(buffer, { density: 192 })
-					.resize(size, undefined, { withoutEnlargement: false })
-					.png()
-					.toFile(join(THUMB_DIR, `${size}_${filename}.png`))
+				await writeSharpOutputAtomic(
+					join(THUMB_DIR, `${size}_${filename}.png`),
+					sharp(buffer, { density: 192 })
+						.resize(size, undefined, { withoutEnlargement: false })
+						.png(),
+				)
 				if (size === 150) hasThumb150 = true
 				if (size === 300) hasThumb300 = true
 				if (size === 600) hasThumb600 = true
@@ -246,10 +256,10 @@ export async function uploadMediaFile(userId: number, file: File) {
 				for (const size of THUMB_SIZES) {
 					if (width <= size) continue
 
-					await image
-						.clone()
-						.resize(size, undefined, { withoutEnlargement: true })
-						.toFile(join(THUMB_DIR, `${size}_${filename}`))
+					await writeSharpOutputAtomic(
+						join(THUMB_DIR, `${size}_${filename}`),
+						image.clone().resize(size, undefined, { withoutEnlargement: true }),
+					)
 
 					if (size === 150) hasThumb150 = true
 					if (size === 300) hasThumb300 = true
@@ -392,7 +402,7 @@ export async function replaceMediaFile(userId: number, filename: string, file: F
 	const archivedVersion = await archiveCurrentVersion(filename, userId)
 
 	const filepath = join(UPLOAD_DIR, filename)
-	await writeFile(filepath, buffer)
+	await writeFileAtomic(filepath, buffer)
 
 	let width: number | null = null
 	let height: number | null = null
@@ -400,16 +410,20 @@ export async function replaceMediaFile(userId: number, filename: string, file: F
 	if (file.type === 'image/svg+xml') {
 		try {
 			await mkdir(RASTER_DIR, { recursive: true })
-			await sharp(buffer, { density: 192 })
-				.resize(RASTER_WIDTH, undefined, { withoutEnlargement: false })
-				.png()
-				.toFile(join(RASTER_DIR, `${filename}.png`))
+			await writeSharpOutputAtomic(
+				join(RASTER_DIR, `${filename}.png`),
+				sharp(buffer, { density: 192 })
+					.resize(RASTER_WIDTH, undefined, { withoutEnlargement: false })
+					.png(),
+			)
 
 			for (const size of THUMB_SIZES) {
-				await sharp(buffer, { density: 192 })
-					.resize(size, undefined, { withoutEnlargement: false })
-					.png()
-					.toFile(join(THUMB_DIR, `${size}_${filename}.png`))
+				await writeSharpOutputAtomic(
+					join(THUMB_DIR, `${size}_${filename}.png`),
+					sharp(buffer, { density: 192 })
+						.resize(size, undefined, { withoutEnlargement: false })
+						.png(),
+				)
 			}
 		} catch (error_) {
 			console.error('SVG rasterization on replace failed:', error_)
@@ -424,10 +438,10 @@ export async function replaceMediaFile(userId: number, filename: string, file: F
 			if (width) {
 				for (const size of THUMB_SIZES) {
 					if (width <= size) continue
-					await image
-						.clone()
-						.resize(size, undefined, { withoutEnlargement: true })
-						.toFile(join(THUMB_DIR, `${size}_${filename}`))
+					await writeSharpOutputAtomic(
+						join(THUMB_DIR, `${size}_${filename}`),
+						image.clone().resize(size, undefined, { withoutEnlargement: true }),
+					)
 				}
 			}
 		} catch (error_) {

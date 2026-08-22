@@ -1,5 +1,6 @@
 import DOMPurify from 'isomorphic-dompurify'
 import sharp from 'sharp'
+import { fileTypeFromBuffer } from 'file-type'
 import { error } from '@sveltejs/kit'
 
 /**
@@ -25,21 +26,14 @@ export function sanitizeSvg(buffer: Buffer): Buffer {
 	return Buffer.from(cleaned, 'utf8')
 }
 
-const PNG = Buffer.from([0x89, 0x50, 0x4E, 0x47])
-const JPEG = Buffer.from([0xFF, 0xD8, 0xFF])
-const GIF87 = Buffer.from('GIF87a', 'ascii')
-const GIF89 = Buffer.from('GIF89a', 'ascii')
-const WEBP_RIFF = Buffer.from('RIFF', 'ascii')
-const WEBP_WEBP = Buffer.from('WEBP', 'ascii')
-const PDF = Buffer.from('%PDF-', 'ascii')
-
 /**
  * Verify that the byte content of a file matches its claimed MIME type.
  * Throws (400) on mismatch.
  *
- * For raster images we cross-check against `sharp.metadata().format`.
+ * For binary formats we detect the file signature with `file-type`. Raster
+ * images are also decoded by Sharp so a matching header on corrupt data is
+ * not enough to pass validation.
  * For SVG we accept any text/xml-looking content with an `<svg` tag.
- * For PDF we check magic bytes.
  */
 export async function verifyMimeType(buffer: Buffer, claimed: string): Promise<void> {
 	if (claimed === 'image/svg+xml') {
@@ -50,22 +44,28 @@ export async function verifyMimeType(buffer: Buffer, claimed: string): Promise<v
 		const head = buffer.toString('utf8', 0, 4096).toLowerCase()
 		let i = 0
 		while (i < head.length) {
-			const ch = head.charCodeAt(i)
-			if (ch === 0x09 || ch === 0x0A || ch === 0x0D || ch === 0x20 || ch === 0xFEFF) { i++; continue }
+			const ch = head.codePointAt(i)
+			if (ch === 0x09 || ch === 0x0A || ch === 0x0D || ch === 0x20 || ch === 0xFEFF) {
+				i++
+				continue
+			}
 			if (head.startsWith('<?', i)) {
 				const end = head.indexOf('?>', i + 2)
 				if (end === -1) break
-				i = end + 2; continue
+				i = end + 2
+				continue
 			}
 			if (head.startsWith('<!--', i)) {
 				const end = head.indexOf('-->', i + 4)
 				if (end === -1) break
-				i = end + 3; continue
+				i = end + 3
+				continue
 			}
 			if (head.startsWith('<!doctype', i)) {
 				const end = head.indexOf('>', i + 9)
 				if (end === -1) break
-				i = end + 1; continue
+				i = end + 1
+				continue
 			}
 			break
 		}
@@ -75,37 +75,28 @@ export async function verifyMimeType(buffer: Buffer, claimed: string): Promise<v
 		return
 	}
 
-	if (claimed === 'application/pdf') {
-		if (!buffer.subarray(0, 5).equals(PDF)) {
-			throw error(400, 'File does not appear to be a valid PDF.')
-		}
-		return
+	let detected: Awaited<ReturnType<typeof fileTypeFromBuffer>>
+	try {
+		detected = await fileTypeFromBuffer(buffer)
+	} catch {
+		throw error(400, 'Unable to determine file type from its contents.')
 	}
 
-	if (claimed === 'image/png' && !buffer.subarray(0, 4).equals(PNG)) {
-		throw error(400, 'File does not match its declared type (expected PNG).')
-	}
-	if (claimed === 'image/jpeg' && !buffer.subarray(0, 3).equals(JPEG)) {
-		throw error(400, 'File does not match its declared type (expected JPEG).')
-	}
-	if (claimed === 'image/gif' && !buffer.subarray(0, 6).equals(GIF87) && !buffer.subarray(0, 6).equals(GIF89)) {
-		throw error(400, 'File does not match its declared type (expected GIF).')
-	}
-	if (claimed === 'image/webp' && (!buffer.subarray(0, 4).equals(WEBP_RIFF) || !buffer.subarray(8, 12).equals(WEBP_WEBP))) {
-		throw error(400, 'File does not match its declared type (expected WebP).')
+	if (!detected) {
+		throw error(400, 'Unable to determine file type from its contents.')
 	}
 
-	// Cross-verify with sharp for any raster format.
+	if (detected.mime !== claimed) {
+		throw error(400, `File contents (${detected.mime}) do not match declared type (${claimed}).`)
+	}
+
+	if (claimed === 'application/pdf') return
+
+	// Confirm that a raster with a valid signature can actually be decoded.
 	if (claimed.startsWith('image/') && claimed !== 'image/svg+xml') {
 		try {
-			const metadata = await sharp(buffer).metadata()
-			const expected = claimed.split('/')[1].replace('jpeg', 'jpg')
-			const detected = (metadata.format || '').replace('jpeg', 'jpg')
-			if (detected && detected !== expected) {
-				throw error(400, `File contents (${detected}) do not match declared type (${claimed}).`)
-			}
-		} catch (error_) {
-			if ((error_ as { status?: number }).status === 400) throw error_
+			await sharp(buffer).metadata()
+		} catch {
 			throw error(400, 'Unable to verify image type from file contents.')
 		}
 	}
