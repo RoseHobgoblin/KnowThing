@@ -51,7 +51,7 @@
 
 <main class="min-h-screen bg-page p-3 text-heading" data-testid="rodder-body-root-fixture">
 	<div class="mx-auto max-w-5xl overflow-hidden border border-border-subtle bg-surface">
-		<MapControls bind:labels bind:skyLabels bind:trails bind:visibility bind:follow canFollowSelection={selectedId != null && !selectedId.startsWith('sky-root:')} />
+		<MapControls bind:labels bind:skyLabels bind:trails bind:visibility />
 		<div class="h-[min(76vh,48rem)] min-h-112" data-testid="body-root-map-frame">
 			<RootMap
 				rootName="Waywain"

@@ -65,15 +65,24 @@ export class RodderCameraControls extends CameraControls {
 	readonly defaultSmoothTime: number
 	private intentGeneration = 0
 	private transitioning = false
+	private readonly dollyToCursorOverride: boolean | undefined
+	private readonly domElement: HTMLElement | undefined
 	private readonly eventCleanups = new Set<() => void>()
 	private readonly handleControlStart = () => this.interrupt()
+	private readonly handleWheelStart = () => {
+		// camera-controls has no controlstart event for wheel input. Capture the
+		// native event before the library applies it, freeze the current flight,
+		// then let the wheel gesture operate from that exact pose.
+		if (this.transitioning) this.interrupt()
+	}
 
 	constructor(camera: SupportedCamera, options: RodderCameraControlsOptions) {
 		super(camera, options.domElement)
+		this.domElement = options.domElement
 		this.defaultSmoothTime = options.smoothTime
 		this.smoothTime = options.smoothTime
-		this.draggingSmoothTime = options.draggingSmoothTime ?? 0.125
-		this.dollyToCursor = options.dollyToCursor ?? true
+		this.draggingSmoothTime = options.draggingSmoothTime ?? 0.04
+		this.dollyToCursorOverride = options.dollyToCursor
 		if (options.dollySpeed != null) this.dollySpeed = options.dollySpeed
 		if (options.rotateSpeed != null) {
 			this.azimuthRotateSpeed = options.rotateSpeed
@@ -81,6 +90,7 @@ export class RodderCameraControls extends CameraControls {
 		}
 		this.setInputProfile(options.input)
 		this.addEventListener('controlstart', this.handleControlStart)
+		this.domElement?.addEventListener('wheel', this.handleWheelStart, { capture: true, passive: true })
 	}
 
 	get intentActive(): boolean {
@@ -88,6 +98,10 @@ export class RodderCameraControls extends CameraControls {
 	}
 
 	setInputProfile(profile: CameraInputProfile): void {
+		// Cursor-centred magnification is natural on an orthographic map. In a
+		// spatial view it silently moves the orbit pivot, so perspective profiles
+		// instead travel directly toward or away from their explicit anchor.
+		this.dollyToCursor = this.dollyToCursorOverride ?? profile === 'plan'
 		if (profile === 'plan') {
 			this.mouseButtons.left = CameraControls.ACTION.TRUCK
 			this.mouseButtons.middle = CameraControls.ACTION.ZOOM
@@ -107,7 +121,7 @@ export class RodderCameraControls extends CameraControls {
 			this.touches.two = CameraControls.ACTION.TOUCH_DOLLY_ROTATE
 		} else {
 			this.mouseButtons.right = CameraControls.ACTION.TRUCK
-			this.touches.two = CameraControls.ACTION.TOUCH_DOLLY_TRUCK
+			this.touches.two = CameraControls.ACTION.TOUCH_DOLLY_ROTATE
 		}
 	}
 
@@ -189,6 +203,7 @@ export class RodderCameraControls extends CameraControls {
 		this.transitioning = false
 		for (const cleanup of this.eventCleanups) cleanup()
 		this.removeEventListener('controlstart', this.handleControlStart)
+		this.domElement?.removeEventListener('wheel', this.handleWheelStart, { capture: true })
 		super.dispose()
 	}
 

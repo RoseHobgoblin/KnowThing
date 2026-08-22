@@ -157,6 +157,7 @@
 			instance.canvas.style.width = '100%'
 			instance.canvas.style.height = '100%'
 			instance.canvas.setAttribute('aria-label', `Sector map of ${sectorName}`)
+			if (interaction.cameraMovement) instance.canvas.setAttribute('aria-keyshortcuts', 'F Escape')
 			// The host has no Svelte children; imperative ownership is deliberate.
 			// eslint-disable-next-line svelte/no-dom-manipulating
 			canvasHost.replaceChildren(instance.canvas)
@@ -254,7 +255,7 @@
 				{/if}
 			</div>
 			{#if interaction.controlsVisible}<div class="absolute bottom-2 left-2 hidden bg-surface/60 px-2 py-1 text-[0.65rem] text-secondary sm:block">
-				Drag to orbit · Double-click a root to enter it
+				Drag to orbit · Right-drag to pan · Scroll to travel · F to focus · Double-click to enter
 			</div>{/if}
 		</div>
 	{/if}

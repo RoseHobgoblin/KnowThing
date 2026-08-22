@@ -323,7 +323,7 @@
 			</div>
 		{/if}
 		<div class="pointer-events-none absolute right-2 bottom-2 bg-black/65 px-1.5 py-1 text-[0.625rem] text-secondary">
-			Drag to rotate · wheel to zoom
+			Drag to rotate · scroll to move closer
 		</div>
 	</div>
 

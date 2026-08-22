@@ -188,7 +188,7 @@
 		<div class="flex justify-end border-b border-border-subtle px-3 py-1.5 text-xs">
 			<CopyViewLink getState={currentViewState} />
 		</div>
-		<MapControls bind:labels bind:skyLabels bind:trails bind:visibility bind:follow canFollowSelection={selectedId != null && !selectedId.startsWith('sky-root:')} />
+		<MapControls bind:labels bind:skyLabels bind:trails bind:visibility />
 		<div class="h-[min(76vh,54rem)] min-h-112" data-testid="map-frame">
 			<RootMap
 				bind:this={rootMap}

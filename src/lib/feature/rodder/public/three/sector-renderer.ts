@@ -127,9 +127,10 @@ export function createSectorRenderer(
 		input: 'orbit',
 		smoothTime: CAMERA_SMOOTH_TIME,
 	})
-	// Full free orbit apart from the exact poles (Z-up look-at singularity).
+	// Keep the strategic map above its reference plane. Crossing underneath the
+	// grid reverses screen-relative navigation and makes orientation ambiguous.
 	controls.minPolarAngle = 0.015
-	controls.maxPolarAngle = Math.PI - 0.015
+	controls.maxPolarAngle = Math.PI / 2 - 0.015
 	let interaction = { ...FULL_VIEW_INTERACTION }
 
 	const discTexture = makeDiscTexture()
@@ -260,6 +261,25 @@ export function createSectorRenderer(
 		schedule()
 	}
 
+	function focusRoot(slug: string) {
+		const node = nodes.get(slug)
+		if (!node) return
+		const target = controls.getTarget(new Vector3(), false)
+		const offset = camera.position.clone().sub(target)
+		// Come in closer than the whole-sector framing, but never inside the marker.
+		const focusDistance = Math.max(boundsRadius * 0.45, gridSpacing * 1.5)
+		offset.setLength(Math.min(offset.length(), focusDistance))
+		const reducedMotion = globalThis.matchMedia('(prefers-reduced-motion: reduce)').matches
+		void controls.setPose({
+			position: node.sprite.position.clone().add(offset),
+			target: node.sprite.position,
+			transition: !reducedMotion,
+			smoothTime: CAMERA_SMOOTH_TIME,
+		})
+		if (reducedMotion) controls.update(0)
+		schedule()
+	}
+
 	function projectToScreen(position: Vector3): { x: number, y: number, behind: boolean } {
 		scratch.copy(position).project(camera)
 		return {
@@ -351,6 +371,7 @@ export function createSectorRenderer(
 	}
 
 	function handlePointerDown(event: PointerEvent) {
+		if (interaction.cameraMovement) canvas.focus({ preventScroll: true })
 		dragStart = new Vector2(event.clientX, event.clientY)
 		suppressClick = false
 	}
@@ -388,6 +409,17 @@ export function createSectorRenderer(
 		if (root) callbacks.onActivate(root.slug)
 	}
 
+	function handleKeyDown(event: KeyboardEvent) {
+		if (!interaction.cameraMovement || event.altKey || event.ctrlKey || event.metaKey) return
+		if (event.code === 'KeyF' && selectedSlug) {
+			event.preventDefault()
+			focusRoot(selectedSlug)
+		} else if (event.code === 'Escape') {
+			event.preventDefault()
+			resetView()
+		}
+	}
+
 	function handleContextLost(event: Event) {
 		event.preventDefault()
 		callbacks.onUnavailable?.('The graphics context was lost. Reload the page to restore the sector map.')
@@ -398,6 +430,7 @@ export function createSectorRenderer(
 	canvas.addEventListener('pointerleave', handlePointerLeave)
 	canvas.addEventListener('click', handleClick)
 	canvas.addEventListener('dblclick', handleDoubleClick)
+	canvas.addEventListener('keydown', handleKeyDown)
 	canvas.addEventListener('webglcontextlost', handleContextLost)
 	controls.listen({
 		onControl: schedule,
@@ -448,24 +481,7 @@ export function createSectorRenderer(
 			schedule()
 		},
 		resetView,
-		focusRoot(slug) {
-			const node = nodes.get(slug)
-			if (!node) return
-			const target = controls.getTarget(new Vector3(), false)
-			const offset = camera.position.clone().sub(target)
-			// Come in closer than the whole-sector framing, but never inside the marker.
-			const focusDistance = Math.max(boundsRadius * 0.45, gridSpacing * 1.5)
-			offset.setLength(Math.min(offset.length(), focusDistance))
-			const reducedMotion = globalThis.matchMedia('(prefers-reduced-motion: reduce)').matches
-			void controls.setPose({
-				position: node.sprite.position.clone().add(offset),
-				target: node.sprite.position,
-				transition: !reducedMotion,
-				smoothTime: CAMERA_SMOOTH_TIME,
-			})
-			if (reducedMotion) controls.update(0)
-			schedule()
-		},
+		focusRoot,
 		getCameraState() {
 			const target = controls.getTarget(new Vector3(), false)
 			return {
@@ -498,6 +514,7 @@ export function createSectorRenderer(
 			canvas.removeEventListener('pointerleave', handlePointerLeave)
 			canvas.removeEventListener('click', handleClick)
 			canvas.removeEventListener('dblclick', handleDoubleClick)
+			canvas.removeEventListener('keydown', handleKeyDown)
 			canvas.removeEventListener('webglcontextlost', handleContextLost)
 			document.removeEventListener('visibilitychange', handleVisibility)
 			controls.dispose()

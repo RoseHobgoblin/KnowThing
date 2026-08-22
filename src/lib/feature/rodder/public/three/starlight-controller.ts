@@ -109,9 +109,9 @@ export function focusedStarlightTarget(
 	candidates: StarlightExposureCandidate[],
 	viewportWidth: number,
 	viewportHeight: number,
-	zoomLevel: number,
+	scaleRatio: number,
 ): EntityKey | null {
-	if (!Number.isFinite(zoomLevel) || zoomLevel < 4) return null
+	if (!Number.isFinite(scaleRatio) || scaleRatio < 4) return null
 	const centreX = viewportWidth / 2
 	const centreY = viewportHeight / 2
 	let closest: { key: EntityKey, distance: number } | null = null

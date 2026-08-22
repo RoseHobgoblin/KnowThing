@@ -40,7 +40,7 @@
 	let selected = $derived<RootSelectionKey | null>(config?.selected ?? null)
 	let focus = $derived<EntityKey | null>(config?.focus ?? null)
 	let view = $derived(config?.mode ?? 'orrery')
-	let follow = $derived(config?.follow ?? false)
+	let follow = $derived(config?.focus != null || (config?.follow ?? false))
 	let host = $state<HTMLElement | null>(null)
 	let active = $state(false)
 	let inViewport = $state(false)

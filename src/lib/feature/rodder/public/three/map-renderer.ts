@@ -78,14 +78,14 @@ import {
 import { createApparentSkyPointMaterial } from './annotation-material.js'
 import type { RingSystemProjection } from '../ring-system.js'
 
-const MIN_ZOOM = 0.1
-const MAX_ZOOM = 1_000_000
+const MIN_VIEW_SCALE = 0.1
+const MAX_VIEW_SCALE = 1_000_000
 const ORRERY_FOV_DEG = 50
 const VIEW_TRANSITION_SECONDS = 0.45
 const FLY_TO_SECONDS = 0.6
 const VIEW_TRANSITION_MS = VIEW_TRANSITION_SECONDS * 1_000
 const KEYBOARD_PAN_SPEED_PX = 210
-const CAMERA_ZOOM_SPEED = 1.8
+const CAMERA_TRAVEL_SPEED = 1.8
 const CAMERA_SURFACE_CLEARANCE = 1.03
 const PLAN_CAMERA_DISTANCE = 1_000
 const FOCUS_RADIUS_PX = 60
@@ -190,7 +190,7 @@ function unavailableRenderer(canvas: HTMLCanvasElement, reason: string, callback
 	callbacks.onOverlayChange?.({ labels: [], indicators: [], legend: null, projection: null, status: 'unavailable' })
 	return {
 		canvas,
-		setData() {}, setDay() {}, setSettings() {}, setSelected() {}, setInteraction() {}, setTheme() {}, resize() {}, resetView() {},
+		setData() {}, setDay() {}, setSettings() {}, setSelected() {}, setFocus() {}, setInteraction() {}, setTheme() {}, resize() {}, resetView() {},
 		getCameraState() { return null }, setCameraState() {}, destroy() {},
 	}
 }
@@ -259,10 +259,10 @@ export async function createRootMapRenderer(
 		domElement: canvas,
 		input: 'orbit',
 		smoothTime: VIEW_TRANSITION_SECONDS,
-		dollySpeed: CAMERA_ZOOM_SPEED,
+		dollySpeed: CAMERA_TRAVEL_SPEED,
 	})
-	controls.minZoom = MIN_ZOOM
-	controls.maxZoom = MAX_ZOOM
+	controls.minZoom = MIN_VIEW_SCALE
+	controls.maxZoom = MAX_VIEW_SCALE
 	controls.minDistance = 0.001
 	controls.maxDistance = 10_000
 	controls.minPolarAngle = 0.015
@@ -273,7 +273,7 @@ export async function createRootMapRenderer(
 	}
 
 	// Shared geometry is cheap compared with per-body materials and remains
-	// smooth when a 1024×512 plate is inspected at close zoom.
+	// smooth when a 1024×512 plate is inspected at close range.
 	const sharedSphere = new SphereGeometry(1, 96, 64)
 	sharedSphere.rotateX(Math.PI / 2)
 	const markerTexture = makeMarkerTexture()
@@ -291,6 +291,7 @@ export async function createRootMapRenderer(
 		},
 	}
 	let selectedId: RootSelectionKey | null = null
+	let focusedId: EntityKey | null = null
 	let hoveredId: RootSelectionKey | null = null
 	let currentDay: number | null = null
 	let dataReceived = false
@@ -306,7 +307,7 @@ export async function createRootMapRenderer(
 	let viewFrom = 1
 	let viewTo = 1
 	let viewStartedAt: number | null = null
-	let lastFollowPosition: Vector3 | null = null
+	let lastFocusPosition: Vector3 | null = null
 	let destroyed = false
 	let visible = !document.hidden
 	let intersecting = true
@@ -371,8 +372,8 @@ export async function createRootMapRenderer(
 
 	function updateControlDistanceLimits() {
 		const frameDistance = orreryFrameDistance()
-		controls.minDistance = frameDistance / MAX_ZOOM
-		controls.maxDistance = frameDistance / MIN_ZOOM
+		controls.minDistance = frameDistance / MAX_VIEW_SCALE
+		controls.maxDistance = frameDistance / MIN_VIEW_SCALE
 	}
 
 	function resetCameraForView(view: MapSettingsState['view'], target = new Vector3()) {
@@ -418,8 +419,8 @@ export async function createRootMapRenderer(
 			camera.zoom = sourceWasDefault
 				? 1
 				: Math.min(
-					MAX_ZOOM,
-					Math.max(MIN_ZOOM, orthographicZoomForWorldUnitsPerPixel(halfHeight * 2, height, matchedScale)),
+					MAX_VIEW_SCALE,
+					Math.max(MIN_VIEW_SCALE, orthographicZoomForWorldUnitsPerPixel(halfHeight * 2, height, matchedScale)),
 				)
 		} else {
 			camera.zoom = 1
@@ -510,7 +511,7 @@ export async function createRootMapRenderer(
 	}
 
 	function resize(nextWidth: number, nextHeight: number) {
-		const previousOrreryZoom = camera === orreryCamera
+		const previousOrreryScale = camera === orreryCamera
 			? orreryFrameDistance() / Math.max(camera.position.distanceTo(currentTarget()), Number.EPSILON)
 			: null
 		width = Math.max(1, Math.round(nextWidth))
@@ -529,10 +530,10 @@ export async function createRootMapRenderer(
 		planCamera.updateProjectionMatrix()
 		orreryCamera.aspect = width / height
 		orreryCamera.updateProjectionMatrix()
-		if (previousOrreryZoom != null) {
+		if (previousOrreryScale != null) {
 			const target = currentTarget(new Vector3())
 			const direction = camera.position.clone().sub(target).normalize()
-			const position = target.clone().addScaledVector(direction, orreryFrameDistance() / previousOrreryZoom)
+			const position = target.clone().addScaledVector(direction, orreryFrameDistance() / previousOrreryScale)
 			applyCameraPose(position, target, camera.zoom, false, VIEW_TRANSITION_SECONDS)
 			controls.update(0)
 		}
@@ -645,6 +646,7 @@ export async function createRootMapRenderer(
 			orbitGroup.add(path.line)
 			orbitPaths.push(path)
 		}
+		if (focusedId && !nodes.has(focusedId)) releaseFocus()
 		applyPositions()
 		applySelection()
 		schedule()
@@ -726,22 +728,22 @@ export async function createRootMapRenderer(
 			if (node.isStar) starlight.setPosition(key, world)
 			node.visual.setDay(currentDay)
 		}
-		const followedId = selectedId?.startsWith('sky-root:') ? null : selectedId as EntityKey | null
-		if (settings.follow && followedId) {
-			const next = positions.get(followedId)
+		if (focusedId) {
+			const next = positions.get(focusedId)
 			if (next) {
 				const world = worldPosition(next)
-				if (lastFollowPosition) {
-					const delta = world.clone().sub(lastFollowPosition)
+				if (lastFocusPosition) {
+					const delta = world.clone().sub(lastFocusPosition)
 					const target = currentTarget(new Vector3()).add(delta)
-					controls.interrupt()
+					// Keep both the camera and its anchor in the body's moving frame.
+					// Do not interrupt an approach/orbit intent merely because time advanced.
 					void controls.moveTo(target.x, target.y, target.z, false)
 					controls.update(0)
 				}
-				lastFollowPosition = world
+				lastFocusPosition = world
 			}
 		} else {
-			lastFollowPosition = null
+			lastFocusPosition = null
 		}
 		updateOrbitPaths()
 		rebuildTrails()
@@ -879,19 +881,17 @@ export async function createRootMapRenderer(
 		}
 	}
 
-	function constrainCameraOutsideBodies(): boolean {
-		if (camera !== orreryCamera) return false
-		let constrained = false
-		for (const node of nodes.values()) {
-			node.visual.anchor.getWorldPosition(scratchWorld)
-			constrained = constrainPointOutsideSphere(
-				camera.position,
-				previousCameraPosition,
-				scratchWorld,
-				node.visual.radius * CAMERA_SURFACE_CLEARANCE,
-			) || constrained
-		}
-		return constrained
+	function constrainCameraOutsideFocus(): boolean {
+		if (camera !== orreryCamera || !focusedId) return false
+		const node = nodes.get(focusedId)
+		if (!node) return false
+		node.visual.anchor.getWorldPosition(scratchWorld)
+		return constrainPointOutsideSphere(
+			camera.position,
+			previousCameraPosition,
+			scratchWorld,
+			node.visual.radius * CAMERA_SURFACE_CLEARANCE,
+		)
 	}
 
 	function publishOverlay() {
@@ -1027,15 +1027,15 @@ export async function createRootMapRenderer(
 		}
 	}
 
-	function cameraZoomLevel(): number {
+	function cameraScaleRatio(): number {
 		if (camera === planCamera) return camera.zoom
 		return orreryFrameDistance() / Math.max(camera.position.distanceTo(currentTarget()), Number.EPSILON)
 	}
 
 	function updateToneMappingExposure() {
 		const automatic = settings.visibility !== 'physical'
-		const zoomLevel = cameraZoomLevel()
-		const focusedKey = !automatic || zoomLevel < 4
+		const scaleRatio = cameraScaleRatio()
+		const focusedKey = !automatic || scaleRatio < 4
 			? null
 			: focusedStarlightTarget(
 				[...nodes.values()].map((node) => {
@@ -1052,7 +1052,7 @@ export async function createRootMapRenderer(
 				}),
 				width,
 				height,
-				zoomLevel,
+				scaleRatio,
 			)
 		const focusedNode = focusedKey == null ? null : nodes.get(focusedKey)
 		let irradiance: number | null = null
@@ -1066,13 +1066,12 @@ export async function createRootMapRenderer(
 	}
 
 	function notifyView() {
-		const zoomLevel = cameraZoomLevel()
+		const scaleRatio = cameraScaleRatio()
 		const target = currentTarget(new Vector3())
 		const direction = camera.position.clone().sub(target).normalize()
 		const orientationMoved = direction.dot(defaultCameraDirection(settings.view)) < 0.9999
 		callbacks.onViewChange({
-			zoomLevel,
-			isMoved: Math.abs(zoomLevel - 1) > 0.001 || target.lengthSq() > 0.01 || orientationMoved,
+			isMoved: Math.abs(scaleRatio - 1) > 0.001 || target.lengthSq() > 0.01 || orientationMoved,
 		})
 	}
 
@@ -1086,7 +1085,9 @@ export async function createRootMapRenderer(
 			target: target.toArray() as [number, number, number],
 			direction: direction.toArray() as [number, number, number],
 			distance,
-			zoom: camera === planCamera ? camera.zoom : cameraZoomLevel(),
+			// Retained for v1 link compatibility. Perspective views use physical
+			// camera distance and never an optical zoom value.
+			zoom: camera === planCamera ? camera.zoom : 1,
 			fieldOfView: orreryCamera.fov,
 		}
 	}
@@ -1112,7 +1113,7 @@ export async function createRootMapRenderer(
 		let position: Vector3
 		let zoom = 1
 		if (camera === planCamera) {
-			zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, state.zoom))
+			zoom = Math.min(MAX_VIEW_SCALE, Math.max(MIN_VIEW_SCALE, state.zoom))
 			position = target.clone().addScaledVector(direction, PLAN_CAMERA_DISTANCE)
 		} else {
 			position = target.clone().addScaledVector(
@@ -1123,7 +1124,7 @@ export async function createRootMapRenderer(
 		applyCameraPose(position, target, zoom, false, VIEW_TRANSITION_SECONDS)
 		controls.update(0)
 		configureControls()
-		lastFollowPosition = null
+		lastFocusPosition = focusedId ? nodes.get(focusedId)?.visual.anchor.position.clone() ?? null : null
 		applyPositions()
 		notifyView()
 		queueMicrotask(settleTextureLods)
@@ -1137,6 +1138,7 @@ export async function createRootMapRenderer(
 			- Number(pressedPanKeys.has('KeyS') || pressedPanKeys.has('ArrowDown'))
 		if (horizontal === 0 && vertical === 0) return false
 		const distance = KEYBOARD_PAN_SPEED_PX * deltaSeconds * worldUnitsPerPixelAt(currentTarget())
+		releaseFocus()
 		controls.interrupt()
 		void controls.truck(horizontal * distance, -vertical * distance, false)
 		controls.update(0)
@@ -1161,7 +1163,7 @@ export async function createRootMapRenderer(
 				cameraSettled = true
 			} else animate = true
 		}
-		if (constrainCameraOutsideBodies()) {
+		if (constrainCameraOutsideFocus()) {
 			applyCameraPose(camera.position, currentTarget(new Vector3()), camera.zoom, false, VIEW_TRANSITION_SECONDS)
 			controls.update(0)
 			animate = true
@@ -1277,6 +1279,61 @@ export async function createRootMapRenderer(
 		const hit = closestTarget(event as PointerEvent)
 		callbacks.onSelect(hitKey(hit))
 	}
+
+	function frameNode(node: EntityNode) {
+		const target = node.visual.anchor.position.clone()
+		const current = currentTarget(new Vector3())
+		const offsetDirection = camera.position.clone().sub(current).normalize()
+		let targetScale = camera.zoom
+		let targetDistance = camera.position.distanceTo(current)
+		if (camera === planCamera) {
+			targetScale = Math.min(
+				MAX_VIEW_SCALE,
+				Math.max(
+					camera.zoom,
+					FOCUS_RADIUS_PX * worldUnitsPerPixelAt(target) * camera.zoom
+						/ Math.max(node.visual.radius, Number.EPSILON),
+				),
+			)
+		} else {
+			const focusDistance = perspectiveDistanceForWorldUnitsPerPixel(
+				Math.max(node.visual.radius, Number.EPSILON) / FOCUS_RADIUS_PX,
+				height,
+				orreryCamera.fov,
+			)
+			targetDistance = Math.min(
+				targetDistance,
+				Math.max(controls.minDistance, node.visual.extent * 2.5, focusDistance),
+			)
+		}
+		const targetCamera = target.clone().addScaledVector(offsetDirection, targetDistance)
+		const reducedMotion = globalThis.matchMedia('(prefers-reduced-motion: reduce)').matches
+		applyCameraPose(targetCamera, target, targetScale, !reducedMotion, FLY_TO_SECONDS)
+		if (reducedMotion) {
+			controls.update(0)
+			queueMicrotask(settleTextureLods)
+		}
+		schedule()
+	}
+
+	function setFocusedEntity(id: EntityKey | null, frame = true, forceFrame = false) {
+		const node = id ? nodes.get(id) : null
+		const nextId = node?.key ?? null
+		if (focusedId === nextId) {
+			if (node && frame && forceFrame) frameNode(node)
+			return
+		}
+		focusedId = nextId
+		lastFocusPosition = node?.visual.anchor.position.clone() ?? null
+		if (node && frame) frameNode(node)
+	}
+
+	function releaseFocus() {
+		if (!focusedId) return
+		setFocusedEntity(null, false)
+		callbacks.onFocusChange(null)
+	}
+
 	function handleDoubleClick(event: MouseEvent) {
 		if (!interaction.objectNavigation) return
 		const hit = closestTarget(event as PointerEvent)
@@ -1288,42 +1345,10 @@ export async function createRootMapRenderer(
 			canvas.style.cursor = ''
 			return
 		}
+		setFocusedEntity(hit.node.key, true, true)
 		callbacks.onFocusChange(hit.node.key)
 		callbacks.onHover(null, null)
 		canvas.style.cursor = ''
-		const target = hit.node.visual.anchor.position.clone()
-		const current = currentTarget(new Vector3())
-		const offsetDirection = camera.position.clone().sub(current).normalize()
-		let targetZoom = camera.zoom
-		let targetDistance = camera.position.distanceTo(current)
-		if (camera === planCamera) {
-			targetZoom = Math.min(
-				MAX_ZOOM,
-				Math.max(
-					camera.zoom,
-					FOCUS_RADIUS_PX * worldUnitsPerPixelAt(target) * camera.zoom
-						/ Math.max(hit.node.visual.radius, Number.EPSILON),
-				),
-			)
-		} else {
-			const focusDistance = perspectiveDistanceForWorldUnitsPerPixel(
-				Math.max(hit.node.visual.radius, Number.EPSILON) / FOCUS_RADIUS_PX,
-				height,
-				orreryCamera.fov,
-			)
-			targetDistance = Math.min(
-				targetDistance,
-				Math.max(controls.minDistance, hit.node.visual.extent * 2.5, focusDistance),
-			)
-		}
-		const targetCamera = target.clone().addScaledVector(offsetDirection, targetDistance)
-		const reducedMotion = globalThis.matchMedia('(prefers-reduced-motion: reduce)').matches
-		applyCameraPose(targetCamera, target, targetZoom, !reducedMotion, FLY_TO_SECONDS)
-		if (reducedMotion) {
-			controls.update(0)
-			queueMicrotask(settleTextureLods)
-		}
-		schedule()
 	}
 	function handleContextLost(event: Event) {
 		event.preventDefault()
@@ -1347,6 +1372,16 @@ export async function createRootMapRenderer(
 		pressedPanKeys.clear()
 		queueMicrotask(settleTextureLods)
 	}
+	function handleControlsStart() {
+		const action = controls.currentAction
+		if (
+			action === RodderCameraControls.ACTION.TRUCK
+			|| action === RodderCameraControls.ACTION.SCREEN_PAN
+			|| action === RodderCameraControls.ACTION.TOUCH_TRUCK
+			|| action === RodderCameraControls.ACTION.TOUCH_SCREEN_PAN
+			|| action === RodderCameraControls.ACTION.TOUCH_ZOOM_TRUCK
+		) releaseFocus()
+	}
 	function handleVisibility() {
 		visible = !document.hidden
 		pressedPanKeys.clear()
@@ -1366,6 +1401,7 @@ export async function createRootMapRenderer(
 	canvas.addEventListener('keyup', handleKeyUp)
 	canvas.addEventListener('blur', handleCanvasBlur)
 	controls.listen({
+		onControlStart: handleControlsStart,
 		onControl: schedule,
 		onTransitionStart: schedule,
 		onUpdate: schedule,
@@ -1402,7 +1438,6 @@ export async function createRootMapRenderer(
 			const rebuildTrail = next.trails !== settings.trails
 			const viewChanged = next.view !== settings.view
 			settings = { ...next }
-			if (settings.follow && selectedId?.startsWith('sky-root:')) settings.follow = false
 			starlight.setVisibilityMode(settings.visibility)
 			updateSkyVisuals()
 			configureControls()
@@ -1422,14 +1457,21 @@ export async function createRootMapRenderer(
 					switchCameraForView(settings.view, false)
 				}
 			}
-			if (!settings.follow) lastFollowPosition = null
 			schedule()
 		},
 		setSelected(id) {
 			selectedId = id
-			if (selectedId?.startsWith('sky-root:')) settings.follow = false
-			lastFollowPosition = null
+			// Old v1 links expressed a locked camera as follow + selection. Promote
+			// that pair to the explicit focus model when it is first restored.
+			if (settings.follow && selectedId && !selectedId.startsWith('sky-root:') && !focusedId) {
+				setFocusedEntity(selectedId as EntityKey)
+				callbacks.onFocusChange(selectedId as EntityKey)
+			}
 			applySelection()
+			schedule()
+		},
+		setFocus(id) {
+			setFocusedEntity(id)
 			schedule()
 		},
 		setInteraction(nextInteraction) {
@@ -1449,13 +1491,14 @@ export async function createRootMapRenderer(
 		},
 		resize,
 		resetView() {
+			const hadFocus = focusedId != null
 			viewStartedAt = null
 			viewBlend = settings.view === 'orrery' ? 1 : 0
 			viewFrom = viewBlend
 			viewTo = viewBlend
 			resetCameraForView(settings.view)
-			callbacks.onFocusChange(null)
-			lastFollowPosition = null
+			setFocusedEntity(null, false)
+			if (hadFocus) callbacks.onFocusChange(null)
 			applyPositions()
 			queueMicrotask(settleTextureLods)
 			schedule()

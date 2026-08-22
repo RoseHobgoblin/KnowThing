@@ -48,7 +48,7 @@ export type MapRendererCallbacks = {
 	onSelect: (id: RootSelectionKey | null) => void
 	onFocusChange: (id: EntityKey | null) => void
 	onActivateSkySource: (rootSlug: string) => void
-	onViewChange: (view: { zoomLevel: number, isMoved: boolean }) => void
+	onViewChange: (view: { isMoved: boolean }) => void
 	onOverlayChange?: (snapshot: OverlaySnapshot) => void
 	onUnavailable?: (reason: string) => void
 }
@@ -58,6 +58,8 @@ export type RootMapRenderer = {
 	setDay(day: number | null): void
 	setSettings(settings: MapSettingsState): void
 	setSelected(id: RootSelectionKey | null): void
+	/** Locks the camera anchor to a local body. A null focus restores free navigation. */
+	setFocus(id: EntityKey | null): void
 	setInteraction(policy: DisplayInteractionPolicy): void
 	setTheme(theme: ThemePalette): void
 	resize(width: number, height: number): void

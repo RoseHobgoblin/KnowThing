@@ -27,6 +27,43 @@ vi.stubGlobal('DOMRect', class DOMRect {
 
 afterAll(() => vi.unstubAllGlobals())
 
+class CameraElement {
+	private readonly captureListeners = new Map<string, Set<EventListener>>()
+	private readonly bubbleListeners = new Map<string, Set<EventListener>>()
+	readonly ownerDocument = {
+		addEventListener() {},
+		removeEventListener() {},
+	}
+
+	readonly style: Record<string, string> = {}
+
+	setAttribute() {}
+
+	removeAttribute() {}
+
+	getBoundingClientRect() { return new DOMRect(0, 0, 100, 100) }
+
+	addEventListener(type: string, listener: EventListener, options?: boolean | AddEventListenerOptions) {
+		const capture = typeof options === 'boolean' ? options : options?.capture ?? false
+		const listeners = capture ? this.captureListeners : this.bubbleListeners
+		const bucket = listeners.get(type) ?? new Set<EventListener>()
+		bucket.add(listener)
+		listeners.set(type, bucket)
+	}
+
+	removeEventListener(type: string, listener: EventListener, options?: boolean | EventListenerOptions) {
+		const capture = typeof options === 'boolean' ? options : options?.capture ?? false
+		const listeners = capture ? this.captureListeners : this.bubbleListeners
+		listeners.get(type)?.delete(listener)
+	}
+
+	dispatchEvent(event: Event) {
+		for (const listener of this.captureListeners.get(event.type) ?? []) listener(event)
+		for (const listener of this.bubbleListeners.get(event.type) ?? []) listener(event)
+		return !event.defaultPrevented
+	}
+}
+
 describe('rodder camera-controls adapter', () => {
 	it('keeps Z-up look-at state when switching between projection cameras', async () => {
 		const perspective = new PerspectiveCamera(50, 16 / 9, 0.01, 10_000)
@@ -72,15 +109,19 @@ describe('rodder camera-controls adapter', () => {
 		})
 		expect(controls.smoothTime).toBe(0.4)
 		expect(controls.dollySpeed).toBe(1.8)
+		expect(controls.dollyToCursor).toBe(false)
 		expect(controls.mouseButtons.left).toBe(RodderCameraControls.ACTION.ROTATE)
 		expect(controls.mouseButtons.right).toBe(RodderCameraControls.ACTION.TRUCK)
+		expect(controls.touches.two).toBe(RodderCameraControls.ACTION.TOUCH_DOLLY_ROTATE)
 
 		controls.setInputProfile('plan')
+		expect(controls.dollyToCursor).toBe(true)
 		expect(controls.mouseButtons.left).toBe(RodderCameraControls.ACTION.TRUCK)
 		expect(controls.mouseButtons.wheel).toBe(RodderCameraControls.ACTION.ZOOM)
 		expect(controls.touches.two).toBe(RodderCameraControls.ACTION.TOUCH_ZOOM_TRUCK)
 
 		controls.setInputProfile('preview')
+		expect(controls.dollyToCursor).toBe(false)
 		expect(controls.mouseButtons.right).toBe(RodderCameraControls.ACTION.NONE)
 		expect(controls.touches.two).toBe(RodderCameraControls.ACTION.TOUCH_DOLLY_ROTATE)
 		controls.dispose()
@@ -170,6 +211,40 @@ describe('rodder camera-controls adapter', () => {
 		expect(controls.intentActive).toBe(false)
 		expect(controls.getPosition(new Vector3(), false).distanceTo(interruptedPosition)).toBeLessThan(1e-12)
 		expect(controls.getTarget(new Vector3(), false).distanceTo(interruptedTarget)).toBeLessThan(1e-12)
+		controls.dispose()
+	})
+
+	it('cancels a flight before applying wheel travel', async () => {
+		const camera = new PerspectiveCamera(50, 1, 0.01, 10_000)
+		camera.up.set(0, 0, 1)
+		const element = new CameraElement() as unknown as HTMLElement
+		const controls = new RodderCameraControls(camera, {
+			domElement: element,
+			input: 'orbit',
+			smoothTime: 0.2,
+		})
+		const transition = controls.setPose({
+			position: new Vector3(10, -8, 6),
+			target: new Vector3(1, 2, 0),
+			transition: true,
+		})
+
+		for (let frame = 0; frame < 5; frame++) controls.update(1 / 60)
+		const interruptedDistance = controls.distance
+		const wheel = Object.assign(new Event('wheel', { cancelable: true }), {
+			clientX: 0,
+			clientY: 0,
+			ctrlKey: false,
+			deltaMode: 0,
+			deltaX: 0,
+			deltaY: -100,
+		})
+		element.dispatchEvent(wheel)
+		for (let frame = 0; frame < 60; frame++) controls.update(1 / 60)
+
+		expect(await transition).toBe(false)
+		expect(controls.intentActive).toBe(false)
+		expect(controls.distance).not.toBeCloseTo(interruptedDistance, 6)
 		controls.dispose()
 	})
 })

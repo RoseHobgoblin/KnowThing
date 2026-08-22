@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte'
+	import { onMount, untrack } from 'svelte'
 	import { goto } from '$app/navigation'
 	import { useResizeObserver } from 'runed'
 	import { resolve } from '$app/paths'
@@ -68,7 +68,7 @@
 	let hoveredBody = $state<MapBody | null>(null)
 	let hoveredSkySource = $state<ApparentSkySource | null>(null)
 	let hoverPosition = $state<{ x: number, y: number } | null>(null)
-	let viewState = $state({ zoomLevel: 1, isMoved: false })
+	let viewState = $state({ isMoved: false })
 	let overlay = $state.raw<OverlaySnapshot>(EMPTY_OVERLAY)
 	let unavailableReason = $state<string | null>(null)
 
@@ -121,12 +121,6 @@
 		},
 	)
 
-	function formatZoom(zoom: number): string {
-		if (zoom >= 1_000_000) return `${(zoom / 1_000_000).toFixed(1)}m`
-		if (zoom >= 1_000) return `${(zoom / 1_000).toFixed(1)}k`
-		return zoom.toFixed(1)
-	}
-
 	function surfaceDescription(body: MapBody): string | null {
 		if (body.bodyType === 'ring_system') return null
 		return body.isStar
@@ -140,6 +134,17 @@
 			description: describeStarlightLuminosity(hoveredBody),
 			fallback: resolveStarlightLuminosity(hoveredBody).source === 'fallback',
 		}
+	})
+	const effectiveFocusId = $derived(focusId ?? (
+		follow && selectedId && !selectedId.startsWith('sky-root:')
+			? selectedId as EntityKey
+			: null
+	))
+	const focusedName = $derived.by(() => {
+		if (!effectiveFocusId) return null
+		const [kind, rawId] = effectiveFocusId.split(':')
+		const id = Number(rawId)
+		return (kind === 'star' ? stars : bodies).find(body => body.id === id)?.name ?? null
 	})
 
 	// Three.js remains strictly browser-only.
@@ -164,7 +169,10 @@
 						focusId = null
 					}
 				},
-				onFocusChange: (id) => { focusId = id },
+				onFocusChange: (id) => {
+					focusId = id
+					follow = id != null
+				},
 				onActivateSkySource: (rootSlug) => {
 					goto(resolve('/[...ns_path=namespaced]', { ns_path: `Rodder:${rootSlug}` }))
 				},
@@ -215,11 +223,14 @@
 		renderer?.setData(stars, bodies, apparentSky)
 	})
 	$effect(() => {
+		renderer?.setFocus(effectiveFocusId)
+	})
+	$effect(() => {
 		const instance = renderer
 		void rootName
 		if (!instance) return
 		if (initialCameraState) instance.setCameraState(initialCameraState)
-		else instance.resetView()
+		else if (untrack(() => effectiveFocusId) == null) instance.resetView()
 	})
 	$effect(() => {
 		renderer?.canvas.setAttribute('aria-label', `Interactive root map of ${rootName}`)
@@ -276,8 +287,8 @@
 		<button
 			class="absolute top-2 right-2 z-10 bg-surface/85 px-2 py-1 text-xs font-medium text-dim transition-colors hover:text-accent"
 			onclick={() => renderer?.resetView()}
-			aria-label="Reset map view"
-		>{formatZoom(viewState.zoomLevel)}× · Reset</button>
+			aria-label="Return to system view"
+		>System view</button>
 	{/if}
 
 	{#if !unavailableReason}
@@ -323,6 +334,14 @@
 						<span class="inline-block border-t border-secondary" style:width="{overlay.legend.pixels}px"></span>
 					{/if}
 					{overlay.legend.label}
+				</div>
+			{/if}
+			{#if interaction.controlsVisible}
+				<div class="absolute bottom-2 left-2 hidden bg-surface/65 px-2 py-1 text-[0.65rem] text-secondary sm:block">
+					{#if focusedName}<span class="font-medium text-heading">Focused: {focusedName}</span> · {/if}
+					{view === 'plan'
+						? 'Drag to pan · Scroll to change scale · Double-click to focus'
+						: 'Drag to orbit · Right-drag to pan · Scroll to travel · Double-click to focus'}
 				</div>
 			{/if}
 		</div>

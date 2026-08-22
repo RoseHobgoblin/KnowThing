@@ -165,7 +165,7 @@
 			mapLabels = state?.labels ?? DEFAULT_MAP_SETTINGS.labels
 			mapSkyLabels = state?.skyLabels ?? DEFAULT_MAP_SETTINGS.skyLabels
 			mapTrails = state?.trails ?? DEFAULT_MAP_SETTINGS.trails
-			mapFollow = state?.follow ?? DEFAULT_MAP_SETTINGS.follow
+			mapFollow = state?.focus != null || (state?.follow ?? DEFAULT_MAP_SETTINGS.follow)
 			mapView = state?.mode ?? DEFAULT_MAP_SETTINGS.view
 			mapVisibility = state?.visibility ?? DEFAULT_MAP_SETTINGS.visibility
 			mapSelectedId = state?.selected ?? null
@@ -363,7 +363,6 @@
 								bind:view={mapView}
 								bind:selectedId={() => mapSelectedId, (selected) => {
 									mapSelectedId = selected
-									if (!selected) mapFollow = false
 									activeRootOverlay = null
 								}}
 								bind:focusId={mapFocusId}
@@ -428,8 +427,6 @@
 											bind:skyLabels={mapSkyLabels}
 											bind:trails={mapTrails}
 											bind:visibility={mapVisibility}
-											bind:follow={mapFollow}
-											canFollowSelection={mapSelectedId != null && !mapSelectedId.startsWith('sky-root:')}
 											variant="panel"
 										/>
 									{:else}
@@ -466,7 +463,6 @@
 										aria-label="Close inspector"
 										onclick={() => {
 											mapSelectedId = null
-											mapFollow = false
 										}}
 									><XIcon size={15} /></button>
 								</div>

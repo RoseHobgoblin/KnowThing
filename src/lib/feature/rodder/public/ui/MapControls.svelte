@@ -7,16 +7,12 @@
 		skyLabels = $bindable('off'),
 		trails = $bindable('off'),
 		visibility = $bindable('enhanced'),
-		follow = $bindable(false),
-		canFollowSelection = false,
 		variant = 'bar',
 	}: {
 		labels: LabelMode
 		skyLabels: LabelMode
 		trails: TrailMode
 		visibility: VisibilityMode
-		follow: boolean
-		canFollowSelection?: boolean
 		variant?: 'bar' | 'panel'
 	} = $props()
 
@@ -121,17 +117,4 @@
 			{/each}
 		</div>
 	</div>
-
-	<!-- Follow -->
-	<button
-		type="button"
-		disabled={!canFollowSelection}
-		class={cn(
-			'px-1.5 py-0.5 transition-colors',
-			follow && canFollowSelection ? 'bg-accent-subtle font-medium text-accent' : 'hover:bg-raised',
-			!canFollowSelection && 'cursor-not-allowed opacity-40',
-		)}
-		title={canFollowSelection ? 'Center on selected body' : 'Select a local body first'}
-		onclick={() => follow = !follow}
-	>Follow</button>
 </div>

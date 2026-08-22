@@ -13,7 +13,7 @@ function normalizedAngle(angle: number): number {
 /**
  * A stable full-orbit mesh plus a small geometric refinement around each body.
  * This keeps the body exactly on a smooth local arc without rebuilding an
- * enormous camera-dependent geometry during pan/zoom damping.
+ * enormous camera-dependent geometry while navigation damping settles.
  */
 export function closedOrbitAngles(
 	segmentCount = ORBIT_SEGMENTS,

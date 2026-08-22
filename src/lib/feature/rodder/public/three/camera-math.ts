@@ -9,7 +9,7 @@ type MutablePoint3D = { x: number, y: number, z: number }
 /**
  * Pushes a camera position to the near side of a spherical body when a dolly
  * would place it inside. The previous position supplies a stable outward
- * direction so a large zoom step cannot snap the camera through the centre.
+ * direction so a large travel step cannot snap the camera through the centre.
  */
 export function constrainPointOutsideSphere(
 	point: MutablePoint3D,
